@@ -49,7 +49,7 @@ const (
 	GroupClientProtocolErrorGoogle    GroupClientProtocolErrorFormat = "google"
 )
 
-// requireGroupClientProtocol 在进入业务处理器前执行分组协议准入检查。
+// RequireGroupClientProtocol 在进入业务处理器前执行分组协议准入检查。
 func (g *RouteGuards) RequireGroupClientProtocol(protocol wireprotocol.ProtocolID, format GroupClientProtocolErrorFormat) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if g.EnforceGroupClientProtocol(c, protocol, format) {
@@ -58,7 +58,7 @@ func (g *RouteGuards) RequireGroupClientProtocol(protocol wireprotocol.ProtocolI
 	}
 }
 
-// withGroupClientProtocol 把协议门禁包在已完成路径校验的终端处理器外层。
+// WithGroupClientProtocol 把协议门禁包在已完成路径校验的终端处理器外层。
 func (g *RouteGuards) WithGroupClientProtocol(protocol wireprotocol.ProtocolID, format GroupClientProtocolErrorFormat, next gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if g.EnforceGroupClientProtocol(c, protocol, format) {
@@ -67,7 +67,7 @@ func (g *RouteGuards) WithGroupClientProtocol(protocol wireprotocol.ProtocolID, 
 	}
 }
 
-// enforceGroupClientProtocol 执行检查并在拒绝时写入协议原生错误。
+// EnforceGroupClientProtocol 执行检查并在拒绝时写入协议原生错误。
 func (g *RouteGuards) EnforceGroupClientProtocol(c *gin.Context, protocol wireprotocol.ProtocolID, format GroupClientProtocolErrorFormat) bool {
 	access := g.options.Access(c)
 	if protocol == wireprotocol.ProtocolOpenAIResponses && RouteProtocol(c.Request.Method, c.Request.URL.Path) == wireprotocol.ProtocolResponsesCompact {
@@ -147,7 +147,7 @@ func groupClientProtocolDeniedMessage(protocol wireprotocol.ProtocolID) string {
 	}
 }
 
-// requireGeminiGenerateContentProtocol 只门禁 Gemini 的三个文本生成 POST 动作。
+// RequireGeminiGenerateContentProtocol 只门禁 Gemini 的三个文本生成 POST 动作。
 func (g *RouteGuards) RequireGeminiGenerateContentProtocol(c *gin.Context) {
 	rest := strings.TrimSpace(strings.TrimPrefix(c.Param("modelAction"), "/"))
 	separator := strings.LastIndexAny(rest, ":/")

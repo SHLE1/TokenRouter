@@ -1,4 +1,3 @@
-// 续接签名密钥兼容投影；环境值由 app 提供。
 package payment
 
 import (
@@ -20,6 +19,7 @@ func ResolvePaymentResumeSigningKeys(raw string, legacyKey []byte) ([]byte, [][]
 	}
 	return signingKey, [][]byte{legacyKey}
 }
+
 func ParsePaymentResumeSigningKey(raw string) []byte {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {

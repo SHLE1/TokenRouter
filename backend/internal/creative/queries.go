@@ -1,4 +1,3 @@
-// 任务查询仅消费工作区与用户投影，返回独立的公开值。
 package creative
 
 import (
@@ -160,7 +159,7 @@ func (s *Queries) GetOutputContent(ctx context.Context, scope CreativeRunScope, 
 	return &CreativeOutputContent{Content: data, ContentType: contentType}, nil
 }
 
-// markRunResultLost 把 succeeded 任务降级为 result_lost；数据库失败必须返回以便重试。
+// MarkRunResultLost 把 succeeded 任务降级为 result_lost；数据库失败必须返回以便重试。
 func (s *Queries) MarkRunResultLost(ctx context.Context, run *CreativeRun) error {
 	if run == nil || run.Status != CreativeRunStatusSucceeded {
 		return nil

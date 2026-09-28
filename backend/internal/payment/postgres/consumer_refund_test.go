@@ -200,7 +200,7 @@ func TestExecuteRefundUsesActualAvailableBalanceDeduction(t *testing.T) {
 		Reason: "concurrent spend", Force: true, DeductBalance: true, DeductionType: payment.DeductionTypeBalance, BalanceToDeduct: 100,
 	}
 
-	result, err := (newRefundWorkflowFixture(client, repo, nil, nil)).ExecuteRefund(ctx, plan)
+	result, err := newRefundWorkflowFixture(client, repo, nil, nil).ExecuteRefund(ctx, plan)
 	require.NoError(t, err)
 	require.True(t, result.Success)
 	require.Equal(t, 25.0, plan.BalanceToDeduct)
@@ -661,18 +661,23 @@ func (refundProviderTestDouble) Name() string { return "refund-test" }
 func (refundProviderTestDouble) ProviderKey() string {
 	return payment.TypeStripe
 }
+
 func (refundProviderTestDouble) SupportedTypes() []payment.PaymentType {
 	return []payment.PaymentType{payment.TypeStripe}
 }
+
 func (refundProviderTestDouble) CreatePayment(context.Context, payment.CreatePaymentRequest) (*payment.CreatePaymentResponse, error) {
 	return nil, nil
 }
+
 func (refundProviderTestDouble) QueryOrder(context.Context, string) (*payment.QueryOrderResponse, error) {
 	return nil, nil
 }
+
 func (refundProviderTestDouble) VerifyNotification(context.Context, string, map[string]string) (*payment.PaymentNotification, error) {
 	return nil, nil
 }
+
 func (refundProviderTestDouble) Refund(context.Context, payment.RefundRequest) (*payment.RefundResponse, error) {
 	return nil, nil
 }
@@ -686,7 +691,7 @@ func (p *refundQueryProviderTestDouble) QueryRefund(context.Context, payment.Ref
 	return p.refundResponse, nil
 }
 
-// 结束阶段夹具明确包含已经提交的准备事实，保持原补偿与结果断言。
+// recordPreparedRefundForTest 结束阶段夹具明确包含已经提交的准备事实，保持原补偿与结果断言。
 func recordPreparedRefundForTest(t *testing.T, ctx context.Context, client *dbent.Client, p *payment.RefundPlan) {
 	t.Helper()
 	_, err := client.PaymentOrder.UpdateOneID(p.OrderID).SetRefundAmount(p.RefundAmount).SetRefundReason(p.Reason).SetForceRefund(p.Force).Save(ctx)

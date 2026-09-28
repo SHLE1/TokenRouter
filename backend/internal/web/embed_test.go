@@ -20,7 +20,6 @@ import (
 )
 
 func init() {
-
 }
 
 func TestInjectSiteTitle(t *testing.T) {
@@ -812,7 +811,7 @@ func TestHasEmbeddedFrontend(t *testing.T) {
 	})
 }
 
-// Tests for legacy ServeEmbeddedFrontend function
+// TestServeEmbeddedFrontend 验证内嵌前端的请求处理。
 func TestServeEmbeddedFrontend(t *testing.T) {
 	t.Run("serves_static_files", func(t *testing.T) {
 		middleware := ServeEmbeddedFrontend()
@@ -924,7 +923,7 @@ func TestServeEmbeddedFrontend(t *testing.T) {
 	})
 }
 
-// Tests for HTMLCache
+// TestHTMLCache 验证 HTML 缓存。
 func TestHTMLCache(t *testing.T) {
 	t.Run("new_cache_returns_nil", func(t *testing.T) {
 		cache := NewHTMLCache()
@@ -991,7 +990,7 @@ func TestHTMLCache(t *testing.T) {
 	})
 }
 
-// Benchmark tests
+// BenchmarkReplaceNoncePlaceholder 测量 nonce 占位符替换的开销。
 func BenchmarkReplaceNoncePlaceholder(b *testing.B) {
 	html := []byte(`<!DOCTYPE html><html><head><script nonce="__CSP_NONCE_VALUE__">window.__APP_CONFIG__={"test":"data"};</script></head><body></body></html>`)
 	nonce := "abcdefghijklmnop123456=="

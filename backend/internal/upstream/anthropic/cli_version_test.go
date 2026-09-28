@@ -56,7 +56,7 @@ func TestResolveCLIVersion(t *testing.T) {
 	}
 }
 
-// 伪装身份的自洽性：User-Agent 头里的版本号必须与 CLIVersion() 一致。
+// TestDefaultHeadersUserAgentMatchesCLIVersion 验证伪装身份的自洽性：User-Agent 头里的版本号必须与 CLIVersion() 一致。
 // 两者由不同代码路径写入同一个请求，不一致会被上游判为非正版客户端。
 func TestDefaultHeadersUserAgentMatchesCLIVersion(t *testing.T) {
 	want := "claude-cli/" + CLIVersion() + " (external, cli)"
@@ -65,7 +65,7 @@ func TestDefaultHeadersUserAgentMatchesCLIVersion(t *testing.T) {
 	}
 }
 
-// 没有配置覆盖时，CLIVersion() 必须等于内置基线——保证本 PR 对既有部署零行为变化。
+// TestCLIVersionDefaultsToBuiltinPin 验证没有配置覆盖时，CLIVersion() 必须等于内置基线——保证本 PR 对既有部署零行为变化。
 func TestCLIVersionDefaultsToBuiltinPin(t *testing.T) {
 	if got := CLIVersion(); got != CLICurrentVersion {
 		t.Fatalf("CLIVersion() = %q, want built-in pin %q (测试进程未设置 %s)", got, CLICurrentVersion, CLIVersionEnv)

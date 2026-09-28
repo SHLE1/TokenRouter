@@ -1,4 +1,3 @@
-// SQL 断言使用统一的匹配规则。
 package postgres
 
 import (

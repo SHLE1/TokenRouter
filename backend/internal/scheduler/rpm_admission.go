@@ -37,7 +37,7 @@ func NewRPMAdmission(cache UserRPMCache, overrides RPMOverrides, diagnostics Dia
 	return &RPMAdmission{cache: cache, overrides: overrides, diagnostics: diagnostics}
 }
 
-// checkRPM 执行并行 RPM 限流，所有适用的限制同时生效，任一超限即拒绝：
+// Check 执行并行 RPM 限流，所有适用的限制同时生效，任一超限即拒绝：
 //
 //  1. (用户, 分组) rpm_override       — 最细粒度：管理员为特定用户在特定分组设定的专属限额。
 //     override=0 表示该用户在该分组免检（绿灯），但 user 级全局上限仍然生效。

@@ -1,4 +1,3 @@
-// 本文件只识别 PostgreSQL 技术错误；业务错误映射留在存储 Adapter。
 package postgres
 
 import (

@@ -1,6 +1,5 @@
 //go:build unit
 
-// 提供商统计合同按显式输入调用实际价格解析器。
 package pricingcontract
 
 import (

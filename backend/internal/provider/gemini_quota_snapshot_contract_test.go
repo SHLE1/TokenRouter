@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 策略读者不得通过返回对象改写服务下一次查询使用的缓存。
+// TestGeminiQuotaPolicyReturnCannotMutateCachedPolicy 验证策略读者不得通过返回对象改写服务下一次查询使用的缓存。
 func TestGeminiQuotaPolicyReturnCannotMutateCachedPolicy(t *testing.T) {
 	s := NewGeminiQuotaService(GeminiQuotaOptions{})
 	policy := s.Policy(context.Background())

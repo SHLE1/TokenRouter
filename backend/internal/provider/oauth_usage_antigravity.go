@@ -20,7 +20,7 @@ type antigravityUsageFlightResult struct {
 	Identity string
 }
 
-// getAntigravityUsage 获取 Antigravity 提供商额度
+// GetAntigravityUsage 获取 Antigravity 提供商额度
 func (s *OAuthUsageService) GetAntigravityUsage(ctx context.Context, provider *Record) (*UsageInfo, error) {
 	if s.options.Antigravity.CanFetch == nil || !s.options.Antigravity.CanFetch(provider) {
 		now := s.options.Now()

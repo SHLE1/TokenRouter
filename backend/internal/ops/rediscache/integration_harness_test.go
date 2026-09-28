@@ -18,11 +18,14 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-var integrationRedis *redisclient.Client
-var redisNamespaceSeq uint64
+var (
+	integrationRedis  *redisclient.Client
+	redisNamespaceSeq uint64
+)
 
-// 测试实例只包含隔离 Redis，业务命名空间与测试前缀保持原样。
+// TestMain 初始化隔离的 Redis 测试实例，保留业务命名空间和测试前缀。
 func TestMain(m *testing.M) { os.Exit(runRedisTests(m)) }
+
 func runRedisTests(m *testing.M) int {
 	ctx := context.Background()
 	c, err := tcredis.Run(ctx, "redis:8.4-alpine")
@@ -45,6 +48,7 @@ func runRedisTests(m *testing.M) int {
 	defer func() { _ = integrationRedis.Close() }()
 	return m.Run()
 }
+
 func testRedis(t *testing.T) *redisclient.Client {
 	t.Helper()
 
@@ -81,11 +85,13 @@ func testRedis(t *testing.T) *redisclient.Client {
 
 	return rdb
 }
+
 func assertTTLWithin(t *testing.T, ttl time.Duration, min, max time.Duration) {
 	t.Helper()
 	require.GreaterOrEqual(t, ttl, min, "ttl should be >= min")
 	require.LessOrEqual(t, ttl, max, "ttl should be <= max")
 }
+
 func sanitizeRedisNamespace(name string) string {
 	name = strings.ReplaceAll(name, "/", "_")
 	name = strings.ReplaceAll(name, " ", "_")
@@ -103,6 +109,7 @@ func (h prefixHook) ProcessHook(next redisclient.ProcessHook) redisclient.Proces
 		return next(ctx, cmd)
 	}
 }
+
 func (h prefixHook) ProcessPipelineHook(next redisclient.ProcessPipelineHook) redisclient.ProcessPipelineHook {
 	return func(ctx context.Context, cmds []redisclient.Cmder) error {
 		for _, cmd := range cmds {
@@ -111,6 +118,7 @@ func (h prefixHook) ProcessPipelineHook(next redisclient.ProcessPipelineHook) re
 		return next(ctx, cmds)
 	}
 }
+
 func (h prefixHook) prefixCmd(cmd redisclient.Cmder) {
 	args := cmd.Args()
 	if len(args) < 2 {

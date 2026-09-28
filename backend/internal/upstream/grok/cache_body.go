@@ -1,4 +1,3 @@
-// 平台缓存路由只读取明确身份与工具意图，免费资格由调用方投影。
 package grok
 
 import (
@@ -40,7 +39,7 @@ func ExtractClaudeCodeSessionIDFromPayload(body []byte) string {
 	return ""
 }
 
-// applyGrokResponsesCacheIdentity 将缓存路由身份写入 xAI Responses 请求。
+// ApplyGrokResponsesCacheIdentity 将缓存路由身份写入 xAI Responses 请求。
 // 客户端已有值会被租户隔离值替换，防止共享 OAuth 提供商上的缓存冲突。
 //
 // xAI 会把未携带原生搜索工具的免费 OAuth 请求路由到不可缓存的 build-free 模型。
@@ -245,7 +244,7 @@ func AppendGrokFreeCacheNativeToolsWithPolicy(body []byte, allowPureClientTools,
 	return sjson.SetRawBytes(body, "tools", encoded)
 }
 
-// applyGrokCacheHeaders 写入 Chat Completions 约定的会话路由头。请求使用全新 header
+// ApplyGrokCacheHeaders 写入 Chat Completions 约定的会话路由头。请求使用全新 header
 // 映射构建，因此客户端提供的 x-grok header 无法覆盖服务端派生值。
 func ApplyGrokCacheHeaders(headers http.Header, identity string) {
 	if headers == nil {
@@ -259,7 +258,7 @@ func ApplyGrokCacheHeaders(headers http.Header, identity string) {
 	headers.Set(grokConversationIDHeader, identity)
 }
 
-// stripGrokChatPromptCacheKey 在身份种子使用完毕后移除 Responses 专用字段；
+// StripGrokChatPromptCacheKey 在身份种子使用完毕后移除 Responses 专用字段；
 // Chat Completions 通过 header 路由缓存。
 func StripGrokChatPromptCacheKey(body []byte) ([]byte, error) {
 	if !gjson.GetBytes(body, "prompt_cache_key").Exists() {

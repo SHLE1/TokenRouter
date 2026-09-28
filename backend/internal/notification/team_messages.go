@@ -1,4 +1,3 @@
-// 团队模板只接收已确认的收件人与事件参数。
 package notification
 
 import (
@@ -36,6 +35,7 @@ func (s *Mailer) SendTeamInvitation(ctx context.Context, email, recipientName st
 	body := fmt.Sprintf("<p>你被邀请加入团队 <strong>%s</strong>。</p><p><a href=\"%s\">查看并处理邀请</a></p><p>邀请有效期至 %s。</p>", html.EscapeString(teamName), html.EscapeString(link), expiresAt.Format(time.RFC3339))
 	return s.SendEmail(ctx, email, "团队邀请", body)
 }
+
 func (s Mailer) SendOwnershipTransfer(ctx context.Context, email, teamName, link string) error {
 	body := fmt.Sprintf("<p>你收到团队 <strong>%s</strong> 的所有权转让请求。</p><p><a href=\"%s\">确认或拒绝转让</a></p>", html.EscapeString(teamName), html.EscapeString(link))
 	return s.SendEmail(ctx, email, "团队所有权转让", body)

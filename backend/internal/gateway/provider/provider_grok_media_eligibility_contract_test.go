@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestGrokMediaCapabilityFiltersOnlyGeneration 验证 Grok 媒体能力只限制生成请求。
 func TestGrokMediaCapabilityFiltersOnlyGeneration(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{

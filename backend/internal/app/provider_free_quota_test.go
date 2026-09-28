@@ -23,7 +23,7 @@ func (f *freeQuotaReaderFixture) GetProviderWindowStatsBatch(_ context.Context, 
 	return map[int64]*usage.ProviderStats{7: {Tokens: 480_000}}, nil
 }
 
-// 验证原三种选择作用域没有合并，批量统计只在各自首次缺失时读取。
+// TestFreeQuotaBindingPreservesCacheScopesAndTaskOwner 验证原三种选择作用域没有合并，批量统计只在各自首次缺失时读取。
 func TestFreeQuotaBindingPreservesCacheScopesAndTaskOwner(t *testing.T) {
 	cfg := &config.Config{}
 	cfg.Gateway.Grok.FreeQuotaSoftGateEnabled = true

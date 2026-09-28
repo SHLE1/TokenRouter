@@ -1,4 +1,3 @@
-// PAT whoami 交换复用唯一 HTTP 池，保持原代理错误、超时、读取上限和关闭责任。
 package openai
 
 import (
@@ -14,7 +13,7 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// ValidateCodexPersonalAccessToken 使用 Codex 官方 PAT whoami 端点校验 at-* token。
+// ValidatePersonalAccessToken 使用 Codex 官方 PAT whoami 端点校验 at-* token。
 func ValidatePersonalAccessToken(ctx context.Context, accessToken, proxyURL, endpoint string) (*wire.PATWhoamiResponse, error) {
 	accessToken = strings.TrimSpace(accessToken)
 	if accessToken == "" {
@@ -69,6 +68,7 @@ func ValidatePersonalAccessToken(ctx context.Context, accessToken, proxyURL, end
 
 	return &whoami, nil
 }
+
 func ValidatePATWhoami(whoami wire.PATWhoamiResponse) error {
 	required := map[string]string{
 		"email":              whoami.Email,

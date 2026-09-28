@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 提交前转换必须切断旧用户、提供商、Key 与订阅的可变引用。
+// TestCompletionCyberInputFreezesLegacyProjection 验证提交前转换必须切断旧用户、提供商、Key 与订阅的可变引用。
 func TestCompletionCyberInputFreezesLegacyProjection(t *testing.T) {
 	group := int64(7)
 	rate := 1.25

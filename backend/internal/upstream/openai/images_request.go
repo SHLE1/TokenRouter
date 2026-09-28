@@ -1,4 +1,3 @@
-// Images 请求保留原认证、客户端头、UA、内容类型与提供商覆写顺序。
 package openai
 
 import (

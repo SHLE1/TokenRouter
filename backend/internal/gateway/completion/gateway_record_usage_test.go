@@ -1755,7 +1755,7 @@ func TestGatewayServiceRecordUsage_FastSpeedHonouredKeepsPremium(t *testing.T) {
 	require.InDelta(t, fastCost.TotalCost, usageRepo.LastLog.TotalCost, 1e-10)
 }
 
-// 记录测试只装配原生完成器，不再构造旧网关或后台执行图。
+// newGatewayRecordUsageServiceForTest 记录测试只装配原生完成器，不再构造旧网关或后台执行图。
 func newGatewayRecordUsageServiceForTest(logs usagecore.UsageLogRepository, _ identity.UserRepository, _ billing.UserSubscriptionRepository) *completiontestkit.Recording {
 	return completiontestkit.NewRecording(logs, &completiontestkit.SettlementStore{}, nil, true)
 }

@@ -1,4 +1,3 @@
-// Voice 与 Realtime 的音频观测保留原计量下限，不产生新的结算动作。
 package grok
 
 import (

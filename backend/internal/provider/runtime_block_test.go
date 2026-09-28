@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原停调延长与清理断言迁至状态所有者，直接检查私有缓存。
+// TestOpenAIRuntimeBlock_DoesNotShortenExistingBlock 验证原停调延长与清理断言迁至状态所有者，直接检查私有缓存。
 func TestOpenAIRuntimeBlock_DoesNotShortenExistingBlock(t *testing.T) {
 	svc := NewRuntimeBlockState(time.Now)
 	provider := &Record{ID: 46, Platform: PlatformOpenAI, Type: ProviderTypeOAuth}

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 新配置字段采用默认值，旧分组价格不搬迁；价卡和关联保持原样。
+// TestMigration281MovesSettingsWithoutCopyingGroupValues 验证新配置字段采用默认值，旧分组价格不搬迁；价卡和关联保持原样。
 func TestMigration281MovesSettingsWithoutCopyingGroupValues(t *testing.T) {
 	ctx := context.Background()
 	tx := historicalTx(t, "281_")
@@ -54,7 +54,7 @@ func TestMigration281MovesSettingsWithoutCopyingGroupValues(t *testing.T) {
 	require.Zero(t, count)
 }
 
-// 真实 PostgreSQL 覆盖设置与模型价卡的写入、清空和全部读取路径。
+// TestPricingConfigBillingSettingsRoundTrip 验证真实 PostgreSQL 覆盖设置与模型价卡的写入、清空和全部读取路径。
 func TestPricingConfigBillingSettingsRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	repo := routingpostgres.NewPricingConfigStore(integrationDB)

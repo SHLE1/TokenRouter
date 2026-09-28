@@ -234,7 +234,7 @@ func TestClassifyNoProviderError_FromGin_NilContextStillSafe(t *testing.T) {
 	require.Empty(t, gatewayhttp.OpsClientBusinessLimitedReason(nil))
 }
 
-// 权威的 404 model_not_found 不能被"提供商被限流"的 429 盖掉。
+// TestClassifySelectionFailureError_ModelNotFoundIsNotOverriddenByRateLimited 验证权威的 404 model_not_found 不能被"提供商被限流"的 429 盖掉。
 //
 // 选号失败的错误串同时携带多种过滤原因，例如
 // "pool=9, filtered: model_not_supported=8 model_rate_limited=1"：8 个提供商根本不支持该模型，
@@ -260,7 +260,7 @@ func TestClassifySelectionFailureError_ModelNotFoundIsNotOverriddenByRateLimited
 		"分组里没有任何提供商能服务该模型时，模型级冷却不该把 404 改判成 429")
 }
 
-// 真实调用点的顺序：先 ClassifyNoProviderErrorFromGin，再 classifySelectionFailureError。
+// TestClassifySelectionFailureError_CallSiteChainKeepsModelNotFoundAttribution 验证真实调用点的顺序：先 ClassifyNoProviderErrorFromGin，再 classifySelectionFailureError。
 // 覆盖这条链路是为了同时锁住 ops 归因——调用点用 ModelNotFound 决定是否标记
 // routing capacity limited，一旦 404 被改判成 429，同一个请求会既被标成
 // local model configuration 又被标成容量问题，自相矛盾。
@@ -284,7 +284,7 @@ func TestClassifySelectionFailureError_CallSiteChainKeepsModelNotFoundAttributio
 	require.Equal(t, gatewayhttp.OpsClientBusinessLimitedReasonLocalModelConfiguration, gatewayhttp.OpsClientBusinessLimitedReason(c))
 }
 
-// 池子里确实存在能服务该模型、只是全部在冷却的提供商时，429 改判仍需保留：
+// TestClassifySelectionFailureError_StillUpgradesNonModelNotFoundFallback 验证池子里确实存在能服务该模型、只是全部在冷却的提供商时，429 改判仍需保留：
 // 这种情况 fallback 是 503（HasModelSupport=true），重试是有意义的。
 func TestClassifySelectionFailureError_StillUpgradesNonModelNotFoundFallback(t *testing.T) {
 	fallback := noProviderErrorClassification{

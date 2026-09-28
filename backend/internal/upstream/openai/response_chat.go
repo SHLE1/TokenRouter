@@ -1,4 +1,3 @@
-// Chat 输出适配持有本次协议状态，不持有提供商、配置或资金服务。
 package openai
 
 import (

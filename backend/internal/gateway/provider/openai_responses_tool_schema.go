@@ -1,4 +1,3 @@
-// 平台是否启用修复仍由旧入口决定，字节解析与修复只在 protocol 中实现。
 package provider
 
 import (

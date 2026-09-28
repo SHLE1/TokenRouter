@@ -1,5 +1,3 @@
-// Package googleforward 组合 Google 平台的请求准备、凭据和单次执行。
-// 平台重试仍由 upstream 持有，HTTP 输出与提供商健康写入分别交给对应端口。
 package googleforward
 
 import (

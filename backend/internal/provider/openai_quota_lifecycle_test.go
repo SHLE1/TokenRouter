@@ -34,7 +34,7 @@ func (*quotaLifecycleClient) PostJSON(context.Context, string, map[string]any) (
 	return nil, errors.New("unexpected quota reset")
 }
 
-// 停止须取消并等待实际请求；构造不读取提供商，关闭后也不能重新认领。
+// TestOpenAIQuotaLifecycleCancelsAndWaits 验证停止须取消并等待实际请求；构造不读取提供商，关闭后也不能重新认领。
 func TestOpenAIQuotaLifecycleCancelsAndWaits(t *testing.T) {
 	client := &quotaLifecycleClient{entered: make(chan struct{})}
 	var reads atomic.Int32
@@ -67,7 +67,7 @@ func TestOpenAIQuotaLifecycleCancelsAndWaits(t *testing.T) {
 	require.EqualValues(t, 1, reads.Load())
 }
 
-// 不配合取消的外部端口仍受停止等待预算约束，重复停止保留同一次未完成结果。
+// TestOpenAIQuotaLifecycleReportsUnfinishedRequest 验证不配合取消的外部端口仍受停止等待预算约束，重复停止保留同一次未完成结果。
 func TestOpenAIQuotaLifecycleReportsUnfinishedRequest(t *testing.T) {
 	client := &quotaLifecycleClient{entered: make(chan struct{}), release: make(chan struct{})}
 	service := NewOpenAIQuotaService(OpenAIQuotaOptions{

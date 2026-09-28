@@ -40,7 +40,7 @@ func (s *UserRepoSuite) TestUpdate_DoesNotRevertConcurrentBalanceDeduction() {
 	s.Require().InDelta(0.05, got.Balance, 1e-9, "balance must not be reverted by a stale profile save")
 }
 
-// 同理，风控自动封禁把 status 置为 disabled 后，
+// TestUpdate_DoesNotRevertConcurrentBan 验证同理，风控自动封禁把 status 置为 disabled 后，
 // 基于旧快照的资料更新不得把 status 刷回 active。
 func (s *UserRepoSuite) TestUpdate_DoesNotRevertConcurrentBan() {
 	user := s.mustCreateUser(&identity.User{
@@ -73,7 +73,7 @@ func (s *UserRepoSuite) TestUpdate_DoesNotRevertConcurrentBan() {
 	s.Require().Equal(billing.StatusDisabled, got.Status, "ban must survive a stale profile save")
 }
 
-// 未声明的列不写，也意味着并发的限额调整不会被资料保存回滚。
+// TestUpdate_DoesNotRevertConcurrentLimitChanges 验证未声明的列不写，也意味着并发的限额调整不会被资料保存回滚。
 func (s *UserRepoSuite) TestUpdate_DoesNotRevertConcurrentLimitChanges() {
 	user := s.mustCreateUser(&identity.User{
 		Email:       "lost-update-limits@example.com",
@@ -102,7 +102,7 @@ func (s *UserRepoSuite) TestUpdate_DoesNotRevertConcurrentLimitChanges() {
 	s.Require().Equal(90, got.RPMLimit, "rpm limit must not be reverted")
 }
 
-// AllowedGroups 只在显式声明时才同步，否则并发授予的分组权限会被旧快照删掉。
+// TestUpdate_DoesNotRevertConcurrentAllowedGroupGrant 验证AllowedGroups 只在显式声明时才同步，否则并发授予的分组权限会被旧快照删掉。
 func (s *UserRepoSuite) TestUpdate_DoesNotRevertConcurrentAllowedGroupGrant() {
 	group := s.mustCreateGroup("lost-update-group")
 	user := s.mustCreateUser(&identity.User{

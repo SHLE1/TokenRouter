@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 正负缓存与共享 flight 都维持提供商命名空间，仅允许当前身份消费其结果。
+// TestAnthropicUsageNegativeCacheIdentityAndTTL 验证正负缓存与共享 flight 都维持提供商命名空间，仅允许当前身份消费其结果。
 func TestAnthropicUsageNegativeCacheIdentityAndTTL(t *testing.T) {
 	now := time.Date(2026, 9, 13, 1, 0, 0, 0, time.UTC)
 	cache := NewOAuthUsageCache()

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 流事件只在重分类时写回两个数字字段，其它原始字段和未改写的表示保持原状。
+// TestCacheTTLAdaptersPreserveWireShape 验证流事件只在重分类时写回两个数字字段，其它原始字段和未改写的表示保持原状。
 func TestCacheTTLAdaptersPreserveWireShape(t *testing.T) {
 	value := protocol.TokenUsage{CacheCreationInputTokens: 9}
 	require.False(t, ApplyCacheTTLOverride(&value, "5m"))

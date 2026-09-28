@@ -44,7 +44,7 @@ func (s *testSinkStub) Emit(_ context.Context, event TestEvent) error {
 	return s.err
 }
 
-// 无效协议在读取提供商之前失败；提供商缺失仍只发送原通用错误，不提前提交 SSE Header。
+// TestTestingValidatesBeforeLoadAndPreservesMissingProvider 验证无效协议在读取提供商之前失败；提供商缺失仍只发送原通用错误，不提前提交 SSE Header。
 func TestTestingValidatesBeforeLoadAndPreservesMissingProvider(t *testing.T) {
 	loader := &testLoaderStub{err: errors.New("private database error")}
 	svc := NewTestService(loader, TestOptions{})
@@ -57,7 +57,7 @@ func TestTestingValidatesBeforeLoadAndPreservesMissingProvider(t *testing.T) {
 	require.Equal(t, "Provider not found", sink.emitted[1].Error)
 }
 
-// 显式图片优先于 Compact；请求只读取一次提供商，并将执行资格限定为安全投影。
+// TestTestingDispatchesExplicitImageWithoutDuplicateLoad 验证显式图片优先于 Compact；请求只读取一次提供商，并将执行资格限定为安全投影。
 func TestTestingDispatchesExplicitImageWithoutDuplicateLoad(t *testing.T) {
 	var got PreparedTestRequest
 	loader := &testLoaderStub{target: testTargetStub{info: TestTargetInfo{ProviderSnapshot: ProviderSnapshot{Platform: PlatformGemini, Type: ProviderTypeAPIKey}}, run: func(_ context.Context, req PreparedTestRequest, _ TestEventSink) error { got = req; return nil }}}
@@ -70,7 +70,7 @@ func TestTestingDispatchesExplicitImageWithoutDuplicateLoad(t *testing.T) {
 	require.True(t, got.ExplicitType)
 }
 
-// 即使平台执行器忽略输出错误，用例也必须取消其 context 并只尝试一次失败写入。
+// TestTestingCancelsExecutionOnFirstWriteFailure 验证即使平台执行器忽略输出错误，用例也必须取消其 context 并只尝试一次失败写入。
 func TestTestingCancelsExecutionOnFirstWriteFailure(t *testing.T) {
 	failed := errors.New("sink failed")
 	sink := &testSinkStub{err: failed}
@@ -84,7 +84,7 @@ func TestTestingCancelsExecutionOnFirstWriteFailure(t *testing.T) {
 	require.Len(t, sink.emitted, 1)
 }
 
-// 后台直接收集事件，仍保留 JSON 字符修复、不可编码事件丢弃及最后一个错误覆盖语义。
+// TestTestingBackgroundPreservesWireTextAndClock 验证后台直接收集事件，仍保留 JSON 字符修复、不可编码事件丢弃及最后一个错误覆盖语义。
 func TestTestingBackgroundPreservesWireTextAndClock(t *testing.T) {
 	start := time.Date(2026, 9, 13, 0, 0, 0, 0, time.UTC)
 	clockCalls := 0

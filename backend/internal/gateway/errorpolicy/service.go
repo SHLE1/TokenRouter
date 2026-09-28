@@ -161,7 +161,7 @@ func (s *ErrorPassthroughService) StartContext(ctx context.Context) error {
 	return nil
 }
 
-// StopContext 先取消预热/订阅回源，再等待持有共享资源的操作退出。
+// Stop 先取消预热/订阅回源，再等待持有共享资源的操作退出。
 func (s *ErrorPassthroughService) Stop() { _ = s.StopContext(context.Background()) }
 
 func (s *ErrorPassthroughService) StopContext(ctx context.Context) error {
@@ -380,7 +380,7 @@ func (s *ErrorPassthroughService) refreshLocalCacheLocked(ctx context.Context) e
 	return s.reloadRulesFromDBLocked(ctx)
 }
 
-// 从数据库加载（repo.List 已按 priority 排序）
+// reloadRulesFromDB 从数据库加载（repo.List 已按 priority 排序）
 // 注意：该方法会绕过 cache.Get，确保拿到数据库最新值。
 func (s *ErrorPassthroughService) reloadRulesFromDB(ctx context.Context) error {
 	operation, done, err := s.beginOperation(ctx)

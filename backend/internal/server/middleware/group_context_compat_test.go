@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 旧 context 安装仅供历史测试夹具使用。
+// setGroupContext 旧 context 安装仅供历史测试夹具使用。
 func setGroupContext(c *gin.Context, group *routing.Group) {
 	if !routing.IsGroupContextValid(group) {
 		return

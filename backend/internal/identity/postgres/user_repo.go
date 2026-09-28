@@ -495,7 +495,7 @@ func (r *UserStore) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// 辅助方法在指定客户端上删除用户和身份关联记录，自身不负责开启或提交事务。
+// IdentityDeleteUser 辅助方法在指定客户端上删除用户和身份关联记录，自身不负责开启或提交事务。
 func (r *UserStore) IdentityDeleteUser(ctx context.Context, exec *dbent.Client, id int64) error {
 	identityIDs, err := exec.AuthIdentity.Query().
 		Where(authidentity.UserIDEQ(id)).

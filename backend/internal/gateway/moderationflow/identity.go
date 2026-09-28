@@ -1,4 +1,3 @@
-// 身份归属规则区分风险行为用户与付款用户，不扩大审核或管理员豁免范围。
 package moderationflow
 
 import (

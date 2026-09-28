@@ -1086,7 +1086,7 @@ func schedulerCacheBenchmarkProviders(size int) []providercore.Record {
 	return providers
 }
 
-// 调度快照同时保留传输开关与明确模型范围；透传不会绕过白名单。
+// TestBuildSchedulerMetadataProvider_KeepsExplicitModelScopeForPassthrough 验证调度快照同时保留传输开关与明确模型范围；透传不会绕过白名单。
 func TestBuildSchedulerMetadataProvider_KeepsExplicitModelScopeForPassthrough(t *testing.T) {
 	for _, key := range []string{"openai_passthrough", "openai_oauth_passthrough"} {
 		t.Run(key, func(t *testing.T) {
@@ -1123,7 +1123,7 @@ func TestBuildSchedulerMetadataProvider_KeepsExplicitModelScopeForPassthrough(t 
 	}
 }
 
-// 轻量与完整提供商投影均保留原生集合及认证方式，避免候选过滤扩大能力。
+// TestSchedulerProtocolProjection 验证轻量与完整提供商投影均保留原生集合及认证方式，避免候选过滤扩大能力。
 func TestSchedulerProtocolProjection(t *testing.T) {
 	provider := providercore.Record{ID: 72, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Credentials: map[string]any{"upstream_protocols": []string{"openai_responses_websocket"}, "auth_mode": "personalAccessToken", "access_token": "hidden"}}
 	metadata := buildSchedulerMetadataProvider(provider)

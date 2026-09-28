@@ -1,4 +1,3 @@
-// 本文件拥有 Anthropic 请求字节规范化；提供商、设置与请求上下文由外层投影。
 package anthropic
 
 import (
@@ -6,16 +5,19 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/tidwall/gjson" // FingerprintSalt 是计算 cc_version 后缀指纹的盐值。
-	// 来源：与 Parrot src/transform/cc_mimicry.py 的 FINGERPRINT_SALT 完全一致；
-	// 这是真实 Claude Code CLI 抓包推导出的常量，改动会导致 fp 与 CLI 不一致，
-	// 进一步触发 Anthropic 的第三方检测。
+	"github.com/tidwall/gjson"
 )
 
-const FingerprintSalt = "59cf53e54c78" // ComputeClaudeCodeFingerprint 复刻真实 Claude Code CLI 的 cc_version 指纹算法：
-//  1. 取 messages 中第一条 role=user 的纯文本（首块 text）
-//  2. 取该文本的第 4、7、20 字符（不足以 '0' 补齐）
-//  3. SHA256(SALT + chars + cc_version) 取 hex 前 3 字符
+// FingerprintSalt 是计算 cc_version 后缀指纹的盐值。
+// 其值与 Parrot src/transform/cc_mimicry.py 的 FINGERPRINT_SALT 一致，
+// 修改后会使指纹偏离 Claude Code CLI，并触发上游的第三方客户端检测。
+const FingerprintSalt = "59cf53e54c78"
+
+// ComputeClaudeCodeFingerprint 复刻 Claude Code CLI 的 cc_version 指纹算法：
+//
+//  1. 取 messages 中第一条 role=user 的首块纯文本。
+//  2. 取该文本索引为 4、7、20 的字节，不足时用 '0' 补齐。
+//  3. 计算 SHA256(SALT + chars + cc_version)，取十六进制结果的前 3 位。
 //
 // 算法来自 Parrot src/transform/cc_mimicry.py:compute_fingerprint，与官方 CLI 字节对齐。
 // 任何偏差都会导致 cc_version=X.Y.Z.{fp} 在上游侧与真实 CLI 不一致。

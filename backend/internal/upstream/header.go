@@ -1,4 +1,3 @@
-// Header 跨请求复制保持原 nil 与空 slice 形状。
 package upstream
 
 import "net/http"

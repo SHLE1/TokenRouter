@@ -1,4 +1,3 @@
-// Package routes provides HTTP route registration and handlers.
 package app
 
 import (

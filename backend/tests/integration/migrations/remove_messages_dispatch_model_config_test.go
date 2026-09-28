@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 删除专用覆盖不会改写通用分组映射或分组身份，迁移支持重复执行。
+// TestMigration280RemovesMessagesOverride 验证删除专用覆盖不会改写通用分组映射或分组身份，迁移支持重复执行。
 func TestMigration280RemovesMessagesOverride(t *testing.T) {
 	ctx := context.Background()
 	tx := historicalTx(t, "280_")

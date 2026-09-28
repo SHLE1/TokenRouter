@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 不访问设置存储就拒绝已移除的旁路开关。
+// TestUpdateSettingsRejectsUngroupedScheduling 验证不访问设置存储就拒绝已移除的旁路开关。
 func TestUpdateSettingsRejectsUngroupedScheduling(t *testing.T) {
 	for _, value := range []string{"true", "false", "null"} {
 		router := gin.New()

@@ -1,4 +1,3 @@
-// 预算修复保持原常量、字段顺序与 adaptive 例外。
 package anthropic
 
 import (

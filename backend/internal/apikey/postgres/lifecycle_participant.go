@@ -1,4 +1,3 @@
-// Key 生命周期参与者复用外层事务执行删除审计和分组调整。
 package postgres
 
 import (

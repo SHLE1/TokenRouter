@@ -1,4 +1,3 @@
-// 兼容转发计量只承载原观察字段，量化和结算不在协议层。
 package openai
 
 // ForwardUsage represents OpenAI API response usage
@@ -25,6 +24,7 @@ func CopyForwardUsage(usage *ResponsesUsage) ForwardUsage {
 	}
 	return result
 }
+
 func AddForwardUsage(dst *ForwardUsage, usage ForwardUsage) {
 	if dst == nil {
 		return

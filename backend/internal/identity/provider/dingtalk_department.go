@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// resolveDingTalkDeptPath 从叶部门递归向上拼 "公司/部门/子部门" 路径字符串。
+// ResolveDingTalkDeptPath 从叶部门递归向上拼 "公司/部门/子部门" 路径字符串。
 // 遇 dept_id=1（根）或 parent_id=0 停止。加 visited set 防循环，最多 50 层。
 func ResolveDingTalkDeptPath(ctx context.Context, client *DingTalkClient, deptID int64) (string, error) {
 	slog.Info("dingtalk sync: resolve dept path start", "dept_id", deptID)

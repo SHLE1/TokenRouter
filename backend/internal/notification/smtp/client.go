@@ -1,4 +1,3 @@
-// SMTP 技术发送唯一实现；取消不会触发重发。
 package smtp
 
 import (
@@ -31,7 +30,7 @@ var smtpTestRootCAs *x509.CertPool
 
 func sanitizeEmailHeader(s string) string { return strings.NewReplacer("\r", "", "\n", "").Replace(s) }
 
-// SendEmailWithConfig 使用指定配置发送邮件
+// Send 使用指定配置发送邮件
 func (s *Client) Send(ctx context.Context, config *SMTPConfig, to, subject, body string) (resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -86,7 +85,7 @@ func smtpTLSConfig(host string) *tls.Config {
 	}
 }
 
-// connectSMTP 建立发送和测试共用的 SMTP 会话。
+// connectSMTPContext 建立发送和测试共用的 SMTP 会话。
 // UseTLS 为 true 时先尝试隐式 TLS；仅当服务端返回明文 SMTP 问候时改走强制
 // STARTTLS。UseTLS 为 false 时保留机会式 STARTTLS 行为。
 func (s *Client) connectSMTPContext(ctx context.Context, config *SMTPConfig) (*smtp.Client, error) {
@@ -156,7 +155,7 @@ func newSMTPClient(conn net.Conn, host string) (*smtp.Client, error) {
 	return client, nil
 }
 
-// TestSMTPConnectionWithConfig 使用发送路径相同的建连与 STARTTLS 逻辑测试配置。
+// Test 使用发送路径相同的建连与 STARTTLS 逻辑测试配置。
 func (s *Client) Test(ctx context.Context, config *SMTPConfig) (resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return err

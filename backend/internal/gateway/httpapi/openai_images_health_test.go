@@ -85,10 +85,10 @@ func TestOpenAIGatewayServiceForwardImages_ImageRateLimitReturnsFailoverAndCools
 	require.Equal(t, providercore.OpenAIImageGenerationRateLimitKey, repo.ModelRateLimitCalls[0].Scope)
 }
 
+// TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapability 验证上游只返回文字时，不冷却提供商的图片能力。
 // issue #6171：上游"回文字没回图"是**这一轮**的结果（模型选择了说话），不是提供商能力
 // 失效。它同时被判为可重试（502）并驱动 failover，若还写 30 分钟提供商级冷却，一次闲聊
-// 回复就会沿号池把每个被重试到的提供商依次冷却掉。冷却仍保留给结构化上游证据，见
-// TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapability。
+// 回复就会沿号池把每个被重试到的提供商依次冷却掉。冷却仍保留给结构化上游证据。
 func TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapability(t *testing.T) {
 	repo := &gatewaytestkit.ModelHealthStore{}
 	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat"}`)
@@ -135,7 +135,7 @@ func TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapabilit
 		"模型回文字只说明这一轮没出图，不构成提供商 30 分钟不可用的证据")
 }
 
-// 对照不变式：上游 error 帧点名 image_generation_unavailable 时仍写冷却，
+// TestOpenAIGatewayServiceForwardImages_StructuredUnavailableCoolsImageCapability 验证对照不变式：上游 error 帧点名 image_generation_unavailable 时仍写冷却，
 // 保证 #6171 的修复没有把这项能力保护整个废掉。
 func TestOpenAIGatewayServiceForwardImages_StructuredUnavailableCoolsImageCapability(t *testing.T) {
 	repo := &gatewaytestkit.ModelHealthStore{}

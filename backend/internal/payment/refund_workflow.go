@@ -1,4 +1,3 @@
-// 退款用例只协调短事务与渠道调用；失败结果不会覆盖较新的退款事实。
 package payment
 
 import (
@@ -22,6 +21,7 @@ func (s *RefundWorkflow) ExecuteRefund(ctx context.Context, p *RefundPlan) (*Ref
 	}
 	return s.FinishRefund(ctx, p, receipt, resp)
 }
+
 func (s *RefundWorkflow) FinishRefund(ctx context.Context, p *RefundPlan, r *RefundReceipt, resp *RefundResponse) (*RefundResult, error) {
 	if err := ValidateRefundProviderResponse(resp); err != nil {
 		return s.compensateFailure(ctx, p, r, err)
@@ -36,6 +36,7 @@ func (s *RefundWorkflow) FinishRefund(ctx context.Context, p *RefundPlan, r *Ref
 	}
 	return s.store.CompleteRefund(ctx, p, r, nil)
 }
+
 func (s *RefundWorkflow) compensateFailure(ctx context.Context, p *RefundPlan, r *RefundReceipt, cause error) (*RefundResult, error) {
 	if err := s.store.CompensateRefund(ctx, p, r, "", cause.Error(), CompensateRefundDeduction); err != nil {
 		return nil, fmt.Errorf("gateway refund failed (%v); local recovery remains pending: %w", cause, err)
@@ -113,6 +114,7 @@ func (s *RefundWorkflow) QueryAndFinalizeRefund(ctx context.Context, id int64) (
 	}
 	return s.FinalizePendingRefundSuccess(ctx, s.RefundFinalizePlan(order, detail))
 }
+
 func (s *RefundWorkflow) FinalizePendingRefundSuccess(ctx context.Context, p *RefundPlan) (*RefundResult, error) {
 	return s.store.CompleteRefund(ctx, p, nil, ApplyRefundDeduction)
 }
@@ -138,6 +140,7 @@ func ApplyRefundDeduction(ctx context.Context, rights RefundRights, p *RefundPla
 	}
 	return nil
 }
+
 func CompensateRefundDeduction(ctx context.Context, rights RefundRights, p *RefundPlan) error {
 	if p.DeductionType == DeductionTypeBalance && p.BalanceToDeduct > 0 {
 		if err := rights.CompensateBalance(ctx, p.Order.UserID, p.BalanceToDeduct); err != nil {
@@ -149,6 +152,7 @@ func CompensateRefundDeduction(ctx context.Context, rights RefundRights, p *Refu
 	}
 	return nil
 }
+
 func (r *RefundReceipt) Plan(order *Order) *RefundPlan {
 	return &RefundPlan{
 		OrderID:         r.OrderID,

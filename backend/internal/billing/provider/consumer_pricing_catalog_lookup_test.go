@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 使用不同价卡验证命中身份，避免只比较恰好相同的公开 token 单价。
+// catalogLookupTestPricing 使用不同价卡验证命中身份，避免只比较恰好相同的公开 token 单价。
 func catalogLookupTestPricing(input float64, modalities ...string) *purepricing.LiteLLMModelPricing {
 	return &purepricing.LiteLLMModelPricing{
 		InputCostPerToken: input, OutputCostPerToken: input * 5,
@@ -167,7 +167,7 @@ func TestCatalogLookupOpenAIDedicatedFallbackBeforeGenericBase(t *testing.T) {
 	}
 }
 
-// 原有价格后缀兼容仍优先同产品目录；这些非明确身份别名不能生成能力。
+// TestCatalogLookupOpenAIPriceFallbackKeepsDynamicProduct 验证原有价格后缀兼容仍优先同产品目录；这些非明确身份别名不能生成能力。
 func TestCatalogLookupOpenAIPriceFallbackKeepsDynamicProduct(t *testing.T) {
 	for _, model := range []string{"gpt-5.4", "gpt-5.5", "gpt-5.5-pro", "gpt-5.6-terra", "gpt-6-astra"} {
 		pricing := catalogLookupTestPricing(17e-6, "text", "image")
@@ -248,7 +248,7 @@ func TestCatalogLookupGrokUsesKnownRuntimeAliases(t *testing.T) {
 	}
 }
 
-// 非法默认配置形成循环时保持未知，不无限展开候选。
+// TestCatalogLookupGrokDefaultAliasCycle 验证非法默认配置形成循环时保持未知，不无限展开候选。
 func TestCatalogLookupGrokDefaultAliasCycle(t *testing.T) {
 	previous := xai.RuntimeModelMappingOptions()
 	t.Cleanup(func() { xai.SetRuntimeModelMappingOptions(previous) })

@@ -1,4 +1,3 @@
-// 原生 Messages 执行端口只交换协议值、技术资源和明确的会话动作。
 package openaiforward
 
 import (

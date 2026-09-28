@@ -1,13 +1,5 @@
 //go:build unit
 
-// Package tlsfingerprint provides TLS fingerprint simulation for HTTP clients.
-//
-// Unit tests for TLS fingerprint dialer.
-// Integration tests that require external network are in dialer_integration_test.go
-// and require the 'integration' build tag.
-//
-// Run unit tests: go test -v ./internal/infra/httpclient/tlsfingerprint/...
-// Run integration tests: go test -v -tags=integration ./internal/infra/httpclient/tlsfingerprint/...
 package tlsfingerprint
 
 import (
@@ -323,7 +315,7 @@ func TestToUTLSCurves(t *testing.T) {
 	}
 }
 
-// Helper function to parse URL without error handling.
+// mustParseURL 解析测试 URL，失败时触发 panic。
 func mustParseURL(rawURL string) *url.URL {
 	u, err := url.Parse(rawURL)
 	if err != nil {

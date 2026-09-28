@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 隔离旧表验证两轮迁移的回填、幂等以及无关配置保留。
+// TestOpenAIManualCapabilityMigrations 验证隔离旧表验证两轮迁移的回填、幂等以及无关配置保留。
 func TestOpenAIManualCapabilityMigrations(t *testing.T) {
 	tx := historicalTx(t, "282_")
 	ctx := context.Background()

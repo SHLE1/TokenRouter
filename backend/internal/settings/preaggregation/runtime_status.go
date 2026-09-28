@@ -1,4 +1,3 @@
-// PreAggregationRuntimeStatus 是查询控制器的运行投影。
 package preaggregation
 
 import "time"

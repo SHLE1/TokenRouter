@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 本地 HTTP 验证原生恢复只重放一次，关闭前一响应后才读取后一响应。
+// TestGrokResponsesExecuteReplayAndResourceOwnership 验证本地 HTTP 验证原生恢复只重放一次，关闭前一响应后才读取后一响应。
 func TestGrokResponsesExecuteReplayAndResourceOwnership(t *testing.T) {
 	var calls, closes, active atomic.Int64
 	var replay atomic.Bool
@@ -90,7 +90,7 @@ func TestGrokResponsesExecuteReplayAndResourceOwnership(t *testing.T) {
 	require.False(t, result.Served)
 }
 
-// 新接口保留与读取错误并存的事实；不把错误变成成功，不按 ID 推断已服务。
+// TestGrokResponsesExecutePreservesPartialObservation 验证新接口保留与读取错误并存的事实；不把错误变成成功，不按 ID 推断已服务。
 func TestGrokResponsesExecutePreservesPartialObservation(t *testing.T) {
 	failure := errors.New("fixture read failure")
 	elapsed := 3 * time.Millisecond

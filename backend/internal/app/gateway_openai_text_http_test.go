@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 实际组合根构造三种文本入口；缺失依赖和关闭拒绝均不能提前读取报文。
+// TestOpenAITextAssemblyReadAndStopBoundaries 验证实际组合根构造三种文本入口；缺失依赖和关闭拒绝均不能提前读取报文。
 func TestOpenAITextAssemblyReadAndStopBoundaries(t *testing.T) {
 	activity := &gatewayRequestActivity{Operations: lifecycle.NewOperations("openai-text-contract")}
 	h := provideOpenAITextHTTP(nil, nil, nil, nil, nil, nil, nil, nil, nil, provideOpenAITextAttemptRuntime(provideOpenAIAttemptBindings(nil, nil, nil, nil, nil, nil, GatewayCompletionRecorders{}, nil, nil, nil, nil, nil, nil, nil, nil, nil)), activity, nil, nil, nil, nil)

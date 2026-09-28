@@ -39,8 +39,7 @@ func GroupFromRoutingBase(g *routing.Group) Group {
 	}
 }
 
-// GroupFromServiceAdmin converts a service Group to DTO for admin users.
-// It includes internal fields like model_routing and provider_count.
+// AdminGroupFromRouting 将分组转换为管理员 DTO，包含 model_routing 和 provider_count 等内部字段。
 func AdminGroupFromRouting[A any](g *routing.Group) *AdminGroup[A] {
 	if g == nil {
 		return nil

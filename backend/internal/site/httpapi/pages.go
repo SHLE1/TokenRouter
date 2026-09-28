@@ -1,4 +1,3 @@
-// PageHandler 保留页面 HTTP 契约，不直接访问文件系统或设置仓储。
 package httpapi
 
 import (
@@ -31,10 +30,12 @@ func (h *PageHandler) GetPageContent(c *gin.Context) {
 		c.Data(http.StatusOK, "text/markdown; charset=utf-8", content)
 	}
 }
+
 func (h *PageHandler) ListPages(c *gin.Context) {
 	slugs, _ := h.pages.ListPages(c.Request.Context())
 	response.Success(c, slugs)
 }
+
 func (h *PageHandler) ServePageImage(c *gin.Context) {
 	path, err := h.pages.ImagePath(c.Request.Context(), c.Param("slug"), strings.TrimPrefix(c.Param("filename"), "/"))
 	if err != nil {
@@ -43,6 +44,7 @@ func (h *PageHandler) ServePageImage(c *gin.Context) {
 	}
 	c.File(path)
 }
+
 func (h *PageHandler) Register(v1 *gin.RouterGroup, jwtAuth, adminAuth gin.HandlerFunc) {
 	pages := v1.Group("/pages")
 	pages.Use(jwtAuth)

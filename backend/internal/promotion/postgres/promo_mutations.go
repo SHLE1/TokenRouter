@@ -1,4 +1,3 @@
-// 优惠码锁定、资金参与、usage 与次数在同一个原 Ent 事务内提交。
 package postgres
 
 import (
@@ -13,15 +12,18 @@ import (
 type PromoBalance interface {
 	CreditRegistrationPromo(context.Context, int64, float64) error
 }
-type PromoBalanceFactory func(*dbent.Tx) PromoBalance
-type PromoMutations struct {
-	client   *dbent.Client
-	balances PromoBalanceFactory
-}
+type (
+	PromoBalanceFactory func(*dbent.Tx) PromoBalance
+	PromoMutations      struct {
+		client   *dbent.Client
+		balances PromoBalanceFactory
+	}
+)
 
 func NewPromoMutations(client *dbent.Client, balances PromoBalanceFactory) *PromoMutations {
 	return &PromoMutations{client: client, balances: balances}
 }
+
 func (m *PromoMutations) ApplyCode(ctx context.Context, userID int64, code string, validate func(*promotion.PromoCode) error, now func() time.Time) error {
 	tx, err := m.client.Tx(ctx)
 	if err != nil {

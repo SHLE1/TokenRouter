@@ -102,7 +102,7 @@ func TestRestoreMustRegister(t *testing.T) {
 	require.Zero(t, archive.calls.Load())
 }
 
-// 阻塞操作的超时结果必须被后续 Stop 复用，不能伪装成已排空。
+// TestStopBudget 验证阻塞操作的超时结果必须被后续 Stop 复用，不能伪装成已排空。
 func TestStopBudget(t *testing.T) {
 	s := runtimeBackup(&runtimeSettings{}, &runtimeArchive{})
 	_, done, err := s.begin(context.Background())
@@ -115,7 +115,7 @@ func TestStopBudget(t *testing.T) {
 	done()
 }
 
-// 无效 cron 配置使定时备份降级，不得阻断整套应用启动。
+// TestStoredCronFailureDegrades 验证无效 cron 配置使定时备份降级，不得阻断整套应用启动。
 func TestStoredCronFailureDegrades(t *testing.T) {
 	repo := &runtimeSettings{values: map[string]string{settingKeyBackupSchedule: `{"enabled":true,"cron_expr":"not-a-cron"}`}}
 	s := runtimeBackup(repo, &runtimeArchive{})
@@ -123,7 +123,7 @@ func TestStoredCronFailureDegrades(t *testing.T) {
 	require.NoError(t, s.StopContext(context.Background()))
 }
 
-// 已在停机前开始的清理，也必须受随后传入的应用剩余预算约束。
+// TestCleanupUsesShutdownBudget 验证已在停机前开始的清理，也必须受随后传入的应用剩余预算约束。
 func TestCleanupUsesShutdownBudget(t *testing.T) {
 	s := runtimeBackup(&runtimeSettings{}, &runtimeArchive{})
 	cleanup, cancelCleanup := s.cleanupContext(time.Hour)

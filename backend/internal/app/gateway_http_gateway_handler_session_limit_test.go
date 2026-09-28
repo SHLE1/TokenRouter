@@ -83,7 +83,7 @@ func gatewaySessionResponse(status int, stream bool) *http.Response {
 	return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {contentType}}, Body: io.NopCloser(strings.NewReader(body))}
 }
 
-// 使用真实调度、Forward 和 handler 收尾，只替换外部上游、Redis 与账单依赖。
+// newGatewaySessionLimitFixture 使用真实调度、Forward 和 handler 收尾，只替换外部上游、Redis 与账单依赖。
 func newGatewaySessionLimitFixture(t *testing.T, providerType string, failover bool, upstream *gatewaySessionUpstreamStub) (*messageEndpointsFixture, *apikey.APIKey, *gatewaySessionLimitCacheStub) {
 	t.Helper()
 	groupID := int64(11)

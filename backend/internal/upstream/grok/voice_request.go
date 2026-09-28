@@ -1,4 +1,3 @@
-// Voice 固定子资源资格在取得凭据前验证；输入不能配置任意路径。
 package grok
 
 import (

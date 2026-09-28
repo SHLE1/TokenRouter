@@ -32,7 +32,7 @@ func requireCreatedAt(t *testing.T, resp map[string]any) int64 {
 	return int64(value)
 }
 
-// omitempty 陷阱守卫：created_at 为 0 时也必须出现在线格式里，
+// TestWire_CreatedAtPresentEvenAtZero 验证omitempty 陷阱守卫：created_at 为 0 时也必须出现在线格式里，
 // 否则「字段存在」这件事就依赖于运行时恰好非零。
 func TestWire_CreatedAtPresentEvenAtZero(t *testing.T) {
 	resp := responseObjectOf(t, ResponsesStreamEvent{
@@ -73,7 +73,7 @@ func TestChatCompletionsResponseToResponses_CarriesCreatedAt(t *testing.T) {
 	})
 }
 
-// 同一条流里 response.created 与终止事件必须报同一个 created_at
+// TestChatCompletionsToResponsesStream_CreatedAtStableAcrossEvents 验证同一条流里 response.created 与终止事件必须报同一个 created_at
 // （官方语义：created_at 是这次 response 的创建时刻，不随事件变化）。
 func TestChatCompletionsToResponsesStream_CreatedAtStableAcrossEvents(t *testing.T) {
 	state := NewChatCompletionsToResponsesStreamState(testRuntime(), "deepseek-v4-flash")
@@ -152,7 +152,7 @@ func TestAnthropicEventToResponsesStream_CreatedAtStableAcrossEvents(t *testing.
 		"同一条流的 created_at 必须恒定")
 }
 
-// ResponsesClientToolStreamRestorer 对部分事件走 unmarshal→re-marshal。
+// TestResponsesStreamEvent_CreatedAtSurvivesUnmarshalRemarshal 验证ResponsesClientToolStreamRestorer 对部分事件走 unmarshal→re-marshal。
 // 结构体没有该字段时，上游带来的 created_at 会在这一步被静默抹掉。
 func TestResponsesStreamEvent_CreatedAtSurvivesUnmarshalRemarshal(t *testing.T) {
 	upstream := []byte(`{"type":"response.completed","response":{"id":"resp_9","object":"response",` +

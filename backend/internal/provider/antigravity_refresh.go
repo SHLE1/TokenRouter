@@ -1,4 +1,3 @@
-// Antigravity 刷新资格、凭据合并与 project 保留规则由提供商拥有。
 package provider
 
 import (
@@ -47,7 +46,7 @@ func (r *AntigravityRefreshRules) NeedsRefresh(provider *Record, _ time.Duration
 	return needsRefresh
 }
 
-// antigravityForceTokenRefreshExtra 构造强制刷新标记的持久化字段。
+// AntigravityForceTokenRefreshExtra 构造强制刷新标记的持久化字段。
 func AntigravityForceTokenRefreshExtra(reason string) map[string]any {
 	return map[string]any{
 		AntigravityForceTokenRefreshExtraKey:       true,

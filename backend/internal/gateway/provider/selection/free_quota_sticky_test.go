@@ -170,7 +170,7 @@ func providerIDs(providers []gatewayprovider.ExecutionProvider) []int64 {
 	return ids
 }
 
-// 仅为选择入口装配真实门禁，统计和阈值算法不在测试中重建。
+// TestOpenAIGetSchedulableProvider_AppliesGrokFreeSoftGate 验证仅为选择入口装配真实门禁，统计和阈值算法不在测试中重建。
 func TestOpenAIGetSchedulableProvider_AppliesGrokFreeSoftGate(t *testing.T) {
 	// 关闭高级调度器时，旧版 OpenAI 兼容粘性路径仍必须对 Grok 执行免费层门禁。
 	cfg := &config.Config{}

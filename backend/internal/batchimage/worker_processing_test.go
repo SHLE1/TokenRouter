@@ -152,7 +152,7 @@ func (p *fakeBatchImageProcessor) Process(_ context.Context, batchID string) (ba
 	return p.result, p.err
 }
 
-// 测试锁也通过自己持有的任务执行队列写入，保留旧数量断言。
+// Heartbeat 测试锁也通过自己持有的任务执行队列写入，保留旧数量断言。
 func (l fakeBatchImageLock) Heartbeat(ctx context.Context) error {
 	return l.queue.Heartbeat(ctx, l.queue.reserved.BatchID)
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestTrimOpenAIEncryptedReasoningItems_ContentNull 验证 content 为 null 的加密推理项处理。
 func TestTrimOpenAIEncryptedReasoningItems_ContentNull(t *testing.T) {
 	reqBody := map[string]any{
 		"model": "grok-4.5",

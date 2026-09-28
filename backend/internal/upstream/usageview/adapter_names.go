@@ -1,4 +1,3 @@
-// 固定只读协议的标识，名称与排序展示仍由提供商目录声明。
 package usageview
 
 const (

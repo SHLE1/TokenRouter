@@ -262,7 +262,7 @@ func (p openAITextHTTPBackend) EnsureFallback(c *gin.Context, started bool) bool
 	return DefaultOpenAIErrorOutput().EnsureFallback(c, started)
 }
 
-// 审核的历史标识与协议 ID 不同，必须在边界显式投影。
+// openAITextModerationProtocol 审核的历史标识与协议 ID 不同，必须在边界显式投影。
 func openAITextModerationProtocol(proto protocol.ProtocolID) string {
 	switch proto {
 	case protocol.ProtocolAnthropicMessages:

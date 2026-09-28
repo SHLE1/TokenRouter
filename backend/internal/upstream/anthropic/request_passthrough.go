@@ -1,4 +1,3 @@
-// API Key 直通构造保留原白名单、认证清理和 beta 净化顺序。
 package anthropic
 
 import (

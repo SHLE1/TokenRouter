@@ -1,4 +1,3 @@
-// Qoder 请求转换只处理显式报文与站点选项，HTTP 和提供商读取由调用方拥有。
 package qoder
 
 import (

@@ -455,7 +455,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_DefaultDisabledUsesLeg
 	require.False(t, decision.StickyPreviousHit)
 }
 
-// 回归：legacy 负载批处理路径有两个直接返回 ErrNoAvailableProviders 的出口，
+// TestOpenAIGatewayService_SelectProviderWithScheduler_DefaultDisabled_LoadBatchReportsFilterReasons 验证回归：legacy 负载批处理路径有两个直接返回 ErrNoAvailableProviders 的出口，
 // 绕过了高级调度器和非批处理 legacy 选择器的诊断。启用负载批处理时默认会走这里，
 // 配额自动暂停不应再只表现为无法定位原因的 503。
 func TestOpenAIGatewayService_SelectProviderWithScheduler_DefaultDisabled_LoadBatchReportsFilterReasons(t *testing.T) {
@@ -741,7 +741,7 @@ func TestOpenAIGatewayService_SelectProviderForTokenCount_DoesNotAcquireGenerati
 	require.Empty(t, acquiredIDs, "token counting must not acquire a generation slot")
 }
 
-// 生图意图的 /v1/responses 请求要求 OpenAIEndpointCapabilityResponses：管理员声明
+// TestOpenAIGatewayService_SelectProviderWithScheduler_ResponsesCapabilityExcludesUnsupportedAPIKey 验证生图意图的 /v1/responses 请求要求 OpenAIEndpointCapabilityResponses：管理员声明
 // 不支持 Responses API 的 APIKey 提供商必须被排除，避免 forward 阶段降级为无法生图
 // 的 Chat Completions 直转（#4417）。
 func TestOpenAIGatewayService_SelectProviderWithScheduler_ResponsesCapabilityExcludesUnsupportedAPIKey(t *testing.T) {
@@ -810,7 +810,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_ResponsesCapabilityExc
 	})
 }
 
-// alpha/search 调度必须同时放行 OAuth 与 APIKey 提供商：v0.1.157 曾因 OAuth-only
+// TestOpenAIGatewayService_SelectProviderWithScheduler_AlphaSearchAllowsAPIKeyProvider 验证alpha/search 调度必须同时放行 OAuth 与 APIKey 提供商：v0.1.157 曾因 OAuth-only
 // 门控把 APIKey 提供商从候选池剔除，纯 APIKey 分组的独立搜索请求在选号阶段就
 // 报无可用提供商，Codex 网页搜索整体失效（转发层其实一直支持 APIKey 路径）。
 func TestOpenAIGatewayService_SelectProviderWithScheduler_AlphaSearchAllowsAPIKeyProvider(t *testing.T) {
@@ -964,7 +964,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_GrokMediaCapabilityFil
 	})
 }
 
-// 回归 #4599：高级调度初筛排除全部候选时，错误必须携带逐原因统计。
+// TestOpenAIGatewayService_SelectProviderWithScheduler_NoAvailableErrorReportsQuotaAutoPauseExclusion 验证回归 #4599：高级调度初筛排除全部候选时，错误必须携带逐原因统计。
 func TestOpenAIGatewayService_SelectProviderWithScheduler_NoAvailableErrorReportsQuotaAutoPauseExclusion(t *testing.T) {
 	ctx := gatewayprovider.WithQuotaAutoPauseSettings(context.Background(), ops.OpsOpenAIProviderQuotaAutoPauseSettings{DefaultThreshold7d: 0.9})
 	groupID := int64(101201)
@@ -1655,7 +1655,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_SkipsQuarantinedShared
 	require.Equal(t, int64(469803), selection.Provider.Record.ID)
 }
 
-// 所有可调度提供商都位于隔离代理后时，隔离必须降级为偏好而不是清空容量。
+// TestOpenAIGatewayService_SelectProviderWithScheduler_FailsOpenWhenAllProxiesQuarantined 验证所有可调度提供商都位于隔离代理后时，隔离必须降级为偏好而不是清空容量。
 func TestOpenAIGatewayService_SelectProviderWithScheduler_FailsOpenWhenAllProxiesQuarantined(t *testing.T) {
 	proxyID := int64(5056)
 	providers := []gatewayprovider.ExecutionProvider{
@@ -1686,7 +1686,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_FailsOpenWhenAllProxie
 		"fail-open 只影响本次调度，不应清除隔离状态")
 }
 
-// fork 的显式 routingModel 入口也必须经过同一 fail-open 二次调度。
+// TestOpenAIGatewayService_SelectProviderWithSchedulerForRouting_FailsOpenWhenAllProxiesQuarantined 验证fork 的显式 routingModel 入口也必须经过同一 fail-open 二次调度。
 func TestOpenAIGatewayService_SelectProviderWithSchedulerForRouting_FailsOpenWhenAllProxiesQuarantined(t *testing.T) {
 	proxyID := int64(5057)
 	provider := gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 505701, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, ProxyID: &proxyID}}
@@ -1870,7 +1870,7 @@ func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_UsesGlobalDef
 	require.Equal(t, int64(35402), provider.Record.ID)
 }
 
-// 回归保护：提供商级显式禁用标记应在存在全局默认阈值时让提供商豁免自动暂停。
+// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_PerProviderDisableOverridesGlobalDefault 验证回归保护：提供商级显式禁用标记应在存在全局默认阈值时让提供商豁免自动暂停。
 // 否则“阈值留空”会静默回退到全局默认值，管理员无法单独白名单某个提供商。
 func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_PerProviderDisableOverridesGlobalDefault(t *testing.T) {
 	ctx := gatewayprovider.WithQuotaAutoPauseSettings(context.Background(), ops.OpsOpenAIProviderQuotaAutoPauseSettings{DefaultThreshold5h: 0.95})
@@ -1903,7 +1903,7 @@ func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_PerProviderDi
 	require.Equal(t, int64(35701), provider.Record.ID)
 }
 
-// 禁用标记按窗口生效：只禁用 5h 时，7d 自动暂停仍应触发。
+// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_PerWindowDisableScoped 验证禁用标记按窗口生效：只禁用 5h 时，7d 自动暂停仍应触发。
 func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_PerWindowDisableScoped(t *testing.T) {
 	ctx := context.Background()
 	primary := gatewayprovider.ExecutionProvider{
@@ -1998,7 +1998,7 @@ func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_FreshUsageWin
 	require.Equal(t, int64(35602), provider.Record.ID)
 }
 
-// Issue #2994：曾被回滚的 #2918 反转逻辑会把提供商写成虚高的 used%，从而被调度排除；
+// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_StaleUsageSnapshotSkipsPause_Issue2994 验证Issue #2994：曾被回滚的 #2918 反转逻辑会把提供商写成虚高的 used%，从而被调度排除；
 // 暂停提供商又收不到流量刷新快照。快照超过陈旧边界时必须允许一次请求，让真实响应头自愈，
 // 且不依赖当前窗口的 reset 时间。
 func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_StaleUsageSnapshotSkipsPause_Issue2994(t *testing.T) {
@@ -2034,7 +2034,7 @@ func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_StaleUsageSna
 	require.Equal(t, int64(35701), provider.Record.ID)
 }
 
-// Issue #2994 保护：真实耗尽且快照刚刷新的提供商仍然必须自动暂停。
+// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_FreshExhaustedSnapshotStillPauses_Issue2994 验证Issue #2994 保护：真实耗尽且快照刚刷新的提供商仍然必须自动暂停。
 // 陈旧快照自愈逻辑不能让真实 99% used 的提供商绕过暂停。
 func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_FreshExhaustedSnapshotStillPauses_Issue2994(t *testing.T) {
 	ctx := context.Background()
@@ -3408,7 +3408,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_LoadBalanceTopKFallbac
 	}
 }
 
-// 回归保护：TopK 初始过滤必须剔除配额自动暂停提供商。否则候选池会被暂停提供商填满，
+// TestOpenAIGatewayService_SelectProviderWithScheduler_LoadBalanceTopKExcludesQuotaPaused 验证回归保护：TopK 初始过滤必须剔除配额自动暂停提供商。否则候选池会被暂停提供商填满，
 // 健康提供商落到 TopK 之外，调度器会在健康提供商存在时仍返回“无可用提供商”。
 func TestOpenAIGatewayService_SelectProviderWithScheduler_LoadBalanceTopKExcludesQuotaPaused(t *testing.T) {
 	ctx := context.Background()

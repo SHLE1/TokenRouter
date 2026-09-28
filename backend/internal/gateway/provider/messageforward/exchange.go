@@ -92,7 +92,7 @@ func (r *Runtime) passthroughExchange(output HTTPBoundary, state *AttemptState, 
 	return options
 }
 
-// 签名匹配和开关读取保持原先的两阶段差异，已经进入重试后不再次裁决开关。
+// shouldRectify 签名匹配和开关读取保持原先的两阶段差异，已经进入重试后不再次裁决开关。
 func (r *Runtime) shouldRectify(ctx context.Context, target *gatewayadapter.ExecutionProvider, body []byte, model string) bool {
 	if !modelidentity.ShouldRectifyThinkingSignatureError(model) {
 		return false

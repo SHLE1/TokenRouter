@@ -1,4 +1,3 @@
-// OpenAI 额度查询、影子资格、重置次数与缓存维护由提供商拥有，供应商访问通过窄端口。
 package provider
 
 import (

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 回归：上游 Transport 必须显式配置建连超时。
+// TestBuildUpstreamTransportSetsDialTimeout 验证回归：上游 Transport 必须显式配置建连超时。
 //
 // http.Transport.DialContext 为 nil 时 Go 使用零值 net.Dialer（Timeout=0），
 // DNS 解析与 TCP 握手没有任何上限，只能等内核重传耗尽（Linux 约 130 秒）。
@@ -33,7 +33,7 @@ func TestNewUpstreamDialerHasBoundedTimeout(t *testing.T) {
 	require.Equal(t, defaultUpstreamDialKeepAlive, dialer.KeepAlive)
 }
 
-// 建连超时对 HTTP 代理同样生效：Transport.Proxy 走的仍是 DialContext，
+// TestBuildUpstreamTransportKeepsDialTimeoutWithHTTPProxy 验证建连超时对 HTTP 代理同样生效：Transport.Proxy 走的仍是 DialContext，
 // 代理地址不可达时必须快速失败而不是挂满内核超时。
 func TestBuildUpstreamTransportKeepsDialTimeoutWithHTTPProxy(t *testing.T) {
 	proxyURL, err := url.Parse("http://127.0.0.1:1080")
@@ -45,7 +45,7 @@ func TestBuildUpstreamTransportKeepsDialTimeoutWithHTTPProxy(t *testing.T) {
 	require.NotNil(t, transport.DialContext)
 }
 
-// SOCKS5 分支会覆盖 Transport.DialContext，覆盖后仍必须是有超时的拨号器。
+// TestBuildUpstreamTransportKeepsDialContextWithSOCKS5Proxy 验证SOCKS5 分支会覆盖 Transport.DialContext，覆盖后仍必须是有超时的拨号器。
 func TestBuildUpstreamTransportKeepsDialContextWithSOCKS5Proxy(t *testing.T) {
 	proxyURL, err := url.Parse("socks5h://127.0.0.1:1080")
 	require.NoError(t, err)
@@ -55,7 +55,7 @@ func TestBuildUpstreamTransportKeepsDialContextWithSOCKS5Proxy(t *testing.T) {
 	require.NotNil(t, transport.DialContext)
 }
 
-// Timeout 字段确实被 net.Dialer 用于建连：拨一个已被 close 的本地监听端口，
+// TestUpstreamDialerRespectsContextCancellation 验证Timeout 字段确实被 net.Dialer 用于建连：拨一个已被 close 的本地监听端口，
 // 断言 Dialer 走的是自己的超时路径而不是无限等待。
 // （不依赖外网可达性，CI 中确定性执行。）
 func TestUpstreamDialerRespectsContextCancellation(t *testing.T) {

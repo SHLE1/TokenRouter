@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同一来源区域的不同型号必须遵守各自的精确推理 ID，不能用统一前缀猜测。
+// TestResolveBedrockModelRoute_RegionMatrix 验证同一来源区域的不同型号必须遵守各自的精确推理 ID，不能用统一前缀猜测。
 func TestResolveBedrockModelRoute_RegionMatrix(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -81,7 +81,7 @@ func TestResolveBedrockModelRoute_RegionMatrix(t *testing.T) {
 	}
 }
 
-// 显式资源标识保持透传；此处特意覆盖旧错误后缀，确保不会引入历史提供商迁移兼容。
+// TestResolveBedrockModelRoute_OpaqueIDsAndProviderMapping 验证显式资源标识保持透传；此处特意覆盖旧错误后缀，确保不会引入历史提供商迁移兼容。
 func TestResolveBedrockModelRoute_OpaqueIDsAndProviderMapping(t *testing.T) {
 	t.Parallel()
 	for _, modelID := range []string{

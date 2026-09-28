@@ -1,9 +1,3 @@
-// Package postgres 包含持久化基础设施辅助逻辑。
-//
-// 数据库连接池生命周期在这里做兜底裁剪，因为 lib/pq 会为带 context 的查询启动
-// watchCancel goroutine。如果云代理静默丢弃空闲 TCP 且不发送 RST/FIN，这些 goroutine
-// 会一直阻塞在 Read，直到 database/sql 回收连接。这里是短期缓解，长期方案是迁移到
-// jackc/pgx/v5/stdlib。
 package postgres
 
 import (

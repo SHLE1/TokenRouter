@@ -1,4 +1,3 @@
-// 采样编排保持原调用顺序，SQL 与主机读取分别由 Adapter 执行。
 package ops
 
 import (

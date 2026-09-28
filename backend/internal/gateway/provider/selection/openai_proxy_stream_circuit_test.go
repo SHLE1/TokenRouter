@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 第二次调度的 context 只绕过代理隔离，不会清除熔断状态。
+// TestOpenAIProxyStreamQuarantineBypassContext 验证第二次调度的 context 只绕过代理隔离，不会清除熔断状态。
 func TestOpenAIProxyStreamQuarantineBypassContext(t *testing.T) {
 	proxyID := int64(7)
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, ProxyID: &proxyID}}

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 旧构造仅供原门禁断言，将历史 context 投影给唯一原生规则。
+// RequireGroupAssignment 旧构造仅供原门禁断言，将历史 context 投影给唯一原生规则。
 func RequireGroupAssignment(writeError gatewayhttp.GatewayErrorWriter) gin.HandlerFunc {
 	return gatewayhttp.RequireGroupAssignment(gatewayhttp.GroupAssignmentOptions{Access: func(c *gin.Context) gatewayhttp.GroupAssignmentAccess {
 		key, ok := keyhttp.GetAPIKeyFromContext(c)

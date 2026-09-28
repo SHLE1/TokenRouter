@@ -1,4 +1,3 @@
-// 协议输入信号及历史 seed 规范化保留既有字段判断与数值行为。
 package openai
 
 import (
@@ -27,6 +26,7 @@ func IsCompactionItemType(itemType string) bool {
 		return false
 	}
 }
+
 func JSONValueMayContainImageInput(value gjson.Result) bool {
 	if !value.Exists() {
 		return false
@@ -50,6 +50,7 @@ func JSONValueMayContainImageInput(value gjson.Result) bool {
 	}
 	return false
 }
+
 func IsEmptyBase64DataURI(raw string) bool {
 	if !strings.HasPrefix(raw, "data:") {
 		return false
@@ -65,6 +66,7 @@ func IsEmptyBase64DataURI(raw string) bool {
 	}
 	return strings.TrimSpace(strings.TrimPrefix(rest, "base64,")) == ""
 }
+
 func NormalizeCompatSeedJSON(v json.RawMessage) string {
 	if len(v) == 0 {
 		return ""

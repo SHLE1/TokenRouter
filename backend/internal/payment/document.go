@@ -1,4 +1,3 @@
-// 账单与历史收据查询复用原订单绑定和渠道端口。
 package payment
 
 import (
@@ -26,6 +25,7 @@ func (s *OrderQueries) AdminGetOrderPaymentDocument(ctx context.Context, orderID
 	}
 	return s.GetOrderPaymentDocumentValue(ctx, order)
 }
+
 func (s *OrderQueries) GetOrderPaymentDocumentValue(ctx context.Context, order *Order) (*PaymentDocumentResponse, error) {
 	if order == nil {
 		return nil, infraerrors.NotFound("NOT_FOUND", "order not found")
@@ -55,6 +55,7 @@ func (s *OrderQueries) GetOrderPaymentDocumentValue(ctx context.Context, order *
 	}
 	return doc, nil
 }
+
 func PaymentDocumentFromOrder(order *Order) *PaymentDocumentResponse {
 	if order == nil {
 		return nil

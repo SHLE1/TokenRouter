@@ -311,7 +311,7 @@ func (s *BackupService) cleanupStaleBackupObjects(record *BackupRecord) error {
 	return s.deleteBackupObjects(ctx, record)
 }
 
-// Stop 停止定时备份并等待活跃操作完成
+// EncryptionKeyConfigured 报告备份加密密钥是否已配置。
 func (s *BackupService) EncryptionKeyConfigured() bool {
 	return s != nil && s.encryptionKeyConfigured
 }
@@ -603,7 +603,7 @@ func (s *BackupService) runScheduledBackup() {
 
 // ─── 备份/恢复核心 ───
 
-// CreateBackup 创建全量数据库备份并写入当前配置的存储后端（流式处理）
+// createBackup 创建全量数据库备份并写入当前配置的存储后端（流式处理）
 // expireDays: 备份过期天数，0=永不过期，默认14天
 func (s *BackupService) createBackup(ctx context.Context, triggeredBy string, expireDays int) (*BackupRecord, error) {
 	if s.shuttingDown.Load() {

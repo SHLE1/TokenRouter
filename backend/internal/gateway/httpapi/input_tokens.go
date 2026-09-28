@@ -1,4 +1,3 @@
-// 原生 Responses 输入 token 预检保留独立的准入与重试顺序。
 package httpapi
 
 import (

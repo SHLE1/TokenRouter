@@ -47,7 +47,7 @@ func InternalHasMixedToolInvocations(declarations []GeminiToolDeclaration) bool 
 	return hasFunctions && hasBuiltin
 }
 
-// buildTools 构建 tools
+// BuildInternalGeminiTools 构建 tools
 func BuildInternalGeminiTools(tools []ClaudeTool) ([]GeminiToolDeclaration, []string) {
 	diagnostics := []string{}
 	diagnostic := func(format string, args ...any) { diagnostics = append(diagnostics, fmt.Sprintf(format, args...)) }
@@ -214,7 +214,7 @@ func BuildInternalGeminiGenerationConfig(req *ClaudeRequest, options InternalGem
 	return config, diagnostics
 }
 
-// ensureMaxTokensGreaterThanBudget 确保 max_tokens > budget_tokens
+// EnsureMaxTokensGreaterThanBudget 确保 max_tokens > budget_tokens
 // Claude API 要求启用 thinking 时，max_tokens 必须大于 thinking.budget_tokens
 // 返回调整后的 maxTokens 和是否进行了调整
 func EnsureMaxTokensGreaterThanBudget(maxTokens, budgetTokens, padding int) (int, bool) {

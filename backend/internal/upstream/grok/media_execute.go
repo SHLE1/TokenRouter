@@ -1,4 +1,3 @@
-// 媒体单次执行持有 HTTP 响应，提供商和任务/资金规则通过调用方组合。
 package grok
 
 import (

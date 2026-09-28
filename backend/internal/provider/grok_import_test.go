@@ -1,6 +1,5 @@
 //go:build unit
 
-// 验证 SSO worker 的 panic 脱敏，以及失败项与输入索引的对应关系。
 package provider
 
 import (

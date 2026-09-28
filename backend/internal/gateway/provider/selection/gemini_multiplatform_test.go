@@ -303,7 +303,7 @@ func TestGeminiMessagesCompatService_GroupResolution_UsesLiteFetch(t *testing.T)
 	require.Equal(t, 1, groupRepo.getByIDLiteCalls)
 }
 
-// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_AntigravityGroup 测试 antigravity 分组
+// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_GroupHasNoPlatformPreference 测试 antigravity 分组
 func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_GroupHasNoPlatformPreference(t *testing.T) {
 	ctx := context.Background()
 

@@ -89,7 +89,7 @@ func TestShouldCoolOpenAIImagesToolForError(t *testing.T) {
 	}
 }
 
-// 主复现：文字兜底判据不得写提供商级冷却。
+// TestHandleOpenAIImagesOAuthResponseError_TextFallbackDoesNotCoolProvider 验证主复现：文字兜底判据不得写提供商级冷却。
 func TestHandleOpenAIImagesOAuthResponseError_TextFallbackDoesNotCoolProvider(t *testing.T) {
 	c, _ := newImagesCooldownContext(t)
 	repo := &countingModelRateLimitRepo{}
@@ -112,7 +112,7 @@ func TestHandleOpenAIImagesOAuthResponseError_TextFallbackDoesNotCoolProvider(t 
 	require.True(t, errors.As(err, &failover), "仍应触发换号，got %T", err)
 }
 
-// 对照不变式：上游 error 帧点名该状态时仍然冷却，否则等于把功能整个废掉。
+// TestHandleOpenAIImagesOAuthResponseError_StructuredUnavailableStillCoolsProvider 验证对照不变式：上游 error 帧点名该状态时仍然冷却，否则等于把功能整个废掉。
 func TestHandleOpenAIImagesOAuthResponseError_StructuredUnavailableStillCoolsProvider(t *testing.T) {
 	c, _ := newImagesCooldownContext(t)
 	repo := &countingModelRateLimitRepo{}
@@ -135,7 +135,7 @@ func TestHandleOpenAIImagesOAuthResponseError_StructuredUnavailableStillCoolsPro
 	require.Equal(t, []string{providercore.OpenAIImageGenerationRateLimitKey}, repo.scopes)
 }
 
-// 标记必须打在文字兜底的两个入口上，且不影响违规拦截分支的判定。
+// TestOpenAIImagesTextFallback_MarksSynthesizedVerdicts 验证标记必须打在文字兜底的两个入口上，且不影响违规拦截分支的判定。
 func TestOpenAIImagesTextFallback_MarksSynthesizedVerdicts(t *testing.T) {
 	t.Run("plain_text_reply_is_synthesized", func(t *testing.T) {
 		err := openai.OpenAIImagesTextFallbackErrorForText("Here's a polished image prompt for your request.")
@@ -170,7 +170,7 @@ func TestOpenAIImagesTextFallback_MarksSynthesizedVerdicts(t *testing.T) {
 	})
 }
 
-// 级联的前提条件：该错误确实是可重试的，所以会带着"已写冷却"的副作用换号。
+// TestOpenAIImagesTextFallback_RemainsRetryableAndThusCascades 验证级联的前提条件：该错误确实是可重试的，所以会带着"已写冷却"的副作用换号。
 // 这条用例把前提钉死，避免以后有人把 502 改成非重试后误以为本修复多余。
 func TestOpenAIImagesTextFallback_RemainsRetryableAndThusCascades(t *testing.T) {
 	err := openai.OpenAIImagesTextFallbackErrorForText("Here's a polished image prompt for your request.")

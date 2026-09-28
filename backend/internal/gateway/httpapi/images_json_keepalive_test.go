@@ -145,7 +145,7 @@ func waitForOpenAIImagesJSONKeepalive(t *testing.T, c *gin.Context) {
 	}, time.Second, time.Millisecond)
 }
 
-// 直接组合原生错误展示和心跳状态，原供应商错误投影由真实执行测试继续验证。
+// writeKeepaliveImageError 直接组合原生错误展示和心跳状态，原供应商错误投影由真实执行测试继续验证。
 func writeKeepaliveImageError(c *gin.Context, in *ImageErrorResponse) bool {
 	return WriteImageError(c, in, func() int { return OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c) }, func() { StopOpenAIImagesJSONKeepaliveCommitted(c) })
 }

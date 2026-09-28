@@ -1,4 +1,3 @@
-// 单次 HTTP 交换拥有首响应头预算和响应关闭后的 context 释放；不决定提供商重试。
 package openai
 
 import (

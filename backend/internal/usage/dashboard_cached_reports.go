@@ -1,4 +1,3 @@
-// 仪表盘报表使用 Get/Set 缓存查询结果，不合并并发回源。
 package usage
 
 import (
@@ -29,6 +28,7 @@ func (s *DashboardService) GetUserSpendingRankingCached(ctx context.Context, sta
 	s.queryCaches.ranking.Set(key, v)
 	return v, false, nil
 }
+
 func (s *DashboardService) GetBatchUsersUsageCached(ctx context.Context, ids []int64) (map[int64]*BatchUserUsageStats, bool, error) {
 	key := mustMarshalDashboardCacheKey(struct {
 		V       int     `json:"v"`
@@ -46,6 +46,7 @@ func (s *DashboardService) GetBatchUsersUsageCached(ctx context.Context, ids []i
 	s.queryCaches.batchUsers.Set(key, v)
 	return v, false, nil
 }
+
 func (s *DashboardService) GetBatchKeysUsageCached(ctx context.Context, ids []int64) (map[int64]*BatchAPIKeyUsageStats, bool, error) {
 	key := mustMarshalDashboardCacheKey(struct {
 		APIKeyIDs []int64 `json:"api_key_ids"`

@@ -56,7 +56,7 @@ func provideGroupFallbackResolver(keys *apikey.APIKeyService, funding *admission
 	}
 }
 
-// 初始客户端回退只复查资金；最终入口统一获取并发并累计一次 RPM。
+// provideClientGroupFallbackResolver 初始客户端回退只复查资金；最终入口统一获取并发并累计一次 RPM。
 func provideClientGroupFallbackResolver(keys *apikey.APIKeyService, funding *admission.FundingAdmission, subscriptions *billing.SubscriptionService, cache session.GatewayCache) func(context.Context, *apikey.APIKey, protocol.ProtocolID) (*apikey.APIKey, *billing.UserSubscription, error) {
 	resolve := provideGroupFallbackResolver(keys, funding, subscriptions, cache, true)
 	if resolve == nil {

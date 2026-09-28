@@ -1,4 +1,3 @@
-// 实时运行时保持原采样、容量和三十秒空闲停止语义。
 package ops
 
 import (
@@ -104,6 +103,7 @@ func (c *opsWSQPSCache) Stop() {
 	}
 	c.mu.Unlock()
 }
+
 func (c *opsWSQPSCache) refreshLoop(ctx context.Context) {
 	ticker := time.NewTicker(c.refreshInterval)
 	defer ticker.Stop()
@@ -118,6 +118,7 @@ func (c *opsWSQPSCache) refreshLoop(ctx context.Context) {
 		}
 	}
 }
+
 func (c *opsWSQPSCache) refresh(parentCtx context.Context) {
 	if c == nil {
 		return
@@ -173,6 +174,7 @@ func (c *opsWSQPSCache) refresh(parentCtx context.Context) {
 	c.payload.Store(msg)
 	c.lastUpdatedUnixNano.Store(now.UnixNano())
 }
+
 func (c *opsWSQPSCache) getPayload() []byte {
 	if c == nil {
 		return nil
@@ -214,6 +216,7 @@ func (s *OpsService) Realtime() *RealtimeRuntime {
 	s.realtimeOnce.Do(func() { s.realtime = NewRealtimeRuntime() })
 	return s.realtime
 }
+
 func (r *RealtimeRuntime) cancelQPSWSIdleStop() {
 	r.qpsWSIdleStopMu.Lock()
 	if r.qpsWSIdleStopTimer != nil {
@@ -224,6 +227,7 @@ func (r *RealtimeRuntime) cancelQPSWSIdleStop() {
 	}
 	r.qpsWSIdleStopMu.Unlock()
 }
+
 func (r *RealtimeRuntime) scheduleQPSWSIdleStop() {
 	r.qpsWSIdleStopMu.Lock()
 	if r.qpsWSIdleStopTimer != nil || r.qpsWSRuntimeClosed {
@@ -247,6 +251,7 @@ func (r *RealtimeRuntime) scheduleQPSWSIdleStop() {
 	r.qpsWSIdleStopTimer = timer
 	r.qpsWSIdleStopMu.Unlock()
 }
+
 func (r *RealtimeRuntime) AcquireTotal(limit int32) bool {
 	if limit <= 0 {
 		return true
@@ -261,6 +266,7 @@ func (r *RealtimeRuntime) AcquireTotal(limit int32) bool {
 		}
 	}
 }
+
 func (r *RealtimeRuntime) AcquireIP(clientIP string, limit int32) bool {
 	if strings.TrimSpace(clientIP) == "" || limit <= 0 {
 		return true
@@ -274,6 +280,7 @@ func (r *RealtimeRuntime) AcquireIP(clientIP string, limit int32) bool {
 	r.wsConnCountByIP[clientIP] = current + 1
 	return true
 }
+
 func (r *RealtimeRuntime) ReleaseIP(clientIP string) {
 	if strings.TrimSpace(clientIP) == "" {
 		return
@@ -291,7 +298,7 @@ func (r *RealtimeRuntime) ReleaseIP(clientIP string) {
 	r.wsConnCountByIP[clientIP] = current - 1
 }
 
-// StopOpsWSRuntime 由组合根在 HTTP 请求完成后取消延迟停机并等待按需刷新退出。
+// Stop 由组合根在 HTTP 请求完成后取消延迟停机并等待按需刷新退出。
 func (r *RealtimeRuntime) Stop() {
 	r.qpsWSIdleStopMu.Lock()
 	r.qpsWSRuntimeClosed = true

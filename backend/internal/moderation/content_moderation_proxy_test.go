@@ -32,7 +32,7 @@ func (r *contentModerationTestProxyRepo) GetByID(ctx context.Context, id int64) 
 
 func moderationProxyIDPtr(v int64) *int64 { return &v }
 
-// 审计请求必须真正经过配置的代理发出（#2646 核心行为）。
+// TestContentModerationCallRoutesThroughProxy 验证审计请求必须真正经过配置的代理发出（#2646 核心行为）。
 // 通过一个本地 HTTP 正向代理验证：BaseURL 指向不可直连的假域名，
 // 请求只有走代理才能得到响应。
 func TestContentModerationCallRoutesThroughProxy(t *testing.T) {
@@ -79,7 +79,7 @@ func TestContentModerationCallRoutesThroughProxy(t *testing.T) {
 	}
 }
 
-// 代理解析失败必须报错，而不是静默回退直连。
+// TestContentModerationProxyResolveFailureDoesNotFallBackToDirect 验证代理解析失败必须报错，而不是静默回退直连。
 func TestContentModerationProxyResolveFailureDoesNotFallBackToDirect(t *testing.T) {
 	var direct atomic.Int64
 	directSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +109,7 @@ func TestContentModerationProxyResolveFailureDoesNotFallBackToDirect(t *testing.
 	}
 }
 
-// 代理 URL 解析结果按 TTL 缓存，热路径不应每次调用都查库。
+// TestContentModerationProxyURLResolutionCached 验证代理 URL 解析结果按 TTL 缓存，热路径不应每次调用都查库。
 func TestContentModerationProxyURLResolutionCached(t *testing.T) {
 	proxyRepo := &contentModerationTestProxyRepo{proxies: map[int64]*Proxy{
 		3: {ID: 3, Name: "p", Protocol: "http", Host: "127.0.0.1", Port: 8080, Status: StatusActive},
@@ -128,7 +128,7 @@ func TestContentModerationProxyURLResolutionCached(t *testing.T) {
 	}
 }
 
-// UpdateConfig 的 proxy_id 语义：>0 设置、nil 保持、<=0 清除；配置视图回显。
+// TestContentModerationUpdateConfigProxyIDSemantics 验证UpdateConfig 的 proxy_id 语义：>0 设置、nil 保持、<=0 清除；配置视图回显。
 func TestContentModerationUpdateConfigProxyIDSemantics(t *testing.T) {
 	settingRepo := &contentModerationTestSettingRepo{values: map[string]string{}}
 	proxyRepo := &contentModerationTestProxyRepo{proxies: map[int64]*Proxy{
@@ -172,7 +172,7 @@ func TestContentModerationUpdateConfigProxyIDSemantics(t *testing.T) {
 	}
 }
 
-// TestAPIKeys 的 proxy_id 语义：nil 沿用已保存配置的代理；0 强制直连；>0 指定代理。
+// TestContentModerationTestAPIKeysProxySemantics 的 proxy_id 语义：nil 沿用已保存配置的代理；0 强制直连；>0 指定代理。
 func TestContentModerationTestAPIKeysProxySemantics(t *testing.T) {
 	var proxied atomic.Int64
 	proxySrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

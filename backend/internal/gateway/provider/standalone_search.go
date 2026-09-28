@@ -1,4 +1,3 @@
-// 独立搜索的供应商报文由平台适配层组合，HTTP 不解析上游结构。
 package provider
 
 import (
@@ -20,9 +19,11 @@ func GrokStandaloneSearchBody(request searchtools.StandaloneRequest, model strin
 	}
 	return xai.BuildGrokWebSearchResponsesBody(request.Query, maxResults, model), nil
 }
+
 func GrokStandaloneSearchResponse(query string, response []byte, maxResults int) *contract.SearchResponse {
 	return &contract.SearchResponse{Query: query, Results: projectStandaloneSearchResults(xai.ExtractGrokWebSearchSources(response, maxResults))}
 }
+
 func projectNativeStandaloneSearch(v searchtools.StandaloneRequest) xai.StandaloneSearchRequest {
 	return xai.StandaloneSearchRequest{
 		Query:                    v.Query,
@@ -36,6 +37,7 @@ func projectNativeStandaloneSearch(v searchtools.StandaloneRequest) xai.Standalo
 		EnableVideoUnderstanding: v.EnableVideoUnderstanding,
 	}
 }
+
 func projectStandaloneSearchResults(in []xai.StandaloneSearchResult) []contract.SearchResult {
 	if in == nil {
 		return nil

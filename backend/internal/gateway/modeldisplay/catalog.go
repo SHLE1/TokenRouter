@@ -1,4 +1,3 @@
-// Package modeldisplay 只拥有展示值与稳定目录合并，不读取平台或存储。
 package modeldisplay
 
 import (

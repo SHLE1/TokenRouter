@@ -1,4 +1,3 @@
-// Antigravity 提供商套餐及异常投影不改变用户权益。
 package provider
 
 import (

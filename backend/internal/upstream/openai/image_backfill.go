@@ -1,5 +1,3 @@
-// 图片回填不带提供商实体，只接收技术参数与已判定的开关。
-// @project-doc docs/interfaces/openai_upstream.md#images_url_backfill
 package openai
 
 import (
@@ -36,6 +34,8 @@ func (options ImageBackfillOptions) ReportFailure(index int) {
 	}
 }
 
+// Backfill 按显式选项补全图片 Base64，不接收提供商实体。
+// @project-doc docs/interfaces/openai_upstream.md#images_url_backfill
 func (options ImageBackfillOptions) Backfill(ctx context.Context, body []byte) []byte {
 	if !options.Enabled || !gjson.ValidBytes(body) || (options.Stream || strings.EqualFold(strings.TrimSpace(options.ResponseFormat), "url")) {
 		return body
@@ -69,7 +69,7 @@ func (options ImageBackfillOptions) Backfill(ctx context.Context, body []byte) [
 	return body
 }
 
-// fetchOpenAIImageURLBase64 下载图片 URL 并返回标准 base64。
+// FetchBase64 下载图片 URL 并返回标准 base64。
 // 目的地和每次重定向都必须是公网主机，内容类型只信字节嗅探结果。
 func (options ImageBackfillOptions) FetchBase64(ctx context.Context, rawURL string) (string, error) {
 	if strings.HasPrefix(strings.ToLower(rawURL), "data:") {

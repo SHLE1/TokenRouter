@@ -408,7 +408,7 @@ func TestResponsesToChatCompletionsRequest_DropsDeferredFlagWithToolSearch(t *te
 	require.Contains(t, string(encoded), `"name":"tool_search"`)
 }
 
-// codex 只在 ResponseItem 为 tool_search_call 变体且 execution=client 时执行
+// TestChatCompletionsResponseToResponses_ToolSearchCallOutputItem 验证codex 只在 ResponseItem 为 tool_search_call 变体且 execution=client 时执行
 // tool search；同名 function_call 会命中 ToolSearchHandler 后因 payload 不匹配
 // 触发 FunctionCallError::Fatal，直接中止整个 turn，因此回程必须还原项类型。
 func TestChatCompletionsResponseToResponses_ToolSearchCallOutputItem(t *testing.T) {
@@ -738,7 +738,7 @@ func TestChatCompletionsChunkToResponsesEvents_FunctionToolNameArrivesLate(t *te
 	assert.Equal(t, `{"cell_id": 3}`, argsDone)
 }
 
-// 序列化层（MarshalJSON → responsesItemWire）单独走白名单重组，事件结构体上的字段
+// TestResponsesEventToSSE_CustomToolCallItemCarriesAllFields 验证序列化层（MarshalJSON → responsesItemWire）单独走白名单重组，事件结构体上的字段
 // 齐全不代表落到 SSE 线上的 JSON 齐全，必须在 wire 层再断言一次。
 func TestResponsesEventToSSE_CustomToolCallItemCarriesAllFields(t *testing.T) {
 	evt := ResponsesStreamEvent{
@@ -793,7 +793,7 @@ func TestNamespaceToolNames_MapsFlattenedNames(t *testing.T) {
 	assert.Nil(t, NamespaceToolNames(nil))
 }
 
-// 内置 tool_search 降级后的代理 function 与客户端声明的同名工具无法区分：回程会把
+// TestResponsesToChatCompletionsRequest_RejectsToolSearchNameConflict 验证内置 tool_search 降级后的代理 function 与客户端声明的同名工具无法区分：回程会把
 // 普通工具的调用劫持成 tool_search_call，必须显式拒绝（代理不能改名，codex 的模型
 // 侧按 tool_search 这个名字调用）。
 func TestResponsesToChatCompletionsRequest_RejectsToolSearchNameConflict(t *testing.T) {
@@ -848,7 +848,7 @@ func TestResponsesToChatCompletionsRequest_RejectsDuplicateTopLevelExecutableNam
 	}
 }
 
-// tool_choice 指向被转换丢弃的工具（如 web_search）或不存在的名字时不能原样转发，
+// TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool 验证tool_choice 指向被转换丢弃的工具（如 web_search）或不存在的名字时不能原样转发，
 // chat 上游会因选择项指向未声明工具而 400；字符串形式与指向幸存工具的选择保持转发。
 func TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool(t *testing.T) {
 	// 强制选择被丢弃的 web_search：工具没了，选择项也必须丢。
@@ -909,7 +909,7 @@ func TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool(t *test
 	assert.JSONEq(t, `{"type":"function","function":{"name":"wait"}}`, string(out.ToolChoice))
 }
 
-// tool_search 工具没有被丢弃而是降级为同名 function 代理，强制选择它的 tool_choice
+// TestResponsesToChatCompletionsRequest_ToolSearchToolChoiceMapsToProxy 验证tool_search 工具没有被丢弃而是降级为同名 function 代理，强制选择它的 tool_choice
 // 必须同步降级为指向代理的 function 选择，不能静默丢弃（丢弃会把强制搜索退化为
 // 自动选择，模型可以不执行搜索）。
 func TestResponsesToChatCompletionsRequest_ToolSearchToolChoiceMapsToProxy(t *testing.T) {
@@ -933,7 +933,7 @@ func TestResponsesToChatCompletionsRequest_ToolSearchToolChoiceMapsToProxy(t *te
 	assert.Empty(t, out.ToolChoice)
 }
 
-// 客户端请求在原生 Responses API 上合法（namespace 子工具按 namespace+name 路由），
+// TestResponsesToChatCompletionsRequest_RejectsAmbiguousFlattenedNames 验证客户端请求在原生 Responses API 上合法（namespace 子工具按 namespace+name 路由），
 // 是摊平转换让名字产生歧义；歧义无法消除时必须显式拒绝整个请求（400），而不是
 // 静默降级——否则重复声明发给上游、回程还原到错误工具，问题只能靠抓包定位。
 func TestResponsesToChatCompletionsRequest_RejectsAmbiguousFlattenedNames(t *testing.T) {
@@ -962,7 +962,7 @@ func TestResponsesToChatCompletionsRequest_RejectsAmbiguousFlattenedNames(t *tes
 	assert.Contains(t, err.Error(), "a__b__c")
 }
 
-// 完全相同的 (namespace, 子工具) 重复声明不构成歧义：去重后正常转换，不拒绝。
+// TestResponsesToChatCompletionsRequest_DedupesIdenticalNamespaceChildren 验证完全相同的 (namespace, 子工具) 重复声明不构成歧义：去重后正常转换，不拒绝。
 func TestResponsesToChatCompletionsRequest_DedupesIdenticalNamespaceChildren(t *testing.T) {
 	out, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
@@ -979,7 +979,7 @@ func TestResponsesToChatCompletionsRequest_DedupesIdenticalNamespaceChildren(t *
 	assert.Equal(t, "gmail__send", out.Tools[0].Function.Name)
 }
 
-// codex 按 namespace+name 路由 namespace 子工具的调用：回程必须把摊平名还原为
+// TestChatCompletionsResponseToResponses_NamespacedToolCallRestored 验证codex 按 namespace+name 路由 namespace 子工具的调用：回程必须把摊平名还原为
 // 裸子工具名并带独立 namespace 字段，平铺名的 function_call 会被 codex 判为
 // unsupported call 拒绝执行。
 func TestChatCompletionsResponseToResponses_NamespacedToolCallRestored(t *testing.T) {

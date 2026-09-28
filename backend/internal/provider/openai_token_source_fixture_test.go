@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// 原缓存断言直接构造原生令牌源，不复刻刷新或等待算法。
+// newOpenAITokenSourceContract 原缓存断言直接构造原生令牌源，不复刻刷新或等待算法。
 func newOpenAITokenSourceContract(cache AccessTokenCache) *OpenAITokenSource {
 	return &OpenAITokenSource{
 		Cache: cache, Metrics: &OpenAITokenMetricsStore{}, Policy: OpenAIProviderRefreshPolicy(),

@@ -1,4 +1,3 @@
-// 本文件直接装配唯一 Antigravity 授权状态与原代理读取。
 package app
 
 import (

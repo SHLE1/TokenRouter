@@ -1,4 +1,3 @@
-// 固定 HTTP 依赖投影与单请求完成快照，独立于核心的尝试循环。
 package httpapi
 
 import (

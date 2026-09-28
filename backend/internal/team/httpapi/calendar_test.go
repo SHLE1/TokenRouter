@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 团队查询沿用服务端时区，不因携带用户 timezone 参数改变范围。
+// TestTeamUsageQueryInjectedCalendar 验证团队查询沿用服务端时区，不因携带用户 timezone 参数改变范围。
 func TestTeamUsageQueryInjectedCalendar(t *testing.T) {
 	loc, err := time.LoadLocation("America/New_York")
 	require.NoError(t, err)

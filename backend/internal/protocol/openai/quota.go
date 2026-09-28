@@ -1,4 +1,3 @@
-// Codex 额度 wire 与管理员查询投影保留原字段、指针与 JSON 省略语义。
 package openai
 
 // OpenAIRateLimitWindow 描述上游返回的单个限流窗口。

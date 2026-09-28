@@ -5,21 +5,21 @@ package httpapi_test
 import (
 	"bufio"
 	"crypto/rand"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
-
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 )
 
-// 输出契约使用原来的扫描缓冲和真实 HTTP Adapter，不模拟转换结果。
+// conversionResponseFixture 输出契约使用原来的扫描缓冲和真实 HTTP Adapter，不模拟转换结果。
 func conversionResponseFixture(resp *http.Response) forward.Response {
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 500*1024*1024)
 	return forward.Response{StatusCode: resp.StatusCode, Close: func() { _ = resp.Body.Close() }, Runtime: bridge.Runtime{Now: time.Now, ReadRandom: rand.Read}, RequestID: resp.Header.Get("x-request-id"), Headers: resp.Header, Lines: scanner}
 }
+
 func toolAnthropicSSEStream() string {
 	return strings.Join([]string{
 		"event: message_start",

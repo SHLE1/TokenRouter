@@ -1,4 +1,3 @@
-// Download 保留结果索引、ZIP 与限额规则，返回的流拥有释放下载许可的责任。
 package batchimage
 
 import (

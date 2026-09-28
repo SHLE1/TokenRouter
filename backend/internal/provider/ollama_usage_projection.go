@@ -1,4 +1,3 @@
-// 从提供商附加字段读取 Ollama 会话配置和已保存的用量快照。
 package provider
 
 import (

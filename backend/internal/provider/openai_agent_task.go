@@ -1,4 +1,3 @@
-// Agent Identity 的任务登记、锁内复查和凭据写入属于提供商用例；供应商交换通过端口执行。
 package provider
 
 import (

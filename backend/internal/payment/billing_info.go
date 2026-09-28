@@ -1,4 +1,3 @@
-// 发票信息规范化与必填校验保持原行为。
 package payment
 
 import (
@@ -14,6 +13,7 @@ func NilIfEmpty(s string) *string {
 	}
 	return &s
 }
+
 func TrimBillingInfo(info *BillingInfo) *BillingInfo {
 	if info == nil {
 		return nil
@@ -42,6 +42,7 @@ func TrimBillingInfo(info *BillingInfo) *BillingInfo {
 	}
 	return trimmed
 }
+
 func BillingInfoSnapshot(info *BillingInfo) map[string]any {
 	info = TrimBillingInfo(info)
 	if info == nil {
@@ -86,6 +87,7 @@ func BillingInfoSnapshot(info *BillingInfo) map[string]any {
 	}
 	return snapshot
 }
+
 func ValidateBillingInfo(info *BillingInfo, fallbackEmail string) error {
 	info = TrimBillingInfo(info)
 	if info == nil {

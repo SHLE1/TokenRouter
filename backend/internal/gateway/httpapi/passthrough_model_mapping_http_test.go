@@ -40,7 +40,7 @@ func (p mappingHTTPTransport) DoWithTLS(request *http.Request, proxy string, id 
 	return p.Do(request, proxy, id, concurrency)
 }
 
-// 验证 HTTP 透传实际发送显式映射后的模型，并保持单跳和请求模型的回填口径。
+// TestOpenAIPassthroughHTTPAppliesExplicitModelMappingOnce 验证 HTTP 透传实际发送显式映射后的模型，并保持单跳和请求模型的回填口径。
 func TestOpenAIPassthroughHTTPAppliesExplicitModelMappingOnce(t *testing.T) {
 	for _, providerType := range []string{capability.ProviderTypeAPIKey, capability.ProviderTypeOAuth} {
 		for _, stream := range []bool{false, true} {

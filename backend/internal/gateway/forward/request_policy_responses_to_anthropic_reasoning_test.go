@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 验证两种 OpenAI 入站协议不会把 xhigh 提升到会额外计费的 max。
+// TestAnthropicReasoningBridgePreservesEffort 验证两种 OpenAI 入站协议不会把 xhigh 提升到会额外计费的 max。
 func TestAnthropicReasoningBridgePreservesEffort(t *testing.T) {
 	for _, effort := range []string{"low", "medium", "high", "xhigh", "max"} {
 		t.Run(effort, func(t *testing.T) {

@@ -12,7 +12,6 @@ import (
 )
 
 func TestParseTimeRange(t *testing.T) {
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	req := httptest.NewRequest(http.MethodGet, "/?start_date=2024-01-01&end_date=2024-01-02&timezone=UTC", nil)
@@ -29,7 +28,7 @@ func TestParseTimeRange(t *testing.T) {
 	require.False(t, end.IsZero())
 }
 
-// 管理查询采用注入的服务端时区，并保留用户覆盖与日历日结束边界。
+// TestParseTimeRangeInjectedCalendar 验证管理查询采用注入的服务端时区，并保留用户覆盖与日历日结束边界。
 func TestParseTimeRangeInjectedCalendar(t *testing.T) {
 	newYork, err := time.LoadLocation("America/New_York")
 	require.NoError(t, err)

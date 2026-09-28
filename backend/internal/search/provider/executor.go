@@ -1,4 +1,3 @@
-// Executor 拥有原 HTTP 客户端缓存；替换配置后只关闭空闲连接，不打断在途请求。
 package provider
 
 import (
@@ -18,18 +17,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/search/contract"
 )
 
-type SearchRequest = contract.SearchRequest
-type SearchResponse = contract.SearchResponse
-type SearchResult = contract.SearchResult
-type Provider = contract.Provider
-type ProviderConfig = contract.ProviderConfig
+type (
+	SearchRequest  = contract.SearchRequest
+	SearchResponse = contract.SearchResponse
+	SearchResult   = contract.SearchResult
+	Provider       = contract.Provider
+	ProviderConfig = contract.ProviderConfig
+)
 
-const defaultMaxResults = contract.DefaultMaxResults
-const proxyDialTimeout = 3 * time.Second
-const proxyTLSTimeout = 3 * time.Second
-const searchDataTimeout = 60 * time.Second
-const searchRequestTimeout = searchDataTimeout + proxyDialTimeout
-const maxCachedClients = 100
+const (
+	defaultMaxResults    = contract.DefaultMaxResults
+	proxyDialTimeout     = 3 * time.Second
+	proxyTLSTimeout      = 3 * time.Second
+	searchDataTimeout    = 60 * time.Second
+	searchRequestTimeout = searchDataTimeout + proxyDialTimeout
+	maxCachedClients     = 100
+)
 
 type Executor struct {
 	clientMu    sync.Mutex
@@ -44,6 +47,7 @@ func (m *Executor) CloseIdle() {
 		c.CloseIdleConnections()
 	}
 }
+
 func (m *Executor) Search(ctx context.Context, cfg ProviderConfig, req SearchRequest) (*SearchResponse, error) {
 	proxyURL := cfg.ProxyURL
 	if req.ProxyURL != "" {
@@ -56,6 +60,7 @@ func (m *Executor) Search(ctx context.Context, cfg ProviderConfig, req SearchReq
 	provider := m.buildProvider(cfg, client)
 	return provider.Search(ctx, req)
 }
+
 func (m *Executor) getOrCreateHTTPClient(proxyURL string) (*http.Client, error) {
 	m.clientMu.Lock()
 	defer m.clientMu.Unlock()
@@ -96,6 +101,7 @@ func newHTTPClient(proxyURL string) (*http.Client, error) {
 	}
 	return &http.Client{Transport: transport, Timeout: searchRequestTimeout}, nil
 }
+
 func (m *Executor) buildProvider(cfg ProviderConfig, client *http.Client) Provider {
 	switch cfg.Type {
 	case braveProviderName:

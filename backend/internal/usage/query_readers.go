@@ -1,4 +1,3 @@
-// QueryReaders 显式携带原存储可选的批量查询能力，保持 fallback 选择。
 package usage
 
 import (

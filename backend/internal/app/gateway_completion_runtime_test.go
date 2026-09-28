@@ -24,7 +24,7 @@ func (r *completionRateScopeFixture) GetByUserAndGroup(context.Context, int64, i
 	return &value, nil
 }
 
-// 两条生产链各保留一份倍率缓存，旧执行端直接使用组合根的同一完成实例。
+// TestCompletionRuntimeOwnsIsolatedRatesAndSharedRecorders 验证两条生产链各保留一份倍率缓存，旧执行端直接使用组合根的同一完成实例。
 func TestCompletionRuntimeOwnsIsolatedRatesAndSharedRecorders(t *testing.T) {
 	cfg := &config.Config{}
 	repo := &completionRateScopeFixture{value: 2}

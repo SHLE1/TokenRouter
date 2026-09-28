@@ -56,7 +56,7 @@ func ResolveOpenAIUpstreamOriginator(c *gin.Context, isOfficialClient bool, rout
 	}, isOfficialClient, routerMatch...)
 }
 
-// originator 的平台规则由 upstream 执行，此处投影路由结果。
+// ResolveOpenAIUpstreamOriginatorForClient originator 的平台规则由 upstream 执行，此处投影路由结果。
 func ResolveOpenAIUpstreamOriginatorForClient(read func() string, official bool, matches ...egress.TLSFingerprintRouterMatchResult) string {
 	var match egress.TLSFingerprintRouterMatchResult
 	if len(matches) > 0 {

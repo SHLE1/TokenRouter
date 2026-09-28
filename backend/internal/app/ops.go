@@ -1,4 +1,3 @@
-// 本文件是观测能力的唯一生产装配入口。
 package app
 
 import (

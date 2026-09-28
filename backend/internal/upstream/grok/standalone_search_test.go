@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 来源白名单和稳定排序由原生解析拥有，模型生成的陌生 URL 不得进入结果。
+// TestStandaloneSourcesRequireObservedURL 验证来源白名单和稳定排序由原生解析拥有，模型生成的陌生 URL 不得进入结果。
 func TestStandaloneSourcesRequireObservedURL(t *testing.T) {
 	body := []byte(`{"output":[{"type":"web_search_call","action":{"sources":[{"url":"https://Example.test/a#source","title":"source A","snippet":"source snippet"},{"url":"https://example.test/b","title":"123"}]}},{"type":"message","content":[{"type":"output_text","text":"{\"results\":[{\"url\":\"https://invented.test\",\"title\":\"invented\"},{\"url\":\"https://example.test/a\",\"title\":\"enriched\",\"snippet\":\"summary\"}]}"}]}]}`)
 	results := ExtractGrokWebSearchSources(body, 5)
@@ -19,6 +19,7 @@ func TestStandaloneSourcesRequireObservedURL(t *testing.T) {
 	require.Len(t, ExtractGrokWebSearchSources(body, 1), 1)
 	require.Nil(t, ExtractGrokWebSearchSources([]byte("invalid"), 5))
 }
+
 func TestStandaloneNativeBodiesRetainToolOptions(t *testing.T) {
 	disabled := false
 	max := 3

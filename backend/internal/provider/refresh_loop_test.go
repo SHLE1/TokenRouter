@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 多个同时到达的启动调用只能取得一次立即扫描，停止等待该轮实际退出。
+// TestRefreshLoopConcurrentStartAndBoundedStop 验证多个同时到达的启动调用只能取得一次立即扫描，停止等待该轮实际退出。
 func TestRefreshLoopConcurrentStartAndBoundedStop(t *testing.T) {
 	var cycles, starts atomic.Int32
 	entered := make(chan struct{})

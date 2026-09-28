@@ -1,4 +1,3 @@
-// 平台型号只决定 thinking 转换选项；字节算法由 requeststate 唯一实现。
 package provider
 
 import (

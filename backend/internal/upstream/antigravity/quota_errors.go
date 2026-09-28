@@ -1,4 +1,3 @@
-// 只解释供应商拒绝信息，不改变提供商健康或管理权限。
 package antigravity
 
 import (

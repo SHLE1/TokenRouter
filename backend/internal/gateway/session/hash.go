@@ -1,4 +1,3 @@
-// 会话哈希只根据当前请求投影计算，绑定与 TTL 继续由 scheduler 管理。
 package session
 
 import (

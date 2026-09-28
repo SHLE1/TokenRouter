@@ -1,4 +1,3 @@
-// Responses 单次执行拥有原生恢复、流过滤和响应关闭，不决定全局 failover 或资金动作。
 package grok
 
 import (

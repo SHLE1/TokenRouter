@@ -1,4 +1,3 @@
-// 本文件拥有 Qoder 提供商授权会话、完成认领与凭据投影，供应商交换通过端口执行。
 package provider
 
 import (

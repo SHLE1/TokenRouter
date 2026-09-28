@@ -1,4 +1,3 @@
-// 审核核心只消费明确投影与命令，不直接持有身份、代理或数据库对象。
 package moderation
 
 import (

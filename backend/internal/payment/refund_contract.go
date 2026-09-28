@@ -1,4 +1,3 @@
-// 退款恢复事实与权益参与契约；渠道请求始终在本地事务之外。
 package payment
 
 import (
@@ -78,11 +77,14 @@ type RefundStore interface {
 }
 
 // RefundRuntime 由装配提供渠道身份解析、观测及必要的只读权益投影。
-type RefundUser struct{ Balance float64 }
-type RefundSubscription struct {
-	ID     int64
-	Status string
-}
+type (
+	RefundUser         struct{ Balance float64 }
+	RefundSubscription struct {
+		ID     int64
+		Status string
+	}
+)
+
 type RefundRuntime struct {
 	User          func(context.Context, int64) (*RefundUser, error)
 	Subscriptions func(context.Context, int64) ([]RefundSubscription, error)
@@ -113,6 +115,7 @@ func NewRefundWorkflow(store RefundStore, runtime RefundRuntime) *RefundWorkflow
 	}
 	return &RefundWorkflow{store: store, runtime: runtime}
 }
+
 func RefundRecoveryRequired(reason string) error {
 	return apperror.Conflict("REFUND_RECOVERY_REQUIRED", "refund recovery requires manual verification").WithMetadata(map[string]string{"reason": reason})
 }

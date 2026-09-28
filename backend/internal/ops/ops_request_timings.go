@@ -1,4 +1,3 @@
-// 本文件拥有 Ops 观测用例；配置与外部状态经端口注入。
 package ops
 
 import (

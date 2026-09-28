@@ -1,4 +1,3 @@
-// Alpha Search 单次执行管理网络/输出，提供商选择和资金完成仍由调用方负责。
 package openai
 
 import (

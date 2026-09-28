@@ -1,4 +1,3 @@
-// Composer 图片描述按原顺序逐张执行与累加，失败保留已有辅助用量。
 package grok
 
 import (
@@ -46,7 +45,6 @@ func BridgeComposerImages(body []byte, describe func(string, int) (string, proto
 		return body, bridgeUsage, false, fmt.Errorf("serialize grok composer image bridge request: %w", err)
 	}
 	return bridgedBody, bridgeUsage, true, nil
-
 }
 
 func DecodeComposerDescription(body []byte) (string, protocolopenai.ForwardUsage, error) {

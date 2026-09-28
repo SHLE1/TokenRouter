@@ -1,4 +1,3 @@
-// 测试只投影原配置字段，过滤算法继续调用 egress。
 package app
 
 import (

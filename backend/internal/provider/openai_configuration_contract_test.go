@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 通用提供商导入复用 CreateProvider，因此创建构造器同时是导入持久化边界。
+// TestBuildProviderForCreateNormalizesLegacyOpenAIConfigurationForCreateAndImport 验证通用提供商导入复用 CreateProvider，因此创建构造器同时是导入持久化边界。
 func TestBuildProviderForCreateNormalizesLegacyOpenAIConfigurationForCreateAndImport(t *testing.T) {
 	input := &providercore.CreateProviderInput{
 		Name:     "legacy-openai",

@@ -234,7 +234,7 @@ func TestBillingService_GPT56LongContextBoundaryIsExclusive(t *testing.T) {
 	require.InDelta(t, 10*30e-6, cost.OutputCost, 1e-12)
 }
 
-// 外部目录中的显式自定义条目不会再被代码重定向，也不会自动附加内置产品规则。
+// TestPricingService_ExplicitCatalogEntryDoesNotRedirectToSol 验证外部目录中的显式自定义条目不会再被代码重定向，也不会自动附加内置产品规则。
 func TestPricingService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
 	pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.LiteLLMModelPricing{
 		"gpt-5.6":       {InputCostPerToken: 4e-6},

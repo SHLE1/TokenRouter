@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 未绑定分组的普通 Key 在创建时拒绝，不尝试读取或创建默认分组。
+// TestAPIKeyCreateRequiresExplicitPositiveGroup 验证未绑定分组的普通 Key 在创建时拒绝，不尝试读取或创建默认分组。
 func TestAPIKeyCreateRequiresExplicitPositiveGroup(t *testing.T) {
 	zero, negative := int64(0), int64(-1)
 	for _, groupID := range []*int64{nil, &zero, &negative} {
@@ -23,7 +23,7 @@ func TestAPIKeyCreateRequiresExplicitPositiveGroup(t *testing.T) {
 	}
 }
 
-// 历史无组 Key 的字符串保持可管理，加载时不偷偷绑定其它分组。
+// TestAPIKeyLoadingPreservesUnboundLegacyKey 验证历史无组 Key 的字符串保持可管理，加载时不偷偷绑定其它分组。
 func TestAPIKeyLoadingPreservesUnboundLegacyKey(t *testing.T) {
 	repo := &authRepoStub{getByKeyForAuth: func(_ context.Context, key string) (*apikey.APIKey, error) {
 		return &apikey.APIKey{ID: 19, UserID: 7, Key: key, Status: billing.StatusActive, User: &identity.User{ID: 7, Status: billing.StatusActive, Role: identity.RoleUser}}, nil

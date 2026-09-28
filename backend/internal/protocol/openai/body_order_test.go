@@ -19,7 +19,7 @@ func TestReplaceModelInBody_PreservesTopLevelFieldOrder(t *testing.T) {
 	require.Contains(t, resultStr, `"model":"claude-3-5-sonnet-20241022"`)
 }
 
-// 直接检查 JSON 字节位置，避免重新序列化掩盖顺序变化。
+// assertJSONTokenOrder 直接检查 JSON 字节位置，避免重新序列化掩盖顺序变化。
 func assertJSONTokenOrder(t *testing.T, body string, tokens ...string) {
 	t.Helper()
 

@@ -12,20 +12,9 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
-// TestCursorMixedShapeDetection covers the core invariant of the Cursor
-// compatibility fix in ForwardAsChatCompletions: when a client POSTs a
-// Responses-shaped body (has `input`, no `messages`) to /v1/chat/completions,
-// the request must be forwarded as-is with only the `model` field rewritten.
-// The raw `input` array (including Cursor's 80KB system prompt) must not be
-// discarded or reshaped.
-//
-// Context:
-//
-//	Before the fix, the handler unmarshaled the body into ChatCompletionsRequest,
-//	which has no Input field, silently dropping Cursor's input. The subsequent
-//	conversion produced `input: null`, which Codex upstreams reject with
-//	"Invalid type for 'input': expected a string, but got an object".
+// TestCursorMixedShapeDetection 验证 Cursor 向 Chat Completions 入口发送 Responses 请求体时的透传规则。
+// 请求包含 input 且没有 messages 时，只改写 model，保留原 input 数组，包括较大的系统提示词。
+// 将该请求解码为 ChatCompletionsRequest 会丢失 input，并使后续转换产生上游拒绝的 input: null。
 func TestCursorMixedShapeDetection(t *testing.T) {
 	// Representative Cursor cloud body — shape is what matters, content is
 	// abridged. Notice: `input` is a Responses-API array, there is no

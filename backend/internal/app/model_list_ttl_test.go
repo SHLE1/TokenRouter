@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原配置默认值和显式覆盖断言随配置投影迁入组合根。
+// TestGatewayHotpathHelpers_CacheTTLAndStickyContext 验证原配置默认值和显式覆盖断言随配置投影迁入组合根。
 func TestGatewayHotpathHelpers_CacheTTLAndStickyContext(t *testing.T) {
 	t.Run("resolve_models_list_cache_ttl", func(t *testing.T) {
 		require.Equal(t, 15*time.Second, resolveModelsListCacheTTL(nil))

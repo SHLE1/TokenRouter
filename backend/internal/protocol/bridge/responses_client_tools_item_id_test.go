@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// function-only 上游返回 fc_ ID；若还原为 custom_tool_call 仍保留该前缀，
+// TestRestoreResponsesClientToolPayloadRetypesItemIDs 验证function-only 上游返回 fc_ ID；若还原为 custom_tool_call 仍保留该前缀，
 // 客户端下一次重放历史时会被 Responses API 拒绝。
 func TestRestoreResponsesClientToolPayloadRetypesItemIDs(t *testing.T) {
 	mapping := ResponsesClientToolMapping{
@@ -96,7 +96,7 @@ func TestResponsesClientToolStreamRestorerRetypesToolSearchItemID(t *testing.T) 
 	require.Equal(t, "tsc_search1", added[0].Item.ID)
 }
 
-// WS bridge 会把客户端还原后的项目再次发回上游，因此 ctc_/tsc_ 必须恢复为 fc_。
+// TestAdaptResponsesClientToolsRecoversRetypedItemID 验证WS bridge 会把客户端还原后的项目再次发回上游，因此 ctc_/tsc_ 必须恢复为 fc_。
 func TestAdaptResponsesClientToolsRecoversRetypedItemID(t *testing.T) {
 	req := map[string]any{
 		"tools": []any{

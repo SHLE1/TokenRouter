@@ -1,4 +1,3 @@
-// 本文件维护平台消息缓存断点，保留原 TTL 与最后用户消息定位语义。
 package anthropic
 
 import (

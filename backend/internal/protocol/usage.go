@@ -1,4 +1,3 @@
-// 公共计量值不包含供应商、定价或结算依赖。
 package protocol
 
 // ClaudeUsage 表示Claude API返回的usage信息

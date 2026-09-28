@@ -22,7 +22,7 @@ func (f rpmCheckFixture) Check(ctx context.Context, user *scheduler.RPMUser, gro
 	return f(ctx, user, group)
 }
 
-// 准入拒绝不得消耗RPM；等待后的资金复查也不能再次累计。
+// TestFundingAdmissionPreservesOrderAndWaitBoundary 验证准入拒绝不得消耗RPM；等待后的资金复查也不能再次累计。
 func TestFundingAdmissionPreservesOrderAndWaitBoundary(t *testing.T) {
 	for _, mode := range []string{"rejected", "accepted", "after_wait"} {
 		t.Run(mode, func(t *testing.T) {

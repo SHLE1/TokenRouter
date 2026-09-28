@@ -1,4 +1,3 @@
-// 非零 Anthropic 用量合并保留旧调用顺序与缓存明细边界。
 package anthropic
 
 import (

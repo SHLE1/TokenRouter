@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 验证视图保留首个重复字段、宽松读取及不展开未知字段的补丁行为。
+// TestOpenAIViewCompatibility 验证视图保留首个重复字段、宽松读取及不展开未知字段的补丁行为。
 func TestOpenAIViewCompatibility(t *testing.T) {
 	body := []byte(`{"model":" first ","model":"second","stream":true,"input":[{"future":{"value":123456789012345678}}],"reasoning":{"effort":" high "},"service_tier":" priority "}`)
 	view := NewOpenAIRequestView(body)
@@ -26,6 +26,7 @@ func TestOpenAIViewCompatibility(t *testing.T) {
 	require.False(t, gjson.GetBytes(patched, "service_tier").Exists())
 	require.Equal(t, " high ", gjson.GetBytes(body, "reasoning.effort").String())
 }
+
 func TestOpenAIViewDisabledPatches(t *testing.T) {
 	view := NewOpenAIRequestView([]byte(`{"model":"gpt-5"}`))
 	view.MarkPatchSet(`unsupported\.field`, true)

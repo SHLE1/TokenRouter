@@ -1,4 +1,3 @@
-// 兼容请求字段与工具 ID 前缀只依据 wire 值判断，不读取提供商或配置。
 package openai
 
 import (

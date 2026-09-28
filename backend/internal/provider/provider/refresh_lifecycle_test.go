@@ -23,7 +23,7 @@ func (p *refreshStartPager) ListOAuthRefreshCandidatePage(ctx context.Context, _
 	return nil, ctx.Err()
 }
 
-// 重复 Start 不能并发开启两轮立即扫描，即使两个循环共享同一个取消 context。
+// TestTokenRefreshStartIsIdempotent 验证重复 Start 不能并发开启两轮立即扫描，即使两个循环共享同一个取消 context。
 func TestTokenRefreshStartIsIdempotent(t *testing.T) {
 	p := &refreshStartPager{entered: make(chan struct{}, 2)}
 	s := provider.NewBackgroundRefreshService(provider.BackgroundRefreshOptions{Tuning: &provider.RefreshTuning{Enabled: true}, Pager: p, Registrations: []provider.RefreshRegistration{{Platform: provider.PlatformOpenAI, Refresher: &tokenRefreshTestRefresher{}}}})

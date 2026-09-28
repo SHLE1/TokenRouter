@@ -1,4 +1,3 @@
-// Coding Plan 的原窗口投影，百分比不代表货币余额。
 package usageview
 
 // CNQuotaTier 表示 Coding Plan 的滚动用量窗口。

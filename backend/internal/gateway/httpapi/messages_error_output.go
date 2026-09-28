@@ -1,4 +1,3 @@
-// 本文件拥有三种文本协议的终止错误输出，不决定重试、健康或资金处理。
 package httpapi
 
 import (
@@ -36,7 +35,7 @@ func (h MessagesErrorOutput) StreamError(c *gin.Context, status int, errType, me
 	h.StreamErrorWithCode(c, status, errType, "", message, streamStarted)
 }
 
-// 旧文本输出委托 gateway/httpapi 的唯一实现。
+// StreamErrorWithCode 旧文本输出委托 gateway/httpapi 的唯一实现。
 func (h MessagesErrorOutput) StreamErrorWithCode(c *gin.Context, status int, errType, code, message string, streamStarted bool) {
 	WriteAnthropicStreamError(c, status, errType, code, message, streamStarted, MarkOpsStreamError)
 }
@@ -85,7 +84,7 @@ func (h MessagesErrorOutput) Error(c *gin.Context, status int, errType, message 
 	h.ErrorWithCode(c, status, errType, "", message)
 }
 
-// 旧文本输出委托 gateway/httpapi 的唯一实现。
+// ErrorWithCode 旧文本输出委托 gateway/httpapi 的唯一实现。
 func (h MessagesErrorOutput) ErrorWithCode(c *gin.Context, status int, errType, code, message string) {
 	WriteAnthropicError(c, status, errType, code, message)
 }

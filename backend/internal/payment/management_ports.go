@@ -1,4 +1,3 @@
-// 支付管理存储以值和明确操作表达，不向核心暴露 ORM 查询构造器。
 package payment
 
 import "context"

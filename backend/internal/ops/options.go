@@ -1,4 +1,3 @@
-// Options 只包含观测运行时实际读取的配置；装配层负责投影。
 package ops
 
 import (

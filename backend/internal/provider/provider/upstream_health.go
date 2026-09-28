@@ -65,7 +65,7 @@ func (s *UpstreamHealth) ApplyUpstreamError(ctx context.Context, provider *provi
 	return decision
 }
 
-// handleDefaultUpstreamError 只处理非池模式、未命中显式策略时的平台默认提供商状态。
+// HandleDefault 只处理非池模式、未命中显式策略时的平台默认提供商状态。
 func (s *UpstreamHealth) HandleDefault(ctx context.Context, provider *providercore.Record, observation HealthObservation) (shouldDisable bool) {
 	statusCode, headers, responseBody := observation.Status, observation.Headers, observation.Body
 	if provider == nil {

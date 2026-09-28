@@ -1,4 +1,3 @@
-// Vertex Batch/GCS 只负责技术请求和对象流，任务状态及安全删除编排留调用方。
 package vertex
 
 import (
@@ -73,6 +72,7 @@ func NormalizeVertexBatchModelPath(model string) string {
 	}
 	return "publishers/google/models/" + model
 }
+
 func BuildVertexBatchPredictionJobsEndpoint(baseURL, projectID, location string) (string, error) {
 	projectID = strings.TrimSpace(projectID)
 	location = strings.TrimSpace(location)

@@ -1,4 +1,3 @@
-// HTTP 执行参数复用原生健康、会话和恢复能力。
 package httpapi
 
 import (
@@ -113,7 +112,7 @@ func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, 
 	}
 }
 
-// 按已有解码缓存读取并剥离一次密文，不改变 JSON 数字及缓存复用语义。
+// prepareOpenAIHTTPEncryptedRetry 按已有解码缓存读取并剥离一次密文，不改变 JSON 数字及缓存复用语义。
 func prepareOpenAIHTTPEncryptedRetry(body []byte, decode func([]byte) (map[string]any, error)) ([]byte, bool, error) {
 	decoded, err := decode(body)
 	if err != nil {

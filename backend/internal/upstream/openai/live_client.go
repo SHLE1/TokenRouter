@@ -1,4 +1,3 @@
-// Live 原生客户端只拥有创建请求和 sideband 连接；提供商选择、租约与结算由调用方负责。
 package openai
 
 import (

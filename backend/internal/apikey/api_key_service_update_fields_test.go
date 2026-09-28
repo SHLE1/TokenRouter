@@ -126,7 +126,7 @@ func TestAPIKeyUpdateClearsModelMappingWithEmptyObject(t *testing.T) {
 	require.Equal(t, []apikey.APIKeyUpdateFields{{ModelMapping: true}}, repo.updateFields)
 }
 
-// 显式重置仍需声明对应的列，避免收窄写入列时把功能改坏。
+// TestAPIKeyUpdate_DeclaresUsageColumnsOnExplicitReset 验证显式重置仍需声明对应的列，避免收窄写入列时把功能改坏。
 func TestAPIKeyUpdate_DeclaresUsageColumnsOnExplicitReset(t *testing.T) {
 	reset := true
 	svc, repo := newUpdateFieldsAPIKeyService(&apikey.APIKey{
@@ -141,7 +141,7 @@ func TestAPIKeyUpdate_DeclaresUsageColumnsOnExplicitReset(t *testing.T) {
 	require.Equal(t, []apikey.APIKeyUpdateFields{{QuotaUsed: true, RateLimitUsage: true}}, repo.updateFields)
 }
 
-// 配额扩容会顺带把 quota_exhausted 复活为 active，此时必须声明 status。
+// TestAPIKeyUpdate_DeclaresStatusWhenReactivated 验证配额扩容会顺带把 quota_exhausted 复活为 active，此时必须声明 status。
 func TestAPIKeyUpdate_DeclaresStatusWhenReactivated(t *testing.T) {
 	quota := 500.0
 	svc, repo := newUpdateFieldsAPIKeyService(&apikey.APIKey{
@@ -153,7 +153,7 @@ func TestAPIKeyUpdate_DeclaresStatusWhenReactivated(t *testing.T) {
 	require.Equal(t, []apikey.APIKeyUpdateFields{{Quota: true, Status: true}}, repo.updateFields)
 }
 
-// 计费热路径把 Key 标记为配额耗尽时只写 status，
+// TestUpdateQuotaUsed_ExhaustedMarkOnlyDeclaresStatus 验证计费热路径把 Key 标记为配额耗尽时只写 status，
 // 否则会把刚原子递增的 quota_used 按快照覆盖掉。
 func TestUpdateQuotaUsed_ExhaustedMarkOnlyDeclaresStatus(t *testing.T) {
 	repo := &updateFieldsAPIKeyRepoStub{key: &apikey.APIKey{

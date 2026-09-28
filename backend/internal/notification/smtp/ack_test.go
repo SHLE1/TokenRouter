@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 在 QUIT 时取消可证明 DATA 的成功响应已被客户端处理；无 DATA 响应则保持结果不明。
+// TestSMTPAcknowledgementCancellationBoundary 验证在 QUIT 时取消可证明 DATA 的成功响应已被客户端处理；无 DATA 响应则保持结果不明。
 func TestSMTPAcknowledgementCancellationBoundary(t *testing.T) {
 	for _, ack := range []bool{true, false} {
 		name := "unknown-without-ack"

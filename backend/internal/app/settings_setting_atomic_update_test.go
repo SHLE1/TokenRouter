@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 验证后段校验失败时前段配置是否已经写入。
+// TestSettingsRejectedFastPolicyHasNoWrites 验证后段校验失败时前段配置是否已经写入。
 func TestSettingsRejectedFastPolicyHasNoWrites(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{site.SettingKeySiteName: "before"})
 	rec := doUpdateSettings(t, h, map[string]any{"site_name": "after", "openai_fast_policy_settings": map[string]any{"rules": []map[string]any{{"service_tier": "priority", "action": "bogus", "scope": "all"}}}}, nil)

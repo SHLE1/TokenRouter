@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 分组直读只获得模型投影；平台目录仍在每次实际读取时取得，返回值不污染目录。
+// TestRoutingGroupProjectionKeepsLazyModelDefaults 验证分组直读只获得模型投影；平台目录仍在每次实际读取时取得，返回值不污染目录。
 func TestRoutingGroupProjectionKeepsLazyModelDefaults(t *testing.T) {
 	calls := 0
 	catalog := map[string]string{"model-b": "model-b"}

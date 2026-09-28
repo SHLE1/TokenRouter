@@ -1,9 +1,8 @@
-// 图片模型族识别供平台与任务调用，共享纯实现而不携带提供商或传输状态。
 package upstream
 
 import "strings"
 
-// IsImageGenerationModel 判断模型是否为图片生成模型
+// IsGeminiImageGenerationModel 判断模型是否为图片生成模型
 // 支持的模型：gemini-3.1-flash-image, gemini-3-pro-image, gemini-2.5-flash-image 等
 func IsGeminiImageGenerationModel(model string) bool {
 	modelLower := strings.ToLower(model)

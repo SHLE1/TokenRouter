@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 真实 WS 组合根在升级和依赖拒绝前不读报文，关闭仍先于新连接处理。
+// TestOpenAIWSAssemblyUpgradeAndStopBoundaries 验证真实 WS 组合根在升级和依赖拒绝前不读报文，关闭仍先于新连接处理。
 func TestOpenAIWSAssemblyUpgradeAndStopBoundaries(t *testing.T) {
 	activity := &gatewayRequestActivity{Operations: lifecycle.NewOperations("ws-entry-contract")}
 	common := provideOpenAIAttemptBindings(nil, nil, nil, nil, nil, nil, GatewayCompletionRecorders{}, nil, nil, nil, nil, nil, nil, nil, nil, nil)

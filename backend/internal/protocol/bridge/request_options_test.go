@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 相同模型名的转换只受显式行为选项影响，不在协议内识别型号。
+// TestRequestOptionsAreIndependentOfModelName 验证相同模型名的转换只受显式行为选项影响，不在协议内识别型号。
 func TestRequestOptionsAreIndependentOfModelName(t *testing.T) {
 	temperature := 0.4
 	request := &AnthropicRequest{

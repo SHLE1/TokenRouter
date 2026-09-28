@@ -1,4 +1,3 @@
-// Package composite 保存综合管理接口的跨模块值投影，不承载配置规则或运行状态。
 package composite
 
 import (

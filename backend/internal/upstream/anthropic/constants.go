@@ -1,4 +1,3 @@
-// Package claude provides constants and helpers for Claude API integration.
 package anthropic
 
 import "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"

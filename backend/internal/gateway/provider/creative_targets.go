@@ -1,4 +1,3 @@
-// 创作目标在单次任务尝试内绑定凭据、出站参数及供应商执行能力。
 package provider
 
 import (

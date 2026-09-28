@@ -208,7 +208,7 @@ func TestOpenAIGatewayService_Forward_DecodedMutationKeepsLaterFieldDeletes(t *t
 	require.Equal(t, "png", gjson.GetBytes(upstream.lastBody, "tools.0.output_format").String())
 }
 
-// #4417：/v1/responses 原生转发路径需将 Chat-Completions 风格的 max_tokens 归一化为
+// TestOpenAIGatewayService_Forward_NormalizesMaxTokensAndStripsPromptCacheOptions 验证#4417：/v1/responses 原生转发路径需将 Chat-Completions 风格的 max_tokens 归一化为
 // max_output_tokens，并移除兼容上游不接受的 prompt_cache_options。
 func TestOpenAIGatewayService_Forward_NormalizesMaxTokensAndStripsPromptCacheOptions(t *testing.T) {
 	runForward := func(t *testing.T, body []byte) []byte {

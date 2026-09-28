@@ -1,4 +1,3 @@
-// LiveCallRequest 保留 SDP 与未改写的 session wire JSON。
 package openai
 
 import (

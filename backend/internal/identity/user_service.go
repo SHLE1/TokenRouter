@@ -1001,7 +1001,7 @@ func (s *UserService) SendNotifyEmailCode(ctx context.Context, userID int64, ema
 	return nil
 }
 
-// ProfileCheckNotifyCodeRateLimit checks both email cooldown and user-level rate limit.
+// ProfileCheckNotifyCodeRateLimitWithClock 使用指定时钟检查邮箱冷却时间和用户级限流。
 func ProfileCheckNotifyCodeRateLimitWithClock(ctx context.Context, cache EmailCache, userID int64, email string, now func() time.Time) error {
 	existing, err := cache.GetNotifyVerifyCode(ctx, email)
 	if err == nil && existing != nil {
@@ -1016,7 +1016,7 @@ func ProfileCheckNotifyCodeRateLimitWithClock(ctx context.Context, cache EmailCa
 	return nil
 }
 
-// ProfileSaveNotifyVerifyCode saves the verification code to cache.
+// ProfileSaveNotifyVerifyCodeWithClock 使用指定时钟将验证码保存到缓存。
 func ProfileSaveNotifyVerifyCodeWithClock(ctx context.Context, cache EmailCache, email, code string, now func() time.Time) error {
 	data := &VerificationCodeData{
 		Code:      code,
@@ -1039,7 +1039,7 @@ func (s *UserService) VerifyAndAddNotifyEmail(ctx context.Context, userID int64,
 	return s.ProfileAddOrVerifyNotifyEmail(ctx, userID, email)
 }
 
-// ProfileVerifyNotifyCode validates the verification code against the cached data.
+// ProfileVerifyNotifyCodeWithClock 使用指定时钟校验验证码与缓存记录。
 func ProfileVerifyNotifyCodeWithClock(ctx context.Context, cache EmailCache, email, code string, now func() time.Time) error {
 	data, err := cache.GetNotifyVerifyCode(ctx, email)
 	if err != nil || data == nil {

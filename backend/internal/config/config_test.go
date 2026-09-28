@@ -2630,7 +2630,7 @@ func TestLoad_DefaultGatewayImageStreamConfig(t *testing.T) {
 	}
 }
 
-// 旧部署参数作为未知键忽略，不改变任何启动配置。
+// TestLoadIgnoresLegacyRunMode 验证旧部署参数作为未知键忽略，不改变任何启动配置。
 func TestLoadIgnoresLegacyRunMode(t *testing.T) {
 	for _, legacy := range []struct{ name, env, yaml string }{
 		{name: "未设置"},

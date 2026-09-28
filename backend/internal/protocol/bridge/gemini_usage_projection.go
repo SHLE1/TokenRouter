@@ -1,4 +1,3 @@
-// 共用 Google wire 用量投影保持字段与 nil 语义，不持有平台执行状态。
 package bridge
 
 import "github.com/TokenFlux/TokenRouter/internal/protocol"

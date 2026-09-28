@@ -59,7 +59,7 @@ func TestOpenAIImagesJSONKeepalive_KeepsOAuthNonStreamResponseValid(t *testing.T
 	require.Equal(t, "aW1hZ2U=", gjson.Get(rec.Body.String(), "data.0.b64_json").String())
 }
 
-// 回归：failover 第 2+ 轮时，上一轮心跳残留的空白字节不得被误判为“已写响应”，
+// TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver 验证回归：failover 第 2+ 轮时，上一轮心跳残留的空白字节不得被误判为“已写响应”，
 // 可重试上游错误必须仍转换为 UpstreamFailoverError，不能吞掉换号机会。
 func TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver(t *testing.T) {
 	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat","response_format":"b64_json"}`)
@@ -124,7 +124,7 @@ func TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver(t *testi
 
 // 等待实际首个心跳提交；Writer.Written 使用生产包装器的同一把锁，不读取其私有状态。
 
-// 等待实际首个心跳提交；Writer.Written 使用生产包装器的同一把锁，不读取其私有状态。
+// waitForImageExecutionKeepalive 等待实际首个心跳提交；Writer.Written 使用生产包装器的同一把锁，不读取其私有状态。
 func waitForImageExecutionKeepalive(t *testing.T, c *gin.Context) {
 	t.Helper()
 	require.True(t, OpenAIImagesJSONKeepalivePresent(c))

@@ -246,7 +246,7 @@ func TestSchedulerFallbackReturnsDBProvidersWhenBucketRetired(t *testing.T) {
 	require.Zero(t, published)
 }
 
-// 夹具提供锁持有者句柄，并控制获取失败与等待结果。
+// AcquireBucketLease 夹具提供锁持有者句柄，并控制获取失败与等待结果。
 func (c *retirementRaceCache) AcquireBucketLease(ctx context.Context, bucket SchedulerBucket, ttl time.Duration) (*BucketLease, bool, error) {
 	ok, err := c.TryLockBucket(ctx, bucket, ttl)
 	if err != nil || !ok {

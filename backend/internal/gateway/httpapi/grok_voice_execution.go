@@ -160,7 +160,7 @@ func (c grokUpstreamFrames) WriteFrame(ctx context.Context, _ upstreamcore.Frame
 }
 func (c grokUpstreamFrames) Close() error { return c.conn.Close() }
 
-// 装配既有 WS dialer、代理和 TLS 快照，不更改共享客户端。
+// grokRealtimeOptions 装配既有 WS dialer、代理和 TLS 快照，不更改共享客户端。
 func (s *GrokExecutor) grokRealtimeOptions(provider *gatewayprovider.ExecutionProvider, base, token, model string) mediaprovider.RealtimeOptions {
 	proxyURL := ""
 	if provider.Record.ProxyID != nil && provider.Record.Proxy != nil {

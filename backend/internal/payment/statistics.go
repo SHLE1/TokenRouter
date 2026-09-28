@@ -1,4 +1,3 @@
-// 支付统计口径保留自然日、币种及原批量读取顺序。
 package payment
 
 import (
@@ -20,6 +19,7 @@ func (s *OrderQueries) GetDashboardStats(ctx context.Context, days int) (*Dashbo
 
 	return s.GetDashboardStatsWithRange(ctx, start, end)
 }
+
 func (s *OrderQueries) GetDashboardStatsWithRange(ctx context.Context, start, end time.Time) (*DashboardStats, error) {
 	paidStatuses := []string{OrderStatusCompleted, OrderStatusPaid, OrderStatusRecharging}
 	todayNow := s.now().In(start.Location())
@@ -53,6 +53,7 @@ func (s *OrderQueries) GetDashboardStatsWithRange(ctx context.Context, start, en
 
 	return st, nil
 }
+
 func (s *OrderQueries) StatsFillPaymentDashboardTodayStats(ctx context.Context, st *DashboardStats, todayStart time.Time, paidStatuses []string) error {
 	// 今日卡片保持自然日口径，不跟随自定义历史范围变化。
 	todayOrders, err := s.store.PaidOrders(ctx, todayStart, todayStart.AddDate(0, 0, 1), paidStatuses)
@@ -68,6 +69,7 @@ func (s *OrderQueries) StatsFillPaymentDashboardTodayStats(ctx context.Context, 
 	st.TodayCount = len(todayOrders)
 	return nil
 }
+
 func StatsComputeBasicStats(st *DashboardStats, orders []*Order, todayStart time.Time) {
 	st.TotalAmount = make(CurrencyAmounts)
 	st.TodayAmount = make(CurrencyAmounts)
@@ -91,6 +93,7 @@ func StatsComputeBasicStats(st *DashboardStats, orders []*Order, todayStart time
 	StatsRoundCurrencyAmounts(st.TotalAmount)
 	StatsRoundCurrencyAmounts(st.TodayAmount)
 }
+
 func StatsComputeReasoningPointPurchaseUnitPrice(st *DashboardStats, orders []*Order) {
 	var totalPrincipal, totalReasoningPoints float64
 	var orderCount int
@@ -108,6 +111,7 @@ func StatsComputeReasoningPointPurchaseUnitPrice(st *DashboardStats, orders []*O
 		st.AvgReasoningPointPurchaseUnitPrice = math.Round(totalPrincipal/totalReasoningPoints*10000) / 10000
 	}
 }
+
 func StatsPaymentDashboardReasoningPointPurchase(o *Order) (principal float64, points float64, ok bool) {
 	switch o.OrderType {
 	case OrderTypeSubscription:
@@ -125,6 +129,7 @@ func StatsPaymentDashboardReasoningPointPurchase(o *Order) (principal float64, p
 		return principal, o.Amount, true
 	}
 }
+
 func StatsBuildDailySeries(orders []*Order, start, end time.Time) []DailyStats {
 	dailyMap := make(map[string]*DailyStats)
 	for _, o := range orders {
@@ -157,10 +162,12 @@ func StatsBuildDailySeries(orders []*Order, start, end time.Time) []DailyStats {
 	}
 	return series
 }
+
 func StatsStartOfPaymentStatsDay(t time.Time) time.Time {
 	inLoc := t.In(t.Location())
 	return time.Date(inLoc.Year(), inLoc.Month(), inLoc.Day(), 0, 0, 0, 0, inLoc.Location())
 }
+
 func StatsBuildMethodDistribution(orders []*Order) []PaymentMethodStat {
 	methodMap := make(map[string]*PaymentMethodStat)
 	for _, o := range orders {
@@ -182,6 +189,7 @@ func StatsBuildMethodDistribution(orders []*Order) []PaymentMethodStat {
 	})
 	return methods
 }
+
 func (s *OrderQueries) StatsLoadPaymentDashboardPlanNames(ctx context.Context, orders []*Order) (map[int64]string, error) {
 	planIDSet := make(map[int64]struct{})
 	for _, o := range orders {
@@ -198,6 +206,7 @@ func (s *OrderQueries) StatsLoadPaymentDashboardPlanNames(ctx context.Context, o
 	}
 	return s.store.PlanNames(ctx, planIDs)
 }
+
 func StatsBuildPurchaseDistribution(orders []*Order, planNames map[int64]string) []PurchaseDistributionStat {
 	distributionMap := make(map[string]*PurchaseDistributionStat)
 	for _, o := range orders {
@@ -223,6 +232,7 @@ func StatsBuildPurchaseDistribution(orders []*Order, planNames map[int64]string)
 	})
 	return items
 }
+
 func StatsPurchaseDistributionKey(o *Order, planNames map[int64]string) (string, *PurchaseDistributionStat) {
 	// 按量充值统一成一个分组，订阅订单按套餐 ID 聚合，名称优先显示当前套餐名。
 	if o.OrderType != OrderTypeSubscription {
@@ -249,6 +259,7 @@ func StatsPurchaseDistributionKey(o *Order, planNames map[int64]string) (string,
 	}
 	return OrderTypeSubscription + ":" + key, &PurchaseDistributionStat{Type: OrderTypeSubscription, Label: label, PlanID: planID}
 }
+
 func StatsBuildTopUsers(orders []*Order) TopUsersByCurrency {
 	userMap := make(map[string]map[int64]*TopUserStat)
 	for _, o := range orders {
@@ -286,11 +297,13 @@ func StatsBuildTopUsers(orders []*Order) TopUsersByCurrency {
 	}
 	return result
 }
+
 func StatsRoundCurrencyAmounts(amounts CurrencyAmounts) {
 	for currency, amount := range amounts {
 		amounts[currency] = StatsRoundAmount(amount)
 	}
 }
+
 func StatsRoundAmount(amount float64) float64 {
 	return math.Round(amount*100) / 100
 }

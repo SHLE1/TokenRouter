@@ -1,4 +1,3 @@
-// 兼容读取器保留原逐行缓冲、超时和 usage 优先级，不决定是否切换提供商。
 package openai
 
 import (

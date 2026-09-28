@@ -35,7 +35,7 @@ func (r *Runtime) Responses(ctx context.Context, output HTTPBoundary, target *ga
 	return messagesResult(result), err
 }
 
-// 同步结果保留浅复制行为；每条转换流的状态不随结果传出。
+// messagesResult 同步结果保留浅复制行为；每条转换流的状态不随结果传出。
 func messagesResult(result *forward.Result) *forward.MessagesResult {
 	if result == nil {
 		return nil

@@ -1,4 +1,3 @@
-// 本文件构造 Gemini 平台请求，凭据与目标策略只通过显式投影提供。
 package gemini
 
 import (

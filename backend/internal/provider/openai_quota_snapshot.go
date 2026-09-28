@@ -1,4 +1,3 @@
-// 提供商缓存字段及日期组装复用原平台窗口，资金计量不在这里执行。
 package provider
 
 import (

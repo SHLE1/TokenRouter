@@ -66,7 +66,7 @@ func TestProviderTestService_OpenAISuccessPersistsSnapshotFromHeaders(t *testing
 	require.Contains(t, recorder.Body.String(), "test_complete")
 }
 
-// 管理员显式测试未知名称时保持透传，不再自动改成 Sol。
+// TestProviderTestService_OpenAIOAuthTestDoesNotRedirectBareGPT56 验证管理员显式测试未知名称时保持透传，不再自动改成 Sol。
 func TestProviderTestService_OpenAIOAuthTestDoesNotRedirectBareGPT56(t *testing.T) {
 	ctx, _ := newTestContext()
 
@@ -579,7 +579,7 @@ func TestProviderTestService_OpenAIChatCompletionsPathRejectsNonJSONStream(t *te
 	require.NotContains(t, recorder.Body.String(), `"success":true`)
 }
 
-// 协议选择必须覆盖当前测试路由，但不能改变提供商保存的路由模式。
+// TestProviderTestServiceExplicitProtocolDoesNotMutateProvider 验证协议选择必须覆盖当前测试路由，但不能改变提供商保存的路由模式。
 func TestProviderTestServiceExplicitProtocolDoesNotMutateProvider(t *testing.T) {
 	for _, protocol := range []string{"responses", "chat_completions"} {
 		t.Run(protocol, func(t *testing.T) {

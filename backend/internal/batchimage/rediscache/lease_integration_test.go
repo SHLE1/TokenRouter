@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同一进程的旧持有者与接管者通过真实 Redis 验证现有锁语义。
+// TestBatchImageLostOwner 验证同一进程的旧持有者与接管者通过真实 Redis 验证现有锁语义。
 func TestBatchImageLostOwner(t *testing.T) {
 	t.Run("renewal_reports_loss", func(t *testing.T) {
 		ctx := context.Background()

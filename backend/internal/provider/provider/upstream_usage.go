@@ -1,5 +1,3 @@
-// @project-doc docs/interfaces/upstream_usage.md#native_usage_adapters
-// 供应商注册与技术请求装配归提供商 Adapter；查询缓存、身份复核及生命周期归提供商核心。
 package provider
 
 import (
@@ -20,6 +18,10 @@ type UpstreamUsageExecutionOptions struct {
 	BaseURL   func(*provider.Record) string
 	Request   func(*provider.Record, provider.UpstreamUsageQueryConfig) (*usagecontract.Request, error)
 }
+
+// UpstreamUsageExecution 持有供应商适配器注册表并装配技术请求。
+// 查询缓存、身份复核及生命周期由提供商核心负责。
+// @project-doc docs/interfaces/upstream_usage.md#native_usage_adapters
 type UpstreamUsageExecution struct {
 	Options  UpstreamUsageExecutionOptions
 	mu       sync.RWMutex

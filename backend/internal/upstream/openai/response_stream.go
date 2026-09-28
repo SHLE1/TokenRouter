@@ -1,4 +1,3 @@
-// 原生 Responses SSE 读取器拥有逐帧状态、缓冲与取消收尾，实际写出由同步 OutputSink 执行。
 package openai
 
 import (

@@ -1,6 +1,5 @@
 //go:build integration
 
-// 真实 Redis 验证取消后不回读，也不释放其他持有者的刷新锁。
 package provider_test
 
 import (

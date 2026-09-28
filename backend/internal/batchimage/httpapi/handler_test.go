@@ -29,6 +29,7 @@ func (s *contractBatchUseCases) Submit(_ context.Context, owner batchimage.Batch
 	s.key = key
 	return &batchimage.BatchImagePublicBatch{}, nil
 }
+
 func (s *contractBatchUseCases) MarkDownloaded(context.Context, batchimage.BatchImageOwner, string) error {
 	s.marked.Add(1)
 	return nil
@@ -48,7 +49,7 @@ func (d *contractDownload) OpenItemContent(context.Context, batchimage.BatchImag
 	return &batchimage.BatchImageContentStream{Reader: contractBody{Reader: strings.NewReader("image-data"), closed: &d.closed}, ContentType: "image/png", Filename: "output.png"}, nil
 }
 
-// HTTP 层保留付款主体、会话和幂等输入，不能让任务核心再次解析凭据。
+// TestBatchHTTPSubmitProjectionAndParseOrder 验证HTTP 层保留付款主体、会话和幂等输入，不能让任务核心再次解析凭据。
 func TestBatchHTTPSubmitProjectionAndParseOrder(t *testing.T) {
 	usecases := &contractBatchUseCases{}
 	var authCalls atomic.Int64
@@ -75,7 +76,7 @@ func TestBatchHTTPSubmitProjectionAndParseOrder(t *testing.T) {
 	require.Equal(t, "session-1", *usecases.input.SessionID)
 }
 
-// 下载响应写完后关闭唯一受控流，并按原时机记下载状态。
+// TestBatchHTTPDownloadClosesStream 验证下载响应写完后关闭唯一受控流，并按原时机记下载状态。
 func TestBatchHTTPDownloadClosesStream(t *testing.T) {
 	usecases := &contractBatchUseCases{}
 	download := &contractDownload{}

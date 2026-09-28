@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 展示必须补齐首段、中间空档和尾段，并与同一上下文的实际单价一致。
+// TestPricingDisplayPreservesDefaultRanges 验证展示必须补齐首段、中间空档和尾段，并与同一上下文的实际单价一致。
 func TestPricingDisplayPreservesDefaultRanges(t *testing.T) {
 	for _, source := range []string{"channel"} {
 		for _, freeFast := range []bool{false, true} {
@@ -76,7 +76,7 @@ func TestPricingDisplayPreservesDefaultRanges(t *testing.T) {
 	}
 }
 
-// 默认价与全部区间价格相同才允许压平；缺少基础价的范围不能用其它区间价代替。
+// TestPricingDisplayOnlyFlattensCompleteUniformRanges 验证默认价与全部区间价格相同才允许压平；缺少基础价的范围不能用其它区间价代替。
 func TestPricingDisplayOnlyFlattensCompleteUniformRanges(t *testing.T) {
 	rCalculator := billingtestkit.ResolverCalculator()
 	for _, pricedBase := range []bool{true, false} {
@@ -105,7 +105,7 @@ func TestPricingDisplayOnlyFlattensCompleteUniformRanges(t *testing.T) {
 	}
 }
 
-// 倍率只调整存在的基础价；显式默认零价和显式区间零价仍是有效免费价格。
+// TestPricingIntervalsDistinguishMissingBaseFromExplicitZero 验证倍率只调整存在的基础价；显式默认零价和显式区间零价仍是有效免费价格。
 func TestPricingIntervalsDistinguishMissingBaseFromExplicitZero(t *testing.T) {
 	for _, source := range []string{"channel"} {
 		for _, kind := range []string{"missing", "builtin", "zero_base", "zero_interval"} {
@@ -160,7 +160,7 @@ func TestPricingIntervalsDistinguishMissingBaseFromExplicitZero(t *testing.T) {
 	}
 }
 
-// 部分范围有显式价格不代表其它范围也有价；缺价的倍率区间必须继续报缺价。
+// TestPricingMissingMultiplierRangeDoesNotBorrowOtherIntervalPrice 验证部分范围有显式价格不代表其它范围也有价；缺价的倍率区间必须继续报缺价。
 func TestPricingMissingMultiplierRangeDoesNotBorrowOtherIntervalPrice(t *testing.T) {
 	rCalculator := billingtestkit.ResolverCalculator()
 	r := billingtestkit.SharedPriceResolver(rCalculator, 1, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{"custom-partial"}, BillingMode: routing.BillingModeToken, Intervals: []routing.PricingInterval{{MinTokens: 0, MaxTokens: testPtrInt(100), InputMultiplier: testPtrFloat64(2)}, {MinTokens: 100, InputPrice: testPtrFloat64(0.003)}}}})

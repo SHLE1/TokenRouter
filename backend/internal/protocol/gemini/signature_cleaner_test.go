@@ -1,4 +1,3 @@
-// 使用占位签名验证递归净化规则。
 package gemini
 
 import (

@@ -48,7 +48,7 @@ func doUpdateSettings(t *testing.T, h *settingshttp.Handler, body map[string]any
 	return rec
 }
 
-// 开启开关（false→true）：无认证上下文时拒绝，且带专用错误标记。
+// TestUpdateSettingsEnableStepUpRejectsWithoutSession 验证开启开关（false→true）：无认证上下文时拒绝，且带专用错误标记。
 func TestUpdateSettingsEnableStepUpRejectsWithoutSession(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{})
 
@@ -59,7 +59,7 @@ func TestUpdateSettingsEnableStepUpRejectsWithoutSession(t *testing.T) {
 	require.NotEqual(t, "true", repo.values[identity.SettingKeyStepUpEnabled])
 }
 
-// 开启开关：admin API key（机器凭证）一律拒绝，reason 与门控保持一致便于前端分流。
+// TestUpdateSettingsEnableStepUpRejectsAdminAPIKey 验证开启开关：admin API key（机器凭证）一律拒绝，reason 与门控保持一致便于前端分流。
 func TestUpdateSettingsEnableStepUpRejectsAdminAPIKey(t *testing.T) {
 	h, _ := newStepUpSwitchTestHandler(t, map[string]string{})
 
@@ -71,7 +71,7 @@ func TestUpdateSettingsEnableStepUpRejectsAdminAPIKey(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "STEP_UP_ADMIN_API_KEY_FORBIDDEN")
 }
 
-// 开启开关：有认证会话但 userService 未注入时 fail-closed（500），不得放行。
+// TestUpdateSettingsEnableStepUpFailsClosedWithoutUserService 验证开启开关：有认证会话但 userService 未注入时 fail-closed（500），不得放行。
 func TestUpdateSettingsEnableStepUpFailsClosedWithoutUserService(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{})
 
@@ -83,7 +83,7 @@ func TestUpdateSettingsEnableStepUpFailsClosedWithoutUserService(t *testing.T) {
 	require.NotEqual(t, "true", repo.values[identity.SettingKeyStepUpEnabled])
 }
 
-// 关闭开关（true→false）本身是敏感操作：无认证上下文时被 step-up 门控以 401 拦截。
+// TestUpdateSettingsDisableStepUpRequiresStepUp 验证关闭开关（true→false）本身是敏感操作：无认证上下文时被 step-up 门控以 401 拦截。
 func TestUpdateSettingsDisableStepUpRequiresStepUp(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		identity.SettingKeyStepUpEnabled: "true",
@@ -95,7 +95,7 @@ func TestUpdateSettingsDisableStepUpRequiresStepUp(t *testing.T) {
 	require.Equal(t, "true", repo.values[identity.SettingKeyStepUpEnabled])
 }
 
-// 关闭开关：admin API key 被 step-up 门控以 403 拦截。
+// TestUpdateSettingsDisableStepUpRejectsAdminAPIKey 验证关闭开关：admin API key 被 step-up 门控以 403 拦截。
 func TestUpdateSettingsDisableStepUpRejectsAdminAPIKey(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		identity.SettingKeyStepUpEnabled: "true",
@@ -110,7 +110,7 @@ func TestUpdateSettingsDisableStepUpRejectsAdminAPIKey(t *testing.T) {
 	require.Equal(t, "true", repo.values[identity.SettingKeyStepUpEnabled])
 }
 
-// 无状态转换（false→false）：不触发任何转换校验，常规保存成功且默认持久化为 false。
+// TestUpdateSettingsStepUpNoTransitionSkipsGate 验证无状态转换（false→false）：不触发任何转换校验，常规保存成功且默认持久化为 false。
 func TestUpdateSettingsStepUpNoTransitionSkipsGate(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{})
 
@@ -122,7 +122,7 @@ func TestUpdateSettingsStepUpNoTransitionSkipsGate(t *testing.T) {
 	require.Equal(t, "false", repo.values[identity.SettingKeySessionBindingEnabled])
 }
 
-// 保持开启（true→true）：不触发转换校验，常规保存不被打断。
+// TestUpdateSettingsStepUpKeepEnabledSkipsGate 验证保持开启（true→true）：不触发转换校验，常规保存不被打断。
 func TestUpdateSettingsStepUpKeepEnabledSkipsGate(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		identity.SettingKeyStepUpEnabled: "true",
@@ -134,7 +134,7 @@ func TestUpdateSettingsStepUpKeepEnabledSkipsGate(t *testing.T) {
 	require.Equal(t, "true", repo.values[identity.SettingKeyStepUpEnabled])
 }
 
-// 省略字段=保持现值：不含 step_up_enabled/session_binding_enabled 的旧客户端全量保存
+// TestUpdateSettingsOmittedSecuritySwitchesKeepStoredValues 验证省略字段=保持现值：不含 step_up_enabled/session_binding_enabled 的旧客户端全量保存
 // 不得把已开启的安全开关静默重置，也不触发任何转换门控。
 func TestUpdateSettingsOmittedSecuritySwitchesKeepStoredValues(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
@@ -153,7 +153,7 @@ func TestUpdateSettingsOmittedSecuritySwitchesKeepStoredValues(t *testing.T) {
 	require.Equal(t, "true", repo.values[identity.SettingKeyUserEmailChangeEnabled])
 }
 
-// 省略字段在开关本就关闭时同样保持关闭（默认值路径）。
+// TestUpdateSettingsOmittedSecuritySwitchesKeepDisabled 验证省略字段在开关本就关闭时同样保持关闭（默认值路径）。
 func TestUpdateSettingsOmittedSecuritySwitchesKeepDisabled(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{})
 
@@ -166,7 +166,7 @@ func TestUpdateSettingsOmittedSecuritySwitchesKeepDisabled(t *testing.T) {
 	require.Equal(t, "false", repo.values[identity.SettingKeyUserEmailChangeEnabled])
 }
 
-// 显式开启邮箱换绑开关时必须持久化，不能被部分载荷合并逻辑覆盖。
+// TestUpdateSettingsEnablesUserEmailChange 验证显式开启邮箱换绑开关时必须持久化，不能被部分载荷合并逻辑覆盖。
 func TestUpdateSettingsEnablesUserEmailChange(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{})
 
@@ -176,7 +176,7 @@ func TestUpdateSettingsEnablesUserEmailChange(t *testing.T) {
 	require.Equal(t, "true", repo.values[identity.SettingKeyUserEmailChangeEnabled])
 }
 
-// 旧客户端省略新字段时必须保留已有默认上限，不能把它静默改成 0。
+// TestUpdateSettingsOmittedDefaultUserAPIKeyLimitKeepsStoredValue 验证旧客户端省略新字段时必须保留已有默认上限，不能把它静默改成 0。
 func TestUpdateSettingsOmittedDefaultUserAPIKeyLimitKeepsStoredValue(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		identity.SettingKeyDefaultUserAPIKeyLimit: "33",
@@ -188,7 +188,7 @@ func TestUpdateSettingsOmittedDefaultUserAPIKeyLimitKeepsStoredValue(t *testing.
 	require.Equal(t, "33", repo.values[identity.SettingKeyDefaultUserAPIKeyLimit])
 }
 
-// 显式 0 表示不限制，必须与省略字段区分。
+// TestUpdateSettingsExplicitZeroDefaultUserAPIKeyLimit 验证显式 0 表示不限制，必须与省略字段区分。
 func TestUpdateSettingsExplicitZeroDefaultUserAPIKeyLimit(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		identity.SettingKeyDefaultUserAPIKeyLimit: "33",
@@ -200,7 +200,7 @@ func TestUpdateSettingsExplicitZeroDefaultUserAPIKeyLimit(t *testing.T) {
 	require.Equal(t, "0", repo.values[identity.SettingKeyDefaultUserAPIKeyLimit])
 }
 
-// 负数设置在进入持久化前被拒绝，原值保持不变。
+// TestUpdateSettingsRejectsNegativeDefaultUserAPIKeyLimit 验证负数设置在进入持久化前被拒绝，原值保持不变。
 func TestUpdateSettingsRejectsNegativeDefaultUserAPIKeyLimit(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		identity.SettingKeyDefaultUserAPIKeyLimit: "33",
@@ -213,7 +213,7 @@ func TestUpdateSettingsRejectsNegativeDefaultUserAPIKeyLimit(t *testing.T) {
 	require.Equal(t, "33", repo.values[identity.SettingKeyDefaultUserAPIKeyLimit])
 }
 
-// 超过数据库 INTEGER 范围的默认值会导致后续注册失败，必须在保存前拒绝。
+// TestUpdateSettingsRejectsDefaultUserAPIKeyLimitAboveDatabaseRange 验证超过数据库 INTEGER 范围的默认值会导致后续注册失败，必须在保存前拒绝。
 func TestUpdateSettingsRejectsDefaultUserAPIKeyLimitAboveDatabaseRange(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		identity.SettingKeyDefaultUserAPIKeyLimit: "33",
@@ -278,7 +278,7 @@ func TestUpdateSettingsRejectsInvalidForwardedClientIPHeader(t *testing.T) {
 	require.JSONEq(t, `["X-Existing-IP"]`, repo.values[runtimeconfig.SettingKeyForwardedClientIPHeaders])
 }
 
-// 旧 OpenAI 实验调度字段不能静默忽略，否则升级后的面板会误以为设置已生效。
+// TestUpdateSettingsRejectsDeprecatedAdvancedSchedulerFields 验证旧 OpenAI 实验调度字段不能静默忽略，否则升级后的面板会误以为设置已生效。
 func TestUpdateSettingsRejectsDeprecatedAdvancedSchedulerFields(t *testing.T) {
 	for _, field := range []string{
 		"advanced_scheduler_enabled",

@@ -1,4 +1,3 @@
-// 媒体 HTTP Adapter 唯一拥有输出、下载头和传输关闭状态的投影。
 package httpapi
 
 import (

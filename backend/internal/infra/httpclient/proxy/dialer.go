@@ -1,12 +1,3 @@
-// Package proxy 提供统一的代理配置功能
-//
-// 支持的代理协议：
-//   - HTTP/HTTPS: 通过 Transport.Proxy 设置
-//   - SOCKS5: 通过 Transport.DialContext 设置（客户端本地解析 DNS）
-//   - SOCKS5H: 通过 Transport.DialContext 设置（代理端远程解析 DNS，推荐）
-//
-// 注意：proxy.Parse() 会自动将 socks5:// 升级为 socks5h://，
-// 确保 DNS 也由代理端解析，防止 DNS 泄漏。
 package proxy
 
 import (

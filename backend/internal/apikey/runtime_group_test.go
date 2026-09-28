@@ -17,7 +17,7 @@ func (r runtimeGroupRepository) GetByIDLite(context.Context, int64) (*routing.Gr
 	return r.group, nil
 }
 
-// 所有明确回退都必须检查目标权限，不能借已绑定的旧组越过复合范围或专属组授权。
+// TestRuntimeGroupFallbackPermissionBoundaries 验证所有明确回退都必须检查目标权限，不能借已绑定的旧组越过复合范围或专属组授权。
 func TestRuntimeGroupFallbackPermissionBoundaries(t *testing.T) {
 	for _, scenario := range []struct {
 		name                                                     string

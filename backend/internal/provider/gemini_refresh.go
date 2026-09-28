@@ -1,4 +1,3 @@
-// Gemini 刷新资格和凭据合并归提供商，原生交换由同一授权实例提供。
 package provider
 
 import (

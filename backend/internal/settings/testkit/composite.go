@@ -1,4 +1,3 @@
-// Package testkit 只装配综合设置契约使用的原生模块，不拥有设置规则或运行缓存。
 package testkit
 
 import (

@@ -1,4 +1,3 @@
-// 供应商额度查询结果用于提供商管理，不构成用户资金事实。
 package provider
 
 // QuotaResult 额度获取结果

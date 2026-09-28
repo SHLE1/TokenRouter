@@ -822,10 +822,12 @@ func TestExecuteSubscriptionFulfillmentDoesNotDuplicateWorkAfterLegacySuccessAud
 	require.Zero(t, subRepo.CreateCalls)
 }
 
-var _ promotion.AffiliateRepository = (*paymentFulfillmentAffiliateRepoStub)(nil)
-var _ settings.Repository = (*paymentFulfillmentSettingRepoStub)(nil)
+var (
+	_ promotion.AffiliateRepository = (*paymentFulfillmentAffiliateRepoStub)(nil)
+	_ settings.Repository           = (*paymentFulfillmentSettingRepoStub)(nil)
+)
 
-// 替身同步执行事务回调；真实行锁行为由 PostgreSQL 集成验证。
+// WithLockedInviter 替身同步执行事务回调；真实行锁行为由 PostgreSQL 集成验证。
 func (r *paymentFulfillmentAffiliateRepoStub) WithLockedInviter(ctx context.Context, _ int64, fn func(context.Context) error) error {
 	return fn(ctx)
 }

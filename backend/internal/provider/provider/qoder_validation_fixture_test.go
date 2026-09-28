@@ -1,4 +1,3 @@
-// 本文件只为提供商创建和编辑契约保存原生记录，不复制管理规则。
 package provider
 
 import (

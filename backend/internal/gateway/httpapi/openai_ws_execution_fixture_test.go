@@ -142,7 +142,7 @@ func newWSFixture(v wsFixtureInputs) *wsExecutionFixture {
 	return &wsExecutionFixture{OpenAIWebSocketExecutor: ws, Responses: responses, Text: text, choices: choices, options: v.options}
 }
 
-// 测试读取器共享同一设置存储。
+// newExecutionReadersFixture 测试读取器共享同一设置存储。
 func newExecutionReadersFixture(repo settings.Repository, _ *wsFixtureOptions) *gatewayadapter.RuntimeReaders {
 	if repo != nil {
 		repo = settings.New(repo)
@@ -191,7 +191,7 @@ func (r wsFixtureProviderStore) GetByID(_ context.Context, id int64) (*gatewayad
 	return nil, errors.New("provider not found")
 }
 
-// 阻断断言读取原生状态，字段投影与生产提供商健康端口相同。
+// wsFixtureModelBlocked 阻断断言读取原生状态，字段投影与生产提供商健康端口相同。
 func wsFixtureModelBlocked(s *wsExecutionFixture, value *gatewayadapter.ExecutionProvider, model string) bool {
 	if value == nil {
 		return false

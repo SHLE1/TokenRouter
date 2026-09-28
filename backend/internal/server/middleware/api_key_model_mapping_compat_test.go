@@ -1,4 +1,3 @@
-// 中间件测试辅助函数委托 gateway/httpapi。
 package middleware
 
 import (

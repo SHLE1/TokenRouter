@@ -1,4 +1,3 @@
-// Package pagination provides types and helpers for paginated responses.
 package pagination
 
 import "strings"

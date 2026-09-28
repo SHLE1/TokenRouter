@@ -66,7 +66,7 @@ func convertAnthropic(t *testing.T, input string) []AnthropicMessage {
 // 测试使用 call_ 前缀 id，因为 fromResponsesCallIDToAnthropic 会原样透传这类 id，
 // 与 Codex 真实的 call_00_... id 一致；裸 id 会被改写成 toolu_<id>。
 
-// function_call 和 output 之间插入的 developer/审批消息必须移出 tool_use→tool_result 邻接关系，
+// TestAnthropicPairing_DeveloperMessageBetween 验证function_call 和 output 之间插入的 developer/审批消息必须移出 tool_use→tool_result 邻接关系，
 // 这是线上触发 “tool_result 必须在前一条消息有对应 tool_use” 400 的典型形态。
 func TestAnthropicPairing_DeveloperMessageBetween(t *testing.T) {
 	msgs := convertAnthropic(t, `[
@@ -84,7 +84,7 @@ func TestAnthropicPairing_DeveloperMessageBetween(t *testing.T) {
 	}
 }
 
-// 并行工具调用的两个输出都到达时，应保持为一条 assistant 消息包含两个 tool_use，
+// TestAnthropicPairing_ParallelBothAnswered 验证并行工具调用的两个输出都到达时，应保持为一条 assistant 消息包含两个 tool_use，
 // 下一条 user 消息包含两个结果。
 func TestAnthropicPairing_ParallelBothAnswered(t *testing.T) {
 	msgs := convertAnthropic(t, `[
@@ -104,7 +104,7 @@ func TestAnthropicPairing_ParallelBothAnswered(t *testing.T) {
 	require.True(t, sawGrouped, "parallel tool_use blocks should share one assistant message")
 }
 
-// 并行调用中某个 sibling 一直没有输出时，必须丢弃未回答调用，确保剩余 tool_use 都有结果。
+// TestAnthropicPairing_ParallelOneUnanswered 验证并行调用中某个 sibling 一直没有输出时，必须丢弃未回答调用，确保剩余 tool_use 都有结果。
 func TestAnthropicPairing_ParallelOneUnanswered(t *testing.T) {
 	msgs := convertAnthropic(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"q"}]},
@@ -118,7 +118,7 @@ func TestAnthropicPairing_ParallelOneUnanswered(t *testing.T) {
 	}
 }
 
-// 没有对应 tool_use 的孤儿 tool_result 必须丢弃。
+// TestAnthropicPairing_OrphanToolResultDropped 验证没有对应 tool_use 的孤儿 tool_result 必须丢弃。
 func TestAnthropicPairing_OrphanToolResultDropped(t *testing.T) {
 	msgs := convertAnthropic(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"q"}]},
@@ -130,7 +130,7 @@ func TestAnthropicPairing_OrphanToolResultDropped(t *testing.T) {
 	}
 }
 
-// 历史末尾尚无输出的悬空 tool_call 会丢弃只包含该调用的 assistant 消息。
+// TestAnthropicPairing_DanglingCallDropped 验证历史末尾尚无输出的悬空 tool_call 会丢弃只包含该调用的 assistant 消息。
 func TestAnthropicPairing_DanglingCallDropped(t *testing.T) {
 	msgs := convertAnthropic(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"q"}]},
@@ -142,7 +142,7 @@ func TestAnthropicPairing_DanglingCallDropped(t *testing.T) {
 	}
 }
 
-// 基线：单个已回答调用应正确配对，并保留前后轮次。
+// TestAnthropicPairing_SingleCall 验证基线：单个已回答调用应正确配对，并保留前后轮次。
 func TestAnthropicPairing_SingleCall(t *testing.T) {
 	msgs := convertAnthropic(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"latest sha?"}]},

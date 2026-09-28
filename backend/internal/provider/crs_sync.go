@@ -50,7 +50,7 @@ func NewCRSSync(providers CRSProviderStore, proxies CRSProxyStore, exporter CRSE
 	return &CRSSync{providers, proxies, exporter, options}
 }
 
-// 导入已提交后才尝试刷新，失败保留原逐项成功计数。
+// refreshOAuthToken 导入已提交后才尝试刷新，失败保留原逐项成功计数。
 func (s *CRSSync) refreshOAuthToken(ctx context.Context, value *Record) {
 	if s.options.Refresh != nil {
 		_ = s.options.Refresh(ctx, value)

@@ -21,7 +21,7 @@ func TestGroupClientProtocolsDoNotRecoverLegacyPolicy(t *testing.T) {
 	require.False(t, group.AllowsClientProtocol(protocol.ProtocolAnthropicMessages))
 }
 
-// 查询直接读取集合，响应快照仍隔离可变数据。
+// TestGroupProtocolMembershipAndSnapshotIsolation 验证查询直接读取集合，响应快照仍隔离可变数据。
 func TestGroupProtocolMembershipAndSnapshotIsolation(t *testing.T) {
 	var missing *routing.Group
 	require.False(t, missing.AllowsClientProtocol(protocol.ProtocolOpenAIResponses))

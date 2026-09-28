@@ -214,7 +214,7 @@ func (s *apiKeyRepoStubForGroupUpdate) Update(_ context.Context, key *apikey.API
 	return nil
 }
 
-// Unused methods – panic on unexpected call.
+// Create 是未使用的测试替身方法，意外调用时触发 panic。
 func (s *apiKeyRepoStubForGroupUpdate) Create(context.Context, *apikey.APIKey) error {
 	panic("unexpected")
 }
@@ -315,7 +315,7 @@ func (s *groupRepoStubForGroupUpdate) GetByID(_ context.Context, id int64) (*rou
 	return &clone, nil
 }
 
-// Unused methods – panic on unexpected call.
+// Create 是未使用的测试替身方法，意外调用时触发 panic。
 func (s *groupRepoStubForGroupUpdate) Create(context.Context, *routing.Group) error {
 	panic("unexpected")
 }

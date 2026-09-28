@@ -1,4 +1,3 @@
-// Gemini 授权、提供商发现与凭据投影归提供商；平台网络交换通过窄端口注入。
 package provider
 
 import (
@@ -238,7 +237,7 @@ func ExtractTierIDFromAllowedTiers(allowedTiers []geminiwire.AllowedTier) string
 	return tierID
 }
 
-// inferGoogleOneTier infers Google One tier from Drive storage limit
+// InferGoogleOneTier 根据 Drive 存储上限推断 Google One 套餐。
 func InferGoogleOneTier(storageBytes int64, logf func(string, ...any)) string {
 	logf("[GeminiOAuth] inferGoogleOneTier - input: %d bytes (%.2f TB)", storageBytes, float64(storageBytes)/float64(TB))
 
@@ -264,11 +263,9 @@ func InferGoogleOneTier(storageBytes int64, logf func(string, ...any)) string {
 	return GeminiTierGoogleOneUnknown
 }
 
-// FetchGoogleOneTier fetches Google One tier from Drive API.
-// Note: LoadCodeAssist API is NOT called for Google One providers because:
-// 1. It's designed for GCP IAM (enterprise), not personal Google accounts
-// 2. Personal providers will get 403/404 from cloudaicompanion.googleapis.com
-// 3. Google consumer (Google One) and enterprise (GCP) systems are physically isolated
+// fetchGoogleOneTier 通过 Drive API 查询 Google One 套餐。
+// Google One 使用个人账户，不调用面向 GCP IAM 的 LoadCodeAssist；
+// 个人账户访问 cloudaicompanion.googleapis.com 会返回 403/404，消费级与企业系统相互隔离。
 func (s *GeminiAuthorization) fetchGoogleOneTier(ctx context.Context, accessToken, proxyURL string) (string, *google.DriveStorageInfo, error) {
 	s.Options.Logf("[GeminiOAuth] Starting FetchGoogleOneTier (Google One personal provider)")
 
@@ -879,7 +876,7 @@ func (s *GeminiAuthorization) fetchProjectID(ctx context.Context, accessToken, p
 	return "", tierID, fmt.Errorf("onboardUser timeout after %d attempts", maxAttempts)
 }
 
-// 单独刷新和 Drive 查询也纳入统一停止等待；嵌套调用复用所属外层操作。
+// RefreshToken 单独刷新和 Drive 查询也纳入统一停止等待；嵌套调用复用所属外层操作。
 func (s *GeminiAuthorization) RefreshToken(ctx context.Context, kind, token, proxy string) (*GeminiTokenInfo, error) {
 	operation, done, err := s.activity.begin(ctx, errors.New("gemini authorization is stopped"))
 	if err != nil {

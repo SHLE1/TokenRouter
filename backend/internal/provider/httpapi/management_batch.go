@@ -77,7 +77,7 @@ func (h *ManagementHandler) BatchClearError(c *gin.Context) {
 	response.Success(c, gin.H{"total": result.Total, "success": result.Success, "failed": result.Failed, "errors": managementFailures(result.Errors)})
 }
 
-// 展示转换保留原 nil/空数组，并把领域结果限制为已有 HTTP 字段。
+// managementFailures 展示转换保留原 nil/空数组，并把领域结果限制为已有 HTTP 字段。
 func managementFailures(values []providercore.ManagementBatchFailure) []gin.H {
 	if values == nil {
 		return nil

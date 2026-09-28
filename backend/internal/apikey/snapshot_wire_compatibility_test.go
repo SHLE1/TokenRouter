@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 旧快照必须经过版本门禁拒绝；新字段的序列化对照使用明确转换的测试报文。
+// TestCurrentSnapshotDropsRetiredFields 验证旧快照必须经过版本门禁拒绝；新字段的序列化对照使用明确转换的测试报文。
 func TestCurrentSnapshotDropsRetiredFields(t *testing.T) {
 	for _, kind := range []string{"full", "empty"} {
 		t.Run(kind, func(t *testing.T) {

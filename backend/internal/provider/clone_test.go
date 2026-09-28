@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 复制必须保留载荷和值类型，不能把共享前缀的不同长度切片误认为同一容器。
+// TestCloneValuesPreservesShapesAndIsolation 验证复制必须保留载荷和值类型，不能把共享前缀的不同长度切片误认为同一容器。
 func TestCloneValuesPreservesShapesAndIsolation(t *testing.T) {
 	nested := []any{map[string]any{"number": json.Number("1.123456789")}, "second"}
 	values := map[string]any{"short": nested[:1], "long": nested, "nil": []any(nil), "empty": []any{}, "raw": json.RawMessage(`{"ok":true}`)}
@@ -68,7 +68,7 @@ func TestCloneRecordIsolatesRelationsAndPrivateValues(t *testing.T) {
 	require.NotContains(t, string(payload), "private-")
 }
 
-// 统一协议规范化会产生具名切片，复制不能只覆盖 JSON 解码得到的 []any。
+// TestCloneValuesCopiesNormalizedProtocolIDs 验证统一协议规范化会产生具名切片，复制不能只覆盖 JSON 解码得到的 []any。
 func TestCloneValuesCopiesNormalizedProtocolIDs(t *testing.T) {
 	protocols := []protocol.ProtocolID{protocol.ProtocolOpenAIResponses}
 	cloned := CloneValues(map[string]any{"upstream_protocols": protocols})
@@ -82,7 +82,7 @@ func TestCloneValuesCopiesNormalizedProtocolIDs(t *testing.T) {
 	}
 }
 
-// 原地应用必须保留根自引用；地址稳定使既有方法绑定继续读取更新后的记录。
+// TestCopyRecordIntoKeepsRootAndSupportsSameRecord 验证原地应用必须保留根自引用；地址稳定使既有方法绑定继续读取更新后的记录。
 func TestCopyRecordIntoKeepsRootAndSupportsSameRecord(t *testing.T) {
 	source := &Record{ID: 1, Credentials: map[string]any{"token": "source"}}
 	source.ProviderGroups = []GroupMembership{{Provider: source}}

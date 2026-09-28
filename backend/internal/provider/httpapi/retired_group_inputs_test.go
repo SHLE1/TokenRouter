@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// OAuth 和导入入口也执行相同的旧字段拒绝，不发起提供商创建或上游交换。
+// TestProviderImportsRejectRetiredGroupInputs 验证OAuth 和导入入口也执行相同的旧字段拒绝，不发起提供商创建或上游交换。
 func TestProviderImportsRejectRetiredGroupInputs(t *testing.T) {
 	router := gin.New()
 	router.POST("/batch", (&ManagementHandler{}).BatchCreate)

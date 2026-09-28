@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// 资金参与夹具仅供真实存储测试使用，与消费者保持相同构建条件。
+// newProviderUsageContract 资金参与夹具仅供真实存储测试使用，与消费者保持相同构建条件。
 func newProviderUsageContract(exec postgresinfra.Executor, store *providerpostgres.ProviderStore, cache scheduler.SnapshotPublicationCache) *billingpostgres.ProviderUsageStore {
 	events := providerPublicationEvents(store, cache)
 	return billingpostgres.NewProviderUsageStore(exec, billingpostgres.ProviderUsageOptions{

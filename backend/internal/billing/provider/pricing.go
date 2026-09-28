@@ -131,7 +131,7 @@ func (s *PricingService) StartUpdateScheduler() {
 	logging.LegacyPrintf("service.pricing", "[Pricing] Update scheduler started (check every %v, remote sync=%t, custom file watch=%t)", hashInterval, remoteEnabled, watchCustom)
 }
 
-// checkAndUpdatePricing 检查并更新价格数据
+// CheckAndUpdatePricing 检查并更新价格数据
 func (s *PricingService) CheckAndUpdatePricing() error {
 	pricingFile := s.GetPricingFilePath()
 
@@ -188,7 +188,7 @@ func (s *PricingService) CheckAndUpdatePricing() error {
 	return nil
 }
 
-// syncWithRemote 与远程同步（基于哈希校验）
+// SyncWithRemote 与远程同步（基于哈希校验）
 func (s *PricingService) SyncWithRemote() error {
 	// 如果配置了哈希URL，从远程获取哈希进行比对
 	if s.currentOptions().HashURL != "" {
@@ -229,7 +229,7 @@ func (s *PricingService) SyncWithRemote() error {
 	return nil
 }
 
-// hasCustomPricingFiles 报告是否配置了 fallback/override 任一文件路径（不要求文件存在）。
+// HasCustomPricingFiles 报告是否配置了 fallback/override 任一文件路径（不要求文件存在）。
 func (s *PricingService) HasCustomPricingFiles() bool {
 	if s == nil || s.options == nil {
 		return false
@@ -237,7 +237,7 @@ func (s *PricingService) HasCustomPricingFiles() bool {
 	return strings.TrimSpace(s.currentOptions().FallbackFile) != "" || strings.TrimSpace(s.currentOptions().OverrideFile) != ""
 }
 
-// customPricingFilesFingerprint 返回 fallback、override 两个文件当前内容的联合 sha256。
+// CustomPricingFilesFingerprint 返回 fallback、override 两个文件当前内容的联合 sha256。
 // 每个文件以"长度前缀 + 正文"参与计算，不可读的文件按空正文处理；未配置任何文件返回空串。
 func (s *PricingService) CustomPricingFilesFingerprint() string {
 	if !s.HasCustomPricingFiles() {
@@ -257,7 +257,7 @@ func (s *PricingService) CustomPricingFilesFingerprint() string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// validateCustomPricingFiles 要求每个已配置且存在的 fallback/override 文件可读且为 JSON
+// ValidateCustomPricingFiles 要求每个已配置且存在的 fallback/override 文件可读且为 JSON
 // 对象，任一不满足即返回带路径的错误；文件不存在视为该层为空，属合法状态。
 func (s *PricingService) ValidateCustomPricingFiles() error {
 	for _, path := range []string{s.currentOptions().FallbackFile, s.currentOptions().OverrideFile} {
@@ -280,7 +280,7 @@ func (s *PricingService) ValidateCustomPricingFiles() error {
 	return nil
 }
 
-// reloadIfCustomFilesChanged 比对 fallback/override 文件指纹，与最近一次重建时不同则从
+// ReloadIfCustomFilesChanged 比对 fallback/override 文件指纹，与最近一次重建时不同则从
 // 本地目录缓存重建内存数据。文件被删除视为该层清空，照常重建；文件存在但不可读或不是
 // JSON 对象时保留当前数据且不更新指纹，下一轮会再次尝试并重复告警。目录正文与远程同步
 // 锚点(localHash)不受本路径影响。
@@ -297,7 +297,7 @@ func (s *PricingService) ReloadIfCustomFilesChanged() {
 	}
 }
 
-// reloadCustomPricingLayers 读取本地目录缓存并重新叠加 fallback/override，只替换内存数据
+// ReloadCustomPricingLayers 读取本地目录缓存并重新叠加 fallback/override，只替换内存数据
 // 与叠加层指纹。
 func (s *PricingService) ReloadCustomPricingLayers() error {
 	pricingFile := s.GetPricingFilePath()
@@ -341,7 +341,7 @@ func (s *PricingService) ReloadCustomPricingLayers() error {
 	return nil
 }
 
-// downloadPricingData 从远程下载价格数据
+// DownloadPricingData 从远程下载价格数据
 func (s *PricingService) DownloadPricingData() error {
 	remoteURL, err := s.ValidatePricingURL(s.currentOptions().RemoteURL)
 	if err != nil {
@@ -461,7 +461,7 @@ func (s *PricingService) ApplyPricingOverrides(raw map[string]json.RawMessage) m
 	return merged
 }
 
-// loadPricingOverrideEntries 读取 override 文件的原始条目。未配置返回 nil；
+// LoadPricingOverrideEntries 读取 override 文件的原始条目。未配置返回 nil；
 // 读取或解析失败打日志并跳过，不影响目录加载。
 func (s *PricingService) LoadPricingOverrideEntries() map[string]json.RawMessage {
 	if s == nil || s.options == nil {
@@ -484,7 +484,7 @@ func (s *PricingService) LoadPricingOverrideEntries() map[string]json.RawMessage
 	return entries
 }
 
-// mergeOverrideOnlyModels 把 override 中目录/回退两层都不存在的模型作为独立条目并入
+// MergeOverrideOnlyModels 把 override 中目录/回退两层都不存在的模型作为独立条目并入
 // （条目须自带价格字段才能通过有效性过滤），并对最终仍未生效的条目打 WARN：
 // 模型名拼错、或纯补丁条目落在不存在的模型上时会被静默丢弃，让"已改价/已关阶梯"
 // 的运营预期与实际计费脱节，这里是唯一的哨兵。
@@ -521,7 +521,7 @@ func (s *PricingService) MergeOverrideOnlyModels(data map[string]*LiteLLMModelPr
 	return data
 }
 
-// buildPricingData 解析目录正文并依次叠加 fallback、override 两层，返回合并结果与
+// BuildPricingData 解析目录正文并依次叠加 fallback、override 两层，返回合并结果与
 // 叠加层文件指纹。指纹在合并读取之前采样：并发改文件只会让存下的指纹落后于实际
 // 合并的数据、不会领先，下一轮定时比对因此会再次重建。
 func (s *PricingService) BuildPricingData(body []byte) (map[string]*LiteLLMModelPricing, string, error) {
@@ -535,7 +535,7 @@ func (s *PricingService) BuildPricingData(body []byte) (map[string]*LiteLLMModel
 	return data, fingerprint, nil
 }
 
-// loadPricingData 从本地文件加载价格数据
+// LoadPricingData 从本地文件加载价格数据
 func (s *PricingService) LoadPricingData(filePath string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -619,7 +619,7 @@ func warnDroppedLongContextLadders(old, next map[string]*LiteLLMModelPricing) {
 	logging.LegacyPrintf("service.pricing", "[Pricing] Long-context ladder dropped for %d model(s) after reload: %s (verify catalog/override data if unintended)", total, strings.Join(dropped, ", "))
 }
 
-// useFallbackPricing 使用回退价格文件
+// UseFallbackPricing 使用回退价格文件
 func (s *PricingService) UseFallbackPricing() error {
 	fallbackFile := s.currentOptions().FallbackFile
 
@@ -644,7 +644,7 @@ func (s *PricingService) UseFallbackPricing() error {
 	return s.LoadPricingData(fallbackFile)
 }
 
-// fetchRemoteHash 从远程获取哈希值
+// FetchRemoteHash 从远程获取哈希值
 func (s *PricingService) FetchRemoteHash() (string, error) {
 	hashURL, err := s.ValidatePricingURL(s.currentOptions().HashURL)
 	if err != nil {
@@ -727,12 +727,12 @@ func (s *PricingService) ForceUpdate() error {
 	return s.DownloadPricingData()
 }
 
-// getPricingFilePath 获取价格文件路径
+// GetPricingFilePath 获取价格文件路径
 func (s *PricingService) GetPricingFilePath() string {
 	return filepath.Join(s.currentOptions().DataDir, "model_pricing.json")
 }
 
-// getHashFilePath 获取哈希文件路径
+// GetHashFilePath 获取哈希文件路径
 func (s *PricingService) GetHashFilePath() string {
 	return filepath.Join(s.currentOptions().DataDir, "model_pricing.sha256")
 }

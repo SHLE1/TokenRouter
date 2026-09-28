@@ -1,4 +1,3 @@
-// WorkGroup 跟踪当前及已替换配置的在途请求和额度清理，关闭后不再接受新搜索。
 package search
 
 import (
@@ -35,6 +34,7 @@ func (g *WorkGroup) Begin() (func(), error) {
 		})
 	}, nil
 }
+
 func (g *WorkGroup) Stop(ctx context.Context) error {
 	g.mu.Lock()
 	if !g.stopped {

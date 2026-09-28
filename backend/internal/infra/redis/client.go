@@ -1,4 +1,3 @@
-// 本文件构造 Redis 技术客户端；连接配置与故障策略由外层提供。
 package redis
 
 import "github.com/redis/go-redis/v9"

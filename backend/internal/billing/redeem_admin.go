@@ -46,7 +46,7 @@ type UpdateRedeemCodeInput struct {
 	PlanID       *int64 // 订阅类型专用：关联的套餐ID
 }
 
-// Redeem code management implementations
+// ListRedeemCodes 按筛选条件分页查询兑换码，并返回总数。
 func (s *RedeemAdmin) ListRedeemCodes(ctx context.Context, page, pageSize int, codeType, status, search string, sortBy, sortOrder string) ([]RedeemCode, int64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	codes, result, err := s.redeemCodeRepo.ListWithFilters(ctx, params, codeType, status, search)

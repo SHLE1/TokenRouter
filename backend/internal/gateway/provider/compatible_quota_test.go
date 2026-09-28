@@ -55,7 +55,7 @@ func TestEvaluateOpenAIQuotaAutoPause_PerProviderDisableOverridesGlobalDefault(t
 	require.False(t, paused)
 }
 
-// 请求与派生 attempt 使用独立阈值，更新选择快照不能覆盖健康观察型号或父请求。
+// TestCompatibleQuotaSnapshotPreservesParentAttemptState 验证请求与派生 attempt 使用独立阈值，更新选择快照不能覆盖健康观察型号或父请求。
 func TestCompatibleQuotaSnapshotPreservesParentAttemptState(t *testing.T) {
 	parent := requeststate.WithExecutionHints(context.Background(), requeststate.ExecutionHints{HealthModel: "observed-model"})
 	parent = WithQuotaAutoPauseSettings(parent, providercore.QuotaAutoPauseSettings{DefaultThreshold5h: 0.99})

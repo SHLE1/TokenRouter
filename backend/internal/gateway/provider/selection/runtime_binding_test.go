@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 三种实际执行入口与诊断直接使用同一原生状态，健康适配不再代管。
+// TestSchedulerRuntimeBindingKeepsSharedState 验证三种实际执行入口与诊断直接使用同一原生状态，健康适配不再代管。
 func TestSchedulerRuntimeBindingKeepsSharedState(t *testing.T) {
 	feedback := scheduler.NewRuntimeStats(time.Now)
 	settings := scheduler.NewParameters(scheduler.NewSettingsRuntime(scheduler.Diagnostics{}), nil, scheduler.DefaultParameters())

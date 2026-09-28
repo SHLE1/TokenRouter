@@ -1,4 +1,3 @@
-// Ollama 会话输入只保留允许的 Cookie，并限制总长度。
 package egress
 
 import (

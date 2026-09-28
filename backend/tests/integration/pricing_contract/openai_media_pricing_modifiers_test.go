@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 图片和视频的 token 价卡必须保留全部倍率，不能因为继承内置来源而改走按次计费。
+// TestOpenAIMediaPricingUsesModifierOnlyCards 验证图片和视频的 token 价卡必须保留全部倍率，不能因为继承内置来源而改走按次计费。
 func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 	for _, media := range []string{"image", "video"} {
 		model := "gpt-image-1"
@@ -80,7 +80,7 @@ func TestOpenAIMediaPricingUsesModifierOnlyCards(t *testing.T) {
 	}
 }
 
-// 共享按图或按秒价卡保持原模式，不叠加 token 专属倍率。
+// TestOpenAIMediaModifiersPreserveInheritedRequestBilling 验证共享按图或按秒价卡保持原模式，不叠加 token 专属倍率。
 func TestOpenAIMediaModifiersPreserveInheritedRequestBilling(t *testing.T) {
 	for _, mode := range []routing.BillingMode{routing.BillingModeImage, routing.BillingModeVideo} {
 		t.Run(string(mode), func(t *testing.T) {
@@ -107,7 +107,7 @@ func TestOpenAIMediaModifiersPreserveInheritedRequestBilling(t *testing.T) {
 	}
 }
 
-// 放宽媒体价卡识别不能让国产供应商通过倍率条目启用 Claude 内置回退价。
+// TestCNProviderPricingModifiersDoNotCountAsExplicitPrices 验证放宽媒体价卡识别不能让国产供应商通过倍率条目启用 Claude 内置回退价。
 func TestCNProviderPricingModifiersDoNotCountAsExplicitPrices(t *testing.T) {
 	for _, platform := range []string{capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek} {
 		for _, scope := range []string{"channel"} {

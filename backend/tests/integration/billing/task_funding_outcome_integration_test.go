@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// PostgreSQL 验证成功记录和 outbox 原子性；该测试不保存图片、prompt 或供应商原文。
+// TestProviderOutcomeRollbackAndDeliveryLost 验证PostgreSQL 验证成功记录和 outbox 原子性；该测试不保存图片、prompt 或供应商原文。
 func TestProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
@@ -86,7 +86,7 @@ func (p failingProjection) SaveReservation(ctx context.Context, balance float64,
 	return errors.New("test projection failure")
 }
 
-// 同一资金事务中的任务投影失败，余额、任务快照与去重认领必须一起回滚。
+// TestTaskFundingProjectionRollback 验证同一资金事务中的任务投影失败，余额、任务快照与去重认领必须一起回滚。
 func TestTaskFundingProjectionRollback(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
@@ -123,7 +123,7 @@ func TestTaskFundingProjectionRollback(t *testing.T) {
 	require.True(t, result.Applied, fmt.Sprint(result))
 }
 
-// 任务直接重放资金动作，验证既有资金引用的幂等性。
+// TestNativeCreativeFundingReplay 验证任务直接重放资金动作，验证既有资金引用的幂等性。
 func TestNativeCreativeFundingReplay(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)

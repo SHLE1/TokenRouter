@@ -1,4 +1,3 @@
-// 风险通知只携带已确定的处置与展示数据，禁止携带正文、媒体或审核凭据。
 package contract
 
 import "time"

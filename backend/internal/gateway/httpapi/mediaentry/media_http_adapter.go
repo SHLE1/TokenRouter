@@ -1,4 +1,3 @@
-// 媒体 HTTP 绑定只调用已有能力并投影实际字段，不拥有尝试循环或完成状态。
 package mediaentry
 
 import (

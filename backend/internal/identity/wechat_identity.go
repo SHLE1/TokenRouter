@@ -1,4 +1,3 @@
-// 微信身份查询同时识别当前渠道键和历史渠道键。
 package identity
 
 import (

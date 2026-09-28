@@ -1,4 +1,3 @@
-// 原生 Chat 只在旧边界投影凭据及平台专有操作；请求编排由目标包拥有。
 package httpapi
 
 import (

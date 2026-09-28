@@ -20,7 +20,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 三种 HTTP 入口与 WS 模型解析只执行管理员显式映射，不再暗中添加裸型号到 Sol 的别名。
+// TestRemovedGPT56AliasAcrossGatewayProtocols 验证三种 HTTP 入口与 WS 模型解析只执行管理员显式映射，不再暗中添加裸型号到 Sol 的别名。
 func TestRemovedGPT56AliasAcrossGatewayProtocols(t *testing.T) {
 	for _, providerType := range []string{capability.ProviderTypeOAuth, capability.ProviderTypeAPIKey} {
 		for _, explicit := range []bool{false, true} {

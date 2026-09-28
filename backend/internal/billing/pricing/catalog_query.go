@@ -10,7 +10,6 @@ import (
 
 // GetModelPricing 按目录、日期变体和厂商回退策略查询模型价格。
 func (s *CatalogQuery) GetModelPricing(modelName string) *LiteLLMModelPricing {
-
 	modelLower := strings.ToLower(strings.TrimSpace(modelName))
 	if modelLower == "" {
 		return nil
@@ -81,7 +80,7 @@ func (s *CatalogQuery) LookupModelCatalogEntry(candidates []string) *LiteLLMMode
 	return nil
 }
 
-// extractBaseName 提取基础模型名称（去掉日期版本号）
+// ExtractBaseName 提取基础模型名称（去掉日期版本号）
 func (s *CatalogQuery) ExtractBaseName(model string) string {
 	// 移除日期后缀 (如 -20251101, -20241022)
 	parts := strings.Split(model, "-")
@@ -100,7 +99,7 @@ func (s *CatalogQuery) ExtractBaseName(model string) string {
 	return strings.Join(result, "-")
 }
 
-// matchByModelFamily 基于模型系列匹配
+// MatchByModelFamily 基于模型系列匹配
 func (s *CatalogQuery) MatchByModelFamily(model string) *LiteLLMModelPricing {
 	// modelFamily 定义一个模型系列的匹配和定价查找规则。
 	type modelFamily struct {
@@ -206,7 +205,7 @@ func (s *CatalogQuery) MatchByModelFamily(model string) *LiteLLMModelPricing {
 	return nil
 }
 
-// matchOpenAIModel OpenAI 模型回退匹配策略
+// MatchOpenAIModel OpenAI 模型回退匹配策略
 // 回退顺序：
 // 1. gpt-5.3-codex-spark* -> gpt-5.1-codex（按业务要求固定计费）
 // 2. 同产品日期变体及已有专属静态价格；未注册的裸 GPT-5.6 不借用其它型号
@@ -312,7 +311,7 @@ func (s *CatalogQuery) MatchOpenAIModel(model string) *LiteLLMModelPricing {
 	return nil
 }
 
-// generateOpenAIModelVariants 生成 OpenAI 模型的回退变体列表
+// GenerateOpenAIModelVariants 生成 OpenAI 模型的回退变体列表
 func (s *CatalogQuery) GenerateOpenAIModelVariants(model string, datePattern *regexp.Regexp) []string {
 	seen := make(map[string]bool)
 	var variants []string
@@ -365,15 +364,18 @@ type CatalogDiagnostic struct {
 func (s *CatalogQuery) legacyf(format string, args ...any) {
 	s.Diagnostics = append(s.Diagnostics, CatalogDiagnostic{Message: fmt.Sprintf(format, args...)})
 }
+
 func (s *CatalogQuery) info(message string) {
 	s.Diagnostics = append(s.Diagnostics, CatalogDiagnostic{Message: message, Structured: true})
 }
+
 func (s *CatalogQuery) modelLookupCandidates(model string) []string {
 	if s.Candidates != nil {
 		return s.Candidates(model)
 	}
 	return BuildModelLookupCandidates(model, nil)
 }
+
 func (s *CatalogQuery) isImageGenerationModel(model string) bool {
 	return s.IsImageModel != nil && s.IsImageModel(model)
 }

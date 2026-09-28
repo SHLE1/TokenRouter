@@ -42,7 +42,7 @@ func (s *DingTalkProfileSync) log(level, message string, args ...any) {
 	}
 }
 
-// syncDingTalkIdentity 在 internal_only 模式下，按三个 sync 开关把钉钉身份信息
+// Sync 在 internal_only 模式下，按三个 sync 开关把钉钉身份信息
 // 同步到用户属性表（以及 users.username）。
 // 任何错误仅记日志，不中断登录流程（最终一致性）。
 func (s *DingTalkProfileSync) Sync(ctx context.Context, cfg DingTalkSyncOptions, client DingTalkDepartmentReader, userID int64, staff *DingTalkProfileSnapshot, syncUsername bool) {
@@ -157,7 +157,7 @@ func (s *DingTalkProfileSync) setUserAttributeByKey(ctx context.Context, userID 
 	return nil
 }
 
-// dingTalkStaffFromClaims 从 upstreamClaims 重建最小 DingTalkProfileSnapshot。
+// DingTalkProfileFromClaims 从 upstreamClaims 重建最小 DingTalkProfileSnapshot。
 func DingTalkProfileFromClaims(claims map[string]any) *DingTalkProfileSnapshot {
 	if claims == nil {
 		return &DingTalkProfileSnapshot{}

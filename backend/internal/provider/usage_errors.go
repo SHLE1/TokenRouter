@@ -1,4 +1,3 @@
-// 上游用量查询通过结构化错误区分配置、认证、限流及网络失败。
 package provider
 
 import (

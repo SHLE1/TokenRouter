@@ -1,4 +1,3 @@
-// WindowCostCache 拥有提供商资金窗口的只读缓存契约，保留原聚合口径与 TTL。
 package billing
 
 import "context"

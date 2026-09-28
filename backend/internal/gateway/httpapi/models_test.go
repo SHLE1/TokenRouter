@@ -100,7 +100,7 @@ func TestModelsBoundEmptyDoesNotFallBackOrConsume(t *testing.T) {
 	require.Empty(t, p.paths)
 }
 
-// 空能力目录不能用任何上游目录或内置模型补全。
+// TestGeminiModelsEmptyCapabilityDoesNotQueryUpstream 验证空能力目录不能用任何上游目录或内置模型补全。
 func TestGeminiModelsEmptyCapabilityDoesNotQueryUpstream(t *testing.T) {
 	p := &modelsBackendStub{key: prefaceKey(), response: &ModelHTTPResponse{StatusCode: 200, Body: []byte(`{"models":[{"name":"models/phantom"}]}`)}}
 	c, w := modelsContext()

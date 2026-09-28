@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 未登记的任务作用域不能开启任务资金事务，任务表不再由 billing 决定。
+// TestTaskProjectionRequiresRegisteredScope 验证未登记的任务作用域不能开启任务资金事务，任务表不再由 billing 决定。
 func TestTaskProjectionRequiresRegisteredScope(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -24,7 +24,7 @@ func TestTaskProjectionRequiresRegisteredScope(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// 资金核心读取显式预占 ID，不根据 ID 前缀猜测所属任务模块。
+// TestBatchImageHoldClaimRequestID 验证资金核心读取显式预占 ID，不根据 ID 前缀猜测所属任务模块。
 func TestBatchImageHoldClaimRequestID(t *testing.T) {
 	require.Empty(t, taskHoldClaimRequestID(nil))
 	for _, id := range []string{"batch_image_hold:imgbatch_x", "creative_hold:crun_x"} {

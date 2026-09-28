@@ -1,4 +1,3 @@
-// 运行端口提供技术动作；锁名称、降级和通知顺序仍由各用例决定。
 package ops
 
 import (
@@ -46,6 +45,7 @@ func reportOptions(o *Options, format string, args ...any) {
 		o.Logf(format, args...)
 	}
 }
+
 func acquireAdvisory(ctx context.Context, p AdvisoryLocker, key string) (func(), bool) {
 	if p == nil {
 		return nil, false

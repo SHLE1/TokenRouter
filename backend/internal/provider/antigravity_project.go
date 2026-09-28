@@ -1,4 +1,3 @@
-// 提供商按原顺序读取三种 project 字段，未配置仍返回调用方的兼容错误。
 package provider
 
 import "strings"

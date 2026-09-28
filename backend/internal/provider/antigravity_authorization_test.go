@@ -1,4 +1,3 @@
-// 授权操作的会话消费、隐私顺序和有界停止使用可控供应商端口验证。
 package provider
 
 import (

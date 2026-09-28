@@ -1,4 +1,3 @@
-// Vertex 凭据的历史字段选择和提供商位置覆盖由提供商模块唯一拥有。
 package provider
 
 import (

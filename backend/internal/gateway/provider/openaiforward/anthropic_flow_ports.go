@@ -1,4 +1,3 @@
-// 原生 Anthropic 用例端口只接收模型、协议值和一次 HTTP 操作，不接收完整实体。
 package openaiforward
 
 import (

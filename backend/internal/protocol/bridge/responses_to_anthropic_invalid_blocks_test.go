@@ -57,7 +57,7 @@ func requireAnthropicMessagesAreSendable(t *testing.T, messages []AnthropicMessa
 	}
 }
 
-// issue #5329：工具执行后的下一轮，Codex 会把 reasoning item 一起回放。
+// TestResponsesToAnthropic_ReasoningItemWithContentIsDropped 验证issue #5329：工具执行后的下一轮，Codex 会把 reasoning item 一起回放。
 // 该 item 带 content 数组时，reasoning_text 块以前会被原样塞进 Anthropic 请求体。
 func TestResponsesToAnthropic_ReasoningItemWithContentIsDropped(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
@@ -71,7 +71,7 @@ func TestResponsesToAnthropic_ReasoningItemWithContentIsDropped(t *testing.T) {
 	require.NotContains(t, string(messages[0].Content), "let me think")
 }
 
-// Codex 的常见 reasoning 形态（只有 summary + encrypted_content）本来就会被丢弃，
+// TestResponsesToAnthropic_ReasoningItemSummaryOnlyStillDropped 验证Codex 的常见 reasoning 形态（只有 summary + encrypted_content）本来就会被丢弃，
 // 这条守卫确保行为没有被改变。
 func TestResponsesToAnthropic_ReasoningItemSummaryOnlyStillDropped(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
@@ -84,7 +84,7 @@ func TestResponsesToAnthropic_ReasoningItemSummaryOnlyStillDropped(t *testing.T)
 	require.NotContains(t, string(messages[0].Content), "gAAAA")
 }
 
-// 未知 item type 的 content 以前会被逐字透传，把 Responses 专有分片带进上游请求。
+// TestResponsesToAnthropic_UnknownItemTypeContentIsSanitized 验证未知 item type 的 content 以前会被逐字透传，把 Responses 专有分片带进上游请求。
 func TestResponsesToAnthropic_UnknownItemTypeContentIsSanitized(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
 		{"type":"web_search_call","id":"ws_1","content":[{"type":"web_search_result","text":"payload"}]}
@@ -94,7 +94,7 @@ func TestResponsesToAnthropic_UnknownItemTypeContentIsSanitized(t *testing.T) {
 	require.Empty(t, messages, "整条内容都无法映射时不应发出消息")
 }
 
-// 未知 item type 里夹带的可识别文本仍然保留，不做无谓丢弃。
+// TestResponsesToAnthropic_UnknownItemTypeKeepsRecognizableText 验证未知 item type 里夹带的可识别文本仍然保留，不做无谓丢弃。
 func TestResponsesToAnthropic_UnknownItemTypeKeepsRecognizableText(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
 		{"type":"some_future_item","content":[
@@ -109,7 +109,7 @@ func TestResponsesToAnthropic_UnknownItemTypeKeepsRecognizableText(t *testing.T)
 	require.NotContains(t, string(messages[0].Content), "drop me")
 }
 
-// user 消息的分片全部不可识别时，以前会退化成 content:""，Anthropic 拒收空内容消息。
+// TestResponsesToAnthropic_UserMessageWithOnlyUnknownPartsIsDropped 验证user 消息的分片全部不可识别时，以前会退化成 content:""，Anthropic 拒收空内容消息。
 func TestResponsesToAnthropic_UserMessageWithOnlyUnknownPartsIsDropped(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_file","file_id":"file_1"}]}
@@ -119,7 +119,7 @@ func TestResponsesToAnthropic_UserMessageWithOnlyUnknownPartsIsDropped(t *testin
 	require.Empty(t, messages)
 }
 
-// assistant 侧同理：以前会退化成单个空 text 块，Anthropic 同样拒收。
+// TestResponsesToAnthropic_AssistantMessageWithOnlyUnknownPartsIsDropped 验证assistant 侧同理：以前会退化成单个空 text 块，Anthropic 同样拒收。
 func TestResponsesToAnthropic_AssistantMessageWithOnlyUnknownPartsIsDropped(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]},
@@ -131,7 +131,7 @@ func TestResponsesToAnthropic_AssistantMessageWithOnlyUnknownPartsIsDropped(t *t
 	require.Equal(t, "user", messages[0].Role)
 }
 
-// user、assistant 和未来 item 中的纯空白文本都必须丢弃；Anthropic 对字符串与
+// TestResponsesToAnthropic_BlankTextMessagesAreDropped 验证user、assistant 和未来 item 中的纯空白文本都必须丢弃；Anthropic 对字符串与
 // text block 使用相同的非空白约束。
 func TestResponsesToAnthropic_BlankTextMessagesAreDropped(t *testing.T) {
 	tests := []struct {
@@ -152,7 +152,7 @@ func TestResponsesToAnthropic_BlankTextMessagesAreDropped(t *testing.T) {
 	}
 }
 
-// 空白文本和合法图片混合时只移除坏文本，不能连带丢失图片。
+// TestResponsesToAnthropic_BlankTextBesideImageKeepsImage 验证空白文本和合法图片混合时只移除坏文本，不能连带丢失图片。
 func TestResponsesToAnthropic_BlankTextBesideImageKeepsImage(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
 		{"type":"message","role":"user","content":[
@@ -168,7 +168,7 @@ func TestResponsesToAnthropic_BlankTextBesideImageKeepsImage(t *testing.T) {
 	require.Equal(t, "image", blocks[0].Type)
 }
 
-// 完整的 Codex 工具续接回放：tool_use / tool_result 配对必须保持不变，
+// TestResponsesToAnthropic_CodexToolRoundStaysIntactAndSendable 验证完整的 Codex 工具续接回放：tool_use / tool_result 配对必须保持不变，
 // 同时整个序列满足可发送不变式。
 func TestResponsesToAnthropic_CodexToolRoundStaysIntactAndSendable(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[

@@ -49,7 +49,7 @@ func TestCreativeMixedGroupCatalog(t *testing.T) {
 	require.Empty(t, listed.Data)
 }
 
-// 专用客户端组不能展示为创作台候选，也不能在预留原组资金后由 worker 改组。
+// TestCreativeRejectsClientOnlyGroupBeforeFunding 验证专用客户端组不能展示为创作台候选，也不能在预留原组资金后由 worker 改组。
 func TestCreativeRejectsClientOnlyGroupBeforeFunding(t *testing.T) {
 	svc := newCreativeTestService()
 	groups := testassert.MustType[*creativeFakeGroupRepo](testassert.MustType[creativeGroupReader](svc.GroupRepo).source)

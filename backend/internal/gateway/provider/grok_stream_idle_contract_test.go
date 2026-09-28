@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestGrokStreamIdleFailoverError 验证 Grok 流空闲超时的故障转移错误。
 func TestGrokStreamIdleFailoverError(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}}
 	err := gatewayprovider.GrokStreamIdleFailure(provider, 180*time.Second)

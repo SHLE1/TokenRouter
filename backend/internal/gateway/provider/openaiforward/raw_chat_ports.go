@@ -1,4 +1,3 @@
-// RawChatPorts 将平台专有观察与单次原生 Chat 执行隔离。
 package openaiforward
 
 import (

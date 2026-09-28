@@ -36,7 +36,7 @@ func (c *leaderCacheFixture) Release(_ context.Context, key, owner string) error
 func (*leaderCacheFixture) Get(context.Context, string) (string, error)              { return "", nil }
 func (*leaderCacheFixture) Put(context.Context, string, string, time.Duration) error { return nil }
 
-// 后台任务必须抢锁后执行，失败实例不能释放其它实例的锁。
+// TestMaintenanceLeaderLockCompetition 验证后台任务必须抢锁后执行，失败实例不能释放其它实例的锁。
 func TestMaintenanceLeaderLockCompetition(t *testing.T) {
 	for _, task := range []string{"cleanup", "report"} {
 		t.Run(task, func(t *testing.T) {

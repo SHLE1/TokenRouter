@@ -1,4 +1,3 @@
-// Package testkit 提供会话合同使用的存储替身，不接入生产调用链。
 package testkit
 
 import (

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Ent 行投影不能让返回记录的嵌套凭据修改反向污染原行对象。
+// TestProviderEntityProjectionIsolatesNestedCredentials 验证Ent 行投影不能让返回记录的嵌套凭据修改反向污染原行对象。
 func TestProviderEntityProjectionIsolatesNestedCredentials(t *testing.T) {
 	entity := &dbent.Provider{ID: 1, Credentials: map[string]any{"extension": map[string]any{"value": "original"}}}
 	projected := RecordFromEntity(entity)

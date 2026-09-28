@@ -1,4 +1,3 @@
-// PublicService 统一站点公开投影；来源端口先完成其他模块的资格投影。
 package site
 
 import (
@@ -500,8 +499,7 @@ func (s *PublicService) GetPublicSettingsForInjection(ctx context.Context) (any,
 	}, nil
 }
 
-// filterUserVisibleMenuItems filters out admin-only menu items from a raw JSON
-// array string, returning only items with visibility != "admin".
+// FilterUserVisibleMenuItems 从菜单 JSON 数组中过滤 visibility 为 admin 的条目。
 func FilterUserVisibleMenuItems(raw string) json.RawMessage {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || raw == "[]" {
@@ -536,7 +534,7 @@ func FilterUserVisibleMenuItems(raw string) json.RawMessage {
 	return result
 }
 
-// safeRawJSONArray returns raw as json.RawMessage if it's valid JSON, otherwise "[]".
+// SafeRawJSONArray 将有效 JSON 转为 json.RawMessage，无效时返回空数组。
 func SafeRawJSONArray(raw string) json.RawMessage {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -584,8 +582,7 @@ func (s *PublicService) GetFrameSrcOrigins(ctx context.Context) ([]string, error
 	return origins, nil
 }
 
-// extractOriginFromURL returns the scheme+host origin from rawURL.
-// Only http and https schemes are accepted.
+// ExtractOriginFromURL 提取 URL 的协议和主机，只接受 HTTP 和 HTTPS。
 func ExtractOriginFromURL(rawURL string) string {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
@@ -601,7 +598,7 @@ func ExtractOriginFromURL(rawURL string) string {
 	return u.Scheme + "://" + u.Host
 }
 
-// parseCustomMenuItemURLs extracts URLs from a raw JSON array of custom menu items.
+// ParseCustomMenuItemURLs 从自定义菜单的 JSON 数组中提取 URL。
 func ParseCustomMenuItemURLs(raw string) []string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || raw == "[]" {

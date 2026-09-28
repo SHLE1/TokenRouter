@@ -1,4 +1,3 @@
-// 本文件只定义 sched:v4 的快照存储形状；凭据不进入提供商公开 JSON。
 package codec
 
 import (

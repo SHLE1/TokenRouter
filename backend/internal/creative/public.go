@@ -1,4 +1,3 @@
-// Public 拥有创作台创建、模型目录及输入规则，跨模块数据通过显式只读投影取得。
 package creative
 
 import (

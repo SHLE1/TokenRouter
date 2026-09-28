@@ -189,7 +189,7 @@ func TestCalculateCost_PartialLongContextMultiplierDefaultsToOne(t *testing.T) {
 	})
 }
 
-// 模型广场展示必须与结算路径使用相同的缺省倍率，避免部分覆盖把一侧显示成免费。
+// TestDisplayPricing_PartialLongContextMultiplierDefaultsToOne 验证模型广场展示必须与结算路径使用相同的缺省倍率，避免部分覆盖把一侧显示成免费。
 func TestDisplayPricing_PartialLongContextMultiplierDefaultsToOne(t *testing.T) {
 	service := newBillingFixture(newStubPricingServiceFromJSON(t, `{
 		"partial-display": {"litellm_provider": "openai", "mode": "chat",

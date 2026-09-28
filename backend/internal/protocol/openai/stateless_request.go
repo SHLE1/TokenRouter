@@ -1,4 +1,3 @@
-// 显式无状态 Responses 变体保持旧 store/continuation 清理顺序；启用资格由调用方选择。
 package openai
 
 import "github.com/tidwall/sjson"

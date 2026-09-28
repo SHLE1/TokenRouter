@@ -553,7 +553,7 @@ func TestWaitForLiveObserverRetryLeavesExpiryToLoopFinalize(t *testing.T) {
 	require.False(t, svc.liveRuntime().WaitForObserverRetry(context.Background(), record))
 }
 
-// store 抖动不表示 observer 已失去控制权，只有记录不存在时才停止重试。
+// TestWaitForLiveObserverRetryTreatsStoreErrorAsRetryable 验证store 抖动不表示 observer 已失去控制权，只有记录不存在时才停止重试。
 func TestWaitForLiveObserverRetryTreatsStoreErrorAsRetryable(t *testing.T) {
 	record := &session.LiveCallRecord{
 		CallID:     "call_flaky_store",
@@ -571,7 +571,7 @@ func TestWaitForLiveObserverRetryTreatsStoreErrorAsRetryable(t *testing.T) {
 		"记录不存在时应停止重试")
 }
 
-// observer 持续读不到 store 时，必须使用创建阶段快照在到期后释放租约并写 usage log。
+// TestObserveLiveCallStoreOutageFallsBackToExpiryFinalize 验证observer 持续读不到 store 时，必须使用创建阶段快照在到期后释放租约并写 usage log。
 func TestObserveLiveCallStoreOutageFallsBackToExpiryFinalize(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -636,7 +636,7 @@ func (r *liveTestBestEffortUsageRepo) CreateBestEffort(_ context.Context, _ *usa
 	return r.bestEffortErr
 }
 
-// Live finalize 的异步队列写入失败后必须同步落库，避免唯一一次记录机会被吞掉。
+// TestFinalizeLiveCallUsageLogFallsBackToSyncCreate 验证Live finalize 的异步队列写入失败后必须同步落库，避免唯一一次记录机会被吞掉。
 func TestFinalizeLiveCallUsageLogFallsBackToSyncCreate(t *testing.T) {
 	record := &session.LiveCallRecord{
 		CallID:     "call_usage_fallback",
@@ -668,7 +668,7 @@ func TestFinalizeLiveCallUsageLogFallsBackToSyncCreate(t *testing.T) {
 	require.Equal(t, record.CallHash, usageRepo.logs[0].RequestID)
 }
 
-// 进程停止只结束本地观察，不得将远端会话提前结算或释放其租约。
+// TestStopLiveObserversPreservesRemoteCall 验证进程停止只结束本地观察，不得将远端会话提前结算或释放其租约。
 func TestStopLiveObserversPreservesRemoteCall(t *testing.T) {
 	record := &session.LiveCallRecord{CallHash: "test-shutdown", Controller: session.LiveControllerPending, ExpiresAt: time.Now().Add(time.Hour)}
 	store := &liveTestStore{record: record, claimErr: errors.New("temporary store failure")}

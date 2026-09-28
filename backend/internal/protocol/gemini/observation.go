@@ -1,4 +1,3 @@
-// 本文件辨认 Gemini 已到达的协议事实，不推算金额或决定客户端重试。
 package gemini
 
 import "github.com/tidwall/gjson"

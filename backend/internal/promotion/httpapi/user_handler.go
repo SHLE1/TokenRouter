@@ -1,4 +1,3 @@
-// 用户推广 HTTP 保留身份校验、响应与原资金入口。
 package httpapi
 
 import (

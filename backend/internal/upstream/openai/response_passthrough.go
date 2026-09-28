@@ -1,4 +1,3 @@
-// Responses 透传只读取一次上游流，协议/用量状态均保持每次尝试独立。
 package openai
 
 import (

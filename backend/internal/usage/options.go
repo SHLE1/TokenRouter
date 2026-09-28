@@ -1,4 +1,3 @@
-// 本文件定义用量模块的独立部署参数与运行端口。
 package usage
 
 import (

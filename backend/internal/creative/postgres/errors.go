@@ -1,4 +1,3 @@
-// 存储错误保持 Ent/SQL 的既有业务错误映射。
 package postgres
 
 import (

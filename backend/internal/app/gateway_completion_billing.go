@@ -105,7 +105,7 @@ func (p completionHealth) ResetOpenAI403Counter(ctx context.Context, id int64) {
 	p.core.ResetForbiddenCounter(ctx, id)
 }
 
-// 两条完成链各自取得效果对象，后台任务继续交给同一应用拥有者。
+// gatewayCommitEffects 两条完成链各自取得效果对象，后台任务继续交给同一应用拥有者。
 func gatewayCommitEffects(deferred *provider.DeferredService, eligibility *billing.Eligibility, notifications *billing.BalanceNotifyService, keys *apikey.APIKeyService, tasks *lifecycle.Tasks, cfg *config.Config) *completion.CommitEffects {
 	value := &completion.CommitEffects{
 		Activity: deferred,

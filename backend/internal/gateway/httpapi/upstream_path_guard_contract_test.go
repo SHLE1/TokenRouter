@@ -12,12 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
 // TestOpenAIResponsesRequestPathSuffixRejectsNonConformingSubpaths 锁定不变式：
 // /responses/*subpath 的子路径不得改变上游请求的路径结构；不合规时既不参与拼接，
 // 也不会被误判成 compact 请求。
 func TestOpenAIResponsesRequestPathSuffixRejectsNonConformingSubpaths(t *testing.T) {
-
 	nonConformingPaths := []string{
 		"/v1/responses/../../x/y",
 		"/v1/responses/..%2f..%2fx/y",

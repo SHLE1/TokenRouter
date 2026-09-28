@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 真实 PostgreSQL 检验旧交换版本的写权限，普通改名不干扰失败处理，其它身份更改必须拒绝。
+// TestRefreshFailureVersionCAS 验证真实 PostgreSQL 检验旧交换版本的写权限，普通改名不干扰失败处理，其它身份更改必须拒绝。
 func TestRefreshFailureVersionCAS(t *testing.T) {
 	for _, kind := range []provider.RefreshFailureKind{provider.RefreshFailurePermanent, provider.RefreshFailureCooldown} {
 		for _, change := range []string{"none", "name", "credentials", "platform", "type", "status", "schedulable", "proxy"} {
@@ -90,7 +90,7 @@ func TestRefreshFailureVersionCAS(t *testing.T) {
 	}
 }
 
-// 更长 cooldown 是同身份的原有无变更结果；outbox 失败仍不回滚已经生效的健康写入。
+// TestRefreshFailureLongerCooldownAndOutboxFailure 验证更长 cooldown 是同身份的原有无变更结果；outbox 失败仍不回滚已经生效的健康写入。
 func TestRefreshFailureLongerCooldownAndOutboxFailure(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
@@ -125,7 +125,7 @@ func TestRefreshFailureLongerCooldownAndOutboxFailure(t *testing.T) {
 	require.False(t, current.Schedulable)
 }
 
-// 强制刷新请求仍使用原 Extra/outbox 原子范围，并在后置清理时再次检查交换身份。
+// TestAntigravityRefreshRequestClearCAS 验证强制刷新请求仍使用原 Extra/outbox 原子范围，并在后置清理时再次检查交换身份。
 func TestAntigravityRefreshRequestClearCAS(t *testing.T) {
 	for _, mode := range []string{"success", "reauthorized", "outbox_failure"} {
 		t.Run(mode, func(t *testing.T) {

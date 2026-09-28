@@ -1,4 +1,3 @@
-// Package gateway 拥有请求级准入、尝试与完成次序，平台只执行单次调用。
 package gateway
 
 import (

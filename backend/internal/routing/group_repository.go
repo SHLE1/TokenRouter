@@ -1,4 +1,3 @@
-// 本文件定义分组存储接口、排序输入和共享错误。
 package routing
 
 import (

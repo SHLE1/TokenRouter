@@ -1,4 +1,3 @@
-// Responses 透传独立保留旧 Header 过滤及 OAuth 身份顺序。
 package openai
 
 import (

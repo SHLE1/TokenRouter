@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-// User management implementations
+// ListUsers 分页查询用户，并补充最近使用时间和用户专属分组倍率。
 func (s *UserAdmin) ListUsers(ctx context.Context, page, pageSize int, filters UserListFilters, sortBy, sortOrder string) ([]User, int64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	users, result, err := s.Users.ListWithFilters(ctx, params, filters)

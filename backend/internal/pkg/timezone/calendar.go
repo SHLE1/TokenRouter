@@ -1,4 +1,3 @@
-// 本文件拥有显式时区的日期计算，不负责进程初始化。
 package timezone
 
 import (

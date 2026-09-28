@@ -1,4 +1,3 @@
-// Package testkit 提供本地 SMTP 与内存设置夹具，不读取用户环境或生产凭据。
 package testkit
 
 import (
@@ -25,6 +24,7 @@ type MemorySettings struct {
 func NewMemorySettings() *MemorySettings {
 	return &MemorySettings{values: make(map[string]string)}
 }
+
 func (r *MemorySettings) Get(_ context.Context, key string) (*settingscore.Setting, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -34,6 +34,7 @@ func (r *MemorySettings) Get(_ context.Context, key string) (*settingscore.Setti
 	}
 	return &settingscore.Setting{Key: key, Value: value}, nil
 }
+
 func (r *MemorySettings) GetValue(ctx context.Context, key string) (string, error) {
 	setting, err := r.Get(ctx, key)
 	if err != nil {
@@ -41,12 +42,14 @@ func (r *MemorySettings) GetValue(ctx context.Context, key string) (string, erro
 	}
 	return setting.Value, nil
 }
+
 func (r *MemorySettings) Set(_ context.Context, key, value string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.values[key] = value
 	return nil
 }
+
 func (r *MemorySettings) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -58,6 +61,7 @@ func (r *MemorySettings) GetMultiple(_ context.Context, keys []string) (map[stri
 	}
 	return out, nil
 }
+
 func (r *MemorySettings) SetMultiple(_ context.Context, settings map[string]string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -66,6 +70,7 @@ func (r *MemorySettings) SetMultiple(_ context.Context, settings map[string]stri
 	}
 	return nil
 }
+
 func (r *MemorySettings) GetAll(_ context.Context) (map[string]string, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -75,6 +80,7 @@ func (r *MemorySettings) GetAll(_ context.Context) (map[string]string, error) {
 	}
 	return out, nil
 }
+
 func (r *MemorySettings) Delete(_ context.Context, key string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -104,6 +110,7 @@ func StartSMTPServer(t *testing.T) *SMTPServer {
 	t.Cleanup(server.close)
 	return server
 }
+
 func (s *SMTPServer) Settings() map[string]string {
 	host, port, _ := net.SplitHostPort(s.listener.Addr().String())
 	return map[string]string{
@@ -116,9 +123,11 @@ func (s *SMTPServer) Settings() map[string]string {
 		"smtp_use_tls":   "false",
 	}
 }
+
 func (s *SMTPServer) MessageCount() int64 {
 	return s.messages.Load()
 }
+
 func (s *SMTPServer) LastMessage() string {
 	s.messageMu.Lock()
 	defer s.messageMu.Unlock()
@@ -143,10 +152,12 @@ func (s *SMTPServer) LastMessageBody(t *testing.T) string {
 	require.NoError(t, err)
 	return string(body)
 }
+
 func (s *SMTPServer) close() {
 	_ = s.listener.Close()
 	s.wg.Wait()
 }
+
 func (s *SMTPServer) serve() {
 	defer s.wg.Done()
 	for {
@@ -157,6 +168,7 @@ func (s *SMTPServer) serve() {
 		s.handleConn(conn)
 	}
 }
+
 func (s *SMTPServer) handleConn(conn net.Conn) {
 	defer func() { _ = conn.Close() }()
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))

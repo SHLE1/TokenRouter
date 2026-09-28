@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 取消与显式完成竞争时，资源只归还一次，且后取得的提供商资源先于用户资源释放。
+// TestLeaseConcurrentReleaseOwnership 验证取消与显式完成竞争时，资源只归还一次，且后取得的提供商资源先于用户资源释放。
 func TestLeaseConcurrentReleaseOwnership(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var order []string
@@ -24,7 +24,7 @@ func TestLeaseConcurrentReleaseOwnership(t *testing.T) {
 	require.Equal(t, []string{"provider", "user"}, order)
 }
 
-// Qoder 完成释放模式在客户端已取消时仍保持容量，直到上游收尾明确释放。
+// TestLeaseCompletionIgnoresClientCancellation 验证Qoder 完成释放模式在客户端已取消时仍保持容量，直到上游收尾明确释放。
 func TestLeaseCompletionIgnoresClientCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var count atomic.Int64
@@ -36,7 +36,7 @@ func TestLeaseCompletionIgnoresClientCancellation(t *testing.T) {
 	require.EqualValues(t, 1, count.Load())
 }
 
-// 已结束请求不能接纳晚到资源，资源必须立即归还给原拥有者。
+// TestLeaseRejectsLateResource 验证已结束请求不能接纳晚到资源，资源必须立即归还给原拥有者。
 func TestLeaseRejectsLateResource(t *testing.T) {
 	l := NewLease(context.Background(), ReleaseOnCompletion)
 	l.Release()
@@ -45,7 +45,7 @@ func TestLeaseRejectsLateResource(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
-// 本次成功会话保留与另一未完成尝试的失败清理互不覆盖。
+// TestAttemptLeaseRetainsCompletionOutcome 验证本次成功会话保留与另一未完成尝试的失败清理互不覆盖。
 func TestAttemptLeaseRetainsCompletionOutcome(t *testing.T) {
 	parent := NewLease(context.Background(), ReleaseOnCompletion)
 	var outcomes []bool

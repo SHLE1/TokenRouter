@@ -1,4 +1,3 @@
-// 结果推进与补偿属于创作台；资金和分析事实通过独立端口提交。
 package creative
 
 import (
@@ -35,7 +34,7 @@ func (s *Results) warn(event string, values ...any) {
 	}
 }
 
-// sanitizeCreativeMessage 截断错误消息，避免把上游细节原样抛给客户端。
+// SanitizeCreativeMessage 截断错误消息，避免把上游细节原样抛给客户端。
 func SanitizeCreativeMessage(message string) string {
 	message = strings.TrimSpace(message)
 	message = strings.Map(func(r rune) rune {

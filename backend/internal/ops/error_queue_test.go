@@ -134,7 +134,7 @@ func TestNormalizeOpsPersistentUserAgentBoundsAndPreservesUTF8(t *testing.T) {
 	require.NotContains(t, got, "b")
 }
 
-// 关闭清空全局队列引用后，worker 仍须继续消费自己已经取得的队列。
+// TestOpsErrorLogShutdownDrainsCapturedQueue 验证关闭清空全局队列引用后，worker 仍须继续消费自己已经取得的队列。
 func TestOpsErrorLogShutdownDrainsCapturedQueue(t *testing.T) {
 	resetOpsErrorLoggerStateForTest(t)
 	t.Cleanup(func() { resetOpsErrorLoggerStateForTest(t) })
@@ -167,7 +167,7 @@ func setupOpsErrorLogTestQueue(t *testing.T, size int) {
 	testErrorQueue.opsErrorLogQueue = make(chan opsErrorLogJob, size)
 }
 
-// 构造与停止不启动懒队列，停止后的提交也不能重新开启 worker。
+// TestErrorQueueConstructAndStopDoNotStartWorkers 验证构造与停止不启动懒队列，停止后的提交也不能重新开启 worker。
 func TestErrorQueueConstructAndStopDoNotStartWorkers(t *testing.T) {
 	starts := 0
 	q := NewErrorLogQueue(ErrorLogQueueOptions{Processors: func() int { starts++; return 2 }})

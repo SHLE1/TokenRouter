@@ -655,7 +655,7 @@ func (s *SnapshotService) reconcileGroupLifecycle(ctx context.Context, groupID i
 	return nil
 }
 
-// 生命周期决策必须在所有者安全的租约内读取 fresh 且完整的分组权威状态。
+// prepareGroupLifecycle 生命周期决策必须在所有者安全的租约内读取 fresh 且完整的分组权威状态。
 // active 仅 Reopen canonical bucket；missing/inactive 同时 Retire canonical 与已登记历史 bucket；
 // group event 路径只有在权威决策和后续重建全部成功后才会标记 seen。
 func (s *SnapshotService) prepareGroupLifecycle(ctx context.Context, groupID int64, knownHistorical []SchedulerBucket) (plan schedulerGroupLifecyclePlan, retErr error) {
@@ -759,7 +759,7 @@ func schedulerSnapshotPlatforms() []string {
 	return append([]string{""}, capability.ProviderPlatforms()...)
 }
 
-// 生命周期辅助函数有意排除 group0；full rebuild 构造 group0 canonical 集时必须显式调用 canonical helper。
+// schedulerBucketsForGroup 生命周期辅助函数有意排除 group0；full rebuild 构造 group0 canonical 集时必须显式调用 canonical helper。
 func schedulerBucketsForGroup(groupID int64) []SchedulerBucket {
 	if groupID <= 0 {
 		return nil

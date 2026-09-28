@@ -1,4 +1,3 @@
-// ManagedKeys 供应服务端隐藏 Key，复用原创建路径与并发冲突后的单次回读。
 package apikey
 
 import (

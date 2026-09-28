@@ -349,7 +349,7 @@ func TestOllamaCloudUsageIsAutoRefreshDue(t *testing.T) {
 	}, nil, now, debounce, maxWait), "ok without fetched_at fails open")
 }
 
-// 成功路径已不再读取 next_refresh_at，而 nextOllamaCloudUsageDelay 原本通过该字段
+// TestOllamaCloudUsageAutoRefreshDueAtHonoursMinFetchInterval 验证成功路径已不再读取 next_refresh_at，而 nextOllamaCloudUsageDelay 原本通过该字段
 // 应用最小间隔。活动只能把刷新提前到该下限，否则间隔略大于防抖期的请求流量会让
 // 分组上游抓取频率远高于既有下限。
 func TestOllamaCloudUsageAutoRefreshDueAtHonoursMinFetchInterval(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestPrepareBedrockRequestBody_BasicFields 验证 Bedrock 请求体的基础字段转换。
 func TestPrepareBedrockRequestBody_BasicFields(t *testing.T) {
 	input := `{"model":"claude-opus-4-6","stream":true,"max_tokens":1024,"messages":[{"role":"user","content":"hi"}]}`
 	result, err := bedrock.PrepareBedrockRequestBody([]byte(input), "us.anthropic.claude-opus-4-6-v1", "")

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原无消费者的前缀辅助入口已删除；相同前缀用例交给实际通配匹配实现。
+// TestAntigravityGatewayService_IsModelSupported 验证原无消费者的前缀辅助入口已删除；相同前缀用例交给实际通配匹配实现。
 func TestAntigravityGatewayService_IsModelSupported(t *testing.T) {
 	tests := []struct {
 		name     string

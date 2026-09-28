@@ -469,7 +469,7 @@ func (r *Store) getUserSpendingRankingFromAnalytics(ctx context.Context, start, 
 	return result, true, nil
 }
 
-// getUsageRankingFromAnalytics 从组合聚合源计算公开用量排行。
+// usageRankingAnalyticsEligibility 按排行指标生成聚合值大于零的 SQL 条件。
 func usageRankingAnalyticsEligibility(sortBy usage.UsageRankingSortBy) string {
 	switch usage.NormalizeUsageRankingSortBy(string(sortBy)) {
 	case usage.UsageRankingSortByRequests:

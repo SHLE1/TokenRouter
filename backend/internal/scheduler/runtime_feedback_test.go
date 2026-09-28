@@ -1,4 +1,3 @@
-// 反馈契约直接验证唯一调度实例，不经过平台包装。
 package scheduler_test
 
 import (

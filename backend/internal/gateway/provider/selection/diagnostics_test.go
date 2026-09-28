@@ -492,7 +492,7 @@ func diagnosticParameterDefaults(cfg *config.Config) scheduler.ParameterDefaults
 	return defaults
 }
 
-// 诊断测试仅装配原生参数与同一只读核心，不重建旧网关对象。
+// newDiagnosticsForTest 诊断测试仅装配原生参数与同一只读核心，不重建旧网关对象。
 func newDiagnosticsForTest(source DiagnosticSource, concurrency *scheduler.ConcurrencyService) *Diagnostics {
 	return NewDiagnostics(source, Shared{Concurrency: concurrency}, nil, nil)
 }

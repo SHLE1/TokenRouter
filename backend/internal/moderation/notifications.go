@@ -1,4 +1,3 @@
-// 风控只发送已确定的事件投影；通知模块不回读审核日志或用户状态。
 package moderation
 
 import (

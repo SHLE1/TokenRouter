@@ -1,4 +1,3 @@
-// Gemini 授权会话保留三十分钟 TTL 和显式启停，状态归提供商拥有者。
 package provider
 
 import (

@@ -1,4 +1,3 @@
-// Package telemetry 拥有请求关联与时延标识；业务执行状态由网关显式投影。
 package telemetry
 
 // ContextKey 区分请求观测键与普通字符串键。

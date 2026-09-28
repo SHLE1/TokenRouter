@@ -1,4 +1,3 @@
-// 下单输入与输出保持原 JSON 和金额形状。
 package payment
 
 import "time"

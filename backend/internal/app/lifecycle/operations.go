@@ -1,4 +1,3 @@
-// 本文件跟踪同步执行的拥有关系，不创建 goroutine，也不改变平台请求取消策略。
 package lifecycle
 
 import (
@@ -24,6 +23,7 @@ func NewOperations(name string) *Operations {
 	close(idle)
 	return &Operations{name: name, idle: idle}
 }
+
 func (o *Operations) Enter() (func(), error) {
 	o.mu.Lock()
 	if o.closed {

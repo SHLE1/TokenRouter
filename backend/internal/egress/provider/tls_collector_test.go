@@ -191,7 +191,7 @@ func appendUint16(dst []byte, v uint16) []byte {
 	return append(dst, buf[:]...)
 }
 
-// 进程退出封闭按需监听入口，不能在服务关闭后再次启动捕获器。
+// TestTLSFingerprintCollectorShutdownSealsStart 验证进程退出封闭按需监听入口，不能在服务关闭后再次启动捕获器。
 func TestTLSFingerprintCollectorShutdownSealsStart(t *testing.T) {
 	svc := NewTLSFingerprintCollectorService(CollectorOptions{})
 	require.NoError(t, svc.Shutdown(context.Background()))

@@ -1,4 +1,3 @@
-// 将 Ent 分组记录投影为路由领域值。
 package postgres
 
 import (

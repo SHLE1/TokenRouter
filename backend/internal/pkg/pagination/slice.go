@@ -1,4 +1,3 @@
-// Slice 按分页参数截取内存集合，并约束切片边界。
 package pagination
 
 func Slice[T any](items []T, params PaginationParams) []T {

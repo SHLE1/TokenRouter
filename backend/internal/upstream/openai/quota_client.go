@@ -1,4 +1,3 @@
-// 额度原生客户端执行有界读取、签名 Header 和一次 task 恢复，不保存提供商或缓存。
 package openai
 
 import (

@@ -58,7 +58,7 @@ func waitUsageSignal(t *testing.T, ch <-chan struct{}) {
 	}
 }
 
-// 首个 HTTP 等待方离开后，共享网络查询仍由提供商实例持有并在停机时等待。
+// TestUpstreamQueriesStopOwnsDetachedWork 验证首个 HTTP 等待方离开后，共享网络查询仍由提供商实例持有并在停机时等待。
 func TestUpstreamQueriesStopOwnsDetachedWork(t *testing.T) {
 	s, r, e := newUsageQueryTest(t, false)
 	require.Zero(t, r.reads.Load())
@@ -85,7 +85,7 @@ func TestUpstreamQueriesStopOwnsDetachedWork(t *testing.T) {
 	require.Equal(t, reads, r.reads.Load())
 }
 
-// 不合作的供应商执行仍必须报告在途超时，迟到完成不得改写首次停止结果。
+// TestUpstreamQueriesStopTimeoutRemainsFailure 验证不合作的供应商执行仍必须报告在途超时，迟到完成不得改写首次停止结果。
 func TestUpstreamQueriesStopTimeoutRemainsFailure(t *testing.T) {
 	s, _, e := newUsageQueryTest(t, true)
 	waiter := make(chan error, 1)
@@ -102,7 +102,7 @@ func TestUpstreamQueriesStopTimeoutRemainsFailure(t *testing.T) {
 	require.Same(t, err, s.StopContext(context.Background()))
 }
 
-// 结果复制保持 nil/空集合以及内部与 HTTP 的金额字段，并隔离所有嵌套可变值。
+// TestUpstreamUsageResultCopiesAllValues 验证结果复制保持 nil/空集合以及内部与 HTTP 的金额字段，并隔离所有嵌套可变值。
 func TestUpstreamUsageResultCopiesAllValues(t *testing.T) {
 	now := time.Now()
 	amount := 3.0
@@ -127,7 +127,7 @@ func TestUpstreamUsageResultCopiesAllValues(t *testing.T) {
 	require.Nil(t, CloneUpstreamUsageResult(&UpstreamUsageQueryResult{}).Balances)
 }
 
-// 缺失实例沿用原不可用错误和空指标，不因委托增加 panic。
+// TestUpstreamQueriesNilCompatibility 验证缺失实例沿用原不可用错误和空指标，不因委托增加 panic。
 func TestUpstreamQueriesNilCompatibility(t *testing.T) {
 	var s *UpstreamUsageService
 	_, err := s.QueryProvider(context.Background(), 1)

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 诊断必须直接读持久配置；瞬时冷却不把已配置模型误报为不存在。
+// TestModelAvailabilityUsesPersistentProviderStore 验证诊断必须直接读持久配置；瞬时冷却不把已配置模型误报为不存在。
 func TestModelAvailabilityUsesPersistentProviderStore(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()

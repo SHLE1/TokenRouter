@@ -1,4 +1,3 @@
-// Ollama Chat 的思考字段补齐只处理报文字节，提供商资格由调用方决定。
 package ollama
 
 import (

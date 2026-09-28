@@ -1,4 +1,3 @@
-// OpenAIRequestView 只持有当前报文和惰性字段补丁，完整解码仍由外层按需调用。
 package requeststate
 
 import (

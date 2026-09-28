@@ -1,4 +1,3 @@
-// 本文件绑定 Gemini 三类授权的协议参数和技术发现能力，不读取完整应用配置。
 package provider
 
 import (

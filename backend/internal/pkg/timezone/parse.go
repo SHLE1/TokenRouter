@@ -1,4 +1,3 @@
-// 共用已有的时间文本布局与尝试顺序，不改变默认时区或错误值。
 package timezone
 
 import (

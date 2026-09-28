@@ -1,4 +1,3 @@
-// 代理探测缓存保存延迟、出口位置和质量评估结果。
 package egress
 
 import (

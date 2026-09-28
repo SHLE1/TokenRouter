@@ -1,4 +1,3 @@
-// 一个运行实例持有对账游标；停止由外层 OrderExpiry 取消运行 context。
 package payment
 
 import (

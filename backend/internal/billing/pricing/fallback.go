@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// getFallbackPricing 根据模型系列获取回退价格
+// LookupFallbackPrice 根据模型系列获取回退价格
 func LookupFallbackPrice(prices map[string]*ModelPricing, model string, policy ModelPolicy) *ModelPricing {
 	modelLower := strings.ToLower(model)
 

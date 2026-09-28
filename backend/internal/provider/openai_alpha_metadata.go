@@ -1,4 +1,3 @@
-// PAT 搜索元数据属于提供商授权，供应商校验仍通过既有原生客户端端口执行。
 package provider
 
 import (

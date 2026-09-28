@@ -1,4 +1,3 @@
-// Chat-only 兼容端口保留旧上下文和提供商投影，不持有转换状态或请求循环。
 package httpapi
 
 import (

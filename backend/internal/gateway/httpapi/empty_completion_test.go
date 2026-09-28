@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 两种空终态保留不同的观察消息，失败编码与请求标识兼容旧消费者。
+// TestEmptyCompletionKeepsOneObservationAndFailure 验证两种空终态保留不同的观察消息，失败编码与请求标识兼容旧消费者。
 func TestEmptyCompletionKeepsOneObservationAndFailure(t *testing.T) {
 	for _, tc := range []struct {
 		name    string

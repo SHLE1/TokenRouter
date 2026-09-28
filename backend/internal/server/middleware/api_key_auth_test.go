@@ -1275,7 +1275,7 @@ func TestRequireGroupAssignmentMarksUngroupedKeyBusinessLimited(t *testing.T) {
 	require.Equal(t, gatewayhttp.OpsClientBusinessLimitedReasonAPIKeyGroupUnassigned, businessLimitedReason)
 }
 
-// 不可用回退必须配置目标；历史默认名称不能触发隐式选组。
+// TestAPIKeyAuthUsesExplicitUnavailableFallback 验证不可用回退必须配置目标；历史默认名称不能触发隐式选组。
 func TestAPIKeyAuthUsesExplicitUnavailableFallback(t *testing.T) {
 	for _, explicit := range []bool{true, false} {
 		t.Run(strconv.FormatBool(explicit), func(t *testing.T) {
@@ -2392,7 +2392,7 @@ func (r *stubUserSubscriptionRepo) BatchUpdateExpiredStatus(ctx context.Context)
 	return 0, errors.New("not implemented")
 }
 
-// 与分组无关的认证、额度和缓存测试使用已明确绑定的启用分组。
+// bindAuthTestGroup 与分组无关的认证、额度和缓存测试使用已明确绑定的启用分组。
 func bindAuthTestGroup(key *apikey.APIKey) *apikey.APIKey {
 	group := &routing.Group{ID: 9001, Name: "explicit-test-group", Status: billingcore.StatusActive, Hydrated: true, RateMultiplier: 1}
 	key.GroupID = &group.ID

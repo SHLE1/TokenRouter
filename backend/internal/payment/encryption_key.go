@@ -1,4 +1,3 @@
-// 密钥校验接收显式值；完整配置与日志后端由组合根负责。
 package payment
 
 import (

@@ -1,4 +1,3 @@
-// 删除续接引用只改该字段，保留原失败返回原报文的语义。
 package openai
 
 import (

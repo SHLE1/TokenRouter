@@ -1,4 +1,3 @@
-// 验证授权会话的创建、读取和过期清理。
 package provider
 
 import (

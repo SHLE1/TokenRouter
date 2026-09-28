@@ -1,4 +1,3 @@
-// 余额扣减复用调用方连接，并返回扣减后的余额与实际扣减金额。
 package postgres
 
 import (

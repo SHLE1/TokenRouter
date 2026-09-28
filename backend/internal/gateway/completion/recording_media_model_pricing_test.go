@@ -2,7 +2,7 @@ package completion_test
 
 import "github.com/TokenFlux/TokenRouter/internal/routing"
 
-// 测试夹具通过模型价卡表达媒体价格，不再构造废弃的分组价格字段。
+// testImageModelPricing 测试夹具通过模型价卡表达媒体价格，不再构造废弃的分组价格字段。
 func testImageModelPricing(prices map[string]*float64) []routing.ModelPricingEntry {
 	return testMediaModelPricing(routing.BillingModeImage, prices)
 }

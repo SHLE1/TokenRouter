@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// 以下边界只借用已绑定拥有者；缓存解码、健康状态和窗口规则不在本包重建。
+// readSnapshotProvider 以下边界只借用已绑定拥有者；缓存解码、健康状态和窗口规则不在本包重建。
 func readSnapshotProvider(ctx context.Context, source Snapshots, id int64) (*gatewayadapter.ExecutionProvider, error) {
 	value, err := source.GetProvider(ctx, id)
 	return gatewayadapter.NewExecutionProvider(value), err

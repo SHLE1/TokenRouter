@@ -1,4 +1,3 @@
-// 聚合状态按写入职责更新，避免手工回填与实时水位互相覆盖。
 package usage
 
 import (
@@ -79,6 +78,7 @@ func ApplyAnalyticsStateChange(current UsageAnalyticsAggregationState, change An
 	}
 	return next, nil
 }
+
 func sameAnalyticsTime(a, b *time.Time) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
@@ -94,6 +94,7 @@ func (s *DashboardAggregationService) readAnalyticsState(ctx context.Context) (*
 	}
 	return state, err
 }
+
 func (s *DashboardAggregationService) updateAnalyticsState(ctx context.Context, state *UsageAnalyticsAggregationState, kind AnalyticsChangeKind) error {
 	next, err := s.analyticsRepo.ApplyUsageAnalyticsState(ctx, AnalyticsStateChange{Kind: kind, State: *state, ExpectedManualStart: state.observedManualStart, ExpectedManualCursor: state.observedManualCursor})
 	if err == nil && next != nil {

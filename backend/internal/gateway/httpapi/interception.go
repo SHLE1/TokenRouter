@@ -1,4 +1,3 @@
-// 合成响应只属于 HTTP 兼容入口；其示例 token 不参与真实用量结算。
 package httpapi
 
 import (

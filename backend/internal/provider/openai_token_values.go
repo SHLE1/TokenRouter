@@ -1,4 +1,3 @@
-// 授权结果与凭据组装由提供商拥有，平台结果只提供已交换的 wire 值。
 package provider
 
 import (
@@ -43,7 +42,7 @@ type OpenAITokenInfo struct {
 	PrivacyMode           string `json:"privacy_mode,omitempty"`
 }
 
-// BuildProviderCredentials builds credentials map from token info
+// BuildOpenAIProviderCredentials 根据 token 信息构建提供商凭据。
 func BuildOpenAIProviderCredentials(tokenInfo *OpenAITokenInfo) map[string]any {
 	creds := map[string]any{
 		"access_token": tokenInfo.AccessToken,

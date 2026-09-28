@@ -1,4 +1,3 @@
-// 只验证上游显示值的形状、有限数和单位，不计算 TokenRouter 资金。
 package usageview
 
 import (
@@ -71,6 +70,7 @@ func ValidateNormalizedUsage(usage *UpstreamUsageInfo) error {
 	}
 	return nil
 }
+
 func ValidateUsageAmount(amount *UpstreamUsageAmount) error {
 	if amount == nil || (amount.Used == nil && amount.Total == nil && amount.Remaining == nil) {
 		return errors.New("missing usage amount values")
@@ -86,6 +86,7 @@ func ValidateUsageAmount(amount *UpstreamUsageAmount) error {
 	// 钱包余额允许为负；New API Token 额度在适配器层已经校验为非负。
 	return nil
 }
+
 func ValidateUsageLimits(limits []UpstreamUsageLimit) error {
 	seen := make(map[string]struct{}, len(limits))
 	for _, limit := range limits {
@@ -114,12 +115,15 @@ func ValidateUsageLimits(limits []UpstreamUsageLimit) error {
 	}
 	return nil
 }
+
 func ValidNonNegativeNumber(value float64) bool {
 	return value >= 0 && !math.IsNaN(value) && !math.IsInf(value, 0)
 }
+
 func ValidPositiveNumber(value float64) bool {
 	return value > 0 && !math.IsNaN(value) && !math.IsInf(value, 0)
 }
+
 func ValidFiniteNumber(value float64) bool {
 	return !math.IsNaN(value) && !math.IsInf(value, 0)
 }

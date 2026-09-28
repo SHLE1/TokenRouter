@@ -1,4 +1,3 @@
-// 渠道加载及订单实例绑定只有一份状态与规则。
 package payment
 
 import (

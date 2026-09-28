@@ -1,4 +1,3 @@
-// 固定查询的 HTTP 技术读取器保留认证 Header 顺序、重定向策略与读取边界。
 package usageclient
 
 import (

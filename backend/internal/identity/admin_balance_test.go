@@ -105,7 +105,7 @@ func (s *authCacheInvalidatorStub) InvalidateAuthCacheByGroupID(ctx context.Cont
 	s.groupIDs = append(s.groupIDs, groupID)
 }
 
-// 管理员调账必须走原子的 AdjustBalance/SetBalance，而不是"读余额→算新值→整行写回"，
+// TestAdminService_UpdateUserBalance_UsesAtomicPrimitives 验证管理员调账必须走原子的 AdjustBalance/SetBalance，而不是"读余额→算新值→整行写回"，
 // 后者会把并发的计费扣款覆盖掉。userRepoStub.Update 对未预期的调用会 panic，
 // 因此这里同时证明它没被走到。
 func TestAdminService_UpdateUserBalance_UsesAtomicPrimitives(t *testing.T) {

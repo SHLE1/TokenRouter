@@ -1,4 +1,3 @@
-// 版本比较保持旧容错解析，不引入新的 semver 规则。
 package clientmeta
 
 import (

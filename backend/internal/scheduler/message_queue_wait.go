@@ -19,7 +19,7 @@ func (o QueueObserver) event(name string, id int64, err error) {
 	}
 }
 
-// AcquireWithWait 保留串行锁首次尝试及 RPM 延迟时点；失败放行不会伪造已持有的锁。
+// acquireWithWait 保留串行锁首次尝试及 RPM 延迟时点；失败放行不会伪造已持有的锁。
 func (s *UserMessageQueueService) acquireWithWait(parent context.Context, providerID int64, baseRPM int, timeout time.Duration, observer QueueObserver) (*Lease, error) {
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()

@@ -1,4 +1,3 @@
-// Images HTTP 适配选择提供商开关和传输参数，回填算法由上游包实现。
 package httpapi
 
 import (

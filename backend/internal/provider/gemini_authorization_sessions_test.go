@@ -1,4 +1,3 @@
-// 验证授权会话的并发访问和过期行为。
 package provider
 
 import (

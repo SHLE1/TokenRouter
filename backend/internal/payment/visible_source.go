@@ -1,4 +1,3 @@
-// 可见渠道来源规则由支付拥有，设置入口只做委托。
 package payment
 
 import (

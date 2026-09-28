@@ -1,4 +1,3 @@
-// 账单探测保留原两次请求、短退避和一 MiB 读取；不更新提供商或调度。
 package grok
 
 import (
@@ -88,6 +87,6 @@ func IsRetryableBillingStatus(statusCode int) bool {
 	}
 }
 
-// 结构化日志中不展开用于交换的凭据。
+// String 结构化日志中不展开用于交换的凭据。
 func (BillingFetchOptions) String() string     { return "grok billing options" }
 func (o BillingFetchOptions) GoString() string { return o.String() }

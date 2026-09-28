@@ -2,7 +2,7 @@ package protocol
 
 import "testing"
 
-// 同时锁定桶值和旧返回语义，避免把补明细误报为 TTL 改写。
+// TestApplyCacheTTLOverrideContract 验证同时锁定桶值和旧返回语义，避免把补明细误报为 TTL 改写。
 func TestApplyCacheTTLOverrideContract(t *testing.T) {
 	tests := []struct {
 		name, target          string

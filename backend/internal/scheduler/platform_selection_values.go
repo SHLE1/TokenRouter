@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// 分数与请求候选之间仅做投影，计算、堆和随机顺序继续复用纯评分实现。
+// platformScores 分数与请求候选之间仅做投影，计算、堆和随机顺序继续复用纯评分实现。
 func platformScores(values []PlatformCandidateScore) ([]CandidateScore, map[*ScoreProvider]*FlowProvider) {
 	out := make([]CandidateScore, len(values))
 	source := map[*ScoreProvider]*FlowProvider{}

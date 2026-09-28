@@ -1,4 +1,3 @@
-// Package sqlite 提供隔离 Ent 测试资源，不替代真实 PostgreSQL 验收。
 package sqlite
 
 import (
@@ -15,7 +14,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// SQLite 保留原单测数据库与外键设置；不替代 PostgreSQL 事务验收。
+// NewClient SQLite 保留原单测数据库与外键设置；不替代 PostgreSQL 事务验收。
 func NewClient(t *testing.T) *dbent.Client {
 	t.Helper()
 	name := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.NewReplacer("/", "_", " ", "_").Replace(t.Name()))

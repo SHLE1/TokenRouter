@@ -1,4 +1,3 @@
-// Chat 编排保留 Responses 形状短路、平台分流和同提供商恢复，不另开提供商循环。
 package openaiforward
 
 import (

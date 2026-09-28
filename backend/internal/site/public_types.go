@@ -1,4 +1,3 @@
-// 站点公开值类型不包含凭据。
 package site
 
 type LoginAgreementDocument struct {

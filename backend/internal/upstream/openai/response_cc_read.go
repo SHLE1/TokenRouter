@@ -1,4 +1,3 @@
-// CC 原生读取供 Responses/Messages 回退复用，回调只处理输出和观察。
 package openai
 
 import (

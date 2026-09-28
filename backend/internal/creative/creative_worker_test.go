@@ -208,7 +208,7 @@ func TestCreativeWorkerProviderConcurrencyPending(t *testing.T) {
 	require.Equal(t, creative.CreativeRunStatusQueued, f.repo.runs["crun_worker_provider_pending"].Status)
 }
 
-// 保存失败后保持成功事实和一次费用，不再次调用供应商。
+// TestCreativeWorkerRetriesTransientOutputFailure 验证保存失败后保持成功事实和一次费用，不再次调用供应商。
 func TestCreativeWorkerRetriesTransientOutputFailure(t *testing.T) {
 	f := newCreativeWorkerFixture()
 	id := "crun_workeroutputretry1"

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// custom_tool_call（custom/freeform 工具，如新版 apply_patch）应像 function_call 一样
+// TestResponsesEventToChatChunks_CustomToolCallInputDelta 验证custom_tool_call（custom/freeform 工具，如新版 apply_patch）应像 function_call 一样
 // 注册为工具调用，其 *_input.delta 增量映射到正确的工具索引。
 func TestResponsesEventToChatChunks_CustomToolCallInputDelta(t *testing.T) {
 	state := NewResponsesEventToChatState(testRuntime())
@@ -41,7 +41,7 @@ func TestResponsesEventToChatChunks_CustomToolCallInputDelta(t *testing.T) {
 	assert.Equal(t, "*** Begin Patch", tc.Function.Arguments)
 }
 
-// 原始推理文本增量 reasoning_text.delta 应像 reasoning_summary_text.delta 一样
+// TestResponsesEventToChatChunks_ReasoningTextDelta 验证原始推理文本增量 reasoning_text.delta 应像 reasoning_summary_text.delta 一样
 // 映射为 reasoning_content。
 func TestResponsesEventToChatChunks_ReasoningTextDelta(t *testing.T) {
 	state := NewResponsesEventToChatState(testRuntime())
@@ -57,7 +57,7 @@ func TestResponsesEventToChatChunks_ReasoningTextDelta(t *testing.T) {
 	assert.Equal(t, "thinking step", *chunks[0].Choices[0].Delta.ReasoningContent)
 }
 
-// 缓冲（非流式）累加器同样需识别两类新事件。
+// TestBufferedResponseAccumulator_CodexEvents 验证缓冲（非流式）累加器同样需识别两类新事件。
 func TestBufferedResponseAccumulator_CodexEvents(t *testing.T) {
 	acc := NewBufferedResponseAccumulator()
 	acc.ProcessEvent(&ResponsesStreamEvent{

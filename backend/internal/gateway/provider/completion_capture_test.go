@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原生捕获在提交时读取输入，提交后不会再随请求对象、档位或价卡变化。
+// TestCompletionCaptureKeepsTurnTimeAndIndependentInputs 验证原生捕获在提交时读取输入，提交后不会再随请求对象、档位或价卡变化。
 func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
 	multiplier := 1.5
 	groupID := int64(17)
@@ -52,7 +52,7 @@ func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
 	require.Equal(t, "high", *out.RequestedReasoningEffort)
 }
 
-// 接口包含带类型的 nil 时仍表示已提供能力，不能按底层指针是否为空判断。
+// TestCompletionCapturePreservesQuotaCapabilityPresence 验证接口包含带类型的 nil 时仍表示已提供能力，不能按底层指针是否为空判断。
 func TestCompletionCapturePreservesQuotaCapabilityPresence(t *testing.T) {
 	var absent QuotaUpdater
 	var typedNil *apikey.APIKeyService

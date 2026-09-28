@@ -1,4 +1,3 @@
-// 直接验证 Bedrock 新执行入口的帧顺序、用量事实和关闭责任。
 package bedrock
 
 import (

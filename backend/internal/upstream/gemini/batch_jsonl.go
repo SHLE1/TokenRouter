@@ -1,4 +1,3 @@
-// JSONL 构造不接收任务实体，保留逐项验证顺序与原 wire 字段。
 package gemini
 
 import (
@@ -86,6 +85,7 @@ func BuildGeminiBatchJSONL(input BatchJSONLInput, inputError func(string, ...any
 	}
 	return buf.Bytes(), nil
 }
+
 func batchImageGeminiParts(prompt string, refs []BatchReference, inputError func(string, ...any) error) ([]geminiPart, error) {
 	parts := []geminiPart{{Text: prompt}}
 	for _, ref := range refs {

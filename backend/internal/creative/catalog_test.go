@@ -23,7 +23,7 @@ func (a creativeCatalogTestProviders) ListSchedulableByGroupIDAndPlatform(contex
 	return a.values, nil
 }
 
-// 通过正式目录入口验证提供商候选，避免测试保留另一套不含分组策略的展开规则。
+// creativeProviderModelsForTest 通过正式目录入口验证提供商候选，避免测试保留另一套不含分组策略的展开规则。
 func creativeProviderModelsForTest(t *testing.T, value *providercore.Record) []string {
 	t.Helper()
 	value = providercore.CloneRecord(value)
@@ -115,7 +115,7 @@ func TestCreativeGeminiConfiguredImageWhitelistCandidates(t *testing.T) {
 	require.Equal(t, []string{"gemini-3-pro-image-quality"}, models)
 }
 
-// 目录和提交必须使用相同的模型链，无共享价格配置时也要执行全部分组策略。
+// TestCreativeDirectoryAndCreateUseGroupPolicy 验证目录和提交必须使用相同的模型链，无共享价格配置时也要执行全部分组策略。
 func TestCreativeDirectoryAndCreateUseGroupPolicy(t *testing.T) {
 	for _, platform := range []string{creative.PlatformOpenAI, creative.PlatformGemini, creative.PlatformGrok} {
 		for _, source := range []string{routing.BillingModelSourceRequested, routing.BillingModelSourceGroupMapped, routing.BillingModelSourceUpstream} {

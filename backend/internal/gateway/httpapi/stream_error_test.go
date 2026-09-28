@@ -61,7 +61,7 @@ func parseResponsesFailedSSE(t *testing.T, body string) (map[string]any, map[str
 	return resp, errObj
 }
 
-// OpenAI handler 的 /v1/responses 流在已开始后必须写出 response.failed。
+// TestOpenAIHandleStreamingAwareError_ResponsesStreamingEmitsResponseFailed 验证OpenAI handler 的 /v1/responses 流在已开始后必须写出 response.failed。
 func TestOpenAIHandleStreamingAwareError_ResponsesStreamingEmitsResponseFailed(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, EndpointResponses)
 	h := &OpenAITextHandler{backend: streamErrorBackendFixture{}}
@@ -76,7 +76,7 @@ func TestOpenAIHandleStreamingAwareError_ResponsesStreamingEmitsResponseFailed(t
 	assert.Equal(t, "Concurrency limit exceeded for user, please retry later", errObj["message"])
 }
 
-// 当 setOpsRequestContext 写过 model，合成事件应回填该字段（与 codebase 已有 makeResponsesCompletedEvent 对齐）。
+// TestOpenAIHandleStreamingAwareError_ResponsesStreamingIncludesModel 验证当 setOpsRequestContext 写过 model，合成事件应回填该字段（与 codebase 已有 makeResponsesCompletedEvent 对齐）。
 func TestOpenAIHandleStreamingAwareError_ResponsesStreamingIncludesModel(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, EndpointResponses)
 	SetOpsRequestContext(c, "gpt-5.5", true)
@@ -88,7 +88,7 @@ func TestOpenAIHandleStreamingAwareError_ResponsesStreamingIncludesModel(t *test
 	assert.Equal(t, "gpt-5.5", resp["model"])
 }
 
-// 没有 model 时 model 字段不应出现（避免发空字符串污染下游解析）。
+// TestOpenAIHandleStreamingAwareError_ResponsesStreamingOmitsEmptyModel 验证没有 model 时 model 字段不应出现（避免发空字符串污染下游解析）。
 func TestOpenAIHandleStreamingAwareError_ResponsesStreamingOmitsEmptyModel(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, EndpointResponses)
 	h := &OpenAITextHandler{backend: streamErrorBackendFixture{}}
@@ -99,7 +99,7 @@ func TestOpenAIHandleStreamingAwareError_ResponsesStreamingOmitsEmptyModel(t *te
 	assert.False(t, hasModel, "model field must be omitted when unknown")
 }
 
-// 当 request.Context 携带 requeststate.RequestID 时，合成 id 应与之关联，便于和 server log 串起来。
+// TestOpenAIHandleStreamingAwareError_ResponsesStreamingReusesRequestID 验证当 request.Context 携带 requeststate.RequestID 时，合成 id 应与之关联，便于和 server log 串起来。
 func TestOpenAIHandleStreamingAwareError_ResponsesStreamingReusesRequestID(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, EndpointResponses)
 	c.Request = c.Request.WithContext(
@@ -113,7 +113,7 @@ func TestOpenAIHandleStreamingAwareError_ResponsesStreamingReusesRequestID(t *te
 	assert.Equal(t, "resp_fd277bc5ff7e45d18aa9f54e1df318f1", resp["id"])
 }
 
-// 与旧分支的 TestOpenAIHandleStreamingAwareError_JSONEscaping 对齐：
+// TestOpenAIHandleStreamingAwareError_ResponsesStreamingJSONEscaping 验证与旧分支的 TestOpenAIHandleStreamingAwareError_JSONEscaping 对齐：
 // 新的 response.failed payload 也必须正确转义 message 里的特殊字符，
 // 否则下游 SDK 解析 JSON 时会失败。
 func TestOpenAIHandleStreamingAwareError_ResponsesStreamingJSONEscaping(t *testing.T) {
@@ -141,7 +141,7 @@ func TestOpenAIHandleStreamingAwareError_ResponsesStreamingJSONEscaping(t *testi
 	}
 }
 
-// OpenAI handler 的 /v1/chat/completions 流继续保留 legacy event:error 格式，
+// TestOpenAIHandleStreamingAwareError_ChatCompletionsStreamingKeepsLegacy 验证OpenAI handler 的 /v1/chat/completions 流继续保留 legacy event:error 格式，
 // 避免本次修复误改无关路径。
 func TestOpenAIHandleStreamingAwareError_ChatCompletionsStreamingKeepsLegacy(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, EndpointChatCompletions)
@@ -152,7 +152,7 @@ func TestOpenAIHandleStreamingAwareError_ChatCompletionsStreamingKeepsLegacy(t *
 	assert.True(t, strings.HasPrefix(body, "event: error\n"), "got: %q", body)
 }
 
-// Gateway（Anthropic-backed）handler 的 /v1/responses 路径也必须写出 response.failed。
+// TestGatewayHandleStreamingAwareError_ResponsesStreamingEmitsResponseFailed 验证Gateway（Anthropic-backed）handler 的 /v1/responses 路径也必须写出 response.failed。
 func TestGatewayHandleStreamingAwareError_ResponsesStreamingEmitsResponseFailed(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, EndpointResponses)
 	WriteAnthropicStreamError(c, http.StatusBadGateway, "upstream_error", "", "upstream gone", true, MarkOpsStreamError)
@@ -162,7 +162,7 @@ func TestGatewayHandleStreamingAwareError_ResponsesStreamingEmitsResponseFailed(
 	assert.Equal(t, "upstream gone", errObj["message"])
 }
 
-// Gateway handler 的 /v1/messages 继续保留 legacy data:{type:error,...} 格式。
+// TestGatewayHandleStreamingAwareError_MessagesStreamingKeepsLegacy 验证Gateway handler 的 /v1/messages 继续保留 legacy data:{type:error,...} 格式。
 func TestGatewayHandleStreamingAwareError_MessagesStreamingKeepsLegacy(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, EndpointMessages)
 	WriteAnthropicStreamError(c, http.StatusBadGateway, "upstream_error", "", "boom", true, MarkOpsStreamError)
@@ -187,7 +187,7 @@ func TestOpenAIAdmissionErrorPreservesGatewayCodeAcrossResponsesSSE(t *testing.T
 	assert.Equal(t, GatewayConcurrencyLimitCode, errObj["code"])
 }
 
-// 项目里 /responses 注册在多组路由：/v1/responses（gateway）、裸 /responses（top-level）、
+// TestInboundIsResponses_CoversAllRoutes 验证项目里 /responses 注册在多组路由：/v1/responses（gateway）、裸 /responses（top-level）、
 // /backend-api/codex/responses（codex direct）。我们 fix 必须覆盖全部，
 // 否则一些客户端走的路径就不会发 response.failed，照样报 stream closed。
 // 这是生产 2026-05-24 ~11:05 UTC user 16 实际命中的 bug。
@@ -215,7 +215,7 @@ func TestInboundIsResponses_CoversAllRoutes(t *testing.T) {
 	}
 }
 
-// 用 c.Request.URL.Path 作为 fallback（当 c.FullPath() 为空时，例如某些测试 fixture）。
+// TestInboundIsResponses_FallsBackToURLPath 验证用 c.Request.URL.Path 作为 fallback（当 c.FullPath() 为空时，例如某些测试 fixture）。
 func TestInboundIsResponses_FallsBackToURLPath(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -224,7 +224,7 @@ func TestInboundIsResponses_FallsBackToURLPath(t *testing.T) {
 	assert.True(t, InboundIsResponses(c), "URL.Path fallback must work when FullPath is empty")
 }
 
-// 回归生产事故：用户 16 走 /responses 路径，必须发 response.failed。
+// TestOpenAIHandleStreamingAwareError_BareResponsesRouteEmitsResponseFailed 验证回归生产事故：用户 16 走 /responses 路径，必须发 response.failed。
 func TestOpenAIHandleStreamingAwareError_BareResponsesRouteEmitsResponseFailed(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, "/responses")
 	h := &OpenAITextHandler{backend: streamErrorBackendFixture{}}
@@ -237,7 +237,7 @@ func TestOpenAIHandleStreamingAwareError_BareResponsesRouteEmitsResponseFailed(t
 	assert.Equal(t, "rate_limit_exceeded", errObj["code"])
 }
 
-// 没有 request_id 时，合成 response.failed id 回退为 uuid。
+// TestOpenAIHandleStreamingAwareError_ResponsesStreamingCarriesCreatedAt 验证没有 request_id 时，合成 response.failed id 回退为 uuid。
 // issue #5601：严格的 Responses 客户端把 created_at 当必填字段，缺失即
 // `missing field 'created_at'`。合成的终止事件若解析不了，本文件存在的意义
 // （给客户端一个可识别的终止事件而不是盲重连）就落空了。

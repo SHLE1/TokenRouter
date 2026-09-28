@@ -1,4 +1,3 @@
-// Dashboard 缓存保留原 key、TTL 和故障语义，参数由 app 投影。
 package rediscache
 
 import (

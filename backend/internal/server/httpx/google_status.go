@@ -1,4 +1,3 @@
-// Google 状态映射由 HTTP 适配层拥有，纯报文不依赖 net/http。
 package httpx
 
 import "net/http"

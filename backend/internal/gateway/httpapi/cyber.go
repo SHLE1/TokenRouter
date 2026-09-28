@@ -1,4 +1,3 @@
-// Cyber HTTP 适配管理请求/turn 标记与错误输出；后台仅收到冻结完成输入。
 package httpapi
 
 import (

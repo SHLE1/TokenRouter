@@ -1,4 +1,3 @@
-// Antigravity 的 Google 内部 wire 变体保留字段与自定义编解码，不与公开 API 形状合并。
 package google
 
 import (

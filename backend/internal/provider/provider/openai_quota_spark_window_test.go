@@ -252,7 +252,7 @@ func TestResetCreditAgentIdentityUsesAssertionAndRecoversInvalidTaskOnce(t *test
 	require.Equal(t, []int64{provider.ID}, invalidator.providerIDs)
 }
 
-// 验证并发请求已恢复 task 时，重置请求复用新 task 而不重复注册。
+// TestResetCreditAgentIdentityReusesConcurrentlyRecoveredTask 验证并发请求已恢复 task 时，重置请求复用新 task 而不重复注册。
 func TestResetCreditAgentIdentityReusesConcurrentlyRecoveredTask(t *testing.T) {
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)

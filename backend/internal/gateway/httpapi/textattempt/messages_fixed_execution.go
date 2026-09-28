@@ -1,4 +1,3 @@
-// 固定 Messages 执行绑定只构造一次依赖；Open 每次仅分配请求/attempt 状态。
 package textattempt
 
 import (

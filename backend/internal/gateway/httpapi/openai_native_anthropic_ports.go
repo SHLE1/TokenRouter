@@ -1,4 +1,3 @@
-// 三种原生 Anthropic 调用按原入口选择错误输出，提供商与传输只作参数投影。
 package httpapi
 
 import (

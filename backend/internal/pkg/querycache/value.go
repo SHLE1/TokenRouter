@@ -1,4 +1,3 @@
-// Package querycache 提供查询值的独立副本；不依赖 HTTP 或业务实体。
 package querycache
 
 import "reflect"
@@ -15,6 +14,7 @@ func Clone[T any](value T) T {
 	}
 	return result
 }
+
 func cloneValue(v reflect.Value) reflect.Value {
 	switch v.Kind() {
 	case reflect.Pointer:

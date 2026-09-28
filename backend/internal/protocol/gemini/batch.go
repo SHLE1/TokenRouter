@@ -1,4 +1,3 @@
-// Gemini Batch 资源报文保留原字段、省略规则与 Raw 承载。
 package gemini
 
 type GeminiUploadedFile struct {

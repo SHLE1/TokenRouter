@@ -63,7 +63,7 @@ func (m *sessionWindowMockRepo) ClearTempUnschedulable(_ context.Context, _ int6
 	return nil
 }
 
-// 测试只装配窗口存储与原健康恢复，未使用的健康写入不得被意外调用。
+// newSessionWindowService 测试只装配窗口存储与原健康恢复，未使用的健康写入不得被意外调用。
 func newSessionWindowService(repo *sessionWindowMockRepo) *providercore.HealthService {
 	recovery := providercore.NewRecoveryService(repo, nil, providercore.RecoveryOptions{})
 	return providercore.NewHealthService(repo, nil, providercore.HealthOptions{SessionWindows: repo, ClearWindowRateLimit: recovery.ClearRateLimit})

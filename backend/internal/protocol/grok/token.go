@@ -1,4 +1,3 @@
-// 供应商交换的令牌与临时 SSO 报文，不拥有授权会话或持久化。
 package grok
 
 // TokenResponse 表示 xAI OAuth token 响应。

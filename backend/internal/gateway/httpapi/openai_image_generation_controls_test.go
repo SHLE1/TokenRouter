@@ -481,7 +481,7 @@ func TestOpenAIGatewayServiceForward_CodexBridgeSkipsCompactRequests(t *testing.
 	require.NotContains(t, instructions, "image_generation")
 }
 
-// 分组协议设置优先于提供商，旧分组功能默认值不再影响任何请求。
+// TestOpenAIGatewayService_CodexImageGenerationBridgeOverridePrecedence 验证分组协议设置优先于提供商，旧分组功能默认值不再影响任何请求。
 func TestOpenAIGatewayService_CodexImageGenerationBridgeOverridePrecedence(t *testing.T) {
 	for _, tt := range []struct {
 		name     string

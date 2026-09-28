@@ -75,7 +75,7 @@ func waitScheduledRound(t *testing.T, runner *ScheduledTestRunnerService) {
 	}, time.Second, time.Millisecond)
 }
 
-// 构造无启动，重复 Start 不注册新任务，Stop 之后也不能重新开启 cron。
+// TestScheduledRunnerStopsPermanently 验证构造无启动，重复 Start 不注册新任务，Stop 之后也不能重新开启 cron。
 func TestScheduledRunnerStopsPermanently(t *testing.T) {
 	for _, beforeStart := range []bool{false, true} {
 		schedule := &scheduledScheduleStub{}
@@ -97,7 +97,7 @@ func TestScheduledRunnerStopsPermanently(t *testing.T) {
 	}
 }
 
-// 十秒偏移必须被停止立即取消，不能等偏移结束后再读取到期计划。
+// TestScheduledRunnerCancelsOffsetBeforeClaim 验证十秒偏移必须被停止立即取消，不能等偏移结束后再读取到期计划。
 func TestScheduledRunnerCancelsOffsetBeforeClaim(t *testing.T) {
 	plans := &scheduledPlansStub{}
 	schedule := &scheduledScheduleStub{}
@@ -118,7 +118,7 @@ func TestScheduledRunnerCancelsOffsetBeforeClaim(t *testing.T) {
 	require.Zero(t, plans.reads.Load())
 }
 
-// 忽略取消的在途执行必须报告未完成，迟到结束也不能抹掉首次超时结果。
+// TestScheduledRunnerReportsUnfinishedExecution 验证忽略取消的在途执行必须报告未完成，迟到结束也不能抹掉首次超时结果。
 func TestScheduledRunnerReportsUnfinishedExecution(t *testing.T) {
 	plans := &scheduledPlansStub{plans: []*ScheduledTestPlan{{ID: 1, ProviderID: 2}}}
 	executor := scheduledExecutorStub{entered: make(chan struct{}), release: make(chan struct{})}
@@ -160,7 +160,7 @@ func (s *scheduledBlockedStop) Stop(context.Context) error {
 	return nil
 }
 
-// 调度器端口忽略取消时，执行器仍必须有界返回并报告具体未完成阶段。
+// TestScheduledRunnerBoundsSchedulerStop 验证调度器端口忽略取消时，执行器仍必须有界返回并报告具体未完成阶段。
 func TestScheduledRunnerBoundsSchedulerStop(t *testing.T) {
 	schedule := &scheduledBlockedStop{release: make(chan struct{}), done: make(chan struct{})}
 	release := sync.OnceFunc(func() { close(schedule.release) })
@@ -182,7 +182,7 @@ func TestScheduledRunnerBoundsSchedulerStop(t *testing.T) {
 	require.Equal(t, int32(1), schedule.stops.Load())
 }
 
-// 部分启动失败后仍能取消已进入的回调并释放日历调度资源。
+// TestScheduledRunnerCleansPartialStart 验证部分启动失败后仍能取消已进入的回调并释放日历调度资源。
 func TestScheduledRunnerCleansPartialStart(t *testing.T) {
 	plans := &scheduledPlansStub{}
 	failed := errors.New("forced schedule start failure")

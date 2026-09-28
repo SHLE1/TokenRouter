@@ -1,4 +1,3 @@
-// 兼容供应商的余额报文分类只返回观测；可恢复停调仍由提供商健康用例决定。
 package upstream
 
 import "strings"

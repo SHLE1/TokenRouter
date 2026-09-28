@@ -331,7 +331,7 @@ func TestNewAPIUsageEndpointMissingIsUnsupported(t *testing.T) {
 	require.ErrorIs(t, err, providercore.ErrUpstreamUsageUnsupported)
 }
 
-// DeepSeek relay 返回结构缺失或数值非法时不能伪造 CNY=0，否则会把上游协议故障
+// TestDeepSeekBalanceAdapterRejectsMalformedPayloads 验证DeepSeek relay 返回结构缺失或数值非法时不能伪造 CNY=0，否则会把上游协议故障
 // 误显示成真实余额；合法的零余额仍应保留为成功结果。
 func TestDeepSeekBalanceAdapterRejectsMalformedPayloads(t *testing.T) {
 	cases := []struct {

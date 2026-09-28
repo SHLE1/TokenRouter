@@ -29,7 +29,7 @@ func newPassthroughKeepaliveTestContext(t *testing.T) (*gin.Context, *httptest.R
 	return c, rec
 }
 
-// startOpenAISSEKeepalive 必须在【没有】compact 标记时也能启动 ——
+// TestStartOpenAISSEKeepalive_WorksWithoutCompactMarker 验证startOpenAISSEKeepalive 必须在【没有】compact 标记时也能启动 ——
 // 否则普通透传请求依旧静默。
 func TestStartOpenAISSEKeepalive_WorksWithoutCompactMarker(t *testing.T) {
 	c, rec := newPassthroughKeepaliveTestContext(t)
@@ -53,7 +53,7 @@ func TestStartOpenAISSEKeepalive_WorksWithoutCompactMarker(t *testing.T) {
 	require.Contains(t, rec.Body.String(), ": keepalive\n\n")
 }
 
-// 🔴 最要紧的一条:心跳字节【不得】把请求判成「已向客户端写出语义响应」，
+// TestPassthroughKeepaliveDoesNotBlockPreOutputFailover 验证🔴 最要紧的一条:心跳字节【不得】把请求判成「已向客户端写出语义响应」，
 // 否则上游 429/5xx 时不再换号 —— 这正是 #3887 加固的那条不变量，
 // 透传路径的 pre-output failover 完全依赖它。
 func TestPassthroughKeepaliveDoesNotBlockPreOutputFailover(t *testing.T) {
@@ -73,7 +73,7 @@ func TestPassthroughKeepaliveDoesNotBlockPreOutputFailover(t *testing.T) {
 	require.True(t, OpenAIStreamClientOutputStarted(c, false), "真实语义输出之后应当判定为已输出")
 }
 
-// 停拍之后不得再有心跳字节写出 —— 主循环接管 ResponseWriter 的前提。
+// TestPassthroughKeepaliveStopsBeforeHandingOverWriter 验证停拍之后不得再有心跳字节写出 —— 主循环接管 ResponseWriter 的前提。
 func TestPassthroughKeepaliveStopsBeforeHandingOverWriter(t *testing.T) {
 	c, rec := newPassthroughKeepaliveTestContext(t)
 	stop := StartOpenAISSEKeepalive(c, keepaliveTestInterval)
@@ -92,7 +92,7 @@ func TestPassthroughKeepaliveStopsBeforeHandingOverWriter(t *testing.T) {
 		"停拍后写入应当是响应体的最后一段")
 }
 
-// interval<=0(配置禁用)时行为与改动前完全一致:一个字节都不写。
+// TestPassthroughKeepaliveDisabledKeepsWriterUntouched 验证interval<=0(配置禁用)时行为与改动前完全一致:一个字节都不写。
 func TestPassthroughKeepaliveDisabledKeepsWriterUntouched(t *testing.T) {
 	c, rec := newPassthroughKeepaliveTestContext(t)
 	stop := StartOpenAISSEKeepalive(c, 0)

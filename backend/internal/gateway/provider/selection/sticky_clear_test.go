@@ -1,6 +1,5 @@
 //go:build unit
 
-// 验证粘性清理的提供商状态及模型限流边界，保留原表格断言。
 package selection
 
 import (

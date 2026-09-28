@@ -107,7 +107,7 @@ func TestHandleStreamingResponse_SpecialCharactersInJSON(t *testing.T) {
 	require.Contains(t, body, "content_block_delta", "响应应包含转发的 SSE 事件")
 }
 
-// 上游中途读错误（如 HTTP/2 GOAWAY 触发的 unexpected EOF）发生在向客户端写入任何字节前：
+// TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover 验证上游中途读错误（如 HTTP/2 GOAWAY 触发的 unexpected EOF）发生在向客户端写入任何字节前：
 // 网关应返回 *UpstreamFailoverError 触发提供商 failover/重试，而不是把错误事件直接发给客户端。
 func TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)
@@ -145,7 +145,7 @@ func TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover(t 
 	require.NotContains(t, rec.Body.String(), "stream_read_error")
 }
 
-// 上游已经发送过事件（c.Writer 已写过字节）后再发生读错误：
+// TestHandleStreamingResponse_StreamReadErrorAfterOutput_PassesThrough 验证上游已经发送过事件（c.Writer 已写过字节）后再发生读错误：
 // SSE 协议无 resume，网关只能透传 stream_read_error 错误事件给客户端，不能 failover。
 func TestHandleStreamingResponse_StreamReadErrorAfterOutput_PassesThrough(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)
@@ -183,7 +183,7 @@ func TestHandleStreamingResponse_StreamReadErrorAfterOutput_PassesThrough(t *tes
 	require.Contains(t, body, "upstream stream disconnected", "error.message 必须包含具体根因，Claude Code 等客户端才能显示有效错误文案")
 }
 
-// 默认 (*net.OpError).Error() 会拼接 Source/Addr 字段，泄露内部 IP/端口与上游
+// TestHandleStreamingResponse_FailoverBodyDoesNotLeakAddresses 验证默认 (*net.OpError).Error() 会拼接 Source/Addr 字段，泄露内部 IP/端口与上游
 // 服务器地址。sanitizeStreamError 必须剥离这些信息，避免基础设施拓扑通过
 // failover ResponseBody 或 SSE error 帧返回给客户端。
 func TestHandleStreamingResponse_FailoverBodyDoesNotLeakAddresses(t *testing.T) {
@@ -225,7 +225,7 @@ func TestHandleStreamingResponse_FailoverBodyDoesNotLeakAddresses(t *testing.T) 
 	require.Contains(t, body, "upstream stream disconnected")
 }
 
-// 上游 HTTP 200 + SSE 流体内 event:error 帧应保留 data 行原文，
+// TestHandleStreamingResponse_SSEErrorEvent_ReturnsTypedErrorWithRawData 验证上游 HTTP 200 + SSE 流体内 event:error 帧应保留 data 行原文，
 // 这是 Forward 后续补全 UpstreamFailoverError.ResponseBody 与 Ops 日志的前提。
 func TestHandleStreamingResponse_SSEErrorEvent_ReturnsTypedErrorWithRawData(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)
@@ -257,7 +257,7 @@ func TestHandleStreamingResponse_SSEErrorEvent_ReturnsTypedErrorWithRawData(t *t
 	require.Equal(t, "Anthropic upstream is overloaded", upstream.ExtractErrorMessage([]byte(sseErr.RawData)))
 }
 
-// 上游只发 event:error 而没有 data 行时，也要返回 typed error，避免上层走不到 stream_error 分支。
+// TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine 验证上游只发 event:error 而没有 data 行时，也要返回 typed error，避免上层走不到 stream_error 分支。
 func TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)
 
@@ -282,7 +282,7 @@ func TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine(t *testing.T) {
 	require.Equal(t, "", sseErr.RawData)
 }
 
-// 上游先发部分流输出再发 event:error 时，仍要保留真实错误体；
+// TestHandleStreamingResponse_SSEErrorEvent_AfterPartialStreamOutput 验证上游先发部分流输出再发 event:error 时，仍要保留真实错误体；
 // handler 层会因已写客户端响应而停止继续换号。
 func TestHandleStreamingResponse_SSEErrorEvent_AfterPartialStreamOutput(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)
@@ -313,7 +313,7 @@ func TestHandleStreamingResponse_SSEErrorEvent_AfterPartialStreamOutput(t *testi
 	require.Contains(t, rec.Body.String(), "message_start")
 }
 
-// 上游 event:error 的 data 行不是合法 JSON 时，也要保留原始内容，供 Ops detail 排查。
+// TestHandleStreamingResponse_SSEErrorEvent_NonJSONDataLine 验证上游 event:error 的 data 行不是合法 JSON 时，也要保留原始内容，供 Ops detail 排查。
 func TestHandleStreamingResponse_SSEErrorEvent_NonJSONDataLine(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)
 

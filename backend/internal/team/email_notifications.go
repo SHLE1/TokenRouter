@@ -1,4 +1,3 @@
-// 团队通知先取得用户展示投影，再投递已确定的事件。
 package team
 
 import (
@@ -23,6 +22,7 @@ type EmailNotifications struct {
 func NewEmailNotifications(sender TeamMailSender, users InvitationRecipientReader) *EmailNotifications {
 	return &EmailNotifications{sender: sender, users: users}
 }
+
 func (s EmailNotifications) SendInvitation(ctx context.Context, email, teamName, link string, expiresAt time.Time) error {
 	if s.sender == nil {
 		return nil
@@ -43,6 +43,7 @@ func (s EmailNotifications) SendInvitation(ctx context.Context, email, teamName,
 
 	return s.sender.SendTeamInvitation(ctx, email, recipientName, recipientUserID, teamName, link, expiresAt)
 }
+
 func (s EmailNotifications) SendOwnershipTransfer(ctx context.Context, email, name, link string) error {
 	return s.sender.SendOwnershipTransfer(ctx, email, name, link)
 }

@@ -1,4 +1,3 @@
-// OpenAI 失败识别复用平台解析；通用失败值不反向依赖具体供应商。
 package provider
 
 import (

@@ -1,4 +1,3 @@
-// Package tierpolicy 拥有入站服务档位策略的值类型、校验与设置编码。
 package tierpolicy
 
 import (

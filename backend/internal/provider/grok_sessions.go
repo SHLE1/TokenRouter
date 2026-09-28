@@ -1,4 +1,3 @@
-// Grok 授权会话与一次性消费归提供商；供应商交换不持有 Redis 或本地回退状态。
 package provider
 
 import (

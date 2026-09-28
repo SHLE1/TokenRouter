@@ -1,4 +1,3 @@
-// 额度消费后的恢复、回读、缓存与部分成功归提供商用例，HTTP 只投影结果。
 package provider
 
 import (

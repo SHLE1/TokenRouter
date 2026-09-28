@@ -1,4 +1,3 @@
-// 任务公共值与供应商结果契约不携带提供商凭据或旧服务实体。
 package batchimage
 
 import (

@@ -186,7 +186,7 @@ func TestRateLimitService_HandleUpstreamError_OAuth401DoesNotOverwriteCredential
 	require.Nil(t, repo.lastCredentials, "no credentials should have been persisted")
 }
 
-// 缺失 refresh_token 的 OAuth 提供商 401 后无法靠冷却窗口自愈，应直接标记 error。
+// TestRateLimitService_HandleUpstreamError_OAuth401NoRefreshTokenSetsError 验证缺失 refresh_token 的 OAuth 提供商 401 后无法靠冷却窗口自愈，应直接标记 error。
 func TestRateLimitService_HandleUpstreamError_OAuth401NoRefreshTokenSetsError(t *testing.T) {
 	t.Run("openai_no_refresh_token", func(t *testing.T) {
 		repo := &unauthorizedHealthStore{}
@@ -254,7 +254,7 @@ func TestRateLimitService_HandleUpstreamError_OAuth401NoRefreshTokenSetsError(t 
 	})
 }
 
-// 夹具只组合原生观测入口与窄端口，401 不创建无关平台执行器。
+// newUnauthorizedObserver 夹具只组合原生观测入口与窄端口，401 不创建无关平台执行器。
 func newUnauthorizedObserver(repo *unauthorizedHealthStore, invalidator *unauthorizedTokenRecorder) *UpstreamHealth {
 	options := providercore.HealthOptions{SessionWindows: repo}
 	if invalidator != nil {

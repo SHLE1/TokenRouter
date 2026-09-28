@@ -1,4 +1,3 @@
-// 原失败返回契约同时检查响应体拥有者，保留已有错误/输出断言。
 package httpapi
 
 import (
@@ -26,7 +25,7 @@ type alphaResponseBody struct {
 
 func (b *alphaResponseBody) Close() error { b.closes++; return b.ReadCloser.Close() }
 
-// 可重试错误必须在写入响应前返回给 handler，以便切换提供商。
+// TestAlphaSearchFailoverClosesOriginalResponse 验证可重试错误必须在写入响应前返回给 handler，以便切换提供商。
 func TestAlphaSearchFailoverClosesOriginalResponse(t *testing.T) {
 	body := []byte(`{"id":"search-session","model":"gpt-5.6-sol","commands":{}}`)
 	recorder := httptest.NewRecorder()

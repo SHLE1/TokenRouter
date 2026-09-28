@@ -1189,7 +1189,7 @@ func buildOpsSystemLogsCleanupWhere(filter *ops.OpsSystemLogCleanupFilter) (stri
 	return buildOpsSystemLogsWhere(listFilter)
 }
 
-// Helpers for nullable args
+// opsNullString 将非空字符串转换为有效的 SQL 可空字符串，其余输入返回空值。
 func opsNullString(v any) any {
 	switch s := v.(type) {
 	case nil:

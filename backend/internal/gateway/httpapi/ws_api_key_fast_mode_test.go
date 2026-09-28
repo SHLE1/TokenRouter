@@ -55,7 +55,7 @@ func fastModeTestResolver() *billingcore.PriceResolver {
 	return billingtestkit.PriceResolver(nil, billing)
 }
 
-// WebSocket 每个 turn 都应读取最新策略，不能永久复用握手时的策略快照。
+// TestOpenAIWSFastModePolicyContextRefreshesEachTurn 验证WebSocket 每个 turn 都应读取最新策略，不能永久复用握手时的策略快照。
 func TestOpenAIWSFastModePolicyContextRefreshesEachTurn(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
 	svc.Prices = fastModeTestResolver()

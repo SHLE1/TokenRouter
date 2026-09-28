@@ -1,4 +1,3 @@
-// 商户订单号生成保留原时间格式、字符集和随机选择。
 package payment
 
 import (
@@ -15,6 +14,7 @@ func GenerateOutTradeNo() string {
 	rnd := GenerateMerchantRandomString(8)
 	return OrderIDPrefix + date + rnd
 }
+
 func GenerateMerchantRandomString(n int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, n)

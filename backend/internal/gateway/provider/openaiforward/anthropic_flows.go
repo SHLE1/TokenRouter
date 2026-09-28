@@ -1,4 +1,3 @@
-// 原生 Anthropic 的三类入站保留各自转换、资金观察时点及取消策略。
 package openaiforward
 
 import (

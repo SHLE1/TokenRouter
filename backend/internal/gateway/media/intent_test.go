@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 使用可观察的纯规则替身，验证目标策略没有另建平台资格判断。
+// imagePolicyFixture 使用可观察的纯规则替身，验证目标策略没有另建平台资格判断。
 func imagePolicyFixture() ImageIntentPolicy {
 	return NewImageIntentPolicy(ImageToolRules{
 		IsImageType:     func(s string) bool { return strings.TrimSpace(s) == "image_generation" },
@@ -24,6 +24,7 @@ func imagePolicyFixture() ImageIntentPolicy {
 		},
 	})
 }
+
 func TestImagePolicyExplicitModeAndDuplicateFields(t *testing.T) {
 	p := imagePolicyFixture()
 	passive := []byte(`{"model":"text","tools":[{"type":"namespace","name":"image_gen"}]}`)
@@ -34,6 +35,7 @@ func TestImagePolicyExplicitModeAndDuplicateFields(t *testing.T) {
 	}
 	require.True(t, p.IsExplicitImageGenerationIntent("/v1/responses", "text", []byte(`{"tool_choice":{"type":"function","namespace":"image_gen","name":"imagegen"}}`)))
 }
+
 func TestImagePolicyUsesExistingModelAndSizeRules(t *testing.T) {
 	p := imagePolicyFixture()
 	for _, model := range []string{"gpt-image-2", "grok-imagine"} {
@@ -50,6 +52,7 @@ func TestImagePolicyUsesExistingModelAndSizeRules(t *testing.T) {
 	require.Equal(t, "custom-image", cfg.Model)
 	require.Equal(t, "future-size", cfg.InputSize)
 }
+
 func TestImagePolicyDelegatesMapToolQualification(t *testing.T) {
 	p := imagePolicyFixture()
 	require.True(t, p.IsImageGenerationIntentMap("/v1/responses", "text", map[string]any{}))

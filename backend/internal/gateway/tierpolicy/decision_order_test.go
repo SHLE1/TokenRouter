@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 系统短路、分组关闭和按需查价必须维持既有调用顺序。
+// TestDecisionPreservesLazyPolicyOrder 验证系统短路、分组关闭和按需查价必须维持既有调用顺序。
 func TestDecisionPreservesLazyPolicyOrder(t *testing.T) {
 	for _, tc := range []struct {
 		name, group, key, original, action string
@@ -34,7 +34,7 @@ func TestDecisionPreservesLazyPolicyOrder(t *testing.T) {
 	}
 }
 
-// 空报文不触发设置或价格读取。
+// TestEmptyBodyDoesNotReadFastPolicy 验证空报文不触发设置或价格读取。
 func TestEmptyBodyDoesNotReadFastPolicy(t *testing.T) {
 	result, err := ApplyBody(nil, DecisionInput{})
 	require.NoError(t, err)

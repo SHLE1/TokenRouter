@@ -1,4 +1,3 @@
-// 错误展示只读取平台已确认的分类和值，不改变重试、健康或资金决策。
 package httpapi
 
 import (
@@ -27,7 +26,7 @@ type FailoverErrorHooks struct {
 	SkipMonitoring func(*gin.Context)
 }
 
-// WriteFailoverExhausted 按原顺序解释已分类错误，再匹配展示规则与默认映射。
+// WriteOpenAIFailoverExhausted 按原顺序解释已分类错误，再匹配展示规则与默认映射。
 func WriteOpenAIFailoverExhausted(c *gin.Context, failure *OpenAIFailoverError, started bool, rules ErrorRuleMatcher, hooks FailoverErrorHooks, write func(*gin.Context, int, string, string, bool)) {
 	if failure == nil {
 		status, kind, message := MapOpenAIUpstreamError(http.StatusBadGateway)

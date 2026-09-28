@@ -15,7 +15,7 @@ func TestDefaultModelsContainsCodexAutoReview(t *testing.T) {
 	t.Fatal("默认 OpenAI 模型列表应包含 codex-auto-review")
 }
 
-// GPT-5.6 系列只提供三个明确的内置产品 ID。
+// TestDefaultModelsExcludeBareGPT56 验证GPT-5.6 系列只提供三个明确的内置产品 ID。
 func TestDefaultModelsExcludeBareGPT56(t *testing.T) {
 	require.NotContains(t, DefaultModelIDs(), "gpt-5.6")
 	for _, model := range []string{"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"} {

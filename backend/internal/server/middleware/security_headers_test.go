@@ -472,7 +472,7 @@ func TestAddToDirective(t *testing.T) {
 	})
 }
 
-// Benchmark tests
+// BenchmarkGenerateNonce 测量 nonce 生成的开销。
 func BenchmarkGenerateNonce(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = GenerateNonce()
@@ -495,7 +495,7 @@ func BenchmarkSecurityHeadersMiddleware(b *testing.B) {
 	}
 }
 
-// Google SDK 的域名是外部契约，默认和旧自定义策略都必须允许真实来源。
+// TestGoogleIdentityCSPPreservesOfficialAccountsOrigins 验证Google SDK 的域名是外部契约，默认和旧自定义策略都必须允许真实来源。
 func TestGoogleIdentityCSPPreservesOfficialAccountsOrigins(t *testing.T) {
 	expected := map[string]string{
 		"script-src":  "https://accounts.google.com/gsi/client",

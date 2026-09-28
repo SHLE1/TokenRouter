@@ -1,4 +1,3 @@
-// 管理接口将代理记录映射为对应的管理 DTO。
 package httpapi
 
 import (

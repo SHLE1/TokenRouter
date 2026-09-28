@@ -1,4 +1,3 @@
-// Package dto 拥有用量用户/管理员 HTTP 形状，保持原字段与省略语义。
 package dto
 
 import (

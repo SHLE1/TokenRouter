@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// HTTP 集成夹具复用所传存储和 token 源，不创建第二个缓存或刷新器。
+// newOpenAIExecutionCredentialsForTest HTTP 集成夹具复用所传存储和 token 源，不创建第二个缓存或刷新器。
 func newOpenAIExecutionCredentialsForTest(repo gatewayprovider.ExecutionProviderStore, grok *provider.GrokTokenSource) *provider.OpenAIExecutionCredentials {
 	out := &provider.OpenAIExecutionCredentials{}
 	if repo != nil {

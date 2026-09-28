@@ -1,6 +1,5 @@
 //go:build integration
 
-// 本地 TLS OAuth/项目发现贯通真实 PostgreSQL CAS 与 Redis token 缓存。
 package provider_test
 
 import (

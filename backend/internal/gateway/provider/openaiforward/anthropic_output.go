@@ -1,4 +1,3 @@
-// Anthropic 回程使用唯一协议状态机；各入口保留自己的排水、读超时与输出边界。
 package openaiforward
 
 import (
@@ -37,6 +36,7 @@ func AnthropicUsageToOpenAI(u *upstream.TokenUsage) protocolopenai.ForwardUsage 
 	}
 	return protocolopenai.ForwardUsage{InputTokens: u.InputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens, OutputTokens: u.OutputTokens, CacheCreationInputTokens: u.CacheCreationInputTokens, CacheReadInputTokens: u.CacheReadInputTokens}
 }
+
 func ResponsesFromAnthropicBuffered(resp *http.Response, c *upstream.OutputContext, o AnthropicOutputOptions, originalModel, billingModel, upstreamModel string, reasoningEffort *string, startTime time.Time, clientToolMapping bridge.ResponsesClientToolMapping) (*Result, error) {
 	requestID := resp.Header.Get("x-request-id")
 

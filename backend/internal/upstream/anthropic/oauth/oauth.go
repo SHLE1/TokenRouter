@@ -1,4 +1,3 @@
-// Package oauth provides helpers for OAuth flows used by this service.
 package oauth
 
 import (

@@ -54,8 +54,7 @@ func init() {
 	}
 }
 
-// initLogger configures the default slog handler based on gin.Mode().
-// In non-release mode, Debug level logs are enabled.
+// main 初始化启动日志并运行服务，启动失败时输出错误并以非零状态退出。
 func main() {
 	logging.InitBootstrap()
 	err := run()

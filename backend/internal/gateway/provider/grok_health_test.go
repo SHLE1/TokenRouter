@@ -128,7 +128,7 @@ func newGrokPoolProvider(id int64) *gatewayprovider.ExecutionProvider {
 	}
 }
 
-// 测试直接组合生产健康组件；传输、凭据和完整网关不参与这些状态断言。
+// newGrokHealthForTest 测试直接组合生产健康组件；传输、凭据和完整网关不参与这些状态断言。
 func newGrokHealthForTest(store provideradapter.GrokHealthStore, throttle *providercore.WriteThrottle) *provideradapter.GrokHealth {
 	return &provideradapter.GrokHealth{Store: store, Throttle: throttle, Runtime: providercore.NewRuntimeBlockState(time.Now), ModelTransient: providercore.NewModelTransientState(0), NormalizeModel: func(value *providercore.Record, model string) string {
 		return (gatewayprovider.ModelPolicy{Record: value}).NormalizeOpenAI(model)

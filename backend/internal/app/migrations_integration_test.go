@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 在隔离 PostgreSQL 上验证锁、checksum、事务回滚及并发索引重放，不触碰发布迁移。
+// TestMigrationsLockReplayAndRollback 验证在隔离 PostgreSQL 上验证锁、checksum、事务回滚及并发索引重放，不触碰发布迁移。
 func TestMigrationsLockReplayAndRollback(t *testing.T) {
 	fixture := newDatabaseFixture(t)
 	ctx := context.Background()

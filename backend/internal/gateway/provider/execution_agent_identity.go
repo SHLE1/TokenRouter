@@ -19,7 +19,7 @@ type agentIdentityWSConnectionInvalidator interface {
 	InvalidateAgentIdentityWSConnections(providerID int64)
 }
 
-// 兼容入口只转换记录和写回时机；锁、复查与登记规则由唯一提供商协调器执行。
+// ensureAgentIdentityTaskForProvider 兼容入口只转换记录和写回时机；锁、复查与登记规则由唯一提供商协调器执行。
 func ensureAgentIdentityTaskForProvider(ctx context.Context, coordinator *acctcore.OpenAITaskCoordinator, register func(context.Context, *acctcore.Record) (string, error), repo ExecutionProviderStore, wsInvalidator agentIdentityWSConnectionInvalidator, taskMu *sync.Mutex, value *ExecutionProvider, expectedTaskID string) error {
 	input := ExecutionRecord(value)
 	originals := map[*acctcore.Record]*ExecutionProvider{input: value}

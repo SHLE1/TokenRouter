@@ -39,7 +39,7 @@ func convertGolden(t *testing.T, input string) []ChatMessage {
 	return msgs
 }
 
-// 单个工具调用回合，覆盖最初触发“no response”/400 的 Codex 形状。
+// TestGolden_SingleToolCall 验证单个工具调用回合，覆盖最初触发“no response”/400 的 Codex 形状。
 func TestGolden_SingleToolCall(t *testing.T) {
 	msgs := convertGolden(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"latest sha?"}]},
@@ -59,7 +59,7 @@ func TestGolden_SingleToolCall(t *testing.T) {
 	require.Equal(t, "need to run curl", asst.ReasoningContent)
 }
 
-// 并行工具调用，模拟 Codex 同时运行多个命令。
+// TestGolden_ParallelToolCalls 验证并行工具调用，模拟 Codex 同时运行多个命令。
 func TestGolden_ParallelToolCalls(t *testing.T) {
 	msgs := convertGolden(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"features?"}]},
@@ -84,7 +84,7 @@ func TestGolden_ParallelToolCalls(t *testing.T) {
 	require.Equal(t, 2, toolMsgs)
 }
 
-// 未知 item type（例如联网查询产生的 web_search_call）即使夹在 function_call
+// TestGolden_UnknownItemBetweenToolCallAndOutput 验证未知 item type（例如联网查询产生的 web_search_call）即使夹在 function_call
 // 和 output 之间，也不能破坏 tool/reply 邻接关系。
 func TestGolden_UnknownItemBetweenToolCallAndOutput(t *testing.T) {
 	msgs := convertGolden(t, `[
@@ -97,7 +97,7 @@ func TestGolden_UnknownItemBetweenToolCallAndOutput(t *testing.T) {
 	assertChatInvariants(t, msgs)
 }
 
-// 中间已有 tool reply 的顺序工具调用必须保留为不同 assistant message。
+// TestRequest_SequentialToolCallsStaySeparate 验证中间已有 tool reply 的顺序工具调用必须保留为不同 assistant message。
 func TestRequest_SequentialToolCallsStaySeparate(t *testing.T) {
 	msgs := convertGolden(t, `[
 		{"type":"function_call","call_id":"c1","name":"exec","arguments":"{}"},
@@ -115,7 +115,7 @@ func TestRequest_SequentialToolCallsStaySeparate(t *testing.T) {
 	require.Equal(t, 2, assistants)
 }
 
-// Codex 有时会在 function_call 和 output 之间插入通知消息；这类中间消息必须
+// TestGolden_MessageBetweenToolCallAndOutput 验证Codex 有时会在 function_call 和 output 之间插入通知消息；这类中间消息必须
 // 移到 tool reply 之后，保证 assistant tool_calls 后面紧跟对应回复。
 func TestGolden_MessageBetweenToolCallAndOutput(t *testing.T) {
 	msgs := convertGolden(t, `[
@@ -135,7 +135,7 @@ func TestGolden_MessageBetweenToolCallAndOutput(t *testing.T) {
 	}
 }
 
-// 并行工具调用里某个 sibling 输出缺失时（例如执行中断或重连），必须丢弃未回答
+// TestGolden_PartialParallelDropsUnansweredCall 验证并行工具调用里某个 sibling 输出缺失时（例如执行中断或重连），必须丢弃未回答
 // 的 tool_call，保证保留下来的 assistant tool_calls 全部有回复。
 func TestGolden_PartialParallelDropsUnansweredCall(t *testing.T) {
 	msgs := convertGolden(t, `[
@@ -153,7 +153,7 @@ func TestGolden_PartialParallelDropsUnansweredCall(t *testing.T) {
 	}
 }
 
-// 历史末尾悬空的 tool_call（尚无 output）必须被整体丢弃。
+// TestGolden_DanglingToolCallDropped 验证历史末尾悬空的 tool_call（尚无 output）必须被整体丢弃。
 func TestGolden_DanglingToolCallDropped(t *testing.T) {
 	msgs := convertGolden(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"q"}]},
@@ -166,7 +166,7 @@ func TestGolden_DanglingToolCallDropped(t *testing.T) {
 	}
 }
 
-// normalizeChatMessages 会丢弃没有对应 assistant tool_call 的孤儿 tool reply。
+// TestNormalize_DropsOrphanToolReply 验证normalizeChatMessages 会丢弃没有对应 assistant tool_call 的孤儿 tool reply。
 func TestNormalize_DropsOrphanToolReply(t *testing.T) {
 	msgs := convertGolden(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"q"}]},

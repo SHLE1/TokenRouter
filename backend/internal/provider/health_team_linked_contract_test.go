@@ -123,7 +123,7 @@ func TestTeamLinkedError_SetErrorFailureDoesNotAbortRemaining(t *testing.T) {
 	require.Len(t, blocker.reasons, 2)
 }
 
-// 直测原生联动拥有者；列表与写入替身不创建旧服务或第二份缓存。
+// newTeamLinkedTestService 直测原生联动拥有者；列表与写入替身不创建旧服务或第二份缓存。
 func newTeamLinkedTestService(repo *teamLinkedProviderRepoStub) (*provider.TeamLinkedHealth, *teamBlockRecorder) {
 	blocker := &teamBlockRecorder{}
 	return provider.NewTeamLinkedHealth(repo, provider.TeamLinkedOptions{Block: blocker.Block}), blocker

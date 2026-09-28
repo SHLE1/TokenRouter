@@ -48,7 +48,7 @@ func TestNewAESEncryptor_ValidKey32Bytes(t *testing.T) {
 	require.NotNil(t, enc)
 }
 
-// 16 / 24 字节密钥在 AES 体系内合法，但本实现仅接受 AES-256（32 字节）。
+// TestNewAESEncryptor_WrongKeyLength 验证16 / 24 字节密钥在 AES 体系内合法，但本实现仅接受 AES-256（32 字节）。
 func TestNewAESEncryptor_WrongKeyLength(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -70,7 +70,7 @@ func TestNewAESEncryptor_WrongKeyLength(t *testing.T) {
 	}
 }
 
-// "配置缺失"场景：空字符串与非法 hex 编码。
+// TestNewAESEncryptor_MissingOrInvalidConfig 验证"配置缺失"场景：空字符串与非法 hex 编码。
 func TestNewAESEncryptor_MissingOrInvalidConfig(t *testing.T) {
 	tests := []struct {
 		name        string

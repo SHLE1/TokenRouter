@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 会话测试只构造真实签发器，未安装用户查询或注册存储。
+// newAuthServiceForPendingOAuthTest 会话测试只构造真实签发器，未安装用户查询或注册存储。
 func newAuthServiceForPendingOAuthTest() *SessionService {
 	return NewSessionService(SessionOptions{Secret: "test-secret-pending-oauth", ExpireHour: 1}, nil, nil, nil, nil)
 }

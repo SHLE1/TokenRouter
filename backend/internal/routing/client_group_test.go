@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 先读取分组、再读取客户端标志，以及未受限目标的短路。
+// TestClientGroupResolutionKeepsReadOrder 验证先读取分组、再读取客户端标志，以及未受限目标的短路。
 func TestClientGroupResolutionKeepsReadOrder(t *testing.T) {
 	first, next := int64(1), int64(2)
 	var sequence []string
@@ -30,7 +30,7 @@ func TestClientGroupResolutionKeepsReadOrder(t *testing.T) {
 	require.Equal(t, []string{"first", "client", "next"}, sequence)
 }
 
-// 两个入口对无效回退 ID 的错误优先级不同，不在提取时统一。
+// TestClientGroupResolutionKeepsFallbackIDPolicies 验证两个入口对无效回退 ID 的错误优先级不同，不在提取时统一。
 func TestClientGroupResolutionKeepsFallbackIDPolicies(t *testing.T) {
 	for _, reject := range []bool{false, true} {
 		id, invalid := int64(1), int64(0)
@@ -53,7 +53,7 @@ func TestClientGroupResolutionKeepsFallbackIDPolicies(t *testing.T) {
 	}
 }
 
-// 快照入口缺失分组时保留原 ID，不增加数据库回源或客户端判断。
+// TestClientGroupResolutionKeepsMissingSnapshot 验证快照入口缺失分组时保留原 ID，不增加数据库回源或客户端判断。
 func TestClientGroupResolutionKeepsMissingSnapshot(t *testing.T) {
 	id := int64(9)
 	group, resolved, err := ResolveClientGroup(context.Background(), &id, func(context.Context, int64) (*Group, error) {

@@ -1,4 +1,3 @@
-// SSE 多行 data 拼接复用现有宽容边界，不改变流事件的发出时机。
 package openai
 
 import (
@@ -24,6 +23,7 @@ func (a *SSEDataAccumulator) AddLine(line string, fn func([]byte)) {
 		a.Flush(fn)
 	}
 }
+
 func (a *SSEDataAccumulator) Flush(fn func([]byte)) {
 	if fn == nil || len(a.lines) == 0 {
 		return
@@ -31,6 +31,7 @@ func (a *SSEDataAccumulator) Flush(fn func([]byte)) {
 	EmitSSEDataPayloads(a.lines, fn)
 	a.lines = a.lines[:0]
 }
+
 func ForEachSSEDataPayload(body string, fn func([]byte)) {
 	if fn == nil || strings.TrimSpace(body) == "" {
 		return
@@ -41,6 +42,7 @@ func ForEachSSEDataPayload(body string, fn func([]byte)) {
 	}
 	acc.Flush(fn)
 }
+
 func EmitSSEDataPayloads(lines []string, fn func([]byte)) {
 	if fn == nil || len(lines) == 0 {
 		return
@@ -58,6 +60,7 @@ func EmitSSEDataPayloads(lines []string, fn func([]byte)) {
 		EmitSSEDataPayload(line, fn)
 	}
 }
+
 func EmitSSEDataPayload(data string, fn func([]byte)) {
 	data = strings.TrimSpace(data)
 	if data == "" || data == "[DONE]" {

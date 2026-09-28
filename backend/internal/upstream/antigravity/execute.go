@@ -1,4 +1,3 @@
-// 单次执行拥有平台交换、响应输出和关闭；全局 failover、资金及提供商状态归调用方。
 package antigravity
 
 import (

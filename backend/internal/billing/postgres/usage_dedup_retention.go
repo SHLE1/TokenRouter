@@ -1,4 +1,3 @@
-// 资金去重归档保持原单条 SQL 的先归档后删除语义。
 package postgres
 
 import (

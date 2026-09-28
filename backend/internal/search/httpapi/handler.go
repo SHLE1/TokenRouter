@@ -1,4 +1,3 @@
-// 搜索管理 HTTP 只调用 search 用例，保留管理字段与错误语义。
 package httpapi
 
 import (

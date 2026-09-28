@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 合并网络操作不能使两个管理请求共享可修改的用量结果。
+// TestUpstreamUsageSingleflightResultIsolation 验证合并网络操作不能使两个管理请求共享可修改的用量结果。
 func TestUpstreamUsageSingleflightResultIsolation(t *testing.T) {
 	value := &providercore.Record{ID: 5, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Status: providercore.StatusActive, Credentials: map[string]any{"api_key": "fixture", "base_url": "https://usage.example/v1"}}
 	repo := &upstreamUsageProviderRepoStub{provider: value, getEvent: make(chan struct{}, 16)}

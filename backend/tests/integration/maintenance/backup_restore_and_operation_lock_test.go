@@ -26,7 +26,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-// 系统锁只使用测试框架的隔离数据库，不接触生产数据。
+// TestSystemLockOwnership 验证系统锁只使用测试框架的隔离数据库，不接触生产数据。
 func TestSystemLockOwnership(t *testing.T) {
 	ctx := context.Background()
 	integrationDB := maintenanceDatabase(t)
@@ -82,7 +82,7 @@ func TestSystemLockOwnership(t *testing.T) {
 	}
 }
 
-// 用独立 PostgreSQL 与本机 psql 检查真实进程退出码，不依赖模拟返回。
+// TestRestoreSQLFailure 验证用独立 PostgreSQL 与本机 psql 检查真实进程退出码，不依赖模拟返回。
 func TestRestoreSQLFailure(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()

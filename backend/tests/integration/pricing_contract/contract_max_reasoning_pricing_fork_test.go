@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 核对区间、缓存桶和分组倍率的组合，并确保按次费用不受推理倍率影响。
+// TestMaxReasoningPricing_IntervalsAndBillingModes 验证核对区间、缓存桶和分组倍率的组合，并确保按次费用不受推理倍率影响。
 func TestMaxReasoningPricing_IntervalsAndBillingModes(t *testing.T) {
 	bs := newCalculator(nil, nil)
 	resolver := billingtestkit.PriceResolver(nil, bs)
@@ -66,7 +66,7 @@ func TestMaxReasoningPricing_IntervalsAndBillingModes(t *testing.T) {
 	}
 }
 
-// 提供商自定义价独立于用户费用，模型价兜底按实际档位计价。
+// TestMaxReasoningPricing_ProviderStatsPriority 验证提供商自定义价独立于用户费用，模型价兜底按实际档位计价。
 func TestMaxReasoningPricing_ProviderStatsPriority(t *testing.T) {
 	bs := newCalculator(nil, nil)
 	pricingConfig := &routingtestkit.Configuration{ID: 1, Status: billing.StatusActive, ProviderStatsPricingRules: []routing.ProviderStatsPricingRule{{
@@ -86,7 +86,7 @@ func TestMaxReasoningPricing_ProviderStatsPriority(t *testing.T) {
 	require.InDelta(t, *standard*3, *cost, 1e-12)
 }
 
-// OpenAI 兼容转发的账单按结果档位计算，策略前的 max 仅用于审计。
+// TestMaxReasoningPricing_OpenAIUsageUsesFinalEffort 验证OpenAI 兼容转发的账单按结果档位计算，策略前的 max 仅用于审计。
 func TestMaxReasoningPricing_OpenAIUsageUsesFinalEffort(t *testing.T) {
 	bs := newCalculator(nil, nil)
 	for _, resolver := range []*billing.PriceResolver{nil, billingtestkit.PriceResolver(nil, bs)} {

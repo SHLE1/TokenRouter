@@ -1,4 +1,3 @@
-// 本文件拥有新建 Qoder 提供商的站点机器身份准备。
 package provider
 
 import (

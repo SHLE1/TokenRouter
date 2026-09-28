@@ -1,4 +1,3 @@
-// 配置存储保持原选择、字段更新与保护计数；业务校验由核心负责。
 package postgres
 
 import (
@@ -49,6 +48,7 @@ func (s *InstanceStore) ListInstances(ctx context.Context, f payment.InstanceFil
 	}
 	return out, nil
 }
+
 func (s *InstanceStore) CreateInstance(ctx context.Context, v payment.ProviderInstance) (*payment.ProviderInstance, error) {
 	value, err := s.client.PaymentProviderInstance.Create().
 		SetProviderKey(v.ProviderKey).
@@ -64,6 +64,7 @@ func (s *InstanceStore) CreateInstance(ctx context.Context, v payment.ProviderIn
 		Save(ctx)
 	return InstanceFromEntity(value), err
 }
+
 func (s *InstanceStore) UpdateInstance(ctx context.Context, id int64, v payment.InstancePatch) (*payment.ProviderInstance, error) {
 	q := s.client.PaymentProviderInstance.UpdateOneID(id)
 	if v.Name != nil {
@@ -96,21 +97,25 @@ func (s *InstanceStore) UpdateInstance(ctx context.Context, id int64, v payment.
 	row, err := q.Save(ctx)
 	return InstanceFromEntity(row), err
 }
+
 func (s *InstanceStore) DeleteInstance(ctx context.Context, id int64) error {
 	return s.client.PaymentProviderInstance.DeleteOneID(id).Exec(ctx)
 }
+
 func (s *InstanceStore) CountInProgressByProvider(ctx context.Context, id int64) (int, error) {
 	return s.client.PaymentOrder.Query().Where(
 		paymentorder.ProviderInstanceIDEQ(strconv.FormatInt(id, 10)),
 		paymentorder.StatusIn(payment.InProgressOrderStatuses()...),
 	).Count(ctx)
 }
+
 func (s *InstanceStore) CountInProgressByPlan(ctx context.Context, id int64) (int, error) {
 	return s.client.PaymentOrder.Query().Where(
 		paymentorder.PlanIDEQ(id),
 		paymentorder.StatusIn(payment.InProgressOrderStatuses()...),
 	).Count(ctx)
 }
+
 func (s *InstanceStore) CountForcedExpiredByProvider(ctx context.Context, id int64) (int, error) {
 	ids, err := s.client.PaymentOrder.Query().Where(
 		paymentorder.ProviderInstanceIDEQ(strconv.FormatInt(id, 10)),

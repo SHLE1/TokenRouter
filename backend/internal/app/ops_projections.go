@@ -1,4 +1,3 @@
-// Ops 直接绑定新提供商/身份模块的只读查询，不持有业务缓存。
 package app
 
 import (

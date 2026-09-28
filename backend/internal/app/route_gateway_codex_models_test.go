@@ -26,7 +26,7 @@ func (r *codexModelsRemovalProviderRepo) ListSchedulableByGroupID(context.Contex
 	return append([]provider.Record(nil), r.providers...), nil
 }
 
-// 带 client_version 的模型请求应继续返回纯 API Key 分组的本地模型列表。
+// TestGatewayRoutesModelsWithClientVersionUsesLocalList 验证带 client_version 的模型请求应继续返回纯 API Key 分组的本地模型列表。
 func TestGatewayRoutesModelsWithClientVersionUsesLocalList(t *testing.T) {
 	repo := &codexModelsRemovalProviderRepo{
 		providers: []provider.Record{
@@ -74,7 +74,7 @@ func TestGatewayRoutesModelsWithClientVersionUsesLocalList(t *testing.T) {
 	}
 }
 
-// Codex manifest 路由应被移除，已有 Responses 兼容路由仍需保留。
+// TestGatewayRoutesCodexModelsManifestPathIsRemoved 验证Codex manifest 路由应被移除，已有 Responses 兼容路由仍需保留。
 func TestGatewayRoutesCodexModelsManifestPathIsRemoved(t *testing.T) {
 	router := newGatewayRoutesTestRouter(capability.PlatformOpenAI)
 

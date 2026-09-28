@@ -1,4 +1,3 @@
-// Qoder 固定装配只做旧能力投影；尝试循环与完成事实分别由 gateway/completion 拥有。
 package app
 
 import (

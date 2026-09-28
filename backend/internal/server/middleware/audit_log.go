@@ -1,4 +1,3 @@
-// 审计中间件和请求辅助函数委托 audit/httpapi。
 package middleware
 
 import (

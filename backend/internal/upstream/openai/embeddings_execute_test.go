@@ -34,7 +34,7 @@ type embeddingsTestBody struct {
 
 func (b *embeddingsTestBody) Close() error { b.closed.Add(1); return b.ReadCloser.Close() }
 
-// 本地 TLS 验证实际请求、同步输出及响应体先于活动释放，不连接真实供应商。
+// TestEmbeddingsExecutorLocalTLSAndResourceOwnership 验证本地 TLS 验证实际请求、同步输出及响应体先于活动释放，不连接真实供应商。
 func TestEmbeddingsExecutorLocalTLSAndResourceOwnership(t *testing.T) {
 	for _, status := range []int{http.StatusOK, http.StatusTooManyRequests} {
 		t.Run(http.StatusText(status), func(t *testing.T) {

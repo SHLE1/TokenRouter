@@ -55,7 +55,7 @@ func resolveClientGroupForRequest(c *gin.Context, backend any, key *apikey.APIKe
 	return resolved, nil
 }
 
-// 初始回退发生在输出之前；错误沿用各入口协议的 envelope。
+// writeClientGroupFallbackError 初始回退发生在输出之前；错误沿用各入口协议的 envelope。
 func writeClientGroupFallbackError(c *gin.Context, err error, write func(*gin.Context, int, string, string)) {
 	MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
 	status, code, message, retryAfter := BillingErrorDetails(err)

@@ -1,4 +1,3 @@
-// 验证授权状态的存取和有效期。
 package provider
 
 import (

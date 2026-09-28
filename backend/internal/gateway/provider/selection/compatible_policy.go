@@ -36,7 +36,7 @@ func (s *Compatible) resolveGroupRoutingModel(ctx context.Context, groupID *int6
 	)
 }
 
-// isUpstreamRoutingModelRestrictedByGroup 使用已经完成分组映射及协议专用映射的提供商层模型检查最终上游模型。
+// UpstreamRoutingModelRestricted 使用已经完成分组映射及协议专用映射的提供商层模型检查最终上游模型。
 func (s *Compatible) UpstreamRoutingModelRestricted(ctx context.Context, groupID int64, provider *gatewayprovider.ExecutionProvider, routingModel string, requireCompact bool) bool {
 	if s.groupPolicies == nil {
 		return false

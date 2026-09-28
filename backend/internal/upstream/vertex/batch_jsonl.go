@@ -1,4 +1,3 @@
-// Vertex JSONL 使用独立 wire 投影，保留显式 user 角色与校验顺序。
 package vertex
 
 import (
@@ -67,6 +66,7 @@ func BuildVertexBatchJSONL(input BatchJSONLInput, inputError func(string, ...any
 	}
 	return buf.Bytes(), nil
 }
+
 func vertexBatchImageParts(prompt string, refs []BatchReference, inputError func(string, ...any) error) ([]any, error) {
 	parts := []any{map[string]any{"text": prompt}}
 	for _, ref := range refs {

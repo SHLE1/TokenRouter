@@ -1,4 +1,3 @@
-// 任务报价按价格配置选择请求、分组映射或上游模型，纯规则不读取配置或存储。
 package routing
 
 import "strings"

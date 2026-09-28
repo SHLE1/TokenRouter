@@ -1,4 +1,3 @@
-// 本文件保留旧授权入口的默认层级解析断言，直接验证提供商规则。
 package provider_test
 
 import (

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 健康模型属于当前尝试，派生状态不能回写父请求或丢失显式 false。
+// TestHealthHintsPreserveAttemptAndExplicitInputs 验证健康模型属于当前尝试，派生状态不能回写父请求或丢失显式 false。
 func TestHealthHintsPreserveAttemptAndExplicitInputs(t *testing.T) {
 	// 显式保留缺省 context 输入，不以正常 context 替代该合同。
 	cases := []struct{ ctx context.Context }{{ctx: nil}}

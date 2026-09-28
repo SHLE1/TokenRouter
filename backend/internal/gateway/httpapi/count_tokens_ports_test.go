@@ -89,7 +89,7 @@ func (t countHTTPContractTarget) ForwardCountTokens(_ context.Context, c *gin.Co
 	return nil
 }
 
-// 无槽计数保留资金预检、逐次原报文改写和失败会话释放，不提交费用或完成任务。
+// TestCountTokensNativeHTTPAttemptContract 验证无槽计数保留资金预检、逐次原报文改写和失败会话释放，不提交费用或完成任务。
 func TestCountTokensNativeHTTPAttemptContract(t *testing.T) {
 	fixture := &countHTTPContract{t: t, group: 42}
 	key := &apikey.APIKey{ID: 7, GroupID: &fixture.group, Group: &routing.Group{}}
@@ -122,7 +122,7 @@ func TestCountTokensNativeHTTPAttemptContract(t *testing.T) {
 	require.Equal(t, int16(usage.RequestTypeSync), value)
 }
 
-// 原计数合同未配置诊断依赖；意外进入该分支必须继续使测试失败。
+// unexpectedCountModelDiagnosis 原计数合同未配置诊断依赖；意外进入该分支必须继续使测试失败。
 func unexpectedCountModelDiagnosis(context.Context, *int64, string, string) routing.ModelAvailabilityDiagnosis {
 	panic("计数合同不应进入模型诊断")
 }

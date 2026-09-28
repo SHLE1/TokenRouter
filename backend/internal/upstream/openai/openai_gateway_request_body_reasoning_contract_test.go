@@ -8,7 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestSanitizeOpenAICrossModeFailoverReasoning_DropsWholeEncryptedItem 验证跨模式故障转移时删除完整的加密推理项。
 func TestSanitizeOpenAICrossModeFailoverReasoning_DropsWholeEncryptedItem(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.1","input":[` +
 		`{"type":"message","role":"user","content":"hi"},` +
@@ -126,7 +126,7 @@ func TestNormalizeOpenAIParallelToolCallsWithoutTools(t *testing.T) {
 	require.False(t, gjson.GetBytes(normalized, "parallel_tool_calls").Exists())
 }
 
-// Lite 工具迁移到 input[].additional_tools 后，仍应按有工具请求处理。
+// TestNormalizeOpenAIParallelToolCallsWithoutTools_KeepsResponsesLiteAdditionalTools 验证Lite 工具迁移到 input[].additional_tools 后，仍应按有工具请求处理。
 func TestNormalizeOpenAIParallelToolCallsWithoutTools_KeepsResponsesLiteAdditionalTools(t *testing.T) {
 	liteBody := []byte(`{"input":[{"type":"message","role":"user","content":"hi"},{"type":"additional_tools","tools":[{"type":"function","name":"spawn_agent"}]}],"parallel_tool_calls":false}`)
 	normalized, changed, err := openaicore.NormalizeOpenAIParallelToolCallsWithoutTools(liteBody, false)
@@ -149,7 +149,7 @@ func TestNormalizeOpenAIParallelToolCallsWithoutTools_KeepsResponsesLiteAddition
 	require.Equal(t, gjson.False, gjson.GetBytes(normalized, "parallel_tool_calls").Type)
 }
 
-// Lite 工具迁移到 input[].additional_tools 后，仍应按有工具请求处理。
+// TestNormalizeOpenAIParallelToolCallsWithoutTools_KeepsResponsesLiteAdditionalToolsUpstreamRegression 验证Lite 工具迁移到 input[].additional_tools 后，仍应按有工具请求处理。
 func TestNormalizeOpenAIParallelToolCallsWithoutTools_KeepsResponsesLiteAdditionalToolsUpstreamRegression(t *testing.T) {
 	liteBody := []byte(`{"input":[{"type":"message","role":"user","content":"hi"},{"type":"additional_tools","tools":[{"type":"function","name":"spawn_agent"}]}],"parallel_tool_calls":false}`)
 	normalized, changed, err := openaicore.NormalizeOpenAIParallelToolCallsWithoutTools(liteBody, false)

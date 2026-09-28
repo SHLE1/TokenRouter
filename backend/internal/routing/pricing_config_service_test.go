@@ -401,7 +401,7 @@ func TestValidateNoConflictingModels(t *testing.T) {
 	})
 }
 
-// 映射键在统一模型空间内校验，精确项和通配范围不可重叠。
+// TestValidateNoConflictingMappings 验证映射键在统一模型空间内校验，精确项和通配范围不可重叠。
 func TestValidateNoConflictingMappings(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -2193,7 +2193,7 @@ func makePolicyRepo(policy GroupRoutingPolicy, config PricingConfig, platforms m
 	return repo
 }
 
-// 价格查找只依赖关联关系，不得再访问分组平台。
+// TestPricingConfigModelLookupIndependentOfGroupPlatform 验证价格查找只依赖关联关系，不得再访问分组平台。
 func TestPricingConfigModelLookupIndependentOfGroupPlatform(t *testing.T) {
 	config := PricingConfig{ID: 1, Status: StatusActive, GroupIDs: []int64{10, 20}, ModelPricing: []ModelPricingEntry{{Models: []string{"claude-x"}, InputPrice: testPtrFloat64(3)}, {Models: []string{"gpt-*"}, InputPrice: testPtrFloat64(5)}}}
 	repo := &mockPricingConfigRepository{listAllFn: func(context.Context) ([]PricingConfig, error) { return []PricingConfig{config}, nil }, getGroupPlatformsFn: func(context.Context, []int64) (map[int64]string, error) {

@@ -1,4 +1,3 @@
-// Executor 拥有单次任务尝试的准备、输出检查和反馈，不持有提供商凭据或具体平台服务。
 package creative
 
 import (

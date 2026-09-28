@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-// 配置边界只解析历史 JSON 值；日历计算和重置规则统一由 billing 提供。
+// quotaWindowLocation 配置边界只解析历史 JSON 值；日历计算和重置规则统一由 billing 提供。
 func quotaWindowLocation(extra map[string]any, load func(string) (*time.Location, error)) *time.Location {
 	name, _ := extra["quota_reset_timezone"].(string)
 	if name == "" {

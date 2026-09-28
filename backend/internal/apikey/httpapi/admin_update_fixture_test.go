@@ -41,7 +41,7 @@ func (s *adminUpdateFixture) AdminUpdateAPIKeyGroupID(ctx context.Context, keyID
 	return nil, apikey.ErrAPIKeyNotFound
 }
 
-// AdminUpdateAPIKeyFields 模拟原子管理用例返回；此替身不作为事务正确性证据。
+// UpdateManagedFields 模拟原子管理用例返回；此替身不作为事务正确性证据。
 func (s *adminUpdateFixture) UpdateManagedFields(ctx context.Context, id int64, gid *int64, reset bool) (*apikey.AdminUpdateAPIKeyGroupIDResult, error) {
 	result, err := s.AdminUpdateAPIKeyGroupID(ctx, id, gid)
 	if err != nil {

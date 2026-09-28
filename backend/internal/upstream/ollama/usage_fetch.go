@@ -1,4 +1,3 @@
-// 原生抓取只返回脱敏观测，提供商的失败计数和 CAS 由外层负责。
 package ollama
 
 import (

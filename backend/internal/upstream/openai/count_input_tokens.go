@@ -1,4 +1,3 @@
-// input_tokens 是无结算的查询原语，不把计数响应当作推理用量。
 package openai
 
 import (

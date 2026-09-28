@@ -1,4 +1,3 @@
-// PublicHandler 只输出 site 已投影的公开值，保留 API 字段与省略形状。
 package httpapi
 
 import (

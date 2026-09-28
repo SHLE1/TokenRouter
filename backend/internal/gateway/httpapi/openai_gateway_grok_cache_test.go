@@ -449,7 +449,7 @@ func TestGrokFreeMessagesClientToolCacheDefaultsOnForKnownFree(t *testing.T) {
 	}
 }
 
-// Grok Build 可能把原生搜索工具声明成同名函数，缓存路由必须转换并去重。
+// TestGrokFreeFunctionToolCacheRouteConvertsNamedSearchFunctions 验证Grok Build 可能把原生搜索工具声明成同名函数，缓存路由必须转换并去重。
 func TestGrokFreeFunctionToolCacheRouteConvertsNamedSearchFunctions(t *testing.T) {
 	provider := gatewaytestkit.HealthyGrokOAuthProvider(916, "access-token")
 	provider.Record.Credentials["subscription_tier"] = "free"

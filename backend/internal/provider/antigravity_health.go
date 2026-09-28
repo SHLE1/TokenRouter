@@ -1,4 +1,3 @@
-// Antigravity 的计数惩罚、credits 和模型窗口写入由提供商拥有，沿用原独立操作。
 package provider
 
 import (

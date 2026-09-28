@@ -1,4 +1,3 @@
-// 用量 HTTP 直接读取新用量实例和身份/Key 投影，旧网关 metadata 只在此转换。
 package app
 
 import (
@@ -39,6 +38,7 @@ func provideUsageKeys(wrapper *apikey.APIKeyService) ports.KeyReader {
 		return out, nil
 	}}
 }
+
 func provideUsageUsers(users *identity.UserAdmin) ports.UserReader {
 	return ports.UserQueries(func(ctx context.Context, page, size int, f ports.UserListFilters, sort, order string) ([]ports.UserReference, int64, error) {
 		rows, total, e := users.ListUsers(ctx, page, size, identity.UserListFilters{Search: f.Search, IncludeDeleted: f.IncludeDeleted}, sort, order)
@@ -52,12 +52,15 @@ func provideUsageUsers(users *identity.UserAdmin) ports.UserReader {
 		return out, total, nil
 	})
 }
+
 func provideUsageHTTP(s *usage.UsageService, keys ports.KeyReader, ops *opscore.OpsService, settings *usage.RuntimeSettings, calendar timezone.Calendar) *usagehttp.UsageHandler {
 	return usagehttp.NewUsageHandler(s, keys, ops, settings, calendar)
 }
+
 func provideAdminUsageHTTP(s *usage.UsageService, keys ports.KeyReader, users ports.UserReader, cleanup *usage.UsageCleanupService, ops *opscore.OpsService, calendar timezone.Calendar) *usageadmin.UsageHandler {
 	return usageadmin.NewUsageHandler(s, keys, users, cleanup, ops, calendar)
 }
+
 func provideDashboardHTTP(s *usage.DashboardService, calendar timezone.Calendar) *usageadmin.DashboardHandler {
 	return usageadmin.NewDashboardHandler(s, calendar)
 }

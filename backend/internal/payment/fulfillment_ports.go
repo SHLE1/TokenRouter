@@ -1,4 +1,3 @@
-// 履约通过独立资金与存储端口协作，保留充值码和来源订单的原去重边界。
 package payment
 
 import (
@@ -8,19 +7,22 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-type FulfillmentLease struct{ Version time.Time }
-type OrderTransition struct {
-	ID                                               int64
-	From                                             []string
-	Version                                          *time.Time
-	Status                                           string
-	TradeNo                                          string
-	PayAmount                                        *float64
-	PaidAt, CompletedAt, FailedAt                    *time.Time
-	FailedReason                                     *string
-	ClearFailure                                     bool
-	InvoiceID, InvoiceURL, InvoicePDF, InvoiceStatus string
-}
+type (
+	FulfillmentLease struct{ Version time.Time }
+	OrderTransition  struct {
+		ID                                               int64
+		From                                             []string
+		Version                                          *time.Time
+		Status                                           string
+		TradeNo                                          string
+		PayAmount                                        *float64
+		PaidAt, CompletedAt, FailedAt                    *time.Time
+		FailedReason                                     *string
+		ClearFailure                                     bool
+		InvoiceID, InvoiceURL, InvoicePDF, InvoiceStatus string
+	}
+)
+
 type FulfillmentStore interface {
 	LifeStore
 	Order(context.Context, int64) (*Order, error)

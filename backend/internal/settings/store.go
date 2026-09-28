@@ -1,4 +1,3 @@
-// Package settings 拥有运行时设置的存取、版本和提交后的通知。
 package settings
 
 import (
@@ -59,13 +58,17 @@ func New(repo Repository) *Store {
 }
 
 func (s *Store) Get(ctx context.Context, key string) (*Setting, error) { return s.repo.Get(ctx, key) }
+
 func (s *Store) GetValue(ctx context.Context, key string) (string, error) {
 	return s.repo.GetValue(ctx, key)
 }
+
 func (s *Store) Set(ctx context.Context, key, value string) error { return s.repo.Set(ctx, key, value) }
+
 func (s *Store) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
 	return s.repo.GetMultiple(ctx, keys)
 }
+
 func (s *Store) SetMultiple(ctx context.Context, values map[string]string) error {
 	return s.repo.SetMultiple(ctx, values)
 }

@@ -1,4 +1,3 @@
-// 请求体重建、模型层级和 OAuth 规范化的时序由目标 Adapter 唯一拥有。
 package openaiforward
 
 import (

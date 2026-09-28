@@ -15,7 +15,7 @@ func ProviderUsageInTx(exec postgresinfra.Executor) ProviderUsageParticipant {
 	return ProviderUsageParticipant{exec: exec}
 }
 
-// IncrementQuotaUsed 原子递增提供商的配额用量（总/日/周三个维度）
+// Increment 原子递增提供商的配额用量（总/日/周三个维度）
 // 日/周额度在周期过期时自动重置为 0 再递增。
 // 支持滚动窗口（rolling）和固定时间（fixed）两种重置模式。
 func (p ProviderUsageParticipant) Increment(ctx context.Context, id int64, amount float64) (bool, error) {

@@ -1,4 +1,3 @@
-// 取消限频保持原固定/滚动窗口和查询失败放行。
 package payment
 
 import (
@@ -31,6 +30,7 @@ func (s *Checkout) CheckCancelRateLimit(ctx context.Context, userID int64, cfg *
 	}
 	return nil
 }
+
 func CancelRateLimitWindowStart(cfg *PaymentConfig, now time.Time) time.Time {
 	w := cfg.CancelRateLimitWindow
 	if w <= 0 {

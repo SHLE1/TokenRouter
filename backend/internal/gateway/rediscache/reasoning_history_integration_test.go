@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原生请求回填和响应记录共用现有 Redis 键与七天有效期。
+// TestReasoningHistoryNativeRoundTrip 验证原生请求回填和响应记录共用现有 Redis 键与七天有效期。
 func (s *GatewayCacheSuite) TestReasoningHistoryNativeRoundTrip() {
 	store, ok := s.cache.(session.ReasoningContentCache)
 	require.True(s.T(), ok)

@@ -1,4 +1,3 @@
-// Beta header 的纯 token 解析复用于原生变体，不引入平台互相引用。
 package anthropic
 
 import (

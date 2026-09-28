@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 调用方取消后，后台共享探测仍须有可等待的停止拥有者。
+// TestGrokProbeDetachedWorkHasStopOwner 验证调用方取消后，后台共享探测仍须有可等待的停止拥有者。
 func TestGrokProbeDetachedWorkHasStopOwner(t *testing.T) {
 	svc := provider.NewGrokQuotaService(provider.GrokQuotaOptions{}, &provider.ProbeRuntime{})
 	entered, exited, release := make(chan struct{}), make(chan struct{}), make(chan struct{})

@@ -1,4 +1,3 @@
-// 首输出暂存、磁盘回退与 scanner 上限只持有当前尝试状态，不改变提交边界。
 package openai
 
 import (

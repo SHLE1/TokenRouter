@@ -1,4 +1,3 @@
-// RiskDelivery 只呈现并投递已确定的风险事件。
 package notification
 
 import (

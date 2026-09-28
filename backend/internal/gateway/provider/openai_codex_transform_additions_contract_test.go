@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestApplyCodexClientMetadata 验证 Codex 客户端元数据的注入。
 // gatewayprovider.ApplyCodexClientMetadata：用提供商真实 device_id 注入 installation 标识，幂等、不覆盖既有项、不伪造。
 func TestApplyCodexClientMetadata(t *testing.T) {
 	// 仅 OpenAI OAuth 提供商才有 device_id（GetOpenAIDeviceID 的门控）。

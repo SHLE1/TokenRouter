@@ -1,4 +1,3 @@
-// 会话与日志标识原语保持既有字节格式，平台共享但不读取提供商。
 package upstream
 
 import (
@@ -64,7 +63,7 @@ func RandomHex(nBytes int) string {
 	return hex.EncodeToString(b)
 }
 
-// generateAnthropicMsgID 生成 Anthropic 官方格式的消息 ID：msg_01 + 22 位 Base62。
+// GenerateAnthropicMsgID 生成 Anthropic 官方格式的消息 ID：msg_01 + 22 位 Base62。
 func GenerateAnthropicMsgID() string {
 	const charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	const idLen = 22

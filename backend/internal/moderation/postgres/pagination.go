@@ -1,4 +1,3 @@
-// 根据审核查询总数和分页参数构造分页结果。
 package postgres
 
 import (

@@ -17,9 +17,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// 固定生产适配只复用构造期依赖，不把旧聚合 handler 放进请求会话。
+// TestFixedMessagesOpenUsesBoundDependenciesAndExplicitState 验证固定生产适配只复用构造期依赖，不把旧聚合 handler 放进请求会话。
 func TestFixedMessagesOpenUsesBoundDependenciesAndExplicitState(t *testing.T) {
-
 	dependencies := &messageExecutionDependencies{}
 	runtime := &Runtime{dependencies: dependencies}
 	var previous *messageAttemptBridge
@@ -45,7 +44,7 @@ func TestFixedMessagesOpenUsesBoundDependenciesAndExplicitState(t *testing.T) {
 	}
 }
 
-// 失败与已观测结果可同时返回，返回值不共享后续完成处理会修改的集合。
+// TestMessageObservedAttemptRetainsPartialUsageAndCopiesMetadata 验证失败与已观测结果可同时返回，返回值不共享后续完成处理会修改的集合。
 func TestMessageObservedAttemptRetainsPartialUsageAndCopiesMetadata(t *testing.T) {
 	first := 12
 	result := &forwardcore.MessagesResult{Model: "model", Usage: upstream.TokenUsage{OutputTokens: 2}, UpstreamHeaders: http.Header{"X-Request-Id": []string{"upstream"}}, FirstTokenMs: &first, ImageOutputSizes: []string{"1K"}}

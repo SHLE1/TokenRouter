@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// 已取得槽位不再抢占或绑定粘性，且重复清理只释放一次。
+// TestSelectedProviderSlotOwnsOnlyAcquiredResource 验证已取得槽位不再抢占或绑定粘性，且重复清理只释放一次。
 func TestSelectedProviderSlotOwnsOnlyAcquiredResource(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest("POST", "/v1/responses", nil)

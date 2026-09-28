@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 外层新建的用户和套餐尚未提交，读得到它们即证明初始读取和锁都在同一连接。
+// TestSubscriptionParticipantReadsUncommittedAndRollsBack 验证外层新建的用户和套餐尚未提交，读得到它们即证明初始读取和锁都在同一连接。
 func TestSubscriptionParticipantReadsUncommittedAndRollsBack(t *testing.T) {
 	for _, explicit := range []bool{false, true} {
 		t.Run(fmt.Sprint(explicit), func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestSubscriptionParticipantReadsUncommittedAndRollsBack(t *testing.T) {
 	}
 }
 
-// 验证订阅有效期修改参与外层事务，并随外层事务失败回滚。
+// TestValidityChangeParticipatesInOuterTransaction 验证订阅有效期修改参与外层事务，并随外层事务失败回滚。
 func TestValidityChangeParticipatesInOuterTransaction(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)
@@ -97,7 +97,7 @@ type redeemAuthObservation struct{ count atomic.Int32 }
 
 func (o *redeemAuthObservation) InvalidateAuthCacheByUserID(context.Context, int64) { o.count.Add(1) }
 
-// 每种权益都真实写入后制造 usage 失败，验证余额/订阅/并发数和次数同事务回滚。
+// TestRedeemEffectsWaitForCommit 验证每种权益都真实写入后制造 usage 失败，验证余额/订阅/并发数和次数同事务回滚。
 func TestRedeemEffectsWaitForCommit(t *testing.T) {
 	for _, kind := range []string{billing.RedeemTypeBalance, billing.RedeemTypeConcurrency, billing.RedeemTypeSubscription} {
 		t.Run(kind, func(t *testing.T) {

@@ -14,11 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// issue #5601：严格的 Responses 客户端把 created_at 当必填字段，缺失即
+// TestWriteOpenAICompactSSEFailureMessage_CarriesCreatedAt 验证issue #5601：严格的 Responses 客户端把 created_at 当必填字段，缺失即
 // `missing field 'created_at'`。writeOpenAICompactSSEFailureMessage 存在的理由就是
 // 让 Codex 能把这帧识别成合法终止事件；解析不了就退化回它想避免的盲重连。
 func TestWriteOpenAICompactSSEFailureMessage_CarriesCreatedAt(t *testing.T) {
-
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)

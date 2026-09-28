@@ -1,4 +1,3 @@
-// app 构造并绑定唯一的审计与预聚合设置实例。
 package app
 
 import (

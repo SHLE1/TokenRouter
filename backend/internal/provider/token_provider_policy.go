@@ -1,4 +1,3 @@
-// 请求侧刷新政策保持各平台既有失败、锁等待与 TTL 差异。
 package provider
 
 import "time"

@@ -132,7 +132,7 @@ func TestSyncActiveToPassive_SkipsSessionWindowEndWhenResetMissing(t *testing.T)
 	}
 }
 
-// 白盒窗口测试继续观察实际写入，不绕过新的生产条件端口。
+// UpdateUsageExtraIfUnchanged 白盒窗口测试继续观察实际写入，不绕过新的生产条件端口。
 func (r *sessionWindowSyncRepo) UpdateUsageExtraIfUnchanged(ctx context.Context, v UsageObservationVersion, updates map[string]any) (bool, error) {
 	return true, r.UpdateExtra(ctx, v.ID, updates)
 }

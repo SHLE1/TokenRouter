@@ -1,6 +1,5 @@
 //go:build unit
 
-// 合同输入只投影到实际完成与资金命令，不复制结算实现。
 package pricingcontract
 
 import (

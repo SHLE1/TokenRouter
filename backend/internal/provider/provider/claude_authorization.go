@@ -1,4 +1,3 @@
-// 本文件提供 Claude 授权协议参数，授权会话和刷新规则仍由提供商核心拥有。
 package provider
 
 import (

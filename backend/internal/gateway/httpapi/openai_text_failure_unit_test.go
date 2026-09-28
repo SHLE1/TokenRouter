@@ -99,7 +99,7 @@ func TestFailoverOpenAIUpstreamHTTPErrorUsesOnlyGrokRateLimitPolicy(t *testing.T
 	require.Zero(t, repo.tempUnschedCalls)
 }
 
-// 自 #4547（issue 4527 第4点）起，临时不可调度规则命中已知模型时按模型隔离：
+// TestOpenAIPoolModeTempRule_StopsSameProviderRetryAndIsolatesBlockToModel 验证自 #4547（issue 4527 第4点）起，临时不可调度规则命中已知模型时按模型隔离：
 // 只封 (提供商, 模型) 对，不再提供商级一刀切；未知模型仍走提供商级兜底
 // （见 TestOpenAITempUnschedulable_UnknownModelKeepsProviderRuntimeBlock）。
 // 池模式规则仍然生效（issue 4470）：停止同提供商重试并对命中模型设临时封锁。

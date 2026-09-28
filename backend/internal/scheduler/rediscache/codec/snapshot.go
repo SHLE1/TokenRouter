@@ -1,4 +1,3 @@
-// 快照缓存的完整与轻量编码归 Redis Adapter，核心只读取候选元数据。
 package codec
 
 import (

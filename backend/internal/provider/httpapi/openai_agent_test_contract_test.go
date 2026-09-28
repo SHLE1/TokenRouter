@@ -105,7 +105,7 @@ func TestProviderTestServiceOpenAICompactAgentIdentityRecoversInvalidTaskOnce(t 
 	require.Equal(t, []int64{provider.ID}, invalidator.providerIDs)
 }
 
-// 本地密钥仅用于真实签名器，测试不访问外部认证服务。
+// newProbeAgentKey 本地密钥仅用于真实签名器，测试不访问外部认证服务。
 func newProbeAgentKey(t *testing.T) (openai.AgentIdentityKey, string) {
 	t.Helper()
 	_, private, err := ed25519.GenerateKey(rand.Reader)

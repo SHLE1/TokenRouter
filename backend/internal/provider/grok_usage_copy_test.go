@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 实际 Grok 编排不得改写共享供应商结果，返回值的统计与嵌套账单也必须独立。
+// TestGrokUsageOwnsProviderAndProbeResults 验证实际 Grok 编排不得改写共享供应商结果，返回值的统计与嵌套账单也必须独立。
 func TestGrokUsageOwnsProviderAndProbeResults(t *testing.T) {
 	billing := &usageview.BillingSummary{Plan: "SuperGrok"}
 	shared := &UsageInfo{SevenDay: &UsageProgress{}, GrokBilling: billing}

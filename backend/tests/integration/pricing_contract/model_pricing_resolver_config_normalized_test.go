@@ -112,7 +112,7 @@ func recordUsageWithConfigPricing(t *testing.T, requestedModel string, pricings 
 	return usageRepo.LastLog
 }
 
-// 基线：请求模型与共享价格配置定价 key 完全一致 → 按共享价格配置价计。
+// TestConfigPricing_ExactModelMatch 验证基线：请求模型与共享价格配置定价 key 完全一致 → 按共享价格配置价计。
 func TestConfigPricing_ExactModelMatch(t *testing.T) {
 	log := recordUsageWithConfigPricing(t, "gpt-5.6-luna", []routing.ModelPricingEntry{
 		tokenPricingForModels([]string{"gpt-5.6-luna"}, configPricingExpectedPricingConfigCost),
@@ -120,7 +120,7 @@ func TestConfigPricing_ExactModelMatch(t *testing.T) {
 	require.InDelta(t, configPricingExpectedPricingConfigCost, log.InputCost, 1e-9)
 }
 
-// issue #5256 主回归：请求模型带 effort 后缀、共享价格配置只配基名（无通配符）→ 仍应按共享价格配置价计。
+// TestConfigPricing_SuffixedModelUsesNormalizedConfigPricing 验证issue #5256 主回归：请求模型带 effort 后缀、共享价格配置只配基名（无通配符）→ 仍应按共享价格配置价计。
 // 修复前此处得到 0.2（官方兜底价）。
 func TestConfigPricing_SuffixedModelUsesNormalizedConfigPricing(t *testing.T) {
 	log := recordUsageWithConfigPricing(t, "gpt-5.6-luna-high", []routing.ModelPricingEntry{
@@ -131,7 +131,7 @@ func TestConfigPricing_SuffixedModelUsesNormalizedConfigPricing(t *testing.T) {
 		log.InputCost, configPricingExpectedOfficialCost)
 }
 
-// 同一根因的另一种变体名：上游返回带日期后缀的模型名
+// TestConfigPricing_DateSuffixedModelUsesNormalizedConfigPricing 验证同一根因的另一种变体名：上游返回带日期后缀的模型名
 // （isCodexDateSuffix，如 gpt-5.6-luna-2026-08-01），共享价格配置只配基名 → 仍应按共享价格配置价计。
 func TestConfigPricing_DateSuffixedModelUsesNormalizedConfigPricing(t *testing.T) {
 	log := recordUsageWithConfigPricing(t, "gpt-5.6-luna-2026-08-01", []routing.ModelPricingEntry{
@@ -141,7 +141,7 @@ func TestConfigPricing_DateSuffixedModelUsesNormalizedConfigPricing(t *testing.T
 		"date-suffixed request model should fall back to the normalized channel pricing; got %v", log.InputCost)
 }
 
-// 精确匹配优先：同时配了变体名与基名时，请求变体名必须命中变体的显式配价，
+// TestConfigPricing_ExactVariantWinsOverNormalizedBaseName 验证精确匹配优先：同时配了变体名与基名时，请求变体名必须命中变体的显式配价，
 // 不能被归一化后的基名覆盖。
 func TestConfigPricing_ExactVariantWinsOverNormalizedBaseName(t *testing.T) {
 	log := recordUsageWithConfigPricing(t, "gpt-5.6-luna-high", []routing.ModelPricingEntry{
@@ -152,7 +152,7 @@ func TestConfigPricing_ExactVariantWinsOverNormalizedBaseName(t *testing.T) {
 		"explicit per-variant channel pricing must win over the normalized base name")
 }
 
-// 反向保护：共享价格配置只配了不相关的模型时，归一化查找不得误命中该配置，
+// TestConfigPricing_UnrelatedPricingConfigModelNotMatched 验证反向保护：共享价格配置只配了不相关的模型时，归一化查找不得误命中该配置，
 // 应落回官方兜底价。
 func TestConfigPricing_UnrelatedPricingConfigModelNotMatched(t *testing.T) {
 	log := recordUsageWithConfigPricing(t, "gpt-5.6-luna-high", []routing.ModelPricingEntry{

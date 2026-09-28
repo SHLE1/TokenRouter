@@ -494,7 +494,7 @@ func TestIdempotencyCoordinator_TruncatedStoredResponseRemainsUTF8(t *testing.T)
 	require.Contains(t, *stored.ResponseBody, "...(truncated)")
 }
 
-// 默认期限与显式覆盖随协调器实例保存，不依赖进程默认绑定。
+// TestIdempotencyCoordinatorTTLs 验证默认期限与显式覆盖随协调器实例保存，不依赖进程默认绑定。
 func TestIdempotencyCoordinatorTTLs(t *testing.T) {
 	var empty *IdempotencyCoordinator
 	require.Equal(t, DefaultIdempotencyConfig().DefaultTTL, empty.DefaultWriteIdempotencyTTL())

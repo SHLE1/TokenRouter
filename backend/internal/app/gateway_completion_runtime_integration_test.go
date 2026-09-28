@@ -32,7 +32,7 @@ func (nativeCompletionCatalog) GetModelPricing(string) *pricing.LiteLLMModelPric
 // 直接执行同一存储 SQL，避免本装配契约额外启动写入批处理。
 type nativeCompletionSQL struct{ *sql.DB }
 
-// 两种生产记录器都走真实结算与事实存储；重放不能再次扣款或写第二条事实。
+// TestNativeCompletionRuntimeOneFinancialEffect 验证两种生产记录器都走真实结算与事实存储；重放不能再次扣款或写第二条事实。
 func TestNativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()

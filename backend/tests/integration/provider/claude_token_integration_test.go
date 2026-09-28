@@ -1,6 +1,5 @@
 //go:build integration
 
-// 本测试贯通提供商 token 用例、原生 OAuth 交换及真实 PostgreSQL/Redis CAS。
 package provider_test
 
 import (

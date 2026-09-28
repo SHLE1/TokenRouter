@@ -1,4 +1,3 @@
-// 版本检查在原回填位置执行，不引入新的缓存版本。
 package provider
 
 import (

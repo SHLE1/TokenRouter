@@ -97,7 +97,7 @@ func TestGroupPricingFreeFastWithIntervalsAndTurnTime(t *testing.T) {
 	}
 }
 
-// 免费 Fast 不能让不支持该档位的模型在市场中多出 Fast 价格。
+// TestConfigPricingFreeFastDisplayRespectsModelSupport 验证免费 Fast 不能让不支持该档位的模型在市场中多出 Fast 价格。
 func TestConfigPricingFreeFastDisplayRespectsModelSupport(t *testing.T) {
 	bs := billingtestkit.ResolverCalculator()
 	settings := purepricing.DefaultBillingSettings()
@@ -163,7 +163,7 @@ func TestConfiguredIntervalsPreserveDefaultPrices(t *testing.T) {
 	}
 }
 
-// 自定义模型只有区间价格时，免费 Fast 在单档和多档展示中都必须与 Standard 一致。
+// TestFreeFastIntervalOnlyDisplayMatchesStandard 验证自定义模型只有区间价格时，免费 Fast 在单档和多档展示中都必须与 Standard 一致。
 func TestFreeFastIntervalOnlyDisplayMatchesStandard(t *testing.T) {
 	for _, source := range []string{"channel"} {
 		for _, tierCount := range []int{1, 2} {
@@ -221,7 +221,7 @@ func TestFreeFastIntervalOnlyDisplayMatchesStandard(t *testing.T) {
 	}
 }
 
-// 分时配置独立生效，共享价格配置不能忽略没有填写单价的有效价卡。
+// TestTimeOnlyPricingGroupPricingConfigParity 验证分时配置独立生效，共享价格配置不能忽略没有填写单价的有效价卡。
 func TestTimeOnlyPricingGroupPricingConfigParity(t *testing.T) {
 	card := routing.ModelPricingEntry{
 		Models: []string{"claude-sonnet-4"}, BillingMode: routing.BillingModeToken,
@@ -248,7 +248,7 @@ func TestTimeOnlyPricingGroupPricingConfigParity(t *testing.T) {
 	require.InDelta(t, 0.0006, costs[0], 1e-12)
 }
 
-// Fast 只改变倍率，不能清空内置的图片输入和输出价格桶。
+// TestTierOnlyPricingPreservesImagePricesEqually 验证Fast 只改变倍率，不能清空内置的图片输入和输出价格桶。
 func TestTierOnlyPricingPreservesImagePricesEqually(t *testing.T) {
 	card := routing.ModelPricingEntry{Models: []string{"claude-sonnet-4"}, BillingMode: routing.BillingModeToken, FastMultiplier: testPtrFloat64(2)}
 	var costs []float64
@@ -296,7 +296,7 @@ func TestQoderGroupPricingConfigBlankPricesParity(t *testing.T) {
 	require.InDelta(t, 0.0025, costs[0], 1e-12)
 }
 
-// 保留内置来源，确保纯倍率不会意外禁用内置峰值定价；共享价格配置只覆盖同名倍率。
+// TestModifierCardsPreserveBuiltinPricingPolicy 验证保留内置来源，确保纯倍率不会意外禁用内置峰值定价；共享价格配置只覆盖同名倍率。
 func TestModifierCardsPreserveBuiltinPricingPolicy(t *testing.T) {
 	model := "deepseek-v4-flash"
 	card := routing.ModelPricingEntry{
@@ -330,7 +330,7 @@ func TestModifierCardsPreserveBuiltinPricingPolicy(t *testing.T) {
 	}
 }
 
-// Qoder 的服务层级、分时、零价及图片默认价与其他平台共用结算和展示入口。
+// TestQoderPricingMatchesOtherPlatforms 验证Qoder 的服务层级、分时、零价及图片默认价与其他平台共用结算和展示入口。
 func TestQoderPricingMatchesOtherPlatforms(t *testing.T) {
 	for _, model := range []string{"claude-opus-4-6", "gpt-image-1", "custom-image", "qmodel"} {
 		for _, kind := range []string{"default", "modifiers", "free"} {

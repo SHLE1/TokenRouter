@@ -1,4 +1,3 @@
-// 凭据目标适配只投影母提供商查询；影子资格规则由 provider 唯一实现。
 package provider
 
 import (

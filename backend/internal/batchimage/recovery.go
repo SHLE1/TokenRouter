@@ -1,4 +1,3 @@
-// BillingRecovery 只恢复未提交供应商任务的资金，不改变已续心跳或已提交任务。
 package batchimage
 
 import (

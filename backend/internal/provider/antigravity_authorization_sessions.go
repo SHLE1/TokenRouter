@@ -1,4 +1,3 @@
-// Antigravity 授权会话唯一归提供商拥有，构造不启动原五分钟清理循环。
 package provider
 
 import (

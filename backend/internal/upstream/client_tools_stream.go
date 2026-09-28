@@ -1,4 +1,3 @@
-// 同步管道保留原逐帧 Flush 和读取上限；源响应关闭仍由管道拥有者负责。
 package upstream
 
 import (
@@ -27,6 +26,7 @@ func (b *responsesClientToolStreamBody) Close() error {
 	}
 	return sourceErr
 }
+
 func NewResponsesClientToolStreamBody(
 	source io.ReadCloser,
 	mapping bridge.ResponsesClientToolMapping,
@@ -37,6 +37,7 @@ func NewResponsesClientToolStreamBody(
 	go transformResponsesClientToolStream(source, writer, mapping, maxLineSize)
 	return body
 }
+
 func transformResponsesClientToolStream(
 	source io.ReadCloser,
 	destination *io.PipeWriter,

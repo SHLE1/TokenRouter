@@ -1,4 +1,3 @@
-// 批量处理只推进当前任务的查询、索引和状态，供应商执行通过绑定端口提供。
 package batchimage
 
 import (

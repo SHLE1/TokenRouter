@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 交接后继续推进 turn，已排队任务只能看到提交时的模型链。
+// TestCompletionContextSnapshotsModelTraceAndKeepsWorkerBudget 验证交接后继续推进 turn，已排队任务只能看到提交时的模型链。
 func TestCompletionContextSnapshotsModelTraceAndKeepsWorkerBudget(t *testing.T) {
 	trace := modeltrace.NewAPIKeyModelRedirectTrace("client", "source", "first")
 	source, cancelSource := context.WithCancel(modeltrace.WithContext(context.WithValue(context.Background(), telemetry.RequestID, "request-id"), trace))

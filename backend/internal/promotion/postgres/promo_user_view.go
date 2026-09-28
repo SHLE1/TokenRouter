@@ -1,4 +1,3 @@
-// 只投影优惠码查询原有的浅层用户展示，不包含密码、TOTP 或递归实体。
 package postgres
 
 import (

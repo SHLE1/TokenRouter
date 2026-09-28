@@ -350,7 +350,7 @@ type UserLoadInfo struct {
 	LoadRate           int // 0-100+ (percent)
 }
 
-// AcquireProviderSlot 尝试获取提供商并发槽位。
+// acquireProviderSlot 尝试获取提供商并发槽位。
 // If the provider is at max concurrency, it waits until a slot is available or timeout.
 // Returns a release function that MUST be called when the request completes.
 func (s *ConcurrencyService) acquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int) (*AcquireResult, error) {
@@ -389,9 +389,8 @@ func (s *ConcurrencyService) acquireProviderSlot(ctx context.Context, providerID
 	}, nil
 }
 
-// AcquireUserSlot attempts to acquire a concurrency slot for a user.
-// If the user is at max concurrency, it waits until a slot is available or timeout.
-// Returns a release function that MUST be called when the request completes.
+// acquireUserSlot 尝试获取用户并发槽位，达到上限时等待可用槽位或超时。
+// 请求结束后必须调用返回的释放函数。
 func (s *ConcurrencyService) acquireUserSlot(ctx context.Context, userID int64, maxConcurrency int) (*AcquireResult, error) {
 	// If maxConcurrency is 0 or negative, no limit
 	if maxConcurrency <= 0 {
@@ -428,7 +427,7 @@ func (s *ConcurrencyService) acquireUserSlot(ctx context.Context, userID int64, 
 	}, nil
 }
 
-// TrackAPIKeySlot 记录一个 API Key 活跃请求槽位，但不施加 Key 级并发上限。
+// trackAPIKeySlot 记录一个 API Key 活跃请求槽位，但不施加 Key 级并发上限。
 // 统计采用故障放行：Redis 出错时记录日志并返回空操作释放函数。
 func (s *ConcurrencyService) trackAPIKeySlot(ctx context.Context, apiKeyID int64) func() {
 	if s == nil || s.cache == nil || apiKeyID <= 0 {

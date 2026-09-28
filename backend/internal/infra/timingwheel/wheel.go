@@ -1,4 +1,3 @@
-// Package timingwheel 提供可以停止并等待在途回调的时间轮。
 package timingwheel
 
 import (

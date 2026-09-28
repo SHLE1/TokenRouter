@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 三种客户端协议在实际提供商确定后、请求上游前执行该提供商平台的拒绝策略。
+// TestAnthropicReasoningPolicy_AllEntrypointsDeny 验证三种客户端协议在实际提供商确定后、请求上游前执行该提供商平台的拒绝策略。
 func TestAnthropicReasoningPolicy_AllEntrypointsDeny(t *testing.T) {
 	executor := &gatewayhttp.UnifiedTextExecutor{}
 	target := gatewayadapter.NewExecutionProvider(&provider.Record{ID: 1, Platform: "anthropic", Type: "apikey"})

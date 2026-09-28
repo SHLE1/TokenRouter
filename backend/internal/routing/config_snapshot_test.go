@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 缓存副本中的任意 JSON 数组/对象修改都不能污染已发布快照。
+// TestPricingConfigNestedSnapshotIsolation 验证缓存副本中的任意 JSON 数组/对象修改都不能污染已发布快照。
 func TestPricingConfigNestedSnapshotIsolation(t *testing.T) {
 	source := &GroupRoutingPolicy{FeaturesConfig: map[string]any{"extension": []any{map[string]any{"enabled": true}, []any{"original"}}}}
 	copied := source.Clone()
@@ -30,7 +30,7 @@ func TestPricingConfigNestedSnapshotIsolation(t *testing.T) {
 	require.Equal(t, "original", originalArray[0])
 }
 
-// 发布快照后输入仍由存储调用者拥有，后续修改不得改变缓存值或分组关联。
+// TestPricingConfigPublicationOwnsSnapshot 验证发布快照后输入仍由存储调用者拥有，后续修改不得改变缓存值或分组关联。
 func TestPricingConfigPublicationOwnsSnapshot(t *testing.T) {
 	pricingConfigs := []PricingConfig{{ID: 1, Status: StatusActive, GroupIDs: []int64{9}}}
 

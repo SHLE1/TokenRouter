@@ -1,4 +1,3 @@
-// SanitizeUpstreamQueries 保留旧执行层的查询凭据遮罩边界。
 package logredact
 
 import "regexp"

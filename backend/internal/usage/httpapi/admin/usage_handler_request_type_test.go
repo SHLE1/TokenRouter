@@ -86,7 +86,6 @@ func (s *adminUsageRepoCapture) GetStatsWithFilters(ctx context.Context, filters
 }
 
 func newAdminUsageRequestTypeTestRouter(repo *adminUsageRepoCapture) *gin.Engine {
-
 	usageSvc := usage.NewUsageService(repo)
 	handler := NewUsageHandler(usageSvc, nil, nil, nil, nil, timezone.NewCalendar(time.Local))
 	router := gin.New()
@@ -122,7 +121,7 @@ func TestAdminUsageListUsesRequestedModelForDisplayModelFilter(t *testing.T) {
 	require.Equal(t, usage.ModelSourceRequested, repo.listFilters.ModelFilterSource)
 }
 
-// 团队筛选必须原样传入列表仓储，避免管理员看到其他团队的记录。
+// TestAdminUsageListTeamFilter 验证团队筛选必须原样传入列表仓储，避免管理员看到其他团队的记录。
 func TestAdminUsageListTeamFilter(t *testing.T) {
 	repo := &adminUsageRepoCapture{}
 	router := newAdminUsageRequestTypeTestRouter(repo)
@@ -220,7 +219,7 @@ func TestAdminUsageStatsUsesRequestedModelForDisplayModelFilter(t *testing.T) {
 	require.Equal(t, usage.ModelSourceRequested, repo.statsFilters.ModelFilterSource)
 }
 
-// 汇总统计必须与列表使用同一团队条件。
+// TestAdminUsageStatsTeamFilter 验证汇总统计必须与列表使用同一团队条件。
 func TestAdminUsageStatsTeamFilter(t *testing.T) {
 	repo := &adminUsageRepoCapture{}
 	router := newAdminUsageRequestTypeTestRouter(repo)

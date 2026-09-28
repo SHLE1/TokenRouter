@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 严格绑定保留动态 map 和字段校验，并且不改变其他接口的 Gin 行为。
+// TestBindJSONStrictIsLocalAndValidatesStructure 验证严格绑定保留动态 map 和字段校验，并且不改变其他接口的 Gin 行为。
 func TestBindJSONStrictIsLocalAndValidatesStructure(t *testing.T) {
 	type input struct {
 		Name        string         `json:"name" binding:"required"`

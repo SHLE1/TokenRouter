@@ -1,4 +1,3 @@
-// 透传保留共享拒绝字段预算、compact 恢复及独立输出语义，不与普通 HTTP 合并策略。
 package openaiforward
 
 import (

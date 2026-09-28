@@ -1,4 +1,3 @@
-// Chat 原生分片、工具身份和终态解析保持独立，不引入提供商或取消策略。
 package openai
 
 import (

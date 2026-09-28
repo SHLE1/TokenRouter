@@ -1,4 +1,3 @@
-// Vertex 服务账号凭据解析、令牌交换及端点构造。
 package vertex
 
 import (

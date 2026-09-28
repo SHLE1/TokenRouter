@@ -26,6 +26,7 @@ func (f testWSFrames) ReadFrame(ctx context.Context) (upstream.FrameKind, []byte
 	kind, data, err := f.conn.Read(ctx)
 	return upstream.FrameKind(kind), data, err
 }
+
 func (f testWSFrames) WriteFrame(ctx context.Context, kind upstream.FrameKind, data []byte) error {
 	return f.conn.Write(ctx, websocket.MessageType(kind), data)
 }
@@ -44,6 +45,7 @@ func (f testDownFrames) ReadFrame(ctx context.Context) (upstream.FrameKind, []by
 		return 0, nil, ctx.Err()
 	}
 }
+
 func (f testDownFrames) WriteFrame(ctx context.Context, _ upstream.FrameKind, data []byte) error {
 	select {
 	case f.output <- data:
@@ -54,7 +56,7 @@ func (f testDownFrames) WriteFrame(ctx context.Context, _ upstream.FrameKind, da
 }
 func (f testDownFrames) Close() error { return nil }
 
-// 本地 TLS WebSocket 验证上行 JSON、下行音频观测、取消及连接所有权。
+// TestRealtimeNativeLocalWebSocket 验证本地 TLS WebSocket 验证上行 JSON、下行音频观测、取消及连接所有权。
 func TestRealtimeNativeLocalWebSocket(t *testing.T) {
 	incoming := make(chan []byte, 1)
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +138,7 @@ func TestRealtimeNativeLocalWebSocket(t *testing.T) {
 	require.EqualValues(t, 1, released.Load())
 }
 
-// 握手失败释放活动登记；探测仍返回原错误而不是升级错误包装。
+// TestRealtimeNativeDialFailureAndProbeError 验证握手失败释放活动登记；探测仍返回原错误而不是升级错误包装。
 func TestRealtimeNativeDialFailureAndProbeError(t *testing.T) {
 	sentinel := errors.New("fixture unavailable")
 	var released atomic.Int64

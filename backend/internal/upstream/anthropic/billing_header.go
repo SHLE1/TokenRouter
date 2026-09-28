@@ -14,7 +14,7 @@ var CcVersionInBillingRe = regexp.MustCompile(`cc_version=\d+\.\d+\.\d+`)
 
 var CcVersionWithFingerprintInBillingRe = regexp.MustCompile(`cc_version=\d+\.\d+\.\d+\.[0-9a-fA-F]{3}\b`)
 
-// OAuth 伪装会在提供商指纹之后强制写入运行时 CLI User-Agent，计费标记必须与其一致。
+// EffectiveBillingUserAgent OAuth 伪装会在提供商指纹之后强制写入运行时 CLI User-Agent，计费标记必须与其一致。
 // @project-doc docs/interfaces/anthropic_upstream.md#claude_billing_fingerprint
 func EffectiveBillingUserAgent(tokenType string, mimicClaudeCode bool, fingerprint *Fingerprint) string {
 	if tokenType == "oauth" && mimicClaudeCode {

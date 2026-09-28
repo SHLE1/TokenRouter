@@ -100,7 +100,7 @@ func TestRefreshStopTimeoutDoesNotReportDrainOrPersistLateResult(t *testing.T) {
 	require.Same(t, err, api.StopContext(context.Background()))
 }
 
-// 停止屏障先于逐项取消生效；即使等待者尚未收到取消，也不能取得刷新执行权。
+// TestRefreshLockRejectsStoppedOwnerBeforeCancellationArrives 验证停止屏障先于逐项取消生效；即使等待者尚未收到取消，也不能取得刷新执行权。
 func TestRefreshLockRejectsStoppedOwnerBeforeCancellationArrives(t *testing.T) {
 	api := NewOAuthRefreshAPI(&lifecycleRefreshRepository{}, nil, RefreshOptions{})
 	ctx, finish, err := api.beginRefresh(context.Background())

@@ -28,7 +28,7 @@ func (q *geminiBatchUsageFixture) GetGeminiUsageTotalsBatch(_ context.Context, i
 	return out, nil
 }
 
-// 日统计缓存与分钟读取保持独立：满日额度不再查分钟，缓存命中也不能吞掉分钟查询。
+// TestGeminiPrecheckBatchKeepsQueriesAndDailyCache 验证日统计缓存与分钟读取保持独立：满日额度不再查分钟，缓存命中也不能吞掉分钟查询。
 func TestGeminiPrecheckBatchKeepsQueriesAndDailyCache(t *testing.T) {
 	now := time.Date(2026, 9, 13, 12, 0, 30, 0, time.UTC)
 	queries := &geminiBatchUsageFixture{minute: now.Truncate(time.Minute)}

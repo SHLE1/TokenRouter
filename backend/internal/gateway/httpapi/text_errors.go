@@ -1,4 +1,3 @@
-// 文本错误的 HTTP 状态和 envelope 唯一由本适配器实现。
 package httpapi
 
 import (

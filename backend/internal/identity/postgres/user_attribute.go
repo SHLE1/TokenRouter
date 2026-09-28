@@ -253,7 +253,7 @@ func (r *userAttributeValueRepository) DeleteByUserID(ctx context.Context, userI
 	return err
 }
 
-// Helper functions for entity to service conversion
+// defEntityToService 将用户属性定义的数据库实体转换为领域值。
 func defEntityToService(e *dbent.UserAttributeDefinition) *identity.UserAttributeDefinition {
 	if e == nil {
 		return nil
@@ -275,7 +275,7 @@ func defEntityToService(e *dbent.UserAttributeDefinition) *identity.UserAttribut
 	}
 }
 
-// Type conversion helpers (map types <-> service types)
+// toEntOptions 将用户属性选项转换为数据库存储使用的 map 列表。
 func toEntOptions(opts []identity.UserAttributeOption) []map[string]any {
 	if opts == nil {
 		return []map[string]any{}
@@ -347,7 +347,7 @@ func toServiceValidation(v map[string]any) identity.UserAttributeValidation {
 	return result
 }
 
-// Helper functions for type conversion
+// getString 读取 map 中的字符串值，缺失或类型不符时返回空字符串。
 func getString(m map[string]any, key string) string {
 	if v, ok := m[key]; ok {
 		if s, ok := v.(string); ok {

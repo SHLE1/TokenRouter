@@ -1,4 +1,3 @@
-// Package geminicli provides helpers for interacting with Gemini CLI tools.
 package codeassist
 
 const (

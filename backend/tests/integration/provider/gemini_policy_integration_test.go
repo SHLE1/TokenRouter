@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 真实 settings 表验证 TTL、生效顺序与损坏 JSON 回退，不修改生产设置。
+// TestGeminiQuotaPolicyLoadsSettingsAndKeepsSnapshot 验证真实 settings 表验证 TTL、生效顺序与损坏 JSON 回退，不修改生产设置。
 func TestGeminiQuotaPolicyLoadsSettingsAndKeepsSnapshot(t *testing.T) {
 	ctx := context.Background()
 	repo := settings.New(settingspostgres.NewSettingRepository(testEntClient(t)))

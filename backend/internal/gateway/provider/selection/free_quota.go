@@ -35,7 +35,7 @@ func (s *Generic) filterGrokFreeQuotaProvidersForGateway(_ context.Context, prov
 	return filterFreeQuotaProjection(s.freeQuotaGate, providers)
 }
 
-// 旧执行形状仅投影资格与结果，不拥有缓存或裁决算法。
+// filterFreeQuotaProjection 旧执行形状仅投影资格与结果，不拥有缓存或裁决算法。
 func filterFreeQuotaProjection(gate *provider.FreeQuotaGate, providers []gatewayprovider.ExecutionProvider) []gatewayprovider.ExecutionProvider {
 	if gate == nil {
 		return providers

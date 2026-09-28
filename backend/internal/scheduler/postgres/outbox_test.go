@@ -145,7 +145,7 @@ func TestSchedulerOutboxRepositoryTryAcquireCleanupLockUnavailable(t *testing.T)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// buildSchedulerGroupPayload 在 groupIDs 为空时必须返回 untyped nil（any），
+// TestEnqueueSchedulerOutbox_UngroupedProviderDedupesWithLiteralNilPayload 验证buildSchedulerGroupPayload 在 groupIDs 为空时必须返回 untyped nil（any），
 // 否则 enqueueSchedulerOutbox 的 "payload != nil" 接口判空会被 typed-nil 欺骗，
 // 把 payload marshal 成 "null" 写入 dedup_key 哈希，破坏与其他 nil-payload
 // 调用的去重一致性。本测试用 ungrouped 提供商场景验证两条路径的 dedup_key 一致。

@@ -1,4 +1,3 @@
-// UserView 仅保存优惠码记录的原公开展示字段，不包含凭据或递归关联。
 package promotion
 
 import (

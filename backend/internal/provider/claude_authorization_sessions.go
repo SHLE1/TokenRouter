@@ -1,4 +1,3 @@
-// 本文件拥有 Claude 提供商授权会话，平台协议不拥有登录会话状态。
 package provider
 
 import (
@@ -39,7 +38,6 @@ func NewClaudeAuthorizationSessions() *ClaudeAuthorizationSessions {
 	return store
 }
 
-// Stop stops the cleanup goroutine
 // Start 显式启动当前会话实例的清理循环。
 func (s *ClaudeAuthorizationSessions) Start() {
 	s.runtimeMu.Lock()

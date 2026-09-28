@@ -1,4 +1,3 @@
-// 旧 context 入口只投影模型追踪，状态和算法由 gateway/modeltrace 唯一拥有。
 package httpapi
 
 import (

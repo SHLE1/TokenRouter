@@ -196,7 +196,7 @@ func TestAdminService_GetGroupModelsListCandidates_UsesConfiguredRequestModels(t
 	require.Equal(t, []string{"claude-sonnet-4-6", "deepseek-v4-flash", "deepseek-v4-pro"}, models)
 }
 
-// TestAdminService_GetGroupModelsListCandidates_UsesCustomModelsList 确保已有分组不会因为 OpenAI 上游平台回退出 GPT 默认模型。
+// TestAdminServiceCustomModelsCannotInventUnsupportedModels 确保已有分组不会因为 OpenAI 上游平台回退出 GPT 默认模型。
 func TestAdminServiceCustomModelsCannotInventUnsupportedModels(t *testing.T) {
 	groupID := int64(12)
 	groupRepo := &groupRepoStubForAdmin{
@@ -255,7 +255,7 @@ func TestAdminService_GetGroupModelsListCandidates_FiltersCustomModelsList(t *te
 	require.Equal(t, []string{"deepseek-v4-pro", "deepseek-v4-flash"}, models)
 }
 
-// TestAdminService_GetGroupModelsListCandidates_IgnoresCustomModelsListForPlatformSwitch 确保编辑时切换平台不会沿用旧平台的自定义模型。
+// TestAdminServiceGetGroupModelsListCandidatesKeepsEmptyIntersection 确保编辑时切换平台不会沿用旧平台的自定义模型。
 func TestAdminServiceGetGroupModelsListCandidatesKeepsEmptyIntersection(t *testing.T) {
 	groupID := int64(14)
 	groupRepo := &groupRepoStubForAdmin{
@@ -387,7 +387,7 @@ func TestAdminService_UpdateGroup_InvalidatesAuthCacheOnRPMLimitChange(t *testin
 	require.Equal(t, []int64{1}, invalidator.groupIDs, "分组 RPMLimit 写入 auth snapshot，变更后必须失效 API Key 认证缓存")
 }
 
-// 新策略必须优先于旧布尔输入，并在更新、缓存失效和平台切换中完整保留。
+// TestAdminGroupOpenAIFastPolicy 验证新策略必须优先于旧布尔输入，并在更新、缓存失效和平台切换中完整保留。
 func TestAdminGroupOpenAIFastPolicy(t *testing.T) {
 	for _, policy := range []string{"follow_request", "force_priority", "force_ultrafast", "force_off"} {
 		t.Run(policy, func(t *testing.T) {

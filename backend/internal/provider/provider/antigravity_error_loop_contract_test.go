@@ -483,7 +483,7 @@ func TestCustomErrorCode599_SkippedErrors_Return500_NoRateLimit(t *testing.T) {
 	}
 }
 
-// 原用例只检查切号及副作用数量；模型窗口端口保持原成功返回。
+// SetModelRateLimit 原用例只检查切号及副作用数量；模型窗口端口保持原成功返回。
 func (r *epProviderRepo) SetModelRateLimit(context.Context, int64, string, time.Time, ...string) error {
 	return nil
 }

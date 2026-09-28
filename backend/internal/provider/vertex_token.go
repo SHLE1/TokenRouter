@@ -1,4 +1,3 @@
-// Vertex 服务账号凭据使用身份摘要缓存，并通过刷新锁协调令牌交换。
 package provider
 
 import (

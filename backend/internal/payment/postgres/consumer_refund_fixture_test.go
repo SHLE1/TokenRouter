@@ -57,7 +57,7 @@ func newRefundWorkflowFixture(client *dbent.Client, balances *refundBalanceFixtu
 	})
 }
 
-// 收尾前显式读取已提交准备事实，不在夹具里复制恢复判定规则。
+// preparedReceiptForTest 收尾前显式读取已提交准备事实，不在夹具里复制恢复判定规则。
 func preparedReceiptForTest(t *testing.T, ctx context.Context, client *dbent.Client, id int64) *payment.RefundReceipt {
 	t.Helper()
 	store := paymentpostgres.NewRefundStore(client, nil)

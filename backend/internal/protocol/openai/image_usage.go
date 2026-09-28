@@ -1,4 +1,3 @@
-// 图片响应只合并原先使用的非零用量字段，不统一其它协议的合并规则。
 package openai
 
 func MergeImageResponseUsage(dst *ForwardUsage, body []byte) {

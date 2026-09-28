@@ -1,4 +1,3 @@
-// 独立 Grok 搜索的原生请求和来源解析，不拥有网关选号或结算。
 package grok
 
 import (
@@ -205,6 +204,7 @@ func GrokWebSearchTitleFromURL(rawURL string) string {
 	}
 	return strings.TrimPrefix(strings.ToLower(u.Host), "www.")
 }
+
 func BuildGrokXSearchResponsesBody(req StandaloneSearchRequest, model string) ([]byte, error) {
 	input := strings.TrimSpace(req.Query)
 	if input == "" {
@@ -243,6 +243,7 @@ func BuildGrokXSearchResponsesBody(req StandaloneSearchRequest, model string) ([
 		"stream":      false,
 	})
 }
+
 func BuildGrokXSearchPrompt(query string, maxResults int) string {
 	return fmt.Sprintf(`Search X for the user query below. Return ONLY valid JSON with this exact shape: {"results":[{"url":"https://...","title":"post or page title","snippet":"concise factual summary"}]}. Return at most %d unique results. Every URL must be an actual x_search source. Populate a non-empty title and snippet for every result. Do not wrap the JSON in markdown.
 

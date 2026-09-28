@@ -391,7 +391,7 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyLeavesURLOnlyResponseWhenDisabl
 	require.Equal(t, upstreamBody, rec.Body.String())
 }
 
-// 非 Images 同步交付、非法响应和非 OpenAI API Key 提供商都不得触发额外网络请求。
+// TestBackfillOpenAIImagesB64JSON_ForkBoundaries 验证非 Images 同步交付、非法响应和非 OpenAI API Key 提供商都不得触发额外网络请求。
 func TestBackfillOpenAIImagesB64JSON_ForkBoundaries(t *testing.T) {
 	body := []byte(`{"data":[{"url":"https://cdn.example.com/a.png"}]}`)
 	upstream := &auxiliaryHTTPRecorder{}
@@ -411,7 +411,7 @@ func TestBackfillOpenAIImagesB64JSON_ForkBoundaries(t *testing.T) {
 	require.Empty(t, upstream.requests)
 }
 
-// 超限下载及伪装为图片的 data URI 都保持原始结果，不能影响主请求成功。
+// TestBackfillOpenAIImagesB64JSON_SizeAndDataURLValidation 验证超限下载及伪装为图片的 data URI 都保持原始结果，不能影响主请求成功。
 func TestBackfillOpenAIImagesB64JSON_SizeAndDataURLValidation(t *testing.T) {
 	oversized := make([]byte, openai.OpenAIImageMaxDownloadBytes+1)
 	copy(oversized, b64BackfillPNGBytes)
@@ -427,7 +427,7 @@ func TestBackfillOpenAIImagesB64JSON_SizeAndDataURLValidation(t *testing.T) {
 	require.Len(t, upstream.requests, 1)
 }
 
-// 下载图片可以补全响应，但不得改变 fork 已按原始响应确定的计费尺寸和用量。
+// TestBackfillOpenAIImagesB64JSON_PreservesBillingMetadata 验证下载图片可以补全响应，但不得改变 fork 已按原始响应确定的计费尺寸和用量。
 func TestBackfillOpenAIImagesB64JSON_PreservesBillingMetadata(t *testing.T) {
 	var img bytes.Buffer
 	require.NoError(t, png.Encode(&img, image.NewNRGBA(image.Rect(0, 0, 2, 2))))

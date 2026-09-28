@@ -1,4 +1,3 @@
-// OAuth token 和刷新锁由提供商 Redis Adapter 唯一持有，键名和故障语义保持原样。
 package rediscache
 
 import (

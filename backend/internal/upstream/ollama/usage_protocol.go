@@ -1,4 +1,3 @@
-// 固定设置页地址和响应重试指示属于 Ollama 供应商，不开放任意抓取。
 package ollama
 
 import (
@@ -10,9 +9,11 @@ import (
 	"time"
 )
 
-const SettingsURL = "https://ollama.com/settings"
-const RequestTimeout = 15 * time.Second
-const MaxBodyBytes = 512 * 1024
+const (
+	SettingsURL    = "https://ollama.com/settings"
+	RequestTimeout = 15 * time.Second
+	MaxBodyBytes   = 512 * 1024
+)
 
 var ErrUnauthorizedHTML = errors.New("settings HTML is a sign-in page")
 

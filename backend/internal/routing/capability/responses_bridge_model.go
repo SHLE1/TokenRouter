@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// 这些型号判定保留旧文本桥接的独立语义，不扩大原生能力或复用管理员映射策略。
+// ResponsesBridgeSupportsMaxEffort 这些型号判定保留旧文本桥接的独立语义，不扩大原生能力或复用管理员映射策略。
 func ResponsesBridgeSupportsMaxEffort(model string) bool {
 	return isResponsesBridgeModelAtLeastVersion(model, 5, 6)
 }

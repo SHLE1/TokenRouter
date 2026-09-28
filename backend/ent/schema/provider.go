@@ -1,5 +1,3 @@
-// Package schema 定义 Ent ORM 的数据库 schema。
-// 每个文件对应一个数据库实体（表），定义其字段、边（关联）和索引。
 package schema
 
 import (

@@ -1,4 +1,3 @@
-// 本文件拥有 Ops 后台任务，外部依赖仅通过运行端口参与。
 package ops
 
 import (

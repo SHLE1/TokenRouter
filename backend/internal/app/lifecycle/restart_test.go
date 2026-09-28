@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 重启只发出一次关闭请求；关闭会取消尚未触发的延迟回调。
+// TestRestarterPlatformDelayAndClose 验证重启只发出一次关闭请求；关闭会取消尚未触发的延迟回调。
 func TestRestarterPlatformDelayAndClose(t *testing.T) {
 	for _, platform := range []string{"linux", "darwin", "windows"} {
 		t.Run(platform, func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestRestarterPlatformDelayAndClose(t *testing.T) {
 	time.Sleep(650 * time.Millisecond)
 }
 
-// 回调已经开始时，Close 必须等待它返回，避免在资源释放后继续调用入口。
+// TestRestarterCloseWaitsForCallback 验证回调已经开始时，Close 必须等待它返回，避免在资源释放后继续调用入口。
 func TestRestarterCloseWaitsForCallback(t *testing.T) {
 	entered, release, closed := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	r := NewRestarter("linux", func() { close(entered); <-release })

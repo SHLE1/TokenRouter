@@ -1,4 +1,3 @@
-// Ops HTTP 保留原端点和响应契约；查询与运行状态由核心拥有。
 package httpapi
 
 import (

@@ -1,4 +1,3 @@
-// HTTP 协议适配返回本次已观察的字段；平台与入站请求分别拥有自己的状态。
 package upstream
 
 import (

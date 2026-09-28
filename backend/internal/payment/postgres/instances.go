@@ -1,4 +1,3 @@
-// 渠道存储保留原 SQL 选择与批量用量，不拥有选择策略。
 package postgres
 
 import (
@@ -34,6 +33,7 @@ func InstanceFromEntity(v *dbent.PaymentProviderInstance) *payment.ProviderInsta
 		UpdatedAt:       v.UpdatedAt,
 	}
 }
+
 func (s *InstanceStore) EnabledInstances(ctx context.Context, key string) ([]*payment.ProviderInstance, error) {
 	query := s.client.PaymentProviderInstance.Query().Where(paymentproviderinstance.Enabled(true))
 	if key != "" {
@@ -49,10 +49,12 @@ func (s *InstanceStore) EnabledInstances(ctx context.Context, key string) ([]*pa
 	}
 	return out, nil
 }
+
 func (s *InstanceStore) Instance(ctx context.Context, id int64) (*payment.ProviderInstance, error) {
 	v, err := s.client.PaymentProviderInstance.Get(ctx, id)
 	return InstanceFromEntity(v), err
 }
+
 func (s *InstanceStore) DailyUsage(ctx context.Context, ids []string, start time.Time) (map[string]float64, error) {
 	var rows []struct {
 		InstanceID string  `json:"provider_instance_id"`
@@ -73,6 +75,7 @@ func (s *InstanceStore) DailyUsage(ctx context.Context, ids []string, start time
 	}
 	return out, err
 }
+
 func (s *InstanceStore) PaidDailyAmount(ctx context.Context, id string, start time.Time) (float64, error) {
 	var rows []struct {
 		Sum float64 `json:"sum"`
@@ -98,6 +101,7 @@ func (s *InstanceStore) PaidDailyAmount(ctx context.Context, id string, start ti
 func (s *InstanceStore) CountEnabledInstances(ctx context.Context, key string) (int, error) {
 	return s.client.PaymentProviderInstance.Query().Where(paymentproviderinstance.ProviderKeyEQ(key), paymentproviderinstance.EnabledEQ(true)).Count(ctx)
 }
+
 func (s *InstanceStore) OrderByTradeNumber(ctx context.Context, no string) (*payment.Order, error) {
 	o, e := s.client.PaymentOrder.Query().Where(paymentorder.OutTradeNo(no)).Only(ctx)
 	return OrderFromEntity(o), e

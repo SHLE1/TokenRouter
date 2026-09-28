@@ -1,4 +1,3 @@
-// 客户端引导报文规范化只处理字节，不读取设置、会话或平台状态。
 package requeststate
 
 import (
@@ -17,9 +16,11 @@ func NormalizeCodexDelegationBootstrap(body []byte) ([]byte, bool) {
 	// 不属于这些历史调用的结果，因此允许它与可明确配对的历史上下文共存。
 	return NormalizeCodexCallOutputBootstrap(body, IsCodexDelegationCandidate, true)
 }
+
 func NormalizeCodexAutomationBootstrap(body []byte) ([]byte, bool) {
 	return NormalizeCodexCallOutputBootstrap(body, IsCodexAutomationCandidate, false)
 }
+
 func NormalizeCodexCallOutputBootstrap(body []byte, isCandidate func(map[string]any) bool, allowHistoricalContext bool) ([]byte, bool) {
 	if !HasUniqueJSONMembers(body) {
 		return body, false
@@ -100,6 +101,7 @@ func NormalizeCodexCallOutputBootstrap(body []byte, isCandidate func(map[string]
 	}
 	return normalized, true
 }
+
 func HasUniqueJSONMembers(body []byte) bool {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	if !ConsumeUniqueJSONValue(decoder) {
@@ -108,6 +110,7 @@ func HasUniqueJSONMembers(body []byte) bool {
 	_, err := decoder.Token()
 	return err == io.EOF
 }
+
 func ConsumeUniqueJSONValue(decoder *json.Decoder) bool {
 	token, err := decoder.Token()
 	if err != nil {
@@ -152,9 +155,11 @@ func ConsumeUniqueJSONValue(decoder *json.Decoder) bool {
 		return false
 	}
 }
+
 func IsResponsesCallOutputType(typ string) bool {
 	return strings.HasSuffix(typ, "_call_output") || typ == "tool_search_output"
 }
+
 func IsCodexDelegationCandidate(item map[string]any) bool {
 	if StringField(item, "type") != "function_call_output" ||
 		!IsCodexDelegationTool(StringField(item, "namespace"), StringField(item, "name")) {
@@ -163,6 +168,7 @@ func IsCodexDelegationCandidate(item map[string]any) bool {
 	output, ok := item["output"].(string)
 	return ok && ValidCodexDelegationEnvelope(output)
 }
+
 func IsCodexAutomationCandidate(item map[string]any) bool {
 	if StringField(item, "type") != "function_call_output" ||
 		StringField(item, "namespace") != "codex_app" ||
@@ -172,14 +178,17 @@ func IsCodexAutomationCandidate(item map[string]any) bool {
 	output, ok := item["output"].(string)
 	return ok && (ValidCodexAutomationBootstrap(output) || ValidCodexAutomationHeartbeat(output))
 }
+
 func StringField(item map[string]any, key string) string {
 	value, _ := item[key].(string)
 	return value
 }
+
 func IsCodexDelegationTool(namespace, name string) bool {
 	return (namespace == "codex_app" || namespace == "codex_tui") &&
 		(name == "create_thread" || name == "send_message_to_thread")
 }
+
 func ValidCodexAutomationBootstrap(value string) bool {
 	normalized := strings.ReplaceAll(value, "\r\n", "\n")
 	if strings.ContainsRune(normalized, '\r') {
@@ -206,6 +215,7 @@ func ValidCodexAutomationBootstrap(value string) bool {
 	}
 	return strings.TrimSpace(strings.Join(lines[5:], "\n")) != ""
 }
+
 func CodexAutomationHeaderValue(line, prefix string) (string, bool) {
 	if !strings.HasPrefix(line, prefix) {
 		return "", false
@@ -213,6 +223,7 @@ func CodexAutomationHeaderValue(line, prefix string) (string, bool) {
 	value := strings.TrimPrefix(line, prefix)
 	return value, value != "" && strings.TrimSpace(value) == value
 }
+
 func ValidCodexAutomationID(value string) bool {
 	if len(value) == 0 || len(value) > 128 || value == "." || value == ".." {
 		return false
@@ -226,6 +237,7 @@ func ValidCodexAutomationID(value string) bool {
 	}
 	return true
 }
+
 func ValidCodexAutomationLastRun(value string) bool {
 	if value == "never" {
 		return true
@@ -241,6 +253,7 @@ func ValidCodexAutomationLastRun(value string) bool {
 	epochMillis, err := strconv.ParseInt(value[separator+2:len(value)-1], 10, 64)
 	return err == nil && runAt.UnixMilli() == epochMillis
 }
+
 func ValidCodexAutomationHeartbeat(value string) bool {
 	decoder := xml.NewDecoder(strings.NewReader(value))
 	var rootSeen, automationIDSeen bool
@@ -290,6 +303,7 @@ func ValidCodexAutomationHeartbeat(value string) bool {
 		}
 	}
 }
+
 func ValidCodexDelegationEnvelope(value string) bool {
 	decoder := xml.NewDecoder(strings.NewReader(value))
 	var rootSeen, sourceSeen, inputSeen bool

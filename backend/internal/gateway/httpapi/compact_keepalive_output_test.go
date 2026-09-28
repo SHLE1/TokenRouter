@@ -88,7 +88,7 @@ func TestOpenAIAdjustedWrittenSizeExcludesResponsesStreamKeepalive(t *testing.T)
 	require.Equal(t, ":\n\ndata: semantic\n\n", rec.Body.String())
 }
 
-// 心跳已提交后，2xx 桥接续写事件而不重复提交响应头。
+// TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitAppendsEvents 验证心跳已提交后，2xx 桥接续写事件而不重复提交响应头。
 func TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitAppendsEvents(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	stop := StartOpenAICompactSSEKeepalive(c, keepaliveTestInterval)
@@ -107,7 +107,7 @@ func TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitAppendsEvents(t *testin
 	require.Equal(t, "resp_ka_1", gjson.Get(events[1][1], "response.id").String())
 }
 
-// 心跳已提交后上游非 2xx：状态码无法回传，必须以 response.failed 终止事件
+// TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitFailureEmitsFailedEvent 验证心跳已提交后上游非 2xx：状态码无法回传，必须以 response.failed 终止事件
 // 收尾（Codex 将其作为终止事件处理），并标记流内错误供 ops 采集。
 func TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitFailureEmitsFailedEvent(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
@@ -129,7 +129,7 @@ func TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitFailureEmitsFailedEvent
 	require.Equal(t, http.StatusBadGateway, streamErr.IntendedStatus)
 }
 
-// 心跳未提交时非 2xx 行为不变：返回 false，调用方按原 JSON+状态码写回。
+// TestWriteOpenAICompactSSEBridge_BeforeKeepaliveCommitFailureKeepsJSONPath 验证心跳未提交时非 2xx 行为不变：返回 false，调用方按原 JSON+状态码写回。
 func TestWriteOpenAICompactSSEBridge_BeforeKeepaliveCommitFailureKeepsJSONPath(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	stop := StartOpenAICompactSSEKeepalive(c, time.Hour)
@@ -139,7 +139,7 @@ func TestWriteOpenAICompactSSEBridge_BeforeKeepaliveCommitFailureKeepsJSONPath(t
 	require.Zero(t, rec.Body.Len())
 }
 
-// 未被显式拦截的写回路径（直接操作 c.Writer）也必须与心跳互斥：包装器在
+// TestOpenAICompactKeepaliveWriter_RequestSideWriteSuspendsBeats 验证未被显式拦截的写回路径（直接操作 c.Writer）也必须与心跳互斥：包装器在
 // 请求侧任何响应构造时停拍。-race 下验证无数据竞争，且停拍后不再有心跳
 // 字节写出。
 func TestOpenAICompactKeepaliveWriter_RequestSideWriteSuspendsBeats(t *testing.T) {
@@ -181,7 +181,7 @@ func TestOpenAICompactKeepaliveWriter_DelegatesWhenReady(t *testing.T) {
 	require.Equal(t, "ready", rec.Body.String())
 }
 
-// fast policy block 在心跳提交后必须降级为 response.failed 终止事件。
+// TestWriteOpenAIFastPolicyBlockedResponse_AfterKeepaliveCommit 验证fast policy block 在心跳提交后必须降级为 response.failed 终止事件。
 func TestWriteOpenAIFastPolicyBlockedResponse_AfterKeepaliveCommit(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	stop := StartOpenAICompactSSEKeepalive(c, keepaliveTestInterval)
@@ -197,7 +197,7 @@ func TestWriteOpenAIFastPolicyBlockedResponse_AfterKeepaliveCommit(t *testing.T)
 	require.Contains(t, gjson.Get(events[0][1], "response.error.message").String(), "tier blocked")
 }
 
-// failover"是否已写响应"判定的口径：心跳字节必须被排除，否则 compact 在
+// TestOpenAICompactKeepaliveAdjustedWrittenSize_ExcludesHeartbeatBytes 验证failover"是否已写响应"判定的口径：心跳字节必须被排除，否则 compact 在
 // 上游等待期间发过心跳后，可换号的 failover 会被误判放弃；真实响应字节
 // 写出后口径必须变化。
 func TestOpenAICompactKeepaliveAdjustedWrittenSize_ExcludesHeartbeatBytes(t *testing.T) {
@@ -232,7 +232,7 @@ func TestOpenAIStreamClientOutputStarted_IgnoresCompactKeepaliveBytes(t *testing
 	require.True(t, OpenAIStreamClientOutputStarted(c, false))
 }
 
-// fast policy block 在心跳未提交时保持 403 JSON 原语义。
+// TestWriteOpenAIFastPolicyBlockedResponse_BeforeKeepaliveCommit 验证fast policy block 在心跳未提交时保持 403 JSON 原语义。
 func TestWriteOpenAIFastPolicyBlockedResponse_BeforeKeepaliveCommit(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	stop := StartOpenAICompactSSEKeepalive(c, time.Hour)

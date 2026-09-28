@@ -20,7 +20,7 @@ import (
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
-// handleBedrockStreamingResponse 处理 Bedrock InvokeModelWithResponseStream 的 EventStream 响应
+// StreamResponse 处理 Bedrock InvokeModelWithResponseStream 的 EventStream 响应
 // Bedrock 返回 AWS EventStream 二进制格式，每个事件的 payload 中 chunk.bytes 是 base64 编码的
 // Claude SSE 事件 JSON。本方法解码后转换为标准 SSE 格式写入客户端。
 func StreamResponse(

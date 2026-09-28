@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 独立 schema 验证真实迁移与重放，包含自定义端点、空集合、禁用图片和异步绑定。
+// TestUnifiedProtocolMigration 验证独立 schema 验证真实迁移与重放，包含自定义端点、空集合、禁用图片和异步绑定。
 func TestUnifiedProtocolMigration(t *testing.T) {
 	tx, err := integrationDB.BeginTx(context.Background(), nil)
 	require.NoError(t, err)

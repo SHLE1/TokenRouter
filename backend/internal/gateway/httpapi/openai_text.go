@@ -1,4 +1,3 @@
-// OpenAI 文本 HTTP 入口固定绑定用例端口，逐请求只保存显式投影与派生报文。
 package httpapi
 
 import (

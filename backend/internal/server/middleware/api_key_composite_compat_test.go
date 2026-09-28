@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 历史测试函数只委托原生网关。
+// resolveCompositeAPIKeyRequest 历史测试函数只委托原生网关。
 func resolveCompositeAPIKeyRequest(c *gin.Context, keys *apikey.APIKeyService, key *apikey.APIKey) (*apikey.APIKey, error) {
 	if key == nil || !key.IsComposite {
 		return key, nil

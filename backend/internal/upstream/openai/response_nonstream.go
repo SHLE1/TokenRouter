@@ -1,4 +1,3 @@
-// 非流和 SSE→JSON 使用同一 wire 解析，不改变报文检测、恢复与输出时点。
 package openai
 
 import (

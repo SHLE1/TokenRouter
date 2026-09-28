@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 用真实数据库检查迟到用量恢复的行身份、错误条件和原尽力 outbox 行为。
+// TestUsageRecoveryDatabaseIdentity 验证用真实数据库检查迟到用量恢复的行身份、错误条件和原尽力 outbox 行为。
 func TestUsageRecoveryDatabaseIdentity(t *testing.T) {
 	for _, change := range []string{"none", "name", "credentials", "status", "error", "proxy", "cancelled", "outbox_failure"} {
 		t.Run(change, func(t *testing.T) {

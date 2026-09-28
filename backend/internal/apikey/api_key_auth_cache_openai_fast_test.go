@@ -39,7 +39,7 @@ func TestAPIKeyAuthSnapshotGroupForceOpenAIFastRoundtrip(t *testing.T) {
 	require.Equal(t, apikey.KeyApiKeyAuthSnapshotVersion, cached.Snapshot.Version)
 }
 
-// Ultra Fast 和关闭策略经序列化后必须恢复为相同的可信分组配置。
+// TestAuthSnapshotGroupOpenAIFastPolicy 验证Ultra Fast 和关闭策略经序列化后必须恢复为相同的可信分组配置。
 func TestAuthSnapshotGroupOpenAIFastPolicy(t *testing.T) {
 	for _, policy := range []string{"force_ultrafast", "force_off"} {
 		key := &apikey.APIKey{ID: 1, UserID: 2, Status: billing.StatusActive, User: &identity.User{ID: 2, Status: billing.StatusActive}, Group: &routing.Group{ID: 3, Status: billing.StatusActive, Hydrated: true, OpenAIFastPolicy: policy}}

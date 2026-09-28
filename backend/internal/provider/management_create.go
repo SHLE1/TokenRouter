@@ -66,7 +66,7 @@ func (s *ManagementBatch) Create(ctx context.Context, inputs []CreateProviderInp
 	return result, nil
 }
 
-// 排队仍复用 app 的完成屏障；隐私实际请求另由同一个 PrivacyService 接管取消与等待。
+// scheduleCreationPrivacy 排队仍复用 app 的完成屏障；隐私实际请求另由同一个 PrivacyService 接管取消与等待。
 func (s *ManagementBatch) scheduleCreationPrivacy(values []*Record, platform string) {
 	if len(values) == 0 || s.creation.Background == nil {
 		return

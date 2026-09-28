@@ -24,7 +24,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 通过真实转发器核对三个客户端协议到 CN 原生端点的 URL 和载荷，覆盖全部转换组合。
+// TestProtocolForwardUsesConfiguredTarget 验证通过真实转发器核对三个客户端协议到 CN 原生端点的 URL 和载荷，覆盖全部转换组合。
 func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 	for _, platform := range []string{capability.PlatformDeepseek, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformGrok} {
 		for _, ingress := range cnProtocolIngressCases() {
@@ -95,7 +95,7 @@ func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 	}
 }
 
-// 把既有工具、usage 与流式回归接到新分组路线，验证协议统一未改变 wire 格式。
+// TestProtocolForwardConvertedResponsesRetainsWireContract 验证把既有工具、usage 与流式回归接到新分组路线，验证协议统一未改变 wire 格式。
 func TestProtocolForwardConvertedResponsesRetainsWireContract(t *testing.T) {
 	for _, tc := range []struct {
 		name, body, response string

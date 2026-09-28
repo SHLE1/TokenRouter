@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
 )
 
-// 搜索资格由同一 Emulator 判断，执行结果保持 Messages 原有用量形状。
+// shouldEmulate 搜索资格由同一 Emulator 判断，执行结果保持 Messages 原有用量形状。
 func (r *Runtime) shouldEmulate(ctx context.Context, target *gatewayadapter.ExecutionProvider, group *int64, body []byte) bool {
 	return r.dependencies.Search.ShouldEmulate(ctx, searchtools.PolicyInput{
 		Body:     body,

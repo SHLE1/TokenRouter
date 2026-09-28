@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 共享价格配置的价卡，图片按张、视频按秒和按次模式必须得到相同结果。
+// TestMediaPricingCardsHaveSameGroupAndPricingConfigSemantics 验证共享价格配置的价卡，图片按张、视频按秒和按次模式必须得到相同结果。
 func TestMediaPricingCardsHaveSameGroupAndPricingConfigSemantics(t *testing.T) {
 	for _, media := range []string{"image", "video"} {
 		for _, perRequest := range []bool{false, true} {
@@ -68,7 +68,7 @@ func TestMediaPricingCardsHaveSameGroupAndPricingConfigSemantics(t *testing.T) {
 	}
 }
 
-// 新异步任务读取模型价卡和尺寸；token 单价不可冒充每张费用。
+// TestAsyncImageUnitPricingUsesCardsAndPerImageFallback 验证新异步任务读取模型价卡和尺寸；token 单价不可冒充每张费用。
 func TestAsyncImageUnitPricingUsesCardsAndPerImageFallback(t *testing.T) {
 	ctx := context.Background()
 	model := "gemini-3.1-flash-image"

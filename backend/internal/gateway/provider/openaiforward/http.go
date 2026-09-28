@@ -1,4 +1,3 @@
-// Package openaiforward 编排当前提供商的 HTTP 恢复与响应消费，提供商切换仍由 gateway/text 拥有。
 package openaiforward
 
 import (

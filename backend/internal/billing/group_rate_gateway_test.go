@@ -129,7 +129,7 @@ func TestGetUserGroupRateMultiplier_CacheHitAndNilRepo(t *testing.T) {
 	require.Equal(t, 1.4, svc2.Resolve(context.Background(), 101, 202, 1.4))
 }
 
-// 仅重置本组断言实际观察的原生倍率指标。
+// resetGatewayRateStatsForTest 仅重置本组断言实际观察的原生倍率指标。
 func resetGatewayRateStatsForTest() {
 	m := SharedGroupRateMetrics()
 	m.Hit.Store(0)

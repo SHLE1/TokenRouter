@@ -1,4 +1,3 @@
-// 通知 HTTP DTO 保留原字段与省略语义。
 package dto
 
 // EmailTemplatePreviewResponse 是模板渲染后的预览响应。

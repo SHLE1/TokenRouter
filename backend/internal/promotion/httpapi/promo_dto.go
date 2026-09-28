@@ -1,4 +1,3 @@
-// DTO 保留原字段、省略规则和用户浅层展示。
 package httpapi
 
 import (
@@ -51,6 +50,7 @@ func PromoCodeFromService(pc *promotion.PromoCode) *PromoCode {
 		UpdatedAt:   pc.UpdatedAt,
 	}
 }
+
 func PromoCodeUsageFromService(u *promotion.PromoCodeUsage) *PromoCodeUsage {
 	if u == nil {
 		return nil
@@ -64,6 +64,7 @@ func PromoCodeUsageFromService(u *promotion.PromoCodeUsage) *PromoCodeUsage {
 		User:        promoUserDTO(u.User),
 	}
 }
+
 func promoUserDTO(u *promotion.UserView) *identitydto.User[struct{}] {
 	if u == nil {
 		return nil

@@ -1,4 +1,3 @@
-// 身份邮件只接收已确定的挑战与链接，不读取或保存身份凭据。
 package notification
 
 import (

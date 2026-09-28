@@ -27,7 +27,7 @@ func (p *blockingPublic) GetPublicSettingsForInjection(context.Context) (any, er
 	return map[string]any{"site_name": "NEW-TEST"}, nil
 }
 
-// 旧回源跨过失效点后不能成为后续请求使用的缓存。
+// TestFrontendServerLateHTMLPublication 验证旧回源跨过失效点后不能成为后续请求使用的缓存。
 func TestFrontendServerLateHTMLPublication(t *testing.T) {
 	p := &blockingPublic{entered: make(chan struct{}), release: make(chan struct{})}
 	s, err := NewFrontendServer(p)

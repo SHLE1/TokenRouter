@@ -1,4 +1,3 @@
-// 原流报文解析与重建保持逐次调用和原未知字段；不执行 I/O 或读取平台提供商。
 package openai
 
 import (
@@ -197,8 +196,8 @@ func ParseSSEUsageBytes(data []byte, usage *ForwardUsage) {
 	MergeOpenAIUsageNonZero(usage, parsedUsage)
 }
 
-// Compatible Responses upstreams may report usage before the terminal event.
-// Retain those non-zero fields as a fallback; terminal usage remains authoritative.
+// MergeOpenAIUsageNonZero 合并已观测到的非零用量字段。
+// 兼容上游可能在终态前报告用量，这些值作为回退，最终仍以终态用量为准。
 func MergeOpenAIUsageNonZero(dst *ForwardUsage, src ForwardUsage) {
 	if dst == nil {
 		return

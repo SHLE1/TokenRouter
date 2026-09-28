@@ -1,4 +1,3 @@
-// 测试只解包受控提供商记录，Redis 行为由生产 SnapshotCache 执行。
 package rediscache
 
 import (

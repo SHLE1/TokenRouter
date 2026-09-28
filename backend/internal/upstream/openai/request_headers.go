@@ -1,4 +1,3 @@
-// Responses 出站请求按既有顺序组合 Header，业务身份与目标策略由外层投影。
 package openai
 
 import (

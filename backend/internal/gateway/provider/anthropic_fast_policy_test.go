@@ -54,7 +54,7 @@ func TestClaudeAPIKeyFastModeWireEncoding(t *testing.T) {
 	require.True(t, claude.ContainsBetaToken(claude.GetHeaderRaw(headers, "anthropic-beta"), "context-management-2025-06-27"))
 }
 
-// Anthropic 直连的强制关闭应覆盖所有凭据类型，且不依赖定价解析器。
+// TestClaudeAPIKeyFastModeForceOffIgnoresCapabilityAndCredentialType 验证Anthropic 直连的强制关闭应覆盖所有凭据类型，且不依赖定价解析器。
 func TestClaudeAPIKeyFastModeForceOffIgnoresCapabilityAndCredentialType(t *testing.T) {
 	ctx := fastModeTestContext(apikey.APIKeyFastModePolicyForceOff, "claude-opus-4-8")
 

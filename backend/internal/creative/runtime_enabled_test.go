@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// IsCreativeEnabled 是创作台请求期门控读取：显式 "false" 关闭，键缺失或读取失败默认开启。
+// TestSettingService_IsCreativeEnabled 验证IsCreativeEnabled 是创作台请求期门控读取：显式 "false" 关闭，键缺失或读取失败默认开启。
 func TestSettingService_IsCreativeEnabled(t *testing.T) {
 	repo := &creativeRuntimeSettingsFixture{values: map[string]string{SettingKeyCreativeEnabled: "false"}}
 	svc := NewRuntimeSettings(repo, settings.ErrSettingNotFound)

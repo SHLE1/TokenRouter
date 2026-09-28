@@ -40,7 +40,7 @@ func TestAuthService_RegisterSnapshotsDefaultUserAPIKeyLimit(t *testing.T) {
 	}
 }
 
-// 修改系统默认值只影响之后注册的用户，已有用户保留注册时的快照。
+// TestAuthService_DefaultUserAPIKeyLimitDoesNotRetroactivelyChangeUsers 验证修改系统默认值只影响之后注册的用户，已有用户保留注册时的快照。
 func TestAuthService_DefaultUserAPIKeyLimitDoesNotRetroactivelyChangeUsers(t *testing.T) {
 	settings := map[string]string{
 		identity.SettingKeyRegistrationEnabled:    "true",
@@ -61,7 +61,7 @@ func TestAuthService_DefaultUserAPIKeyLimitDoesNotRetroactivelyChangeUsers(t *te
 	require.Equal(t, 10, repo.created[0].APIKeyLimit)
 }
 
-// 各 OAuth 来源共用同一注册入口，都必须固化当前的默认 API Key 上限。
+// TestAuthService_AllOAuthSourcesSnapshotDefaultUserAPIKeyLimit 验证各 OAuth 来源共用同一注册入口，都必须固化当前的默认 API Key 上限。
 func TestAuthService_AllOAuthSourcesSnapshotDefaultUserAPIKeyLimit(t *testing.T) {
 	for index, signupSource := range []string{"linuxdo", "wechat", "oidc", "github", "google", "dingtalk"} {
 		t.Run(signupSource, func(t *testing.T) {

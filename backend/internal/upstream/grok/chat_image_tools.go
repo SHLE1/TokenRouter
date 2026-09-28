@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// 当前轮的内联 image_url 已可由 Grok 直接读取；若同时保留本地 view_image，
+// StripRedundantGrokChatViewImageTool 当前轮的内联 image_url 已可由 Grok 直接读取；若同时保留本地 view_image，
 // Grok 可能只预告工具调用而不继续作答，因此只移除该冗余自动工具。
 func StripRedundantGrokChatViewImageTool(body []byte) ([]byte, error) {
 	messages := gjson.GetBytes(body, "messages")

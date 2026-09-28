@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 迁移只删除系列字段，精确覆盖、分组 ID 和其它策略保持原值，重复执行不改变结果。
+// TestMigration279RemovesOnlyMessagesFamilyMapping 验证迁移只删除系列字段，精确覆盖、分组 ID 和其它策略保持原值，重复执行不改变结果。
 func TestMigration279RemovesOnlyMessagesFamilyMapping(t *testing.T) {
 	tx := historicalTx(t, "279_")
 	ctx := context.Background()

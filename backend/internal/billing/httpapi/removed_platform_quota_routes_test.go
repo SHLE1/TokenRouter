@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 已删除的额度接口不再注册到用户和管理员路由。
+// TestRemovedPlatformQuotaRoutesReturnNotFound 验证已删除的额度接口不再注册到用户和管理员路由。
 func TestRemovedPlatformQuotaRoutesReturnNotFound(t *testing.T) {
 	router := gin.New()
 	RegisterUserRoutes(router.Group("/api/v1"), &RedeemHandler{}, &SubscriptionHandler{})

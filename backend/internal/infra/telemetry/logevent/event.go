@@ -1,4 +1,3 @@
-// Package logevent 只定义不可变发布的技术日志事件，不认识业务表。
 package logevent
 
 import "time"

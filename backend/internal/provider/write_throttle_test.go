@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同一提供商的并发反馈共用一次写入额度，其他提供商和下个时间窗口仍可写入。
+// TestWriteThrottleSharedProviderWindow 验证同一提供商的并发反馈共用一次写入额度，其他提供商和下个时间窗口仍可写入。
 func TestWriteThrottleSharedProviderWindow(t *testing.T) {
 	throttle := NewWriteThrottle(30 * time.Second)
 	now := time.Unix(1_800_000_000, 0)

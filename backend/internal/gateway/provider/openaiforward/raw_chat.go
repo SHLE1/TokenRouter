@@ -1,4 +1,3 @@
-// 原生 Chat 编排仅拥有当次准备、发送和响应读取，不增加提供商切换。
 package openaiforward
 
 import (

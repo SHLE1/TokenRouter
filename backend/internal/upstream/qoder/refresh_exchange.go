@@ -1,4 +1,3 @@
-// 本文件只执行 Qoder 刷新协议；是否刷新、缓存与条件持久化仍由提供商用例决定。
 package qoder
 
 import (

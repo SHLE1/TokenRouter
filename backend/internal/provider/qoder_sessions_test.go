@@ -1,4 +1,3 @@
-// 本文件验证共享凭据构建的等待者隔离及应用退出边界。
 package provider
 
 import (

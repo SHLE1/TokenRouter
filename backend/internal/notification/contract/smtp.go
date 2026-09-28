@@ -1,4 +1,3 @@
-// SMTPConfig 是单次发送的参数快照，凭据不进入公共输出。
 package contract
 
 import "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"

@@ -1,4 +1,3 @@
-// Package testkit 只组合原生完成依赖，业务计算、资金与副作用仍由真实模块执行。
 package testkit
 
 import (

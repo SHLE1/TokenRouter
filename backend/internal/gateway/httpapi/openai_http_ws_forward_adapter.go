@@ -1,4 +1,3 @@
-// HTTP→WS 旧边界仅投影一次平台执行和会话/指标操作，不拥有重连循环。
 package httpapi
 
 import (

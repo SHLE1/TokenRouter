@@ -1,4 +1,3 @@
-// 等待与串行锁的 HTTP 适配；资源所有权和等待循环复用 scheduler。
 package httpapi
 
 import (

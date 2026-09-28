@@ -48,7 +48,7 @@ func newOpenAIUpstreamClientErrorTestProvider() *gatewayprovider.ExecutionProvid
 	return &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acct"}}
 }
 
-// 兼容上游新增测试使用的命名，复用 fork 原有测试夹具。
+// newOpenAIUpstreamErrorTestContext 兼容上游新增测试使用的命名，复用 fork 原有测试夹具。
 func newOpenAIUpstreamErrorTestContext(t *testing.T) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
 	return newOpenAIUpstreamClientErrorTestContext()
@@ -149,7 +149,7 @@ func TestHandleErrorResponse_PoolRetryable400StillFailsOver(t *testing.T) {
 	require.Empty(t, recorder.Body.String())
 }
 
-// 作用域守卫：本次只放行 400。其余落到 default 的状态码必须维持原样，
+// TestHandleErrorResponse_NonDeterministicStatusesKeepGeneric502 验证作用域守卫：本次只放行 400。其余落到 default 的状态码必须维持原样，
 // 避免后续有人顺手把 404/422/5xx 一起改掉。
 func TestHandleErrorResponse_NonDeterministicStatusesKeepGeneric502(t *testing.T) {
 	cases := []struct {
@@ -208,7 +208,7 @@ func TestHandleErrorResponse_NonDeterministicStatusesKeepGeneric502(t *testing.T
 	}
 }
 
-// 顺序守卫：管理员配置的错误透传规则在更上游命中，新分支不得抢在它前面。
+// TestHandleErrorResponse_PassthroughRuleStillWinsOver400Branch 验证顺序守卫：管理员配置的错误透传规则在更上游命中，新分支不得抢在它前面。
 func TestHandleErrorResponse_PassthroughRuleStillWinsOver400Branch(t *testing.T) {
 	c, rec := newOpenAIUpstreamErrorTestContext(t)
 	ruleSvc := gatewaytestkit.ErrorRules([]*errorpolicy.ErrorPassthroughRule{

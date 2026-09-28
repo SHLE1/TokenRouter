@@ -1,4 +1,3 @@
-// 提供商五小时窗口费用缓存保持原 key、三十秒 TTL 与浮点读取语义。
 package rediscache
 
 import (

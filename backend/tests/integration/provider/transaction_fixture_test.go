@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 每个事务测试结束回滚；提交型竞争场景由原断言显式删除其测试行。
+// testEntTx 每个事务测试结束回滚；提交型竞争场景由原断言显式删除其测试行。
 func testEntTx(t *testing.T) *dbent.Tx {
 	t.Helper()
 	tx, err := integrationEntClient.Tx(context.Background())
@@ -25,7 +25,7 @@ func testEntClient(t *testing.T) *dbent.Client {
 	return integrationEntClient
 }
 
-// 迁移 SQL 契约独立开启事务，并在测试结束恢复原 schema。
+// testTx 迁移 SQL 契约独立开启事务，并在测试结束恢复原 schema。
 func testTx(t *testing.T) *sql.Tx {
 	t.Helper()
 	tx, err := integrationDB.BeginTx(context.Background(), nil)

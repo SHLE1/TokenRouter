@@ -42,7 +42,7 @@ func openAIPlanScores(plan openAIProviderLoadPlan) map[int64]float64 {
 	return scores
 }
 
-// Reset 权重 > 0 时，会话窗口最早重置的提供商应获得更高分。
+// TestBuildOpenAIProviderLoadPlan_ResetWeightPrefersSoonestReset 验证Reset 权重 > 0 时，会话窗口最早重置的提供商应获得更高分。
 func TestBuildOpenAIProviderLoadPlan_ResetWeightPrefersSoonestReset(t *testing.T) {
 	now := time.Now()
 	soon := now.Add(1 * time.Hour)
@@ -58,7 +58,7 @@ func TestBuildOpenAIProviderLoadPlan_ResetWeightPrefersSoonestReset(t *testing.T
 	require.Greater(t, scores[2], scores[1], "重置时间最早的提供商（ID=2）得分更高")
 }
 
-// Reset 权重为 0（默认）时，窗口重置时间不应影响打分，保持原有行为。
+// TestBuildOpenAIProviderLoadPlan_ResetWeightZeroNoEffect 验证Reset 权重为 0（默认）时，窗口重置时间不应影响打分，保持原有行为。
 func TestBuildOpenAIProviderLoadPlan_ResetWeightZeroNoEffect(t *testing.T) {
 	now := time.Now()
 	soon := now.Add(1 * time.Hour)
@@ -74,7 +74,7 @@ func TestBuildOpenAIProviderLoadPlan_ResetWeightZeroNoEffect(t *testing.T) {
 	require.Equal(t, scores[1], scores[2], "Reset 权重为 0 时两提供商得分相同")
 }
 
-// 提供商本地倍率和遗留声明倍率都只属于结算/清理边界，不得影响候选打分与排序。
+// TestBuildOpenAIProviderLoadPlan_BillingRatesDoNotAffectScoreOrOrder 验证提供商本地倍率和遗留声明倍率都只属于结算/清理边界，不得影响候选打分与排序。
 func TestBuildOpenAIProviderLoadPlan_BillingRatesDoNotAffectScoreOrOrder(t *testing.T) {
 	expensiveRate := 100.0
 	cheapRate := 0.01
@@ -112,7 +112,7 @@ func TestBuildOpenAIProviderLoadPlan_BillingRatesDoNotAffectScoreOrOrder(t *test
 	require.Equal(t, []int64{1, 2}, []int64{ranked[0].Provider.ID, ranked[1].Provider.ID})
 }
 
-// 无活跃窗口的提供商 reset 因子为 0，应低于拥有未来窗口的提供商。
+// TestBuildOpenAIProviderLoadPlan_ResetWeightIgnoresNilWindow 验证无活跃窗口的提供商 reset 因子为 0，应低于拥有未来窗口的提供商。
 func TestBuildOpenAIProviderLoadPlan_ResetWeightIgnoresNilWindow(t *testing.T) {
 	now := time.Now()
 	soon := now.Add(2 * time.Hour)

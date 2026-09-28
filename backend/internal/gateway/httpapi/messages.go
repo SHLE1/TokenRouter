@@ -1,4 +1,3 @@
-// Messages HTTP 适配拥有读写与错误顺序，核心文本循环不依赖 Gin。
 package httpapi
 
 import (

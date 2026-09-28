@@ -13,7 +13,7 @@ import (
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
-// 配置和日志在装配时固定，是否冷却由 provider 判断。
+// provideRetryCooldown 配置和日志在装配时固定，是否冷却由 provider 判断。
 func provideRetryCooldown(store *providerpostgres.ProviderStore) *provider.RetryCooldown {
 	var source provider.RetryCooldownStore
 	if store != nil {
@@ -39,7 +39,7 @@ func messageRetryCooldown(command *provider.RetryCooldown) func(context.Context,
 	}
 }
 
-// 隔离端口只投影当前 Key，保持原一小时 owner TTL。
+// messageSessionIsolation 隔离端口只投影当前 Key，保持原一小时 owner TTL。
 func messageSessionIsolation(cache session.GatewayCache) func(context.Context, *apikey.APIKey, int64, string, string) error {
 	return func(ctx context.Context, key *apikey.APIKey, userID int64, source, hash string) error {
 		if key == nil {
@@ -53,7 +53,7 @@ func messageSessionIsolation(cache session.GatewayCache) func(context.Context, *
 	}
 }
 
-// 摘要端口沿用同一内存存储，HTTP context 不参与内存键或过期时间计算。
+// messageDigestFind 摘要端口沿用同一内存存储，HTTP context 不参与内存键或过期时间计算。
 func messageDigestFind(store *session.DigestSessionStore) func(context.Context, int64, string, string) (string, int64, string, bool) {
 	return func(_ context.Context, id int64, prefix, chain string) (string, int64, string, bool) {
 		return store.Find(id, prefix, chain)

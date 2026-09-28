@@ -12,7 +12,7 @@ import (
 // thinking mode 要求产生工具调用的 reasoning_content 随该 assistant 消息回传，
 // 于是「单轮正常、一进多轮工具对话必现 400」。
 
-// 闭环不变式：thinking 块本来就是本桥出站时用上游 reasoning_content 生成的
+// TestAnthropicChatBridge_ReasoningSurvivesOutboundInboundRoundTrip 验证闭环不变式：thinking 块本来就是本桥出站时用上游 reasoning_content 生成的
 // (chatMessageToAnthropicBlocks)，客户端只是原样回传。出站造、入站丢 = 自己丢自己的东西。
 func TestAnthropicChatBridge_ReasoningSurvivesOutboundInboundRoundTrip(t *testing.T) {
 	upstream := ChatMessage{
@@ -113,7 +113,7 @@ func TestAnthropicThinkingToReasoningContent(t *testing.T) {
 	}
 }
 
-// 纯字符串形态的 assistant content 没有 blocks 可读，走早返回分支，不得 panic。
+// TestAnthropicAssistantToChatMessages_PlainStringContentUnaffected 验证纯字符串形态的 assistant content 没有 blocks 可读，走早返回分支，不得 panic。
 func TestAnthropicAssistantToChatMessages_PlainStringContentUnaffected(t *testing.T) {
 	msgs, err := anthropicAssistantToChatMessages(json.RawMessage(`"just text"`))
 	require.NoError(t, err)

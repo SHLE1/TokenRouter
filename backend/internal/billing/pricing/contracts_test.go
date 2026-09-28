@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 纯倍率继承不得修改共享基础价，也不得把缺价变为免费。
+// TestPriceCardsPreserveInputsAndPricePresence 验证纯倍率继承不得修改共享基础价，也不得把缺价变为免费。
 func TestPriceCardsPreserveInputsAndPricePresence(t *testing.T) {
 	base := &ModelPricing{InputPricePerToken: 0.000001, SupportsServiceTier: true}
 	pricingConfigMultiplier := 1.5
@@ -32,7 +32,7 @@ func TestPriceCardsPreserveInputsAndPricePresence(t *testing.T) {
 	require.Equal(t, PricingSourceConfig, free.Source)
 }
 
-// 模型峰谷可以使用单独的缺省时刻，不能让零 PricingAt 意外启用价卡分时。
+// TestZeroPricingTimeDoesNotEnablePricingTimeMultiplier 验证模型峰谷可以使用单独的缺省时刻，不能让零 PricingAt 意外启用价卡分时。
 func TestZeroPricingTimeDoesNotEnablePricingTimeMultiplier(t *testing.T) {
 	at := time.Date(2026, 6, 29, 2, 0, 0, 0, time.UTC)
 	card := &ModelPricingEntry{TimePricing: &TimePricingConfig{Timezone: "UTC", Periods: []TimePricingPeriod{{StartTime: "01:00", EndTime: "04:00", Multiplier: 2}}}}
@@ -47,7 +47,7 @@ func TestZeroPricingTimeDoesNotEnablePricingTimeMultiplier(t *testing.T) {
 	require.InDelta(t, 0.0002, cost.ActualCost, 1e-12)
 }
 
-// 秋季重复的一点钟都按本地窗口计价，窗口结束仍是右开边界。
+// TestExplicitTimeLocationPreservesDSTRepeatedHour 验证秋季重复的一点钟都按本地窗口计价，窗口结束仍是右开边界。
 func TestExplicitTimeLocationPreservesDSTRepeatedHour(t *testing.T) {
 	location, err := time.LoadLocation("America/New_York")
 	require.NoError(t, err)

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 索引必须独立持有和返回凭据值，调用方修改不能污染后续匹配。
+// TestCodexImportIndexSnapshotIsolation 验证索引必须独立持有和返回凭据值，调用方修改不能污染后续匹配。
 func TestCodexImportIndexSnapshotIsolation(t *testing.T) {
 	original := Record{ID: 7, Credentials: map[string]any{"access_token": "token", "refresh_token": "refresh", "chatgpt_account_id": "team", "nested": map[string]any{"value": "original"}}}
 	index := BuildCodexProviderIndex([]Record{original})

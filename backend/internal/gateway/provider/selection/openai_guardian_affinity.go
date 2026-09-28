@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 )
 
-// 旧选择入口仅保留原缓存查询，亲缘值已归请求状态。
+// resolveOpenAIGuardianParentProviderID 旧选择入口仅保留原缓存查询，亲缘值已归请求状态。
 func (s *Compatible) resolveOpenAIGuardianParentProviderID(ctx context.Context, groupID *int64) int64 {
 	if s == nil || s.cache == nil {
 		return 0

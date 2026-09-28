@@ -1,4 +1,3 @@
-// PAT 凭据清理保持原字段删除和认证标识，不执行供应商校验或写库。
 package provider
 
 import "strings"

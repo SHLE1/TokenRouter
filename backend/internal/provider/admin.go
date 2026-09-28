@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-// Record management implementations
+// ListProviders 按筛选条件分页查询提供商，并返回总数。
 func (s *Admin) ListProviders(ctx context.Context, page, pageSize int, platform, providerType, status, search string, groupID int64, privacyMode string, sortBy, sortOrder string) ([]Record, int64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	providers, result, err := s.providerRepo.ListWithFilters(ctx, params, platform, providerType, status, search, groupID, privacyMode)

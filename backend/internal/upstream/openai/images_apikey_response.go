@@ -1,4 +1,3 @@
-// API Key 图片流使用独立原生读取路径，不改变 OAuth 与 API Key 的边界差异。
 package openai
 
 import (

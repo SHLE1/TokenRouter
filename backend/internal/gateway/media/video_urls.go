@@ -1,4 +1,3 @@
-// 视频 JSON 的 URL 替换保留未知字段；供应商受保护 URL 识别由原生 Adapter 注入。
 package media
 
 import (
@@ -33,6 +32,7 @@ func RewriteVideoContentURLs(body []byte, requestID, proxyURL string, match func
 	}
 	return rewritten
 }
+
 func rewriteGrokMediaKnownVideoURL(value *any, proxyURL string) bool {
 	if value == nil {
 		return false
@@ -52,6 +52,7 @@ func rewriteGrokMediaKnownVideoURL(value *any, proxyURL string) bool {
 	video["url"] = proxyURL
 	return true
 }
+
 func rewriteGrokMediaVideoContentURLValue(value *any, requestID, proxyURL string, match func(string, string) bool) bool {
 	if value == nil {
 		return false

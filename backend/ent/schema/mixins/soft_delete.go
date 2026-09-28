@@ -1,5 +1,3 @@
-// Package mixins 提供 Ent schema 的可复用混入组件。
-// 包括时间戳混入、软删除混入等通用功能。
 package mixins
 
 import (

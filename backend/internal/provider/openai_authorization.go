@@ -1,4 +1,3 @@
-// OpenAI 授权、刷新结果补全与状态校验由提供商用例拥有；交换和 TLS 只通过端口调用。
 package provider
 
 import (
@@ -46,7 +45,7 @@ func openAIInt64Value(value *int64) int64 {
 	return *value
 }
 
-// 生成授权 URL，保持随机值与会话登记顺序。
+// generateAuthURL 生成授权 URL，保持随机值与会话登记顺序。
 func (s *OpenAIAuthorization) generateAuthURL(ctx context.Context, proxyID *int64, redirectURI, platform string) (*OpenAIAuthURLResult, error) {
 	// 按原顺序生成 PKCE 值。
 	state, err := s.Options.GenerateState()
@@ -106,7 +105,7 @@ func (s *OpenAIAuthorization) generateAuthURL(ctx context.Context, proxyID *int6
 	}, nil
 }
 
-// 交换授权码并在成功后消费原会话。
+// exchangeCode 交换授权码并在成功后消费原会话。
 func (s *OpenAIAuthorization) exchangeCode(ctx context.Context, input *OpenAIExchangeCodeInput) (*OpenAITokenInfo, error) {
 	// 读取原授权会话。
 	session, ok := s.Sessions.Get(input.SessionID)
@@ -184,7 +183,7 @@ func (s *OpenAIAuthorization) exchangeCode(ctx context.Context, input *OpenAIExc
 	return tokenInfo, nil
 }
 
-// RefreshTokenWithClientIDAndRouter 使用指定 TLS 路由器配置刷新导入态 ChatGPT OAuth token。
+// refreshTokenWithClientIDAndRouter 使用指定 TLS 路由器配置刷新导入态 ChatGPT OAuth token。
 func (s *OpenAIAuthorization) refreshTokenWithClientIDAndRouter(ctx context.Context, refreshToken string, proxyURL string, clientID string, routerID *int64) (*OpenAITokenInfo, error) {
 	return s.refreshTokenWithParameters(ctx, refreshToken, proxyURL, clientID, openAIInt64Value(routerID), nil)
 }
@@ -233,7 +232,7 @@ func (s *OpenAIAuthorization) refreshTokenWithParameters(ctx context.Context, re
 	return tokenInfo, nil
 }
 
-// EnrichTokenInfo 通过 ChatGPT backend-api 补全 tokenInfo 并设置隐私（best-effort）。
+// enrichTokenInfo 通过 ChatGPT backend-api 补全 tokenInfo 并设置隐私（best-effort）。
 // 从 accounts/check 获取最新 plan_type、subscription_expires_at、email，
 // 然后尝试关闭训练数据共享。适用于所有获取/刷新 token 的路径。
 func (s *OpenAIAuthorization) enrichTokenInfo(ctx context.Context, tokenInfo *OpenAITokenInfo, proxyURL string) {
@@ -310,7 +309,7 @@ func ResolveChatGPTSubscriptionProviderID(tokenInfo *OpenAITokenInfo, orgID stri
 	return ""
 }
 
-// 根据提供商当前认证方式取得刷新结果。
+// refreshProviderToken 根据提供商当前认证方式取得刷新结果。
 func (s *OpenAIAuthorization) refreshProviderToken(ctx context.Context, provider *Record) (*OpenAITokenInfo, error) {
 	if provider.Platform != PlatformOpenAI {
 		return nil, infraerrors.New(400, "OPENAI_OAUTH_INVALID_PROVIDER", "provider is not an OpenAI provider")

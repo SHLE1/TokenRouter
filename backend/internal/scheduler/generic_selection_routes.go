@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// 基础单平台与混合选择使用同一独立投影，保留原粘性及优先级/最近使用顺序。
+// selectRoutes 基础单平台与混合选择使用同一独立投影，保留原粘性及优先级/最近使用顺序。
 func (s *GenericSelector) selectRoutes(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*FlowProvider, error) {
 	// 优先检查 context 中的强制平台（/antigravity 路由）
 	var platform string

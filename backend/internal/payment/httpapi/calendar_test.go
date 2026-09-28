@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 支付查询继续要求完整有效的范围，同时使用显式服务端时区处理日期输入。
+// TestPaymentDashboardRangeInjectedCalendar 验证支付查询继续要求完整有效的范围，同时使用显式服务端时区处理日期输入。
 func TestPaymentDashboardRangeInjectedCalendar(t *testing.T) {
 	loc, err := time.LoadLocation("America/New_York")
 	require.NoError(t, err)

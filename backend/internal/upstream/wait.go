@@ -1,4 +1,3 @@
-// WaitContext 只等待既有重试间隔，不决定重试策略。
 package upstream
 
 import (

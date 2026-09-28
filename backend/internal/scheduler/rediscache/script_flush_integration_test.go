@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Redis 丢失脚本缓存后，批量读仍须返回真实活动会话，不能静默漏报容量。
+// TestSessionBatchAfterScriptFlush 验证Redis 丢失脚本缓存后，批量读仍须返回真实活动会话，不能静默漏报容量。
 func TestSessionBatchAfterScriptFlush(t *testing.T) {
 	ctx := context.Background()
 	rdb := testRedis(t)

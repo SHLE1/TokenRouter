@@ -1,4 +1,3 @@
-// Package provider contains concrete payment provider implementations.
 package provider
 
 import (

@@ -1,4 +1,3 @@
-// OpenAI 管理路由直接绑定提供商用例，静态平台客户端规则由组合根投影。
 package app
 
 import (

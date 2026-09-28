@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// provideMessagesHTTP 直接构造原生 HTTP；执行依赖的最后兼容装配单独保留。
+// provideMessageHTTPBindings 直接构造原生 HTTP；执行依赖的最后兼容装配单独保留。
 func provideMessageHTTPBindings(
 	planner *gatewayprovider.RoutePlanner,
 	cache session.GatewayCache,

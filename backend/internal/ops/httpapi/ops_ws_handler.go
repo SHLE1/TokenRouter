@@ -1,4 +1,3 @@
-// HTTP 负责握手、Origin 与帧，实时运行资源由 Ops 拥有。
 package httpapi
 
 import (

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 显式空模型和未提供模型保留原区别，供应商解析收到原始模型而冷却使用规范值。
+// TestHealthObservationKeepsRawAndEffectiveModel 验证显式空模型和未提供模型保留原区别，供应商解析收到原始模型而冷却使用规范值。
 func TestHealthObservationKeepsRawAndEffectiveModel(t *testing.T) {
 	ctx := requeststate.WithHealthModel(context.Background(), []string{"stored-model"})
 	ctx = requeststate.WithOpenAIImagesEndpoint(requeststate.WithThinkingEnabled(ctx, false))

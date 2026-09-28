@@ -356,7 +356,7 @@ func TestAuthService_Register_NonWhitelistDomainRejectedWhenQuotaExplicitlyDisab
 	require.ErrorIs(t, err, identity.ErrEmailSuffixNotAllowed)
 }
 
-// 预检通过后管理员关闭开关时，最终创建阶段必须重新读取设置并恢复严格白名单。
+// TestAuthService_CreateRegisteredUser_RechecksDomainQuotaSwitch 验证预检通过后管理员关闭开关时，最终创建阶段必须重新读取设置并恢复严格白名单。
 func TestAuthService_CreateRegisteredUser_RechecksDomainQuotaSwitch(t *testing.T) {
 	ctx := context.Background()
 	settings := map[string]string{

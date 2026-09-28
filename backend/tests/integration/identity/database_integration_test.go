@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/testutil/postgrescontainer"
 )
 
-// 身份合同保留真实提交；使用隔离数据库避免共享提供商数据。
+// identityDatabase 身份合同保留真实提交；使用隔离数据库避免共享提供商数据。
 func identityDatabase(t *testing.T) (*sql.DB, *dbent.Client) {
 	t.Helper()
 	db := postgrescontainer.New(t)

@@ -1,4 +1,3 @@
-// 本文件定义调度事件契约。
 package scheduler
 
 const (

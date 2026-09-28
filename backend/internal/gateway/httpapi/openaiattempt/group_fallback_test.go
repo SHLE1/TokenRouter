@@ -18,7 +18,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 回退必须重新建立目标分组的模型和粘性计划，旧 Key 与旧映射不能被原地改写。
+// TestGroupFallbackRebuildsPlanAndKeepsForcedPlatform 验证回退必须重新建立目标分组的模型和粘性计划，旧 Key 与旧映射不能被原地改写。
 func TestGroupFallbackRebuildsPlanAndKeepsForcedPlatform(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	ctx := requeststate.WithClientProtocol(context.Background(), protocol.ProtocolAnthropicMessages)
@@ -72,7 +72,7 @@ func TestGroupFallbackRebuildsPlanAndKeepsForcedPlatform(t *testing.T) {
 	require.Equal(t, 1, resolveCount)
 }
 
-// 已提交的流不能因换组重新开始；客户端取消同样不能触发回退授权。
+// TestGroupFallbackStopsAfterOutputOrCancellation 验证已提交的流不能因换组重新开始；客户端取消同样不能触发回退授权。
 func TestGroupFallbackStopsAfterOutputOrCancellation(t *testing.T) {
 	for _, scenario := range []string{"output", "stream", "cancelled"} {
 		t.Run(scenario, func(t *testing.T) {

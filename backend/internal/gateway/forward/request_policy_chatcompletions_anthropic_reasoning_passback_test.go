@@ -48,7 +48,7 @@ func TestAnthropicToChatCompletionsRequest_ThinkingBecomesReasoningContentOnTool
 	require.Equal(t, `"checking"`, string(assistant.Content), "text/tool_use 处理保持不变")
 }
 
-// 上游线格式才是上游看到的东西：字段没序列化出去，等于没修。
+// TestAnthropicToChatCompletionsRequest_ReasoningContentSerializesOnWire 验证上游线格式才是上游看到的东西：字段没序列化出去，等于没修。
 func TestAnthropicToChatCompletionsRequest_ReasoningContentSerializesOnWire(t *testing.T) {
 	out, err := AnthropicToChatCompletionsRequest(anthropicAssistantMsg(t, anthropicThinkingToolTurn))
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestAnthropicToChatCompletionsRequest_ReasoningContentSerializesOnWire(t *t
 	require.Contains(t, string(payload), `"reasoning_content":"user wants weather, call the tool"`)
 }
 
-// 兄弟不变式：Responses→Chat 桥(buildChatMessagesFromItems 的 pendingReasoning)
+// TestAnthropicChatBridge_MatchesResponsesChatBridgeReasoningPlacement 验证兄弟不变式：Responses→Chat 桥(buildChatMessagesFromItems 的 pendingReasoning)
 // 早就把 reasoning 挂到带 tool_calls 的 assistant 消息上了。等价历史下两条桥必须一致。
 func TestAnthropicChatBridge_MatchesResponsesChatBridgeReasoningPlacement(t *testing.T) {
 	responsesReq := &protocolopenai.ResponsesRequest{
@@ -94,7 +94,7 @@ func TestAnthropicChatBridge_MatchesResponsesChatBridgeReasoningPlacement(t *tes
 		"两条桥对等价历史必须产出同样的 reasoning_content 位置")
 }
 
-// 作用域守卫：不带工具调用的纯文本轮次维持现状(与兄弟桥一致 —— reasoning 只随
+// TestAnthropicToChatCompletionsRequest_ThinkingWithoutToolCallsStaysDropped 验证作用域守卫：不带工具调用的纯文本轮次维持现状(与兄弟桥一致 —— reasoning 只随
 // 工具调用回传)，避免把 reasoning_content 撒到不需要它的上游请求上。
 func TestAnthropicToChatCompletionsRequest_ThinkingWithoutToolCallsStaysDropped(t *testing.T) {
 	req := &protocolanthropic.AnthropicRequest{

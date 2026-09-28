@@ -1,4 +1,3 @@
-// 用量归一化、查价、事实构造和资金完成顺序在此保持唯一实现。
 package completion
 
 import (

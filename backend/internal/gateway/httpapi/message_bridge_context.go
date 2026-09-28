@@ -1,4 +1,3 @@
-// Codex 请求选项与 Messages 桥接提示在本次尝试构造，协议算法由 upstream 唯一执行。
 package httpapi
 
 import (

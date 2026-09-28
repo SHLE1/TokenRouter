@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 转账流水失败必须回滚同事务的清零、余额和累计充值，不能只保证计提原子性。
+// TestAffiliateTransferLedgerFailureRollsBackFunds 验证转账流水失败必须回滚同事务的清零、余额和累计充值，不能只保证计提原子性。
 func TestAffiliateTransferLedgerFailureRollsBackFunds(t *testing.T) {
 	ctx := context.Background()
 	client, integrationDB := testStore(t)

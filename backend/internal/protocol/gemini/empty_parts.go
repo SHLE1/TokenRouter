@@ -1,4 +1,3 @@
-// Gemini 请求空 parts 清理保留非数组和缺省字段，不执行平台选择。
 package gemini
 
 import "encoding/json"

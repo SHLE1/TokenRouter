@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// NormalizeCreativeModelSettings 覆盖白名单字段的校验、去重与稳定排序。
+// TestNormalizeCreativeModelSettings 验证NormalizeCreativeModelSettings 覆盖白名单字段的校验、去重与稳定排序。
 func TestNormalizeCreativeModelSettings(t *testing.T) {
 	settings, err := NormalizeCreativeModelSettings([]CreativeModelSetting{{
 		GroupID:    12,

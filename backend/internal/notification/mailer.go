@@ -1,4 +1,3 @@
-// Mailer 组合运行时 SMTP 参数与技术发送，不拥有身份凭据。
 package notification
 
 import (

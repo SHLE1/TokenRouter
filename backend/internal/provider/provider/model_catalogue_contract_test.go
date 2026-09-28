@@ -527,7 +527,7 @@ func TestFetchUpstreamSupportedModelsDoesNotExposeUpstreamBody(t *testing.T) {
 	require.Contains(t, syncErr.SafeMessage(), "HTTP 502")
 }
 
-// 测试仅投影既有 URL 策略与读取上限，不构造旧配置或业务服务。
+// upstreamModelSyncTestConfig 测试仅投影既有 URL 策略与读取上限，不构造旧配置或业务服务。
 func upstreamModelSyncTestConfig() ModelCatalogueOptions {
 	policy := egress.OperatorURLPolicy{}
 	return ModelCatalogueOptions{ValidateURL: policy.Validate, OperatorValidator: policy.Validate, BodyLimit: 8 << 20, CodexModelsURL: DefaultCodexModelsURL}

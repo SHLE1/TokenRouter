@@ -1,4 +1,3 @@
-// 本文件保留 Claude 提供商授权 HTTP 契约，平台交换与状态均由提供商用例拥有。
 package httpapi
 
 import (

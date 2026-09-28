@@ -67,7 +67,7 @@ func (p SnapshotPublisher) PublishMany(ctx context.Context, providerIDs []int64)
 	}
 }
 
-// deleteSchedulerProviderSnapshot 在提供商删除后主动清理调度器缓存中的单提供商快照。
+// Drop 在提供商删除后主动清理调度器缓存中的单提供商快照。
 func (p SnapshotPublisher) Drop(ctx context.Context, providerID int64) {
 	if p.Cache == nil || providerID <= 0 {
 		return

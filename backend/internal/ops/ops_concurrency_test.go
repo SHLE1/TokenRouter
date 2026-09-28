@@ -28,7 +28,7 @@ type opsProviderStatsFallbackRepoStub struct {
 	groupIDFilter  int64
 }
 
-// ListWithFilters 模拟尚未实现轻量查询接口的仓储，锁定兼容回退行为。
+// ListPage 模拟尚未实现轻量查询接口的仓储，锁定兼容回退行为。
 func (r *opsProviderStatsFallbackRepoStub) ListPage(
 	_ context.Context,
 	params pagination.PaginationParams,

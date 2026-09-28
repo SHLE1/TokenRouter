@@ -164,7 +164,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsNonStreaming(t *testing.T) {
 	require.False(t, result.Stream)
 }
 
-// 覆盖流式组合：收到 [DONE] 时文本块仍开启，收尾必须先发
+// TestForwardAsAnthropic_ForceChatCompletionsStreamingClosesOpenBlockOnDone 验证覆盖流式组合：收到 [DONE] 时文本块仍开启，收尾必须先发
 // content_block_stop，再发 message_delta / message_stop。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingClosesOpenBlockOnDone(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
@@ -220,7 +220,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingClosesOpenBlockOnDone(t
 	require.NotNil(t, result.FirstTokenMs)
 }
 
-// 覆盖按索引聚合多分片 tool_call，并收尾为 stop_reason=tool_use 的
+// TestForwardAsAnthropic_ForceChatCompletionsStreamingToolCallAggregation 验证覆盖按索引聚合多分片 tool_call，并收尾为 stop_reason=tool_use 的
 // Anthropic tool_use 块。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingToolCallAggregation(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"weather in sf?"}],"tools":[{"name":"get_weather","input_schema":{"type":"object","properties":{"city":{"type":"string"}}}}],"tool_choice":{"type":"auto","disable_parallel_tool_use":true},"stream":true}`)
@@ -270,7 +270,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingToolCallAggregation(t *
 	require.Equal(t, 5, result.Usage.OutputTokens)
 }
 
-// 覆盖真实交错的并行工具参数分片：上游声明顺序可以与工具 index 不同，
+// TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelToolCalls 验证覆盖真实交错的并行工具参数分片：上游声明顺序可以与工具 index 不同，
 // 下游仍必须按 index 输出互不交错且严格闭合的 Anthropic tool_use 块。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelToolCalls(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":64,"messages":[{"role":"user","content":"read the file and print the directory"}],"tools":[{"name":"Read","input_schema":{"type":"object","properties":{"file_path":{"type":"string"}}}},{"name":"Bash","input_schema":{"type":"object","properties":{"command":{"type":"string"}}}}],"stream":true}`)
@@ -366,7 +366,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelTool
 	require.Equal(t, 9, result.Usage.OutputTokens)
 }
 
-// finish_reason=length 经 CC → Responses → Anthropic 双重转换后，
+// TestForwardAsAnthropic_ForceChatCompletionsStreamingLengthMapsToMaxTokens 验证finish_reason=length 经 CC → Responses → Anthropic 双重转换后，
 // 必须保留为 stop_reason=max_tokens。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingLengthMapsToMaxTokens(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
@@ -399,7 +399,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingLengthMapsToMaxTokens(t
 	require.Contains(t, out, "event: message_stop")
 }
 
-// 上游立即以 [DONE] 结束时，仍须生成包含 message_start、message_delta 和
+// TestForwardAsAnthropic_ForceChatCompletionsEmptyStreamStillFramesMessage 验证上游立即以 [DONE] 结束时，仍须生成包含 message_start、message_delta 和
 // message_stop 的完整 Anthropic 流。
 func TestForwardAsAnthropic_ForceChatCompletionsEmptyStreamStillFramesMessage(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
@@ -425,7 +425,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsEmptyStreamStillFramesMessage(t 
 	require.Contains(t, out, "event: message_stop")
 }
 
-// 非 failover 的 4xx 响应必须经过共享兼容错误处理器：按状态返回 Anthropic
+// TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHandler 验证非 failover 的 4xx 响应必须经过共享兼容错误处理器：按状态返回 Anthropic
 // 错误类型、保留上游消息并记录 ops 上游错误事件。
 func TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHandler(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
@@ -464,7 +464,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHan
 	require.Equal(t, "invalid roles", events[0].Message)
 }
 
-// 上游读取在流中断开时必须返回错误，且不得合成 message_stop 掩盖截断。
+// TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize 验证上游读取在流中断开时必须返回错误，且不得合成 message_stop 掩盖截断。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -497,7 +497,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize(t *
 	require.NotContains(t, out, "event: message_stop", "no synthetic completion after a broken read")
 }
 
-// 门控回归：已确认上游支持 Responses API 的 API Key 提供商必须继续使用
+// TestForwardAsAnthropic_ResponsesSupportedProviderStillUsesResponsesEndpoint 验证门控回归：已确认上游支持 Responses API 的 API Key 提供商必须继续使用
 // /v1/responses，不得进入 Chat Completions fallback。
 func TestForwardAsAnthropic_ResponsesSupportedProviderStillUsesResponsesEndpoint(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":false}`)

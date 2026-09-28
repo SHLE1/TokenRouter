@@ -1,4 +1,3 @@
-// Gemini 方言保留模型兜底和签名恢复的原条件、顺序及单次预算。
 package antigravity
 
 import (

@@ -15,7 +15,7 @@ import (
 
 const GroupSortOrderStep = 10
 
-// Group management implementations
+// ListGroups 按筛选条件分页查询分组，并返回总数。
 func (s *GroupAdmin) ListGroups(ctx context.Context, page, pageSize int, platform, status, search string, isExclusive *bool, sortBy, sortOrder string) ([]Group, int64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	groups, result, err := s.groupRepo.ListWithFilters(ctx, params, platform, status, search, isExclusive)

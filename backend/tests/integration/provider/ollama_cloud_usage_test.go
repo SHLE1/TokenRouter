@@ -301,7 +301,7 @@ func TestDisableOllamaCloudUsageAutoRefreshUsesGroupIdentityCAS(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// Ollama 清理分支必须带顶层 credentials DISTINCT 守卫：没有它，非 Ollama 的
+// TestUpdateCredentialsCleanupBranchRequiresChangedCredentials 验证Ollama 清理分支必须带顶层 credentials DISTINCT 守卫：没有它，非 Ollama 的
 // openai/anthropic apikey 提供商在凭证未变化的持久化上也会误清探测快照。
 func TestUpdateCredentialsCleanupBranchRequiresChangedCredentials(t *testing.T) {
 	client, mock := newOllamaCloudUsageRepositoryTestClient(t)

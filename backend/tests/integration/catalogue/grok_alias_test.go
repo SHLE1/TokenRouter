@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原默认目录与提供商显式别名断言直接组合原生解析器。
+// TestGrokRequestableModelsExcludeBuiltinAliases 验证原默认目录与提供商显式别名断言直接组合原生解析器。
 func TestGrokRequestableModelsExcludeBuiltinAliases(t *testing.T) {
 	groupID := int64(4510)
 	provider := providercore.Record{ID: 1, Platform: capability.PlatformGrok, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{}}

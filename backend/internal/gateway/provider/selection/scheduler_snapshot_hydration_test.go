@@ -259,7 +259,7 @@ func TestGatewaySelectProviderWithLoadAwareness_SkipsAntigravityGeminiFamilyRate
 	}
 }
 
-// 已取得提供商槽后读取完整提供商失败，错误返回前必须归还一次。
+// TestGatewayNewSelectionResultReleasesSlotWhenHydrationFails 验证已取得提供商槽后读取完整提供商失败，错误返回前必须归还一次。
 func TestGatewayNewSelectionResultReleasesSlotWhenHydrationFails(t *testing.T) {
 	cache := &snapshotHydrationCache{providers: map[int64]*gatewayprovider.ExecutionProvider{}}
 	snapshot := newHydrationSnapshotForTest(cache, selectionProviderFixture{})

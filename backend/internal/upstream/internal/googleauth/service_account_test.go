@@ -1,4 +1,3 @@
-// 本地 HTTP 与真实 RSA 验证服务账号 JWT，不使用外部凭据。
 package googleauth
 
 import (

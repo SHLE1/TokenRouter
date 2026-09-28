@@ -1,4 +1,3 @@
-// 计划测试存储负责计划读写及按到期时间查找待执行项目。
 package postgres
 
 import (

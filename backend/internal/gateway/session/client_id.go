@@ -1,4 +1,3 @@
-// 客户端会话字段是关联值，不是登录凭据或调度会话对象。
 package session
 
 import (

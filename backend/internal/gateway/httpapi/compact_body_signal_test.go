@@ -229,7 +229,7 @@ func TestNormalizeOpenAIResponsesCompactRequest_SubpathNotPromoted(t *testing.T)
 	require.Equal(t, body, normalized)
 }
 
-// path-based compact（Codex v1 unary 协议）即使 body 带 stream:true 也不标记，
+// TestNormalizeOpenAIResponsesCompactRequest_PathBasedStreamTrueNotMarked 验证path-based compact（Codex v1 unary 协议）即使 body 带 stream:true 也不标记，
 // 保持 JSON 写回行为不变。
 func TestNormalizeOpenAIResponsesCompactRequest_PathBasedStreamTrueNotMarked(t *testing.T) {
 	h := &OpenAITextHandler{}

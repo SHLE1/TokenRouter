@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原错误值的空值、截断与展示字段在移除旧类型后保持一致。
+// TestGroupModelUnsupportedErrorPresentation 验证原错误值的空值、截断与展示字段在移除旧类型后保持一致。
 func TestGroupModelUnsupportedErrorPresentation(t *testing.T) {
 	t.Run("nil", func(t *testing.T) {
 		var err *GroupModelUnsupportedError

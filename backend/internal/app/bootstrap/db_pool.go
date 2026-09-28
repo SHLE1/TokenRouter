@@ -1,4 +1,3 @@
-// 本文件只把启动配置转换为 PostgreSQL 连接池参数。
 package bootstrap
 
 import (

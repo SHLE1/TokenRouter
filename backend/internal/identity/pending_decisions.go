@@ -1,4 +1,3 @@
-// 待完成登录流程根据邮箱和身份状态选择注册、绑定或资料采纳分支。
 package identity
 
 import (

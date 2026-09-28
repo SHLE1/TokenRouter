@@ -1,4 +1,3 @@
-// Vertex 拥有请求封装、beta 过滤及最终 Header 应用，通用协议工具通过端口复用。
 package vertex
 
 import (

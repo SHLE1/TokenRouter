@@ -1,4 +1,3 @@
-// 分组模型列表配置在读取前规范化，并决定是否启用自定义目录。
 package routing
 
 import (

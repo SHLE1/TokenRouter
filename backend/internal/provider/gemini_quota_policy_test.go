@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 静态参数、JSON 策略、动态设置依次覆盖；缓存到期前后保持原取值时机。
+// TestGeminiQuotaPolicyPrecedenceTTLAndSnapshots 验证静态参数、JSON 策略、动态设置依次覆盖；缓存到期前后保持原取值时机。
 func TestGeminiQuotaPolicyPrecedenceTTLAndSnapshots(t *testing.T) {
 	now := time.Date(2026, 9, 13, 12, 0, 0, 0, time.UTC)
 	rpd := int64(10)
@@ -39,7 +39,7 @@ func TestGeminiQuotaPolicyPrecedenceTTLAndSnapshots(t *testing.T) {
 	require.Equal(t, int64(20), next.ProRPD, "设置损坏沿用原静态策略回退")
 }
 
-// 并发读者可修改各自返回对象，不能修改服务正在使用的策略缓存。
+// TestGeminiQuotaPolicyConcurrentReaderIsolation 验证并发读者可修改各自返回对象，不能修改服务正在使用的策略缓存。
 func TestGeminiQuotaPolicyConcurrentReaderIsolation(t *testing.T) {
 	var reads atomic.Int64
 	core := NewGeminiQuotaService(GeminiQuotaOptions{LoadPolicy: func(context.Context) (string, error) { reads.Add(1); return "", nil }})

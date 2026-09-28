@@ -1,4 +1,3 @@
-// PublicUsageHandler 保留 CC Switch 公开用量与权益展示协议。
 package httpapi
 
 import (
@@ -133,7 +132,7 @@ func (h *PublicUsageHandler) buildAPIKeyUsageBilling(c *gin.Context, ctx context
 	return billing, nil, &balance, nil
 }
 
-// usageUnrestricted 处理 unrestricted 模式的响应（向后兼容）
+// UsageUnrestricted 处理 unrestricted 模式的响应（向后兼容）
 func (h *PublicUsageHandler) UsageUnrestricted(c *gin.Context, ctx context.Context, apiKey *keycore.APIKey, subject authctx.AuthSubject, usageData gin.H, dailyUsage any, modelStats any, balanceUnitName string) {
 	billing, subscription, balance, billingErr := h.buildAPIKeyUsageBilling(c, ctx, apiKey, subject, balanceUnitName)
 	if billingErr != nil {

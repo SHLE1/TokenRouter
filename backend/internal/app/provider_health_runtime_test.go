@@ -19,7 +19,7 @@ func (p *healthRuntimeCounter) ResetOpenAI403Count(_ context.Context, id int64) 
 	return nil
 }
 
-// 原生运行时完整构造后发布同一实例；构造不能查询空存储。
+// TestProviderHealthRuntimePublishesOneNativeGraph 验证原生运行时完整构造后发布同一实例；构造不能查询空存储。
 func TestProviderHealthRuntimePublishesOneNativeGraph(t *testing.T) {
 	cfg := &config.Config{}
 	counter := &healthRuntimeCounter{}

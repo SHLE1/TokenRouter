@@ -1,4 +1,3 @@
-// Messages 的旧执行端口只持有本请求投影，循环唯一位于 gateway/text。
 package textattempt
 
 import (

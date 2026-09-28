@@ -43,10 +43,8 @@ import (
 // UpdateSettingsRequest 更新设置请求
 type UpdateSettingsRequest = settingsdto.UpdateSettingsRequest
 
-// UpdateSettings 更新系统设置
-// PUT /api/v1/admin/settings
-// ensureActorTotpForStepUp 校验当前操作者具备开启 step-up 门控的条件：
-// 必须是真人管理员会话（admin API key 无法完成 TOTP step-up，拒绝）且本人已启用 TOTP。
+// ensureActorTotpForStepUp 校验操作者是否具备开启 step-up 验证的条件。
+// 操作者必须通过管理员会话登录且已启用 TOTP；管理 API Key 不满足条件。
 // 校验失败时写入错误响应并返回 false。
 func (h *Handler) ensureActorTotpForStepUp(c *gin.Context) bool {
 	if c.GetString("auth_method") == audit.AuditAuthMethodAdminAPIKey {
@@ -2336,8 +2334,7 @@ func rejectDeprecatedAdvancedSchedulerRequestFields(c *gin.Context, sentFields m
 	return false
 }
 
-// hasPaymentFields returns true if any payment-related field was explicitly provided.
-// mapDingTalkValidateError maps ValidateDingTalkConfig errors to machine-readable reason codes.
+// mapDingTalkValidateError 将钉钉配置校验错误映射为机器可读的原因码。
 func mapDingTalkValidateError(err error) string {
 	switch {
 	case errors.Is(err, authconfig.ErrDingTalkV1AppTypeMismatch):

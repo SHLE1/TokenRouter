@@ -1,4 +1,3 @@
-// 本地 TLS 夹具验证 Batch 与图片调用的实际报文、资源关闭及取消。
 package gemini
 
 import (

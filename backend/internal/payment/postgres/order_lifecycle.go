@@ -1,4 +1,3 @@
-// 后台批量查询与强制到期事务保留原 SQL 和审计边界。
 package postgres
 
 import (
@@ -32,12 +31,14 @@ func (s *OrderStore) RecoverableFulfillmentIDs(ctx context.Context, now time.Tim
 		Order(paymentorder.ByID()).
 		IDs(ctx)
 }
+
 func (s *OrderStore) ProcessingIDs(ctx context.Context) ([]int64, error) {
 	return s.client.PaymentOrder.Query().
 		Where(paymentorder.StatusEQ(payment.OrderStatusProcessing)).
 		Order(paymentorder.ByID()).
 		IDs(ctx)
 }
+
 func (s *OrderStore) ProcessingOrders(ctx context.Context, pageIDs []int64) ([]*payment.Order, error) {
 	rows, err := s.client.PaymentOrder.Query().
 		Where(
@@ -48,10 +49,12 @@ func (s *OrderStore) ProcessingOrders(ctx context.Context, pageIDs []int64) ([]*
 		All(ctx)
 	return orderValues(rows), err
 }
+
 func (s *OrderStore) ExpiredPending(ctx context.Context, now time.Time) ([]*payment.Order, error) {
 	rows, err := s.client.PaymentOrder.Query().Where(paymentorder.StatusEQ(payment.OrderStatusPending), paymentorder.ExpiresAtLTE(now)).All(ctx)
 	return orderValues(rows), err
 }
+
 func (s *OrderStore) PendingReconciliation(ctx context.Context, now time.Time, limit int) ([]*payment.Order, error) {
 	rows, err := s.client.PaymentOrder.Query().
 		Where(
@@ -73,6 +76,7 @@ func (s *OrderStore) PendingReconciliation(ctx context.Context, now time.Time, l
 		All(ctx)
 	return orderValues(rows), err
 }
+
 func (s *OrderStore) ForceExpire(ctx context.Context, orderID int64, reason string) error {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
@@ -118,10 +122,12 @@ func (s *OrderStore) ForceExpire(ctx context.Context, orderID int64, reason stri
 	}
 	return nil
 }
+
 func (s *OrderStore) TouchPending(ctx context.Context, id int64, now time.Time) error {
 	_, err := s.client.PaymentOrder.Update().Where(paymentorder.IDEQ(id), paymentorder.StatusEQ(payment.OrderStatusPending)).SetUpdatedAt(now).Save(ctx)
 	return err
 }
+
 func (s *OrderStore) SaveUpstreamTradeNumber(ctx context.Context, id int64, trade string) error {
 	_, err := s.client.PaymentOrder.Update().Where(paymentorder.IDEQ(id)).SetPaymentTradeNo(trade).Save(ctx)
 	return err

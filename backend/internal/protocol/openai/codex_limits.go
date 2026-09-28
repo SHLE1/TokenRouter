@@ -1,4 +1,3 @@
-// Codex primary/secondary 窗口映射保留原阈值和未知窗口回退。
 package openai
 
 // OpenAICodexUsageSnapshot represents Codex API usage limits from response headers

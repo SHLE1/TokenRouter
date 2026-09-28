@@ -63,7 +63,7 @@ func NewEmailQueueService(emailService TaskProcessor, workers int) *EmailQueueSe
 	return service
 }
 
-// start 启动工作协程
+// Start 启动工作协程
 func (s *EmailQueueService) Start() {
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
@@ -87,7 +87,6 @@ func (s *EmailQueueService) worker(id int) {
 		s.processTask(id, task)
 		s.active.Add(-1)
 	}
-
 }
 
 // processTask 处理任务

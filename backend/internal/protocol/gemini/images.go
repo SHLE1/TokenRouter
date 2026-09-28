@@ -1,4 +1,3 @@
-// Gemini 创作 generateContent 的 wire 变体保留原 JSON 字段与省略语义。
 package gemini
 
 // ImageGenerationConfig 是创作台 Gemini generateContent 的生成配置。

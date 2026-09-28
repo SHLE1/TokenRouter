@@ -22,7 +22,7 @@ func (r *snapshotGroupBindingReader) GetByID(context.Context, int64) (*routing.G
 	return r.group, nil
 }
 
-// 各执行入口在请求未携带分组时仍读取一次原分组来源，不丢失管理覆盖。
+// TestSnapshotNativeBindingPreservesGroupOverrides 验证各执行入口在请求未携带分组时仍读取一次原分组来源，不丢失管理覆盖。
 func TestSnapshotNativeBindingPreservesGroupOverrides(t *testing.T) {
 	for _, platform := range []string{"gateway", "gemini", "openai"} {
 		t.Run(platform, func(t *testing.T) {

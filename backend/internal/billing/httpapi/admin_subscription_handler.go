@@ -31,7 +31,7 @@ type AdminSubscriptionHandler struct {
 	subscriptionService *billing.SubscriptionService
 }
 
-// NewSubscriptionHandler 创建管理员订阅处理器。
+// NewAdminSubscriptionHandler 创建管理员订阅处理器。
 func NewAdminSubscriptionHandler(subscriptionService *billing.SubscriptionService) *AdminSubscriptionHandler {
 	return &AdminSubscriptionHandler{
 		subscriptionService: subscriptionService,

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 执行目标只持有原生图；复制边界保留根关联，并隔离外部凭据 map。
+// TestExecutionProviderPreservesNativeGraphAndIsolation 验证执行目标只持有原生图；复制边界保留根关联，并隔离外部凭据 map。
 func TestExecutionProviderPreservesNativeGraphAndIsolation(t *testing.T) {
 	source := &provider.Record{ID: 1, Credentials: map[string]any{"access_token": "original"}}
 	source.ProviderGroups = []provider.GroupMembership{{ProviderID: 1, GroupID: 3, Provider: source}}
@@ -25,7 +25,7 @@ func TestExecutionProviderPreservesNativeGraphAndIsolation(t *testing.T) {
 	require.JSONEq(t, `{}`, string(payload), "执行凭据与路线不能作为持久或公开载荷")
 }
 
-// 按值复制仍允许当次替换字段；先绑定的方法必须看到原持有者的后续应用结果。
+// TestExecutionProviderValueCopyAndBoundReader 验证按值复制仍允许当次替换字段；先绑定的方法必须看到原持有者的后续应用结果。
 func TestExecutionProviderValueCopyAndBoundReader(t *testing.T) {
 	shared := NewExecutionProvider(&provider.Record{ID: 1, Credentials: map[string]any{"access_token": "shared"}})
 	attempt := *shared

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// GetModelPricing 获取模型价格配置
+// ResolveModelPricing 获取模型价格配置
 func ResolveModelPricing(model string, catalogPrice *LiteLLMModelPricing, prices map[string]*ModelPricing, policy ModelPolicy) (*ModelPricing, bool, error) {
 	// 标准化模型名称（转小写）
 	model = strings.ToLower(model)

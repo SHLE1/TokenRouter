@@ -1,4 +1,3 @@
-// 转发准备阶段只向 HTTP Adapter 提交明确错误投影，不持有 ResponseWriter。
 package httpapi
 
 import "github.com/gin-gonic/gin"

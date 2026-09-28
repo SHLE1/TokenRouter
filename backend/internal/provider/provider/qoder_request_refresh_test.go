@@ -373,7 +373,7 @@ func TestQoderGatewayRefreshProviderSessionLockHeldReturnsRefreshInProgressWitho
 	require.Equal(t, "old-token", repo.providers[0].GetCredential("security_oauth_token"))
 }
 
-// 条件写入替身保留 Qoder 测试对真实持久化参数和缓存失效的断言。
+// UpdateOAuthCredentialsIfUnchanged 条件写入替身保留 Qoder 测试对真实持久化参数和缓存失效的断言。
 func (r *qoderRefreshProviderRepoStub) UpdateOAuthCredentialsIfUnchanged(ctx context.Context, version providercore.CredentialVersion, credentials map[string]any) (bool, error) {
 	current, err := r.GetByID(ctx, version.ID)
 	if err != nil {

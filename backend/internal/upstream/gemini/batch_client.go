@@ -1,4 +1,3 @@
-// Batch 技术客户端只接收 URL、HTTP 客户端与错误契约，不持有任务或业务提供商。
 package gemini
 
 import (

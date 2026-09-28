@@ -1,4 +1,3 @@
-// 创作任务独占输出数量、大小与结果归一化规则。
 package creative
 
 import "github.com/TokenFlux/TokenRouter/internal/upstream"

@@ -280,7 +280,7 @@ func smtpTestConfig(port int, useTLS bool) *SMTPConfig {
 	}
 }
 
-// 465 语义：UseTLS=true + 隐式 TLS 服务器，原有路径保持可用。
+// TestSMTPConnectionImplicitTLS 验证465 语义：UseTLS=true + 隐式 TLS 服务器，原有路径保持可用。
 func TestSMTPConnectionImplicitTLS(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, true, false)
 	svc := &Client{}
@@ -293,7 +293,7 @@ func TestSMTPConnectionImplicitTLS(t *testing.T) {
 	}
 }
 
-// 587 语义（#1470/#1488 核心场景）：UseTLS=true + 明文问候的 STARTTLS 服务器，
+// TestSMTPConnectionStartTLSFallbackWhenTLSEnabled 验证587 语义（#1470/#1488 核心场景）：UseTLS=true + 明文问候的 STARTTLS 服务器，
 // 隐式 TLS 失败后必须自动降级为强制 STARTTLS 并成功。
 func TestSMTPConnectionStartTLSFallbackWhenTLSEnabled(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, true)
@@ -310,7 +310,7 @@ func TestSMTPConnectionStartTLSFallbackWhenTLSEnabled(t *testing.T) {
 	}
 }
 
-// UseTLS=true 但服务器不支持 STARTTLS：必须报错，且绝不能把凭据发到明文连接上。
+// TestSMTPConnectionMandatoryStartTLSRefusesPlaintext 验证UseTLS=true 但服务器不支持 STARTTLS：必须报错，且绝不能把凭据发到明文连接上。
 func TestSMTPConnectionMandatoryStartTLSRefusesPlaintext(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, false)
 	svc := &Client{}
@@ -327,7 +327,7 @@ func TestSMTPConnectionMandatoryStartTLSRefusesPlaintext(t *testing.T) {
 	}
 }
 
-// UseTLS=false + 服务器支持 STARTTLS：测试连接与发送路径一致，机会式升级后认证成功。
+// TestSMTPConnectionOpportunisticStartTLSWhenTLSDisabled 验证UseTLS=false + 服务器支持 STARTTLS：测试连接与发送路径一致，机会式升级后认证成功。
 // 这是 #1488 评论"测试连接不成功，发送测试邮件实际上能发"的回归用例。
 func TestSMTPConnectionOpportunisticStartTLSWhenTLSDisabled(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, true)
@@ -341,7 +341,7 @@ func TestSMTPConnectionOpportunisticStartTLSWhenTLSDisabled(t *testing.T) {
 	}
 }
 
-// UseTLS=false + 服务器不支持 STARTTLS：保持明文直连（既有行为不回归）。
+// TestSMTPConnectionPlainWhenNoStartTLS 验证UseTLS=false + 服务器不支持 STARTTLS：保持明文直连（既有行为不回归）。
 func TestSMTPConnectionPlainWhenNoStartTLS(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, false)
 	svc := &Client{}
@@ -354,7 +354,7 @@ func TestSMTPConnectionPlainWhenNoStartTLS(t *testing.T) {
 	}
 }
 
-// 发送路径全流程：UseTLS=true + STARTTLS 服务器（587 语义）完整走完 MAIL/RCPT/DATA。
+// TestSendEmailWithConfigStartTLSFallback 验证发送路径全流程：UseTLS=true + STARTTLS 服务器（587 语义）完整走完 MAIL/RCPT/DATA。
 func TestSendEmailWithConfigStartTLSFallback(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, false, true)
 	svc := &Client{}
@@ -371,7 +371,7 @@ func TestSendEmailWithConfigStartTLSFallback(t *testing.T) {
 	}
 }
 
-// 发送路径全流程：UseTLS=true + 隐式 TLS 服务器（465 语义）保持既有行为。
+// TestSendEmailWithConfigImplicitTLS 验证发送路径全流程：UseTLS=true + 隐式 TLS 服务器（465 语义）保持既有行为。
 func TestSendEmailWithConfigImplicitTLS(t *testing.T) {
 	srv, port := startFakeSMTPServer(t, true, false)
 	svc := &Client{}

@@ -1,4 +1,3 @@
-// 认证仓储将身份用例的读写委托给共享 AuthState。
 package postgres
 
 import (

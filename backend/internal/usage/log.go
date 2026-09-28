@@ -1,4 +1,3 @@
-// UsageLog 是独立的用量事实与展示投影，不持有旧身份或提供商实体。
 package usage
 
 import (

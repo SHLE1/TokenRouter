@@ -1,4 +1,3 @@
-// 技术查询失败保留原类别、reason、消息及比较身份。
 package usageview
 
 import infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"

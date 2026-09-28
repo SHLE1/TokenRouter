@@ -64,7 +64,7 @@ func openAIImagesJSONResponse() *http.Response {
 	}
 }
 
-// issue #5411：生图是长耗时、上游侧已经产生实际成本的操作。客户端中途断开时，
+// TestForwardOpenAIImagesAPIKey_NonStreamDetachesUpstreamContext 验证issue #5411：生图是长耗时、上游侧已经产生实际成本的操作。客户端中途断开时，
 // 如果连带取消上游请求，就会出现「上游已出图并计费、网关记 502 context canceled、
 // 用户不扣费」。非流式路径以前走 gatewayprovider.DetachStreamUpstreamContext(ctx, false)，
 // 该函数在非流式时原样返回请求 context，因此不脱钩。
@@ -93,7 +93,7 @@ func TestForwardOpenAIImagesAPIKey_NonStreamDetachesUpstreamContext(t *testing.T
 		"交给上游的请求 context 必须已脱钩，不随客户端断开取消")
 }
 
-// 流式路径本来就脱钩，这条守卫防止对齐时把它改坏。
+// TestForwardOpenAIImagesAPIKey_StreamKeepsDetachedUpstreamContext 验证流式路径本来就脱钩，这条守卫防止对齐时把它改坏。
 func TestForwardOpenAIImagesAPIKey_StreamKeepsDetachedUpstreamContext(t *testing.T) {
 	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat","stream":true,"response_format":"b64_json"}`)
 	c, _ := newOpenAIImagesTestContext(t, body)
@@ -126,7 +126,7 @@ func TestForwardOpenAIImagesAPIKey_StreamKeepsDetachedUpstreamContext(t *testing
 		"流式路径原本就脱钩，不能被改回随客户端取消")
 }
 
-// 两个 detach 辅助函数的语义差异是本次修复的根据，锁死它们防止被悄悄改动。
+// TestDetachUpstreamContextSemantics 验证两个 detach 辅助函数的语义差异是本次修复的根据，锁死它们防止被悄悄改动。
 func TestDetachUpstreamContextSemantics(t *testing.T) {
 	t.Run("detachUpstreamContext_always_detaches", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())

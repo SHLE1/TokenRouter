@@ -69,7 +69,7 @@ func TestValidateRuntimeLogConfigErrors(t *testing.T) {
 	}
 }
 
-// 空值仍由既有规范化入口容忍，保持旧辅助断言。
+// TestNormalizeRuntimeLogConfigNilInputs 验证空值仍由既有规范化入口容忍，保持旧辅助断言。
 func TestNormalizeRuntimeLogConfigNilInputs(t *testing.T) {
 	normalizeOpsRuntimeLogConfig(nil, &OpsRuntimeLogConfig{Level: "info"})
 	normalizeOpsRuntimeLogConfig(&OpsRuntimeLogConfig{Level: "debug"}, nil)

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原始历史事件不回填，新旧字段混合时尊重新字段的显式值。
+// TestProviderHistoryReadsLegacyUpstreamEvents 验证原始历史事件不回填，新旧字段混合时尊重新字段的显式值。
 func TestProviderHistoryReadsLegacyUpstreamEvents(t *testing.T) {
 	events, err := ParseOpsUpstreamErrors(`[{"account_id":7,"account_name":"legacy"},{"account_id":8,"provider_id":9,"provider_name":"current"},null]`)
 	require.NoError(t, err)

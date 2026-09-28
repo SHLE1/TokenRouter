@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 旧字段在读取其它设置和执行保存前拒绝，包括显式 null。
+// TestUpdateSettingsRejectsRemovedPlatformQuotas 验证旧字段在读取其它设置和执行保存前拒绝，包括显式 null。
 func TestUpdateSettingsRejectsRemovedPlatformQuotas(t *testing.T) {
 	for _, name := range []string{"default_platform_quotas", "auth_source_default_email_platform_quotas", "auth_source_default_linuxdo_platform_quotas", "auth_source_default_oidc_platform_quotas", "auth_source_default_wechat_platform_quotas", "auth_source_default_github_platform_quotas", "auth_source_default_google_platform_quotas", "auth_source_default_dingtalk_platform_quotas"} {
 		t.Run(name, func(t *testing.T) {

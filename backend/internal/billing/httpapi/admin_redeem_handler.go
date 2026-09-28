@@ -36,7 +36,7 @@ type AdminRedeemHandler struct {
 	redeemService *billing.RedeemService
 }
 
-// NewRedeemHandler creates a new admin redeem handler
+// NewAdminRedeemHandler 创建管理员兑换码处理器。
 func NewAdminRedeemHandler(adminService RedeemAdministrator, redeemService *billing.RedeemService) *AdminRedeemHandler {
 	return &AdminRedeemHandler{
 		adminService:  adminService,

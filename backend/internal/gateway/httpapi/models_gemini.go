@@ -1,4 +1,3 @@
-// Gemini 模型资源复用分组能力目录和本地模型元数据，不读取单个上游提供商的列表。
 package httpapi
 
 import (

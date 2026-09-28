@@ -1,4 +1,3 @@
-// 此文件只组合已有实体转换与用量显示字段，不含管理或计费规则。
 package postgres
 
 import (

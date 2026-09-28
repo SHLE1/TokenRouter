@@ -1,4 +1,3 @@
-// Package upstream 定义单次平台执行的输入输出边界，不持有业务服务或网络客户端。
 package upstream
 
 import (
@@ -78,6 +77,7 @@ func (w *sinkWriter) WriteHeader(status int) {
 		w.status = status
 	}
 }
+
 func (w *sinkWriter) begin() error {
 	if w.err != nil {
 		return w.err
@@ -91,6 +91,7 @@ func (w *sinkWriter) begin() error {
 	}
 	return w.err
 }
+
 func (w *sinkWriter) Write(p []byte) (int, error) {
 	if err := w.begin(); err != nil {
 		return 0, err
@@ -108,6 +109,7 @@ func (w *sinkWriter) Write(p []byte) (int, error) {
 	}
 	return len(p), nil
 }
+
 func (w *sinkWriter) Flush() {
 	if w.begin() == nil {
 		w.err = w.sink.Emit(OutputEvent{Flush: true})

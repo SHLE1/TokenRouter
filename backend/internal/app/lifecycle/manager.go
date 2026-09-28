@@ -1,4 +1,3 @@
-// Package lifecycle 统一应用的启动顺序、失败回收和有界停止。
 package lifecycle
 
 import (

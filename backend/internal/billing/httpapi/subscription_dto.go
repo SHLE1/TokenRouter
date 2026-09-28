@@ -1,4 +1,3 @@
-// 订阅接口共享套餐、用户订阅和批量分配结果的 DTO。
 package httpapi
 
 import (

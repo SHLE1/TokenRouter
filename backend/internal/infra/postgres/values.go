@@ -1,4 +1,3 @@
-// 本文件集中存储适配层共用的稳定参数与文本格式处理。
 package postgres
 
 import (
@@ -12,6 +11,7 @@ func NullPositiveInt64(v *int64) any {
 	}
 	return *v
 }
+
 func TruncateText(s string, max int) string {
 	s = strings.TrimSpace(s)
 	if len(s) <= max {
@@ -23,6 +23,7 @@ func TruncateText(s string, max int) string {
 	}
 	return string(runes)
 }
+
 func EscapeLikePattern(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }

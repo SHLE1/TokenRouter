@@ -1,4 +1,3 @@
-// Ollama 的脱敏数据与 HTTP 观测是只读契约，缓存和浏览器会话仍归提供商。
 package usageview
 
 import "time"

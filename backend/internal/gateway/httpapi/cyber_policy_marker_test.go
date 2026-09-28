@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 首个上游证据保留到当前 turn 收尾，下一 turn 清除后才能登记新证据。
+// TestCyberPolicyMarkerFirstEventAndTurnReset 验证首个上游证据保留到当前 turn 收尾，下一 turn 清除后才能登记新证据。
 func TestCyberPolicyMarkerFirstEventAndTurnReset(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	mark := moderationflow.Mark{Message: " first ", Body: " body ", UpstreamStatus: 403, UpstreamInTok: 3}

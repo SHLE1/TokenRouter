@@ -51,7 +51,7 @@ func TestAnthropicActiveUsageDoesNotWriteNewCredentialIdentity(t *testing.T) {
 	require.Empty(t, repo.sessionWindowEnds)
 }
 
-// 与旧复现保持相同查询断言；替身补齐生产条件端口，真实 SQL 另行验证。
+// UpdateUsageExtraIfUnchanged 与旧复现保持相同查询断言；替身补齐生产条件端口，真实 SQL 另行验证。
 func (r *activePassiveIdentityRepo) UpdateUsageExtraIfUnchanged(ctx context.Context, v UsageObservationVersion, updates map[string]any) (bool, error) {
 	if !MatchesCredentialVersion(&r.current, v.CredentialVersion) {
 		return false, nil

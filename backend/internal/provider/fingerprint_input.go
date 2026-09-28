@@ -1,4 +1,3 @@
-// Codex 指纹种子在创建时生成，更新时按提供商身份保留或清理。
 package provider
 
 import (

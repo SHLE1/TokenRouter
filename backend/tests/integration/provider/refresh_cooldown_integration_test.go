@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// PostgreSQL 条件清理保留命名/余额等无关修改，拒绝身份与新 cooldown，并保留尽力 outbox。
+// TestRefreshCooldownDatabaseIdentity 验证PostgreSQL 条件清理保留命名/余额等无关修改，拒绝身份与新 cooldown，并保留尽力 outbox。
 func TestRefreshCooldownDatabaseIdentity(t *testing.T) {
 	for _, change := range []string{"none", "name", "credentials", "status", "window", "reason", "outbox_failure", "cancelled"} {
 		t.Run(change, func(t *testing.T) {

@@ -385,7 +385,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_StreamKeepsToolNameAndBodyNormali
 	require.NotContains(t, body, "\"name\":\"edit\"")
 }
 
-// 自动透传默认保留 namespace 声明、tool_choice 与历史调用项，只清理普通项残留字段。
+// TestOpenAIGatewayService_OAuthPassthrough_PreservesNamespaceRequest 验证自动透传默认保留 namespace 声明、tool_choice 与历史调用项，只清理普通项残留字段。
 func TestOpenAIGatewayService_OAuthPassthrough_PreservesNamespaceRequest(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -438,7 +438,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_PreservesNamespaceRequest(t *test
 	require.Contains(t, rec.Body.String(), `"namespace":"collaboration"`)
 }
 
-// 兼容开关打开时恢复旧的请求摊平与响应还原行为。
+// TestOpenAIGatewayService_OAuthPassthrough_FlattenEnabledNamespaceRequestAndStreamResponse 验证兼容开关打开时恢复旧的请求摊平与响应还原行为。
 func TestOpenAIGatewayService_OAuthPassthrough_FlattenEnabledNamespaceRequestAndStreamResponse(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -511,7 +511,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_FlattenEnabledNamespaceRequestAnd
 	require.Contains(t, downstream, `"namespace":"collaboration"`)
 }
 
-// 原生 OAuth 在兼容开关打开时同样恢复旧行为。
+// TestOpenAIGatewayService_NativeOAuth_FlattenEnabledNamespaceRequestAndStreamResponse 验证原生 OAuth 在兼容开关打开时同样恢复旧行为。
 func TestOpenAIGatewayService_NativeOAuth_FlattenEnabledNamespaceRequestAndStreamResponse(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -605,7 +605,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_NamespaceNonStreamingResponse(t *
 	require.Contains(t, rec.Body.String(), `"namespace":"collaboration"`)
 }
 
-// 平名冲突只会在兼容摊平模式中发生。
+// TestOpenAIGatewayService_OAuthPassthrough_FlattenEnabledNamespaceCollisionReturnsBadRequest 验证平名冲突只会在兼容摊平模式中发生。
 func TestOpenAIGatewayService_OAuthPassthrough_FlattenEnabledNamespaceCollisionReturnsBadRequest(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -1660,7 +1660,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_BrowserUAUsesConfiguredCodexUA(t 
 	require.Equal(t, "codex-tui", upstream.lastReq.Header.Get("originator"))
 }
 
-// 回归（issue #3901）：codex-tui 等官方 UA 在透传模式下必须逐字保留，且 originator
+// TestOpenAIGatewayService_OAuthPassthrough_CodexTuiIdentityPreservedAndPaired 验证回归（issue #3901）：codex-tui 等官方 UA 在透传模式下必须逐字保留，且 originator
 // 由最终 UA 推导配套，避免身份首段错配被上游返回 404。
 func TestOpenAIGatewayService_OAuthPassthrough_CodexTuiIdentityPreservedAndPaired(t *testing.T) {
 	const tuiUA = "codex-tui/0.140.2 (Mac OS X 14.0; arm64) iTerm (codex-tui; 0.140.2)"

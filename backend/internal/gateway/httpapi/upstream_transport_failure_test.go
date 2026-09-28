@@ -262,7 +262,7 @@ type tempUnschedCall struct {
 	reason     string
 }
 
-// 夹具保留共享运行状态及真实 Deferred，只组合本文件实际使用的能力。
+// transportHealthFixture 夹具保留共享运行状态及真实 Deferred，只组合本文件实际使用的能力。
 func transportHealthFixture(store *openAITransportProviderRepoStub, deferred *providercore.DeferredService) *GrokExecutor {
 	state := providercore.NewRuntimeBlockState(time.Now)
 	health := &provideradapter.TransportHealth{Runtime: state, Deferred: deferred}

@@ -1,6 +1,5 @@
 //go:build integration
 
-// 使用生产 PostgreSQL 存储验证回填并发、审计清空回滚与部分清理后的聚合修复。
 package postgres
 
 import (

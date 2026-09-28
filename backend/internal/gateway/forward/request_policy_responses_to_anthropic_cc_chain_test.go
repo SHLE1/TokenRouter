@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 这些测试覆盖 Anthropic 分组上 Chat Completions 客户端的真实生产链路：
+// ccChainToAnthropic 这些测试覆盖 Anthropic 分组上 Chat Completions 客户端的真实生产链路：
 // ForwardAsChatCompletions 会执行 ChatCompletionsToResponses →
 // ResponsesToAnthropicRequest，再把 Anthropic 请求体转发给上游。这里验证配对修复在完整链路生效，
 // 而不仅是 Codex 风格 Responses 输入的直接转换。
@@ -24,7 +24,7 @@ func ccChainToAnthropic(t *testing.T, ccReq *protocolopenai.ChatCompletionsReque
 	return anthReq.Messages
 }
 
-// 复现线上 400：
+// TestCCChain_OrphanToolResultFromTrimmedHistory 验证复现线上 400：
 //
 //	unexpected ...content.0: tool_use_id found in tool_result blocks:
 //	call_00_TgfbRvKlnD7oK6Dg00sL1661. Each tool_result block must have a
@@ -51,7 +51,7 @@ func TestCCChain_OrphanToolResultFromTrimmedHistory(t *testing.T) {
 	}
 }
 
-// 并行 web_search 中某个 sibling 结果没有返回（工具失败或被跳过）。未回答 tool_use 会触发
+// TestCCChain_ParallelToolOneResultMissing 验证并行 web_search 中某个 sibling 结果没有返回（工具失败或被跳过）。未回答 tool_use 会触发
 // Anthropic 的 “tool_use 缺少 tool_result” 校验；修复逻辑会丢弃它。
 func TestCCChain_ParallelToolOneResultMissing(t *testing.T) {
 	msgs := ccChainToAnthropic(t, &protocolopenai.ChatCompletionsRequest{
@@ -72,7 +72,7 @@ func TestCCChain_ParallelToolOneResultMissing(t *testing.T) {
 	}
 }
 
-// 基线：结构良好的多轮工具历史（每轮 assistant 含文本和 tool_calls）应能完整转换并正确配对。
+// TestCCChain_WellFormedMultiRound 验证基线：结构良好的多轮工具历史（每轮 assistant 含文本和 tool_calls）应能完整转换并正确配对。
 func TestCCChain_WellFormedMultiRound(t *testing.T) {
 	msgs := ccChainToAnthropic(t, &protocolopenai.ChatCompletionsRequest{
 		Model: "deepseek-v4-pro",

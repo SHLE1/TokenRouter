@@ -1,4 +1,3 @@
-// 状态条件与租约版本保持原 CAS；核心决定下一状态，存储仅写显式字段。
 package postgres
 
 import (
@@ -17,6 +16,7 @@ func (s *OrderStore) OrderByTradeNumber(ctx context.Context, no string) (*paymen
 	o, e := s.client.PaymentOrder.Query().Where(paymentorder.OutTradeNo(no)).Only(ctx)
 	return OrderFromEntity(o), e
 }
+
 func (s *OrderStore) TransitionOrder(ctx context.Context, c payment.OrderTransition) (int, error) {
 	u := s.client.PaymentOrder.Update().Where(paymentorder.IDEQ(c.ID), paymentorder.StatusIn(c.From...)).SetStatus(c.Status)
 	if c.Version != nil {
@@ -57,9 +57,11 @@ func (s *OrderStore) TransitionOrder(ctx context.Context, c payment.OrderTransit
 	}
 	return u.Save(ctx)
 }
+
 func (s *OrderStore) ClaimFulfillment(ctx context.Context, id int64, now, stale time.Time) (int, error) {
 	return s.client.PaymentOrder.Update().Where(paymentorder.IDEQ(id), paymentorder.Or(paymentorder.StatusIn(payment.OrderStatusPaid, payment.OrderStatusFailed), paymentorder.And(paymentorder.StatusEQ(payment.OrderStatusRecharging), paymentorder.UpdatedAtLTE(stale)))).SetStatus(payment.OrderStatusRecharging).SetUpdatedAt(now).ClearFailedAt().ClearFailedReason().Save(ctx)
 }
+
 func (s *OrderStore) HasAudit(ctx context.Context, id int64, action string) bool {
 	count, _ := s.client.PaymentAuditLog.Query().Where(paymentauditlog.OrderIDEQ(strconv.FormatInt(id, 10)), paymentauditlog.ActionEQ(action)).Limit(1).Count(ctx)
 	return count > 0

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 条件语句使用真实 PostgreSQL JSONB/NULL 比较，不将模拟存储当作竞争证据。
+// TestUsageObservationDatabaseIdentity 验证条件语句使用真实 PostgreSQL JSONB/NULL 比较，不将模拟存储当作竞争证据。
 func TestUsageObservationDatabaseIdentity(t *testing.T) {
 	for _, action := range []string{"extra", "limit", "clear"} {
 		t.Run(action, func(t *testing.T) {

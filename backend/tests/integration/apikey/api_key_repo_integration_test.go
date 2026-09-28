@@ -35,7 +35,7 @@ type APIKeyRepoSuite struct {
 	repo   *apikeypostgres.KeyStore
 }
 
-// 每套件共用一个隔离数据库，每条断言仍使用独立回滚事务。
+// SetupSuite 每套件共用一个隔离数据库，每条断言仍使用独立回滚事务。
 func (s *APIKeyRepoSuite) SetupSuite() {
 	_, s.root = keyDatabase(s.T())
 }

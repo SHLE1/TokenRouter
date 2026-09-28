@@ -1,4 +1,3 @@
-// 本地 TLS 验证 Vertex Batch/GCS 的实际请求、对象边界和取消。
 package vertex
 
 import (

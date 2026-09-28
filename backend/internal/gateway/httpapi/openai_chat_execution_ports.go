@@ -1,4 +1,3 @@
-// Chat 旧装配复用同一提供商/输出依赖，差异策略通过专属投影提供。
 package httpapi
 
 import (

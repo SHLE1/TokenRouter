@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestGroupMappingChainIncludesAPIKeyRedirectAndDeduplicatesStages 验证模型映射链包含 Key 重定向，并去除重复阶段。
 func TestGroupMappingChainIncludesAPIKeyRedirectAndDeduplicatesStages(t *testing.T) {
 	ctx := modeltrace.WithContext(
 		context.Background(),

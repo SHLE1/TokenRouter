@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 目录、保存与实际路线共享同一矩阵，显式空集合和平台拒绝均不能被默认值覆盖。
+// TestProtocolNativeMatrixAndSave 验证目录、保存与实际路线共享同一矩阵，显式空集合和平台拒绝均不能被默认值覆盖。
 func TestProtocolNativeMatrixAndSave(t *testing.T) {
 	for _, tc := range []struct {
 		platform, kind, auth string

@@ -1,4 +1,3 @@
-// 搜索配置、当前 Manager 与全部代次的在途计数由组合根统一持有。
 package app
 
 import (

@@ -22,6 +22,7 @@ type deliveryContractStore struct {
 func (s *deliveryContractStore) LoadOutput(context.Context, string, int) ([]byte, error) {
 	return nil, s.loadErr
 }
+
 func (s *deliveryContractStore) SaveOutput(context.Context, string, int, []byte, time.Duration) error {
 	if !*s.recorded {
 		return errors.New("success fact missing")
@@ -47,6 +48,7 @@ func (s *deliveryContractOutcomes) RecordProviderOutcome(_ context.Context, _ st
 	}
 	return nil
 }
+
 func (s *deliveryContractOutcomes) CompleteProviderOutcome(context.Context, string, float64, bool, time.Time) error {
 	return nil
 }
@@ -63,7 +65,7 @@ func (r *deliveryContractRepo) UpdateCreativeRunOutput(_ context.Context, _ stri
 	return nil
 }
 
-// 读取故障不能认定永久丢失，只有明确不存在才进入丢失分支。
+// TestResultDeliveryDistinguishesUnavailableFromMissing 验证读取故障不能认定永久丢失，只有明确不存在才进入丢失分支。
 func TestResultDeliveryDistinguishesUnavailableFromMissing(t *testing.T) {
 	output := []*CreativeRunOutput{{Status: CreativeRunOutputStatusSucceeded, OutputIndex: 0}}
 	for _, test := range []struct {
@@ -87,7 +89,7 @@ func TestResultDeliveryDistinguishesUnavailableFromMissing(t *testing.T) {
 	}
 }
 
-// 只重试临时保存，成功事实必须先于首次保存，耗尽后保留丢失标记。
+// TestResultDeliveryRetriesOnlySaveAfterDurableFact 验证只重试临时保存，成功事实必须先于首次保存，耗尽后保留丢失标记。
 func TestResultDeliveryRetriesOnlySaveAfterDurableFact(t *testing.T) {
 	for _, test := range []struct {
 		name               string
@@ -112,7 +114,7 @@ func TestResultDeliveryRetriesOnlySaveAfterDurableFact(t *testing.T) {
 	}
 }
 
-// 运行或租约取消后，已记录的事实保留，但不能继续保存或发布交付结果。
+// TestResultDeliveryCancellationStopsSaving 验证运行或租约取消后，已记录的事实保留，但不能继续保存或发布交付结果。
 func TestResultDeliveryCancellationStopsSaving(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

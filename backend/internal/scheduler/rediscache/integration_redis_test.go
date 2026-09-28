@@ -1,6 +1,5 @@
 //go:build integration
 
-// 调度 Redis 契约使用隔离容器；沿用原逐测试键前缀与清理方式。
 package rediscache
 
 import (
@@ -20,8 +19,10 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-var integrationRedis *redisclient.Client
-var redisNamespaceSeq uint64
+var (
+	integrationRedis  *redisclient.Client
+	redisNamespaceSeq uint64
+)
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
@@ -48,6 +49,7 @@ func TestMain(m *testing.M) {
 	_ = container.Terminate(ctx)
 	os.Exit(code)
 }
+
 func testRedis(t *testing.T) *redisclient.Client {
 	t.Helper()
 

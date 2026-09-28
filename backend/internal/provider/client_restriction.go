@@ -8,7 +8,7 @@ type CodexClientRestrictionDetectionResult struct {
 	Policy  string
 }
 
-// DetectClient 只按需读取客户端元数据，后台探针不需要构造 Gin 请求。
+// DetectCodexClient 只按需读取客户端元数据，后台探针不需要构造 Gin 请求。
 func DetectCodexClient(options CodexClientOptions, readClient func() (string, string), provider *Record, globalAllowedClients []string, routerMatched bool) CodexClientRestrictionDetectionResult {
 	policy := OpenAIOAuthClientPolicyAny
 	if provider != nil {

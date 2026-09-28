@@ -16,7 +16,7 @@ func hasOpenAIUltraReasoningSuffix(model string) bool {
 	return strings.HasPrefix(normalized, "gpt-") && strings.HasSuffix(normalized, "-ultra")
 }
 
-// validateOpenAIReasoningEffort 拒绝 Codex 客户端专用的 Ultra 模式。
+// ValidateOpenAIReasoningEffort 拒绝 Codex 客户端专用的 Ultra 模式。
 // Ultra 在 Codex 内部表示 max 推理加主动多代理，不是 OpenAI 上游协议档位。
 func ValidateOpenAIReasoningEffort(body []byte, requestedModel string) error {
 	efforts := []string{

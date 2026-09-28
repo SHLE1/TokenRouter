@@ -1,4 +1,3 @@
-// Resource Manager 查询执行与结果选择保持既有顺序，由提供商授权用例按需调用。
 package codeassist
 
 import (

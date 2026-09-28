@@ -110,7 +110,7 @@ func TestCreativeExecutorForwardsModelAllowedByGroupScheduler(t *testing.T) {
 	require.Equal(t, []string{"gpt-image-2"}, group.RoutingPolicy.AllowedModels)
 }
 
-// 已持久化任务遇到客户端限制时停留在原组，不访问管理员配置的回退组。
+// TestCreativeExecutorKeepsPersistedGroupWhenClientRestricted 验证已持久化任务遇到客户端限制时停留在原组，不访问管理员配置的回退组。
 func TestCreativeExecutorKeepsPersistedGroupWhenClientRestricted(t *testing.T) {
 	fallback := int64(99)
 	group := &routing.Group{

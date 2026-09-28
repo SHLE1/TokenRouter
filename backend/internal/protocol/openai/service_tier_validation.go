@@ -1,4 +1,3 @@
-// service_tier 的报文值与字段校验不读取管理员策略或提供商状态。
 package openai
 
 import (

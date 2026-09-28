@@ -62,7 +62,7 @@ func (r *TestRun) SuppressCompletion() bool {
 	return r.suppressCompletion
 }
 
-// 输出失败只登记首次错误并取消本次执行，后续写入不再访问下游。
+// output 输出失败只登记首次错误并取消本次执行，后续写入不再访问下游。
 func (r *TestRun) output(write func() error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

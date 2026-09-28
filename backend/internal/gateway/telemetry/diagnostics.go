@@ -1,4 +1,3 @@
-// Package telemetry 将网关技术观测接到唯一日志后端，不持有业务状态。
 package telemetry
 
 import (
@@ -24,6 +23,7 @@ func Completion(event completion.Event) {
 		log.Info(event.Message)
 	}
 }
+
 func ErrorRules(message string, args ...any) {
 	logger.LegacyPrintf("service.error_passthrough", message, args...)
 }

@@ -1,4 +1,3 @@
-// HTTP 仅保留过滤与缓存响应协议，数据缓存由 Ops 持有。
 package httpapi
 
 import (

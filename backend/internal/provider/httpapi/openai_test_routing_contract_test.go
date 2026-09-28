@@ -473,7 +473,7 @@ func TestProviderTestService_ManualOpenAITestDoesNotEnforceAutomaticPolicy(t *te
 	require.Len(t, upstream.requests, 1)
 }
 
-// 构造真实 TLS 缓存、Router 和提供商测试，不保留旧网关服务替身。
+// newOpenAIAutomaticProbeTestService 构造真实 TLS 缓存、Router 和提供商测试，不保留旧网关服务替身。
 func newOpenAIAutomaticProbeTestService(t *testing.T, values []providercore.Record, transport *openAIProbeTransport, router *egress.TLSFingerprintRouter, profiles map[int64]*egress.TLSFingerprintProfile, urlPolicy *egress.OperatorURLPolicy) *providercore.TestService {
 	t.Helper()
 	profileStore := &automaticProbeProfileStore{}

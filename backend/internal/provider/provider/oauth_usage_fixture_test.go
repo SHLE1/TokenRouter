@@ -73,7 +73,7 @@ func (r usageRecordFixture) GetByIDs(_ context.Context, ids []int64) ([]*provide
 	return result, nil
 }
 
-// 原断言观察这三个写入端口，真实条件写与事务另由 PostgreSQL 契约覆盖。
+// UpdateUsageExtraIfUnchanged 原断言观察这三个写入端口，真实条件写与事务另由 PostgreSQL 契约覆盖。
 func (r *providerUsageCodexProbeRepo) UpdateUsageExtraIfUnchanged(ctx context.Context, version provider.UsageObservationVersion, updates map[string]any) (bool, error) {
 	return true, r.UpdateExtra(ctx, version.ID, updates)
 }

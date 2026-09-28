@@ -16,7 +16,7 @@ type operationActivity struct {
 	stopErr  error
 }
 
-// beginRefresh 将排队与交换纳入同一生命周期，正常运行时仍沿用调用方取消策略。
+// begin 将排队与交换纳入同一生命周期，正常运行时仍沿用调用方取消策略。
 func (state *operationActivity) begin(parent context.Context, stoppedError error) (context.Context, func(), error) {
 	if err := parent.Err(); err != nil {
 		return nil, nil, err
@@ -48,7 +48,7 @@ func (state *operationActivity) begin(parent context.Context, stoppedError error
 	}, nil
 }
 
-// StopContext 停止新认领并取消等待和交换；本次停止结果固定，超时不能报告已排空。
+// stop 停止新认领并取消等待和交换；本次停止结果固定，超时不能报告已排空。
 func (state *operationActivity) stop(ctx context.Context, label string) error {
 	if state == nil {
 		return nil

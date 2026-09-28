@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/config"
 )
 
-// 测试只投影配置，不保存第二份计算器状态。
+// NewBillingService 测试只投影配置，不保存第二份计算器状态。
 func NewBillingService(cfg *config.Config, catalog *billingadapter.PricingService) *billing.Calculator {
 	return newBillingServiceWithPrices(cfg, catalog, nil)
 }

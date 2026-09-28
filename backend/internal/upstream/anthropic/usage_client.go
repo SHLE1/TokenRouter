@@ -25,7 +25,7 @@ type UsageClient struct {
 	DoTLS             func(*http.Request, string, int64, int, *tlsfingerprint.Profile) (*http.Response, error)
 }
 
-// NewClaudeUsageFetcher 创建 Claude 用量获取服务
+// NewUsageClient 创建 Claude 用量获取服务
 // httpUpstream: 可选，如果提供则支持 TLS 指纹伪装
 func NewUsageClient(doTLS func(*http.Request, string, int64, int, *tlsfingerprint.Profile) (*http.Response, error)) *UsageClient {
 	return &UsageClient{UsageURL: defaultClaudeUsageURL, DoTLS: doTLS}

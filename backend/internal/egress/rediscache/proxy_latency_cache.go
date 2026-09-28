@@ -1,4 +1,3 @@
-// 代理探测结果按代理 ID 缓存在 Redis，支持批量读取。
 package rediscache
 
 import (

@@ -16,7 +16,7 @@ const (
 	databaseInitializationRetryMax   = 30 * time.Second
 )
 
-// initializeDatabaseWithRetry 仅对 PostgreSQL 启动阶段的暂时错误重试；配置、迁移
+// InitializeWithRetry 仅对 PostgreSQL 启动阶段的暂时错误重试；配置、迁移
 // 和数据等永久错误立即返回，确保运维人员能看到真实故障。
 func InitializeWithRetry(ctx context.Context, initialize func(context.Context) error) error {
 	return initializeDatabaseWithRetryWithWait(ctx, initialize, waitForDatabaseInitializationRetry)

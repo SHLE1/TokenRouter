@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 返回模型规则不能暴露提供商内部派生状态，调用方的临时修改不得污染后续请求。
+// TestModelMappingResultIsolation 验证返回模型规则不能暴露提供商内部派生状态，调用方的临时修改不得污染后续请求。
 func TestModelMappingResultIsolation(t *testing.T) {
 	provider := &providercore.Record{Platform: capability.PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{"alias": "target"}}}
 	first := providercore.ResolveModelMapping(provider, ModelDefaults())
@@ -19,7 +19,7 @@ func TestModelMappingResultIsolation(t *testing.T) {
 	require.Equal(t, "target", providercore.ResolveModelMapping(provider, ModelDefaults())["alias"])
 }
 
-// 调度与展示可以并发读取同一配置，纯模型规则的读取不能写入共享提供商字段。
+// TestModelMappingConcurrentReads 验证调度与展示可以并发读取同一配置，纯模型规则的读取不能写入共享提供商字段。
 func TestModelMappingConcurrentReads(t *testing.T) {
 	provider := &providercore.Record{Platform: capability.PlatformOpenAI, Credentials: map[string]any{"model_mapping": map[string]any{"alias": "target"}}}
 	start := make(chan struct{})

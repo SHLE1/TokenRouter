@@ -1,4 +1,3 @@
-// 本文件保留 Anthropic API Key 直通的逐行边界，不整流缓冲或改写报文形状。
 package anthropic
 
 import (

@@ -1,4 +1,3 @@
-// 完成处理只决定用量路径和按需查价顺序，金额规则由 billing 唯一实现。
 package completion
 
 import (

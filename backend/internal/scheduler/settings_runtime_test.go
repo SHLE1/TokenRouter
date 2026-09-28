@@ -24,6 +24,7 @@ func (f *runtimeSettingFixture) GetMultiple(context.Context, []string) (map[stri
 	}
 	return map[string]string{SettingKeyAdvancedSchedulerWeightLoad: "0"}, nil
 }
+
 func (f *runtimeSettingFixture) GetValue(_ context.Context, key string) (string, error) {
 	f.keys = append(f.keys, key)
 	if key == SettingKeyAdvancedSchedulerWeightLoad {
@@ -31,6 +32,7 @@ func (f *runtimeSettingFixture) GetValue(_ context.Context, key string) (string,
 	}
 	return "", nil
 }
+
 func TestSettingsRuntimePreservesFallbackAndIsolatesValues(t *testing.T) {
 	source := &runtimeSettingFixture{fail: true}
 	runtime := NewSettingsRuntime(Diagnostics{})
@@ -49,7 +51,7 @@ func TestSettingsRuntimePreservesFallbackAndIsolatesValues(t *testing.T) {
 	require.Equal(t, 3, third.LbTopKOverride)
 }
 
-// 管理写入校验不能复用热路径缓存，也不能在批量读取失败后掩盖错误。
+// TestValidationWeightsReadFreshAndPropagateFailure 验证管理写入校验不能复用热路径缓存，也不能在批量读取失败后掩盖错误。
 func TestValidationWeightsReadFreshAndPropagateFailure(t *testing.T) {
 	source := &runtimeSettingFixture{}
 	defaults := DefaultAdminSettingsDefaults()

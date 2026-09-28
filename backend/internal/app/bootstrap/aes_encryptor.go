@@ -1,4 +1,3 @@
-// 本文件保留旧配置解释和错误文本，AES-GCM 实现由 infra/crypto 提供。
 package bootstrap
 
 import (

@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 真实 PostgreSQL 与实际管理用例验证 HTTP 导入、同批更新和部分失败；平台隐私任务不在本测试执行。
+// TestCodexImportHTTPDatabaseContract 验证真实 PostgreSQL 与实际管理用例验证 HTTP 导入、同批更新和部分失败；平台隐私任务不在本测试执行。
 func TestCodexImportHTTPDatabaseContract(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)

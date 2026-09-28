@@ -58,7 +58,7 @@ func (r *gatewayForwardErrorPolicyRepoStub) SetOverloaded(context.Context, int64
 // 已观测到的上游 usage 不得随错误一起被丢弃，Forward 必须把部分结果与错误一同
 // 返回，供 handler 照常提交 usage 记录。
 
-// 夹具只组合本条执行链的原生依赖，不构造旧网关服务。
+// newForwardPartialUsageServiceForTest 夹具只组合本条执行链的原生依赖，不构造旧网关服务。
 func newForwardPartialUsageServiceForTest(upstream *anthropicHTTPUpstreamRecorder) *messageforward.Runtime {
 	return newPartialRuntime(upstream, nil)
 }
@@ -365,7 +365,7 @@ func (r *streamReadCloser) Read(p []byte) (int, error) {
 
 func (r *streamReadCloser) Close() error { return nil }
 
-// Gin 模式在测试进程加载时设置，测试并行执行时不再写全局模式。
+// init Gin 模式在测试进程加载时设置，测试并行执行时不再写全局模式。
 func init() { gin.SetMode(gin.TestMode) }
 
 type failWriteResponseWriter struct {

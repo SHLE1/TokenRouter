@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原生恢复与执行端必须观察同一停调代次，不能各自创建状态副本。
+// TestProviderRuntimeBlockBindingSharesRecoveryFence 验证原生恢复与执行端必须观察同一停调代次，不能各自创建状态副本。
 func TestProviderRuntimeBlockBindingSharesRecoveryFence(t *testing.T) {
 	state := provider.NewRuntimeBlockState(time.Now)
 	gateway := provideOpenAIResponseHealth(nil, state, nil, nil).Runtime
@@ -28,7 +28,7 @@ func TestProviderRuntimeBlockBindingSharesRecoveryFence(t *testing.T) {
 	require.Greater(t, state.ManagedRecoveryFence(value.Record.ID), fence)
 }
 
-// 实际装配必须把新反馈及兼容参数入口绑定到同一实例。
+// TestSchedulerSharedStateBindsLegacyConsumers 验证实际装配必须把新反馈及兼容参数入口绑定到同一实例。
 func TestSchedulerSharedStateBindsLegacyConsumers(t *testing.T) {
 	state := provideSchedulerSharedState(nil, nil)
 	snapshot := gatewayCompatibilitySnapshot(state)
@@ -44,7 +44,7 @@ func TestSchedulerSharedStateBindsLegacyConsumers(t *testing.T) {
 	require.Zero(t, untouched)
 }
 
-// 原生任务拥有者必须等待两个执行入口，停止后不能退回未跟踪 goroutine。
+// TestGatewayBackgroundTasksUseApplicationOwner 验证原生任务拥有者必须等待两个执行入口，停止后不能退回未跟踪 goroutine。
 func TestGatewayBackgroundTasksUseApplicationOwner(t *testing.T) {
 	for _, name := range []string{"messages", "openai"} {
 		t.Run(name, func(t *testing.T) {

@@ -133,7 +133,7 @@ func TestEnforceCodexIdentityHeaders(t *testing.T) {
 	}
 }
 
-// enforce 本身仍只负责收口：缺少 originator 时必须保持 no-op，由需要恢复身份的
+// TestEnforceCodexIdentityHeaders_NoOriginatorIsNoop 验证enforce 本身仍只负责收口：缺少 originator 时必须保持 no-op，由需要恢复身份的
 // 调用方先显式调用 ensureCodexIdentityHeaders。
 func TestEnforceCodexIdentityHeaders_NoOriginatorIsNoop(t *testing.T) {
 	h := make(http.Header)

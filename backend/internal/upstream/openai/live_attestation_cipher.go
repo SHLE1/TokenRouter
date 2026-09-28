@@ -1,4 +1,3 @@
-// Live 证明密文格式保持原值，构造只接收装配投影的 secret。
 package openai
 
 import (
@@ -33,6 +32,7 @@ func (c *LiveAttestationCipher) Encrypt(plaintext string) (string, error) {
 	encrypted := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
 	return base64.RawStdEncoding.EncodeToString(encrypted), nil
 }
+
 func (c *LiveAttestationCipher) Decrypt(ciphertext string) (string, error) {
 	encrypted, err := base64.RawStdEncoding.DecodeString(ciphertext)
 	if err != nil {
@@ -55,6 +55,7 @@ func (c *LiveAttestationCipher) Decrypt(ciphertext string) (string, error) {
 	}
 	return string(plaintext), nil
 }
+
 func NewLiveAttestationCipher(secret string) *LiveAttestationCipher {
 	if strings.TrimSpace(secret) == "" {
 		return nil

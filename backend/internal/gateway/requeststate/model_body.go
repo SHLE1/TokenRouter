@@ -1,4 +1,3 @@
-// 模型报文缓存只在单请求内复用替换结果，不修改原始客户端载荷。
 package requeststate
 
 import (

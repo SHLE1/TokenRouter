@@ -1,4 +1,3 @@
-// Codex 导入逐项创建或更新提供商，并汇总每条输入的执行结果。
 package provider
 
 import (

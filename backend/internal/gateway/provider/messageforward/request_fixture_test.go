@@ -43,7 +43,7 @@ func newBetaRuntime(values map[string]string) *gateway.RuntimeSettings {
 	})
 }
 
-// 每次读取返回独立映射，设置用例可以在主动失效后观察新值。
+// GetMultiple 每次读取返回独立映射，设置用例可以在主动失效后观察新值。
 func (s betaSettingsFixture) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
 	out := make(map[string]string)
 	for _, key := range keys {

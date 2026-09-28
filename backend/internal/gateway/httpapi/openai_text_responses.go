@@ -1,4 +1,3 @@
-// OpenAI 兼容入口保留协议各自的读取、准入和等待顺序。
 package httpapi
 
 import (

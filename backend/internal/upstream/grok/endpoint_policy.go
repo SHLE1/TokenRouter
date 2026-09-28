@@ -1,4 +1,3 @@
-// 官方平台子端点选择保持原规则；目标安全策略由外层投影的 validator 执行。
 package grok
 
 import (
@@ -17,6 +16,7 @@ func RedactedBaseURLValidator(validator BaseURLValidator) BaseURLValidator {
 		return validated, nil
 	}
 }
+
 func BuildBillingEndpointURL(baseURL string, weekly bool, validator BaseURLValidator) (string, error) {
 	// 官方公共或区域 API 主机不提供 Grok Build 账单接口。
 	// 自定义中继可能同时代理推理与 CLI 账单路径，因此继续使用其配置主机。
@@ -25,6 +25,7 @@ func BuildBillingEndpointURL(baseURL string, weekly bool, validator BaseURLValid
 	}
 	return BuildBillingURLWithValidator(baseURL, weekly, validator)
 }
+
 func BuildMediaEndpointURL(baseURL string, endpoint GrokMediaEndpoint, requestID string, validator BaseURLValidator) (string, error) {
 	switch endpoint {
 	case GrokMediaEndpointImagesGenerations:
@@ -49,6 +50,7 @@ func BuildMediaEndpointURL(baseURL string, endpoint GrokMediaEndpoint, requestID
 		return "", fmt.Errorf("unsupported grok media endpoint: %s", endpoint)
 	}
 }
+
 func BuildVoiceEndpointURL(base string, endpoint string, validator BaseURLValidator) (string, error) {
 	if strings.TrimSpace(base) == "" || (MediaCodec{}).IsGrokCLIProxyTarget(base) {
 		base = DefaultBaseURL

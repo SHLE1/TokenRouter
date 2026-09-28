@@ -1,5 +1,3 @@
-// Package apperror provides application error types and helpers.
-// nolint:mnd
 package apperror
 
 // BadRequest new BadRequest error that is mapped to a 400 response.

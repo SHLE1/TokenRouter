@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 管理校验后、配置行锁前发生真实凭据轮换；字段补丁必须保留新 token 和未选配置。
+// TestCredentialFieldPatchPreservesLockTimeState 验证管理校验后、配置行锁前发生真实凭据轮换；字段补丁必须保留新 token 和未选配置。
 func TestCredentialFieldPatchPreservesLockTimeState(t *testing.T) {
 	cases := []struct {
 		name, field   string

@@ -8,7 +8,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// 协议解析沿用原边界，不查询提供商或改变执行状态。
+// IsWSTokenEvent 协议解析沿用原边界，不查询提供商或改变执行状态。
 func IsWSTokenEvent(eventType string) bool {
 	eventType = strings.TrimSpace(eventType)
 	if eventType == "" {

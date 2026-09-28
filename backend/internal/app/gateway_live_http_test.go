@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原生 Live 装配保持平台门禁与共享停止屏障先于请求体读取，不构造旧 Handler。
+// TestLiveAssemblyKeepsPermissionAndStopBeforeRead 验证原生 Live 装配保持平台门禁与共享停止屏障先于请求体读取，不构造旧 Handler。
 func TestLiveAssemblyKeepsPermissionAndStopBeforeRead(t *testing.T) {
 	activity := &gatewayRequestActivity{Operations: lifecycle.NewOperations("live-contract")}
 	first := provideLiveHTTP(nil, nil, nil, nil, activity)

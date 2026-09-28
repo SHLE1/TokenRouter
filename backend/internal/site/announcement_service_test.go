@@ -90,7 +90,7 @@ func TestAnnouncementServiceUpdateRejectsEqualStartEndTimes(t *testing.T) {
 	require.ErrorIs(t, err, ErrAnnouncementInvalidSchedule)
 }
 
-// 管理端查询前必须先归档到期公告，确保状态筛选和分页基于最新状态。
+// TestAnnouncementServiceListArchivesExpiredBeforeQuery 验证管理端查询前必须先归档到期公告，确保状态筛选和分页基于最新状态。
 func TestAnnouncementServiceListArchivesExpiredBeforeQuery(t *testing.T) {
 	repo := &announcementRepoStub{items: []Announcement{{ID: 1, Status: AnnouncementStatusArchived}}}
 	svc := NewAnnouncementService(repo, nil, nil, nil)
@@ -102,7 +102,7 @@ func TestAnnouncementServiceListArchivesExpiredBeforeQuery(t *testing.T) {
 	require.Equal(t, AnnouncementStatusArchived, items[0].Status)
 }
 
-// 归档失败时不能继续返回基于旧状态计算的列表。
+// TestAnnouncementServiceListStopsWhenArchivingExpiredFails 验证归档失败时不能继续返回基于旧状态计算的列表。
 func TestAnnouncementServiceListStopsWhenArchivingExpiredFails(t *testing.T) {
 	archiveErr := errors.New("archive failed")
 	repo := &announcementRepoStub{archiveExpiredErr: archiveErr}
@@ -114,7 +114,7 @@ func TestAnnouncementServiceListStopsWhenArchivingExpiredFails(t *testing.T) {
 	require.Equal(t, []string{"archive"}, repo.callOrder)
 }
 
-// 新建时若结束时间已经过去，展示中状态应立即转为已归档。
+// TestAnnouncementServiceCreateArchivesAlreadyExpiredAnnouncement 验证新建时若结束时间已经过去，展示中状态应立即转为已归档。
 func TestAnnouncementServiceCreateArchivesAlreadyExpiredAnnouncement(t *testing.T) {
 	repo := &announcementRepoStub{}
 	svc := NewAnnouncementService(repo, nil, nil, nil)
@@ -132,7 +132,7 @@ func TestAnnouncementServiceCreateArchivesAlreadyExpiredAnnouncement(t *testing.
 	require.Equal(t, AnnouncementStatusArchived, created.Status)
 }
 
-// 编辑结束时间时也必须维护相同的自动归档约束。
+// TestAnnouncementServiceUpdateArchivesAlreadyExpiredAnnouncement 验证编辑结束时间时也必须维护相同的自动归档约束。
 func TestAnnouncementServiceUpdateArchivesAlreadyExpiredAnnouncement(t *testing.T) {
 	repo := &announcementRepoStub{item: &Announcement{
 		ID:         1,

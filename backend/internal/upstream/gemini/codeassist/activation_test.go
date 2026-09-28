@@ -1,4 +1,3 @@
-// 验证 Code Assist 激活诊断结果。
 package codeassist
 
 import "testing"
@@ -48,6 +47,7 @@ func TestExtractActivationURL(t *testing.T) {
 		t.Errorf("Expected activation URL %s, got %s", expectedURL, activationURL)
 	}
 }
+
 func TestIsServiceDisabledError(t *testing.T) {
 	tests := []struct {
 		name     string

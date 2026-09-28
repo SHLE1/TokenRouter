@@ -26,7 +26,7 @@ func (r *announcementExpiryRepoStub) ArchiveExpired(_ context.Context, now time.
 	return 1, nil
 }
 
-// 单次扫描应使用当前时间调用仓储归档操作。
+// TestAnnouncementExpiryServiceRunOnceArchivesExpiredAnnouncements 验证单次扫描应使用当前时间调用仓储归档操作。
 func TestAnnouncementExpiryServiceRunOnceArchivesExpiredAnnouncements(t *testing.T) {
 	repo := &announcementExpiryRepoStub{called: make(chan time.Time, 1)}
 	svc := NewAnnouncementExpiryService(repo, time.Minute)
@@ -40,7 +40,7 @@ func TestAnnouncementExpiryServiceRunOnceArchivesExpiredAnnouncements(t *testing
 	require.False(t, archivedAt.After(time.Now()))
 }
 
-// 启动后应立即扫描并按间隔继续执行，停止后不得再触发扫描。
+// TestAnnouncementExpiryServiceStartRunsImmediatelyAndPeriodically 验证启动后应立即扫描并按间隔继续执行，停止后不得再触发扫描。
 func TestAnnouncementExpiryServiceStartRunsImmediatelyAndPeriodically(t *testing.T) {
 	interval := 10 * time.Millisecond
 	repo := &announcementExpiryRepoStub{called: make(chan time.Time, 8)}
@@ -81,6 +81,7 @@ func (r *blockingExpiryRepository) ArchiveExpired(ctx context.Context, _ time.Ti
 		return 0, ctx.Err()
 	}
 }
+
 func TestExpiryStopWaitsForScan(t *testing.T) {
 	repo := &blockingExpiryRepository{entered: make(chan struct{}), release: make(chan struct{})}
 	svc := NewAnnouncementExpiryService(repo, time.Minute)
@@ -99,6 +100,7 @@ func TestExpiryStopWaitsForScan(t *testing.T) {
 	svc.Stop()
 	svc.Start()
 }
+
 func TestExpiryStopBeforeStart(t *testing.T) {
 	repo := &announcementExpiryRepoStub{}
 	svc := NewAnnouncementExpiryService(repo, time.Minute)

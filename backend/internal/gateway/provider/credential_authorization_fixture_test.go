@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 凭据契约直接组装原生授权和本地供应商替身。
+// newGrokAuthorizationForTest 凭据契约直接组装原生授权和本地供应商替身。
 func newGrokAuthorizationForTest(proxies egress.ProxyRepository, client provider.GrokAuthorizationClient) *provider.GrokAuthorization {
 	return provider.NewGrokAuthorization(client, provideradapter.GrokAuthorizationOptions(proxies, nil))
 }

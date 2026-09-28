@@ -37,7 +37,7 @@ func (f quotaActionsRecovery) RecoverProviderState(ctx context.Context, _ int64,
 	return f(ctx)
 }
 
-// 客户端断开不取消已消费后的恢复；应用停止仍能取消并等待整个工作流。
+// TestOpenAIQuotaActionsOwnPostConsumptionLifecycle 验证客户端断开不取消已消费后的恢复；应用停止仍能取消并等待整个工作流。
 func TestOpenAIQuotaActionsOwnPostConsumptionLifecycle(t *testing.T) {
 	recoveryEntered := make(chan context.Context, 1)
 	var consumed atomic.Int32
@@ -72,7 +72,7 @@ func TestOpenAIQuotaActionsOwnPostConsumptionLifecycle(t *testing.T) {
 	require.EqualValues(t, 1, consumed.Load())
 }
 
-// 刷新流程在关闭时主动取消支持 context 的查询，不能只等待上游自身超时。
+// TestOpenAIQuotaActionsStopCancelsRefresh 验证刷新流程在关闭时主动取消支持 context 的查询，不能只等待上游自身超时。
 func TestOpenAIQuotaActionsStopCancelsRefresh(t *testing.T) {
 	entered := make(chan struct{})
 	source := quotaActionsSource{query: func(ctx context.Context) (*wire.OpenAIQuotaUsage, error) {

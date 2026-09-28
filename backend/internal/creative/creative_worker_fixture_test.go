@@ -13,7 +13,7 @@ import (
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
 )
 
-// 原 worker 测试显式注入执行与用户准入端口，不重建旧 worker 服务。
+// newCreativeWorkerFixtureForSources 原 worker 测试显式注入执行与用户准入端口，不重建旧 worker 服务。
 func newCreativeWorkerFixtureForSources(queue creative.CreativeRunQueue, repo creative.CreativeRunRepository, store creative.CreativeTransientStore, executor creative.CreativeRunExecutor, public *creative.Public, options creative.CreativeWorkerOptions, limits ...*scheduler.ConcurrencyService) *creative.CreativeRunWorker {
 	ports := creative.WorkerPorts{Observe: creativeLegacyObserve}
 	var results *creative.Results
@@ -64,6 +64,7 @@ func bindCreativeRepoFixture(public *creative.Public, repo creative.CreativeRunR
 	public.Repo = repo
 	public.Results.Repo = repo
 }
+
 func bindCreativeTransientFixture(public *creative.Public, store creative.CreativeTransientStore) {
 	public.TransientStore = store
 	public.Results.TransientStore = store

@@ -159,7 +159,7 @@ func runCRSOpenAIDeprecatedExtraSync(t *testing.T, repo providercore.CRSProvider
 	return result
 }
 
-// 夹具保存本次配置投影，保持原替身的无并发更新行为。
+// UpdateConfiguration 夹具保存本次配置投影，保持原替身的无并发更新行为。
 func (r *crsDeprecatedExtraProviderRepo) UpdateConfiguration(ctx context.Context, record *providercore.Record, _ providercore.ConfigurationChange) error {
 	return r.Update(ctx, record)
 }

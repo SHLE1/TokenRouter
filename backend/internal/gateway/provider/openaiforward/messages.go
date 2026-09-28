@@ -1,4 +1,3 @@
-// Messages 的请求转换、会话恢复和流/非流消费保持独立，提供商切换由外层拥有。
 package openaiforward
 
 import (

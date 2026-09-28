@@ -24,7 +24,7 @@ import (
 // 这些用例钉住判定本身，与既有的 TestShouldReportOpenAIWSProxyProviderFailure 同一层级：
 // 调用点位于一个需要真实上游 WS 才能进入的巨型 handler 循环内，仓库既有约定就是直接测判定函数。
 
-// 缺陷主复现之一：客户端干净关闭。底层 conn.Read 的错误被 ReadOpenAIWSClientMessage
+// TestOpenAIWSIngressEndedByClient_BareNormalClosureIsNotProviderFailure 验证缺陷主复现之一：客户端干净关闭。底层 conn.Read 的错误被 ReadOpenAIWSClientMessage
 // 原样返回，没有任何地方把它包成 *OpenAIWSClientCloseError，所以旧断言看不见它。
 func TestOpenAIWSIngressEndedByClient_BareNormalClosureIsNotProviderFailure(t *testing.T) {
 	err := coderws.CloseError{Code: coderws.StatusNormalClosure, Reason: "client done"}
@@ -39,7 +39,7 @@ func TestOpenAIWSIngressEndedByClient_BareNormalClosureIsNotProviderFailure(t *t
 	require.True(t, ResponsesWSEndedByClient(err, ResponsesWSCloseInfo(err)))
 }
 
-// 同一形状被包一层（例如 ingress 把 read 错误裹进上下文）时也必须认得。
+// TestOpenAIWSIngressEndedByClient_WrappedBareNormalClosureIsNotProviderFailure 验证同一形状被包一层（例如 ingress 把 read 错误裹进上下文）时也必须认得。
 func TestOpenAIWSIngressEndedByClient_WrappedBareNormalClosureIsNotProviderFailure(t *testing.T) {
 	err := fmt.Errorf("ingress turn 3: %w",
 		coderws.CloseError{Code: coderws.StatusNormalClosure, Reason: "client done"})
@@ -47,7 +47,7 @@ func TestOpenAIWSIngressEndedByClient_WrappedBareNormalClosureIsNotProviderFailu
 	require.True(t, ResponsesWSEndedByClient(err, ResponsesWSCloseInfo(err)))
 }
 
-// 缺陷主复现之二：客户端中途断开。ReadOpenAIWSClientMessage 在 controlCtx.Done()
+// TestOpenAIWSIngressEndedByClient_ClientCancelDuringTurnIsNotProviderFailure 验证缺陷主复现之二：客户端中途断开。ReadOpenAIWSClientMessage 在 controlCtx.Done()
 // 分支用 StatusGoingAway 收尾并把 context.Canceled 作为 cause，所以「只认 1000」
 // 这一条判据根本匹配不到它。
 func TestOpenAIWSIngressEndedByClient_ClientCancelDuringTurnIsNotProviderFailure(t *testing.T) {
@@ -63,7 +63,7 @@ func TestOpenAIWSIngressEndedByClient_ClientCancelDuringTurnIsNotProviderFailure
 	require.True(t, ResponsesWSEndedByClient(err, ResponsesWSCloseInfo(err)))
 }
 
-// 既有行为不得回退：网关自己用 1000 收尾（inter-turn idle timeout 就是这条）
+// TestOpenAIWSIngressEndedByClient_GatewayNormalClosureStillRecognised 验证既有行为不得回退：网关自己用 1000 收尾（inter-turn idle timeout 就是这条）
 // 原本就被认作正常关闭。
 func TestOpenAIWSIngressEndedByClient_GatewayNormalClosureStillRecognised(t *testing.T) {
 	err := NewOpenAIWSClientCloseError(
@@ -72,7 +72,7 @@ func TestOpenAIWSIngressEndedByClient_GatewayNormalClosureStillRecognised(t *tes
 	require.True(t, ResponsesWSEndedByClient(err, ResponsesWSCloseInfo(err)))
 }
 
-// 收窄证明：1001 本身不足以豁免。网关也会因自身原因用 GoingAway 收场，
+// TestOpenAIWSIngressEndedByClient_GoingAwayWithoutCancellationStillReported 验证收窄证明：1001 本身不足以豁免。网关也会因自身原因用 GoingAway 收场，
 // 客户端取消那一支已由 context.Canceled 覆盖，无需整类放行。
 func TestOpenAIWSIngressEndedByClient_GoingAwayWithoutCancellationStillReported(t *testing.T) {
 	err := NewOpenAIWSClientCloseError(
@@ -82,7 +82,7 @@ func TestOpenAIWSIngressEndedByClient_GoingAwayWithoutCancellationStillReported(
 	require.True(t, gatewayws.EntryShouldReportFailure(err), "真实上游故障仍须归因提供商")
 }
 
-// 契约没有丢：真正的故障仍然惩罚提供商。判定组合与调用点一致——
+// TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportProviderFailure 验证契约没有丢：真正的故障仍然惩罚提供商。判定组合与调用点一致——
 // openAIWSIngressEndedByClient 为假才会走到 shouldReportOpenAIWSProxyProviderFailure。
 func TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportProviderFailure(t *testing.T) {
 	cases := []struct {
@@ -123,7 +123,7 @@ func TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportProviderFailure
 	}
 }
 
-// 不变式：同一条错误，日志侧与归因侧必须给出一致的结论。
+// TestOpenAIWSIngressEndedByClient_MatchesCloseCodeReportedInLog 验证不变式：同一条错误，日志侧与归因侧必须给出一致的结论。
 // summarizeWSCloseErrorForLog 一直用 coderws.CloseStatus 读关闭码，这正是缺陷时期
 // WARN 打印 close_status=1000(StatusNormalClosure) 却同时把提供商记为故障的原因。
 // 以后任何一侧改了读法，这条会红。

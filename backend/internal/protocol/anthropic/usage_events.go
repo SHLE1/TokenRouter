@@ -1,4 +1,3 @@
-// 本文件按已有 wire 字段提取计量，既不识别提供商也不执行资金动作。
 package anthropic
 
 import (

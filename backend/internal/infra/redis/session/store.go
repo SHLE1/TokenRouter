@@ -1,4 +1,3 @@
-// Package session 提供多实例共享的 OAuth 会话后端。
 package session
 
 import (
@@ -37,6 +36,7 @@ func New(rdb *redis.Client, prefix string, ttl time.Duration) *Store {
 func (s *Store) dataKey(id string) string {
 	return s.prefix + strings.TrimSpace(id)
 }
+
 func (s *Store) usedKey(id string) string {
 	return s.prefix + "used:" + strings.TrimSpace(id)
 }

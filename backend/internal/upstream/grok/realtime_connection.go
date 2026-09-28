@@ -1,4 +1,3 @@
-// Realtime 连接由原生会话持有；关闭同步释放连接与应用活动登记，保留原取消策略。
 package grok
 
 import (

@@ -275,7 +275,7 @@ func (s *OpenAILiveExecutor) liveClientPolicyResult(
 	return s.Requests.DetectClient(&gin.Context{Request: request}, provider, tlsRouterMatch)
 }
 
-// GetLiveCallForIdentity 委托会话绑定校验，不重复读取或复制身份规则。
+// Lookup 委托会话绑定校验，不重复读取或复制身份规则。
 func (s *OpenAILiveExecutor) Lookup(ctx context.Context, callID string, identity session.LiveCallIdentity) (*session.LiveCallRecord, error) {
 	return s.liveRuntime().Lookup(ctx, callID, identity)
 }
@@ -293,7 +293,7 @@ func (s *OpenAILiveExecutor) liveRuntime() *gatewaylive.Service {
 	return gatewaylive.New(livePorts{service: s}, s.Options.ObserverRetryInterval, openai.WSMessageReadLimitBytes)
 }
 
-// ProxyLiveSideband 把 HTTP WebSocket 投影为帧端口，编排由 gateway/live 唯一持有。
+// Proxy 把 HTTP WebSocket 投影为帧端口，编排由 gateway/live 唯一持有。
 func (s *OpenAILiveExecutor) Proxy(ctx context.Context, record *session.LiveCallRecord, downstream *coderws.Conn) error {
 	if downstream == nil {
 		return session.ErrLiveCallNotFound

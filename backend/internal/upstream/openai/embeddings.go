@@ -1,4 +1,3 @@
-// Embeddings 单次执行拥有请求、响应体与输出；提供商切换和计费由网关决定。
 package openai
 
 import (

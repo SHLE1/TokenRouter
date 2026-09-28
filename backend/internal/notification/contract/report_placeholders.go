@@ -1,4 +1,3 @@
-// SummaryPlaceholders 提供独立副本，通知模板继续复用原指标键。
 package contract
 
 var notificationEmailOpsSummaryPlaceholders = []string{

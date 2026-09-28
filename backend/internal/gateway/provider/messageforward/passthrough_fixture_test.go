@@ -121,7 +121,7 @@ func newPrivateHealthFixture() *provideradapter.UpstreamHealth {
 	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{})
 }
 
-// 参数只投影为原生输入，凭据校验和交换全部由待测实现执行。
+// passthroughFixture 参数只投影为原生输入，凭据校验和交换全部由待测实现执行。
 func passthroughFixture(runtime *Runtime, ctx context.Context, output HTTPBoundary, target *gatewayprovider.ExecutionProvider, body []byte, model, original string, stream bool, started time.Time) (*forwardcore.Result, error) {
 	return runtime.passthrough(ctx, output, target, forwardcore.APIKeyInput{Body: body, RequestModel: model, OriginalModel: original, RequestStream: stream, StartTime: started})
 }

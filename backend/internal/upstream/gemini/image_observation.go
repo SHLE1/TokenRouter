@@ -1,4 +1,3 @@
-// 内联图片观察不估算用量，保留 camel/snake 字段与非空数据规则。
 package gemini
 
 import (
@@ -27,6 +26,7 @@ func CountGeminiInlineImageOutputs(payload []byte) int {
 	})
 	return count
 }
+
 func GeminiPartIsInlineImage(part gjson.Result) bool {
 	inline := part.Get("inlineData")
 	if !inline.Exists() {

@@ -1,4 +1,3 @@
-// 错误规则的存储、HTTP 与运行时实例只在 app 装配。
 package app
 
 import (

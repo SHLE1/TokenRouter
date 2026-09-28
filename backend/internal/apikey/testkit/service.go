@@ -1,4 +1,3 @@
-// Package testkit 只装配认证回归夹具，不持有业务规则或额外运行状态。
 package testkit
 
 import (

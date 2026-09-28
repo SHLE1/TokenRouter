@@ -1,4 +1,3 @@
-// 本文件只辨认已收到的协议事实，不决定重试、计费或旧 TTFT 的时点。
 package anthropic
 
 import (
@@ -19,6 +18,7 @@ func ObserveMessage(data string) Observation {
 	})
 	return observed
 }
+
 func ObserveEvent(data string) Observation {
 	if strings.TrimSpace(data) == "[DONE]" {
 		return Observation{Terminal: true}
@@ -45,6 +45,7 @@ func ObserveEvent(data string) Observation {
 	}
 	return observed
 }
+
 func hasUsageFields(value gjson.Result) bool {
 	for _, field := range []string{"input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "cached_tokens", "cache_creation.ephemeral_5m_input_tokens", "cache_creation.ephemeral_1h_input_tokens"} {
 		v := value.Get(field)
@@ -54,6 +55,7 @@ func hasUsageFields(value gjson.Result) bool {
 	}
 	return false
 }
+
 func semanticBlock(value gjson.Result) bool {
 	switch value.Get("type").String() {
 	case "text":

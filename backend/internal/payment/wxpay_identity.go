@@ -1,4 +1,3 @@
-// 微信 JSAPI AppID 投影保持 MP 优先和旧字段回退。
 package payment
 
 import "strings"

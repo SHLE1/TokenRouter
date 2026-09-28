@@ -1,4 +1,3 @@
-// SnapshotCache 只补充 HTTP ETag；缓存算法由 querycache 唯一提供。
 package httpx
 
 import (

@@ -1,4 +1,3 @@
-// 各 OpenAI 执行入口错误输出迁入 HTTP Adapter；compact 与提交状态由原拥有者提供。
 package httpapi
 
 import (

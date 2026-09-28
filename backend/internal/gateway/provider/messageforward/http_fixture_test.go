@@ -18,7 +18,7 @@ import (
 
 const defaultMaxLineSize = 500 * 1024 * 1024
 
-// 夹具投影静态测试参数，实际请求使用生产 Runtime 和 HTTP Adapter。
+// newHTTPRuntimeFixture 夹具投影静态测试参数，实际请求使用生产 Runtime 和 HTTP Adapter。
 func newHTTPRuntimeFixture(options *messageforward.Options, deps messageforward.Dependencies, filter *egress.CompiledHeaderFilter) *gatewayhttp.MessagesExecutor {
 	value := messageforward.Options{ResponseReadLimit: 128 * 1024 * 1024}
 	if options != nil {
@@ -68,7 +68,7 @@ func newRuntimeSettingsFixture(repo settings.Repository) *gateway.RuntimeSetting
 	})
 }
 
-// 保留原夹具的字符串转义，测试请求字节不变。
+// strconvQuote 保留原夹具的字符串转义，测试请求字节不变。
 func strconvQuote(value string) string {
 	return `"` + strings.ReplaceAll(strings.ReplaceAll(value, `\`, `\\`), `"`, `\"`) + `"`
 }

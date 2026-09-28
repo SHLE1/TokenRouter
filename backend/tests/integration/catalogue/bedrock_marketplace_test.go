@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原地域模型与市场一致性断言使用相同的原生目录和报价实现。
+// newBedrockRoutingTestProvider 原地域模型与市场一致性断言使用相同的原生目录和报价实现。
 func newBedrockRoutingTestProvider(id int64, region string, forceGlobal bool) providercore.Record {
 	provider := providercore.Record{
 		ID: id, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeBedrock,

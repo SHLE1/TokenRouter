@@ -1,4 +1,3 @@
-// 通知只接收已确认的事件和技术发送端口。
 package notification
 
 import (

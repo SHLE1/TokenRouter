@@ -1,4 +1,3 @@
-// 支付查询独立展示类型，不携带 ORM 关系和凭据。
 package payment
 
 type OrderListParams struct {
@@ -26,12 +25,15 @@ type DashboardStats struct {
 }
 
 // CurrencyAmounts 按 ISO 4217 币种保存金额，禁止把不同币种相加。
-type CurrencyAmounts map[string]float64
-type DailyStats struct {
-	Date   string          `json:"date"`
-	Amount CurrencyAmounts `json:"amount"`
-	Count  int             `json:"count"`
-}
+type (
+	CurrencyAmounts map[string]float64
+	DailyStats      struct {
+		Date   string          `json:"date"`
+		Amount CurrencyAmounts `json:"amount"`
+		Count  int             `json:"count"`
+	}
+)
+
 type PaymentMethodStat struct {
 	Type   string          `json:"type"`
 	Amount CurrencyAmounts `json:"amount"`

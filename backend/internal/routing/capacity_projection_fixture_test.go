@@ -1,4 +1,3 @@
-// 容量测试只组合原生记录、只读查询与计数端口，规则由 routing/provider 持有。
 package routing_test
 
 import (

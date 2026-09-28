@@ -48,7 +48,7 @@ func TestProtocolGroupPersistenceAndCacheIsolation(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err))
 }
 
-// 显式集合必须先接受校验，旧媒体补丁不能吞掉重复、未知或不支持的项。
+// TestGroupProtocolLegacyPatchDoesNotHideInvalidInput 验证显式集合必须先接受校验，旧媒体补丁不能吞掉重复、未知或不支持的项。
 func TestGroupProtocolLegacyPatchDoesNotHideInvalidInput(t *testing.T) {
 	for _, protocols := range [][]protocol.ProtocolID{
 		{"unknown"},

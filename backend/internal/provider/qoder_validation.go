@@ -1,4 +1,3 @@
-// 本文件拥有 Qoder 提供商凭据形状和编辑校验，站点协议检查与交换通过端口注入。
 package provider
 
 import (

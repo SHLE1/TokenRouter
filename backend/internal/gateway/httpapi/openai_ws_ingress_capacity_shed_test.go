@@ -41,7 +41,7 @@ func (r *openAIWSIngressCapacityShedRepo) UpdateExtra(context.Context, int64, ma
 	return nil
 }
 
-// ctx_pool 的 ingress 直写路径把 error / response.failed 交给 WS 客户端前，必须和
+// TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient 验证ctx_pool 的 ingress 直写路径把 error / response.failed 交给 WS 客户端前，必须和
 // HTTP/SSE（openai_gateway_response_handling.go）与 http_bridge
 // （openai_ws_http_bridge.go）两条路径一样，把容量降载码改写为可重试的
 // server_error：Codex 按闭集判定，server_is_overloaded / slow_down 属致命集，
@@ -186,7 +186,7 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 	}
 }
 
-// ctx_pool 必须在错误早退前保存风控证据和用量，供 handler 的 AfterTurn 消费。
+// TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn 验证ctx_pool 必须在错误早退前保存风控证据和用量，供 handler 的 AfterTurn 消费。
 func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *testing.T) {
 	tests := []struct {
 		name          string

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 真实配置事务验证 Drive 观测只写自身字段，并在取锁后重新比较凭据身份。
+// TestTierObservationUsesCurrentIdentityAndFieldPatch 验证真实配置事务验证 Drive 观测只写自身字段，并在取锁后重新比较凭据身份。
 func TestTierObservationUsesCurrentIdentityAndFieldPatch(t *testing.T) {
 	for _, scenario := range []string{"success", "changed_during_observation", "changed_before_lock", "outbox_failure", "canceled"} {
 		t.Run(scenario, func(t *testing.T) {

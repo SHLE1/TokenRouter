@@ -45,7 +45,7 @@ func (r *capacityShedProviderRepoStub) GetByID(_ context.Context, id int64) (*ga
 // 同提供商重试用尽后不得把提供商临时摘掉——否则一个被降载的请求会顺着 failover
 // 把整池提供商逐个封禁，而每个提供商都会以同一个错误失败。
 
-// 非池模式提供商同样要先在同提供商重试：换号不改变降载因素。
+// TestStreamFailedEventCapacityShedRetriesOnSameProvider 验证非池模式提供商同样要先在同提供商重试：换号不改变降载因素。
 func TestStreamFailedEventCapacityShedRetriesOnSameProvider(t *testing.T) {
 	nonPool := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 
@@ -86,7 +86,7 @@ func TestOpenAIHTTPCapacityShedIsRequestScopedForOAuthProviders(t *testing.T) {
 	require.Zero(t, repo.tempUnschedCalls)
 }
 
-// 上游降载的真实序列是「event: error → event: response.failed」。error 帧不算
+// TestOpenAIStreamErrorFrameDoesNotStartClientOutput 验证上游降载的真实序列是「event: error → event: response.failed」。error 帧不算
 // 客户端输出：若把它当首输出 flush，clientOutputStarted 被固化，随后的 failed
 // 事件就进不了 pre-output failover 分支，只能把致命错误原样转发给客户端。
 func TestOpenAIStreamErrorFrameDoesNotStartClientOutput(t *testing.T) {
@@ -180,7 +180,7 @@ func TestOpenAIStreamMetadataPreambleAndMessageOnlyOverloadFailOver(t *testing.T
 	}
 }
 
-// 回归用例（真实上游降载序列）：created → in_progress → error 帧 → response.failed。
+// TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver 验证回归用例（真实上游降载序列）：created → in_progress → error 帧 → response.failed。
 // 期望仍然走 pre-output failover（同提供商重试 + 请求级瞬时标记），且不向客户端写出任何字节。
 func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *testing.T) {
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
@@ -219,7 +219,7 @@ func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *test
 	require.Empty(t, rec.Body.String())
 }
 
-// 流中途（已有真实输出）降载时无法再 failover，此时必须把降载码改写为客户端
+// TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient 验证流中途（已有真实输出）降载时无法再 failover，此时必须把降载码改写为客户端
 // 可重试的 server_error 再通过唯一 response.failed 终态转发——Codex 对
 // server_is_overloaded/slow_down 判致命并终止会话，对其余错误码执行内置退避重试。
 func TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient(t *testing.T) {
@@ -269,7 +269,7 @@ func TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient(t *testing.T) 
 	require.True(t, logSink.ContainsFieldValue("upstream_request_id", "rid-shed-after-output"))
 }
 
-// helper 单测：只有降载码被改写，其余错误码（尤其 rate_limit_exceeded，客户端
+// TestSanitizeOpenAICapacityShedErrorCodeForClient 验证helper 单测：只有降载码被改写，其余错误码（尤其 rate_limit_exceeded，客户端
 // 依赖其原码解析重试延时）必须原样保留。
 func TestSanitizeOpenAICapacityShedErrorCodeForClient(t *testing.T) {
 	cases := []struct {

@@ -1,4 +1,3 @@
-// 缓存身份限定于已鉴权的 Key 与模型；同一原种子只生成同一 UUID，不保存额外状态。
 package grok
 
 import (
@@ -16,7 +15,7 @@ type CacheIdentityInput struct {
 	StablePrefixSeed, AnchoredSeed, PreviousResponseSeed             func([]byte) string
 }
 
-// resolveGrokCacheIdentity 为 xAI 服务端提示缓存派生稳定且租户隔离的路由身份。
+// ResolveCacheIdentity 为 xAI 服务端提示缓存派生稳定且租户隔离的路由身份。
 // 返回值不包含客户端原始会话标识，可安全发送到上游。
 //
 // 必须存在有效的下游 API Key。内部探测或请求上下文不完整时主动关闭缓存，避免生成
@@ -55,6 +54,7 @@ func ResolveCacheIdentity(input CacheIdentityInput, body []byte) string {
 	isolatedSeed := fmt.Sprintf("grok-prompt-cache:v1:%d:%s:%s", apiKeyID, model, seed)
 	return upstream.GenerateSessionUUID(isolatedSeed)
 }
+
 func ExplicitCacheSeed(input CacheIdentityInput, body []byte) string {
 	// Claude Code 会话是 /v1/messages 到 Grok 桥接中最稳定的多轮身份，
 	// 优先于通用会话头，以便提示缓存路由与 CPA 行为一致。

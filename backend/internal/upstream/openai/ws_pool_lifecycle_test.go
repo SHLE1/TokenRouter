@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 构造只取得可释放资源，后台任务在拥有者按需 Start 后才运行。
+// TestWSPoolConstructionDoesNotStartWorkers 验证构造只取得可释放资源，后台任务在拥有者按需 Start 后才运行。
 func TestWSPoolConstructionDoesNotStartWorkers(t *testing.T) {
 	pool := NewWSConnPool(nil)
 	t.Cleanup(pool.Close)
@@ -26,7 +26,7 @@ func TestWSPoolConstructionDoesNotStartWorkers(t *testing.T) {
 	}
 }
 
-// 并发重复 Start 共享同一启动屏障；关闭后的入口不能再次创建连接或 worker。
+// TestWSPoolRepeatedStartAndClose 验证并发重复 Start 共享同一启动屏障；关闭后的入口不能再次创建连接或 worker。
 func TestWSPoolRepeatedStartAndClose(t *testing.T) {
 	pool := NewWSConnPool(nil)
 	var callers sync.WaitGroup
@@ -48,7 +48,7 @@ func TestWSPoolRepeatedStartAndClose(t *testing.T) {
 	require.ErrorIs(t, err, ErrWSConnClosed)
 }
 
-// 尚未启用的按需资源同样允许关闭，之后不能由迟到请求重新开启。
+// TestWSPoolCloseBeforeStart 验证尚未启用的按需资源同样允许关闭，之后不能由迟到请求重新开启。
 func TestWSPoolCloseBeforeStart(t *testing.T) {
 	pool := NewWSConnPool(nil)
 	pool.Close()

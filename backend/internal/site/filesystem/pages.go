@@ -1,4 +1,3 @@
-// Pages 只拥有本地页面文件读取，身份与菜单规则由 site 决定。
 package filesystem
 
 import (
@@ -16,7 +15,7 @@ type Pages struct{ pagesDir string }
 
 func New(dataDir string) *Pages {
 	dir := filepath.Join(dataDir, "pages")
-	_ = os.MkdirAll(dir, 0755)
+	_ = os.MkdirAll(dir, 0o755)
 	return &Pages{pagesDir: dir}
 }
 
@@ -63,6 +62,7 @@ func (s *Pages) ReadMarkdown(ctx context.Context, slug string) ([]byte, error) {
 	}
 	return content, nil
 }
+
 func (s *Pages) ListPages(context.Context) ([]string, error) {
 	entries, err := os.ReadDir(s.pagesDir)
 	if err != nil {
@@ -76,6 +76,7 @@ func (s *Pages) ListPages(context.Context) ([]string, error) {
 	}
 	return slugs, nil
 }
+
 func (s *Pages) ImagePath(_ context.Context, slug, filename string) (string, error) {
 	path, ok := resolvePageImagePath(s.pagesDir, filepath.Join(s.pagesDir, slug), filename)
 	if !ok {
@@ -87,6 +88,7 @@ func (s *Pages) ImagePath(_ context.Context, slug, filename string) (string, err
 	}
 	return path, nil
 }
+
 func resolvePageImagePath(pagesDir, imagesDir, filename string) (string, bool) {
 	relPath, ok := cleanPageImageRelativePath(filename)
 	if !ok {
@@ -114,6 +116,7 @@ func resolvePageImagePath(pagesDir, imagesDir, filename string) (string, bool) {
 	}
 	return realTarget, true
 }
+
 func cleanPageImageRelativePath(filename string) (string, bool) {
 	if filename == "" || strings.HasPrefix(filename, "/") {
 		return "", false
@@ -147,6 +150,7 @@ func cleanPageImageRelativePath(filename string) (string, bool) {
 	}
 	return relPath, true
 }
+
 func isPathWithinBase(path, base string) bool {
 	rel, err := filepath.Rel(filepath.Clean(base), filepath.Clean(path))
 	if err != nil {

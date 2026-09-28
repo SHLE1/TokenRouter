@@ -1,4 +1,3 @@
-// 失败事实与安全展示标识由转发契约唯一拥有。
 package forward
 
 const (

@@ -1,4 +1,3 @@
-// 客户端工具 JSON 包装保留单步转换、数值精度与原错误语义。
 package bridge
 
 import (
@@ -16,6 +15,7 @@ func AdaptResponsesClientToolsJSON(body []byte, upstream string) ([]byte, Respon
 		ResponsesClientToolMapping{},
 	)
 }
+
 func AdaptResponsesClientToolsJSONWithMapping(
 	body []byte,
 	upstream string,

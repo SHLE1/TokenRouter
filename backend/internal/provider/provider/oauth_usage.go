@@ -31,7 +31,7 @@ type OAuthUsageTransport struct {
 	fallback     sync.Mutex
 }
 
-// 兼容调用方逐步退出后仍由技术端口持有后备锁，组合根不承载锁策略。
+// ensureTask 兼容调用方逐步退出后仍由技术端口持有后备锁，组合根不承载锁策略。
 func (s *OAuthUsageTransport) ensureTask(ctx context.Context, value *provider.Record, expected string) error {
 	if s.EnsureTask != nil {
 		return s.EnsureTask(ctx, value, expected)

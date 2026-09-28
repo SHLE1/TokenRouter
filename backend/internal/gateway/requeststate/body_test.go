@@ -208,7 +208,7 @@ func TestParseGatewayRequest_AnthropicIgnoresGeminiFields(t *testing.T) {
 	require.Equal(t, "real content", messages[0].Get("content").String())
 }
 
-// Task 7.1 — 类型校验边界测试
+// TestParseGatewayRequest_TypeValidation 验证Task 7.1 — 类型校验边界测试
 func TestParseGatewayRequest_TypeValidation(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -281,7 +281,7 @@ func TestParseGatewayRequest_TypeValidation(t *testing.T) {
 	}
 }
 
-// Task 7.2 — 可选字段缺失测试
+// TestParseGatewayRequest_OptionalFieldsMissing 验证Task 7.2 — 可选字段缺失测试
 func TestParseGatewayRequest_OptionalFieldsMissing(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -350,7 +350,7 @@ func TestParseGatewayRequest_OptionalFieldsMissing(t *testing.T) {
 	}
 }
 
-// Task 7.4 — max_tokens 边界测试
+// TestParseGatewayRequest_MaxTokensBoundary 验证Task 7.4 — max_tokens 边界测试
 func TestParseGatewayRequest_MaxTokensBoundary(t *testing.T) {
 	tests := []struct {
 		name          string

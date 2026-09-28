@@ -1,4 +1,3 @@
-// 网关完成队列的配置只在组合根投影，运行实现不读取完整配置。
 package app
 
 import (
@@ -58,6 +57,7 @@ func usageRecordPoolOptionsFromConfig(cfg *config.Config) completion.UsageRecord
 	}
 	return completion.NormalizeOptions(opts)
 }
+
 func provideUsageRecordWorkerPool(cfg *config.Config) *completion.UsageRecordWorkerPool {
 	opts := usageRecordPoolOptionsFromConfig(cfg)
 	opts.Observe = telemetry.Completion

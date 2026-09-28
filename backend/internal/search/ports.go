@@ -1,4 +1,3 @@
-// 搜索核心只使用明确的技术端口和纯请求值。
 package search
 
 import (
@@ -8,15 +7,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/search/contract"
 )
 
-type SearchRequest = contract.SearchRequest
-type SearchResponse = contract.SearchResponse
-type SearchResult = contract.SearchResult
-type ProviderConfig = contract.ProviderConfig
-type Provider = contract.Provider
+type (
+	SearchRequest  = contract.SearchRequest
+	SearchResponse = contract.SearchResponse
+	SearchResult   = contract.SearchResult
+	ProviderConfig = contract.ProviderConfig
+	Provider       = contract.Provider
+)
 
-const ProviderTypeBrave = contract.ProviderTypeBrave
-const ProviderTypeTavily = contract.ProviderTypeTavily
-const defaultMaxResults = contract.DefaultMaxResults
+const (
+	ProviderTypeBrave  = contract.ProviderTypeBrave
+	ProviderTypeTavily = contract.ProviderTypeTavily
+	defaultMaxResults  = contract.DefaultMaxResults
+)
 
 type QuotaState interface {
 	Increment(context.Context, string, time.Duration) (int64, error)
@@ -45,6 +48,7 @@ func CloneProviderConfigs(in []ProviderConfig) []ProviderConfig {
 	}
 	return out
 }
+
 func CloneInt64(v *int64) *int64 {
 	if v == nil {
 		return nil

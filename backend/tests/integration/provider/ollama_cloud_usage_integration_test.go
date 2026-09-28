@@ -480,7 +480,7 @@ func TestProxyIdentityUpdateInvalidatesOllamaSnapshotAndRejectsInFlightCAS(t *te
 	require.ErrorIs(t, err, providercore.ErrOllamaCloudUsageIdentityChanged)
 }
 
-// 无变化的凭证持久化仍需清除废弃字段，但不得影响 Ollama 状态；真实凭据变化会使其失效。
+// TestUpdateCredentialsPreservesOllamaAndDiscardsDeprecatedExtra 验证无变化的凭证持久化仍需清除废弃字段，但不得影响 Ollama 状态；真实凭据变化会使其失效。
 func TestUpdateCredentialsPreservesOllamaAndDiscardsDeprecatedExtra(t *testing.T) {
 	ctx := context.Background()
 	tx := testEntTx(t)

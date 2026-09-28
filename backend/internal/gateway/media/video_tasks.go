@@ -1,4 +1,3 @@
-// 视频任务拥有归属、创建快照和完成认领；缓存协议由 session Adapter 唯一实现。
 package media
 
 import (

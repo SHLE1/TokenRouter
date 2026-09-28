@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// 以下函数只转换基础与高级评分的独立投影，不保留第二套算法。
+// flowBasic 以下函数只转换基础与高级评分的独立投影，不保留第二套算法。
 func flowBasic(a *FlowProvider) *BasicProvider {
 	if a == nil {
 		return nil

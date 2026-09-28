@@ -241,7 +241,7 @@ type InstallRequest struct {
 	Server   ServerConfig   `json:"server"`
 }
 
-// install performs the installation
+// installWithRestart 执行首次安装，并在成功后请求重启。
 func installWithRestart(c *gin.Context, restarter RestartRequester) {
 	// TOCTOU Protection: Acquire mutex to prevent concurrent installation
 	installMutex.Lock()

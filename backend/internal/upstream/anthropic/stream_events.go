@@ -1,4 +1,3 @@
-// 原生 SSE 错误事件类型保持 errors.As 和终态行为。
 package anthropic
 
 import (

@@ -1,4 +1,3 @@
-// 代理 HTTP 接口与 DTO 包共享展示类型。
 package httpapi
 
 import (

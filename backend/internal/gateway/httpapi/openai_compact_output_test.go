@@ -163,7 +163,7 @@ func TestWriteOpenAICompactSSEBridge_RequiresMarkAndSuccessStatus(t *testing.T) 
 	require.Contains(t, rec.Body.String(), "event: response.completed")
 }
 
-// 回归 #3875：body-signal 提升后的 compact 请求，上游返回 unary JSON，
+// TestHandleNonStreamingResponse_CompactClientStreamBridgesToSSE 验证回归 #3875：body-signal 提升后的 compact 请求，上游返回 unary JSON，
 // 客户端（Codex remote compact v2）必须收到 SSE 事件流而非 JSON 文档，
 // 否则报 "stream closed before response.completed" 并无限重连。
 func TestHandleNonStreamingResponse_CompactClientStreamBridgesToSSE(t *testing.T) {
@@ -201,7 +201,7 @@ func TestHandleNonStreamingResponse_CompactClientStreamBridgesToSSE(t *testing.T
 	require.Equal(t, "resp_compact_json", result.ResponseID)
 }
 
-// 回归防护：path-based compact（Codex v1 unary 协议、链式 sub2api）未标记
+// TestHandleNonStreamingResponse_PathBasedCompactStaysJSON 验证回归防护：path-based compact（Codex v1 unary 协议、链式 sub2api）未标记
 // client stream，必须保持 v0.1.146 以来的 JSON 写回行为。
 func TestHandleNonStreamingResponse_PathBasedCompactStaysJSON(t *testing.T) {
 	svc := newCompactBridgeTestService()
@@ -226,7 +226,7 @@ func TestHandleNonStreamingResponse_PathBasedCompactStaysJSON(t *testing.T) {
 	require.Equal(t, "compaction", gjson.Get(body, "output.0.type").String())
 }
 
-// 上游对 compact 返回 SSE（如链式网关）时，最终响应经 SSE→JSON 提取后，
+// TestHandleSSEToJSON_CompactClientStreamBridgesToSSE 验证上游对 compact 返回 SSE（如链式网关）时，最终响应经 SSE→JSON 提取后，
 // 对 client-stream 请求同样必须再合成回 SSE。
 func TestHandleSSEToJSON_CompactClientStreamBridgesToSSE(t *testing.T) {
 	svc := newCompactBridgeTestService()
@@ -254,7 +254,7 @@ func TestHandleSSEToJSON_CompactClientStreamBridgesToSSE(t *testing.T) {
 	require.Equal(t, "resp_compact_sse", gjson.Get(events[1][1], "response.id").String())
 }
 
-// 回归 #3887（#3777 问题 2）：上游对 compact 返回 SSE，compaction item 只在
+// TestHandleSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput 验证回归 #3887（#3777 问题 2）：上游对 compact 返回 SSE，compaction item 只在
 // raw output_item.done 中、终态 response.completed 的 output 为空。SSE→JSON
 // 提取必须保留 raw item 修补终态 output，否则桥接合成 0 个 output_item.done，
 // Codex 报 "expected exactly one compaction output item, got 0" 并盲目重试，
@@ -298,7 +298,7 @@ func TestHandleSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput(t *t
 	require.Equal(t, 4, result.Usage.OutputTokens)
 }
 
-// 同一形态经透传分支（handlePassthroughSSEToJSON）也必须修补。
+// TestHandlePassthroughSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput 验证同一形态经透传分支（handlePassthroughSSEToJSON）也必须修补。
 func TestHandlePassthroughSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, true)
@@ -326,7 +326,7 @@ func TestHandlePassthroughSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminal
 	require.Len(t, gjson.Get(events[1][1], "response.output").Array(), 1)
 }
 
-// path-based（Codex v1 unary、链式 sub2api）未标记 client stream：同一上游
+// TestHandleSSEToJSON_PathBasedCompactRawOutputItemDoneRepairsJSON 验证path-based（Codex v1 unary、链式 sub2api）未标记 client stream：同一上游
 // 形态修补后仍按 JSON 写回，output 中必须包含 compaction item。
 func TestHandleSSEToJSON_PathBasedCompactRawOutputItemDoneRepairsJSON(t *testing.T) {
 	svc := newCompactBridgeTestService()
@@ -356,7 +356,7 @@ func TestHandleSSEToJSON_PathBasedCompactRawOutputItemDoneRepairsJSON(t *testing
 	require.Equal(t, "compact-v1-raw", gjson.Get(body, "output.0.encrypted_content").String())
 }
 
-// raw done item 是协议上的最终完整形态，优先于 delta 重建且不得重复计入。
+// TestReconstructResponseOutputFromSSE_PrefersRawDoneItems 验证raw done item 是协议上的最终完整形态，优先于 delta 重建且不得重复计入。
 func TestReconstructResponseOutputFromSSE_PrefersRawDoneItems(t *testing.T) {
 	bodyText := strings.Join([]string{
 		`data: {"type":"response.output_text.delta","delta":"hel"}`,
@@ -373,7 +373,7 @@ func TestReconstructResponseOutputFromSSE_PrefersRawDoneItems(t *testing.T) {
 	require.Equal(t, "hello", items[0].Get("content.0.text").String())
 }
 
-// 无任何 done 事件时，退回收集 output_item.added 中的 compaction 类 item。
+// TestReconstructResponseOutputFromSSE_CompactionAddedFallback 验证无任何 done 事件时，退回收集 output_item.added 中的 compaction 类 item。
 func TestReconstructResponseOutputFromSSE_CompactionAddedFallback(t *testing.T) {
 	bodyText := strings.Join([]string{
 		`data: {"type":"response.output_item.added","output_index":0,"item":{"id":"cmp_add","type":"compaction","encrypted_content":"added-only"}}`,
@@ -388,7 +388,7 @@ func TestReconstructResponseOutputFromSSE_CompactionAddedFallback(t *testing.T) 
 	require.Equal(t, "added-only", items[0].Get("encrypted_content").String())
 }
 
-// 混合形态：其他 item 有 done、compaction 只在 added 中——compaction 必须
+// TestReconstructResponseOutputFromSSE_MixedDoneAndCompactionAdded 验证混合形态：其他 item 有 done、compaction 只在 added 中——compaction 必须
 // 被补入；done 已含 compaction 时 added 不得重复计入。
 func TestReconstructResponseOutputFromSSE_MixedDoneAndCompactionAdded(t *testing.T) {
 	bodyText := strings.Join([]string{
@@ -418,7 +418,7 @@ func TestReconstructResponseOutputFromSSE_MixedDoneAndCompactionAdded(t *testing
 	require.Equal(t, "final", items[0].Get("encrypted_content").String())
 }
 
-// 上游不一致形态：终态 output 非空（含 message）但 compaction 只在 raw
+// TestHandleSSEToJSON_CompactSupplementsMissingCompactionIntoNonEmptyOutput 验证上游不一致形态：终态 output 非空（含 message）但 compaction 只在 raw
 // output_item.done 中。146 纯流式透传下 Codex 直接读事件流能拿到 compaction，
 // SSE→JSON 提取必须补入等价结果。
 func TestHandleSSEToJSON_CompactSupplementsMissingCompactionIntoNonEmptyOutput(t *testing.T) {
@@ -452,7 +452,7 @@ func TestHandleSSEToJSON_CompactSupplementsMissingCompactionIntoNonEmptyOutput(t
 	require.Len(t, gjson.Get(events[2][1], "response.output").Array(), 2)
 }
 
-// 补全逻辑的门控：非 compact 请求原样返回；终态已含 compaction 不重复补入。
+// TestSupplementCompactionItemFromSSE_Gating 验证补全逻辑的门控：非 compact 请求原样返回；终态已含 compaction 不重复补入。
 func TestSupplementCompactionItemFromSSE_Gating(t *testing.T) {
 	bodyText := `data: {"type":"response.output_item.done","item":{"id":"cmp_g","type":"compaction","encrypted_content":"g"}}` + "\n"
 
@@ -478,7 +478,7 @@ func TestSupplementCompactionItemFromSSE_Gating(t *testing.T) {
 	require.Equal(t, "g", items[1].Get("encrypted_content").String())
 }
 
-// 非 compaction 的 output_item.added 不参与回退收集（added 阶段的 message
+// TestReconstructResponseOutputFromSSE_NonCompactionAddedStillUsesDeltas 验证非 compaction 的 output_item.added 不参与回退收集（added 阶段的 message
 // 通常是空壳），仍走 delta 重建。
 func TestReconstructResponseOutputFromSSE_NonCompactionAddedStillUsesDeltas(t *testing.T) {
 	bodyText := strings.Join([]string{
@@ -494,7 +494,7 @@ func TestReconstructResponseOutputFromSSE_NonCompactionAddedStillUsesDeltas(t *t
 	require.Equal(t, "hi", items[0].Get("content.0.text").String())
 }
 
-// 透传分支（OAuth passthrough）同样命中桥接。
+// TestHandleNonStreamingResponsePassthrough_CompactClientStreamBridgesToSSE 验证透传分支（OAuth passthrough）同样命中桥接。
 func TestHandleNonStreamingResponsePassthrough_CompactClientStreamBridgesToSSE(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, true)

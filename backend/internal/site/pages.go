@@ -1,4 +1,3 @@
-// Pages 拥有 slug 和菜单可见性；文件技术细节由注入的存储处理。
 package site
 
 import (
@@ -11,22 +10,26 @@ import (
 
 const MaxPageFileSize = 1 << 20
 
-var ErrPageNotFound = errors.New("page not found")
-var ErrPageTooLarge = errors.New("page too large")
-var ErrPageReadFailed = errors.New("failed to read page")
-var ErrPageSlug = errors.New("invalid page slug")
-var validSlugPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]*$`)
+var (
+	ErrPageNotFound   = errors.New("page not found")
+	ErrPageTooLarge   = errors.New("page too large")
+	ErrPageReadFailed = errors.New("failed to read page")
+	ErrPageSlug       = errors.New("invalid page slug")
+	validSlugPattern  = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]*$`)
+)
 
 type PageFiles interface {
 	ReadMarkdown(context.Context, string) ([]byte, error)
 	ListPages(context.Context) ([]string, error)
 	ImagePath(context.Context, string, string) (string, error)
 }
-type PageMenus interface{ GetCustomMenuItemsRaw(context.Context) string }
-type Pages struct {
-	files PageFiles
-	menus PageMenus
-}
+type (
+	PageMenus interface{ GetCustomMenuItemsRaw(context.Context) string }
+	Pages     struct {
+		files PageFiles
+		menus PageMenus
+	}
+)
 
 func NewPages(files PageFiles, menus PageMenus) *Pages { return &Pages{files: files, menus: menus} }
 func (s *Pages) visibility(ctx context.Context, slug string) (string, bool) {
@@ -56,6 +59,7 @@ func (s *Pages) visibility(ctx context.Context, slug string) (string, bool) {
 	}
 	return "", false
 }
+
 func (s *Pages) ReadMarkdown(ctx context.Context, slug string, admin bool) ([]byte, error) {
 	if !validSlugPattern.MatchString(slug) || len(slug) > 64 {
 		return nil, ErrPageSlug

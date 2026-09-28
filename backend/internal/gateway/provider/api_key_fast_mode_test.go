@@ -78,7 +78,7 @@ func TestOpenAIGroupFastStillHonorsGlobalAndKeyPolicy(t *testing.T) {
 	require.False(t, gjson.GetBytes(body, "service_tier").Exists())
 }
 
-// 分组可信状态与实际提供商能力分别校验，分组没有平台限制。
+// TestOpenAIGroupFastRequiresTrustedContextAndCapableProvider 验证分组可信状态与实际提供商能力分别校验，分组没有平台限制。
 func TestOpenAIGroupFastRequiresTrustedContextAndCapableProvider(t *testing.T) {
 	svc := newFastPolicyContract(t, tierpolicy.Default())
 	for _, tc := range []struct {
@@ -109,7 +109,7 @@ func TestOpenAIAPIKeyFastModeIgnoresUnsupportedModel(t *testing.T) {
 	require.False(t, gjson.GetBytes(updated, "service_tier").Exists())
 }
 
-// 强制关闭是请求净化策略，不应受模型定价能力元数据影响。
+// TestOpenAIAPIKeyFastModeForceOffIgnoresMissingCapabilityMetadata 验证强制关闭是请求净化策略，不应受模型定价能力元数据影响。
 func TestOpenAIAPIKeyFastModeForceOffIgnoresMissingCapabilityMetadata(t *testing.T) {
 	svc := newFastPolicyContract(t, tierpolicy.Default())
 	svc.Prices = fastModeTestResolver()
@@ -126,7 +126,7 @@ func TestOpenAIAPIKeyFastModeForceOffIgnoresMissingCapabilityMetadata(t *testing
 	require.False(t, gjson.GetBytes(updated, "service_tier").Exists())
 }
 
-// 强制关闭只删除 Fast tier，不能改变客户端选择的其它官方服务层级。
+// TestOpenAIAPIKeyFastModeForceOffPreservesNonFastTiers 验证强制关闭只删除 Fast tier，不能改变客户端选择的其它官方服务层级。
 func TestOpenAIAPIKeyFastModeForceOffPreservesNonFastTiers(t *testing.T) {
 	svc := newFastPolicyContract(t, tierpolicy.Default())
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
@@ -148,7 +148,7 @@ func TestOpenAIAPIKeyFastModeForceOffPreservesNonFastTiers(t *testing.T) {
 	}
 }
 
-// 客户端别名 fast 归一化后仍属于 priority，强制关闭必须将其删除。
+// TestOpenAIAPIKeyFastModeForceOffRemovesFastAlias 验证客户端别名 fast 归一化后仍属于 priority，强制关闭必须将其删除。
 func TestOpenAIAPIKeyFastModeForceOffRemovesFastAlias(t *testing.T) {
 	svc := newFastPolicyContract(t, tierpolicy.Default())
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}

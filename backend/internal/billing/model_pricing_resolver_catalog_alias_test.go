@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 新目录别名在有无内置价时均先采用共享价格配置价，不能以目录回退跳过运营者的显式配置。
+// TestResolveCatalogAliasesPreserveConfigPricing 验证新目录别名在有无内置价时均先采用共享价格配置价，不能以目录回退跳过运营者的显式配置。
 func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 	previous := xai.RuntimeModelMappingOptions()
 	t.Cleanup(func() { xai.SetRuntimeModelMappingOptions(previous) })
@@ -74,7 +74,7 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 	}
 }
 
-// 同一共享价表中的基础模型价可用于对应别名，提供商平台不形成额外价格边界。
+// TestResolveCatalogAliasesUseUnifiedPricingConfig 验证同一共享价表中的基础模型价可用于对应别名，提供商平台不形成额外价格边界。
 func TestResolveCatalogAliasesUseUnifiedPricingConfig(t *testing.T) {
 	groupID := int64(999)
 	price := 9e-6
@@ -94,7 +94,7 @@ func TestResolveCatalogAliasesUseUnifiedPricingConfig(t *testing.T) {
 	require.InDelta(t, price, resolved.BasePricing.InputPricePerToken, 1e-12)
 }
 
-// 两类价卡共用身份候选，空完整名条目不遮蔽基础价，完整名零价和通配价仍优先。
+// TestGroupAndPricingCatalogAliasPrecedence 验证两类价卡共用身份候选，空完整名条目不遮蔽基础价，完整名零价和通配价仍优先。
 func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 	for _, tc := range []struct{ platform, base, alias string }{
 		{capability.PlatformOpenAI, "gpt-5.6-luna", "gpt-5.6-luna-high"},

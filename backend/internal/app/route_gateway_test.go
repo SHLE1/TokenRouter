@@ -154,7 +154,7 @@ func TestGatewayRoutesClientProtocolGateRejectsAliasesBeforeReadingBody(t *testi
 	}
 }
 
-// 计数入口先执行分组协议门禁，提供商选中后才决定实际计数能力。
+// TestGatewayRoutesCountTokensHonorsProtocolGate 验证计数入口先执行分组协议门禁，提供商选中后才决定实际计数能力。
 func TestGatewayRoutesCountTokensHonorsProtocolGate(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -354,7 +354,7 @@ func TestGatewayRoutesNonNativeResponsesWebSocketIsRejected(t *testing.T) {
 	require.Contains(t, w.Body.String(), "protocol_not_allowed")
 }
 
-// Alpha Search 的三种公开路径都必须注册到 OpenAI 专用 handler。
+// TestGatewayRoutesOpenAIAlphaSearchPathsAreRegistered 验证Alpha Search 的三种公开路径都必须注册到 OpenAI 专用 handler。
 func TestGatewayRoutesOpenAIAlphaSearchPathsAreRegistered(t *testing.T) {
 	router := newGatewayRoutesTestRouter()
 	registered := make(map[string]bool)
@@ -373,7 +373,7 @@ func TestGatewayRoutesOpenAIAlphaSearchPathsAreRegistered(t *testing.T) {
 	}
 }
 
-// 未启用 Alpha Search 协议的分组在读取请求体前拒绝。
+// TestGatewayRoutesAlphaSearchRejectsNonOpenAIGroup 验证未启用 Alpha Search 协议的分组在读取请求体前拒绝。
 func TestGatewayRoutesAlphaSearchRejectsNonOpenAIGroup(t *testing.T) {
 	router := newGatewayRoutesTestRouter(capability.PlatformGrok)
 	req := httptest.NewRequest(http.MethodPost, "/v1/alpha/search", strings.NewReader(`{"model":"gpt-5.6-sol"}`))

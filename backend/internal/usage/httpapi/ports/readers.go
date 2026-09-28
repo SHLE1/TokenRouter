@@ -1,4 +1,3 @@
-// Package ports 定义用量 HTTP 实际需要的只读协作面，不持有其他领域服务。
 package ports
 
 import (
@@ -52,9 +51,11 @@ type KeyQueries struct {
 func (q KeyQueries) GetByID(ctx context.Context, id int64) (*KeyReference, error) {
 	return q.Lookup(ctx, id)
 }
+
 func (q KeyQueries) VerifyOwnership(ctx context.Context, id int64, keys []int64) ([]int64, error) {
 	return q.Ownership(ctx, id, keys)
 }
+
 func (q KeyQueries) SearchAPIKeys(ctx context.Context, id int64, query string, limit int) ([]KeyReference, error) {
 	return q.Search(ctx, id, query, limit)
 }

@@ -1,4 +1,3 @@
-// Alpha Search 的不透明请求和 Responses 回退转换保留原结构、截断和引用顺序。
 package openai
 
 import (

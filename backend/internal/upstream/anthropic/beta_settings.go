@@ -1,4 +1,3 @@
-// Beta 配置值保留原 JSON 与默认规则顺序。
 package anthropic
 
 // Beta Policy 策略常量

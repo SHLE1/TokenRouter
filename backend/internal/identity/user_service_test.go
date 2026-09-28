@@ -79,6 +79,7 @@ func (m *mockUserRepo) Create(context.Context, *identitycore.User) error { retur
 func (m *mockUserRepo) CreateWithNormalizedEmailGuard(ctx context.Context, user *identitycore.User, _ string) error {
 	return m.Create(ctx, user)
 }
+
 func (m *mockUserRepo) GetByID(ctx context.Context, id int64) (*identitycore.User, error) {
 	if m.getByIDErr != nil {
 		return nil, m.getByIDErr
@@ -90,12 +91,15 @@ func (m *mockUserRepo) GetByID(ctx context.Context, id int64) (*identitycore.Use
 	cloned := *user
 	return &cloned, nil
 }
+
 func (m *mockUserRepo) GetByEmail(context.Context, string) (*identitycore.User, error) {
 	return &identitycore.User{}, nil
 }
+
 func (m *mockUserRepo) GetFirstAdmin(context.Context) (*identitycore.User, error) {
 	return &identitycore.User{}, nil
 }
+
 func (m *mockUserRepo) Update(ctx context.Context, user *identitycore.User, fields identitycore.UserUpdateFields) error {
 	m.updateCalls++
 	m.updateFields = append(m.updateFields, fields)
@@ -106,6 +110,7 @@ func (m *mockUserRepo) Update(ctx context.Context, user *identitycore.User, fiel
 	m.setCurrentUser(ctx, &cloned)
 	return nil
 }
+
 func (m *mockUserRepo) UpdateWithNormalizedEmailGuard(ctx context.Context, user *identitycore.User, _ string, fields identitycore.UserUpdateFields) error {
 	return m.Update(ctx, user, fields)
 }
@@ -116,6 +121,7 @@ func (m *mockUserRepo) GetUserAvatar(ctx context.Context, userID int64) (*identi
 	}
 	return nil, nil
 }
+
 func (m *mockUserRepo) UpsertUserAvatar(ctx context.Context, userID int64, input identitycore.UpsertUserAvatarInput) (*identitycore.UserAvatar, error) {
 	if m.upsertAvatarFn != nil {
 		return m.upsertAvatarFn(ctx, userID, input)
@@ -143,6 +149,7 @@ func (m *mockUserRepo) UpsertUserAvatar(ctx context.Context, userID int64, input
 		SHA256:          input.SHA256,
 	}, nil
 }
+
 func (m *mockUserRepo) DeleteUserAvatar(ctx context.Context, userID int64) error {
 	if m.deleteAvatarFn != nil {
 		return m.deleteAvatarFn(ctx, userID)
@@ -163,12 +170,15 @@ func (m *mockUserRepo) DeleteUserAvatar(ctx context.Context, userID int64) error
 	}
 	return nil
 }
+
 func (m *mockUserRepo) List(context.Context, pagination.PaginationParams) ([]identitycore.User, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
+
 func (m *mockUserRepo) ListWithFilters(context.Context, pagination.PaginationParams, identitycore.UserListFilters) ([]identitycore.User, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
+
 func (m *mockUserRepo) UpdateBalance(ctx context.Context, id int64, amount float64) error {
 	if m.updateBalanceFn != nil {
 		return m.updateBalanceFn(ctx, id, amount)
@@ -197,6 +207,7 @@ func (m *mockUserRepo) UpdateConcurrency(context.Context, int64, int) error { re
 func (m *mockUserRepo) BatchSetConcurrency(context.Context, []int64, int) (int, error) {
 	return 0, nil
 }
+
 func (m *mockUserRepo) BatchAddConcurrency(context.Context, []int64, int) (int, error) {
 	return 0, nil
 }
@@ -208,6 +219,7 @@ func (m *mockUserRepo) LockRegistrationEmail(context.Context, string) error { re
 func (m *mockUserRepo) RemoveGroupFromAllowedGroups(context.Context, int64) (int64, error) {
 	return 0, nil
 }
+
 func (m *mockUserRepo) BatchUpdateLimits(context.Context, []int64, *int, *int) (int, error) {
 	return 0, nil
 }
@@ -217,12 +229,15 @@ func (m *mockUserRepo) ListUserAuthIdentities(context.Context, int64) ([]identit
 	copy(out, m.identities)
 	return out, nil
 }
+
 func (m *mockUserRepo) GetLatestUsedAtByUserIDs(context.Context, []int64) (map[int64]*time.Time, error) {
 	return map[int64]*time.Time{}, nil
 }
+
 func (m *mockUserRepo) GetLatestUsedAtByUserID(context.Context, int64) (*time.Time, error) {
 	return nil, nil
 }
+
 func (m *mockUserRepo) UpdateUserLastActiveAt(_ context.Context, userID int64, activeAt time.Time) error {
 	if m.updateLastActiveErr != nil {
 		return m.updateLastActiveErr
@@ -237,6 +252,7 @@ func (m *mockUserRepo) DisableTotp(context.Context, int64) error               {
 func (m *mockUserRepo) RemoveGroupFromUserAllowedGroups(context.Context, int64, int64) error {
 	return nil
 }
+
 func (m *mockUserRepo) UnbindUserAuthProvider(_ context.Context, _ int64, provider string) error {
 	if m.unbindIdentityErr != nil {
 		return m.unbindIdentityErr
@@ -699,7 +715,7 @@ func TestUpdateBalance_WithAuthCacheInvalidator(t *testing.T) {
 	}, 2*time.Second, 10*time.Millisecond)
 }
 
-// 新旧入口必须共享活动时间节流状态，不能各自构造一份缓存。
+// TestNewUserServiceSharesActivityTracker 验证新旧入口必须共享活动时间节流状态，不能各自构造一份缓存。
 func TestNewUserServiceSharesActivityTracker(t *testing.T) {
 	user := &identitycore.User{ID: 77}
 	repo := &mockUserRepo{getByIDUser: user}

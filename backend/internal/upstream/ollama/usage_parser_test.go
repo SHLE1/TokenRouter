@@ -1,4 +1,3 @@
-// 使用脱敏 HTML 夹具验证用量解析。
 package ollama
 
 import (
@@ -16,6 +15,7 @@ func ollamaUsageFixture(t *testing.T) []byte {
 	require.NoError(t, e)
 	return b
 }
+
 func TestParseOllamaCloudUsageHTMLFixture(t *testing.T) {
 	data, err := ParseOllamaCloudUsageHTML(ollamaUsageFixture(t))
 	require.NoError(t, err)
@@ -43,6 +43,7 @@ func TestParseOllamaCloudUsageHTMLFixture(t *testing.T) {
 	_, err = ParseOllamaCloudUsageHTML([]byte(`<html><body><main>unrelated settings</main></body></html>`))
 	require.Error(t, err)
 }
+
 func TestParseOllamaCloudUsageHTMLMissingOptionalFieldsAndCSSWidthFallback(t *testing.T) {
 	data, err := ParseOllamaCloudUsageHTML([]byte(`
 		<section>
@@ -62,6 +63,7 @@ func TestParseOllamaCloudUsageHTMLMissingOptionalFieldsAndCSSWidthFallback(t *te
 		Model: "model-a", Window: usageview.OllamaCloudUsageModelWindowFiveHour, Requests: 1234,
 	}}, data.Models)
 }
+
 func TestParseOllamaCloudUsageHTMLResetElementVariants(t *testing.T) {
 	const want = "2026-07-23T03:00:00Z"
 	for name, element := range map[string]string{
@@ -80,6 +82,7 @@ func TestParseOllamaCloudUsageHTMLResetElementVariants(t *testing.T) {
 		})
 	}
 }
+
 func TestParseOllamaCloudUsageHTMLPlanAndBalanceFallbacks(t *testing.T) {
 	data, err := ParseOllamaCloudUsageHTML([]byte(`
 		<section>

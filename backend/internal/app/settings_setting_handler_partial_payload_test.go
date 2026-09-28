@@ -48,7 +48,7 @@ func TestUpdateSettingsPartialPayloadKeepsUnsentKeys(t *testing.T) {
 	require.Equal(t, "true", repo.values[identity.SettingKeyTurnstileEnabled])
 }
 
-// 完整载荷仍保留整份文档语义：明确发送的零值字段仍应被清空。
+// TestUpdateSettingsFullPayloadStillClearsSentEmptyFields 验证完整载荷仍保留整份文档语义：明确发送的零值字段仍应被清空。
 func TestUpdateSettingsFullPayloadStillClearsSentEmptyFields(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		site.SettingKeySiteName: "Example Gateway",
@@ -61,7 +61,7 @@ func TestUpdateSettingsFullPayloadStillClearsSentEmptyFields(t *testing.T) {
 		"明确发送的空值表示主动清空，而不是省略字段")
 }
 
-// smtp_from_email 是唯一一个 JSON 名称与持久化设置键不同的请求字段，
+// TestUpdateSettingsSMTPFromAliasIsWritable 验证smtp_from_email 是唯一一个 JSON 名称与持久化设置键不同的请求字段，
 // 别名映射可避免它被误判为始终未发送。
 func TestUpdateSettingsSMTPFromAliasIsWritable(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
@@ -74,7 +74,7 @@ func TestUpdateSettingsSMTPFromAliasIsWritable(t *testing.T) {
 	require.Equal(t, "new@example.com", repo.values[notification.SettingKeySMTPFrom])
 }
 
-// 创作台开关与 team 同款部分更新语义：显式发送时写入，省略时保留存储值。
+// TestUpdateSettingsCreativeEnabledPartialSemantics 验证创作台开关与 team 同款部分更新语义：显式发送时写入，省略时保留存储值。
 func TestUpdateSettingsCreativeEnabledPartialSemantics(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		creative.SettingKeyCreativeEnabled: "true",
@@ -310,7 +310,7 @@ func TestUpdateSettingsRetainsStoredTencentCaptchaCredentialsWhenInputsEmpty(t *
 	require.Equal(t, "stored-cloud-secret-key", repo.values[identity.SettingKeyTencentCaptchaCloudSecretKey])
 }
 
-// 天御站点决定前端加载哪个 SDK 与服务端打哪个接入点，两端必须一致。
+// TestUpdateSettingsPartialPayloadKeepsTencentCaptchaRegion 验证天御站点决定前端加载哪个 SDK 与服务端打哪个接入点，两端必须一致。
 // 部分载荷把它重置回中国站，会让已配国际站的部署在下一次任意保存后整体失效。
 func TestUpdateSettingsPartialPayloadKeepsTencentCaptchaRegion(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{

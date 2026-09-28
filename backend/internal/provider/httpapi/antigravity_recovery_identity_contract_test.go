@@ -75,7 +75,7 @@ func TestAntigravityManualRecoveryDoesNotClearNewAdministratorState(t *testing.T
 	require.Zero(t, admin.clears)
 }
 
-// 替身执行与生产端口相同的条件判断，真实 SQL 交错由 integration 矩阵验证。
+// ClearManagedRefreshError 替身执行与生产端口相同的条件判断，真实 SQL 交错由 integration 矩阵验证。
 func (s *agRecoveryIdentityAdmin) ClearManagedRefreshError(_ context.Context, old *provider.Record) (*provider.Record, bool, error) {
 	if !provider.ObserveManagedRecovery(old).Matches(&s.current) {
 		return &s.current, false, nil

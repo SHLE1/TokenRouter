@@ -1,4 +1,3 @@
-// 原生 Messages 输出逐行转发并保留断开后的尾部用量；实际写入只通过 OutputSink。
 package openaiforward
 
 import (

@@ -1,4 +1,3 @@
-// 本文件维护纯 Anthropic 字节修复；平台资格、设置和重试次数由调用方决定。
 package anthropic
 
 import (
@@ -10,20 +9,22 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-var patternTypeThinking = []byte(`"type":"thinking"`)
-var patternTypeThinkingSpaced = []byte(`"type": "thinking"`)
-var patternTypeRedactedThinking = []byte(`"type":"redacted_thinking"`)
-var patternTypeRedactedSpaced = []byte(`"type": "redacted_thinking"`)
-var patternThinkingField = []byte(`"thinking":`)
-var patternThinkingFieldSpaced = []byte(`"thinking" :`)
-var patternEmptyContent = []byte(`"content":[]`)
-var patternEmptyContentSpaced = []byte(`"content": []`)
-var patternEmptyContentSp1 = []byte(`"content" : []`)
-var patternEmptyContentSp2 = []byte(`"content" :[]`)
-var patternEmptyText = []byte(`"text":""`)
-var patternEmptyTextSpaced = []byte(`"text": ""`)
-var patternEmptyTextSp1 = []byte(`"text" : ""`)
-var patternEmptyTextSp2 = []byte(`"text" :""`)
+var (
+	patternTypeThinking         = []byte(`"type":"thinking"`)
+	patternTypeThinkingSpaced   = []byte(`"type": "thinking"`)
+	patternTypeRedactedThinking = []byte(`"type":"redacted_thinking"`)
+	patternTypeRedactedSpaced   = []byte(`"type": "redacted_thinking"`)
+	patternThinkingField        = []byte(`"thinking":`)
+	patternThinkingFieldSpaced  = []byte(`"thinking" :`)
+	patternEmptyContent         = []byte(`"content":[]`)
+	patternEmptyContentSpaced   = []byte(`"content": []`)
+	patternEmptyContentSp1      = []byte(`"content" : []`)
+	patternEmptyContentSp2      = []byte(`"content" :[]`)
+	patternEmptyText            = []byte(`"text":""`)
+	patternEmptyTextSpaced      = []byte(`"text": ""`)
+	patternEmptyTextSp1         = []byte(`"text" : ""`)
+	patternEmptyTextSp2         = []byte(`"text" :""`)
+)
 
 // SliceRawFromBody 返回 Result.Raw 对应的原始字节切片。
 // 优先使用 Result.Index 直接从 body 切片，避免对大字段（如 messages）产生额外拷贝。
@@ -169,7 +170,6 @@ func StripEmptyTextBlocks(body []byte) []byte {
 // 调用方传入 mappedModel 时，仅 Anthropic 官方语义执行 retry 变形；
 // passback-required/unknown 上游返回原 body，避免破坏原样回传契约。
 func FilterThinkingBlocksForRetry(body []byte) []byte {
-
 	hasThinkingContent := bytes.Contains(body, patternTypeThinking) ||
 		bytes.Contains(body, patternTypeThinkingSpaced) ||
 		bytes.Contains(body, patternTypeRedactedThinking) ||
@@ -452,7 +452,6 @@ func RemoveThinkingDependentContextStrategies(body []byte) []byte {
 // 传入 mappedModel 时，仅 Anthropic 官方语义执行变形；passback-required/unknown
 // 上游返回原 body，避免破坏原样回传契约。
 func FilterSignatureSensitiveBlocksForRetry(body []byte) []byte {
-
 	// Fast path: only run when we see likely relevant constructs.
 	if !bytes.Contains(body, []byte(`"type":"thinking"`)) &&
 		!bytes.Contains(body, []byte(`"type": "thinking"`)) &&

@@ -1,4 +1,3 @@
-// Cleanup 拥有资源删除规则，供应商引用仅从已验证的任务记录取得。
 package batchimage
 
 import (

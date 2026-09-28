@@ -246,7 +246,7 @@ func TestSettingService_AffiliateAdminRechargeSetting(t *testing.T) {
 	})
 }
 
-// 页面功能开关必须独立持久化，避免保存其他设置时互相覆盖。
+// TestSettingService_PageFeatureFlagsArePersisted 验证页面功能开关必须独立持久化，避免保存其他设置时互相覆盖。
 func TestSettingService_PageFeatureFlagsArePersisted(t *testing.T) {
 	repo := &settingUpdateRepoStub{}
 	svc := settingskit.NewComposite(repo, &config.Config{})
@@ -766,7 +766,7 @@ func TestSettingService_ParseSettings_APIKeyACLTrustForwardedIPUsesStoredValue(t
 	require.False(t, got.APIKeyACLTrustForwardedIP)
 }
 
-// 创作台开关与 TeamEnabled 同款"缺省 true"语义：键缺失时开启，显式 "false" 才关闭。
+// TestSettingService_ParseSettings_CreativeEnabledDefaultsTrue 验证创作台开关与 TeamEnabled 同款"缺省 true"语义：键缺失时开启，显式 "false" 才关闭。
 func TestSettingService_ParseSettings_CreativeEnabledDefaultsTrue(t *testing.T) {
 	svc := settingskit.NewComposite(&settingUpdateRepoStub{}, &config.Config{})
 

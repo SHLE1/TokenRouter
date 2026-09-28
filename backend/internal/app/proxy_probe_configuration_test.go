@@ -1,4 +1,3 @@
-// 代理探测配置直接验证生产装配，避免只覆盖已删除的仓储构造器。
 package app
 
 import (
@@ -11,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 配置必须控制实际请求目标，装配不能忽略配置而使用内置地址。
+// TestNewProxyExitInfoProberUsesConfiguredTargets 验证配置必须控制实际请求目标，装配不能忽略配置而使用内置地址。
 func TestNewProxyExitInfoProberUsesConfiguredTargets(t *testing.T) {
 	calls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

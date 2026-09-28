@@ -1,4 +1,3 @@
-// 媒体请求专属 Adapter 转换 HTTP、选择投影和完成快照；重试次序由 media 唯一实现。
 package mediaentry
 
 import (
@@ -340,7 +339,7 @@ func legacyGenerationResult(r *gatewaymedia.GenerationResult) *forwardcore.OpenA
 	return &forwardcore.OpenAIResult{RequestID: r.RequestID, ResponseID: r.ResponseID, Model: r.Model, BillingModel: r.BillingModel, UpstreamModel: r.UpstreamModel, Usage: r.Usage, Stream: r.Stream, Duration: r.Duration, FirstTokenMs: r.FirstTokenMs, ImageCount: r.ImageCount, VideoCount: r.VideoCount, VideoDurationSeconds: r.VideoDurationSeconds, ImageSize: r.ImageSize, ImageInputSize: r.ImageInputSize, ImageOutputSize: r.ImageOutputSize, ImageSizeSource: r.ImageSizeSource, VideoResolution: r.VideoResolution, ImageOutputSizes: r.ImageOutputSizes, ImageSizeBreakdown: r.ImageSizeBreakdown, UpstreamHeaders: http.Header(r.Headers).Clone(), ResponseHeaders: http.Header(r.ResponseHeaders).Clone()}
 }
 
-// 媒体最终错误接口只适配父层共同错误分类、风控观察和响应写入。
+// MediaClassify 媒体最终错误接口只适配父层共同错误分类、风控观察和响应写入。
 func (p *generationRequestAdapter) MediaClassify() gatewayhttp.MediaNoProvider {
 	platform := ""
 	routing := p.requestModel

@@ -1,4 +1,3 @@
-// Package ws 拥有入站会话的每轮快照与执行生命周期。
 package ws
 
 import (

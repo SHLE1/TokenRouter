@@ -1,4 +1,3 @@
-// 代理质量分数和等级必须与各探测项的结果一致。
 package egress
 
 import (

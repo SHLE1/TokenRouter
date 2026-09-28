@@ -1,4 +1,3 @@
-// 本文件在原读取时点投影 Gemini 配置，HTTP、刷新和层级查询共享同一授权实例。
 package app
 
 import (

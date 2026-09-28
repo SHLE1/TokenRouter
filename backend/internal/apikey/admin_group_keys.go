@@ -1,4 +1,3 @@
-// 管理端按分组分页读取 API Key，并返回匹配总数。
 package apikey
 
 import (

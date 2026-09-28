@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 旧开关必须明确拒绝，避免管理员误以为未选组的 Key 仍可调用。
+// rejectRemovedUngroupedKeySchedulingField 旧开关必须明确拒绝，避免管理员误以为未选组的 Key 仍可调用。
 func rejectRemovedUngroupedKeySchedulingField(c *gin.Context, fields map[string]json.RawMessage) bool {
 	const field = "allow_ungrouped_key_scheduling"
 	if _, present := fields[field]; !present {

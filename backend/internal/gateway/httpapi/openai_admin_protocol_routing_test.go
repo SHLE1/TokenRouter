@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 故意将旧探测状态直接注入提供商对象，验证实际转发不依赖迁移或写入清理。
+// TestOpenAIAdministratorProtocolOverridesAllLegacyProbeState 验证故意将旧探测状态直接注入提供商对象，验证实际转发不依赖迁移或写入清理。
 func TestOpenAIAdministratorProtocolOverridesAllLegacyProbeState(t *testing.T) {
 	for _, mode := range []string{"preserve_client_protocol", "force_responses", "force_chat_completions"} {
 		for _, legacy := range []any{false, true, "invalid"} {

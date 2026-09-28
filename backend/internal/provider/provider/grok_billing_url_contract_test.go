@@ -82,7 +82,7 @@ func TestGrokBillingURLFollowsProviderBaseURL(t *testing.T) {
 	})
 }
 
-// 这里只组合现有函数，不增加第二份 URL 校验或端点规则。
+// billingURLForTest 这里只组合现有函数，不增加第二份 URL 校验或端点规则。
 func billingURLForTest(value *provider.Record, operator xai.BaseURLValidator, weekly bool) (string, error) {
 	validator, err := GrokBaseURLValidator(value, operator)
 	if err != nil {

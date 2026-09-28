@@ -1,4 +1,3 @@
-// 平台提供商内重试只使用技术输入和观测端口，不持有业务实体、数据库或 Gin。
 package antigravity
 
 import (

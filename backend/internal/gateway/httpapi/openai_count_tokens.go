@@ -1,4 +1,3 @@
-// OpenAI 计数保留资金校验与单次无槽选择，Grok 本地计数继续只依赖路由认证。
 package httpapi
 
 import (

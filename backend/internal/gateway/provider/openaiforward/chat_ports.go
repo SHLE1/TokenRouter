@@ -1,4 +1,3 @@
-// ChatPorts 只组合 Chat 实际使用的单步能力；不会继承 Messages 的会话恢复策略。
 package openaiforward
 
 import (

@@ -28,7 +28,7 @@ func (s *sparkShadowGroupRepoStub) ListActive(_ context.Context) ([]routing.Grou
 	return s.groups, nil
 }
 
-// 新影子可以继承母提供商的明确关联，但不会自动寻找默认组。
+// TestCreateShadowDoesNotBindDefaultGroup 验证新影子可以继承母提供商的明确关联，但不会自动寻找默认组。
 func TestCreateShadowDoesNotBindDefaultGroup(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()

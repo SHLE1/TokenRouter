@@ -1,4 +1,3 @@
-// Anthropic OAuth usage 报文，仅表达上游 wire 字段。
 package anthropic
 
 // ClaudeUsageWindow Anthropic /api/oauth/usage 返回的单个用量窗口

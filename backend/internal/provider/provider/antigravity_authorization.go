@@ -1,4 +1,3 @@
-// 本文件绑定 Antigravity 的原生交换、地址和诊断，授权状态由提供商核心持有。
 package provider
 
 import (

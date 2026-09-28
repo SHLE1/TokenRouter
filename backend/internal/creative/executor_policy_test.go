@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同时设置两跳陷阱，确保实际出站模型只经过一次分组和提供商映射。
+// TestCreativeExecutorGroupPolicyUsesFinalModel 验证同时设置两跳陷阱，确保实际出站模型只经过一次分组和提供商映射。
 func TestCreativeExecutorGroupPolicyUsesFinalModel(t *testing.T) {
 	for _, platform := range []string{PlatformOpenAI, PlatformGemini, PlatformGrok} {
 		t.Run(platform, func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestCreativeExecutorGroupPolicyUsesFinalModel(t *testing.T) {
 	}
 }
 
-// 执行器必须独立复核白名单，覆盖排队后策略变更及已占槽时的释放。
+// TestCreativeExecutorGroupPolicyRestrictionStages 验证执行器必须独立复核白名单，覆盖排队后策略变更及已占槽时的释放。
 func TestCreativeExecutorGroupPolicyRestrictionStages(t *testing.T) {
 	for _, tc := range []struct {
 		name, source string

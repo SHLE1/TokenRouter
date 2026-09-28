@@ -12,12 +12,9 @@ type Entry struct {
 	Verified bool   `json:"verified"`
 }
 
-// parseNotifyEmails parses a JSON string into []Entry.
-// It auto-detects the format:
-//   - Old format ["email1","email2"] → converted to [{email, disabled:false, verified:true}, ...]
-//   - New format [{email,disabled,verified}, ...] → parsed directly
-//
-// Returns nil on empty/invalid input.
+// ParseNotifyEmails 将通知邮箱 JSON 解析为 Entry 列表。
+// 旧字符串数组中的邮箱视为已验证且未禁用，新对象数组保留 disabled 和 verified 字段。
+// 输入为空或无效时返回 nil。
 func ParseNotifyEmails(raw string) []Entry {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || raw == "[]" {
@@ -67,7 +64,7 @@ func isOldStringArrayFormat(raw string) bool {
 	return len(first) > 0 && first[0] == '"'
 }
 
-// marshalNotifyEmails serializes []Entry to JSON string.
+// MarshalNotifyEmails 将通知邮箱 Entry 列表序列化为 JSON。
 func MarshalNotifyEmails(entries []Entry) string {
 	if len(entries) == 0 {
 		return "[]"

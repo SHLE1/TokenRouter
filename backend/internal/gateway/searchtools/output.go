@@ -1,4 +1,3 @@
-// 合成事件顺序归网关；HTTP 状态、Header、Flush 和实际写出由 Output Adapter 拥有。
 package searchtools
 
 import (

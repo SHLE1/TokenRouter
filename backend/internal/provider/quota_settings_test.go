@@ -34,7 +34,7 @@ func TestGetOpenAIQuotaAutoPauseSettings_ReadsDefaultsFromOpsAdvancedSettings(t 
 	}
 }
 
-// 热路径不变量：冷缓存 Get 必须立即返回（零默认值），不能阻塞等待 DB。
+// TestGetOpenAIQuotaAutoPauseSettings_ColdCacheNonBlocking 验证热路径不变量：冷缓存 Get 必须立即返回（零默认值），不能阻塞等待 DB。
 // 异步刷新器会为后续调用填充缓存。
 func TestGetOpenAIQuotaAutoPauseSettings_ColdCacheNonBlocking(t *testing.T) {
 	repo := newQuotaReadFixture()
@@ -53,7 +53,7 @@ func TestGetOpenAIQuotaAutoPauseSettings_ColdCacheNonBlocking(t *testing.T) {
 	}
 }
 
-// 显式缓存写入（例如来自 UpdateOpsAdvancedSettings）必须在下一次读取立即可见，
+// TestSetOpenAIQuotaAutoPauseSettings_VisibleImmediately 验证显式缓存写入（例如来自 UpdateOpsAdvancedSettings）必须在下一次读取立即可见，
 // 且不需要任何 DB roundtrip。
 func TestSetOpenAIQuotaAutoPauseSettings_VisibleImmediately(t *testing.T) {
 	svc := provider.NewQuotaSettingsCache(newQuotaReadFixture(), settings.ErrSettingNotFound, ops.ParseRuntimeQuotaAutoPauseSettings)

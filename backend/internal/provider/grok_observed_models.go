@@ -1,4 +1,3 @@
-// 提供商用例拥有模型快照的时效、后台任务和持久化，供应商 HTTP 由端口执行。
 package provider
 
 import (

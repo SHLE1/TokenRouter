@@ -1,13 +1,11 @@
-// Claude wire 变体的两阶段签名修复保留工具配对与原文本退化规则。
 package anthropic
 
 import (
 	"encoding/json"
 ) // StripThinkingFromClaudeRequest converts thinking blocks to text blocks in a Claude Messages request.
 
-// This preserves the thinking content while avoiding signature validation errors.
-// Note: redacted_thinking blocks are removed because they cannot be converted to text.
-// It also disables top-level `thinking` to avoid upstream structural constraints for thinking mode.
+// StripThinkingFromClaudeRequest 将思考内容转成文本，避免签名校验失败。
+// 无法转成文本的 redacted_thinking 块会被删除，同时禁用顶层 thinking，避免上游思考模式的结构约束。
 func StripThinkingFromClaudeRequest(req *ClaudeRequest) (bool, error) {
 	if req == nil {
 		return false, nil
@@ -92,8 +90,8 @@ func StripThinkingFromClaudeRequest(req *ClaudeRequest) (bool, error) {
 	return changed, nil
 }
 
-// stripSignatureSensitiveBlocksFromClaudeRequest is a stronger retry degradation that additionally converts
-// tool blocks to plain text. Use this only after a thinking-only retry still fails with signature errors.
+// StripSignatureSensitiveBlocksFromClaudeRequest 将思考块和工具块转成普通文本。
+// 仅在只降级思考块的重试仍出现签名错误时使用。
 func StripSignatureSensitiveBlocksFromClaudeRequest(req *ClaudeRequest) (bool, error) {
 	if req == nil {
 		return false, nil

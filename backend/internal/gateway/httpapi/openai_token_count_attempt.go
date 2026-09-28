@@ -1,4 +1,3 @@
-// 计数专用 Adapter 只执行原单次选择与上游桥接，不取得槽位或提交用量。
 package httpapi
 
 import (

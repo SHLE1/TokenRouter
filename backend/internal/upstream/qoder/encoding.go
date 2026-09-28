@@ -1,5 +1,3 @@
-// qoder 包实现用于 API 集成的 Qoder COSY 协议。
-// 编码算法移植自 Python qoder2api 参考实现。
 package qoder
 
 import (

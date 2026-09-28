@@ -1,4 +1,3 @@
-// 旧入站仅在原 Gin key 中持有共享预算，算法和锁由原生状态唯一拥有。
 package httpapi
 
 import (

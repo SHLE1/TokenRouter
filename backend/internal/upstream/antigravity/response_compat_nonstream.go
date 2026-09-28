@@ -1,4 +1,3 @@
-// 保留原生、兼容与静态上游各自的输出循环；实际写入由同步 sink 承担。
 package antigravity
 
 import (
@@ -31,6 +30,7 @@ func (s *ResponseAdapter) HandleChatCompletionsNonStreamingFromAntigravity(c *up
 	c.Data(http.StatusOK, "application/json; charset=utf-8", payload)
 	return result, nil
 }
+
 func (s *ResponseAdapter) HandleResponsesNonStreamingFromAntigravity(
 	c *upstream.OutputContext,
 	resp *http.Response,

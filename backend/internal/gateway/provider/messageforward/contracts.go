@@ -1,5 +1,3 @@
-// Package messageforward 将 Messages 单次执行接到原生协议、凭据与传输拥有者。
-// 请求顺序、重试与转换继续由 gateway/forward 和 upstream 执行，不在这里另建循环。
 package messageforward
 
 import (

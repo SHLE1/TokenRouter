@@ -1,4 +1,3 @@
-// Google 错误到客户端 Anthropic 错误的 HTTP 展示保持原状态和安全消息。
 package httpapi
 
 import (
@@ -54,6 +53,7 @@ func MapGeminiErrorBodyToClaudeError(body []byte) *ClaudeErrorMapping {
 	// Keep messages generic by default; upstream error message can be long or include sensitive fragments.
 	return mapped
 }
+
 func MapGeminiStatusToClaudeErrorType(status string) string {
 	switch strings.ToUpper(strings.TrimSpace(status)) {
 	case "INVALID_ARGUMENT":

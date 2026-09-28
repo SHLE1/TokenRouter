@@ -1,6 +1,5 @@
 //go:build unit
 
-// 测试私有兼容入口委托所属模块的生产实现。
 package middleware
 
 import (

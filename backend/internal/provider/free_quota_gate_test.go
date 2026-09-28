@@ -180,7 +180,7 @@ func TestIsExplicitGrokFreeOAuthProvider_OnlyExactFree(t *testing.T) {
 	require.False(t, IsExplicitGrokFreeOAuthProvider(&Record{Platform: capability.PlatformGrok, Type: capability.ProviderTypeOAuth}))
 }
 
-// 管理端 QueryQuota 与导入探测路径绝不调用 filterGrokFreeQuotaProviders。
+// TestGrokFreeQuotaGateIsSchedulerOnlyAdminPathUnfiltered 验证管理端 QueryQuota 与导入探测路径绝不调用 filterGrokFreeQuotaProviders。
 // 此测试记录并断言调度过滤器是唯一门禁入口。
 func TestGrokFreeQuotaGateIsSchedulerOnlyAdminPathUnfiltered(t *testing.T) {
 	// 构造管理端探测会检查的相同提供商。GrokQuotaService.QueryQuota 与 GetUsage
@@ -294,7 +294,7 @@ func (r *quotaTestRuntime) filterGrokFreeQuotaProviders(_ context.Context, value
 	return result
 }
 
-// 修改缓存前等待原生刷新退出，避免测试自身与后台状态竞争。
+// waitGrokFreeQuotaTestGate 修改缓存前等待原生刷新退出，避免测试自身与后台状态竞争。
 func waitGrokFreeQuotaTestGate(t *testing.T, gate *FreeQuotaGate) {
 	t.Helper()
 	require.Eventually(t, func() bool {

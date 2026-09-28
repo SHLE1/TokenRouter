@@ -1,4 +1,3 @@
-// 组合根构造唯一 OAuth token 缓存，所有平台复用同一个 Redis 客户端与键协议。
 package app
 
 import (

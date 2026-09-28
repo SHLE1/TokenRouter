@@ -16,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// response.incomplete（生成超时/截断）应被识别为可重试的 502 上游错误，触发 failover。
+// TestExtractImagesUpstreamError_IncompleteIsRetryable 验证response.incomplete（生成超时/截断）应被识别为可重试的 502 上游错误，触发 failover。
 func TestExtractImagesUpstreamError_IncompleteIsRetryable(t *testing.T) {
 	body := "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\n" +
 		"data: {\"type\":\"response.incomplete\",\"response\":{\"id\":\"resp_1\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"}}}\n\n"
@@ -39,7 +39,7 @@ func TestExtractImagesUpstreamError_IncompleteIsRetryable(t *testing.T) {
 	}
 }
 
-// incomplete 因 content_filter → 400，重试无意义，不应触发 failover。
+// TestExtractImagesUpstreamError_IncompleteContentFilterNotRetryable 验证incomplete 因 content_filter → 400，重试无意义，不应触发 failover。
 func TestExtractImagesUpstreamError_IncompleteContentFilterNotRetryable(t *testing.T) {
 	body := "data: {\"type\":\"response.incomplete\",\"response\":{\"id\":\"r\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"content_filter\"}}}\n\n"
 	got := openai.ExtractOpenAIImagesUpstreamError([]byte(body))
@@ -55,7 +55,7 @@ func TestExtractImagesUpstreamError_IncompleteContentFilterNotRetryable(t *testi
 	}
 }
 
-// 旧行为不变：error / response.failed 仍按原逻辑识别。
+// TestExtractImagesUpstreamError_ErrorAndFailedUnchanged 验证旧行为不变：error / response.failed 仍按原逻辑识别。
 func TestExtractImagesUpstreamError_ErrorAndFailedUnchanged(t *testing.T) {
 	errBody := "data: {\"type\":\"error\",\"error\":{\"type\":\"image_generation_user_error\",\"code\":\"moderation_blocked\",\"message\":\"rejected\"}}\n\n"
 	if got := openai.ExtractOpenAIImagesUpstreamError([]byte(errBody)); got == nil || got.StatusCode != http.StatusBadRequest {
@@ -63,7 +63,7 @@ func TestExtractImagesUpstreamError_ErrorAndFailedUnchanged(t *testing.T) {
 	}
 }
 
-// 上游既无图、又无任何可识别事件时，摘要函数应提取诊断信息。
+// TestSummarizeNoOutputBody_ExtractsDiagnostics 验证上游既无图、又无任何可识别事件时，摘要函数应提取诊断信息。
 func TestSummarizeNoOutputBody_ExtractsDiagnostics(t *testing.T) {
 	body := "data: {\"type\":\"response.created\",\"response\":{\"id\":\"r\"}}\n\n" +
 		"data: {\"type\":\"response.in_progress\",\"response\":{\"id\":\"r\",\"status\":\"in_progress\"}}\n\n"
@@ -79,7 +79,7 @@ func TestSummarizeNoOutputBody_ExtractsDiagnostics(t *testing.T) {
 	}
 }
 
-// 摘要应能抓到 incomplete_reason 并对超长 body 截断。
+// TestSummarizeNoOutputBody_IncompleteReasonAndTruncation 验证摘要应能抓到 incomplete_reason 并对超长 body 截断。
 func TestSummarizeNoOutputBody_IncompleteReasonAndTruncation(t *testing.T) {
 	long := strings.Repeat("x", 2000)
 	body := "data: {\"type\":\"response.incomplete\",\"response\":{\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"},\"junk\":\"" + long + "\"}}\n\n"
@@ -92,7 +92,7 @@ func TestSummarizeNoOutputBody_IncompleteReasonAndTruncation(t *testing.T) {
 	}
 }
 
-// fork 适配：生产路径尊重 gateway.log_upstream_error_body；关闭时仍保留结构化诊断，
+// TestSummarizeNoOutputBody_RespectsLogBodyConfig 验证fork 适配：生产路径尊重 gateway.log_upstream_error_body；关闭时仍保留结构化诊断，
 // 但不附原始上游 body 片段，避免绕过 Ops 日志体积/隐私开关。
 func TestSummarizeNoOutputBody_RespectsLogBodyConfig(t *testing.T) {
 	body := []byte("data: {\"type\":\"response.in_progress\",\"response\":{\"status\":\"in_progress\"}}\n\n")
@@ -107,7 +107,7 @@ func TestSummarizeNoOutputBody_RespectsLogBodyConfig(t *testing.T) {
 	}
 }
 
-// 软失败（上游 completed 但无图，如偶发路由到 mini 模型）应返回可重试的
+// TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameProviderRetry 验证软失败（上游 completed 但无图，如偶发路由到 mini 模型）应返回可重试的
 // UpstreamFailoverError 且优先同提供商重试，而非一次性失败。
 func TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameProviderRetry(t *testing.T) {
 	// 上游 SSE：response.completed 但 output 为空（实测的真实失败形态）。
@@ -144,7 +144,7 @@ func TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameProviderRetry(t *te
 	}
 }
 
-// 内容审核拒绝（模型未出图但输出文字拒绝）应返回 400 content_policy 错误且不重试，
+// TestImagesOAuthNonStreaming_ContentRefusalReturns400NoRetry 验证内容审核拒绝（模型未出图但输出文字拒绝）应返回 400 content_policy 错误且不重试，
 // 而非可重试的 UpstreamFailoverError。
 func TestImagesOAuthNonStreaming_ContentRefusalReturns400NoRetry(t *testing.T) {
 	upstreamSSE := "event: response.created\n" +
@@ -266,7 +266,7 @@ func TestImagesOAuthStreaming_SplitSafetyRefusalReturns400(t *testing.T) {
 	}
 }
 
-// extractOpenAIImagesModelRefusal：真空响应（无文字）返回空串。
+// TestExtractModelRefusal_EmptyWhenNoText 验证extractOpenAIImagesModelRefusal：真空响应（无文字）返回空串。
 func TestExtractModelRefusal_EmptyWhenNoText(t *testing.T) {
 	body := "data: {\"type\":\"response.completed\",\"response\":{\"output\":[],\"tool_usage\":{\"image_gen\":{\"output_tokens\":0}}}}\n\n"
 	if refusal := openai.ExtractOpenAIImagesModelRefusal([]byte(body)); refusal != "" {

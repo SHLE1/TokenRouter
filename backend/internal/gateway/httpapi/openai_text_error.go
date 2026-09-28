@@ -1,4 +1,3 @@
-// 文本入口错误输出由 HTTP Adapter 拥有，compact 心跳停止后才接管响应写入。
 package httpapi
 
 import (

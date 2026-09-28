@@ -86,7 +86,7 @@ func TestTierMaintenanceBatchKeepsEmptySelectionAndPartialFailure(t *testing.T) 
 	require.Equal(t, []TierRefreshFailure{{ProviderID: 2, Error: "upstream unavailable"}}, result.Errors)
 }
 
-// 已排队的批量项在停止后直接返回取消，不因十槽等待结束而继续调用供应商。
+// TestTierMaintenanceStopPreventsQueuedObservations 验证已排队的批量项在停止后直接返回取消，不因十槽等待结束而继续调用供应商。
 func TestTierMaintenanceStopPreventsQueuedObservations(t *testing.T) {
 	values := make([]Record, 20)
 	for i := range values {

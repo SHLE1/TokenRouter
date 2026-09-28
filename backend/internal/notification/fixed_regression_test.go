@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 并发夹具验证投递去重和退订初始化，不要求两个调用同时完成去重读取。
+// TestConcurrentNotificationDelivery 验证并发夹具验证投递去重和退订初始化，不要求两个调用同时完成去重读取。
 func TestConcurrentNotificationDelivery(t *testing.T) {
 	repo := mailtest.NewMemorySettings()
 	server := mailtest.StartSMTPServer(t)

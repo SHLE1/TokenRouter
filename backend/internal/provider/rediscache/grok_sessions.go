@@ -1,4 +1,3 @@
-// Redis 序列化、前缀、TTL 和一次性标记继续使用已有技术 Store。
 package rediscache
 
 import (

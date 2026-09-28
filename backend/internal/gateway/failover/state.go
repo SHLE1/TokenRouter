@@ -1,4 +1,3 @@
-// Package failover 拥有请求级重试状态；平台错误只提供不可变策略投影。
 package failover
 
 import (

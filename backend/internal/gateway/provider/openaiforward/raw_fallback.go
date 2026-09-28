@@ -1,4 +1,3 @@
-// Chat-only 上游的两条转换链保留各自模型、策略和输出次序。
 package openaiforward
 
 import (

@@ -490,7 +490,7 @@ func TestGitHubReleaseServiceSuite(t *testing.T) {
 	suite.Run(t, new(GitHubReleaseServiceSuite))
 }
 
-// 旧构造形状用于原环境变量测试。
+// NewGitHubReleaseClient 旧构造形状用于原环境变量测试。
 func NewGitHubReleaseClient(proxy string, allow bool) ReleaseClient {
 	return NewReleaseClient(ReleaseOptions{ProxyURL: proxy, AllowDirectOnProxyError: allow, GitHubToken: os.Getenv("UPDATE_GITHUB_TOKEN")})
 }

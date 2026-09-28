@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 两个真实 HTTP 入口共享唯一提示词缓存，构造不回源，校验错误前仍在原位置执行替换。
+// TestPromptPolicyDirectHTTPBindingSharesCache 验证两个真实 HTTP 入口共享唯一提示词缓存，构造不回源，校验错误前仍在原位置执行替换。
 func TestPromptPolicyDirectHTTPBindingSharesCache(t *testing.T) {
 	repository := &readerStoreProbe{}
 	prompts := provideGatewayPromptPolicy(settings.New(repository))

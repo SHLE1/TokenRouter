@@ -1,4 +1,3 @@
-// EmailChallenges 拥有邮箱挑战与重置凭据；模板和发送由端口提供。
 package identity
 
 import (

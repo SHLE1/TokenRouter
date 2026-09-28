@@ -798,5 +798,5 @@ func TestNormalizeGLMOpenAIReasoningEffort(t *testing.T) {
 	}
 }
 
-// 原平台默认档位断言的独立值。
+// thinkingStringPointer 原平台默认档位断言的独立值。
 func thinkingStringPointer(value string) *string { return &value }

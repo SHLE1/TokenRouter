@@ -1,4 +1,3 @@
-// Embeddings 按原 prompt/input/total 优先级读取用量，不使用其它文本响应的计量回退。
 package openai
 
 import "github.com/tidwall/gjson"

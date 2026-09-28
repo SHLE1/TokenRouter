@@ -1,4 +1,3 @@
-// 实例查询仅暴露选择所需的独立值和批量统计，SQL 位于 Adapter。
 package payment
 
 import (
@@ -12,8 +11,10 @@ type InstanceSource interface {
 	DailyUsage(context.Context, []string, time.Time) (map[string]float64, error)
 	PaidDailyAmount(context.Context, string, time.Time) (float64, error)
 }
-type SelectionObserver func(string, string, ...any)
-type SelectionRuntime struct {
-	Now     func() time.Time
-	Observe SelectionObserver
-}
+type (
+	SelectionObserver func(string, string, ...any)
+	SelectionRuntime  struct {
+		Now     func() time.Time
+		Observe SelectionObserver
+	}
+)

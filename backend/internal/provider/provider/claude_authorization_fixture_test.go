@@ -1,6 +1,5 @@
 //go:build unit
 
-// 本文件仅绑定授权测试的代理替身和平台参数。
 package provider
 
 import (

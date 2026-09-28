@@ -1,4 +1,3 @@
-// ErrorLogQueue 唯一拥有错误采集批次、字节容量和停止状态；网关只提供观测输入。
 package ops
 
 import (
@@ -204,7 +203,7 @@ func (q *ErrorLogQueue) OpsErrorLogQueueLength() int64 {
 	return q.opsErrorLogQueueLen.Load()
 }
 
-// ShutdownOpsErrorLogWorkers 封闭入队并等待批次真正处理完毕，由组合根提供总预算。
+// Shutdown 封闭入队并等待批次真正处理完毕，由组合根提供总预算。
 func (q *ErrorLogQueue) Shutdown(ctx context.Context) error {
 	q.opsErrorLogStopOnce.Do(func() {
 		q.opsErrorLogShutdownOnce.Do(func() { close(q.opsErrorLogShutdownCh) })
@@ -233,7 +232,7 @@ func (q *ErrorLogQueue) Shutdown(ctx context.Context) error {
 	}
 }
 
-// StopOpsErrorLogWorkers 保留旧十秒调用约定，实际关闭只执行一次。
+// Stop 保留旧十秒调用约定，实际关闭只执行一次。
 func (q *ErrorLogQueue) Stop() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), opsErrorLogDrainTimeout)
 	defer cancel()

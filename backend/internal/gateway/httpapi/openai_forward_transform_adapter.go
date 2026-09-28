@@ -1,4 +1,3 @@
-// 请求转换适配仅提供值投影、原生 codec 和提供商能力调用，不持有第二份转换状态。
 package httpapi
 
 import (

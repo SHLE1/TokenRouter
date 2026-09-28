@@ -207,7 +207,7 @@ func TestDingTalkStaffFromClaims_RoundTrip(t *testing.T) {
 	require.Equal(t, []int64{55}, recovered.DeptIDs)
 }
 
-// TestSyncDingTalkIdentity_UsesCfgAttrKeys 验证 syncDingTalkIdentity 使用 cfg 中配置的 attr key
+// TestSyncDingTalkIdentity_UsesCfgAttrKeys_NoopWithNilService 验证 syncDingTalkIdentity 使用 cfg 中配置的 attr key
 // 而不是硬编码值。通过 userAttributeService=nil 使同步路径走 warn 跳过，但在此之前先验证
 // syncField 构建逻辑（即 attr key 从 cfg 读取）。
 // 间接验证：通过构造定制 cfg，确认不同 attr key 可以正确传入（编译时保证类型正确，运行时不 panic）。

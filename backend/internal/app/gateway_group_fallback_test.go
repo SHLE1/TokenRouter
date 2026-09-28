@@ -178,7 +178,7 @@ func (r *clientFallbackRPM) Check(context.Context, *scheduler.RPMUser, *schedule
 	return nil
 }
 
-// 每一跳检查授权和协议，最终入口才计 RPM；任何拒绝都不改共享 Key。
+// TestClientGroupFallbackAuthorizesWholeChain 验证每一跳检查授权和协议，最终入口才计 RPM；任何拒绝都不改共享 Key。
 func TestClientGroupFallbackAuthorizesWholeChain(t *testing.T) {
 	for _, outcome := range []string{"allowed", "exclusive", "protocol", "subscription", "cycle", "composite", "missing_target"} {
 		t.Run(outcome, func(t *testing.T) {

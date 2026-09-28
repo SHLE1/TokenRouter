@@ -1,4 +1,3 @@
-// Responses 请求构造统一承接目标选择与无状态归一化，保留两种入口的 Header 差异。
 package openaiforward
 
 import (

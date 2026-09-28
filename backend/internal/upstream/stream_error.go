@@ -1,4 +1,3 @@
-// 只保留技术错误类别，原始地址不会进入客户端错误文本。
 package upstream
 
 import (

@@ -192,7 +192,7 @@ func TestStripOpenAIResponsesInputNamespacesLeavesOtherShapesByteExact(t *testin
 	}
 }
 
-// 保留模式下只有工具调用项留住 namespace，普通历史项上的残留字段仍会被清理。
+// TestStripOpenAIResponsesInputNamespacesKeepsToolCallNamespaces 验证保留模式下只有工具调用项留住 namespace，普通历史项上的残留字段仍会被清理。
 func TestStripOpenAIResponsesInputNamespacesKeepsToolCallNamespaces(t *testing.T) {
 	body := []byte(`{
 		"meta":9007199254740993,

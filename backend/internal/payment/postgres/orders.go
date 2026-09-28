@@ -1,4 +1,3 @@
-// 订单读取保留现有 SQL 数量、时间区间和套餐名称批量查询。
 package postgres
 
 import (
@@ -36,10 +35,12 @@ func NewOrderStore(client *dbent.Client, options ...OrderStoreRuntime) *OrderSto
 	}
 	return &OrderStore{client: client, runtime: runtime}
 }
+
 func (s *OrderStore) Order(ctx context.Context, id int64) (*payment.Order, error) {
 	o, e := s.client.PaymentOrder.Get(ctx, id)
 	return OrderFromEntity(o), e
 }
+
 func orderValues(rows []*dbent.PaymentOrder) []*payment.Order {
 	if rows == nil {
 		return nil
@@ -50,13 +51,16 @@ func orderValues(rows []*dbent.PaymentOrder) []*payment.Order {
 	}
 	return out
 }
+
 func (s *OrderStore) PaidOrders(ctx context.Context, start, end time.Time, statuses []string) ([]*payment.Order, error) {
 	rows, e := s.client.PaymentOrder.Query().Where(paymentorder.StatusIn(statuses...), paymentorder.PaidAtGTE(start), paymentorder.PaidAtLT(end)).All(ctx)
 	return orderValues(rows), e
 }
+
 func (s *OrderStore) PendingCount(ctx context.Context) (int, error) {
 	return s.client.PaymentOrder.Query().Where(paymentorder.StatusIn(payment.OrderStatusPending, payment.OrderStatusProcessing)).Count(ctx)
 }
+
 func (s *OrderStore) PlanNames(ctx context.Context, ids []int64) (map[int64]string, error) {
 	rows, e := s.client.SubscriptionPlan.Query().Where(subscriptionplan.IDIn(ids...)).All(ctx)
 	if e != nil {

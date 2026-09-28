@@ -1,4 +1,3 @@
-// 本文件拥有 Claude 提供商授权编排，平台调用与代理读取通过窄端口注入。
 package provider
 
 import (

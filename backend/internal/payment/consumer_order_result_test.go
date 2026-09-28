@@ -346,7 +346,7 @@ func TestCalculateCreateOrderPayAmountForSubscriptionKeepsNonCNYPrice(t *testing
 	}
 }
 
-// 换算是 opt-in：未配置汇率（rate=0）时，CNY 订阅保持 price 直付的存量行为。
+// TestCalculateCreateOrderPayAmountForSubscriptionKeepsDirectPriceWhenRateDisabled 验证换算是 opt-in：未配置汇率（rate=0）时，CNY 订阅保持 price 直付的存量行为。
 // 该测试锁住存量部署升级后行为不变的兼容承诺。
 func TestCalculateCreateOrderPayAmountForSubscriptionKeepsDirectPriceWhenRateDisabled(t *testing.T) {
 	t.Parallel()
@@ -360,7 +360,7 @@ func TestCalculateCreateOrderPayAmountForSubscriptionKeepsDirectPriceWhenRateDis
 	}
 }
 
-// 汇率只作用于订阅订单，余额充值订单不受影响。
+// TestCalculateCreateOrderPayAmountForBalanceIgnoresSubscriptionRate 验证汇率只作用于订阅订单，余额充值订单不受影响。
 func TestCalculateCreateOrderPayAmountForBalanceIgnoresSubscriptionRate(t *testing.T) {
 	t.Parallel()
 

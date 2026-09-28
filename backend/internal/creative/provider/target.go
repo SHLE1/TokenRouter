@@ -1,4 +1,3 @@
-// Target 是一次任务尝试的受控执行目标，不保存共享缓存、提供商仓储或网关服务。
 package provider
 
 import (

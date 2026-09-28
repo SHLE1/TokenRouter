@@ -270,7 +270,7 @@ func (w *compactKeepaliveWriter) Flush() {
 	w.ResponseWriter.Flush()
 }
 
-// 连接能力相关委托在内层 writer 已释放时返回安全空值，避免迟到访问 panic。
+// Hijack 连接能力相关委托在内层 writer 已释放时返回安全空值，避免迟到访问 panic。
 func (w *compactKeepaliveWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if w.ResponseWriter == nil {
 		return nil, nil, errors.New("response writer released")
@@ -294,7 +294,7 @@ func (w *compactKeepaliveWriter) Pusher() http.Pusher {
 	return w.ResponseWriter.Pusher()
 }
 
-// 状态读取只有在 keepalive 与内层 writer 都有效时才加锁委托。
+// Status 状态读取只有在 keepalive 与内层 writer 都有效时才加锁委托。
 func (w *compactKeepaliveWriter) Status() int {
 	if w.k == nil || w.ResponseWriter == nil {
 		return 0

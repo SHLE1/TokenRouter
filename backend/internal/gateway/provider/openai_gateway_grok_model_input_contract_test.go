@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestPatchGrokResponsesBodyCombinesAdditionalToolsAndDropsOrphanControls 验证 Grok 请求合并附加工具并移除孤立的控制字段。
 func TestPatchGrokResponsesBodyCombinesAdditionalToolsAndDropsOrphanControls(t *testing.T) {
 	body := []byte(`{
 		"input":[{"type":"additional_tools","tools":[{"type":"function","name":"lookup"}]},{"role":"user","content":"hi"}],

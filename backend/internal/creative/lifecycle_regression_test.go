@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 规划夹具仅放在仓库外，通过 overlay 验证原实现。
+// TestStoppedRuntimesRejectStart 验证规划夹具仅放在仓库外，通过 overlay 验证原实现。
 func TestStoppedRuntimesRejectStart(t *testing.T) {
 	t.Run("creative", func(t *testing.T) {
 		q := &parallelCreativeQueue{ready: make(chan string)}

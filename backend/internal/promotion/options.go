@@ -1,4 +1,3 @@
-// 推广配置和副作用仅通过消费者端口注入，核心不持有旧服务。
 package promotion
 
 import (
@@ -14,10 +13,13 @@ type SettingsReader interface {
 	GetAffiliateRebateDurationDays(context.Context) int
 	GetAffiliateRebatePerInviteeCap(context.Context) float64
 }
-type AuthCacheInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
-type BalanceCache interface {
-	InvalidateUserBalance(context.Context, int64) error
-}
+type (
+	AuthCacheInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
+	BalanceCache         interface {
+		InvalidateUserBalance(context.Context, int64) error
+	}
+)
+
 type Runtime struct {
 	Background func(string, func())
 	Now        func() time.Time

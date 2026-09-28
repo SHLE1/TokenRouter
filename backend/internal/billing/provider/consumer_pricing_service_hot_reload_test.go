@@ -47,7 +47,7 @@ func newHotReloadPricingService(t *testing.T, fallbackJSON, overrideJSON string)
 	return svc
 }
 
-// 没有远程来源时，手动更新仍可重新加载本地覆盖；失败不能覆盖上次有效目录。
+// TestPricingForceUpdateLocalCatalog 验证没有远程来源时，手动更新仍可重新加载本地覆盖；失败不能覆盖上次有效目录。
 func TestPricingForceUpdateLocalCatalog(t *testing.T) {
 	svc := newHotReloadPricingService(t, "", `{`+hotReloadModelJSON("remote-model", 4e-6, 8e-6)+`}`)
 	svc.options.RemoteURL = ""
@@ -150,7 +150,7 @@ func TestPricingHotReload_InvalidFileKeepsCurrentDataUntilFixed(t *testing.T) {
 	require.NotEqual(t, before, svc.Snapshot().CustomFilesHash)
 }
 
-// 删除文件等于清空该层：override 补丁撤销、fallback 独有模型消失，都在下一轮比对时生效，
+// TestPricingHotReload_DeletedFileDropsItsLayer 验证删除文件等于清空该层：override 补丁撤销、fallback 独有模型消失，都在下一轮比对时生效，
 // 且缺失状态被记录，之后不会每轮重建。
 func TestPricingHotReload_DeletedFileDropsItsLayer(t *testing.T) {
 	svc := newHotReloadPricingService(t,
@@ -190,7 +190,7 @@ func (c stubPricingRemoteClient) FetchHashText(context.Context, string) (string,
 	return "", nil
 }
 
-// 远程下载重建后指纹必须同步到当前文件内容，否则下一轮定时比对会多做一次无意义重载。
+// TestPricingHotReload_DownloadRefreshesFingerprint 验证远程下载重建后指纹必须同步到当前文件内容，否则下一轮定时比对会多做一次无意义重载。
 func TestPricingHotReload_DownloadRefreshesFingerprint(t *testing.T) {
 	svc := newHotReloadPricingService(t, `{`+hotReloadModelJSON("custom-a", 4e-6, 8e-6)+`}`, "")
 	svc.options.RemoteURL = "https://example.com/pricing.json"
@@ -210,7 +210,7 @@ func TestPricingHotReload_DownloadRefreshesFingerprint(t *testing.T) {
 	require.Contains(t, svc.Snapshot().Data, "sentinel", "下载已消化文件变化，不得再次重建")
 }
 
-// 只配置了 fallback/override 而没有 remote_url 时调度器也要运行，否则文件改动无人比对。
+// TestPricingSchedulerStartsForCustomFilesWithoutRemoteURL 验证只配置了 fallback/override 而没有 remote_url 时调度器也要运行，否则文件改动无人比对。
 func TestPricingSchedulerStartsForCustomFilesWithoutRemoteURL(t *testing.T) {
 	svc := NewPricingService(Options{
 		RemoteURL:    "",

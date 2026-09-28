@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Cyber 只改变记录分类，继续复用原计费与失败事实路径。
+// TestRecordCyberRetainsFailureFactAndDoesNotResettleLogFailure 验证Cyber 只改变记录分类，继续复用原计费与失败事实路径。
 func TestRecordCyberRetainsFailureFactAndDoesNotResettleLogFailure(t *testing.T) {
 	for _, failed := range []bool{false, true} {
 		core, funds, logs, in, _ := recordFixture()
@@ -31,7 +31,7 @@ func TestRecordCyberRetainsFailureFactAndDoesNotResettleLogFailure(t *testing.T)
 	}
 }
 
-// 零用量审核记录也进入结算，金额保持为零。
+// TestRecordCyberPreservesZeroUsage 验证零用量审核记录也进入结算，金额保持为零。
 func TestRecordCyberPreservesZeroUsage(t *testing.T) {
 	core, funds, logs, in, _ := recordFixture()
 	in.Result.Usage = TokenUsage{}

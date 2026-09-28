@@ -1,4 +1,3 @@
-// 查询只访问命名读取端口；统计和权限规则不依赖存储查询构造器。
 package payment
 
 import (
@@ -27,6 +26,7 @@ func NewOrderQueries(store OrderQueryStore, now func() time.Time, provider func(
 	}
 	return &OrderQueries{store: store, now: now, provider: provider}
 }
+
 func QueryPagination(pageSize, page int) (size, pg int) {
 	size = pageSize
 	if size <= 0 {

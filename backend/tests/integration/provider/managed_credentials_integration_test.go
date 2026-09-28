@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 手动刷新沿用原管理校验与配置事务，仅在锁内附加交换身份条件。
+// TestManagedCredentialsDatabaseCAS 验证手动刷新沿用原管理校验与配置事务，仅在锁内附加交换身份条件。
 func TestManagedCredentialsDatabaseCAS(t *testing.T) {
 	for _, change := range []string{"none", "name", "credentials", "status", "proxy", "outbox_failure", "cancelled"} {
 		t.Run(change, func(t *testing.T) {

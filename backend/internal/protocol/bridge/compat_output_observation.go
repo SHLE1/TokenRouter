@@ -1,4 +1,3 @@
-// 本文件标注兼容转换已编码的完整帧，只返回事实，不决定平台 TTFT 或重试。
 package bridge
 
 import (

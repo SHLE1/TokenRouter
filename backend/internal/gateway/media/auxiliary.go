@@ -1,4 +1,3 @@
-// 辅助端点的请求与完成规则只处理显式值；原生协议执行由 Adapter 接入。
 package media
 
 import (

@@ -1,4 +1,3 @@
-// Grok 声明解析接入提供商纯规则，不持有缓存或凭据副本。
 package provider
 
 import (

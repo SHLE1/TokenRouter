@@ -1,4 +1,3 @@
-// 本文件拥有 Qoder 授权协议交换；授权会话的认领、缓存与清理由 provider 负责。
 package qoder
 
 import (

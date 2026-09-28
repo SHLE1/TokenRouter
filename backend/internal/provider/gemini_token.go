@@ -1,4 +1,3 @@
-// Gemini 请求侧凭据编排保持缓存作用域、自动发现与 TTL 差异。
 package provider
 
 import (

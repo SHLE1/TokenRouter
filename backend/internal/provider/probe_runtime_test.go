@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同 key 只执行一次；任一等待者取消不能取消其他等待者的实际工作。
+// TestProbeRuntimeSharedCancellationAndStop 验证同 key 只执行一次；任一等待者取消不能取消其他等待者的实际工作。
 func TestProbeRuntimeSharedCancellationAndStop(t *testing.T) {
 	var runtime ProbeRuntime
 	var calls atomic.Int32
@@ -49,7 +49,7 @@ func TestProbeRuntimeSharedCancellationAndStop(t *testing.T) {
 	require.False(t, runtime.Schedule("later", time.Minute, func(context.Context) { t.Error("停止后启动") }))
 }
 
-// 停止必须等待忽略取消的任务并报告超时，不能被稍后完成覆盖首次结果。
+// TestProbeRuntimeBackgroundStopReportsUnfinished 验证停止必须等待忽略取消的任务并报告超时，不能被稍后完成覆盖首次结果。
 func TestProbeRuntimeBackgroundStopReportsUnfinished(t *testing.T) {
 	var runtime ProbeRuntime
 	entered, release, exited := make(chan struct{}), make(chan struct{}), make(chan struct{})

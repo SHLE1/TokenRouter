@@ -1,4 +1,3 @@
-// Google 平台 message 读取保留原顶层/嵌套顺序。
 package google
 
 import (

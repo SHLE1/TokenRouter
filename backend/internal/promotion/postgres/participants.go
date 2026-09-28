@@ -1,4 +1,3 @@
-// 推广事务由本 Adapter 拥有；跨模块能力仅接收原事务，不新增 context key。
 package postgres
 
 import (
@@ -20,6 +19,7 @@ func clientFromContext(ctx context.Context, fallback *dbent.Client) *dbent.Clien
 	}
 	return fallback
 }
+
 func (r *affiliateRepository) WithLockedInviter(ctx context.Context, id int64, fn func(context.Context) error) error {
 	return r.withTx(ctx, func(txCtx context.Context, c *dbent.Client) error {
 		rows, err := c.QueryContext(txCtx, "SELECT user_id FROM user_affiliates WHERE user_id=$1 FOR UPDATE", id)

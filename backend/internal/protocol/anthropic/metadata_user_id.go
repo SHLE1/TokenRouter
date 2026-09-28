@@ -1,4 +1,3 @@
-// Claude metadata.user_id 的 wire 解析，保持两种历史格式。
 package anthropic
 
 import (

@@ -1,4 +1,3 @@
-// Qoder HTTP 只连接受控目标与输出，提供商尝试循环由 gateway/text 唯一拥有。
 package httpapi
 
 import (

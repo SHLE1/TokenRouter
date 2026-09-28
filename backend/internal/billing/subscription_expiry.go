@@ -288,7 +288,7 @@ func subscriptionReminderPlanName(sub *UserSubscription) string {
 	return sub.Plan.Name
 }
 
-// 设置值与旧入口保持同一缺省语义，空字符串仍启用提醒。
+// isFalseReminderSetting 设置值与旧入口保持同一缺省语义，空字符串仍启用提醒。
 func isFalseReminderSetting(value string) bool {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "false", "0", "off", "disabled":
@@ -297,6 +297,7 @@ func isFalseReminderSetting(value string) bool {
 		return false
 	}
 }
+
 func reminderRecipientName(user *UserSummary) string {
 	if name := strings.TrimSpace(user.Username); name != "" {
 		return name

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 刷新失败的内存桥接仅属于交换凭据；即便通知晚于管理员换凭据，也不能阻断新身份。
+// TestRefreshRuntimeBlockIsCredentialScoped 验证刷新失败的内存桥接仅属于交换凭据；即便通知晚于管理员换凭据，也不能阻断新身份。
 func TestRefreshRuntimeBlockIsCredentialScoped(t *testing.T) {
 	gateway := provider.NewRuntimeBlockState(time.Now)
 	old := &provider.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Credentials: map[string]any{"access_token": "old-fixture"}}

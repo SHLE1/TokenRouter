@@ -1,4 +1,3 @@
-// 执行提供商适配只引用原生存储，事务、事件、缓存和资金规则均由其实际拥有者执行。
 package app
 
 import (
@@ -138,7 +137,7 @@ func (r *executionProviderStore) BulkUpdate(ctx context.Context, ids []int64, up
 	return r.data.BulkUpdate(ctx, ids, updates)
 }
 
-// 用量观察结果通过提供商存储的条件操作写入，避免覆盖已变更的提供商身份。
+// UpdateUsageExtraIfUnchanged 用量观察结果通过提供商存储的条件操作写入，避免覆盖已变更的提供商身份。
 func (r *executionProviderStore) UpdateUsageExtraIfUnchanged(ctx context.Context, v providercore.UsageObservationVersion, updates map[string]any) (bool, error) {
 	return r.data.UpdateUsageExtraIfUnchanged(ctx, v, updates)
 }

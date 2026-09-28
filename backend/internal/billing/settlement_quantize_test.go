@@ -14,7 +14,7 @@ func decimalPlaces(v float64) int32 {
 	return -decimal.NewFromFloat(v).Exponent()
 }
 
-// 复现 #5229：同一笔 ActualCost 分别流向
+// TestUsageBillingCommandQuantizesAPIKeyCountersIdentically 验证复现 #5229：同一笔 ActualCost 分别流向
 //
 //	balance    = balance - $1
 //	quota_used = quota_used + $1
@@ -45,7 +45,7 @@ func TestUsageBillingCommandQuantizesAPIKeyCountersIdentically(t *testing.T) {
 		"金额超过 NUMERIC(20,8) 刻度时 PostgreSQL 仍会在存储阶段舍入")
 }
 
-// 第 9 位 half 边界的表驱动覆盖。
+// TestQuantizeUsageBillingAmountBoundaries 验证第 9 位 half 边界的表驱动覆盖。
 func TestQuantizeUsageBillingAmountBoundaries(t *testing.T) {
 	cases := []struct {
 		name string
@@ -75,7 +75,7 @@ func TestQuantizeUsageBillingAmountBoundaries(t *testing.T) {
 	}
 }
 
-// 累积对账：重复应用同一笔金额，余额侧与配额侧的总量必须精确相等，
+// TestQuantizedAmountsReconcileExactlyOverManyApplications 验证累积对账：重复应用同一笔金额，余额侧与配额侧的总量必须精确相等，
 // 不允许依赖 epsilon 比较。
 func TestQuantizedAmountsReconcileExactlyOverManyApplications(t *testing.T) {
 	const actualCost = 0.000078125
@@ -99,7 +99,7 @@ func TestQuantizedAmountsReconcileExactlyOverManyApplications(t *testing.T) {
 	}
 }
 
-// 直接落入 8 位存储列的计数金额都要量化；结算基础金额保留给 10 位精度的订阅事实。
+// TestNormalizeQuantizesStorageBoundMonetaryFields 验证直接落入 8 位存储列的计数金额都要量化；结算基础金额保留给 10 位精度的订阅事实。
 func TestNormalizeQuantizesStorageBoundMonetaryFields(t *testing.T) {
 	const raw = 0.0000781234567
 
@@ -127,7 +127,7 @@ func TestNormalizeQuantizesStorageBoundMonetaryFields(t *testing.T) {
 	require.Equal(t, raw, cmd.BaseAmountUSD)
 }
 
-// 指纹是请求幂等键，必须仍由原始金额派生：
+// TestNormalizeKeepsFingerprintDerivedFromRawAmounts 验证指纹是请求幂等键，必须仍由原始金额派生：
 // 若量化发生在指纹之前，升级前后同一 request_id 的重试会算出不同指纹，
 // 被误判为 fingerprint conflict。
 func TestNormalizeKeepsFingerprintDerivedFromRawAmounts(t *testing.T) {
@@ -151,7 +151,7 @@ func TestNormalizeKeepsFingerprintDerivedFromRawAmounts(t *testing.T) {
 	require.Equal(t, expected, cmd.RequestFingerprint)
 }
 
-// 显式设置的指纹不被覆盖，且金额仍会被量化。
+// TestNormalizePreservesExplicitFingerprint 验证显式设置的指纹不被覆盖，且金额仍会被量化。
 func TestNormalizePreservesExplicitFingerprint(t *testing.T) {
 	cmd := &UsageBillingCommand{
 		RequestID:          "req-5229-explicit",
@@ -171,7 +171,7 @@ func TestQuantizeUsageBillingAmountPassesThroughNonFinite(t *testing.T) {
 	require.True(t, math.IsInf(QuantizeUsageBillingAmount(math.Inf(-1)), -1))
 }
 
-// 退款/负向金额同样按 half-away-from-zero 对称处理。
+// TestQuantizeUsageBillingAmountHandlesNegativeAmounts 验证退款/负向金额同样按 half-away-from-zero 对称处理。
 func TestQuantizeUsageBillingAmountHandlesNegativeAmounts(t *testing.T) {
 	got := QuantizeUsageBillingAmount(-0.000078125)
 	want, _ := decimal.NewFromFloat(-0.000078125).Round(UsageBillingMonetaryScale).Float64()

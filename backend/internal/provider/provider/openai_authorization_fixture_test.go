@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 授权测试直接配置实际 Adapter，并统一释放原生会话。
+// newOpenAIAuthorizationForTest 授权测试直接配置实际 Adapter，并统一释放原生会话。
 func newOpenAIAuthorizationForTest(t *testing.T, proxies egress.ProxyRepository, client OpenAIOAuthClient, dependencies ...*OpenAIAuthorizationDependencies) *provider.OpenAIAuthorization {
 	t.Helper()
 	deps := &OpenAIAuthorizationDependencies{}

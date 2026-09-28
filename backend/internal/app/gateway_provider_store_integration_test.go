@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 转接只组合已有存储；资金字段保护和 Ent 事务仍由原生存储执行。
+// TestExecutionStoreUsesNativeStateAndOuterTransaction 验证转接只组合已有存储；资金字段保护和 Ent 事务仍由原生存储执行。
 func TestExecutionStoreUsesNativeStateAndOuterTransaction(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()

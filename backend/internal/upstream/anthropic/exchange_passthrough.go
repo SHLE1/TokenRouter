@@ -1,4 +1,3 @@
-// API Key 直通保留独立重试策略：400 不做请求体降级。
 package anthropic
 
 import (

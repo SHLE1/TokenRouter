@@ -1,4 +1,3 @@
-// Gemini 批量/创作的既有 wire 变体保留无 role 的原字段形状。
 package gemini
 
 type BatchJSONLLine struct {

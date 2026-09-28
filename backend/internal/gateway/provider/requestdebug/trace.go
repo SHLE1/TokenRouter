@@ -1,4 +1,3 @@
-// Package requestdebug 写入显式启用的请求调试快照，沿用原字段与脱敏规则。
 package requestdebug
 
 import (
@@ -213,7 +212,7 @@ func (s *Trace) open(path string) {
 	slog.Info("gateway debug logging enabled", "path", path)
 }
 
-// debugLogGatewaySnapshot 将网关请求的完整快照（headers + body）写入独立的调试日志文件，
+// Snapshot 将网关请求的完整快照（headers + body）写入独立的调试日志文件，
 // 用于对比客户端原始请求和上游转发请求。
 //
 // 启用方式（环境变量）：

@@ -44,7 +44,7 @@ func newVertexServiceAccount(id int64) *gatewayprovider.ExecutionProvider {
 	}
 }
 
-// 复刻线上 400：近期 Claude Code CLI 透传的整份 anthropic-beta header 里含 Vertex
+// TestVertexBetaFilter_StripsUnsupportedClaudeCodeTokens 验证复刻线上 400：近期 Claude Code CLI 透传的整份 anthropic-beta header 里含 Vertex
 // 不接受的 token（advisor-tool / prompt-caching-scope / redact-thinking /
 // thinking-token-count）。Vertex builder 必须剥掉它们，否则上游 HTTP 400（issue #3358）。
 // 本用例在 Commit 1 之前 FAIL、之后 PASS。
@@ -90,7 +90,7 @@ func TestVertexBetaFilter_StripsUnsupportedClaudeCodeTokens(t *testing.T) {
 	}
 }
 
-// 全部 token 都不受 Vertex 支持时，outgoing header 不应下发 anthropic-beta。
+// TestVertexBetaFilter_DropsHeaderWhenAllUnsupported 验证全部 token 都不受 Vertex 支持时，outgoing header 不应下发 anthropic-beta。
 func TestVertexBetaFilter_DropsHeaderWhenAllUnsupported(t *testing.T) {
 	c := newVertexBetaTestContext(t,
 		"prompt-caching-scope-2026-01-05,redact-thinking-2026-02-12")
@@ -108,7 +108,7 @@ func TestVertexBetaFilter_DropsHeaderWhenAllUnsupported(t *testing.T) {
 		"所有 token 被剥离后不应残留 anthropic-beta header")
 }
 
-// 能力维度 sanitize 以「最终 beta」为准：客户端只带不支持的 prompt-caching-scope（会被剥光），
+// TestVertexBetaFilter_BodySanitizeKeysOnFinalBeta 验证能力维度 sanitize 以「最终 beta」为准：客户端只带不支持的 prompt-caching-scope（会被剥光），
 // body 又带 context_management → 因最终 header 不含 context-management beta，body 字段必须 strip。
 // 证明 sanitize 不再以原始 client 值为准（修复前用 clientBeta，会错误保留 context_management）。
 func TestVertexBetaFilter_BodySanitizeKeysOnFinalBeta(t *testing.T) {
@@ -129,7 +129,7 @@ func TestVertexBetaFilter_BodySanitizeKeysOnFinalBeta(t *testing.T) {
 	require.Empty(t, anthropic.GetHeaderRaw(req.Header, "anthropic-beta"))
 }
 
-// BetaPolicy block 规则在 Vertex 路径同样生效：管理员 block 某 token，客户端带它 → 直接报错。
+// TestVertexBetaFilter_BlocksViaBetaPolicy 验证BetaPolicy block 规则在 Vertex 路径同样生效：管理员 block 某 token，客户端带它 → 直接报错。
 func TestVertexBetaFilter_BlocksViaBetaPolicy(t *testing.T) {
 	settings := &anthropic.BetaPolicySettings{
 		Rules: []anthropic.BetaPolicyRule{
@@ -160,7 +160,7 @@ func TestVertexBetaFilter_BlocksViaBetaPolicy(t *testing.T) {
 	require.Equal(t, "context management is blocked", err.Error())
 }
 
-// filterVertexBetaTokens 单元测试：白名单过滤 + drop 集合 + 去重 + 空输入。
+// TestFilterVertexBetaTokens 验证filterVertexBetaTokens 单元测试：白名单过滤 + drop 集合 + 去重 + 空输入。
 func TestFilterVertexBetaTokens(t *testing.T) {
 	t.Run("whitelist filters unsupported", func(t *testing.T) {
 		out := vertex.FilterBetaTokens(

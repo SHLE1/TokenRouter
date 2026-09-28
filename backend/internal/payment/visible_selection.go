@@ -1,4 +1,3 @@
-// 用户可见支付方式先固定渠道类别，再复用原唯一选择器。
 package payment
 
 import (
@@ -17,9 +16,11 @@ func NewVisibleMethodLoadBalancer(inner LoadBalancer, configService *ConfigServi
 	}
 	return &visibleMethodLoadBalancer{inner: inner, configService: configService}
 }
+
 func (lb *visibleMethodLoadBalancer) GetInstanceConfig(ctx context.Context, instanceID int64) (map[string]string, error) {
 	return lb.inner.GetInstanceConfig(ctx, instanceID)
 }
+
 func (lb *visibleMethodLoadBalancer) SelectInstance(ctx context.Context, providerKey string, paymentType PaymentType, strategy Strategy, orderAmount float64) (*InstanceSelection, error) {
 	visibleMethod := NormalizeVisibleMethod(paymentType)
 	if providerKey != "" || (visibleMethod != TypeAlipay && visibleMethod != TypeWxpay) {

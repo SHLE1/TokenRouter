@@ -1,4 +1,3 @@
-// Package usage 拥有使用事实、查询与统计口径。
 package usage
 
 import "time"

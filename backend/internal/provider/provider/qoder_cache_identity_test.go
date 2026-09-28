@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同一个提供商换凭据后不能复用旧身份的内存用量展示；key 与 TTL 不变。
+// TestQoderUsageCacheDoesNotCrossCredentialIdentity 验证同一个提供商换凭据后不能复用旧身份的内存用量展示；key 与 TTL 不变。
 func TestQoderUsageCacheDoesNotCrossCredentialIdentity(t *testing.T) {
 	repo := &providerUsageCodexProbeRepo{usageRecordFixture: usageRecordFixture{providers: []provider.Record{{ID: 919, Platform: capability.PlatformQoder, Type: capability.ProviderTypeCosy, Credentials: qoderUsageCredentials("first")}}}}
 	upstream := &qoderUsageHTTPUpstreamStub{bodies: []string{`{"userType":"teams","userQuota":{"total":100,"used":1,"remaining":99}}`, `{"userType":"teams","userQuota":{"total":100,"used":2,"remaining":98}}`}}

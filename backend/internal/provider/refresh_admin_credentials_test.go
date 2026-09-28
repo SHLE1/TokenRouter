@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 模拟交换使用旧凭据，管理员在返回持久化之前完成重新授权。
+// TestRefreshPreservesAdministratorCredentials 验证模拟交换使用旧凭据，管理员在返回持久化之前完成重新授权。
 func TestRefreshPreservesAdministratorCredentials(t *testing.T) {
 	for _, platform := range []string{capability.PlatformOpenAI, capability.PlatformAnthropic, capability.PlatformGemini, capability.PlatformAntigravity} {
 		t.Run(platform, func(t *testing.T) {

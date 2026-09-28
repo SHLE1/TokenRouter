@@ -1,4 +1,3 @@
-// 并发测试替身仅供接口合同使用，不接入生产装配。
 package testkit
 
 import (

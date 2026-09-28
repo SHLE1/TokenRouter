@@ -1,4 +1,3 @@
-// Package openai 提供 OpenAI API 集成所需的辅助类型和函数。
 package openai
 
 import (

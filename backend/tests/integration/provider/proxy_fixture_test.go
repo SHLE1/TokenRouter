@@ -13,7 +13,7 @@ import (
 	schedulerpostgres "github.com/TokenFlux/TokenRouter/internal/scheduler/postgres"
 )
 
-// 代理身份改变仍由同连接提供商参与者清理快照，不另开提交。
+// newProxyStoreContract 代理身份改变仍由同连接提供商参与者清理快照，不另开提交。
 func newProxyStoreContract(client *dbent.Client, exec postgresinfra.Executor) *egresspostgres.ProxyStore {
 	return egresspostgres.NewProxyStore(client, exec, egresspostgres.ProxyStoreOptions{
 		Providers: func(tx postgresinfra.Executor) egresspostgres.ProxyProviderParticipant {

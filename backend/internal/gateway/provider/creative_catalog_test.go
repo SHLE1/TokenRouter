@@ -16,7 +16,7 @@ func (s creativeCatalogRows) ListSchedulableByGroupIDAndPlatform(context.Context
 	return s.values, nil
 }
 
-// 透传只决定传输方式，生产目录和执行都保留显式模型映射。
+// TestCreativeCatalogUsesExecutionModelPolicy 验证透传只决定传输方式，生产目录和执行都保留显式模型映射。
 func TestCreativeCatalogUsesExecutionModelPolicy(t *testing.T) {
 	for _, passthrough := range []bool{false, true} {
 		value := &provider.Record{

@@ -1,4 +1,3 @@
-// 批量结算只恢复资金与分析事实，不重新提交供应商任务。
 package batchimage
 
 import (

@@ -1,4 +1,3 @@
-// 执行目标组合原生提供商记录与本次路线；不是持久化、管理 DTO 或调度快照。
 package provider
 
 import (

@@ -17,7 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 分组加速、单 Key 和全局规则在 HTTP/WS 中必须保持一致。
+// TestGroupOpenAIFastPolicyHTTPAndWS 验证分组加速、单 Key 和全局规则在 HTTP/WS 中必须保持一致。
 func TestGroupOpenAIFastPolicyHTTPAndWS(t *testing.T) {
 	for _, tt := range []struct {
 		group, tier, key, action, want string

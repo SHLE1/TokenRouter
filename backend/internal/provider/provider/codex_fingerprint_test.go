@@ -69,14 +69,14 @@ func TestResolveCodexFingerprintIDsFromRequest_ExplicitOff(t *testing.T) {
 	assert.Nil(t, ids, "显式 off 模式应返回 nil")
 }
 
-// 未显式配置的存量提供商不得被收敛（#5610）：默认返回 nil，出站身份保持
+// TestResolveCodexFingerprintIDsFromRequest_DefaultIsOff 验证未显式配置的存量提供商不得被收敛（#5610）：默认返回 nil，出站身份保持
 // v0.1.175 之前的客户端原值。
 func TestResolveCodexFingerprintIDsFromRequest_DefaultIsOff(t *testing.T) {
 	provider := newTestOAuthProvider(1, nil)
 	assert.Nil(t, CodexFingerprintIDsFromRequest(provider, nil), "无 extra 应视为 off")
 }
 
-// 管理员显式 opt-in 的提供商行为不变。
+// TestResolveCodexFingerprintIDsFromRequest_ExplicitOptInHonored 验证管理员显式 opt-in 的提供商行为不变。
 func TestResolveCodexFingerprintIDsFromRequest_ExplicitOptInHonored(t *testing.T) {
 	for _, mode := range []string{"device", "session", "full"} {
 		t.Run(mode, func(t *testing.T) {

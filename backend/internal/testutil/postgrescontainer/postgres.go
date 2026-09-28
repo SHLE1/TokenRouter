@@ -1,6 +1,5 @@
 //go:build integration
 
-// Package postgrescontainer 为存储契约提供隔离数据库，不构造业务运行时。
 package postgrescontainer
 
 import (

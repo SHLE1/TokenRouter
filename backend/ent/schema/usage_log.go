@@ -1,4 +1,3 @@
-// Package schema 定义 Ent ORM 的数据库 schema。
 package schema
 
 import (

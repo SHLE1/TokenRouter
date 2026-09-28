@@ -35,22 +35,25 @@ func (r *controlledRules) List(ctx context.Context) ([]*ErrorPassthroughRule, er
 	}
 	return []*ErrorPassthroughRule{snapshot}, nil
 }
+
 func (r *controlledRules) Update(_ context.Context, rule *ErrorPassthroughRule) (*ErrorPassthroughRule, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.current = cloneRule(rule)
 	return cloneRule(rule), nil
 }
+
 func fixtureRule() *ErrorPassthroughRule {
 	message := "original"
 	code := 502
 	return &ErrorPassthroughRule{ID: 1, Name: "fixture", Enabled: true, MatchMode: MatchModeAny, ErrorCodes: []int{503}, ResponseCode: &code, CustomMessage: &message, Keywords: []string{}, Platforms: []string{"openai"}}
 }
+
 func blockedRules() *controlledRules {
 	return &controlledRules{current: fixtureRule(), entered: make(chan struct{}), resume: make(chan struct{}), block: true}
 }
 
-// 旧回源和管理写入只能依次发布，不能在禁用完成后恢复旧规则。
+// TestRuleUpdateCannotBeOverwrittenByOlderLoad 验证旧回源和管理写入只能依次发布，不能在禁用完成后恢复旧规则。
 func TestRuleUpdateCannotBeOverwrittenByOlderLoad(t *testing.T) {
 	repo := blockedRules()
 	svc := NewErrorPassthroughService(repo, nil)
@@ -89,7 +92,7 @@ func TestRuleUpdateCoordinatorWaitHonorsCancellation(t *testing.T) {
 	require.NotNil(t, svc.MatchRule("openai", 503, nil), "未成功写入不能发布禁用状态")
 }
 
-// 输入、结果和嵌套响应动作均与已编译快照独立。
+// TestRuleSnapshotOwnership 验证输入、结果和嵌套响应动作均与已编译快照独立。
 func TestRuleSnapshotOwnership(t *testing.T) {
 	source := fixtureRule()
 	svc := NewErrorPassthroughService(nil, nil)
@@ -113,7 +116,7 @@ func TestRuleSnapshotOwnership(t *testing.T) {
 	require.Empty(t, second.Keywords)
 }
 
-// 运行取消能够到达启动中的数据库调用，Stop 不必等外部释放夹具。
+// TestStopCancelsStartupRuleLoad 验证运行取消能够到达启动中的数据库调用，Stop 不必等外部释放夹具。
 func TestStopCancelsStartupRuleLoad(t *testing.T) {
 	repo := blockedRules()
 	svc := NewErrorPassthroughService(repo, nil)
@@ -139,11 +142,13 @@ func (c *callbackRuleCache) Set(context.Context, []*ErrorPassthroughRule) error 
 func (c *callbackRuleCache) SubscribeUpdates(_ context.Context, callback func()) {
 	c.callback = callback
 }
+
 func (c *callbackRuleCache) StopSubscription() {
 	if c.done != nil {
 		<-c.done
 	}
 }
+
 func TestStopCancelsSubscriptionRuleLoad(t *testing.T) {
 	repo := blockedRules()
 	repo.block = false

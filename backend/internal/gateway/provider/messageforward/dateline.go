@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
-// 日期指纹只在 Anthropic OAuth/SetupToken 的开关开启时处理。
+// shouldNormalizeDateline 日期指纹只在 Anthropic OAuth/SetupToken 的开关开启时处理。
 func (r *Runtime) shouldNormalizeDateline(ctx context.Context, target *gatewayadapter.ExecutionProvider) bool {
 	return target != nil && target.View().IsAnthropicOAuthOrSetupToken() && r.dependencies.Settings != nil && r.dependencies.Settings.IsClientDatelineNormalizationEnabled(ctx)
 }

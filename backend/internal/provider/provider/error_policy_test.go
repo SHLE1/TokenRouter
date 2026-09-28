@@ -1,6 +1,5 @@
 //go:build unit
 
-// 原健康决策断言直接验证原生观测，不构造旧聚合服务。
 package provider
 
 import (

@@ -11,18 +11,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 生产者退出后，消费者才能排空；数据库必须保留到消费者完成。
+// TestManagerOrdersStartAndDrain 验证生产者退出后，消费者才能排空；数据库必须保留到消费者完成。
 func TestManagerOrdersStartAndDrain(t *testing.T) {
 	m := New()
 	var events []string
 	add := func(name string) { events = append(events, name) }
 	m.Register(Hook{Name: "db", StopOrder: 100, Stop: func(context.Context) error { add("db-close"); return nil }})
-	m.Register(Hook{Name: "producer", StartOrder: 20, StopOrder: 10,
+	m.Register(Hook{
+		Name: "producer", StartOrder: 20, StopOrder: 10,
 		Start: func(context.Context) error { add("producer-start"); return nil },
-		Stop:  func(context.Context) error { add("producer-stop"); return nil }})
-	m.Register(Hook{Name: "consumer", StartOrder: 10, StopOrder: 20,
+		Stop:  func(context.Context) error { add("producer-stop"); return nil },
+	})
+	m.Register(Hook{
+		Name: "consumer", StartOrder: 10, StopOrder: 20,
 		Start: func(context.Context) error { add("consumer-start"); return nil },
-		Stop:  func(context.Context) error { add("consumer-drain"); return nil }})
+		Stop:  func(context.Context) error { add("consumer-drain"); return nil },
+	})
 	require.Empty(t, events)
 	require.NoError(t, m.Start(context.Background()))
 	require.NoError(t, m.Start(context.Background()))
@@ -91,7 +95,7 @@ func TestManagerStopWaitsForPartialStartup(t *testing.T) {
 	require.NoError(t, <-startResult)
 }
 
-// 观察输出不能让控制面突破停止预算，也不能推进到依赖资源关闭。
+// TestManagerReportingIsBounded 验证观察输出不能让控制面突破停止预算，也不能推进到依赖资源关闭。
 func TestManagerReportingIsBounded(t *testing.T) {
 	release := make(chan struct{})
 	defer close(release)

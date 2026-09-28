@@ -77,7 +77,7 @@ func isGrokClaudeDesktopResponsesCacheRequest(c *gin.Context) bool {
 	return strings.TrimSpace(c.GetHeader("X-Claude-Code-Session-Id")) != ""
 }
 
-// 请求读取留在适配器；原种子 helper 只在平台实际选择该分支时调用。
+// grokCacheInput 请求读取留在适配器；原种子 helper 只在平台实际选择该分支时调用。
 func grokCacheInput(c *gin.Context, explicitKey, model string) grok.CacheIdentityInput {
 	input := grok.CacheIdentityInput{APIKeyID: APIKeyIDFromContext(c), Compact: IsOpenAIResponsesCompactPath(c), Model: model, ExplicitKey: explicitKey, StablePrefixSeed: gatewaysession.OpenAIStablePrefixSeed, AnchoredSeed: gatewaysession.OpenAIAnchoredContentSeed, PreviousResponseSeed: gatewaysession.GrokPreviousResponseSeed}
 	if c != nil {

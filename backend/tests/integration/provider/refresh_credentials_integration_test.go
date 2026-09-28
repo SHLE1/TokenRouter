@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 核对状态比较及同连接参与，外层回滚和 outbox 写入失败都不能留下轮换凭据。
+// TestRefreshCredentialsCASAndOuterRollback 验证核对状态比较及同连接参与，外层回滚和 outbox 写入失败都不能留下轮换凭据。
 func TestRefreshCredentialsCASAndOuterRollback(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)

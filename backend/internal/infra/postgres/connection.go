@@ -1,4 +1,3 @@
-// 本文件只打开 PostgreSQL 技术连接；迁移、密钥与业务初始化仍由外层编排。
 package postgres
 
 import (

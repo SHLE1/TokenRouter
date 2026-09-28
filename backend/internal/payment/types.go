@@ -1,5 +1,3 @@
-// Package payment provides the core payment provider abstraction,
-// registry, load balancing, and shared utilities for the payment subsystem.
 package payment
 
 import (

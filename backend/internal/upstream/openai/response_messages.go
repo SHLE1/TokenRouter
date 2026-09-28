@@ -1,4 +1,3 @@
-// OpenAI→Messages 输出通过纯协议状态转换，HTTP 与提供商策略由显式端口传入。
 package openai
 
 import (

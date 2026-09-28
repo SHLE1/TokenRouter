@@ -13,7 +13,7 @@ func firstLine(s string) string {
 	return s
 }
 
-// CodexBaseInstructionsForModel 应按模型返回对应的真实 Codex base prompt。
+// TestCodexBaseInstructionsForModel 验证CodexBaseInstructionsForModel 应按模型返回对应的真实 Codex base prompt。
 func TestCodexBaseInstructionsForModel(t *testing.T) {
 	cases := []struct {
 		model    string

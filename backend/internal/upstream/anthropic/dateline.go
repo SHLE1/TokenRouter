@@ -1,8 +1,3 @@
-// Package anthropicfp 提供纯函数，用于清理转发到 Anthropic 上游前可能暴露的客户端指纹。
-//
-// 当前暴露 NormalizeDateline：它会把请求体中的 "Today's date is YYYY-MM-DD."
-// 句子还原为规范 ASCII 形态，抹除部分客户端在检测到非官方 base URL 时注入的
-// 3 bit 隐写信号（4 种撇号码点和日期分隔符变体）。
 package anthropic
 
 import (

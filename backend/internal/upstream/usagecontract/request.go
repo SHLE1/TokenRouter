@@ -1,4 +1,3 @@
-// 通用查询适配器只接收本次技术输入，凭据不能序列化或进入调试输出。
 package usagecontract
 
 import (

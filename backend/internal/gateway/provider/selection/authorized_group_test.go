@@ -26,7 +26,7 @@ func (r *authorizedGroupReader) GetByIDLite(ctx context.Context, id int64) (*rou
 	return r.GetByID(ctx, id)
 }
 
-// 客户端回退必须在入口完成授权，选择器不能把旧计划指向另一个组。
+// TestSelectorsNeverFollowClientFallbackWithoutAdmission 验证客户端回退必须在入口完成授权，选择器不能把旧计划指向另一个组。
 func TestSelectorsNeverFollowClientFallbackWithoutAdmission(t *testing.T) {
 	sourceID, targetID := int64(91), int64(92)
 	source := &routing.Group{ID: sourceID, Hydrated: true, Status: routing.StatusActive, ClaudeCodeOnly: true, FallbackGroupID: &targetID}
@@ -76,7 +76,7 @@ func TestCurrentSelectionGroupRejectsPlanMismatchWithoutGroupSnapshot(t *testing
 	require.ErrorIs(t, err, apikey.ErrGroupNotAllowed)
 }
 
-// 即使分组快照尚未补齐，快照中的已授权 ID 也不能被选号参数替换。
+// TestCurrentSelectionGroupRejectsUnhydratedGroupMismatch 验证即使分组快照尚未补齐，快照中的已授权 ID 也不能被选号参数替换。
 func TestCurrentSelectionGroupRejectsUnhydratedGroupMismatch(t *testing.T) {
 	authorized, other := int64(91), int64(92)
 	ctx := requeststate.WithGroup(context.Background(), &routing.Group{ID: authorized})

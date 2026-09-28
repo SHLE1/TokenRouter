@@ -155,7 +155,7 @@ func TestStepUpSessionKeyFallsBackWithoutCredential(t *testing.T) {
 	require.Equal(t, "u42", identityhttp.StepUpSessionKey(c, 42))
 }
 
-// 功能开关关闭时：不论 TOTP/grant/凭证类型，一律放行（恢复门控引入前行为）。
+// TestEnforceStepUpDisabledSkipsAllChecks 验证功能开关关闭时：不论 TOTP/grant/凭证类型，一律放行（恢复门控引入前行为）。
 func TestEnforceStepUpDisabledSkipsAllChecks(t *testing.T) {
 	disabled := stubStepUpSettingReader{enabled: false}
 
@@ -180,7 +180,7 @@ func TestEnforceStepUpDisabledSkipsAllChecks(t *testing.T) {
 	})
 }
 
-// settings 为 nil 时保持门控（fail-closed），避免装配缺陷静默关闭安全控制。
+// TestEnforceStepUpNilSettingsFailsClosed 验证settings 为 nil 时保持门控（fail-closed），避免装配缺陷静默关闭安全控制。
 func TestEnforceStepUpNilSettingsFailsClosed(t *testing.T) {
 	c, rec := newStepUpTestContext(t)
 	c.Set(string(authctx.ContextKeyUser), authctx.AuthSubject{UserID: 1})
@@ -192,7 +192,7 @@ func TestEnforceStepUpNilSettingsFailsClosed(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "STEP_UP_REQUIRED")
 }
 
-// EnforceStepUp 收到 nil *identity.RuntimeSettings 时不得因 typed-nil 装箱绕过门控：
+// TestEnforceStepUpTypedNilSettingServiceFailsClosed 验证EnforceStepUp 收到 nil *identity.RuntimeSettings 时不得因 typed-nil 装箱绕过门控：
 // 未认证请求仍应被拦截（401），而不是当作"开关关闭"放行。
 func TestEnforceStepUpTypedNilSettingServiceFailsClosed(t *testing.T) {
 	c, rec := newStepUpTestContext(t)

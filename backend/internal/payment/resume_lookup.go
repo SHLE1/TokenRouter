@@ -1,4 +1,3 @@
-// 签名续接是唯一公开主动查单入口，普通公开查询不触发渠道请求。
 package payment
 
 import (
@@ -60,9 +59,11 @@ func (s *OrderLifecycle) GetPublicOrderByResumeToken(ctx context.Context, token 
 
 	return order, nil
 }
+
 func InvalidResumeTokenMatchError() error {
 	return infraerrors.BadRequest("INVALID_RESUME_TOKEN", "resume token does not match the payment order")
 }
+
 func (s *OrderLifecycle) ParseWeChatPaymentResumeToken(token string) (*WeChatPaymentResumeClaims, error) {
 	return s.resume.ParseWeChatPaymentResumeToken(strings.TrimSpace(token))
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/idempotency"
 )
 
-// 维护锁测试替身与生产存储一样比较独立认领代次。
+// ClaimOperation 维护锁测试替身与生产存储一样比较独立认领代次。
 func (r *systemOperationFixture) ClaimOperation(ctx context.Context, c idempotency.OperationClaim) (*idempotency.IdempotencyRecord, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -31,6 +31,7 @@ func (r *systemOperationFixture) ClaimOperation(ctx context.Context, c idempoten
 	copy := *record
 	return &copy, true, nil
 }
+
 func (r *systemOperationFixture) RenewOperation(ctx context.Context, id int64, operation, ownership string, until, expires time.Time) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -43,6 +44,7 @@ func (r *systemOperationFixture) RenewOperation(ctx context.Context, id int64, o
 	}
 	return false, nil
 }
+
 func (r *systemOperationFixture) FinishOperation(ctx context.Context, id int64, operation, ownership string, success bool, reason string, expires time.Time) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

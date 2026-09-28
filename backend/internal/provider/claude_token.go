@@ -1,4 +1,3 @@
-// Claude 凭据读取拥有缓存与刷新政策，交换和条件持久化使用注入的唯一协调器。
 package provider
 
 import (
@@ -44,7 +43,7 @@ func ClaudeTokenCacheKey(value *Record) string {
 	return "claude:provider:" + strconv.FormatInt(value.ID, 10)
 }
 
-// GetAccessToken returns a valid access_token.
+// GetClaudeAccessToken 返回有效的 access_token。
 func GetClaudeAccessToken(ctx context.Context, provider *Record, options ClaudeTokenOptions) (string, error) {
 	if provider == nil {
 		return "", errors.New("provider is nil")

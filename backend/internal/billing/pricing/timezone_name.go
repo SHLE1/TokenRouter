@@ -1,4 +1,3 @@
-// 时区名称必须非空，且不能使用依赖进程设置的 Local。
 package pricing
 
 import (

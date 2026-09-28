@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-// geminiResponseToResponses 统一完成 Gemini -> Anthropic -> Responses 的响应转换。
+// NativeGeminiResponseToResponses 统一完成 Gemini -> Anthropic -> Responses 的响应转换。
 func NativeGeminiResponseToResponses(runtime Runtime, native NativeGeminiRuntime,
 	geminiResp map[string]any,
 	originalModel string,

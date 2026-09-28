@@ -1,4 +1,3 @@
-// 模型目录固定端口只连接 routing 查询、平台元数据和只读 Gemini 传输。
 package provider
 
 import (

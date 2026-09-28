@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 干跑只报告原分类，执行时按原截止时间/认证过滤删除分析记录。
+// TestHistoricalIngressCleanupDryRunAndExecute 验证干跑只报告原分类，执行时按原截止时间/认证过滤删除分析记录。
 func TestHistoricalIngressCleanupDryRunAndExecute(t *testing.T) {
 	ctx := context.Background()
 	t.Cleanup(func() { _, err := integrationDB.ExecContext(ctx, "TRUNCATE ops_error_logs"); require.NoError(t, err) })

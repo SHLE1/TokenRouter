@@ -1,4 +1,3 @@
-// 本文件拥有 OpenAI WS 的技术诊断、采样和连接错误观测，不安装新日志后端。
 package provider
 
 import (

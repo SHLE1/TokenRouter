@@ -1,4 +1,3 @@
-// 本文件把提供商凭据规则与 Qoder 站点交换连接起来，不持有授权缓存。
 package provider
 
 import (

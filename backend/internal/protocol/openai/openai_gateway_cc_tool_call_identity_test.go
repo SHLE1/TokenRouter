@@ -25,7 +25,7 @@ func TestStripEmptyChatToolCallIdentity_FirstChunkIdentityUntouched(t *testing.T
 	require.Equal(t, "", gjson.GetBytes(rewritten, "choices.0.delta.tool_calls.0.function.arguments").String())
 }
 
-// TestStripEmptyChatToolCallIdentity_FollowUpDelta 后续参数 delta 的
+// TestStripEmptyChatToolCallIdentity_FollowingDelta 后续参数 delta 的
 // `"id":""` 与 `"function":{"name":""}` 应被删除；arguments 碎片、
 // index、type 保留。
 func TestStripEmptyChatToolCallIdentity_FollowingDelta(t *testing.T) {

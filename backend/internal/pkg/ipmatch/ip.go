@@ -1,4 +1,3 @@
-// Package ipmatch 提供不依赖 HTTP 框架的 IP/CIDR 编译与匹配。
 package ipmatch
 
 import (

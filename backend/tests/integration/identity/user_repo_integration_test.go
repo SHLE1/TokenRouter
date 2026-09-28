@@ -34,7 +34,7 @@ type UserRepoSuite struct {
 	repo   *postgres.UserStore
 }
 
-// 套件共用隔离数据库，提交型断言保持逐项清理边界。
+// SetupSuite 套件共用隔离数据库，提交型断言保持逐项清理边界。
 func (s *UserRepoSuite) SetupSuite() {
 	s.db, s.client = identityDatabase(s.T())
 }

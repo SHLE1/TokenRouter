@@ -1,4 +1,3 @@
-// OAuth 响应与身份声明不持有授权会话、提供商或交换客户端。
 package openai
 
 // OAuthTokenResponse represents the token response from OpenAI OAuth

@@ -1,4 +1,3 @@
-// 本文件执行解析后 IP 检查，保留原有独立解析、五秒超时和错误语义。
 package httpclient
 
 import (

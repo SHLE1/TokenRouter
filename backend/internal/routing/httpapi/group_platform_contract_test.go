@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 管理接口明确拒绝已经移除的字段，避免旧表单静默丢失配置。
+// bindGroupPlatformJSON 管理接口明确拒绝已经移除的字段，避免旧表单静默丢失配置。
 func bindGroupPlatformJSON(t *testing.T, target any, body string) error {
 	t.Helper()
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
@@ -29,7 +29,7 @@ func TestGroupManagementRejectsRetiredFields(t *testing.T) {
 	require.NotNil(t, req.ProtocolFallbacks["anthropic_messages"])
 }
 
-// 管理端不得继续保存已经移除的协议专用模型映射。
+// TestGroupManagementRejectsRetiredMessagesMapping 验证管理端不得继续保存已经移除的协议专用模型映射。
 func TestGroupManagementRejectsRetiredMessagesMapping(t *testing.T) {
 	body := `{"messages_dispatch_model_config":{"exact_model_mappings":{"claude-sonnet-4-6":"target"}}}`
 	require.Error(t, bindGroupPlatformJSON(t, &CreateGroupRequest{}, body))

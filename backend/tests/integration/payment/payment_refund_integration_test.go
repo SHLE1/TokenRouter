@@ -20,7 +20,7 @@ import (
 	stripe "github.com/stripe/stripe-go/v85"
 )
 
-// 隔离数据库与本地供应商；只调用公开生产入口。
+// refundOrderFixture 隔离数据库与本地供应商；只调用公开生产入口。
 func refundOrderFixture(t *testing.T, status string) (*dbent.Client, *payment.RefundWorkflow, *dbent.PaymentOrder) {
 	t.Helper()
 	ctx := context.Background()
@@ -158,7 +158,7 @@ func TestImmediateRefundAuditFailureIsNotReported(t *testing.T) {
 	require.Error(t, e, "必须保留的退款成功审计写入失败不能返回成功")
 }
 
-// 准备记录失败不得发生渠道调用，预扣、状态与审计必须全部回滚。
+// TestRefundPreparationAuditFailureStopsChannel 验证准备记录失败不得发生渠道调用，预扣、状态与审计必须全部回滚。
 func TestRefundPreparationAuditFailureStopsChannel(t *testing.T) {
 	ctx := context.Background()
 	c, s, o := refundOrderFixture(t, payment.OrderStatusCompleted)
@@ -182,7 +182,7 @@ func TestRefundPreparationAuditFailureStopsChannel(t *testing.T) {
 	require.Zero(t, count)
 }
 
-// 即时成功落库失败后，只查询既有渠道结果；重复恢复不再次扣减或退款。
+// TestRefundPreparedRecoveryDoesNotRepeatChannelOrDeduction 验证即时成功落库失败后，只查询既有渠道结果；重复恢复不再次扣减或退款。
 func TestRefundPreparedRecoveryDoesNotRepeatChannelOrDeduction(t *testing.T) {
 	ctx := context.Background()
 	c, s, o := refundOrderFixture(t, payment.OrderStatusCompleted)
@@ -222,7 +222,7 @@ func TestRefundPreparedRecoveryDoesNotRepeatChannelOrDeduction(t *testing.T) {
 	assertRefundPostgresState(t, ctx, c, o.UserID, o.ID, 50, payment.OrderStatusRefunded, 1)
 }
 
-// 旧记录缺失或损坏时不得按默认零扣减完成，也不请求渠道。
+// TestRefundMissingRecoveryRequiresManualVerification 验证旧记录缺失或损坏时不得按默认零扣减完成，也不请求渠道。
 func TestRefundMissingRecoveryRequiresManualVerification(t *testing.T) {
 	for _, status := range []string{payment.OrderStatusRefundPending, payment.OrderStatusRefunding} {
 		t.Run(status, func(t *testing.T) {
@@ -239,7 +239,7 @@ func TestRefundMissingRecoveryRequiresManualVerification(t *testing.T) {
 	}
 }
 
-// 新恢复格式的缺字段、损坏和矛盾值都不能退化为默认零扣减。
+// TestRefundInvalidPreparedFactsRequireManualVerification 验证新恢复格式的缺字段、损坏和矛盾值都不能退化为默认零扣减。
 func TestRefundInvalidPreparedFactsRequireManualVerification(t *testing.T) {
 	for _, variant := range []string{"missing_choice", "corrupt_json", "contradictory_deduction"} {
 		t.Run(variant, func(t *testing.T) {
@@ -283,7 +283,7 @@ func TestRefundInvalidPreparedFactsRequireManualVerification(t *testing.T) {
 	}
 }
 
-// 生产迁移已对订单/动作建立唯一索引；必要审计不能让第二次合法尝试永久冲突。
+// TestRefundRepeatedAttemptsPreserveFactsWithUniqueAction 验证生产迁移已对订单/动作建立唯一索引；必要审计不能让第二次合法尝试永久冲突。
 func TestRefundRepeatedAttemptsPreserveFactsWithUniqueAction(t *testing.T) {
 	ctx := context.Background()
 	c, s, o := refundOrderFixture(t, payment.OrderStatusCompleted)

@@ -1,4 +1,3 @@
-// Package setup provides CLI commands and application initialization helpers.
 package setup
 
 import (
@@ -13,7 +12,7 @@ import (
 	"golang.org/x/term"
 )
 
-// CLI input validation functions (matching Web API validation)
+// cliValidateHostname 校验命令行主机名的字符和长度，规则与 Web API 一致。
 func cliValidateHostname(host string) bool {
 	validHost := regexp.MustCompile(`^[a-zA-Z0-9.\-:]+$`)
 	return validHost.MatchString(host) && len(host) <= 253

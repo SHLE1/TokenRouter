@@ -1,4 +1,3 @@
-// AuditClient 执行单次审核 HTTP 交换，响应体由它关闭。
 package provider
 
 import (

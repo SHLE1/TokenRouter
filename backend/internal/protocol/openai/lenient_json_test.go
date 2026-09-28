@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 协议核心只报告规范化后的字节上限，错误可被外层包装并识别。
+// TestLenientJSONLimitAndOriginalBytes 验证协议核心只报告规范化后的字节上限，错误可被外层包装并识别。
 func TestLenientJSONLimitAndOriginalBytes(t *testing.T) {
 	original := []byte{'{', '"', 'v', '"', ':', '"', '\n', '"', '}'}
 	saved := append([]byte(nil), original...)

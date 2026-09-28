@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原 Messages 分支与 OpenAI 专有入口并不等价，以下矩阵保留各自类型与错误边界。
+// TestMessageCredentialsPreserveStoredTypes 验证原 Messages 分支与 OpenAI 专有入口并不等价，以下矩阵保留各自类型与错误边界。
 func TestMessageCredentialsPreserveStoredTypes(t *testing.T) {
 	tests := []struct {
 		name, platform, kind, token, auth, errorText string

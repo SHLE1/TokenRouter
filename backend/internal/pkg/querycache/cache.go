@@ -1,4 +1,3 @@
-// Cache 提供原有 TTL/singleflight 行为，不包含 HTTP 元数据。
 package querycache
 
 import (
@@ -32,6 +31,7 @@ func NewCache(ttl time.Duration) *Cache {
 		items: make(map[string]Entry),
 	}
 }
+
 func (c *Cache) Get(key string) (Entry, bool) {
 	if c == nil || key == "" {
 		return Entry{}, false
@@ -52,6 +52,7 @@ func (c *Cache) Get(key string) (Entry, bool) {
 	}
 	return Clone(entry), true
 }
+
 func (c *Cache) Set(key string, payload any) Entry {
 	if c == nil {
 		return Entry{}
@@ -68,6 +69,7 @@ func (c *Cache) Set(key string, payload any) Entry {
 	c.mu.Unlock()
 	return Clone(entry)
 }
+
 func (c *Cache) GetOrLoad(key string, load func() (any, error)) (Entry, bool, error) {
 	if load == nil {
 		return Entry{}, false, nil

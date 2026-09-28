@@ -1,4 +1,3 @@
-// ConfigService 拥有配置快照与发布代次；慢回源不能覆盖已保存的新状态。
 package search
 
 import (

@@ -1,4 +1,3 @@
-// 履约共享的纯值规则只有此处一份实现。
 package payment
 
 import (
@@ -18,6 +17,7 @@ func ExpectedNotificationProviderKeyForOrder(registry *Registry, order *Order, i
 
 	return ExpectedNotificationProviderKey(registry, order.PaymentType, orderProviderKey, instanceProviderKey)
 }
+
 func IsRefundStatus(s string) bool {
 	switch s {
 	case OrderStatusRefundRequested, OrderStatusRefunding, OrderStatusRefundPending, OrderStatusPartiallyRefunded, OrderStatusRefunded, OrderStatusRefundFailed:
@@ -25,6 +25,7 @@ func IsRefundStatus(s string) bool {
 	}
 	return false
 }
+
 func OrderErrorMessage(err error) string {
 	if err == nil {
 		return ""
@@ -65,6 +66,7 @@ func OrderPurchasedReasoningPoints(order *Order) (float64, bool) {
 	}
 	return points, true
 }
+
 func FirstNonEmpty(values ...string) string {
 	for _, v := range values {
 		if trimmed := strings.TrimSpace(v); trimmed != "" {
@@ -73,6 +75,7 @@ func FirstNonEmpty(values ...string) string {
 	}
 	return ""
 }
+
 func ApplyInvoiceMetadata(change *OrderTransition, metadata map[string]string) {
 	change.InvoiceID = strings.TrimSpace(metadata["invoice_id"])
 	change.InvoiceURL = strings.TrimSpace(metadata["invoice_url"])

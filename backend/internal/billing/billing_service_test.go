@@ -525,7 +525,7 @@ func TestCalculateCost_OpenAIGPT55ProLongContextAppliesWholeSessionMultipliers(t
 	require.InDelta(t, expectedInput+expectedOutput, cost.ActualCost, 1e-10)
 }
 
-// 回归测试 #2293：长上下文计费触发时，cache_read_tokens 也应应用 LongContextInputMultiplier。
+// TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheRead 验证回归测试 #2293：长上下文计费触发时，cache_read_tokens 也应应用 LongContextInputMultiplier。
 // 修复前：CacheReadCost = tokens * 0.25e-6 （漏乘倍率，少计费用）。
 // 修复后：CacheReadCost = tokens * 0.25e-6 * LongContextInputMultiplier(=2.0)。
 func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheRead(t *testing.T) {
@@ -555,7 +555,7 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheRead(t *tes
 	require.InDelta(t, expectedTotal, cost.ActualCost, 1e-10)
 }
 
-// 阴性测试：未触发长上下文时，cache_read_price 不应被错误地乘以倍率。
+// TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheReadAtBasePrice 验证阴性测试：未触发长上下文时，cache_read_price 不应被错误地乘以倍率。
 func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheReadAtBasePrice(t *testing.T) {
 	svc := newLadderCalculator(t)
 
@@ -574,7 +574,7 @@ func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheReadAtBasePrice(t *test
 		"cache_read_cost should remain at base price when below long-context threshold")
 }
 
-// 回归测试 #2816 follow-up：长上下文计费触发时，cache_creation_tokens 也应应用
+// TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheCreation 验证回归测试 #2816 follow-up：长上下文计费触发时，cache_creation_tokens 也应应用
 // LongContextInputMultiplier。computeCacheCreationCost 直接读取 pricing.* 价格，
 // 不经过 computeTokenBreakdown 内的 inputPrice / cacheReadPrice 倍率修改，因此
 // 修复前 cache_creation 部分会按基础价计算，少计费用约 50%（默认倍率 2.0）。
@@ -598,7 +598,7 @@ func TestCalculateCost_OpenAIGPT54LongContextAppliesMultiplierToCacheCreation(t 
 		"cache_creation_cost should be scaled by LongContextInputMultiplier when long-context pricing applies")
 }
 
-// 阴性测试：未触发长上下文时，cache_creation_price 不应被错误地乘以倍率。
+// TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheCreationAtBasePrice 验证阴性测试：未触发长上下文时，cache_creation_price 不应被错误地乘以倍率。
 func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheCreationAtBasePrice(t *testing.T) {
 	svc := newLadderCalculator(t)
 
@@ -618,7 +618,7 @@ func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheCreationAtBasePrice(t *
 		"cache_creation_cost should remain at base price when below long-context threshold")
 }
 
-// 覆盖 5m / 1h ephemeral 分类计费路径：长上下文触发时两档价格都应被倍率缩放。
+// TestCalculateCost_LongContextAppliesMultiplierToCacheCreation5mAnd1h 验证覆盖 5m / 1h ephemeral 分类计费路径：长上下文触发时两档价格都应被倍率缩放。
 // 使用手工构造的 pricing（参考 TestCalculateCost_SupportsCacheBreakdown 的写法）
 // 以便同时控制 SupportsCacheBreakdown + 长上下文阈值。
 func TestCalculateCost_LongContextAppliesMultiplierToCacheCreation5mAnd1h(t *testing.T) {
@@ -767,7 +767,7 @@ func TestGetModelPricing_DoubaoEmbeddingVisionImageInputRate(t *testing.T) {
 	}
 }
 
-// 验证双档计费：InputCost = 文本token×文本价（不含图片），ImageInputCost = 图片token×图片价；
+// TestCalculateCost_DoubaoEmbeddingVisionDifferentialInput 验证双档计费：InputCost = 文本token×文本价（不含图片），ImageInputCost = 图片token×图片价；
 // 且 ImageInputTokens=0 时走原单价路径，ImageInputTokens>InputTokens 时不负计文本。
 func TestCalculateCost_DoubaoEmbeddingVisionDifferentialInput(t *testing.T) {
 	svc := newTestCalculator()
@@ -803,7 +803,7 @@ func TestCalculateCost_DoubaoEmbeddingVisionDifferentialInput(t *testing.T) {
 	require.InDelta(t, float64(10)*0.252e-6, costWeird.TotalCost, 1e-15)
 }
 
-// 复现 issue #4386：gpt-image-2 /v1/images/edits 带 1 张输入图。
+// TestComputeTokenBreakdown_GptImage2ImageEditIssue4386 验证复现 issue #4386：gpt-image-2 /v1/images/edits 带 1 张输入图。
 // 上游 usage：input_tokens=371（image_tokens=352 + text_tokens=19），
 // output_tokens=439（全部图片输出）。官方定价：文本输入 $5/1M、图片输入 $8/1M、
 // 文本输出 $10/1M、图片输出 $30/1M。修复前图片输入被并入文本价，单次偏低 ~6.6%。

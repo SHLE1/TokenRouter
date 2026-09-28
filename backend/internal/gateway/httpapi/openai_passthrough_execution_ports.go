@@ -1,4 +1,3 @@
-// 旧透传装配只投影原提供商能力和 HTTP 技术参数，不持有恢复循环。
 package httpapi
 
 import (

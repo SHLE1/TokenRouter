@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
-// CloneGroup 复制跨缓存/模块边界的可变值，保留省略与显式空集合。
+// CloneGroupConfig 复制跨缓存/模块边界的可变值，保留省略与显式空集合。
 func CloneGroupConfig(g *GroupConfig) *GroupConfig {
 	if g == nil {
 		return nil

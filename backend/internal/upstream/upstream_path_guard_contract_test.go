@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestSanitizedUpstreamPathSuffixRejectsNonConformingSegments 验证上游路径后缀拒绝不合规的路径段。
 func TestSanitizedUpstreamPathSuffixRejectsNonConformingSegments(t *testing.T) {
 	// 到达业务代码的 URL.Path 已是百分号解码后的结果，因此用例按解码后的形态书写。
 	rejected := []string{

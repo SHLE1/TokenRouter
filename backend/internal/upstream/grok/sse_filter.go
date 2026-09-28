@@ -1,4 +1,3 @@
-// 原生 ping 过滤按读取背压推进，不整流缓冲；Close 释放管道和上游响应体。
 package grok
 
 import (
@@ -42,16 +41,19 @@ func (b *ResponsesBillingPingFilterBody) Close() error {
 	}
 	return sourceErr
 }
+
 func (b *ResponsesBillingPingFilterBody) closeSource() error {
 	b.closeOnce.Do(func() { b.closeErr = b.source.Close() })
 	return b.closeErr
 }
+
 func NewGrokResponsesBillingPingFilterBody(source io.ReadCloser, maxLineSize int) io.ReadCloser {
 	reader, writer := io.Pipe()
 	body := &ResponsesBillingPingFilterBody{PipeReader: reader, source: source}
 	go FilterGrokResponsesBillingPings(source, writer, body.closeSource, maxLineSize)
 	return body
 }
+
 func FilterGrokResponsesBillingPings(
 	source io.Reader,
 	destination *io.PipeWriter,
@@ -178,6 +180,7 @@ func FilterGrokResponsesBillingPings(
 	}
 	_ = destination.Close()
 }
+
 func ScanSSELinesPreservingEndings(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	for index, value := range data {
 		switch value {
@@ -198,6 +201,7 @@ func ScanSSELinesPreservingEndings(data []byte, atEOF bool) (advance int, token 
 	}
 	return 0, nil, nil
 }
+
 func TrimSSELineEnding(line []byte) []byte {
 	return bytes.TrimSuffix(bytes.TrimSuffix(line, []byte("\n")), []byte("\r"))
 }

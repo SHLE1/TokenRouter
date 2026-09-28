@@ -1,4 +1,3 @@
-// 搜索工具识别和合成内容的唯一字节规则，不读取提供商、设置或存储。
 package searchtools
 
 import (

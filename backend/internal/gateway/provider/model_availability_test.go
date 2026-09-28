@@ -340,7 +340,7 @@ func (m *availabilityProviderStore) ListModelAvailabilityCandidates(_ context.Co
 
 func availabilityFixtureGroupID() *int64 { id := int64(71); return &id }
 
-// 原有模型诊断用例都显式声明测试分组，模型范围保持各用例原配置。
+// newAvailabilityForTest 原有模型诊断用例都显式声明测试分组，模型范围保持各用例原配置。
 func newAvailabilityForTest(repo *availabilityProviderStore, policies *routing.PricingConfigService, compatible bool) *routing.ModelAvailability {
 	for i := range repo.providers {
 		value := &repo.providers[i].Record
@@ -354,7 +354,7 @@ func newAvailabilityForTest(repo *availabilityProviderStore, policies *routing.P
 	return gatewayprovider.NewModelAvailability(repo, policies, compatible)
 }
 
-// 模型可用性只诊断明确分组的提供商，空平台聚合各提供商平台。
+// TestModelAvailabilityUsesExplicitGroupAcrossPlatforms 验证模型可用性只诊断明确分组的提供商，空平台聚合各提供商平台。
 func TestModelAvailabilityUsesExplicitGroupAcrossPlatforms(t *testing.T) {
 	groupID := int64(71)
 	otherGroup := int64(72)
@@ -387,7 +387,7 @@ func TestModelAvailabilityUsesExplicitGroupAcrossPlatforms(t *testing.T) {
 	}
 }
 
-// 模型诊断复用协议资格，同时忽略提供商的临时冷却状态。
+// TestModelAvailabilityChecksProtocolWithoutTreatingCooldownAsMissingModel 验证模型诊断复用协议资格，同时忽略提供商的临时冷却状态。
 func TestModelAvailabilityChecksProtocolWithoutTreatingCooldownAsMissingModel(t *testing.T) {
 	group := &routing.Group{ID: 71, Hydrated: true, Status: routing.StatusActive, ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolAnthropicMessages: {}}}
 	until := time.Now().Add(time.Hour)

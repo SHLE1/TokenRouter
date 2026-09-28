@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 默认端点属于第三方协议；捕获生产 Options 发出的请求，不访问真实供应商。
+// TestOpenAIPrivacyUsesNativeAccountSettingsEndpoint 验证默认端点属于第三方协议；捕获生产 Options 发出的请求，不访问真实供应商。
 func TestOpenAIPrivacyUsesNativeAccountSettingsEndpoint(t *testing.T) {
 	client := req.C()
 	var requests []*http.Request
@@ -35,7 +35,7 @@ func TestOpenAIPrivacyUsesNativeAccountSettingsEndpoint(t *testing.T) {
 	require.Equal(t, "false", requests[0].URL.Query().Get("value"))
 }
 
-// 使用独立代理地址隔离共享客户端缓存，验证默认 PAT 路径和原始身份字段。
+// TestOpenAIPATUsesNativeAccountEndpoint 验证使用独立代理地址隔离共享客户端缓存，验证默认 PAT 路径和原始身份字段。
 func TestOpenAIPATUsesNativeAccountEndpoint(t *testing.T) {
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		t.Error("unexpected network request")

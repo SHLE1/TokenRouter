@@ -1,4 +1,3 @@
-// 媒体快照仅由显式审核留存策略允许后创建。
 package contract
 
 import "time"

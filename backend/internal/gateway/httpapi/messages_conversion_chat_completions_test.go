@@ -102,7 +102,7 @@ func TestHandleCCBufferedFromAnthropic_PreservesMessageStartCacheUsageAndReasoni
 	require.Equal(t, "stop", gjson.GetBytes(rec.Body.Bytes(), "choices.0.finish_reason").String())
 }
 
-// Anthropic 兼容上游可能返回冒号后无空格的紧凑 SSE，缓冲路径必须完整解析。
+// TestHandleCCBufferedFromAnthropic_CompactSSEFormat 验证Anthropic 兼容上游可能返回冒号后无空格的紧凑 SSE，缓冲路径必须完整解析。
 func TestHandleCCBufferedFromAnthropic_CompactSSEFormat(t *testing.T) {
 	t.Parallel()
 

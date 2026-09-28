@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 角色提升为管理员的 step-up 门控条件测试。
+// setupRoleStepUpRouter 角色提升为管理员的 step-up 门控条件测试。
 // 测试环境不注入认证上下文，因此门控一旦触发会以 401 中止；
 // 借此区分「触发了 step-up 校验」与「直接放行到业务层（200）」。
 func setupRoleStepUpRouter(t *testing.T) (*gin.Engine, *adminUserStub) {

@@ -1,4 +1,3 @@
-// 本文件验证同步平台执行与依赖资源的停止顺序。
 package lifecycle
 
 import (
@@ -31,6 +30,7 @@ func TestOperationsWaitsBeforeClosingDependencies(t *testing.T) {
 	require.ErrorContains(t, err, "stopped")
 	require.NoError(t, operations.StopContext(context.Background()))
 }
+
 func TestOperationsTimeoutDoesNotCloseDependencies(t *testing.T) {
 	operations := NewOperations("QoderRequestsAndAttempts")
 	finish, err := operations.Enter()

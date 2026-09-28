@@ -1,4 +1,3 @@
-// 测试夹具适配新端口；不在生产核心中保留旧实体依赖。
 package moderation
 
 import (

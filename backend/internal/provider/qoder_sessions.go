@@ -1,4 +1,3 @@
-// 提供商侧 Qoder 会话缓存只管理身份世代、单飞与生命周期，平台 session 类型通过泛型保持不透明。
 package provider
 
 import (

@@ -49,7 +49,7 @@ func usageStatsCacheKey(filters UsageLogFilters) string {
 	})
 }
 
-// getStatsCached 命中则返回缓存,未命中则回源 usageService 并写缓存。
+// GetStatsCached 命中则返回缓存,未命中则回源 usageService 并写缓存。
 func (h *UsageService) GetStatsCached(ctx context.Context, filters UsageLogFilters) (*UsageStats, bool, error) {
 	key := usageStatsCacheKey(filters)
 	entry, hit, err := h.statsQueryCache.GetOrLoad(key, func() (any, error) {

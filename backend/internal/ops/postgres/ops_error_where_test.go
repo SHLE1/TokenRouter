@@ -146,7 +146,7 @@ func TestBuildOpsErrorLogsWhere_UserOwnershipIsDirectOnly(t *testing.T) {
 	}
 }
 
-// 旧日志阶段保留在数据库中，新筛选须同时覆盖旧值。
+// TestProviderAuthFilterIncludesLegacyRows 验证旧日志阶段保留在数据库中，新筛选须同时覆盖旧值。
 func TestProviderAuthFilterIncludesLegacyRows(t *testing.T) {
 	where, args := buildOpsErrorLogsWhere(&ops.OpsErrorLogFilter{Phase: "provider_auth"})
 	if !strings.Contains(where, " OR e.error_phase = $") {

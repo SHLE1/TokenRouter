@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 隔离宿主环境，只让当前用例声明的配置参与优先级判断。
+// prepareLegacyConfigTest 隔离宿主环境，只让当前用例声明的配置参与优先级判断。
 func prepareLegacyConfigTest(t *testing.T, body string) string {
 	t.Helper()
 	resetViperWithJWTSecret(t)
@@ -26,7 +26,7 @@ func prepareLegacyConfigTest(t *testing.T, body string) string {
 	return path
 }
 
-// 完整加载入口保留旧部署的数值与开关，读取后不重写挂载配置。
+// TestLoadLegacyDeploymentConfig 验证完整加载入口保留旧部署的数值与开关，读取后不重写挂载配置。
 func TestLoadLegacyDeploymentConfig(t *testing.T) {
 	body := `gateway:
   max_account_switches: 0
@@ -89,7 +89,7 @@ func TestLoadLegacyDeploymentConfig(t *testing.T) {
 	}
 }
 
-// 来源优先级仍是环境变量高于 YAML；同一来源显式的新字段覆盖旧字段。
+// TestLoadLegacyConfigPrecedence 验证来源优先级仍是环境变量高于 YAML；同一来源显式的新字段覆盖旧字段。
 func TestLoadLegacyConfigPrecedence(t *testing.T) {
 	for _, tc := range []struct {
 		name, yaml, oldEnv, newEnv string
@@ -114,7 +114,7 @@ func TestLoadLegacyConfigPrecedence(t *testing.T) {
 	}
 }
 
-// 纯环境变量部署也保留旧连接池参数和关闭开关，不依赖 YAML 出现旧键。
+// TestLoadLegacyConfigEnvironment 验证纯环境变量部署也保留旧连接池参数和关闭开关，不依赖 YAML 出现旧键。
 func TestLoadLegacyConfigEnvironment(t *testing.T) {
 	prepareLegacyConfigTest(t, "{}")
 	for key, value := range map[string]string{
@@ -147,7 +147,7 @@ func TestLoadLegacyConfigEnvironment(t *testing.T) {
 	require.Equal(t, ConnectionPoolIsolationProvider, cfg.Gateway.ConnectionPoolIsolation)
 }
 
-// 兼容旧名称仍须校验取值；不能把非法连接数或拼错的隔离模式当成默认值。
+// TestLoadLegacyConfigStillValidatesValues 验证兼容旧名称仍须校验取值；不能把非法连接数或拼错的隔离模式当成默认值。
 func TestLoadLegacyConfigStillValidatesValues(t *testing.T) {
 	for _, tc := range []struct{ key, value, message string }{
 		{"GATEWAY_OPENAI_WS_MAX_CONNS_PER_ACCOUNT", "-1", "max_conns_per_provider must be positive"},
@@ -163,7 +163,7 @@ func TestLoadLegacyConfigStillValidatesValues(t *testing.T) {
 	}
 }
 
-// 自定义配置名含 account 时保持原样，兼容映射不做关键词替换。
+// TestLegacyConfigPreservesCustomProfileNames 验证自定义配置名含 account 时保持原样，兼容映射不做关键词替换。
 func TestLegacyConfigPreservesCustomProfileNames(t *testing.T) {
 	viper.Reset()
 	t.Cleanup(viper.Reset)
@@ -173,7 +173,7 @@ func TestLegacyConfigPreservesCustomProfileNames(t *testing.T) {
 	require.Equal(t, "custom", viper.GetString("gateway.tls_fingerprint.profiles.account_gateway.name"))
 }
 
-// 新旧嵌套对象按字段合并，显式零值和关闭开关不被旧值覆盖，也不丢失同级配置。
+// TestLoadLegacyConfigMixedNestedFields 验证新旧嵌套对象按字段合并，显式零值和关闭开关不被旧值覆盖，也不丢失同级配置。
 func TestLoadLegacyConfigMixedNestedFields(t *testing.T) {
 	prepareLegacyConfigTest(t, `gateway:
   openai_ws:

@@ -1,4 +1,3 @@
-// 提供商通知投影仅提供已取得的配置与用量，不决定是否发送。
 package provider
 
 import (

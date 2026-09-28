@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 生产运行拥有者覆盖构造、并发启动、取消、等待以及重复停止。
+// TestOllamaUsageRuntimeStartsOnceAndStopsAllWork 验证生产运行拥有者覆盖构造、并发启动、取消、等待以及重复停止。
 func TestOllamaUsageRuntimeStartsOnceAndStopsAllWork(t *testing.T) {
 	var calls atomic.Int32
 	entered := make(chan struct{})

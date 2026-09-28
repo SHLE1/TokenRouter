@@ -1,4 +1,3 @@
-// 重试与 countTokens 兼容原语保持原预算/估算算法，不把估算当成实际用量。
 package gemini
 
 import (
@@ -23,6 +22,7 @@ func IsGeminiSignatureRelatedError(respBody []byte) bool {
 	}
 	return strings.Contains(msg, "thought_signature") || strings.Contains(msg, "signature")
 }
+
 func SleepGeminiBackoff(attempt int) {
 	delay := geminiRetryBaseDelay * time.Duration(1<<uint(attempt-1))
 	if delay > geminiRetryMaxDelay {
@@ -38,6 +38,7 @@ func SleepGeminiBackoff(attempt int) {
 	}
 	time.Sleep(sleepFor)
 }
+
 func IsGeminiInsufficientScope(headers http.Header, body []byte) bool {
 	if strings.Contains(strings.ToLower(headers.Get("Www-Authenticate")), "insufficient_scope") {
 		return true
@@ -45,6 +46,7 @@ func IsGeminiInsufficientScope(headers http.Header, body []byte) bool {
 	lower := strings.ToLower(string(body))
 	return strings.Contains(lower, "insufficient authentication scopes") || strings.Contains(lower, "access_token_scope_insufficient")
 }
+
 func EstimateGeminiCountTokens(reqBody []byte) int {
 	total := 0
 
@@ -72,6 +74,7 @@ func EstimateGeminiCountTokens(reqBody []byte) int {
 	}
 	return total
 }
+
 func EstimateTokensForText(s string) int {
 	s = strings.TrimSpace(s)
 	if s == "" {

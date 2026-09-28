@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 响应契约组合真实的 HTTP 写入器、原生参数投影和平台读取器。
+// newResponseRuntimeFixture 响应契约组合真实的 HTTP 写入器、原生参数投影和平台读取器。
 func newResponseRuntimeFixture(options *messageforward.Options, deps messageforward.Dependencies, _ *egress.CompiledHeaderFilter) *messageforward.Runtime {
 	value := messageforward.Options{ResponseReadLimit: 128 * 1024 * 1024}
 	if options != nil {
@@ -35,7 +35,7 @@ func passthroughResponseFixture(runtime *messageforward.Runtime, ctx context.Con
 	return anthropic.NonStreamResponsePassthrough(ctx, response, upstream.NewOutputContext(boundary.Sink()), options)
 }
 
-// 每个用例先确定静态 keepalive 参数，再构造运行时。
+// newStreamingRuntimeFixture 每个用例先确定静态 keepalive 参数，再构造运行时。
 func newStreamingRuntimeFixture(keepalive time.Duration) *messageforward.Runtime {
 	return messageforward.NewRuntime(messageforward.Dependencies{Health: newPartialHealthFixture()}, messageforward.Options{Configured: true, MaxLineSize: defaultMaxLineSize, StreamKeepalive: keepalive})
 }

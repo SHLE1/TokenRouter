@@ -54,7 +54,7 @@ func mixedGroupProvider(id int64, platform, model string, groupID int64) gateway
 	return *gatewayadapter.NewExecutionProvider(&value)
 }
 
-// 每个入口先验证模型与协议，再在同组跨平台选择，保留分组成员边界。
+// TestMixedGroupSelectsModelOnActualProviderPlatform 验证每个入口先验证模型与协议，再在同组跨平台选择，保留分组成员边界。
 func TestMixedGroupSelectsModelOnActualProviderPlatform(t *testing.T) {
 	for _, mode := range []routing.GroupSchedulerType{routing.GroupSchedulerTypeBasic, routing.GroupSchedulerTypeAdvanced} {
 		t.Run(string(mode), func(t *testing.T) {
@@ -103,7 +103,7 @@ func TestMixedGroupRequiresExplicitGroupAndHonorsForcedPlatform(t *testing.T) {
 	}
 }
 
-// 图片别名必须映射到图片模型，通配白名单不能把文本模型变成图片模型。
+// TestMixedGroupImageCandidateUsesFinalMappedModel 验证图片别名必须映射到图片模型，通配白名单不能把文本模型变成图片模型。
 func TestMixedGroupImageCandidateUsesFinalMappedModel(t *testing.T) {
 	selector := NewCompatible(CompatibleDependencies{}, DefaultOptions())
 	value := mixedGroupProvider(1, capability.PlatformOpenAI, "*", 91)
@@ -128,7 +128,7 @@ func (s *mixedSessionLimits) RegisterSession(_ context.Context, id int64, hash s
 	return id != s.blocked, nil
 }
 
-// Anthropic 的会话限制在通用选号循环中仍然生效，并继续尝试组内其它提供商。
+// TestMixedGroupRespectsAnthropicSessionLimit 验证Anthropic 的会话限制在通用选号循环中仍然生效，并继续尝试组内其它提供商。
 func TestMixedGroupRespectsAnthropicSessionLimit(t *testing.T) {
 	group := &routing.Group{ID: 91, Hydrated: true, Status: routing.StatusActive}
 	first := mixedGroupProvider(1, capability.PlatformAnthropic, "*", 91)
@@ -170,7 +170,7 @@ func (s mixedSnapshot) GetProvider(_ context.Context, id int64) (*provider.Recor
 	return nil, nil
 }
 
-// 快照中的旧成员关系不能让已移出分组的提供商通过数据库复核。
+// TestMixedGroupRechecksMembershipAfterSnapshot 验证快照中的旧成员关系不能让已移出分组的提供商通过数据库复核。
 func TestMixedGroupRechecksMembershipAfterSnapshot(t *testing.T) {
 	for _, mode := range []routing.GroupSchedulerType{routing.GroupSchedulerTypeBasic, routing.GroupSchedulerTypeAdvanced} {
 		t.Run(string(mode), func(t *testing.T) {

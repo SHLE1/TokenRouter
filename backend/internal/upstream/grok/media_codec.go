@@ -1,4 +1,3 @@
-// Grok 媒体 JSON/multipart 编码只接收请求字节与明确的纯归一化函数，不拥有任务或结算。
 package grok
 
 import (
@@ -187,7 +186,7 @@ func (m MediaCodec) ParseGrokMediaJSONRequest(body []byte, info *GrokMediaReques
 	info.MaskImageURL = m.ExtractGrokMediaImageURL(gjson.GetBytes(body, "mask"))
 }
 
-// extractGrokMediaImageURL 优先读取 xAI 官方 url，并兼容历史字符串和 image_url 形态。
+// ExtractGrokMediaImageURL 优先读取 xAI 官方 url，并兼容历史字符串和 image_url 形态。
 func (m MediaCodec) ExtractGrokMediaImageURL(value gjson.Result) string {
 	if !value.Exists() {
 		return ""
@@ -198,7 +197,7 @@ func (m MediaCodec) ExtractGrokMediaImageURL(value gjson.Result) string {
 	return m.GrokMediaJSONImageURL(value)
 }
 
-// grokMediaJSONImageURL 优先读取 xAI 官方 url，空白时兼容历史 image_url。
+// GrokMediaJSONImageURL 优先读取 xAI 官方 url，空白时兼容历史 image_url。
 func (m MediaCodec) GrokMediaJSONImageURL(value gjson.Result) string {
 	if imageURL := strings.TrimSpace(value.Get("url").String()); imageURL != "" {
 		return imageURL
@@ -323,7 +322,7 @@ func (m MediaCodec) GrokMediaSignedVideoContentURL(body []byte, requestID string
 	return parsed.String(), nil
 }
 
-// isGrokCLIProxyTarget 只按规范化主机名识别官方 CLI 网关，端口和路径不影响判断。
+// IsGrokCLIProxyTarget 只按规范化主机名识别官方 CLI 网关，端口和路径不影响判断。
 func (m MediaCodec) IsGrokCLIProxyTarget(rawURL string) bool {
 	parsed, err := url.Parse(strings.TrimSpace(rawURL))
 	return err == nil && strings.EqualFold(parsed.Hostname(), "cli-chat-proxy.grok.com")
@@ -480,7 +479,7 @@ func (m MediaCodec) NormalizeGrokMediaForwardBody(endpoint GrokMediaEndpoint, bo
 	return out, contentType, nil
 }
 
-// canonicalizeGrokMediaImageURLFields 把指定对象或对象数组中的 image_url 统一为 url。
+// CanonicalizeGrokMediaImageURLFields 把指定对象或对象数组中的 image_url 统一为 url。
 func (m MediaCodec) CanonicalizeGrokMediaImageURLFields(body []byte, fields ...string) ([]byte, error) {
 	out := body
 	for _, field := range fields {
@@ -507,7 +506,7 @@ func (m MediaCodec) CanonicalizeGrokMediaImageURLFields(body []byte, fields ...s
 	return out, nil
 }
 
-// canonicalizeGrokMediaImageURLObject 规范化单个图片引用，并让非空官方字段优先。
+// CanonicalizeGrokMediaImageURLObject 规范化单个图片引用，并让非空官方字段优先。
 func (m MediaCodec) CanonicalizeGrokMediaImageURLObject(body []byte, path string) ([]byte, error) {
 	legacyPath := path + ".image_url"
 	legacy := gjson.GetBytes(body, legacyPath)

@@ -1,4 +1,3 @@
-// 服务账号通过 RSA JWT 换取 Google 访问令牌，请求沿用调用方的取消信号。
 package googleauth
 
 import (

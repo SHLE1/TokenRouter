@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 裸 GPT-5.6 不再注册为内置型号，也不映射到 Sol 或旧 GPT。
+// TestNormalizeKnownOpenAICodexModel_BareGPT56IsNotBuiltin 验证裸 GPT-5.6 不再注册为内置型号，也不映射到 Sol 或旧 GPT。
 func TestNormalizeKnownOpenAICodexModel_BareGPT56IsNotBuiltin(t *testing.T) {
 	tests := map[string]string{
 		"gpt-5.6":            "",

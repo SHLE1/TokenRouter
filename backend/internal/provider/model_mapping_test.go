@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 显式有效映射不读取平台默认表，默认返回值也不能暴露外层目录的可变 map。
+// TestModelMappingDefaultsAreLazyAndIsolated 验证显式有效映射不读取平台默认表，默认返回值也不能暴露外层目录的可变 map。
 func TestModelMappingDefaultsAreLazyAndIsolated(t *testing.T) {
 	calls := 0
 	defaults := map[string]string{"alias": "default-model"}

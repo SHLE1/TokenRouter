@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// 夹具通过真实 Open 和 Begin 保留入口快照；只替换远端授权与缓存端口。
+// newFallbackMessageBridge 夹具通过真实 Open 和 Begin 保留入口快照；只替换远端授权与缓存端口。
 func newFallbackMessageBridge(t *testing.T, bindings Bindings) (*messageAttemptBridge, *apikey.APIKey, *httptest.ResponseRecorder) {
 	t.Helper()
 	targetID, groupID := int64(20), int64(10)
@@ -72,7 +72,7 @@ func authorizedMessageFallback(key *apikey.APIKey, id int64) *apikey.APIKey {
 	return resolved
 }
 
-// 专用入口不能在回退时放开平台限制，计费和认证也必须看到同一个新分组。
+// TestMessageGroupFallbackPreservesBoundaryAndRefreshesSnapshots 验证专用入口不能在回退时放开平台限制，计费和认证也必须看到同一个新分组。
 func TestMessageGroupFallbackPreservesBoundaryAndRefreshesSnapshots(t *testing.T) {
 	resolveCalls, stickyCalls := 0, 0
 	sub := &billing.UserSubscription{ID: 90}
@@ -131,7 +131,7 @@ func TestMessageGroupFallbackPreservesBoundaryAndRefreshesSnapshots(t *testing.T
 	require.Same(t, bridge.currentAPIKey, authKey)
 }
 
-// 已输出、已回退和自环请求都不能进入第二次授权或上游请求。
+// TestMessageGroupFallbackStopsBeforeReplay 验证已输出、已回退和自环请求都不能进入第二次授权或上游请求。
 func TestMessageGroupFallbackStopsBeforeReplay(t *testing.T) {
 	for _, name := range []string{"cancelled", "written", "stream_started", "already_used", "self_target", "missing_target", "unrelated_error"} {
 		t.Run(name, func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestMessageGroupFallbackRequiresAuthorizedResolverAndTargetProtocol(t *test
 	require.Equal(t, int64(10), *bridge.currentAPIKey.GroupID)
 }
 
-// 先前提供商切换触发的缓存计费，在目标分组的首个新尝试中仍然有效。
+// TestMessageGroupFallbackKeepsCacheBillingAcrossAttemptReset 验证先前提供商切换触发的缓存计费，在目标分组的首个新尝试中仍然有效。
 func TestMessageGroupFallbackKeepsCacheBillingAcrossAttemptReset(t *testing.T) {
 	forwards := 0
 	bridge, _, _ := newFallbackMessageBridge(t, Bindings{

@@ -6,7 +6,7 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// 以下测试助手只组合型号选项与纯转换，不保存算法或运行状态。
+// AnthropicToResponses 以下测试助手只组合型号选项与纯转换，不保存算法或运行状态。
 func AnthropicToResponses(req *protocolanthropic.AnthropicRequest) (*protocolopenai.ResponsesRequest, error) {
 	return bridge.AnthropicToResponses(req, ConversionOptionsForModel(req.Model))
 }

@@ -1,5 +1,3 @@
-// Package selection 将执行提供商投影和平台资格接入 scheduler 的唯一选择算法。
-// 原生核心只取得无凭据候选；完整执行目标保持在本次选择的适配作用域内。
 package selection
 
 import (

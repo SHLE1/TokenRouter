@@ -1,4 +1,3 @@
-// Responses 字段兼容降级持有每次尝试的去重状态，原请求共享预算由调用方传入。
 package openai
 
 import (

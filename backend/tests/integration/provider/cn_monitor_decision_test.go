@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 真实 PostgreSQL 校验版本条件、同身份恢复、旧观测拒绝以及原尽力通知边界。
+// TestCNMonitorDecisionCAS 验证真实 PostgreSQL 校验版本条件、同身份恢复、旧观测拒绝以及原尽力通知边界。
 func TestCNMonitorDecisionCAS(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)

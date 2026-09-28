@@ -1,4 +1,3 @@
-// 平台流策略只接受已投影参数，不读取配置或提供商。
 package anthropic
 
 import (

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 批量归档必须同时限制展示状态和结束时间，避免改变草稿或未到期公告。
+// TestAnnouncementRepositoryArchiveExpired 验证批量归档必须同时限制展示状态和结束时间，避免改变草稿或未到期公告。
 func TestAnnouncementRepositoryArchiveExpired(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)

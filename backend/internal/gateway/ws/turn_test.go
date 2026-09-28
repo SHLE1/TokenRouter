@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 终态写入尚未提交时不允许下一轮抢占同一完成快照。
+// TestTurnCommitPrecedesNextAdmission 验证终态写入尚未提交时不允许下一轮抢占同一完成快照。
 func TestTurnCommitPrecedesNextAdmission(t *testing.T) {
 	lifecycle := NewTurnLifecycle(true)
 	lifecycle.BeginTerminalWrite()
@@ -25,7 +25,7 @@ func TestTurnCommitPrecedesNextAdmission(t *testing.T) {
 	require.False(t, lifecycle.BeginResponseCreate(nil))
 }
 
-// 每轮金额时刻和模型快照不能被后续复用的入站缓冲区改变。
+// TestTurnQueueFreezesInputAndPreservesOrder 验证每轮金额时刻和模型快照不能被后续复用的入站缓冲区改变。
 func TestTurnQueueFreezesInputAndPreservesOrder(t *testing.T) {
 	queue := NewTurnPayloadQueue()
 	tier := "priority"

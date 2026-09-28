@@ -1,4 +1,3 @@
-// Package tokenestimate 保留辅助计数入口的本地估算规则；结果不作为实际结算用量。
 package tokenestimate
 
 import (
@@ -60,6 +59,7 @@ func Anthropic(body []byte) (int, error) {
 	}
 	return estimated, nil
 }
+
 func Responses(req Request) (int, error) {
 	codec, err := openAIInputTokensCodecForModel(req.Model)
 	if err != nil {
@@ -113,6 +113,7 @@ func Responses(req Request) (int, error) {
 	}
 	return total, nil
 }
+
 func estimateOpenAIInputTokensForInput(codec tokenizer.Codec, raw json.RawMessage) (int, error) {
 	if len(bytes.TrimSpace(raw)) == 0 {
 		return 0, nil
@@ -134,6 +135,7 @@ func estimateOpenAIInputTokensForInput(codec tokenizer.Codec, raw json.RawMessag
 	}
 	return codec.Count(compacted)
 }
+
 func estimateOpenAIInputTokensForInputItems(codec tokenizer.Codec, items []protocolopenai.ResponsesInputItem) (int, error) {
 	total := 0
 	countText := func(text string) error {
@@ -220,6 +222,7 @@ func estimateOpenAIInputTokensForInputItems(codec tokenizer.Codec, items []proto
 
 	return total, nil
 }
+
 func estimateOpenAIInputImageText(imageURL string) string {
 	trimmed := strings.TrimSpace(imageURL)
 	if trimmed == "" {
@@ -232,6 +235,7 @@ func estimateOpenAIInputImageText(imageURL string) string {
 	}
 	return trimmed
 }
+
 func compactOpenAIInputTokensJSON(raw json.RawMessage) (string, error) {
 	if len(bytes.TrimSpace(raw)) == 0 {
 		return "", nil
@@ -242,6 +246,7 @@ func compactOpenAIInputTokensJSON(raw json.RawMessage) (string, error) {
 	}
 	return buf.String(), nil
 }
+
 func openAIInputTokensCodecForModel(model string) (tokenizer.Codec, error) {
 	switch EncodingForModel(model) {
 	case tokenizer.Cl100kBase:
@@ -250,6 +255,7 @@ func openAIInputTokensCodecForModel(model string) (tokenizer.Codec, error) {
 		return tokenizer.Get(tokenizer.O200kBase)
 	}
 }
+
 func EncodingForModel(model string) tokenizer.Encoding {
 	normalized := strings.ToLower(strings.TrimSpace(model))
 	switch {

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 缓存写入和返回都必须隔离，不因多个请求共享来源而串改策略。
+// TestTLSProfileSnapshotIsolation 验证缓存写入和返回都必须隔离，不因多个请求共享来源而串改策略。
 func TestTLSProfileSnapshotIsolation(t *testing.T) {
 	source := &TLSFingerprintProfile{ID: 1, Name: "profile", CipherSuites: []uint16{4865}, ALPNProtocols: []string{"h2"}}
 	svc := NewTLSFingerprintProfileService(nil, nil)

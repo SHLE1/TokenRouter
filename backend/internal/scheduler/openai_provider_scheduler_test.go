@@ -130,5 +130,5 @@ func TestOpenAISelectionRNG_SeedZeroStillWorks(t *testing.T) {
 	require.Less(t, rng.NextFloat64(), 1.0)
 }
 
-// 仅构造原种子测试的分组值。
+// scoreGroupIDForTest 仅构造原种子测试的分组值。
 func scoreGroupIDForTest(value int64) *int64 { return &value }

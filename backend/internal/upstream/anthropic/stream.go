@@ -1,4 +1,3 @@
-// 本文件执行 Anthropic SSE 转换；回调只读取外层投影或报告观测。
 package anthropic
 
 import (

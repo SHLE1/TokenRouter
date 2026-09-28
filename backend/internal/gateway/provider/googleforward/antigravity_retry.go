@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// 投影当前尝试，复用提供商探测和转发共享的重试实例。
+// antigravityRetryAdapter 投影当前尝试，复用提供商探测和转发共享的重试实例。
 func (s *Antigravity) antigravityRetryAdapter(p antigravityRetryLoopParams) (*antigravity.RetryAdapter, antigravity.RetryInput) {
 	value := gatewayprovider.ExecutionRecord(p.provider)
 	factory := s.Retry

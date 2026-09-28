@@ -76,8 +76,7 @@ func sseTerminalBody(eventType, data string) []byte {
 	}, "\n"))
 }
 
-// 主复现：issue 报告的容量错误，与流式兄弟用例
-// TestNonStreamingSSEToJSON_CapacityFailedEventFailsOver 逐项对齐。
+// TestNonStreamingSSEToJSON_CapacityFailedEventFailsOver 验证非流式 SSE 的容量错误触发故障转移。
 func TestNonStreamingSSEToJSON_CapacityFailedEventFailsOver(t *testing.T) {
 	c, rec := newNonStreamingFailoverContext(t)
 	svc := newNonStreamingFailoverService()
@@ -100,7 +99,7 @@ func TestNonStreamingSSEToJSON_CapacityFailedEventFailsOver(t *testing.T) {
 	require.Empty(t, rec.Body.String())
 }
 
-// 行为翻转点：未被分类为不可重试的泛化 response.failed，此前回 502，现在换号。
+// TestNonStreamingSSEToJSON_UnclassifiedFailedEventFailsOver 验证行为翻转点：未被分类为不可重试的泛化 response.failed，此前回 502，现在换号。
 // 与流式路径对齐的结果，显式钉住以免被当成回归。
 func TestNonStreamingSSEToJSON_UnclassifiedFailedEventFailsOver(t *testing.T) {
 	c, rec := newNonStreamingFailoverContext(t)
@@ -120,7 +119,7 @@ func TestNonStreamingSSEToJSON_UnclassifiedFailedEventFailsOver(t *testing.T) {
 	require.Empty(t, rec.Body.String())
 }
 
-// 「response.failed 必须回写协议错误」这一契约没有丢：明确不可重试的错误仍写 502。
+// TestNonStreamingSSEToJSON_NonRetryableFailedEventStillWritesProtocolError 验证「response.failed 必须回写协议错误」这一契约没有丢：明确不可重试的错误仍写 502。
 func TestNonStreamingSSEToJSON_NonRetryableFailedEventStillWritesProtocolError(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -162,7 +161,7 @@ func TestNonStreamingSSEToJSON_NonRetryableFailedEventStillWritesProtocolError(t
 	}
 }
 
-// 裸 error 帧走的是更保守的那个分类器：只有正向识别为瞬时才换号。
+// TestNonStreamingSSEToJSON_BareErrorEventUsesConservativeClassifier 验证裸 error 帧走的是更保守的那个分类器：只有正向识别为瞬时才换号。
 // 这条用例证明两种终止事件确实被分派到了各自的判定，而不是共用一个。
 func TestNonStreamingSSEToJSON_BareErrorEventUsesConservativeClassifier(t *testing.T) {
 	t.Run("non_transient_stays_protocol_error", func(t *testing.T) {
@@ -197,7 +196,7 @@ func TestNonStreamingSSEToJSON_BareErrorEventUsesConservativeClassifier(t *testi
 	})
 }
 
-// 透传路径必须与合成路径同步修复，否则又造出一处新的不对称。
+// TestNonStreamingPassthroughSSEToJSON_CapacityFailedEventFailsOver 验证透传路径必须与合成路径同步修复，否则又造出一处新的不对称。
 func TestNonStreamingPassthroughSSEToJSON_CapacityFailedEventFailsOver(t *testing.T) {
 	c, rec := newNonStreamingFailoverContext(t)
 	svc := newNonStreamingFailoverService()
@@ -214,7 +213,7 @@ func TestNonStreamingPassthroughSSEToJSON_CapacityFailedEventFailsOver(t *testin
 	require.Empty(t, rec.Body.String())
 }
 
-// 不变式：非流式的裁决必须与流式分类器逐项一致。任何一边以后改了判定，这条会红。
+// TestNonStreamingSSEToJSON_MatchesStreamingClassifierVerdict 验证不变式：非流式的裁决必须与流式分类器逐项一致。任何一边以后改了判定，这条会红。
 func TestNonStreamingSSEToJSON_MatchesStreamingClassifierVerdict(t *testing.T) {
 	payloads := []string{
 		`{"type":"response.failed","error":{"message":"Selected model is at capacity. Please try a different model.","type":"invalid_request_error"}}`,
@@ -240,7 +239,7 @@ func TestNonStreamingSSEToJSON_MatchesStreamingClassifierVerdict(t *testing.T) {
 	}
 }
 
-// 服务侧已显式提交响应后不得再提议换号；能否真正换号仍由 handler 的
+// TestNonStreamingSSEToJSON_CommittedResponseKeepsProtocolError 验证服务侧已显式提交响应后不得再提议换号；能否真正换号仍由 handler 的
 // openAIForwardMayFailover 用 keepalive 调整后的写出量仲裁（#3887），此处不重复实现。
 func TestNonStreamingSSEToJSON_CommittedResponseKeepsProtocolError(t *testing.T) {
 	c, rec := newNonStreamingFailoverContext(t)

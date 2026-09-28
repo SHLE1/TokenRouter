@@ -1,4 +1,3 @@
-// 商户身份和币种快照规则只有此处一份实现。
 package payment
 
 import (
@@ -42,6 +41,7 @@ func PsOrderProviderSnapshot(order *Order) *OrderProviderSnapshot {
 	}
 	return snapshot
 }
+
 func PsSnapshotStringValue(value any) string {
 	switch typed := value.(type) {
 	case string:
@@ -50,6 +50,7 @@ func PsSnapshotStringValue(value any) string {
 		return ""
 	}
 }
+
 func PsSnapshotIntValue(value any) int {
 	switch typed := value.(type) {
 	case int:
@@ -70,6 +71,7 @@ func PsSnapshotIntValue(value any) int {
 	}
 	return 0
 }
+
 func ValidateProviderSnapshotMetadata(order *Order, providerKey string, metadata map[string]string) error {
 	if order == nil || len(metadata) == 0 {
 		return nil
@@ -168,6 +170,7 @@ func ValidateProviderSnapshotMetadata(order *Order, providerKey string, metadata
 
 	return nil
 }
+
 func ProviderMerchantIdentityMetadata(prov Provider) map[string]string {
 	if prov == nil {
 		return nil
@@ -178,6 +181,7 @@ func ProviderMerchantIdentityMetadata(prov Provider) map[string]string {
 	}
 	return reporter.MerchantIdentityMetadata()
 }
+
 func PaymentOrderCurrency(order *Order) string {
 	if snapshot := PsOrderProviderSnapshot(order); snapshot != nil {
 		if currency, err := NormalizePaymentCurrency(snapshot.Currency); err == nil {

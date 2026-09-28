@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestResolveGrokStreamIdleTimeout 验证 Grok 流空闲超时的选择规则。
 func TestResolveGrokStreamIdleTimeout(t *testing.T) {
 	require.Equal(t, 90*time.Second, grok.ResolveStreamIdleTimeout(90))
 	require.Equal(t, grok.DefaultStreamIdleTimeout, grok.ResolveStreamIdleTimeout(0))

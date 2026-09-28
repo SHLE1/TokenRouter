@@ -50,7 +50,7 @@ func EnrichShadowParentInfo(items []ProviderWithConcurrency, parents map[int64]*
 	}
 }
 
-// enrichShadowParents 收集本批影子行的母提供商 ID、一次批量解析（避免 N+1），再回填。
+// EnrichShadowParents 收集本批影子行的母提供商 ID、一次批量解析（避免 N+1），再回填。
 // 解析失败时不报错（parent_* 留空，降级）。
 func (p *RuntimePresenter) EnrichShadowParents(ctx context.Context, items []ProviderWithConcurrency) {
 	seen := make(map[int64]struct{})

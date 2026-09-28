@@ -650,7 +650,7 @@ func TestModelMarketplacePublicModelsIncludeModalities(t *testing.T) {
 	require.Nil(t, models[1].OutputModalities)
 }
 
-// 市场使用解析后的 PricingModel 查询能力，保留公开 ID 和完整音视频输入标记。
+// TestModelMarketplaceGeminiTierModalitiesPreservePublicIDs 验证市场使用解析后的 PricingModel 查询能力，保留公开 ID 和完整音视频输入标记。
 func TestModelMarketplaceGeminiTierModalitiesPreservePublicIDs(t *testing.T) {
 	pricing := &billingpricing.LiteLLMModelPricing{
 		InputCostPerToken: 2e-6, OutputCostPerToken: 1e-5,

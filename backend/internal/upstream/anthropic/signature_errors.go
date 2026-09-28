@@ -1,9 +1,8 @@
-// 本文件只识别平台错误与返回诊断，不读取提供商或安装日志状态。
 package anthropic
 
 import "strings"
 
-// matchSignaturePatterns 检查响应体是否匹配自定义关键词列表（不区分大小写）。
+// MatchSignaturePatterns 检查响应体是否匹配自定义关键词列表（不区分大小写）。
 func MatchSignaturePatterns(respBody []byte, patterns []string) bool {
 	if len(patterns) == 0 {
 		return false
@@ -21,7 +20,7 @@ func MatchSignaturePatterns(respBody []byte, patterns []string) bool {
 	return false
 }
 
-// isThinkingBlockSignatureError 检测是否是thinking block相关错误
+// IsThinkingBlockSignatureError 检测是否是thinking block相关错误
 // 这类错误可以通过过滤thinking blocks并重试来解决
 func IsThinkingBlockSignatureError(message string) (bool, string) {
 	msg := strings.ToLower(strings.TrimSpace(message))

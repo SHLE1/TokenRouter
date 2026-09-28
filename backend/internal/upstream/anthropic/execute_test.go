@@ -1,4 +1,3 @@
-// 这些契约直接运行新执行入口，验证逐段输出、观测事实和资源关闭。
 package anthropic
 
 import (

@@ -1,4 +1,3 @@
-// 查询参与函数复用调用者的连接与主查询，保持批量及分页前排序。
 package query
 
 import (
@@ -47,6 +46,7 @@ func ListUsageLogs(ctx context.Context, db TeamExecutor, teamID int64, query tea
 	}
 	return items, total, nil
 }
+
 func ListMemberUsageSeries(ctx context.Context, db TeamExecutor, teamID int64, query team.TeamUsageQuery, calendar timezone.Calendar) ([]team.TeamMemberUsageSeries, error) {
 	args := []any{teamID, query.From, query.To, calendar.Location().String()}
 	membershipActorFilter := ""
@@ -127,6 +127,7 @@ func ListMemberUsageSeries(ctx context.Context, db TeamExecutor, teamID int64, q
 	}
 	return items, rows.Err()
 }
+
 func GetUsageSummary(ctx context.Context, db TeamExecutor, teamID int64, query team.TeamUsageQuery, calendar timezone.Calendar) (*team.TeamUsageSummary, error) {
 	where, args := TeamUsageWhere(teamID, query)
 	summary := &team.TeamUsageSummary{Daily: make([]team.TeamUsageDaily, 0)}
@@ -154,6 +155,7 @@ func GetUsageSummary(ctx context.Context, db TeamExecutor, teamID int64, query t
 	}
 	return summary, rows.Err()
 }
+
 func TeamUsageWhere(teamID int64, query team.TeamUsageQuery) (string, []any) {
 	conditions := []string{"ul.team_id = $1", "ul.created_at >= $2", "ul.created_at < $3"}
 	args := []any{teamID, query.From, query.To}

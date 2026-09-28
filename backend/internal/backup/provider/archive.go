@@ -1,4 +1,3 @@
-// Package provider 拥有备份归档的文件、压缩与外部进程资源。
 package provider
 
 import (

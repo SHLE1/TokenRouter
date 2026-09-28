@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// 夹具只组合生产实现，缓存等待、资格、刷新与 CAS 算法不在测试中复制。
+// newOpenAIRefreshSourceFixture 夹具只组合生产实现，缓存等待、资格、刷新与 CAS 算法不在测试中复制。
 func newOpenAIRefreshSourceFixture(repo *openAIProviderRepoStub, cache *openAITokenCacheStub, authorization *openAIOAuthServiceStub) *OpenAITokenSource {
 	source := &OpenAITokenSource{Repository: repo, Cache: cache, Metrics: &OpenAITokenMetricsStore{}, Policy: OpenAIProviderRefreshPolicy(), Debug: slog.Debug, Warn: slog.Warn}
 	if authorization != nil {
@@ -46,7 +46,7 @@ func (e claudeExchangeFixture) Refresh(ctx context.Context, value *Record) (map[
 	return RefreshClaudeCredentials(ctx, value, e.exchange.RefreshProviderToken)
 }
 
-// 存储替身保留原写失败注入，并实现真实协调器要求的条件写契约。
+// UpdateOAuthCredentialsIfUnchanged 存储替身保留原写失败注入，并实现真实协调器要求的条件写契约。
 func (r *openAIProviderRepoStub) UpdateOAuthCredentialsIfUnchanged(ctx context.Context, version CredentialVersion, credentials map[string]any) (bool, error) {
 	if r.provider == nil || !reflect.DeepEqual(FailureVersion(r.provider).CredentialVersion, version) {
 		return false, nil

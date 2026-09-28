@@ -195,7 +195,7 @@ func TestCreateTradeUsesPagePayForDesktop(t *testing.T) {
 	}
 }
 
-// 当实例配置 paymentMode == "redirect" 时，桌面支付必须跳过 precreate 直接走 page.pay。
+// TestCreateTradeRedirectModeSkipsPrecreate 验证当实例配置 paymentMode == "redirect" 时，桌面支付必须跳过 precreate 直接走 page.pay。
 func TestCreateTradeRedirectModeSkipsPrecreate(t *testing.T) {
 	origPreCreate := alipayTradePreCreate
 	origPagePay := alipayTradePagePay

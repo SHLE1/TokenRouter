@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 在供应商交换入口固定停止时刻，验证共享依赖释放前取消并等待本次操作。
+// TestOpenAIAuthorizationStopWaitsForExchange 验证在供应商交换入口固定停止时刻，验证共享依赖释放前取消并等待本次操作。
 func TestOpenAIAuthorizationStopWaitsForExchange(t *testing.T) {
 	store := NewOpenAISessionStore()
 	require.False(t, store.runtimeStarted)
@@ -44,7 +44,7 @@ func TestOpenAIAuthorizationStopWaitsForExchange(t *testing.T) {
 	require.True(t, exists, "交换失败不能消费原会话")
 }
 
-// 不响应取消的交换会耗尽预算，不能报告完成或在停止后新开任务。
+// TestOpenAIAuthorizationStopReportsUnfinishedExchange 验证不响应取消的交换会耗尽预算，不能报告完成或在停止后新开任务。
 func TestOpenAIAuthorizationStopReportsUnfinishedExchange(t *testing.T) {
 	store := NewOpenAISessionStore()
 	entered := make(chan struct{})

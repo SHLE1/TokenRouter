@@ -1,4 +1,3 @@
-// 透传端口保留独立预算、头部策略和错误边界；只有当前请求的技术资源进入 Adapter。
 package openaiforward
 
 import (

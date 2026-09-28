@@ -1,4 +1,3 @@
-// Package testkit 构造模型配置测试数据，缓存编译与查询均使用 routing 的唯一实现。
 package testkit
 
 import (

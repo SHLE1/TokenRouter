@@ -1,4 +1,3 @@
-// 本地 HTTP 验证各原生执行入口的实际输出、用量与资源关闭，不重放到供应商。
 package antigravity
 
 import (
@@ -124,7 +123,7 @@ func TestExecuteFailedBeforeResponseReleasesOwnedBody(t *testing.T) {
 	require.EqualValues(t, 1, releases.Load())
 }
 
-// 静态上游保留双凭据 Header、未知请求字段和原透传输出。
+// TestExecuteStaticUpstreamWire 验证静态上游保留双凭据 Header、未知请求字段和原透传输出。
 func TestExecuteStaticUpstreamWire(t *testing.T) {
 	for _, stream := range []bool{false, true} {
 		t.Run(fmt.Sprintf("stream=%v", stream), func(t *testing.T) {

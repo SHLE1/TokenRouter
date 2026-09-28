@@ -14,7 +14,7 @@ import (
 
 var errStub = errors.New("stub dial")
 
-// 回归：SOCKS5 分支覆盖了调用方在 Transport 上设置的 DialContext，
+// TestSOCKS5ForwardDialerHasBoundedTimeout 验证回归：SOCKS5 分支覆盖了调用方在 Transport 上设置的 DialContext，
 // 底层 forward dialer 必须自带建连超时。proxy.Direct 是零值 net.Dialer，
 // 代理不可达时会一直卡到内核 TCP 重传耗尽（Linux 约 130 秒）。
 func TestSOCKS5ForwardDialerHasBoundedTimeout(t *testing.T) {
@@ -37,7 +37,7 @@ func TestConfigureTransportProxySOCKS5SetsDialContext(t *testing.T) {
 	}
 }
 
-// HTTP 代理走 Transport.Proxy，不得覆盖调用方设置的 DialContext。
+// TestConfigureTransportProxyHTTPPreservesDialContext 验证HTTP 代理走 Transport.Proxy，不得覆盖调用方设置的 DialContext。
 func TestConfigureTransportProxyHTTPPreservesDialContext(t *testing.T) {
 	proxyURL, err := url.Parse("http://127.0.0.1:8080")
 	require.NoError(t, err)

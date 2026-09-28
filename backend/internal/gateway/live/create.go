@@ -73,7 +73,7 @@ func liveGroupID(id *int64) int64 {
 	return *id
 }
 
-// CreateLiveCall 创建 Frameless 会话。调用方须在调用期间持有普通用户槽位；
+// Create 创建 Frameless 会话。调用方须在调用期间持有普通用户槽位；
 // 调度器持有的普通提供商槽位会被同一个 Live 租约原子接替。
 func (s *Creator) Create(
 	ctx context.Context,

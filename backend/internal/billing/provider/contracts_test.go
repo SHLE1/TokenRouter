@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 日期回退需要第二次产生候选，但不能重新取得运行时平台默认值。
+// TestCatalogQueryFreezesOneCandidateFactory 验证日期回退需要第二次产生候选，但不能重新取得运行时平台默认值。
 func TestCatalogQueryFreezesOneCandidateFactory(t *testing.T) {
 	factories, lookups := 0, 0
 	options := Options{ModelLookupCandidates: func() func(string) []string {
@@ -32,7 +32,7 @@ func TestCatalogQueryFreezesOneCandidateFactory(t *testing.T) {
 	require.Equal(t, 2, lookups)
 }
 
-// 快照不暴露可写缓存别名，并保留 nil 与显式空切片。
+// TestCatalogSnapshotIsIndependent 验证快照不暴露可写缓存别名，并保留 nil 与显式空切片。
 func TestCatalogSnapshotIsIndependent(t *testing.T) {
 	service := NewPricingServiceFromSnapshot(Options{}, nil, Snapshot{Data: map[string]*LiteLLMModelPricing{"model": {InputCostPerToken: 1, SupportedModalities: []string{"text"}, SupportedOutputModalities: []string{}}}})
 	snapshot := service.Snapshot()
@@ -53,11 +53,12 @@ func (r *lifecyclePricingRemote) FetchPricingJSON(context.Context, string) ([]by
 	r.calls.Add(1)
 	return []byte(`{"model":{"input_cost_per_token":0.001,"output_cost_per_token":0.002}}`), nil
 }
+
 func (r *lifecyclePricingRemote) FetchHashText(context.Context, string) (string, error) {
 	return "", nil
 }
 
-// 构造不加载数据；显式初始化后才启动唯一更新任务，重复停止等待同一任务退出。
+// TestPricingConstructionAndLifecycle 验证构造不加载数据；显式初始化后才启动唯一更新任务，重复停止等待同一任务退出。
 func TestPricingConstructionAndLifecycle(t *testing.T) {
 	remote := &lifecyclePricingRemote{}
 	service := NewPricingService(Options{DataDir: t.TempDir(), RemoteURL: "https://pricing.invalid/catalog"}, remote)
@@ -72,13 +73,13 @@ func TestPricingConstructionAndLifecycle(t *testing.T) {
 	require.NotNil(t, service.GetModelPricing("model"))
 }
 
-// 更新线程整体替换目录时，并发读者只看见一份完整价格，停止后目录仍可读取。
+// TestPricingConcurrentReadAndReload 验证更新线程整体替换目录时，并发读者只看见一份完整价格，停止后目录仍可读取。
 func TestPricingConcurrentReadAndReload(t *testing.T) {
 	dir := t.TempDir()
 	first := filepath.Join(dir, "first.json")
 	second := filepath.Join(dir, "second.json")
-	require.NoError(t, os.WriteFile(first, []byte(`{"model":{"input_cost_per_token":1,"output_cost_per_token":2}}`), 0600))
-	require.NoError(t, os.WriteFile(second, []byte(`{"model":{"input_cost_per_token":3,"output_cost_per_token":4}}`), 0600))
+	require.NoError(t, os.WriteFile(first, []byte(`{"model":{"input_cost_per_token":1,"output_cost_per_token":2}}`), 0o600))
+	require.NoError(t, os.WriteFile(second, []byte(`{"model":{"input_cost_per_token":3,"output_cost_per_token":4}}`), 0o600))
 	service := NewPricingService(Options{DataDir: dir}, nil)
 	require.NoError(t, service.LoadPricingData(first))
 	var readers sync.WaitGroup

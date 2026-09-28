@@ -1,4 +1,3 @@
-// 渠道绑定仅接收实例查询与构造端口；应用持有唯一注册表与加载屏障。
 package payment
 
 import (
@@ -30,6 +29,7 @@ type ProviderBindings struct {
 func NewProviderBindings(store BindingStore, registry *Registry, balancer LoadBalancer, runtime BindingRuntime, alreadyLoaded bool) *ProviderBindings {
 	return &ProviderBindings{store: store, registry: registry, loadBalancer: balancer, runtime: runtime, providersLoaded: alreadyLoaded}
 }
+
 func (s *ProviderBindings) warn(message string, attrs ...any) {
 	if s.runtime.Warn != nil {
 		s.runtime.Warn(message, attrs...)

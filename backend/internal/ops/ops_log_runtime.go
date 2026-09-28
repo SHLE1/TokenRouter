@@ -1,4 +1,3 @@
-// 本文件拥有 Ops 观测用例；配置与外部状态经端口注入。
 package ops
 
 import (
@@ -239,11 +238,13 @@ func (s *OpsService) applyRuntimeLogConfig(c *OpsRuntimeLogConfig) error {
 	}
 	return s.logging.Apply(c)
 }
+
 func (s *OpsService) auditRuntimeLogConfigChange(id int64, old, next *OpsRuntimeLogConfig, action string) {
 	if s.logging != nil {
 		s.logging.Changed(id, old, next, action)
 	}
 }
+
 func (s *OpsService) auditRuntimeLogConfigFailure(id int64, old, next *OpsRuntimeLogConfig, reason string) {
 	if s.logging != nil {
 		s.logging.Failed(id, old, next, reason)

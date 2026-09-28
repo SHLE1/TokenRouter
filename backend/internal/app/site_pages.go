@@ -1,4 +1,3 @@
-// 页面文件入口由 app 装配，server 只接收 HTTP 行为。
 package app
 
 import (

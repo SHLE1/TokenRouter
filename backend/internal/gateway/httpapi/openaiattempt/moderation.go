@@ -39,7 +39,7 @@ func (h *Support) RecordOpenAIForwardErrorCyberWarning(c *gin.Context, reqLog *z
 	return true
 }
 
-// 仅投影处置所需提供商标识，不泄露执行凭据。
+// moderationProviderView 仅投影处置所需提供商标识，不泄露执行凭据。
 func moderationProviderView(a *gatewayprovider.ExecutionProvider) *moderationflow.Provider {
 	if a == nil {
 		return nil

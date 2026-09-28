@@ -1576,7 +1576,7 @@ func TestForwardGrokResponsesNonStreamingUsesCacheIdentityAndCachedUsage(t *test
 	require.Equal(t, observedResetAt, repo.recoveryObservedReset)
 }
 
-// 原生 Responses 的 Free OAuth 函数工具请求必须在实际转发前补齐可缓存原生工具。
+// TestForwardGrokResponsesFreeFunctionToolsUseCacheCapableMixedRoute 验证原生 Responses 的 Free OAuth 函数工具请求必须在实际转发前补齐可缓存原生工具。
 func TestForwardGrokResponsesFreeFunctionToolsUseCacheCapableMixedRoute(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -1783,7 +1783,7 @@ func TestForwardAsChatCompletionsForGrokComposerBridgesImageInput(t *testing.T) 
 	require.NotNil(t, repo.updates[55]["grok_usage_snapshot"])
 }
 
-// Codex 身份恢复只能作用于 OpenAI OAuth，Grok Messages 必须保持自己的请求头和端点。
+// TestForwardAsAnthropicForGrokUsesXAIResponses 验证Codex 身份恢复只能作用于 OpenAI OAuth，Grok Messages 必须保持自己的请求头和端点。
 func TestForwardAsAnthropicForGrokUsesXAIResponses(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -1831,7 +1831,7 @@ func TestForwardAsAnthropicForGrokUsesXAIResponses(t *testing.T) {
 	require.Contains(t, recorder.Body.String(), "ok")
 }
 
-// Grok Messages 在提供商缓存身份变化后应剥离旧推理密文，并通过同一路由重试一次。
+// TestForwardAsAnthropicForGrokRetriesInvalidEncryptedContentOnce 验证Grok Messages 在提供商缓存身份变化后应剥离旧推理密文，并通过同一路由重试一次。
 func TestForwardAsAnthropicForGrokRetriesInvalidEncryptedContentOnce(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)

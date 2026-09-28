@@ -1,4 +1,3 @@
-// 列表保持数据库分页、排序和原过滤差异，不分页后补排序。
 package postgres
 
 import (

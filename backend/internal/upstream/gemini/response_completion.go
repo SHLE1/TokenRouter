@@ -1,4 +1,3 @@
-// 响应完成保持每个入口已有的上游缓冲与转换差异，不创建第二套协议算法。
 package gemini
 
 import (
@@ -51,6 +50,7 @@ func (s *ResponseAdapter) CompleteMessages(c *upstream.OutputContext, resp *http
 
 	return usage, firstTokenMs, nil
 }
+
 func (s *ResponseAdapter) CompleteNative(c *upstream.OutputContext, resp *http.Response, startTime time.Time, stream, useUpstreamStream, isOAuth bool) (*upstream.TokenUsage, *int, error) {
 	var usage *upstream.TokenUsage
 	var firstTokenMs *int
@@ -88,6 +88,7 @@ func (s *ResponseAdapter) CompleteNative(c *upstream.OutputContext, resp *http.R
 
 	return usage, firstTokenMs, nil
 }
+
 func (s *ResponseAdapter) CompleteOpenAI(c *upstream.OutputContext, resp *http.Response, startTime time.Time, originalModel string, clientStream, useUpstreamStream, isOAuth, includeUsage bool, protocol OpenAICompatProtocol, clientToolMapping bridge.ResponsesClientToolMapping) (*upstream.TokenUsage, *int, error) {
 	var err error
 	var usage *upstream.TokenUsage

@@ -131,7 +131,7 @@ func TestNativeRouteInventory(t *testing.T) {
 	}
 }
 
-// 以下具名中间件仅标记 app 注入的安全边界；捕获链后提前中止，不执行用例。
+// inventoryJWT 以下具名中间件仅标记 app 注入的安全边界；捕获链后提前中止，不执行用例。
 func inventoryJWT(c *gin.Context)         { c.Next() }
 func inventoryAdmin(c *gin.Context)       { c.Next() }
 func inventoryAudit(c *gin.Context)       { c.Next() }

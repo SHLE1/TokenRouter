@@ -1,4 +1,3 @@
-// HTTP 请求准备连接提供商资格、编解码和同步观测。
 package httpapi
 
 import (

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原默认与显式TTL断言归配置装配所有者，避免通过旧网关读取配置。
+// TestGatewayGroupRateCacheTTL 验证原默认与显式TTL断言归配置装配所有者，避免通过旧网关读取配置。
 func TestGatewayGroupRateCacheTTL(t *testing.T) {
 	t.Run("resolve_user_group_rate_cache_ttl", func(t *testing.T) {
 		require.Equal(t, billing.DefaultGroupRateCacheTTL, gatewayGroupRateCacheTTL(nil))

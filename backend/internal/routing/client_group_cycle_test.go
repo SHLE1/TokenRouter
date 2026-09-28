@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原回退循环断言直接归属分组规则实现。
+// TestGatewayService_ResolveGatewayGroup_DetectsFallbackCycle 验证原回退循环断言直接归属分组规则实现。
 func TestGatewayService_ResolveGatewayGroup_DetectsFallbackCycle(t *testing.T) {
 	ctx := context.Background()
 	groupID := int64(10)

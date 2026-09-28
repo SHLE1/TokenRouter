@@ -119,7 +119,7 @@ func TestAdvancedSchedulerScoreSnapshotKeepsHardStickyInfinity(t *testing.T) {
 	require.Zero(t, snapshot.StickyScore)
 }
 
-// 每个测试持有独立运行状态，生产装配则复用唯一 shared 对象。
+// newScoreFixtureState 每个测试持有独立运行状态，生产装配则复用唯一 shared 对象。
 func newScoreFixtureState() *schedulerSharedState {
 	return &schedulerSharedState{Settings: scheduler.NewSettingsRuntime(scheduler.Diagnostics{}), Feedback: scheduler.NewRuntimeStats(time.Now)}
 }

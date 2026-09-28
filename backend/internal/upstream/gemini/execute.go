@@ -1,4 +1,3 @@
-// 本文件闭合一次 Gemini 平台交换与响应处理，不拥有提供商选择或资金提交。
 package gemini
 
 import (

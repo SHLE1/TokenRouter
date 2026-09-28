@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 手动查询也必须属于资源拥有者：停止时取消并等待，迟到响应不能继续写快照。
+// TestOllamaUsageStopOwnsManualRefresh 验证手动查询也必须属于资源拥有者：停止时取消并等待，迟到响应不能继续写快照。
 func TestOllamaUsageStopOwnsManualRefresh(t *testing.T) {
 	value := ollamaUsageProvider(901)
 	value.Extra[provider.OllamaCloudUsageSessionExtraKey] = "cipher:wos-session=fixture"

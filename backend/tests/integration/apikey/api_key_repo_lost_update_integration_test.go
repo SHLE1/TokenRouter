@@ -73,7 +73,7 @@ func (s *APIKeyRepoSuite) TestUpdate_DoesNotRevertConcurrentRateLimitUsage() {
 	s.Require().InDelta(42, got.Usage7d, 1e-9, "usage_7d must not be reverted by a stale key edit")
 }
 
-// 显式重置仍然必须生效，避免收窄写入列时把功能改坏。
+// TestUpdate_StillResetsUsageWhenDeclared 验证显式重置仍然必须生效，避免收窄写入列时把功能改坏。
 func (s *APIKeyRepoSuite) TestUpdate_StillResetsUsageWhenDeclared() {
 	user := s.mustCreateUser("apikey-reset-usage@example.com")
 	key := &apikey.APIKey{

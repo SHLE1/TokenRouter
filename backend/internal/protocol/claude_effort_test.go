@@ -39,5 +39,5 @@ func TestNormalizeClaudeOutputEffort(t *testing.T) {
 	}
 }
 
-// 原可选档位断言的独立值。
+// thinkingStringPointer 原可选档位断言的独立值。
 func thinkingStringPointer(value string) *string { return &value }

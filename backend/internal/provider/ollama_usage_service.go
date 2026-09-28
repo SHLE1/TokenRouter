@@ -85,7 +85,7 @@ func (s *OllamaCloudUsageService) StartContext(ctx context.Context) error {
 	return s.runtime.StartContext(ctx)
 }
 
-// StopContext 将手动及周期在途工作纳入调用方总预算，重复调用保留首次结果。
+// Stop 将手动及周期在途工作纳入调用方总预算，重复调用保留首次结果。
 func (s *OllamaCloudUsageService) Stop() { _ = s.StopContext(context.Background()) }
 
 func (s *OllamaCloudUsageService) StopContext(ctx context.Context) error {

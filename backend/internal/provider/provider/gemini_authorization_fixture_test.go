@@ -1,6 +1,5 @@
 //go:build unit
 
-// 本文件把原授权测试的客户端与配置快照接到唯一提供商实现。
 package provider
 
 import (

@@ -1,4 +1,3 @@
-// 通知邮箱验证只接收 identity 已生成的验证码与接收者。
 package notification
 
 import (
@@ -54,6 +53,7 @@ const notifyVerifyEmailTemplate = `<!DOCTYPE html>
 func buildNotifyVerifyEmailBody(code, siteName string) string {
 	return fmt.Sprintf(notifyVerifyEmailTemplate, siteName, code)
 }
+
 func (s *Mailer) SendNotifyVerification(ctx context.Context, userID int64, email, code, locale, siteName string) error {
 	if s.notificationEmailService != nil {
 		if err := s.notificationEmailService.Send(ctx, NotificationEmailSendInput{
@@ -78,5 +78,4 @@ func (s *Mailer) SendNotifyVerification(ctx context.Context, userID int64, email
 	subject := fmt.Sprintf("[%s] 通知邮箱验证码 / Notification Email Verification", siteName)
 	body := buildNotifyVerifyEmailBody(code, siteName)
 	return s.SendEmail(ctx, email, subject, body)
-
 }

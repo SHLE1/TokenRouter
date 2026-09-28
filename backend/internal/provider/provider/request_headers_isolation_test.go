@@ -18,14 +18,14 @@ func headerOverrideProvider() *provider.Record {
 	}}
 }
 
-// 临时修改覆写结果不能影响另一个请求的配置。
+// TestHeaderOverrideResultIsolation 验证临时修改覆写结果不能影响另一个请求的配置。
 func TestHeaderOverrideResultIsolation(t *testing.T) {
 	provider := headerOverrideProvider()
 	provider.HeaderOverrides()["x-test-marker"] = "changed-by-caller"
 	require.Equal(t, "configured", provider.HeaderOverrides()["x-test-marker"])
 }
 
-// 并发解析不可变配置不得回写共享提供商字段。
+// TestHeaderOverrideConcurrentReads 验证并发解析不可变配置不得回写共享提供商字段。
 func TestHeaderOverrideConcurrentReads(t *testing.T) {
 	provider := headerOverrideProvider()
 	start := make(chan struct{})

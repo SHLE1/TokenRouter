@@ -1,4 +1,3 @@
-// app 持有错误采集队列；HTTP 捕获只绑定同一消费者。
 package app
 
 import (

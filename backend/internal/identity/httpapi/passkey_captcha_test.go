@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 腾讯验证码校验必须先于 WebAuthn ceremony，缺少票据时不能创建 Passkey 会话。
+// TestPasskeyBeginLoginRequiresTencentCaptchaBeforeCeremony 验证腾讯验证码校验必须先于 WebAuthn ceremony，缺少票据时不能创建 Passkey 会话。
 func TestPasskeyBeginLoginRequiresTencentCaptchaBeforeCeremony(t *testing.T) {
 	authHandler, verifier := newOAuthCaptchaTestHandler(true)
 	passkeys := identity.NewPasskeyService(false, nil, nil, nil, nil)
@@ -31,7 +31,7 @@ func TestPasskeyBeginLoginRequiresTencentCaptchaBeforeCeremony(t *testing.T) {
 	require.Zero(t, verifier.calls)
 }
 
-// 票据通过后才进入 Passkey 服务；测试中的禁用实例会返回明确的功能关闭错误。
+// TestPasskeyBeginLoginVerifiesTencentCaptchaBeforePasskeyService 验证票据通过后才进入 Passkey 服务；测试中的禁用实例会返回明确的功能关闭错误。
 func TestPasskeyBeginLoginVerifiesTencentCaptchaBeforePasskeyService(t *testing.T) {
 	authHandler, verifier := newOAuthCaptchaTestHandler(true)
 	passkeys := identity.NewPasskeyService(false, nil, nil, nil, nil)

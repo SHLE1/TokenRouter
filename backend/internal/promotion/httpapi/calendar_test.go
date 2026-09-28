@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 返利查询保持包含结束日最后一纳秒的旧契约，不统一为其他查询的排他边界。
+// TestAffiliateRecordFilterInjectedCalendar 验证返利查询保持包含结束日最后一纳秒的旧契约，不统一为其他查询的排他边界。
 func TestAffiliateRecordFilterInjectedCalendar(t *testing.T) {
 	loc, err := time.LoadLocation("America/New_York")
 	require.NoError(t, err)

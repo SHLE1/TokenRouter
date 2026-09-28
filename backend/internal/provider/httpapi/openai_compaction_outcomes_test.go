@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 手动测试保留认证错误和限流处理，但所有结果均不得改写管理员能力配置。
+// TestManualCompactionTestsPreserveConfigurationAcrossOutcomes 验证手动测试保留认证错误和限流处理，但所有结果均不得改写管理员能力配置。
 func TestManualCompactionTestsPreserveConfigurationAcrossOutcomes(t *testing.T) {
 	for _, mode := range []string{providercore.ProviderTestModeCompact, providercore.ProviderTestModeLegacyCompact} {
 		for _, status := range []int{200, 401, 404, 429} {

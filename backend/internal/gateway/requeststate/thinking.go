@@ -1,4 +1,3 @@
-// Thinking 报文策略接收外层确定的资格，不识别提供商或具体平台实现。
 package requeststate
 
 import (

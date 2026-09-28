@@ -15,8 +15,10 @@ type opsErrorLogJob struct {
 	entry *ops.OpsInsertErrorLogInput
 }
 
-var opsErrorLogQueue chan opsErrorLogJob
-var testOpsCaptureQueue *captureOpsErrorQueue
+var (
+	opsErrorLogQueue    chan opsErrorLogJob
+	testOpsCaptureQueue *captureOpsErrorQueue
+)
 
 type captureOpsErrorQueue struct{ health ops.ErrorLogQueueHealth }
 
@@ -49,6 +51,7 @@ func setupOpsErrorLogTestQueue(t *testing.T, size int) {
 	testOpsCaptureQueue = &captureOpsErrorQueue{}
 	t.Cleanup(func() { opsErrorLogQueue, testOpsCaptureQueue = previous, previousQueue })
 }
+
 func flushOpsErrorLogBatch(batch []opsErrorLogJob) {
 	for _, job := range batch {
 		if job.ops != nil && job.entry != nil {
@@ -57,7 +60,7 @@ func flushOpsErrorLogBatch(batch []opsErrorLogJob) {
 	}
 }
 
-// 测试队列只观察同步提交；真实工作线程与停机契约在 ops 集成测试中验证。
+// OpsErrorLogQueueLength 测试队列只观察同步提交；真实工作线程与停机契约在 ops 集成测试中验证。
 func OpsErrorLogQueueLength() int64   { return testOpsCaptureQueue.Health().Length }
 func OpsErrorLogEnqueuedTotal() int64 { return testOpsCaptureQueue.Health().Enqueued }
 

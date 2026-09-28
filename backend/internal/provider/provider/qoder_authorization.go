@@ -1,4 +1,3 @@
-// 本文件把 Qoder 原生协议投影给提供商授权用例；状态只存在于 Core。
 package provider
 
 import (
@@ -66,7 +65,7 @@ func (p *QoderAuthorization) prepare(ctx context.Context, site string, proxyID *
 	return sessionID, session, &provider.QoderAuthURLResult{AuthURL: flow.AuthURL, SessionID: sessionID, State: state, ExpiresIn: int64(provider.QoderOAuthSessionTTL / time.Second), Interval: provider.QoderOAuthPollInterval, Site: string(profile.Site)}, nil
 }
 
-// 以下委托供 HTTP 消费，实际会话状态和权限顺序由提供商用例拥有。
+// GenerateAuthURLForSite 以下委托供 HTTP 消费，实际会话状态和权限顺序由提供商用例拥有。
 func (p *QoderAuthorization) GenerateAuthURLForSite(ctx context.Context, site string, id *int64) (*provider.QoderAuthURLResult, error) {
 	return p.Core.GenerateAuthURLForSite(ctx, site, id)
 }

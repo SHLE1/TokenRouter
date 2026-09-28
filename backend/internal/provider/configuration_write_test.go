@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 配置替换基于锁内最新累计，仍按原取时点处理真正跨越的资金窗口。
+// TestConfigurationUsesCurrentWindowAndIsolatedValues 验证配置替换基于锁内最新累计，仍按原取时点处理真正跨越的资金窗口。
 func TestConfigurationUsesCurrentWindowAndIsolatedValues(t *testing.T) {
 	now := time.Date(2026, 9, 13, 12, 0, 0, 0, time.UTC)
 	for _, currentDay := range []bool{false, true} {
@@ -42,7 +42,7 @@ func TestConfigurationUsesCurrentWindowAndIsolatedValues(t *testing.T) {
 	}
 }
 
-// 未提供的秘密继承最新值，显式清空和旋转则保持管理员意图。
+// TestConfigurationSensitiveCredentialIntent 验证未提供的秘密继承最新值，显式清空和旋转则保持管理员意图。
 func TestConfigurationSensitiveCredentialIntent(t *testing.T) {
 	for _, mode := range []string{"omitted", "clear", "rotate"} {
 		t.Run(mode, func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestConfigurationSensitiveCredentialIntent(t *testing.T) {
 	}
 }
 
-// 最新秘密的继承不能撤销编辑入口已经完成的临时认证材料清理。
+// TestConfigurationDoesNotRestoreTemporaryCredentials 验证最新秘密的继承不能撤销编辑入口已经完成的临时认证材料清理。
 func TestConfigurationDoesNotRestoreTemporaryCredentials(t *testing.T) {
 	current := &Record{Platform: PlatformGrok, Credentials: map[string]any{
 		"access_token": "current-token", "password": "old-password", "sso_token": "old-sso", "cookie": "old-cookie",

@@ -38,7 +38,7 @@ func refreshAPIForFixture(repo providercore.RefreshRepository, cache providercor
 	return providercore.NewOAuthRefreshAPI(repo, cache, providercore.RefreshOptions{Platform: providercore.ProviderRefreshPlatformPolicy()})
 }
 
-// 测试写入保留字段计数；任何意外的整行更新仍通过同一替身可观测。
+// Update 测试写入保留字段计数；任何意外的整行更新仍通过同一替身可观测。
 func (r *poolHealthProviderRepo) Update(ctx context.Context, value *providercore.Record) error {
 	return r.UpdateCredentials(ctx, value.ID, value.Credentials)
 }
@@ -79,7 +79,7 @@ func cooldownPostActions(repo *refreshSuccessCooldownRepo) *providercore.Refresh
 	}
 }
 
-// 竞争替身比较当前行身份，nil 凭据与原刷新快照一致。
+// refreshFailureMatchesFixture 竞争替身比较当前行身份，nil 凭据与原刷新快照一致。
 func refreshFailureMatchesFixture(value *providercore.Record, version providercore.RefreshFailureVersion) bool {
 	return value != nil && reflect.DeepEqual(providercore.FailureVersion(value), version)
 }

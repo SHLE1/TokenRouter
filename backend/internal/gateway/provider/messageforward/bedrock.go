@@ -20,7 +20,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/bedrock"
 )
 
-// forwardBedrock 转发请求到 AWS Bedrock
+// bedrock 转发请求到 AWS Bedrock
 func (r *Runtime) bedrock(
 	ctx context.Context,
 	output HTTPBoundary, state *AttemptState,
@@ -115,7 +115,7 @@ func (r *Runtime) bedrock(
 	return converted, nil
 }
 
-// handleBedrockUpstreamErrors 处理 Bedrock 上游 4xx/5xx 错误（failover + 错误响应）
+// bedrockError 处理 Bedrock 上游 4xx/5xx 错误（failover + 错误响应）
 func (r *Runtime) bedrockError(
 	ctx context.Context,
 	resp *http.Response,

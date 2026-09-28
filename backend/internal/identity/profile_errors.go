@@ -1,4 +1,3 @@
-// 用户资料、头像和通知邮箱操作使用这些结构化错误。
 package identity
 
 import (

@@ -1,4 +1,3 @@
-// 本文件组合原生请求；URL/提供商政策由调用方投影，不接收旧提供商或 Gin。
 package anthropic
 
 import (

@@ -16,7 +16,7 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// 隔离 Redis 验证旧会话 JSON/键/TTL 与两个 Store 的一次性消费兼容。
+// TestGrokSessionsRedisWireAndSingleConsumption 验证隔离 Redis 验证旧会话 JSON/键/TTL 与两个 Store 的一次性消费兼容。
 func TestGrokSessionsRedisWireAndSingleConsumption(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

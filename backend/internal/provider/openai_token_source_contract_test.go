@@ -231,7 +231,7 @@ func TestOpenAITokenProvider_TTLCalculation(t *testing.T) {
 	}
 }
 
-// Tests for real provider - to increase coverage
+// TestOpenAITokenProvider_Real_LockFailedWait 验证真实 token 源在获取锁失败时的等待行为。
 func TestOpenAITokenProvider_Real_LockFailedWait(t *testing.T) {
 	cache := newOpenAITokenCacheStub()
 	cache.lockAcquired = false // Lock acquisition fails

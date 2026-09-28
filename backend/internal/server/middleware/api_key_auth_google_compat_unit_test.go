@@ -1,6 +1,5 @@
 //go:build unit
 
-// 测试私有适配入口，委托所属模块的生产用例。
 package middleware
 
 import (

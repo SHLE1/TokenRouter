@@ -1,4 +1,3 @@
-// 本文件拥有 Qoder 刷新资格与凭据合并；供应商响应由平台适配投影。
 package provider
 
 import (

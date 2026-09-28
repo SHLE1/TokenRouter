@@ -1,4 +1,3 @@
-// 认证缓存键使用 API Key 摘要，避免将原始凭据写入缓存键名。
 package apikey
 
 import (

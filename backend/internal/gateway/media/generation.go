@@ -1,4 +1,3 @@
-// 图片与公共 Grok 媒体各自保留原尝试顺序，不把生成和资源查询合并准入。
 package media
 
 import (

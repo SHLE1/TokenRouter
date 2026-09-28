@@ -19,8 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// HTTP POST /v1/responses -> forwardOpenAIWSV2 keeps the canonical outbound
-// tier separate from response.completed.service_tier for usage-time billing.
+// TestForwardOpenAIWSV2_KeepsOutboundAndObservedServiceTiersSeparate 验证 HTTP Responses 转发到 WebSocket 时，
+// 出站层级与 response.completed.service_tier 保持独立，供用量结算使用。
 func TestForwardOpenAIWSV2_KeepsOutboundAndObservedServiceTiersSeparate(t *testing.T) {
 	cases := []struct {
 		name        string

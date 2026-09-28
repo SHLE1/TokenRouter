@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestEnsureCodexReasoningInclude 验证启用推理时补齐 include，并保持幂等及已有条目。
 // ensureCodexReasoningInclude：带 reasoning 时补齐 include，幂等且保留既有项。
 func TestEnsureCodexReasoningInclude(t *testing.T) {
 	// reasoning 存在、include 缺失 → 注入
@@ -33,7 +33,7 @@ func TestEnsureCodexReasoningInclude(t *testing.T) {
 	require.Equal(t, []any{"foo", "reasoning.encrypted_content"}, body3["include"])
 }
 
-// defaultCodexSynthInstructions：按模型选用真实 Codex base prompt。
+// TestDefaultCodexSynthInstructionsModelAware 验证defaultCodexSynthInstructions：按模型选用真实 Codex base prompt。
 func TestDefaultCodexSynthInstructionsModelAware(t *testing.T) {
 	require.True(t, strings.Contains(openai.DefaultCodexSynthInstructions("gpt-5-codex"), "You are Codex, based on GPT-5"))
 	require.True(t, strings.Contains(openai.DefaultCodexSynthInstructions("gpt-5.5"), "You are Codex, a coding agent based on GPT-5"))

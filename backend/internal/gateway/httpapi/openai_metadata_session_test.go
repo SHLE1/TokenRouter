@@ -74,7 +74,7 @@ func TestResolveOpenAIMessagesMetadataSession_BlankClaudeHeaderKeepsContentFallb
 	require.Empty(t, cacheKey)
 }
 
-// 请求 Header 与内容种子的组合仍验证实际原生函数。
+// metadataSessionForTest 请求 Header 与内容种子的组合仍验证实际原生函数。
 func metadataSessionForTest(c *gin.Context, hash, key, model string, body []byte) (string, string) {
 	return session.MessagesMetadataSession(ClaudeCodeSessionIDFromHeader(c), hash, key, model, body)
 }

@@ -1,4 +1,3 @@
-// 图片 HTTP wire 的 JSON/multipart 解析保留原边界；模型许可、能力桶与定价由调用方提供。
 package upstream
 
 import (
@@ -17,9 +16,12 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-const OpenAIImagesGenerationsEndpoint = "/v1/images/generations"
-const OpenAIImagesEditsEndpoint = "/v1/images/edits"
-const OpenAIImageMaxUploadPartSize = 20 << 20 // 20MB per multipart upload part
+const (
+	OpenAIImagesGenerationsEndpoint = "/v1/images/generations"
+	OpenAIImagesEditsEndpoint       = "/v1/images/edits"
+	OpenAIImageMaxUploadPartSize    = 20 << 20 // 20MB per multipart upload part
+)
+
 type ImageRequest struct {
 	Endpoint          string
 	ContentType       string
@@ -72,6 +74,7 @@ func (r *ImageRequest) ModerationBody() []byte {
 	}
 	return body
 }
+
 func (r *ImageRequest) moderationImages() []map[string]string {
 	if r == nil {
 		return nil
@@ -98,9 +101,11 @@ func (r *ImageRequest) moderationImages() []map[string]string {
 	}
 	return images
 }
+
 func (r *ImageRequest) IsEdits() bool {
 	return r != nil && r.Endpoint == OpenAIImagesEditsEndpoint
 }
+
 func (r *ImageRequest) StickySessionSeed() string {
 	if r == nil {
 		return ""
@@ -118,6 +123,7 @@ func (r *ImageRequest) StickySessionSeed() string {
 	}
 	return seed
 }
+
 func ParseOpenAIImagesJSONRequest(body []byte, req *ImageRequest) error {
 	if modelResult := gjson.GetBytes(body, "model"); modelResult.Exists() {
 		req.Model = strings.TrimSpace(modelResult.String())
@@ -200,6 +206,7 @@ func ParseOpenAIImagesJSONRequest(body []byte, req *ImageRequest) error {
 	})
 	return nil
 }
+
 func ParseOpenAIImagesMultipartRequest(body []byte, contentType string, req *ImageRequest) error {
 	_, params, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -329,9 +336,11 @@ func ParseOpenAIImagesMultipartRequest(body []byte, contentType string, req *Ima
 	}
 	return nil
 }
+
 func ParseOpenAIImageDimensions(_ textproto.MIMEHeader) (int, int) {
 	return 0, 0
 }
+
 func ApplyOpenAIImagesDefaults(req *ImageRequest) {
 	if req == nil {
 		return
@@ -345,6 +354,7 @@ func ApplyOpenAIImagesDefaults(req *ImageRequest) {
 	}
 	req.Model = "gpt-image-2"
 }
+
 func NormalizeOpenAIImagesEndpointPath(path string) string {
 	trimmed := strings.TrimSpace(path)
 	switch {
@@ -356,6 +366,7 @@ func NormalizeOpenAIImagesEndpointPath(path string) string {
 		return ""
 	}
 }
+
 func HasOpenAINativeImageOptions(exists func(path string) bool) bool {
 	for _, path := range []string{
 		"background",
@@ -373,6 +384,7 @@ func HasOpenAINativeImageOptions(exists func(path string) bool) bool {
 	}
 	return false
 }
+
 func IsOpenAINativeImageOption(name string) bool {
 	switch strings.TrimSpace(strings.ToLower(name)) {
 	case "background", "quality", "style", "output_format", "output_compression", "moderation", "input_fidelity", "partial_images":
@@ -381,6 +393,7 @@ func IsOpenAINativeImageOption(name string) bool {
 		return false
 	}
 }
+
 func ParseImageRequest(path, contentType string, body []byte) (*ImageRequest, error) {
 	endpoint := NormalizeOpenAIImagesEndpointPath(path)
 	if endpoint == "" {

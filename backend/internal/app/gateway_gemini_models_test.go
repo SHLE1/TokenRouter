@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Gemini 原生目录与普通模型目录共用真实候选；自定义列表和 Key 别名只能取其交集。
+// TestGeminiV1BetaListUsesMixedGroupCapabilitiesAndAliases 验证Gemini 原生目录与普通模型目录共用真实候选；自定义列表和 Key 别名只能取其交集。
 func TestGeminiV1BetaListUsesMixedGroupCapabilitiesAndAliases(t *testing.T) {
 	groupID := int64(42)
 	source := &gatewayModelsProviderRepoStub{byGroup: map[int64][]provider.Record{groupID: {

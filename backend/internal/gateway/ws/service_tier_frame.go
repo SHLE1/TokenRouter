@@ -13,7 +13,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// applyOpenAIFastPolicyToWSResponseCreate 针对单个 client -> upstream WebSocket
+// ApplyServiceTierFrame 针对单个 client -> upstream WebSocket
 // 帧评估 OpenAI fast policy，该帧的顶层 "type" 必须是 "response.create"。
 // 该函数镜像 HTTP 侧 applyOpenAIFastPolicyToBody 的契约，但作用于
 // Realtime/Responses WS payload：

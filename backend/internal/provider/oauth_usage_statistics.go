@@ -41,7 +41,7 @@ func normalizedLocalWindowStats(value *WindowStats) *WindowStats {
 	return clonePointer(value)
 }
 
-// addWindowStats 为 usage 数据添加窗口期统计
+// AddWindowStats 为 usage 数据添加窗口期统计
 // 使用独立缓存（1 分钟），与 API 缓存分离
 func (s *LocalUsageStatistics) AddWindowStats(ctx context.Context, provider *Record, usage *UsageInfo) {
 	// 修复：即使 FiveHour 为 nil，也要尝试获取统计数据

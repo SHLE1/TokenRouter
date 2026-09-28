@@ -1,4 +1,3 @@
-// 文本 HTTP 单次尝试适配接收固定原生端口，不持有旧聚合 Handler。
 package textattempt
 
 import (
@@ -266,5 +265,5 @@ func New(b Bindings) *Runtime {
 	return &Runtime{dependencies: d}
 }
 
-// 依赖在构造时绑定，不在每个请求中重新创建执行器。
+// binding 依赖在构造时绑定，不在每个请求中重新创建执行器。
 func (b *messageAttemptBridge) binding() *messageExecutionDependencies { return b.fixed }

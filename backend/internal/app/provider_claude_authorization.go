@@ -1,4 +1,3 @@
-// 本文件将唯一 Claude 授权实例绑定到原代理读取和平台客户端。
 package app
 
 import (

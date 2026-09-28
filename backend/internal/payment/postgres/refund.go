@@ -1,4 +1,3 @@
-// 退款闭合事务仅持有本地数据库连接；渠道请求不在本文件执行。
 package postgres
 
 import (
@@ -18,15 +17,18 @@ import (
 	"github.com/google/uuid"
 )
 
-type RefundRightsFactory func(*dbent.Tx) payment.RefundRights
-type RefundStore struct {
-	client *dbent.Client
-	rights RefundRightsFactory
-}
+type (
+	RefundRightsFactory func(*dbent.Tx) payment.RefundRights
+	RefundStore         struct {
+		client *dbent.Client
+		rights RefundRightsFactory
+	}
+)
 
 func NewRefundStore(client *dbent.Client, rights RefundRightsFactory) *RefundStore {
 	return &RefundStore{client: client, rights: rights}
 }
+
 func (s *RefundStore) Order(ctx context.Context, id int64) (*payment.Order, error) {
 	o, e := s.client.PaymentOrder.Get(ctx, id)
 	return OrderFromEntity(o), e
@@ -98,7 +100,7 @@ func refundAudit(ctx context.Context, client *dbent.Client, id int64, action str
 	return nil
 }
 
-// 锁内核对时间值，避免测试 SQLite 的时间文本格式参与版本比较。
+// lockedRefundOrder 锁内核对时间值，避免测试 SQLite 的时间文本格式参与版本比较。
 // 生产 PostgreSQL 始终使用行锁；SQLite 仅用于非并发契约测试。
 func lockedRefundOrder(ctx context.Context, client *dbent.Client, id int64) (*dbent.PaymentOrder, error) {
 	return client.PaymentOrder.Query().Where(paymentorder.IDEQ(id)).Where(func(q *sql.Selector) {
@@ -107,6 +109,7 @@ func lockedRefundOrder(ctx context.Context, client *dbent.Client, id int64) (*db
 		}
 	}).Only(ctx)
 }
+
 func claimRefund(ctx context.Context, client *dbent.Client, o *payment.Order, status string) error {
 	current, err := lockedRefundOrder(ctx, client, o.ID)
 	if err != nil {
@@ -118,6 +121,7 @@ func claimRefund(ctx context.Context, client *dbent.Client, o *payment.Order, st
 	_, err = client.PaymentOrder.UpdateOneID(o.ID).SetStatus(status).Save(ctx)
 	return err
 }
+
 func (s *RefundStore) PrepareRefund(ctx context.Context, p *payment.RefundPlan, apply payment.RefundMutation) (*payment.RefundReceipt, error) {
 	switch p.Order.Status {
 	case payment.OrderStatusCompleted, payment.OrderStatusRefundRequested, payment.OrderStatusRefundPending, payment.OrderStatusRefundFailed:
@@ -179,6 +183,7 @@ func (s *RefundStore) PrepareRefund(ctx context.Context, p *payment.RefundPlan, 
 	*p = local
 	return receipt, nil
 }
+
 func (s *RefundStore) expected(ctx context.Context, client *dbent.Client, p *payment.RefundPlan, r *payment.RefundReceipt) error {
 	expected := *p.Order
 	if r != nil {
@@ -201,6 +206,7 @@ func (s *RefundStore) expected(ctx context.Context, client *dbent.Client, p *pay
 	}
 	return claimRefund(ctx, client, &expected, payment.OrderStatusRefunding)
 }
+
 func (s *RefundStore) CompleteRefund(ctx context.Context, p *payment.RefundPlan, r *payment.RefundReceipt, apply payment.RefundMutation) (*payment.RefundResult, error) {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
@@ -242,6 +248,7 @@ func (s *RefundStore) CompleteRefund(ctx context.Context, p *payment.RefundPlan,
 	*p = local
 	return &payment.RefundResult{Success: true, BalanceDeducted: local.BalanceToDeduct, SubDaysDeducted: local.SubDaysToDeduct}, nil
 }
+
 func (s *RefundStore) CompensateRefund(ctx context.Context, p *payment.RefundPlan, r *payment.RefundReceipt, refundID, failure string, apply payment.RefundMutation) error {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
@@ -295,6 +302,7 @@ func (s *RefundStore) CompensateRefund(ctx context.Context, p *payment.RefundPla
 	}
 	return tx.Commit()
 }
+
 func (s *RefundStore) FailPendingRefund(ctx context.Context, o *payment.Order, claim payment.RefundPendingDetail, failure string) (*payment.Order, error) {
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
@@ -326,6 +334,7 @@ func (s *RefundStore) FailPendingRefund(ctx context.Context, o *payment.Order, c
 	}
 	return OrderFromEntity(current), nil
 }
+
 func readRefundReceipt(ctx context.Context, client *dbent.Client, id int64) (*payment.RefundReceipt, error) {
 	log, err := client.PaymentAuditLog.Query().Where(paymentauditlog.OrderIDEQ(strconv.FormatInt(id, 10)), paymentauditlog.ActionEQ("REFUND_PREPARED")).Order(paymentauditlog.ByCreatedAt(sql.OrderDesc()), paymentauditlog.ByID(sql.OrderDesc())).First(ctx)
 	if err != nil {
@@ -364,6 +373,7 @@ func readRefundReceipt(ctx context.Context, client *dbent.Client, id int64) (*pa
 	}
 	return &receipt, nil
 }
+
 func (s *RefundStore) RefundRecovery(ctx context.Context, o *payment.Order) (*payment.RefundReceipt, error) {
 	r, err := readRefundReceipt(ctx, s.client, o.ID)
 	if err != nil {
@@ -424,7 +434,7 @@ func (s *RefundStore) RequestRefund(ctx context.Context, id, userID int64, amoun
 	return s.client.PaymentOrder.Update().Where(paymentorder.IDEQ(id), paymentorder.UserIDEQ(userID), paymentorder.StatusEQ(payment.OrderStatusCompleted), paymentorder.OrderTypeEQ(payment.OrderTypeBalance)).SetStatus(payment.OrderStatusRefundRequested).SetRefundRequestedAt(now).SetRefundRequestReason(reason).SetRefundRequestedBy(by).SetRefundAmount(amount).Save(ctx)
 }
 
-// 旧记录按渠道退款 ID 核对；新记录同时核对准备操作标识，均不改渠道幂等键。
+// matchPendingRefundIdentity 旧记录按渠道退款 ID 核对；新记录同时核对准备操作标识，均不改渠道幂等键。
 func matchPendingRefundIdentity(ctx context.Context, client *dbent.Client, id int64, operationID, refundID string) error {
 	row, err := client.PaymentAuditLog.Query().Where(paymentauditlog.OrderIDEQ(strconv.FormatInt(id, 10)), paymentauditlog.ActionEQ("REFUND_PENDING")).Order(paymentauditlog.ByCreatedAt(sql.OrderDesc()), paymentauditlog.ByID(sql.OrderDesc())).First(ctx)
 	if err != nil {
@@ -440,7 +450,7 @@ func matchPendingRefundIdentity(ctx context.Context, client *dbent.Client, id in
 	return nil
 }
 
-// 恢复记录必须表达一致的扣减事实；旧 pending 可省略类型，但不能省略扣减选择。
+// validRefundDeduction 恢复记录必须表达一致的扣减事实；旧 pending 可省略类型，但不能省略扣减选择。
 // 旧格式显式不扣减时保留其优先级，旧金额字段可能仍保存请求值而非实际扣减。
 func validRefundDeduction(d payment.RefundPendingDetail, legacy bool) bool {
 	if d.SubscriptionID < 0 || !validRefundAmount(d.BalanceDeducted) || d.SubDaysDeducted < 0 {

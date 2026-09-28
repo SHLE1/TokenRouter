@@ -231,7 +231,7 @@ func TestAPIKeyService_UpdatePersistsFastModePolicy(t *testing.T) {
 	require.Equal(t, apikey.APIKeyFastModePolicyForceOff, repo.updated[0].FastModePolicy)
 }
 
-// 部分更新未携带 IP 限制字段时必须保留原有配置。
+// TestAPIKeyService_UpdatePreservesOmittedIPRestrictions 验证部分更新未携带 IP 限制字段时必须保留原有配置。
 func TestAPIKeyService_UpdatePreservesOmittedIPRestrictions(t *testing.T) {
 	repo := &apiKeyNameSanitizeRepoStub{
 		apiKey: &apikey.APIKey{
@@ -252,7 +252,7 @@ func TestAPIKeyService_UpdatePreservesOmittedIPRestrictions(t *testing.T) {
 	require.Equal(t, []string{"198.51.100.0/24"}, updated.IPBlacklist)
 }
 
-// 显式空数组只清空对应的 IP 限制，未携带的另一字段保持不变。
+// TestAPIKeyService_UpdateClearsExplicitEmptyIPRestriction 验证显式空数组只清空对应的 IP 限制，未携带的另一字段保持不变。
 func TestAPIKeyService_UpdateClearsExplicitEmptyIPRestriction(t *testing.T) {
 	repo := &apiKeyNameSanitizeRepoStub{
 		apiKey: &apikey.APIKey{
@@ -274,7 +274,7 @@ func TestAPIKeyService_UpdateClearsExplicitEmptyIPRestriction(t *testing.T) {
 	require.Equal(t, []string{"198.51.100.0/24"}, updated.IPBlacklist)
 }
 
-// 显式更新 IP 限制时仍必须校验模式格式。
+// TestAPIKeyService_UpdateRejectsInvalidIPRestriction 验证显式更新 IP 限制时仍必须校验模式格式。
 func TestAPIKeyService_UpdateRejectsInvalidIPRestriction(t *testing.T) {
 	repo := &apiKeyNameSanitizeRepoStub{
 		apiKey: &apikey.APIKey{ID: 11, UserID: 7, Key: "sk_existing_ip_key_03", Status: billing.StatusActive},
@@ -288,5 +288,5 @@ func TestAPIKeyService_UpdateRejectsInvalidIPRestriction(t *testing.T) {
 	require.Empty(t, repo.updated)
 }
 
-// 名称与配置测试使用明确的普通分组。
+// sanitizeFixtureGroupID 名称与配置测试使用明确的普通分组。
 func sanitizeFixtureGroupID() *int64 { id := int64(1); return &id }

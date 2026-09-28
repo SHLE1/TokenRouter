@@ -1,4 +1,3 @@
-// QuotaDimension 只表达通知展示所需的已确定窗口值。
 package contract
 
 type QuotaDimension struct {

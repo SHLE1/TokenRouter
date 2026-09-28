@@ -81,7 +81,7 @@ func TestOpsSystemLogSinkFlushBackoffFor(t *testing.T) {
 	}
 }
 
-// 未显式配置时回落到默认值；max 小于 base 时以 base 为准，不产生比基准还短的退避。
+// TestOpsSystemLogSinkFlushBackoffForFallbacks 验证未显式配置时回落到默认值；max 小于 base 时以 base 为准，不产生比基准还短的退避。
 func TestOpsSystemLogSinkFlushBackoffForFallbacks(t *testing.T) {
 	zero := &OpsSystemLogSink{}
 	if got := zero.flushBackoffFor(1); got != defaultOpsSystemLogFlushBackoff {
@@ -97,7 +97,7 @@ func TestOpsSystemLogSinkFlushBackoffForFallbacks(t *testing.T) {
 	}
 }
 
-// issue #5265：写入失败后如果按 flushInterval 继续每秒重试，每一轮都会占用并取消
+// TestOpsSystemLogSinkSuppressesRetriesDuringBackoff 验证issue #5265：写入失败后如果按 flushInterval 继续每秒重试，每一轮都会占用并取消
 // 一条池内连接（远程 PG 上 COPY 取消会让连接协议失步而被销毁），小连接池会被日志
 // 通道长期占满，业务侧最终报 Billing 503。失败后必须退避。
 func TestOpsSystemLogSinkSuppressesRetriesDuringBackoff(t *testing.T) {
@@ -138,7 +138,7 @@ func TestOpsSystemLogSinkSuppressesRetriesDuringBackoff(t *testing.T) {
 	}
 }
 
-// 退避到期后必须自动恢复，不能变成永久停写。
+// TestOpsSystemLogSinkResumesAfterBackoffWindow 验证退避到期后必须自动恢复，不能变成永久停写。
 func TestOpsSystemLogSinkResumesAfterBackoffWindow(t *testing.T) {
 	var calls int64
 	repo := &opsRepoMock{
@@ -162,7 +162,7 @@ func TestOpsSystemLogSinkResumesAfterBackoffWindow(t *testing.T) {
 	}
 }
 
-// 一次成功必须清空失败计数与抑制窗口，否则短暂抖动后写入速率无法恢复。
+// TestOpsSystemLogSinkSuccessClearsSuppression 验证一次成功必须清空失败计数与抑制窗口，否则短暂抖动后写入速率无法恢复。
 func TestOpsSystemLogSinkSuccessClearsSuppression(t *testing.T) {
 	var calls int64
 	repo := &opsRepoMock{
@@ -197,7 +197,7 @@ func TestOpsSystemLogSinkSuccessClearsSuppression(t *testing.T) {
 	}
 }
 
-// 健康路径不受影响：一直成功就永远不进入退避。
+// TestOpsSystemLogSinkHealthyPathNeverSuppressed 验证健康路径不受影响：一直成功就永远不进入退避。
 func TestOpsSystemLogSinkHealthyPathNeverSuppressed(t *testing.T) {
 	var calls int64
 	repo := &opsRepoMock{

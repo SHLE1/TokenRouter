@@ -1,4 +1,3 @@
-// 记录用 effort 只接受既有可记录档位，不改变请求字段本身。
 package openai
 
 import "strings"

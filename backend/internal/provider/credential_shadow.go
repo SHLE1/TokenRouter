@@ -1,4 +1,3 @@
-// ResolveCredentialRecord 校验凭据母提供商；只解一层，保留旧读取及错误顺序。
 package provider
 
 import (
@@ -6,7 +5,7 @@ import (
 	"fmt"
 )
 
-// resolveCredentialProvider 解析影子提供商到其母提供商，用于凭据/Token 透传。
+// ResolveCredentialRecord 解析影子提供商到其母提供商，用于凭据/Token 透传。
 // - 普通提供商（非影子）：直接返回自身。
 // - 影子提供商：通过 repo 取母提供商，校验母提供商存在且为 OpenAI OAuth 类型，否则返回错误。
 // 凭据取得、额度查询和用量探针共同使用该解析入口，不复制母提供商校验规则。

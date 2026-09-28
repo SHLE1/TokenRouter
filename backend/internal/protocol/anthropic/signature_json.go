@@ -1,4 +1,3 @@
-// 仅移除 thinking.signature，保留文本、其他字段及大整数；不等同于移除整个 thinking 块。
 package anthropic
 
 import (

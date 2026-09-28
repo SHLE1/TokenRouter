@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 聚合开启事务后仍须使用注入的时区，日桶不能退化为固定 24 小时。
+// TestAggregationCalendarSurvivesTransaction 验证聚合开启事务后仍须使用注入的时区，日桶不能退化为固定 24 小时。
 func TestAggregationCalendarSurvivesTransaction(t *testing.T) {
 	loc, err := time.LoadLocation("America/New_York")
 	require.NoError(t, err)

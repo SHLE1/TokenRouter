@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 普通名称编辑不能把读取之后发生的使用时间和限流窗口写回旧值。
+// TestProviderConfigurationPreservesConcurrentRuntime 验证普通名称编辑不能把读取之后发生的使用时间和限流窗口写回旧值。
 func TestProviderConfigurationPreservesConcurrentRuntime(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)

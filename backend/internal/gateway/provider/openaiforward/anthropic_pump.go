@@ -1,4 +1,3 @@
-// 原生 Anthropic 转换的逐行读间隔与关闭责任保持原有边界。
 package openaiforward
 
 import (
@@ -56,7 +55,7 @@ func NewAnthropicLinePump(scanner *bufio.Scanner, interval time.Duration) *Anthr
 	return p
 }
 
-// next 阻塞返回下一行。返回 io.EOF 表示上游正常收流；ErrAnthropicStreamIdle
+// Next 阻塞返回下一行。返回 io.EOF 表示上游正常收流；ErrAnthropicStreamIdle
 // 表示 interval 内无任何数据到达（计时从收到上一行时起算，事件处理耗时不算入，
 // 与 readOpenAICompatBufferedTerminal 的 resetTimeout 语义一致）。
 func (p *AnthropicLinePump) Next() (string, error) {
@@ -90,7 +89,7 @@ func (p *AnthropicLinePump) resetTimer() {
 	p.timer.Reset(p.interval)
 }
 
-// stop 终止泵 goroutine。注意：goroutine 若正阻塞在 scanner.Read 上，需由
+// Stop 终止泵 goroutine。注意：goroutine 若正阻塞在 scanner.Read 上，需由
 // 调用方关闭 resp.Body（间隔超时分支已做）才能真正退出。
 func (p *AnthropicLinePump) Stop() {
 	close(p.done)

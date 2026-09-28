@@ -1,4 +1,3 @@
-// APIKeyBillingContext 是已解析资金来源的只读展示，不能视作新的结算授权。
 package billing
 
 type APIKeyBillingContext struct {

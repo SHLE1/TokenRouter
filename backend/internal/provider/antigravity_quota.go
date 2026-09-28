@@ -1,4 +1,3 @@
-// 提供商拥有额度查询编排和展示，供应商 wire/错误由窄端口提供。
 package provider
 
 import (
@@ -107,7 +106,7 @@ func (f *AntigravityQuota) fetchSubscriptionTier(ctx context.Context, client Ant
 	return raw, normalized, loadResp
 }
 
-// normalizeTier 将原始 tier 字符串归一化为 FREE/PRO/ULTRA/UNKNOWN
+// NormalizeAntigravityTier 将原始 tier 字符串归一化为 FREE/PRO/ULTRA/UNKNOWN
 func NormalizeAntigravityTier(raw string) string {
 	if raw == "" {
 		return ""
@@ -125,7 +124,7 @@ func NormalizeAntigravityTier(raw string) string {
 	}
 }
 
-// buildUsageInfo 将 API 响应转换为 UsageInfo。
+// BuildUsageInfo 将 API 响应转换为 UsageInfo。
 func (f *AntigravityQuota) BuildUsageInfo(modelsResp *google.AntigravityFetchAvailableModelsResponse, tierRaw, tierNormalized string, loadResp *google.AntigravityLoadCodeAssistResponse) *UsageInfo {
 	now := time.Now()
 	info := &UsageInfo{

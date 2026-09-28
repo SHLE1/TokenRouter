@@ -1,4 +1,3 @@
-// OpenAI 请求兼容只处理显式字节与值，不判断提供商、路由或动态设置。
 package openai
 
 import (

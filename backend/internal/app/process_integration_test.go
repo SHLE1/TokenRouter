@@ -32,7 +32,7 @@ type processOutput struct {
 	buffer bytes.Buffer
 }
 
-// 不嵌入 Buffer，避免 io.Copy 调用提升的 ReadFrom 绕过输出互斥。
+// Write 不嵌入 Buffer，避免 io.Copy 调用提升的 ReadFrom 绕过输出互斥。
 func (o *processOutput) Write(p []byte) (int, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()

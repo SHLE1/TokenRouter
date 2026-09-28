@@ -1,4 +1,3 @@
-// 本文件拥有无法解析上游窗口时的提供商回避规则，原 Header 解析留供应商适配。
 package provider
 
 import (

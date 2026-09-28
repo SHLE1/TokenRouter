@@ -39,7 +39,7 @@ func NewProxyAdmin(repo ProxyRepository, prober ProxyExitInfoProber, cache Proxy
 	return &ProxyAdmin{proxyRepo: repo, proxyProber: prober, proxyLatencyCache: cache, qualityProbe: quality, tasks: options.Tasks, diagnostics: options.Diagnostics, now: now}
 }
 
-// Proxy management implementations
+// ListProxies 按筛选条件分页查询代理，并返回总数。
 func (s *ProxyAdmin) ListProxies(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]Proxy, int64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	proxies, result, err := s.proxyRepo.ListWithFilters(ctx, params, protocol, status, search)

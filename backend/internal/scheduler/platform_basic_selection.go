@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// 基础平台选择保留自己的 LRU、粘性溢出和复核顺序，不合并高级调度策略。
+// selectBasicOnlyRoutes 基础平台选择保留自己的 LRU、粘性溢出和复核顺序，不合并高级调度策略。
 func (s *PlatformSelector) selectBasicOnlyRoutes(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyProviderID int64, requiredCapability provider.OpenAIEndpointCapability) (*FlowProvider, error) {
 	platform = strings.TrimSpace(platform)
 	if s.ports.CheckPricing(ctx, groupID, requestedModel) {

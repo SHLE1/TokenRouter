@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// 原独立计数替身未设置读取集时，视作调用版本存在；竞争场景必须明确提供当前行。
+// ApplyOAuthRefreshFailure 原独立计数替身未设置读取集时，视作调用版本存在；竞争场景必须明确提供当前行。
 func (r *tokenRefreshProviderRepo) ApplyOAuthRefreshFailure(ctx context.Context, version provider.RefreshFailureVersion, failure provider.RefreshFailure) (bool, error) {
 	if err := ctx.Err(); err != nil {
 		return false, err

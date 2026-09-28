@@ -32,7 +32,7 @@ type ExecutionHints struct {
 	ProviderSwitchCount         Hint[int]
 }
 
-// 客户端和能力标记只保存入口已经作出的判断，不重新解析报文或读取设置。
+// IsClaudeCodeClient 客户端和能力标记只保存入口已经作出的判断，不重新解析报文或读取设置。
 func IsClaudeCodeClient(ctx context.Context) bool {
 	return ExecutionHintsFromContext(ctx).ClaudeCode
 }

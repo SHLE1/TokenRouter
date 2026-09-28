@@ -1,4 +1,3 @@
-// 策略评估只接收已读取的设置与提供商类型投影，不访问动态设置存储。
 package anthropic
 
 import (

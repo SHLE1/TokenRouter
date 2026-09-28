@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 默认模型新增时必须显式补充区域规则或未核实状态，不能悄悄退回字符串前缀推断。
+// TestBedrockModelRegionRules_DefaultCatalogAndSourceConsistency 验证默认模型新增时必须显式补充区域规则或未核实状态，不能悄悄退回字符串前缀推断。
 func TestBedrockModelRegionRules_DefaultCatalogAndSourceConsistency(t *testing.T) {
 	t.Parallel()
 	for _, modelID := range DefaultBedrockModelMapping {

@@ -1,4 +1,3 @@
-// 对话与媒体请求使用固定 CLI 身份，显式 Originator 在原顺序应用。
 package grok
 
 import (
@@ -11,6 +10,7 @@ import (
 func DefaultGrokUpstreamUserAgent() string {
 	return CLIUserAgent(ResolveCLIVersion())
 }
+
 func ApplyDefaultGrokUpstreamHeaders(req *http.Request) {
 	if req == nil {
 		return
@@ -21,6 +21,7 @@ func ApplyDefaultGrokUpstreamHeaders(req *http.Request) {
 	req.Header.Set("x-grok-client-version", ResolveCLIVersion())
 	req.Header.Set("x-grok-client-identifier", CLIClientIdentifier)
 }
+
 func ApplyGrokRuntimeHeaders(req *http.Request, runtimeOriginator string) {
 	ApplyDefaultGrokUpstreamHeaders(req)
 	if req == nil {

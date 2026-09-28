@@ -1,4 +1,3 @@
-// 兑换接口共享 DTO 定义，避免请求字段与展示结构分叉。
 package httpapi
 
 import (

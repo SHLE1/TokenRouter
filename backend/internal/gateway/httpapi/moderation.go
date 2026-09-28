@@ -1,4 +1,3 @@
-// 审核 HTTP 适配冻结请求投影并记录观测，处置和计数始终委托 moderation。
 package httpapi
 
 import (

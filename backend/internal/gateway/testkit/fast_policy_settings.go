@@ -1,4 +1,3 @@
-// FastPolicySettingsRepo 只提供档位策略测试用到的设置存取。
 package testkit
 
 import (
@@ -14,12 +13,14 @@ type FastPolicySettingsRepo struct {
 func (s *FastPolicySettingsRepo) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
 	panic("unexpected Get call")
 }
+
 func (s *FastPolicySettingsRepo) GetValue(ctx context.Context, key string) (string, error) {
 	if v, ok := s.Values[key]; ok {
 		return v, nil
 	}
 	return "", settingscore.ErrSettingNotFound
 }
+
 func (s *FastPolicySettingsRepo) Set(ctx context.Context, key, value string) error {
 	if s.Values == nil {
 		s.Values = map[string]string{}
@@ -38,12 +39,15 @@ func (s *FastPolicySettingsRepo) GetMultiple(ctx context.Context, keys []string)
 	}
 	return Values, nil
 }
+
 func (s *FastPolicySettingsRepo) SetMultiple(ctx context.Context, settings map[string]string) error {
 	panic("unexpected SetMultiple call")
 }
+
 func (s *FastPolicySettingsRepo) GetAll(ctx context.Context) (map[string]string, error) {
 	panic("unexpected GetAll call")
 }
+
 func (s *FastPolicySettingsRepo) Delete(ctx context.Context, key string) error {
 	panic("unexpected Delete call")
 }

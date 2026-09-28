@@ -1,4 +1,3 @@
-// RawFallbackPorts 投影两种 Chat-only 转换的模型、会话及单次传输能力。
 package openaiforward
 
 import (

@@ -820,14 +820,14 @@ func (s *Compatible) SessionStickyTTL() time.Duration {
 	return time.Hour
 }
 
-// 基础回退只委托同一粘性核心，不维护第二条绑定或等待策略。
+// selectBySessionHash 基础回退只委托同一粘性核心，不维护第二条绑定或等待策略。
 func (s *compatiblePicker) selectBySessionHash(ctx context.Context, req schedulercore.PlatformSelectionInput) (*gatewayprovider.SelectionResult, bool, error) {
 	core, scope := s.platformSelector()
 	value, escaped, err := core.SelectBySessionHash(ctx, cloneSelectionInput(req))
 	return scope.restore(value), escaped, err
 }
 
-// 旧候选只转换额度观测；评分信号使用提供商模块唯一实现。
+// openAIQuotaHeadroomFactor 旧候选只转换额度观测；评分信号使用提供商模块唯一实现。
 func openAIQuotaHeadroomFactor(value *gatewayprovider.ExecutionProvider, now time.Time) float64 {
 	return providercore.OpenAIQuotaHeadroomFactor(gatewayprovider.ExecutionRecord(value), now)
 }

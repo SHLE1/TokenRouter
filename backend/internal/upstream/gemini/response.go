@@ -1,4 +1,3 @@
-// 响应适配保留各协议独立的流与非流时序；实际 HTTP 写入由 OutputSink 承担。
 package gemini
 
 import (
@@ -30,11 +29,13 @@ type ResponseOptions struct {
 	ClaudeError, ChatError        func(int, string, string) error
 	CompatError                   func(OpenAICompatProtocol, int, string, string) error
 }
-type ResponseAdapter struct{ Options ResponseOptions }
-type StreamResult struct {
-	Usage        *upstream.TokenUsage
-	FirstTokenMs *int
-}
+type (
+	ResponseAdapter struct{ Options ResponseOptions }
+	StreamResult    struct {
+		Usage        *upstream.TokenUsage
+		FirstTokenMs *int
+	}
+)
 
 func (s *ResponseAdapter) HandleNonStreamingResponse(c *upstream.OutputContext, resp *http.Response, originalModel string) (*upstream.TokenUsage, error) {
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
@@ -64,6 +65,7 @@ func (s *ResponseAdapter) HandleNonStreamingResponse(c *upstream.OutputContext, 
 
 	return usage, nil
 }
+
 func (s *ResponseAdapter) HandleStreamingResponse(c *upstream.OutputContext, resp *http.Response, startTime time.Time, originalModel string) (*StreamResult, error) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
@@ -147,6 +149,7 @@ func (s *ResponseAdapter) HandleStreamingResponse(c *upstream.OutputContext, res
 	}
 	return &StreamResult{Usage: LegacyNativeGeminiUsage(state.Usage()), FirstTokenMs: firstTokenMs}, nil
 }
+
 func WriteSSE(w io.Writer, event string, data any, observers ...func([]byte)) {
 	if event != "" {
 		_, _ = fmt.Fprintf(w, "event: %s\n", event)
@@ -159,6 +162,7 @@ func WriteSSE(w io.Writer, event string, data any, observers ...func([]byte)) {
 	}
 	_, _ = fmt.Fprintf(w, "data: %s\n\n", string(b))
 }
+
 func UnwrapIfNeeded(isOAuth bool, raw []byte) []byte {
 	if !isOAuth {
 		return raw
@@ -169,6 +173,7 @@ func UnwrapIfNeeded(isOAuth bool, raw []byte) []byte {
 	}
 	return inner
 }
+
 func CollectGeminiSSE(body io.Reader, isOAuth bool, observers ...func([]byte)) (map[string]any, *upstream.TokenUsage, error) {
 	reader := bufio.NewReader(body)
 
@@ -230,6 +235,7 @@ func CollectGeminiSSE(body io.Reader, isOAuth bool, observers ...func([]byte)) (
 
 	return MergeCollectedGeminiParts(PickGeminiCollectResult(last, lastWithParts), collectedParts), usage, nil
 }
+
 func PickGeminiCollectResult(last map[string]any, lastWithParts map[string]any) map[string]any {
 	return bridge.NativePickGeminiCollectResult(last, lastWithParts)
 }
@@ -363,6 +369,7 @@ func (s *ResponseAdapter) HandleNativeNonStreamingResponse(c *upstream.OutputCon
 	}
 	return &upstream.TokenUsage{}, nil
 }
+
 func (s *ResponseAdapter) HandleNativeStreamingResponse(c *upstream.OutputContext, resp *http.Response, startTime time.Time, isOAuth bool) (*NativeStreamResult, error) {
 	if s.Options.DebugHeaders {
 		logger.LegacyPrintf("service.gemini_messages_compat", "[GeminiAPI] ========== Streaming Response Headers ==========")

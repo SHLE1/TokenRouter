@@ -645,7 +645,7 @@ func (s *HTTPUpstreamSuite) TestOpenAIProfileTLSFingerprintUsesHTTP2WhenALPNAllo
 	require.Equal(s.T(), upstreamProtocolModeOpenAIH2, entry.protocolMode)
 }
 
-// 本场景验证配置到技术快照的映射；裸 H2 的超时行为由机制测试覆盖。
+// TestOpenAIProfileTLSFingerprintHTTP2HeaderTimeout 验证本场景验证配置到技术快照的映射；裸 H2 的超时行为由机制测试覆盖。
 func (s *HTTPUpstreamSuite) TestOpenAIProfileTLSFingerprintHTTP2HeaderTimeout() {
 	*s.cfg = Options{OpenAIResponseHeaderTimeout: 1, OpenAIHTTP2: HTTP2Options{Enabled: true}}
 	svc := s.newService()
@@ -1016,7 +1016,7 @@ func TestHTTPUpstreamPublicHostsOnlyValidatesEveryRedirectHop(t *testing.T) {
 	require.Error(t, client.CheckRedirect(publicHop, make([]*http.Request, 10)), "redirect chain stays capped")
 }
 
-// 公网下载约束与已有的重定向策略必须同时生效，且不能污染缓存客户端。
+// TestHTTPUpstreamPublicHostsOnlyPreservesExistingRedirectPolicy 验证公网下载约束与已有的重定向策略必须同时生效，且不能污染缓存客户端。
 func TestHTTPUpstreamPublicHostsOnlyPreservesExistingRedirectPolicy(t *testing.T) {
 	upstream := New(nil)
 	called := false

@@ -1,4 +1,3 @@
-// 测试绑定与生产使用同一资金归档实现，不复制 SQL。
 package postgres
 
 import (

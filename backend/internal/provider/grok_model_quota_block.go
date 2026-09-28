@@ -1,4 +1,3 @@
-// 提供商健康的进程内覆盖保持原 TTL、唯一表和锁；不提供跨进程协调承诺。
 package provider
 
 import (

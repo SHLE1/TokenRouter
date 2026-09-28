@@ -35,7 +35,7 @@ func buildForbiddenErrorMessage(prefix string, upstreamMsg string, responseBody 
 	return prefix + fallback
 }
 
-// handle403 处理 403 Forbidden 错误
+// ApplyForbiddenObservation handle403 处理 403 Forbidden 错误
 // Antigravity 平台区分 validation/violation/generic 三种类型，均 SetError 永久禁用；
 // OpenAI 与国产平台提供商的 403 使用 HTML 豁免和累计冷却；
 // 其他平台保持原有 SetError 行为。

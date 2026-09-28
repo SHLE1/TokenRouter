@@ -1,4 +1,3 @@
-// 同提供商最多恢复一次 opaque replay；返回响应的读取与关闭由执行拥有者负责。
 package grok
 
 import (

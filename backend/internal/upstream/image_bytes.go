@@ -1,4 +1,3 @@
-// 图片字节原语保留原 padding、MIME 回退和读取边界。
 package upstream
 
 import (

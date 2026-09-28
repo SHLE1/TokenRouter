@@ -1,4 +1,3 @@
-// 身份资料存储维护第三方主体、渠道归属和注册授权的一致性。
 package postgres
 
 import (

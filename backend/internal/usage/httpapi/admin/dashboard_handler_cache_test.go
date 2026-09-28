@@ -86,7 +86,7 @@ func TestDashboardHandler_GetUsageTrend_UsesCache(t *testing.T) {
 	require.Equal(t, int32(1), repo.trendCalls.Load())
 }
 
-// 不同团队即使其他筛选相同，也必须分别查询并缓存趋势数据。
+// TestDashboardHandler_GetUsageTrend_SeparatesTeams 验证不同团队即使其他筛选相同，也必须分别查询并缓存趋势数据。
 func TestDashboardHandler_GetUsageTrend_SeparatesTeams(t *testing.T) {
 	t.Cleanup(resetDashboardReadCachesForTest)
 	resetDashboardReadCachesForTest()

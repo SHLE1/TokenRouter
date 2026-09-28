@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原传输版本断言检查 req 实际 transport 配置。
+// forceHTTPVersion 原传输版本断言检查 req 实际 transport 配置。
 func forceHTTPVersion(t *testing.T, client *req.Client) string {
 	t.Helper()
 	transport := client.GetTransport()

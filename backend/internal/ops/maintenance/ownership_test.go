@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同一业务 operation ID 的再次认领仍必须具有独立代次。
+// TestSameOperationReclaimed 验证同一业务 operation ID 的再次认领仍必须具有独立代次。
 func TestSameOperationReclaimed(t *testing.T) {
 	repo := newInMemoryIdempotencyRepo()
 	s := NewSystemOperationLockService(repo, Options{ProcessingTimeout: time.Hour, SystemOperationTTL: 2 * time.Hour})

@@ -1,4 +1,3 @@
-// 本文件构造一次 Bedrock 签名请求，不选择提供商或读取配置。
 package bedrock
 
 import (
@@ -8,7 +7,7 @@ import (
 	"net/http"
 )
 
-// buildUpstreamRequestBedrock 构建 Bedrock 上游请求
+// BuildRequest 构建 Bedrock 上游请求
 func BuildRequest(
 	ctx context.Context,
 	body []byte,
@@ -35,7 +34,7 @@ func BuildRequest(
 	return req, nil
 }
 
-// buildUpstreamRequestBedrockAPIKey 构建 Bedrock API Key (Bearer Token) 上游请求
+// BuildRequestAPIKey 构建 Bedrock API Key (Bearer Token) 上游请求
 func BuildRequestAPIKey(
 	ctx context.Context,
 	body []byte,

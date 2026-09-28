@@ -81,7 +81,7 @@ func TestGetOpsAPIKeyPrefersPrimaryContextKey(t *testing.T) {
 	require.Equal(t, int64(1), got.ID, "已鉴权请求应优先使用正式 api key")
 }
 
-// 实际装配继续读取原拒绝标记类型，不能把任意字符串误判为已经执行的准入拒绝。
+// TestOpsObservationAccessUsesTypedIngressMarker 验证实际装配继续读取原拒绝标记类型，不能把任意字符串误判为已经执行的准入拒绝。
 func TestOpsObservationAccessUsesTypedIngressMarker(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	access := provideOpsObservationAccess()

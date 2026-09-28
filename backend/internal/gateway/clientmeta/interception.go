@@ -1,4 +1,3 @@
-// 兼容客户端探测与预热识别，不接管业务许可裁决。
 package clientmeta
 
 import (

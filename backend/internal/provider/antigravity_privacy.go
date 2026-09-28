@@ -1,4 +1,3 @@
-// 设置并验证上游隐私的提供商用例保持原十秒预算及失败值。
 package provider
 
 import (
@@ -7,7 +6,7 @@ import (
 	"time"
 )
 
-// setAntigravityPrivacy 调用 Antigravity API 设置隐私并验证结果。
+// SetPrivacy 调用 Antigravity API 设置隐私并验证结果。
 // 流程：
 //  1. setUserSettings 清空设置 → 检查返回值 {"userSettings":{}}
 //  2. fetchUserInfo 二次验证隐私是否已生效（需要 project_id）

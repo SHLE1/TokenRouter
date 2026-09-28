@@ -647,7 +647,7 @@ func TestOpenAIWSConnPool_ReusesPreferredConnWithStableRandomTLSProfileKey(t *te
 	require.Equal(t, 1, dialer.DialCount())
 }
 
-// 下列用例验证 WS 握手 beta feature 的归一化、隔离、淘汰和等待行为。
+// TestOpenAIWSConnPool_AcquireReusesOnlyMatchingBetaFeatures 验证 WS 握手 beta feature 的归一化与连接复用。
 func TestOpenAIWSConnPool_AcquireReusesOnlyMatchingBetaFeatures(t *testing.T) {
 	cfg := &WSPoolOptions{}
 	cfg.MaxConnsPerProvider = 2
@@ -736,7 +736,7 @@ func TestOpenAIWSConnPool_AcquireReplacesIdleConnWithDifferentBetaFeatures(t *te
 	require.Equal(t, 2, dialer.DialCount())
 }
 
-// 同一 beta 集合下仍必须保留 fork 的 TLS 指纹隔离，且空闲的不兼容连接应被替换。
+// TestOpenAIWSConnPool_AcquireReplacesIdleConnWithMatchingBetaButDifferentTLS 验证同一 beta 集合下仍必须保留 fork 的 TLS 指纹隔离，且空闲的不兼容连接应被替换。
 func TestOpenAIWSConnPool_AcquireReplacesIdleConnWithMatchingBetaButDifferentTLS(t *testing.T) {
 	cfg := &WSPoolOptions{}
 	cfg.MaxConnsPerProvider = 1

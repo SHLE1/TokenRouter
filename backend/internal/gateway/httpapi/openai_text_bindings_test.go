@@ -1,4 +1,3 @@
-// 验证 HTTP 错误优先级、等待后二次权益检查及请求快照取时点。
 package httpapi
 
 import (

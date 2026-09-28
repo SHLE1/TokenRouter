@@ -1,4 +1,3 @@
-// 下单编排保持原选择、币种、发票、OAuth 与渠道调用顺序。
 package payment
 
 import (

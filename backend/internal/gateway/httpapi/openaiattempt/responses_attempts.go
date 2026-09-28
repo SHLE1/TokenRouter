@@ -1,4 +1,3 @@
-// Responses 的重试与预算由 gateway/text 统一拥有，旧适配只投影既有能力。
 package openaiattempt
 
 import (

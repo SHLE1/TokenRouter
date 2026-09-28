@@ -1,4 +1,3 @@
-// execution 保存跨入口执行契约，既有 gateway 导出名保持类型别名兼容。
 package execution
 
 import (

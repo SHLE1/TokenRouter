@@ -1,4 +1,3 @@
-// Package server provides HTTP server initialization and configuration.
 package server
 
 import (

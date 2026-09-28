@@ -1,4 +1,3 @@
-// Gemini 原生生成入口的 HTTP 组合；非消费模型目录路由保持独立。
 package httpapi
 
 import (

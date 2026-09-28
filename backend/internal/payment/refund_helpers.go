@@ -1,4 +1,3 @@
-// 退款报文与恢复计划保留原比例、币种及商户身份规则。
 package payment
 
 import (
@@ -16,6 +15,7 @@ func PaymentOrderSubscriptionValidityDays(order *Order) int {
 	}
 	return 0
 }
+
 func (s *RefundWorkflow) GwRefund(ctx context.Context, p *RefundPlan) (*RefundResponse, error) {
 	if p.Order.PaymentTradeNo == "" {
 		s.runtime.Audit(ctx, p.Order.ID, "REFUND_NO_TRADE_NO", "admin", map[string]any{"detail": "skipped"})
@@ -53,9 +53,11 @@ func (s *RefundWorkflow) GwRefund(ctx context.Context, p *RefundPlan) (*RefundRe
 	}
 	return resp, nil
 }
+
 func FormatGatewayRefundAmount(amount float64, order *Order) string {
 	return FormatAmountForCurrency(amount, PaymentOrderCurrency(order))
 }
+
 func ValidateRefundProviderResponse(resp *RefundResponse) error {
 	if resp == nil {
 		return fmt.Errorf("payment refund response missing")
@@ -70,6 +72,7 @@ func ValidateRefundProviderResponse(resp *RefundResponse) error {
 		return fmt.Errorf("payment refund returned unknown status: %s", status)
 	}
 }
+
 func (s *RefundWorkflow) RefundFinalizePlan(o *Order, detail RefundPendingDetail) *RefundPlan {
 	refundAmount := o.RefundAmount
 	reason := strings.TrimSpace(refundStringValue(o.RefundReason))
@@ -100,12 +103,14 @@ func (s *RefundWorkflow) RefundFinalizePlan(o *Order, detail RefundPendingDetail
 	}
 	return p
 }
+
 func RefundResponseID(resp *RefundResponse) string {
 	if resp == nil {
 		return ""
 	}
 	return strings.TrimSpace(resp.RefundID)
 }
+
 func refundStringValue(v *string) string {
 	if v == nil {
 		return ""

@@ -1,4 +1,3 @@
-// 入站测试使用连接替身；连接池行为由 upstream/openai 的测试验证。
 package httpapi
 
 import (
@@ -127,7 +126,7 @@ func (c *openAIWSBlockingConn) Close() error {
 	return nil
 }
 
-// 应用关闭后不得通过按需入口创建第二个池，既有池也不得再次发起获取。
+// TestOpenAIWSConnPoolShutdownSealsLazyCreation 验证应用关闭后不得通过按需入口创建第二个池，既有池也不得再次发起获取。
 func TestOpenAIWSConnPoolShutdownSealsLazyCreation(t *testing.T) {
 	svc := newWSFixture(wsFixtureInputs{})
 	svc.Connections.Close()

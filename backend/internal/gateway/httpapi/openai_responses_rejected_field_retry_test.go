@@ -685,7 +685,7 @@ func newOpenAIRejectedFieldTestResponse(status int, body string) *http.Response 
 	}
 }
 
-// 重放会话包含多个同类型项目，且每项都带有上游 schema 拒绝的 status。
+// TestNormalizeOpenAIResponsesRejectedFieldRetryBodyClearsStatusForWholeType 验证重放会话包含多个同类型项目，且每项都带有上游 schema 拒绝的 status。
 // 一次拒绝应清理全部同类型项目，否则逐个索引重试会耗尽有限预算。
 func TestNormalizeOpenAIResponsesRejectedFieldRetryBodyClearsStatusForWholeType(t *testing.T) {
 	input := make([]string, 0, 12)
@@ -711,7 +711,7 @@ func TestNormalizeOpenAIResponsesRejectedFieldRetryBodyClearsStatusForWholeType(
 		"a different item type keeps its status: the rejection only proves this type has none")
 }
 
-// 被拒绝项可能没有可用于匹配的 type。
+// TestNormalizeOpenAIResponsesRejectedFieldRetryBodyClearsUntypedStatusAtIndexOnly 验证被拒绝项可能没有可用于匹配的 type。
 func TestNormalizeOpenAIResponsesRejectedFieldRetryBodyClearsUntypedStatusAtIndexOnly(t *testing.T) {
 	body := []byte(`{"input":[{"status":"keep_a"},{"status":"remove"}]}`)
 	responseBody := []byte(`{"error":{"code":"unknown_parameter","message":"Unknown parameter: 'input[1].status'.","param":"input[1].status"}}`)

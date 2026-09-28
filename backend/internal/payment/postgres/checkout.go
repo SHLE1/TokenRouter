@@ -1,4 +1,3 @@
-// 下单事务保持限额读取、订单写入及充值码生成的原顺序。
 package postgres
 
 import (
@@ -97,6 +96,7 @@ func (s *OrderStore) CreateCheckout(ctx context.Context, draft payment.CheckoutD
 	}
 	return OrderFromEntity(order), nil
 }
+
 func allocateCheckoutTradeNumber(ctx context.Context, tx *dbent.Tx) (string, error) {
 	const maxAttempts = 5
 	for attempt := 0; attempt < maxAttempts; attempt++ {
@@ -137,10 +137,12 @@ func (s *OrderStore) PersistCheckoutResponse(ctx context.Context, orderID int64,
 	}
 	return OrderFromEntity(order), nil
 }
+
 func (s *OrderStore) FailCheckout(ctx context.Context, id int64) error {
 	_, err := s.client.PaymentOrder.UpdateOneID(id).SetStatus(payment.OrderStatusFailed).Save(ctx)
 	return err
 }
+
 func (s *OrderStore) CancelledCount(ctx context.Context, operator string, since time.Time) (int, error) {
 	return s.client.PaymentAuditLog.Query().Where(paymentauditlog.ActionEQ("ORDER_CANCELLED"), paymentauditlog.OperatorEQ(operator), paymentauditlog.CreatedAtGTE(since)).Count(ctx)
 }

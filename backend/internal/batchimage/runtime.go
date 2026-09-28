@@ -1,4 +1,3 @@
-// Runtime 拥有本模块后台循环，停止后不能再次启动。
 package batchimage
 
 import (
@@ -22,6 +21,7 @@ type Runtime struct {
 func NewRuntime(name string, enabled bool, loops ...func(context.Context)) *Runtime {
 	return &Runtime{name: name, enabled: enabled, loops: loops}
 }
+
 func (r *Runtime) Start() {
 	if r == nil {
 		return
@@ -44,6 +44,7 @@ func (r *Runtime) Start() {
 	}
 	go func() { wg.Wait(); close(done) }()
 }
+
 func (r *Runtime) Running() bool {
 	if r == nil {
 		return false

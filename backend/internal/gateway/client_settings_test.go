@@ -72,7 +72,7 @@ func TestSettingService_IsOpenAIAllowClaudeCodeCodexPluginEnabled(t *testing.T) 
 	})
 }
 
-// 历史默认值应升级，管理员已明确设置的模型和缺失设置均保持不变。
+// TestSettingService_MigrateGrokDefaultTextModel 验证历史默认值应升级，管理员已明确设置的模型和缺失设置均保持不变。
 func TestSettingService_MigrateGrokDefaultTextModel(t *testing.T) {
 	t.Run("升级历史默认值", func(t *testing.T) {
 		repo := &allowClaudeCodeSettingRepoStub{values: map[string]string{gateway.SettingKeyGrokDefaultTextModel: "grok-4.5"}}

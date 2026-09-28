@@ -1,4 +1,3 @@
-// ProxyAdministrator 定义管理端所需的代理查询、变更和探测操作。
 package egress
 
 import (

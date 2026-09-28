@@ -1,4 +1,3 @@
-// 分组 ID 校验优先批量查询，缺少批量能力时逐项读取。
 package routing
 
 import (

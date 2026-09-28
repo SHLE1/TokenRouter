@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== P1-08 修复：model 替换性能优化测试 =============
+// TestReplaceModelInSSELine 验证==================== P1-08 修复：model 替换性能优化测试 =============
 func TestReplaceModelInSSELine(t *testing.T) {
 	tests := []struct {
 		name     string

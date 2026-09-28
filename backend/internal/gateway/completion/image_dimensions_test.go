@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 实际输出尺寸覆盖请求尺寸，并进入生产完成处理使用的计费元数据。
+// TestNormalizeResultUsesDecodedImageDimensions 验证实际输出尺寸覆盖请求尺寸，并进入生产完成处理使用的计费元数据。
 func TestNormalizeResultUsesDecodedImageDimensions(t *testing.T) {
 	result := &Result{ImageCount: 1, ImageInputSize: "3840x2160", ImageOutputSizes: []string{"1672x941"}}
 	(&Recorder{}).normalizeResult(result, &ProviderSnapshot{OAuthLike: true}, true, nil)

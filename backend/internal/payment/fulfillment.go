@@ -1,4 +1,3 @@
-// 支付状态推进、权益发放和通知保持原多阶段边界。
 package payment
 
 import (
@@ -53,6 +52,7 @@ func (s *Fulfillment) HandlePaymentNotification(ctx context.Context, n *PaymentN
 		return nil
 	}
 }
+
 func (s *Fulfillment) FindPaymentNotificationOrder(ctx context.Context, orderID string) (*Order, error) {
 	// 优先按发送给渠道的外部订单号查询，旧版 sub2_N 载荷仅在确实未命中时回退。
 	order, err := s.store.OrderByTradeNumber(ctx, orderID)
@@ -73,6 +73,7 @@ func (s *Fulfillment) FindPaymentNotificationOrder(ctx context.Context, orderID 
 	}
 	return nil, fmt.Errorf("%w: out_trade_no=%s", ErrOrderNotFound, orderID)
 }
+
 func ParseLegacyPaymentOrderID(orderID string, notFound bool) (int64, bool) {
 	if !notFound {
 		return 0, false
@@ -91,6 +92,7 @@ func ParseLegacyPaymentOrderID(orderID string, notFound bool) (int64, bool) {
 	}
 	return oid, true
 }
+
 func (s *Fulfillment) ValidatePaymentNotificationOrder(ctx context.Context, o *Order, pk, tradeNo string, metadata map[string]string) error {
 	instanceProviderKey := ""
 	if inst, instErr := s.bindings.GetOrderProviderInstance(ctx, o); instErr == nil && inst != nil {
@@ -114,6 +116,7 @@ func (s *Fulfillment) ValidatePaymentNotificationOrder(ctx context.Context, o *O
 	}
 	return nil
 }
+
 func (s *Fulfillment) ConfirmPayment(ctx context.Context, o *Order, tradeNo string, paid float64, pk string, metadata map[string]string) error {
 	if !IsValidProviderAmount(paid) {
 		s.runtime.Audit(ctx, o.ID, "PAYMENT_INVALID_AMOUNT", pk, map[string]any{
@@ -129,6 +132,7 @@ func (s *Fulfillment) ConfirmPayment(ctx context.Context, o *Order, tradeNo stri
 	}
 	return s.ToPaid(ctx, o, tradeNo, paid, pk, metadata)
 }
+
 func (s *Fulfillment) MarkPaymentProcessing(ctx context.Context, o *Order, tradeNo, pk string, metadata map[string]string) error {
 	if o.Status != OrderStatusPending {
 		return nil
@@ -160,6 +164,7 @@ func (s *Fulfillment) MarkPaymentProcessing(ctx context.Context, o *Order, trade
 	}
 	return nil
 }
+
 func (s *Fulfillment) MarkPaymentFailed(ctx context.Context, o *Order, tradeNo, pk string) error {
 	for attempts := 0; attempts < 3; attempts++ {
 		previousStatus := o.Status
@@ -193,12 +198,15 @@ func (s *Fulfillment) MarkPaymentFailed(ctx context.Context, o *Order, tradeNo, 
 	}
 	return fmt.Errorf("payment order %d status kept changing while recording failure", o.ID)
 }
+
 func IsValidProviderAmount(amount float64) bool {
 	return amount > 0 && !math.IsNaN(amount) && !math.IsInf(amount, 0)
 }
+
 func ValidateProviderNotificationMetadata(order *Order, providerKey string, metadata map[string]string) error {
 	return ValidateProviderSnapshotMetadata(order, providerKey, metadata)
 }
+
 func ExpectedNotificationProviderKey(registry *Registry, orderPaymentType string, orderProviderKey string, instanceProviderKey string) string {
 	if key := strings.TrimSpace(instanceProviderKey); key != "" {
 		return key
@@ -213,6 +221,7 @@ func ExpectedNotificationProviderKey(registry *Registry, orderPaymentType string
 	}
 	return strings.TrimSpace(orderPaymentType)
 }
+
 func (s *Fulfillment) ToPaid(ctx context.Context, o *Order, tradeNo string, paid float64, pk string, metadata map[string]string) error {
 	if GetBasePaymentType(pk) == TypeStripe &&
 		strings.HasPrefix(strings.TrimSpace(tradeNo), "in_") &&
@@ -271,6 +280,7 @@ func (s *Fulfillment) ToPaid(ctx context.Context, o *Order, tradeNo string, paid
 	}
 	return fmt.Errorf("payment order %d status kept changing while recording success", o.ID)
 }
+
 func (s *Fulfillment) ExecuteFulfillment(ctx context.Context, oid int64) error {
 	o, err := s.store.Order(ctx, oid)
 	if err != nil {
@@ -281,6 +291,7 @@ func (s *Fulfillment) ExecuteFulfillment(ctx context.Context, oid int64) error {
 	}
 	return s.ExecuteBalanceFulfillment(ctx, oid)
 }
+
 func (s *Fulfillment) ExecuteBalanceFulfillment(ctx context.Context, oid int64) error {
 	o, err := s.store.Order(ctx, oid)
 	if err != nil {
@@ -308,6 +319,7 @@ func (s *Fulfillment) ExecuteBalanceFulfillment(ctx context.Context, oid int64) 
 	}
 	return nil
 }
+
 func (s *Fulfillment) AcquirePaymentFulfillmentLease(ctx context.Context, o *Order) (*FulfillmentLease, error) {
 	if o == nil {
 		return nil, infraerrors.BadRequest("INVALID_STATUS", "nil payment order")
@@ -367,6 +379,7 @@ func ResolveRedeemAction(existing *billing.RedeemCode, lookupErr error) RedeemAc
 	}
 	return RedeemActionRedeem
 }
+
 func (s *Fulfillment) DoBalance(ctx context.Context, o *Order, lease *FulfillmentLease) error {
 	// Idempotency: check if redeem code already exists (from a previous partial run)
 	existing, lookupErr := s.redeemService.GetByCode(ctx, o.RechargeCode)
@@ -395,6 +408,7 @@ func (s *Fulfillment) DoBalance(ctx context.Context, o *Order, lease *Fulfillmen
 	}
 	return s.MarkCompleted(ctx, o, lease, "RECHARGE_SUCCESS")
 }
+
 func (s *Fulfillment) MarkCompleted(ctx context.Context, o *Order, lease *FulfillmentLease, auditAction string) error {
 	if lease == nil {
 		return errors.New("missing payment fulfillment lease")
@@ -427,6 +441,7 @@ func (s *Fulfillment) MarkCompleted(ctx context.Context, o *Order, lease *Fulfil
 	}
 	return nil
 }
+
 func (s *Fulfillment) DispatchPaymentFulfillmentNotification(o *Order, auditAction string) {
 	if s == nil || s.runtime.Notify == nil || o == nil {
 		return
@@ -449,6 +464,7 @@ func (s *Fulfillment) DispatchPaymentFulfillmentNotification(o *Order, auditActi
 		}
 	})
 }
+
 func (s *Fulfillment) SendBalanceRechargeSuccessNotification(ctx context.Context, o *Order) error {
 	currentBalance := ""
 	if s.runtime.User != nil {
@@ -470,6 +486,7 @@ func (s *Fulfillment) SendBalanceRechargeSuccessNotification(ctx context.Context
 		},
 	})
 }
+
 func (s *Fulfillment) SendSubscriptionPurchaseSuccessNotification(ctx context.Context, o *Order) error {
 	subscriptionGroup := FirstNonEmpty(o.PlanSnapshot.Name, "Subscription")
 	subscriptionDays := ""
@@ -499,6 +516,7 @@ func (s *Fulfillment) SendSubscriptionPurchaseSuccessNotification(ctx context.Co
 		Variables:      variables,
 	})
 }
+
 func (s *Fulfillment) ExecuteSubscriptionFulfillment(ctx context.Context, oid int64) error {
 	o, err := s.store.Order(ctx, oid)
 	if err != nil {
@@ -529,6 +547,7 @@ func (s *Fulfillment) ExecuteSubscriptionFulfillment(ctx context.Context, oid in
 	}
 	return nil
 }
+
 func (s *Fulfillment) DoSub(ctx context.Context, o *Order, lease *FulfillmentLease) error {
 	if o.PlanID == nil || *o.PlanID <= 0 {
 		return fmt.Errorf("order %d missing plan id", o.ID)
@@ -568,9 +587,11 @@ func (s *Fulfillment) DoSub(ctx context.Context, o *Order, lease *FulfillmentLea
 	}
 	return s.MarkCompleted(ctx, o, lease, "SUBSCRIPTION_SUCCESS")
 }
+
 func (s *Fulfillment) HasAuditLog(ctx context.Context, id int64, action string) bool {
 	return s.store.HasAudit(ctx, id, action)
 }
+
 func (s *Fulfillment) ApplyAffiliateRebateForOrder(ctx context.Context, o *Order) error {
 	base := AffiliateRebateBasePoints(o)
 	if o == nil || base <= 0 || s.runtime.RebateEnabled == nil || !s.runtime.RebateEnabled(ctx) {
@@ -587,6 +608,7 @@ func AffiliateRebateBasePoints(o *Order) float64 {
 	}
 	return points
 }
+
 func (s *Fulfillment) MarkFailed(ctx context.Context, oid int64, lease *FulfillmentLease, cause error) {
 	if lease == nil {
 		s.runtime.Log("error", "mark FAILED without fulfillment lease", "orderID", oid)
@@ -610,6 +632,7 @@ func (s *Fulfillment) MarkFailed(ctx context.Context, oid int64, lease *Fulfillm
 		s.runtime.Audit(ctx, oid, "FULFILLMENT_FAILED", "system", map[string]any{"reason": r})
 	}
 }
+
 func (s *Fulfillment) RetryFulfillment(ctx context.Context, oid int64) error {
 	o, err := s.store.Order(ctx, oid)
 	if err != nil {

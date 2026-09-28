@@ -1,4 +1,3 @@
-// 任务模块拥有资金动作身份，历史前缀保持不变。
 package batchimage
 
 import (

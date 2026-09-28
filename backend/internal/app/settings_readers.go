@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// 配置读取器共享唯一 Store；构造不回源，各模块保持原缓存作用域与读取时机。
+// providePanelSettings 配置读取器共享唯一 Store；构造不回源，各模块保持原缓存作用域与读取时机。
 // @project-doc docs/interfaces/configuration.md#runtime_settings
 func providePanelSettings(store *settings.Store) *runtimeconfig.PanelSettings {
 	return runtimeconfig.NewPanelSettings(store)

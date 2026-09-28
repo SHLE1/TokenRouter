@@ -1,4 +1,3 @@
-// TransformPorts 注入动态策略与提供商侧身份投影；参数中的 map 仅承载 wire JSON。
 package openaiforward
 
 import (

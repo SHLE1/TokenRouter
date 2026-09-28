@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同一运行实例不得重复启动，也不能在 Stop 后重新开启。
+// TestWorkerRuntimeStartsOnceAndCannotRestart 验证同一运行实例不得重复启动，也不能在 Stop 后重新开启。
 func TestWorkerRuntimeStartsOnceAndCannotRestart(t *testing.T) {
 	var runtime WorkerRuntime
 	var calls atomic.Int64
@@ -28,7 +28,7 @@ func TestWorkerRuntimeStartsOnceAndCannotRestart(t *testing.T) {
 	require.EqualValues(t, 1, calls.Load())
 }
 
-// 停止会取消实际传给工作端口的 context，随后等待该端口返回。
+// TestWorkerRuntimeStopCancelsAndWaits 验证停止会取消实际传给工作端口的 context，随后等待该端口返回。
 func TestWorkerRuntimeStopCancelsAndWaits(t *testing.T) {
 	var runtime WorkerRuntime
 	started := make(chan struct{})
@@ -45,7 +45,7 @@ func TestWorkerRuntimeStopCancelsAndWaits(t *testing.T) {
 	require.True(t, completed.Load())
 }
 
-// 不响应取消的任务必须报告名称，迟到退出不能把首次超时改成成功。
+// TestWorkerRuntimeStopTimeoutRemainsUnfinished 验证不响应取消的任务必须报告名称，迟到退出不能把首次超时改成成功。
 func TestWorkerRuntimeStopTimeoutRemainsUnfinished(t *testing.T) {
 	var runtime WorkerRuntime
 	started, release, finished := make(chan struct{}), make(chan struct{}), make(chan struct{})

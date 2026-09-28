@@ -1,4 +1,3 @@
-// Gemini 原生额度报文解析只返回观测，仍在原匹配分支取得当前时刻。
 package gemini
 
 import (
@@ -10,9 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-var (
-	retryInRegex = regexp.MustCompile(`Please retry in ([0-9.]+)s`)
-)
+var retryInRegex = regexp.MustCompile(`Please retry in ([0-9.]+)s`)
 
 // ParseGeminiRateLimitResetTime 解析 Gemini 格式的 429 响应，返回重置时间的 Unix 时间戳
 func ParseGeminiRateLimitResetTime(body []byte, nextDaily func() *int64) *int64 {
@@ -55,6 +52,7 @@ func ParseGeminiRateLimitResetTime(body []byte, nextDaily func() *int64) *int64 
 
 	return nil
 }
+
 func LooksLikeGeminiDailyQuota(message string) bool {
 	m := strings.ToLower(message)
 	if strings.Contains(m, "per day") || strings.Contains(m, "requests per day") || strings.Contains(m, "quota") && strings.Contains(m, "per day") {

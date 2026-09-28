@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 新旧调度器都必须复核数据库开关，缓存显示关闭也不能永久漏选已重新启用的提供商。
+// TestCompactSchedulingRechecksAdministratorSwitchFromDatabase 验证新旧调度器都必须复核数据库开关，缓存显示关闭也不能永久漏选已重新启用的提供商。
 func TestCompactSchedulingRechecksAdministratorSwitchFromDatabase(t *testing.T) {
 	for _, advanced := range []bool{false, true} {
 		for _, enabled := range []bool{false, true} {

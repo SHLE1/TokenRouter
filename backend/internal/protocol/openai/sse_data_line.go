@@ -1,4 +1,3 @@
-// ExtractSSEDataLine 保留兼容入口对空格和制表符的原处理。
 package openai
 
 import "strings"

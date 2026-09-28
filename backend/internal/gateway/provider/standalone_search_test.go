@@ -59,7 +59,7 @@ func TestResolveGrokStandaloneSearchModelUsesRuntimeDefault(t *testing.T) {
 	require.Equal(t, model, gjson.GetBytes(body, "model").String())
 }
 
-// 测试只固定 X 搜索分支，不复制报文算法。
+// buildStandaloneXSearchForTest 测试只固定 X 搜索分支，不复制报文算法。
 func buildStandaloneXSearchForTest(r searchtools.StandaloneRequest, m string) ([]byte, error) {
 	return GrokStandaloneSearchBody(r, m, 0, true)
 }

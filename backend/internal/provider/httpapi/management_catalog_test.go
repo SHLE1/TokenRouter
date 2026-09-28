@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// JSON 变体必须保留零值字段与 Grok 的原省略字段。
+// TestAdminCatalogResponseWireVariants 验证JSON 变体必须保留零值字段与 Grok 的原省略字段。
 func TestAdminCatalogResponseWireVariants(t *testing.T) {
 	for _, tc := range []struct {
 		kind routing.AdminCatalogKind

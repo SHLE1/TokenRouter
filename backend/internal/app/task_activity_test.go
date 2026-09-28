@@ -29,7 +29,7 @@ func (s *taskActivityUseCases) Get(context.Context, batchimage.BatchImageOwner, 
 	return &batchimage.BatchImagePublicBatch{}, nil
 }
 
-// 真实 HTTP Adapter 的调用尚未结束时，关闭不能越过任务阶段释放共享存储。
+// TestTaskHTTPActivityTimeoutRetainsStorage 验证真实 HTTP Adapter 的调用尚未结束时，关闭不能越过任务阶段释放共享存储。
 func TestTaskHTTPActivityTimeoutRetainsStorage(t *testing.T) {
 	manager := lifecycle.New()
 	activity := provideTaskActivity(manager)

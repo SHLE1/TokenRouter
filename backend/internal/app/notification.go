@@ -1,4 +1,3 @@
-// 通知实例在组合根构造并供各调用方共享。
 package app
 
 import (

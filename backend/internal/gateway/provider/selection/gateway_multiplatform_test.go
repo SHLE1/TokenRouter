@@ -1036,7 +1036,7 @@ func TestGatewayService_isModelSupportedByProvider(t *testing.T) {
 	}
 }
 
-// TestGatewayService_selectProviderWithMixedScheduling 测试混合调度
+// TestGenericGroupIncludesAntigravityWithoutMixedFlag 测试混合调度
 func TestGenericGroupIncludesAntigravityWithoutMixedFlag(t *testing.T) {
 	groupID := int64(1)
 	values := []gatewayprovider.ExecutionProvider{

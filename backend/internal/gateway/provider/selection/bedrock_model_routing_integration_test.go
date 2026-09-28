@@ -40,7 +40,7 @@ func newBedrockRoutingTestProvider(id int64, region string, forceGlobal bool) ga
 
 // 无有效路由时不调用上游或写提供商状态，管理员仅在确有全局能力时收到开启提示。
 
-// 地域不支持的粘性提供商必须被跳过，提供商筛选和错误诊断应使用相同的区域规则。
+// TestBedrockRegionRouting_SchedulerAndDiagnosisAgree 验证地域不支持的粘性提供商必须被跳过，提供商筛选和错误诊断应使用相同的区域规则。
 func TestBedrockRegionRouting_SchedulerAndDiagnosisAgree(t *testing.T) {
 	groupID := int64(5200)
 	invalid := newBedrockRoutingTestProvider(1, "ap-northeast-1", false)

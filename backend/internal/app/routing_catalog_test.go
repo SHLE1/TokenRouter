@@ -35,7 +35,7 @@ func setupModelDefaultPricingRouter(billingSvc *billing.Calculator) *gin.Engine 
 	return router
 }
 
-// 同一模型的默认价不受平台影响，Qoder 别名也可以读取内置价。
+// TestGetModelDefaultPricing_QoderMatchesOtherPlatforms 验证同一模型的默认价不受平台影响，Qoder 别名也可以读取内置价。
 func TestGetModelDefaultPricing_QoderMatchesOtherPlatforms(t *testing.T) {
 	router := setupModelDefaultPricingRouter(billingtestkit.Calculator(0, nil, nil))
 	for _, model := range []string{"claude-opus-4-6", "CLAUDE-OPUS-4-6", "qwen3.8-max", "qmodel"} {

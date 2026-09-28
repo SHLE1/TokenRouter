@@ -1010,6 +1010,6 @@ func newPassthroughRuleForWritePathTest(id int64, keyword, customMsg string) *Er
 	return rule
 }
 
-// Helper functions
+// testIntPtr 返回测试用整数指针。
 func testIntPtr(i int) *int       { return &i }
 func testStrPtr(s string) *string { return &s }

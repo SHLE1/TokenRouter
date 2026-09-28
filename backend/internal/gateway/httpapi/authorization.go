@@ -1,4 +1,3 @@
-// 认证入口只拥有 HTTP 时序与错误形状；Key、路由与资金规则分别委托所属模块。
 package httpapi
 
 import (

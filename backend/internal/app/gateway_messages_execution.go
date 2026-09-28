@@ -22,7 +22,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
-// 调试输出共享一个句柄；请求与完成工作退出后再关闭。
+// provideGatewayRequestDebug 调试输出共享一个句柄；请求与完成工作退出后再关闭。
 func provideGatewayRequestDebug(manager *lifecycle.Manager) *requestdebug.Trace {
 	trace := requestdebug.New(os.Getenv("SUB2API_DEBUG_GATEWAY_BODY"), os.Getenv("SUB2API_DEBUG_CLAUDE_MIMIC"))
 	manager.Register(lifecycle.Hook{Name: "GatewayRequestDebug", StopOrder: 90, Stop: func(context.Context) error { return trace.Close() }})
@@ -48,7 +48,7 @@ func provideMessagesExecution(credentials *provider.MessageCredentialSource, fin
 	return gatewayhttp.NewMessagesExecutor(messageforward.NewRuntime(deps, messageExecutionOptions(cfg)), filter)
 }
 
-// 静态参数只在装配时投影，动态设置保留请求内的读取位置。
+// messageExecutionOptions 静态参数只在装配时投影，动态设置保留请求内的读取位置。
 func messageExecutionOptions(cfg *config.Config) messageforward.Options {
 	options := messageforward.Options{ResponseReadLimit: config.DefaultUpstreamResponseReadMaxBytes}
 	if cfg == nil {

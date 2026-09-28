@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 已发布查询值在写入、命中和 singleflight 返回边界都必须独立。
+// TestQueryCacheSnapshotIsolation 验证已发布查询值在写入、命中和 singleflight 返回边界都必须独立。
 func TestQueryCacheSnapshotIsolation(t *testing.T) {
 	type payload struct {
 		Items []map[string]*int
@@ -33,6 +33,7 @@ func TestQueryCacheSnapshotIsolation(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, 3, *secondPayload.Items[0]["value"])
 }
+
 func TestQueryCacheConcurrentLoadReturnsIndependentValues(t *testing.T) {
 	c := NewCache(time.Minute)
 	start := make(chan struct{})

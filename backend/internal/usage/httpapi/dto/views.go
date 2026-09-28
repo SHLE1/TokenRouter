@@ -1,4 +1,3 @@
-// 只把用量关联投影交给现有 DTO 方法，不复制身份/Key/分组规则。
 package dto
 
 import (

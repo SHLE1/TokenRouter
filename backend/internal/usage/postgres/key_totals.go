@@ -1,4 +1,3 @@
-// 批量读取 API Key 用量总额，并使用预聚合设置选择查询方式。
 package postgres
 
 import (

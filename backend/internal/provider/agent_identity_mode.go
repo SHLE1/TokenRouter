@@ -1,4 +1,3 @@
-// Agent Identity 模式由提供商的 OpenAI 认证配置决定。
 package provider
 
 import (

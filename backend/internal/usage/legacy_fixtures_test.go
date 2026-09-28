@@ -1,4 +1,3 @@
-// 测试夹具提供设置与时间轮端口，不实现业务规则。
 package usage
 
 import (
@@ -12,16 +11,19 @@ import (
 
 const SettingKeyPreAggregationSettings = p.SettingKeyPreAggregationSettings
 
-type PreAggregationUsageSettings = p.PreAggregationUsageSettings
-type PreAggregationOpsSettings = p.PreAggregationOpsSettings
-type runtimeSettingRepoStub struct {
-	mu     sync.Mutex
-	values map[string]string
-}
+type (
+	PreAggregationUsageSettings = p.PreAggregationUsageSettings
+	PreAggregationOpsSettings   = p.PreAggregationOpsSettings
+	runtimeSettingRepoStub      struct {
+		mu     sync.Mutex
+		values map[string]string
+	}
+)
 
 func newRuntimeSettingRepoStub() *runtimeSettingRepoStub {
 	return &runtimeSettingRepoStub{values: map[string]string{}}
 }
+
 func (s *runtimeSettingRepoStub) GetValue(_ context.Context, k string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -31,12 +33,14 @@ func (s *runtimeSettingRepoStub) GetValue(_ context.Context, k string) (string, 
 	}
 	return v, nil
 }
+
 func (s *runtimeSettingRepoStub) Set(_ context.Context, k, v string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.values[k] = v
 	return nil
 }
+
 func NewPreAggregationSettingsService(repo p.Repository, cfg *Options) *p.PreAggregationSettingsService {
 	var options *p.Options
 	if cfg != nil {

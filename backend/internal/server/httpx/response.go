@@ -1,4 +1,3 @@
-// Package httpx provides standardized HTTP response helpers.
 package httpx
 
 import (

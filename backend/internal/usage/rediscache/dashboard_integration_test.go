@@ -13,7 +13,7 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// 原键可直接读入新实现，新写入也可由原始 Redis 客户端按旧键读取。
+// TestDashboardCacheLegacyKeyAndTTL 验证原键可直接读入新实现，新写入也可由原始 Redis 客户端按旧键读取。
 func TestDashboardCacheLegacyKeyAndTTL(t *testing.T) {
 	ctx := context.Background()
 	container, err := tcredis.Run(ctx, "redis:8.4-alpine")

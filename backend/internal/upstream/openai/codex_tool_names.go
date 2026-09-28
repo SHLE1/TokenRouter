@@ -1,4 +1,3 @@
-// 预留工具别名的冲突校验、改写与恢复使用一份原生实现；每条请求的映射状态由调用者持有。
 package openai
 
 import (
@@ -9,8 +8,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
 )
 
-const CodexReservedPythonToolName = "python"
-const CodexPythonToolAlias = "python__sub2api"
+const (
+	CodexReservedPythonToolName = "python"
+	CodexPythonToolAlias        = "python__sub2api"
+)
 
 type CodexToolNameField struct {
 	object map[string]any

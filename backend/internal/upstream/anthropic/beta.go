@@ -1,4 +1,3 @@
-// 本文件组合 Anthropic wire Header，不读取业务服务或配置。
 package anthropic
 
 import (

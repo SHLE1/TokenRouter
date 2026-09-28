@@ -1,4 +1,3 @@
-// Messages 执行适配绑定提供商、会话及协议转换端口，请求恢复循环由执行器管理。
 package httpapi
 
 import (

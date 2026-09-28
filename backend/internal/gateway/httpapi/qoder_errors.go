@@ -1,4 +1,3 @@
-// Qoder 三种协议的错误报文只由 HTTP Adapter 写出。
 package httpapi
 
 import (
@@ -32,6 +31,7 @@ func WriteQoderStreamError(c *gin.Context, status int, errType, message string, 
 	}
 	WriteQoderError(c, status, errType, message, endpoint)
 }
+
 func WriteQoderChatErrorSSE(c *gin.Context, errType, message string) {
 	errorEvent := `data: {"error":{"type":` + strconv.Quote(errType) + `,"message":` + strconv.Quote(message) + `}}` + "\n\n" + "data: [DONE]\n\n"
 	_, _ = c.Writer.WriteString(errorEvent)
@@ -39,6 +39,7 @@ func WriteQoderChatErrorSSE(c *gin.Context, errType, message string) {
 		flusher.Flush()
 	}
 }
+
 func WriteQoderError(c *gin.Context, status int, errType, message string, endpoint QoderEndpoint) {
 	if endpoint == QoderMessages {
 		c.JSON(status, gin.H{
@@ -58,7 +59,7 @@ func WriteQoderError(c *gin.Context, status int, errType, message string, endpoi
 	})
 }
 
-// 该快照由原请求观测时点设置，不读取或重解析 body。
+// qoderRequestIsStream 该快照由原请求观测时点设置，不读取或重解析 body。
 func qoderRequestIsStream(c *gin.Context) bool {
 	if c == nil {
 		return false

@@ -1,6 +1,6 @@
 package pricing
 
-// initFallbackPricing 初始化硬编码回退价格（当动态价格不可用时使用）
+// DefaultFallbackPrices 初始化硬编码回退价格（当动态价格不可用时使用）
 // 价格单位：USD per token（与LiteLLM格式一致）
 func DefaultFallbackPrices() map[string]*ModelPricing {
 	prices := make(map[string]*ModelPricing)

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 报告设置中的旧嵌套字段必须拒绝，避免管理员误以为保存成功。
+// TestEmailReportRejectsLegacyProviderFields 验证报告设置中的旧嵌套字段必须拒绝，避免管理员误以为保存成功。
 func TestEmailReportRejectsLegacyProviderFields(t *testing.T) {
 	handler := &OpsHandler{opsService: newRuntimeOpsService(t)}
 	router := gin.New()

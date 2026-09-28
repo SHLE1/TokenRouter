@@ -1028,7 +1028,7 @@ func TestOpenAIGatewayServiceRecordUsage_GroupControlsLongContextBilling(t *test
 	}
 }
 
-// Grok 没有提供商级长上下文开关，官方阶梯只能由分组策略控制。
+// TestOpenAIGatewayServiceRecordUsage_GrokLongContextFollowsGroupToggle 验证Grok 没有提供商级长上下文开关，官方阶梯只能由分组策略控制。
 func TestOpenAIGatewayServiceRecordUsage_GrokLongContextFollowsGroupToggle(t *testing.T) {
 	baseInput := 250000 * 2e-6
 	baseOutput := 1000 * 6e-6
@@ -2321,7 +2321,7 @@ func TestOpenAIGatewayServiceRecordUsage_GroupVideoPriceOverridesPricingConfigIm
 	require.Equal(t, string(routing.BillingModeVideo), *usageRepo.LastLog.BillingMode)
 }
 
-// 视频请求命中共享价格配置 token 计费时走 token 路径；此时行是 billing_mode='token'、image_count=1、
+// TestOpenAIGatewayServiceRecordUsage_GrokVideoWithTokenConfigPricingKeepsVideoMetadata 验证视频请求命中共享价格配置 token 计费时走 token 路径；此时行是 billing_mode='token'、image_count=1、
 // image_size=NULL，必须携带 video_count>0 才能通过 usage_logs 的 image_size check 约束
 // （迁移 194），否则整个计费事务会因约束违反而丢失。
 func TestOpenAIGatewayServiceRecordUsage_GrokVideoWithTokenConfigPricingKeepsVideoMetadata(t *testing.T) {
@@ -2809,7 +2809,7 @@ func TestOpenAIGatewayServiceRecordUsage_ServiceTierNeverRaisedByUpstreamRespons
 	require.InDelta(t, baseCost.TotalCost, usageRepo.LastLog.TotalCost, 1e-10)
 }
 
-// 记录测试保留原存储替身与缓存作用域，核心直接使用 completion.Recorder。
+// newOpenAIRecordUsageServiceForTest 记录测试保留原存储替身与缓存作用域，核心直接使用 completion.Recorder。
 func newOpenAIRecordUsageServiceForTest(logs usagecore.UsageLogRepository, _ identity.UserRepository, _ billing.UserSubscriptionRepository, rates billing.UserGroupRateRepository) *completiontestkit.Recording {
 	return completiontestkit.NewRecording(logs, &completiontestkit.SettlementStore{}, rates, true)
 }

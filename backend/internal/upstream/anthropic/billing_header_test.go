@@ -70,7 +70,7 @@ func TestSyncBillingHeaderVersion(t *testing.T) {
 	}
 }
 
-// 验证版本变化后重算后缀，重复处理稳定且不修改用户消息。
+// TestSyncBillingHeaderVersion_RecomputesSuffixAndIsIdempotent 验证版本变化后重算后缀，重复处理稳定且不修改用户消息。
 func TestSyncBillingHeaderVersion_RecomputesSuffixAndIsIdempotent(t *testing.T) {
 	body := []byte(`{"system":[{"type":"text","text":"x-anthropic-billing-header: cc_version=2.1.81.df2; cc_entrypoint=cli;"}],"messages":[{"role":"user","content":"hello world"}]}`)
 	version := "2.1.22"

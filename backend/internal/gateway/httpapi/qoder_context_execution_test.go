@@ -25,7 +25,7 @@ func (c qoderContextClientFixture) StreamRequestContext(ctx context.Context, _ *
 	return c.request(ctx)
 }
 
-// 原预算断言直接穿过真实 Execute，取消发生在供应商已进入之后。
+// TestQoderForwardContextDetachesStreamingFromClientCancellation 验证原预算断言直接穿过真实 Execute，取消发生在供应商已进入之后。
 func TestQoderForwardContextDetachesStreamingFromClientCancellation(t *testing.T) {
 	for _, stream := range []bool{true, false} {
 		t.Run(strconv.FormatBool(stream), func(t *testing.T) {

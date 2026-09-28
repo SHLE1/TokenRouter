@@ -1,4 +1,3 @@
-// Order 是订单快照值，不携带 Ent 客户端、关系实体或事务。
 package payment
 
 import (
@@ -170,6 +169,7 @@ func (o *Order) Clone() *Order {
 	}
 	return &copy
 }
+
 func cloneOrderMap(source map[string]any) map[string]any {
 	if source == nil {
 		return nil
@@ -180,6 +180,7 @@ func cloneOrderMap(source map[string]any) map[string]any {
 	}
 	return out
 }
+
 func cloneOrderValue(value any) any {
 	switch typed := value.(type) {
 	case map[string]any:

@@ -1,4 +1,3 @@
-// ChatGPT 元数据保留来源账户，以便提供商用例区分个人套餐和 workspace。
 package openai
 
 // ChatGPTAccountInfo 从 chatgpt.com/backend-api/accounts/check 获取的账户信息

@@ -12,7 +12,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestResolveBedrockModelID_OfficialVersionlessModels 验证无版本号的官方模型名解析为 Bedrock 模型 ID。
 // 默认别名必须生成官方请求地址，且无版本后缀的模型仍保留新版缓存能力。
 func TestResolveBedrockModelID_OfficialVersionlessModels(t *testing.T) {
 	t.Parallel()

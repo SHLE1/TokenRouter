@@ -515,7 +515,7 @@ func TestForwardAsAnthropic_DoesNotAutoDerivePromptCacheKeyForNonCodexModel(t *t
 	require.Empty(t, upstream.lastReq.Header.Get("session_id"))
 }
 
-// OAuth Messages 即使映射到非 Codex 模型，也通过 ChatGPT Codex 端点并恢复官方身份头。
+// TestForwardAsAnthropic_OAuthNonCodexModelRestoresCodexIdentity 验证OAuth Messages 即使映射到非 Codex 模型，也通过 ChatGPT Codex 端点并恢复官方身份头。
 func TestForwardAsAnthropic_OAuthNonCodexModelRestoresCodexIdentity(t *testing.T) {
 	t.Parallel()
 

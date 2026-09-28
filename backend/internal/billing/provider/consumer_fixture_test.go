@@ -49,7 +49,7 @@ func newStubPricingServiceFromJSON(t *testing.T, body string) *PricingService {
 	return service
 }
 
-// 目录和计费测试组合生产计算器，并注入缺省倍率和时钟。
+// newBillingFixture 目录和计费测试组合生产计算器，并注入缺省倍率和时钟。
 func newBillingFixture(catalog *PricingService) *billing.Calculator {
 	var source billing.PriceCatalog
 	if catalog != nil {

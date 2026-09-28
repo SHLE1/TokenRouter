@@ -218,7 +218,7 @@ func TestGetRequestTierPrice_NilPerRequestPrice(t *testing.T) {
 // PricingConfig override tests — exercises applyChannelOverrides via Resolve
 // ===========================================================================
 
-// newResolverWithChannel 创建带指定共享价格配置定价的解析器，分组平台跟随首条定价配置。
+// newResolverWithPricingConfig 创建带指定共享价格配置定价的解析器，分组平台跟随首条定价配置。
 func newResolverWithPricingConfig(t *testing.T, pricing []routing.ModelPricingEntry) *billing.PriceResolver {
 	t.Helper()
 	return billingtestkit.ResolverWithCards(t, billingtestkit.ResolverCalculator(), pricing)

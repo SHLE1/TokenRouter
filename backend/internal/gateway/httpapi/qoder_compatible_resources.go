@@ -64,7 +64,7 @@ func (h *QoderCompatibleRuntime) qoderSessionHash(c *gin.Context, endpoint Qoder
 	return ""
 }
 
-// 显式会话识别复用 gateway/session，HTTP 仅提供头部快照。
+// qoderExplicitStickySessionSeed 显式会话识别复用 gateway/session，HTTP 仅提供头部快照。
 func qoderExplicitStickySessionSeed(c *gin.Context, body []byte) string {
 	var headers map[string][]string
 	if c != nil && c.Request != nil {

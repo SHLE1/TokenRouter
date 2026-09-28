@@ -1,4 +1,3 @@
-// OpenAI 授权会话由提供商模块持有，保留原进程内 TTL、清理和生命周期。
 package provider
 
 import (
@@ -71,7 +70,6 @@ func (s *OpenAISessionStore) Delete(sessionID string) {
 	delete(s.sessions, sessionID)
 }
 
-// Stop stops the cleanup goroutine
 // Start 显式启动当前会话实例的清理循环。
 func (s *OpenAISessionStore) Start() {
 	s.runtimeMu.Lock()

@@ -1,4 +1,3 @@
-// 此处只投影现有提供商凭据能力与平台原语，不拥有提供商业务规则。
 package provider
 
 import (

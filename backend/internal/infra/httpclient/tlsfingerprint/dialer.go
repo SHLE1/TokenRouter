@@ -1,5 +1,3 @@
-// Package tlsfingerprint provides TLS fingerprint simulation for HTTP clients.
-// It uses the utls library to create TLS connections that mimic Node.js/Claude Code clients.
 package tlsfingerprint
 
 import (

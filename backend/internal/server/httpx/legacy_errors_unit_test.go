@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 数值错误构造器用作错误身份夹具，HTTP 映射由 httpx 提供。
+// TestToHTTP_Legacy 验证数值错误构造器用作错误身份夹具，HTTP 映射由 httpx 提供。
 func TestToHTTP_Legacy(t *testing.T) {
 	tests := []struct {
 		name           string

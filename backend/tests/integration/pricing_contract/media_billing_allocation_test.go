@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 两类网关都保留订阅、余额各自的倍率；高峰只影响最终按 token 结算的请求。
+// TestMediaAllocationRatesPreserveBalanceMultiplier 验证两类网关都保留订阅、余额各自的倍率；高峰只影响最终按 token 结算的请求。
 func TestMediaAllocationRatesPreserveBalanceMultiplier(t *testing.T) {
 	for _, gatewayKind := range []string{"openai", "generic"} {
 		for _, mode := range []routing.BillingMode{routing.BillingModeToken, routing.BillingModeImage, routing.BillingModePerRequest, routing.BillingModeVideo} {

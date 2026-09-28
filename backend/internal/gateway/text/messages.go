@@ -1,4 +1,3 @@
-// Package text 拥有文本入口的提供商尝试次序，HTTP 只执行同步输出。
 package text
 
 import (

@@ -23,7 +23,7 @@ func requireOpenAIRecordUsageBillingRepoStub(t *testing.T, svc *completiontestki
 	return billingRepo
 }
 
-// 记录测试保留原存储替身与缓存作用域，核心直接使用 completion.Recorder。
+// newOpenAIRecordUsageServiceForTest 记录测试保留原存储替身与缓存作用域，核心直接使用 completion.Recorder。
 func newOpenAIRecordUsageServiceForTest(logs usagecore.UsageLogRepository, _ identity.UserRepository, _ billing.UserSubscriptionRepository, rates billing.UserGroupRateRepository) *completiontestkit.Recording {
 	return completiontestkit.NewRecording(logs, &completiontestkit.SettlementStore{}, rates, true)
 }

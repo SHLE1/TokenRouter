@@ -1,4 +1,3 @@
-// Package assertion 提供不依赖业务实体的测试值校验。
 package assertion
 
 import "fmt"

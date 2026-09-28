@@ -1,4 +1,3 @@
-// Grok 的会话消费、授权校验和凭据投影归提供商；供应商交换通过显式端口注入。
 package provider
 
 import (
@@ -242,7 +241,7 @@ func (s *GrokAuthorization) refreshToken(ctx context.Context, refreshToken, prox
 	return tokenInfo, nil
 }
 
-// ValidateSSOToken 将 Web SSO Cookie 转换为 Build OAuth 令牌。
+// validateSSOToken 将 Web SSO Cookie 转换为 Build OAuth 令牌。
 // 原始 sso_token 绝不写入 GrokTokenInfo 或提供商凭证。
 func (s *GrokAuthorization) validateSSOToken(ctx context.Context, ssoToken string, proxyID *int64) (*GrokTokenInfo, error) {
 	ssoToken = strings.TrimSpace(ssoToken)
@@ -266,12 +265,12 @@ func (s *GrokAuthorization) validateSSOToken(ctx context.Context, ssoToken strin
 	return s.tokenInfoFromResponse(tokenResp, s.Options.DefaultClientID, nil), nil
 }
 
-// ConvertFromSSO 是批量导入入口，语义与 ValidateSSOToken 相同。
+// convertFromSSO 是批量导入入口，语义与 ValidateSSOToken 相同。
 func (s *GrokAuthorization) convertFromSSO(ctx context.Context, ssoToken string, proxyID *int64) (*GrokTokenInfo, error) {
 	return s.validateSSOToken(ctx, ssoToken, proxyID)
 }
 
-// AuthorizePassword 使用邮箱和密码登录，将所得 SSO Cookie 转换为 Build OAuth，
+// authorizePassword 使用邮箱和密码登录，将所得 SSO Cookie 转换为 Build OAuth，
 // 并且只返回 OAuth 令牌；密码与原始 SSO 数据绝不持久化。
 func (s *GrokAuthorization) authorizePassword(ctx context.Context, email, password string, proxyID *int64) (*GrokTokenInfo, error) {
 	if !s.Options.PasswordAuthEnabled() {

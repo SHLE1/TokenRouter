@@ -1,4 +1,3 @@
-// Code Assist 激活诊断只读取 Google 错误报文。
 package codeassist
 
 import (

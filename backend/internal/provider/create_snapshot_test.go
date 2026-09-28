@@ -23,7 +23,7 @@ func (s *createSnapshotStore) UpdatePrivacyModeIfUnchanged(context.Context, Usag
 	return true, nil
 }
 
-// 创建后的受跟踪任务不得修改已经返回给 HTTP 的提供商值。
+// TestCreatePrivacyTaskHasIndependentReturnSnapshot 验证创建后的受跟踪任务不得修改已经返回给 HTTP 的提供商值。
 func TestCreatePrivacyTaskHasIndependentReturnSnapshot(t *testing.T) {
 	store := &createSnapshotStore{}
 	privacy := NewPrivacyService(store, nil, PrivacyOptions{Antigravity: func(context.Context, string, string, string) string { return AntigravityPrivacySet }})

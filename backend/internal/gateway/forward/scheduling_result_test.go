@@ -21,7 +21,7 @@ func TestOpenAIForwardSucceededForScheduling(t *testing.T) {
 	}))
 }
 
-// 原 nil 与 WS 终态断言直接验证结果值的方法。
+// schedulingSucceeded 原 nil 与 WS 终态断言直接验证结果值的方法。
 func schedulingSucceeded(result *forwardcore.OpenAIResult) bool {
 	return result.SucceededForScheduling()
 }

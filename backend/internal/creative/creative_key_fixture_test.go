@@ -1,6 +1,5 @@
 //go:build unit
 
-// 托管 Key 的旧形状仅在兼容边界转换。
 package creative_test
 
 import (
@@ -15,6 +14,7 @@ func (s creativeManagedKeys) GetManagedKeyByUserAndGroup(ctx context.Context, u,
 	v, err := s.source.GetManagedKeyByUserAndGroup(ctx, u, g, owner)
 	return apikey.CopyAPIKey(v), err
 }
+
 func (s creativeManagedKeys) CreateManagedKey(ctx context.Context, k *apikey.APIKey) error {
 	v := apikey.CopyAPIKey(k)
 	err := s.source.CreateManagedKey(ctx, v)

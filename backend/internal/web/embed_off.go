@@ -1,6 +1,5 @@
 //go:build !embed
 
-// Package web provides embedded web assets for the application.
 package web
 
 import (

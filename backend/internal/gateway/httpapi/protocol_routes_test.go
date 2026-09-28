@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 同一路径的方法与子资源边界决定准入归属，已有任务操作不能继承新建入口开关。
+// TestProtocolRouteMethodAndResourceBoundaries 验证同一路径的方法与子资源边界决定准入归属，已有任务操作不能继承新建入口开关。
 func TestProtocolRouteMethodAndResourceBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		method, path string
@@ -40,7 +40,7 @@ func TestProtocolRouteMethodAndResourceBoundaries(t *testing.T) {
 	}
 }
 
-// 返回目录可由调用方持有，但不得反向改写全局路由准入定义。
+// TestProtocolCatalogRoutesAreIndependent 验证返回目录可由调用方持有，但不得反向改写全局路由准入定义。
 func TestProtocolCatalogRoutesAreIndependent(t *testing.T) {
 	for _, protocol := range ProtocolEndpoints() {
 		if protocol.ID == ProtocolEmbeddings {

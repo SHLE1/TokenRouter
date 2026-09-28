@@ -1,4 +1,3 @@
-// 原生平台目标只在此技术 Adapter 装配；请求级重试与资金仍由 media/completion 拥有。
 package provider
 
 import (

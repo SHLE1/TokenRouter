@@ -31,7 +31,7 @@ func TestUserProfileIdentityRepoSuite(t *testing.T) {
 	suite.Run(t, new(UserProfileIdentityRepoSuite))
 }
 
-// 套件共用隔离数据库，提交型断言保持逐项清理边界。
+// SetupSuite 套件共用隔离数据库，提交型断言保持逐项清理边界。
 func (s *UserProfileIdentityRepoSuite) SetupSuite() {
 	s.db, s.client = identityDatabase(s.T())
 }

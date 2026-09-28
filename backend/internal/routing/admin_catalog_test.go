@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 目录读取与配置解析顺序保持原管理入口的差异。
+// TestAdminCatalogSelectionAndReadOrder 验证目录读取与配置解析顺序保持原管理入口的差异。
 func TestAdminCatalogSelectionAndReadOrder(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -43,6 +43,7 @@ func TestAdminCatalogSelectionAndReadOrder(t *testing.T) {
 		})
 	}
 }
+
 func TestAdminCatalogCopiesDefaultSnapshotAndPreservesEmpty(t *testing.T) {
 	for _, values := range [][]AdminCatalogModel{nil, {}, {{ID: "a"}}} {
 		catalog := NewAdminCatalog(AdminCatalogOptions{Defaults: func(AdminCatalogKind, string) ([]AdminCatalogModel, error) { return values, nil }})

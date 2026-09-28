@@ -1,4 +1,3 @@
-// 图片资源解析与供应商下载复用原客户端，保持响应体关闭、重试与认证头边界。
 package openai
 
 import (
@@ -17,11 +16,14 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-const ImageErrorBodyReadLimit int64 = 512 << 10
-const OpenAIChatGPTStartURL = "https://chatgpt.com/"
-const OpenAIChatGPTFilesURL = "https://chatgpt.com/backend-api/files"
-const OpenAIImageBackendUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-const OpenAIImageMaxDownloadBytes = 20 << 20 // 20MB per image download
+const (
+	ImageErrorBodyReadLimit     int64 = 512 << 10
+	OpenAIChatGPTStartURL             = "https://chatgpt.com/"
+	OpenAIChatGPTFilesURL             = "https://chatgpt.com/backend-api/files"
+	OpenAIImageBackendUserAgent       = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+	OpenAIImageMaxDownloadBytes       = 20 << 20 // 20MB per image download
+)
+
 type ImagePointerInfo struct {
 	Pointer     string
 	DownloadURL string

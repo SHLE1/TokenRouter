@@ -230,7 +230,7 @@ func TestExtractOpenAIResponseIDFromJSONBytes(t *testing.T) {
 	require.Empty(t, protocolopenai.ExtractOpenAIResponseIDFromJSONBytes([]byte(`not-json`)))
 }
 
-// 复现 #4386：gpt-image-2 /v1/images/edits 的 usage 携带 input_tokens_details.image_tokens，
+// TestExtractOpenAIUsage_CapturesImageInputTokens 验证复现 #4386：gpt-image-2 /v1/images/edits 的 usage 携带 input_tokens_details.image_tokens，
 // 提取器须将图片输入 token 单独填入 ImageInputTokens（此前被丢弃并入 InputTokens 按文本价计费）。
 func TestExtractOpenAIUsage_CapturesImageInputTokens(t *testing.T) {
 	body := []byte(`{"usage":{"input_tokens":371,"input_tokens_details":{"image_tokens":352,"text_tokens":19},"output_tokens":439,"output_tokens_details":{"image_tokens":439,"text_tokens":0},"total_tokens":810}}`)
@@ -658,7 +658,7 @@ func TestOpenAIStreamingResponseFailedBeforeOutputRateLimitUsesPoolRetryPolicy(t
 	require.Equal(t, http.StatusTooManyRequests, opsEvents[len(opsEvents)-1].UpstreamStatusCode)
 }
 
-// 流内 rate limit 进入 OAuth 同提供商重试窗口，但不立即写提供商级限流/封禁状态：
+// TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockProviderScheduling 验证流内 rate limit 进入 OAuth 同提供商重试窗口，但不立即写提供商级限流/封禁状态：
 // HTTP 200 流的 x-codex-* 头不能让窗口内的提供商提前失去调度资格。
 func TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockProviderScheduling(t *testing.T) {
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}

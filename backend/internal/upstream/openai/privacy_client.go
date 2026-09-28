@@ -1,4 +1,3 @@
-// ChatGPT 后端交换保留原 best-effort、独立超时和安全字段投影。
 package openai
 
 import (
@@ -25,7 +24,7 @@ const (
 	PrivacyModeCFBlocked   = "training_set_cf_blocked"
 )
 
-// disableOpenAITraining 调用 ChatGPT 设置接口关闭训练数据共享。
+// DisableOpenAITraining 调用 ChatGPT 设置接口关闭训练数据共享。
 // 返回 privacy_mode 值：成功时为 training_off，失败时为对应失败原因。
 func (p PrivacyClient) DisableOpenAITraining(ctx context.Context, clientFactory PrivacyClientFactory, accessToken, proxyURL string) string {
 	if accessToken == "" || clientFactory == nil {
@@ -75,7 +74,7 @@ func (p PrivacyClient) DisableOpenAITraining(ctx context.Context, clientFactory 
 	return PrivacyModeTrainingOff
 }
 
-// fetchChatGPTAccountInfo 调用 ChatGPT backend-api 获取账户信息。
+// FetchChatGPTAccountInfo 调用 ChatGPT backend-api 获取账户信息。
 // 当 id_token 不包含这些字段时（例如 Mobile RT）作为兜底来源。
 // orgID 用于在个人账户和团队账户并存时匹配正确账户。
 // 任意失败都返回 nil，保持 best-effort 且不阻塞主流程。
@@ -185,7 +184,7 @@ func (p PrivacyClient) FetchChatGPTAccountInfo(ctx context.Context, clientFactor
 	return info
 }
 
-// fetchChatGPTSubscriptionExpiresAt 读取 ChatGPT/Codex 客户端使用的轻量订阅接口。
+// FetchChatGPTSubscriptionExpiresAt 读取 ChatGPT/Codex 客户端使用的轻量订阅接口。
 // 部分 Plus 账户已不在 accounts/check 暴露 entitlement.expires_at，
 // 但该接口仍会返回 active_until。
 func (p PrivacyClient) FetchChatGPTSubscriptionExpiresAt(ctx context.Context, clientFactory PrivacyClientFactory, accessToken, proxyURL, providerID string) string {
@@ -248,7 +247,7 @@ func FillProviderInfo(info *ChatGPTAccountInfo, acct map[string]any, fallbackID 
 	info.ProviderID = ChatGPTAccountObjectID(acct, fallbackID)
 }
 
-// chatGPTProviderObjectID 优先读取对象内的真实提供商 ID；map key 仅用于缺失时兜底。
+// ChatGPTAccountObjectID 优先读取对象内的真实提供商 ID；map key 仅用于缺失时兜底。
 func ChatGPTAccountObjectID(acct map[string]any, fallbackID string) string {
 	if provider, ok := acct["account"].(map[string]any); ok {
 		if id, ok := provider["account_id"].(string); ok && strings.TrimSpace(id) != "" {
@@ -258,7 +257,7 @@ func ChatGPTAccountObjectID(acct map[string]any, fallbackID string) string {
 	return strings.TrimSpace(fallbackID)
 }
 
-// extractPlanType 从单个 provider 对象中提取 plan_type
+// ExtractPlanType 从单个 provider 对象中提取 plan_type
 func ExtractPlanType(acct map[string]any) string {
 	if provider, ok := acct["account"].(map[string]any); ok {
 		if planType, ok := provider["plan_type"].(string); ok && planType != "" {
@@ -313,7 +312,7 @@ func HasChatGPTAccountDeactivatedMarker(obj map[string]any) bool {
 	return false
 }
 
-// extractEntitlementExpiresAt 从 entitlement 中提取 expires_at。
+// ExtractEntitlementExpiresAt 从 entitlement 中提取 expires_at。
 // 预期为 RFC3339 字符串格式，如 "2026-05-02T20:32:12+00:00"。
 func ExtractEntitlementExpiresAt(acct map[string]any) string {
 	entitlement, ok := acct["entitlement"].(map[string]any)

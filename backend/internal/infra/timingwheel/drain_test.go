@@ -10,7 +10,7 @@ import (
 	"github.com/zeromicro/go-zero/core/collection"
 )
 
-// 回调已经进入执行时，取消必须等待它完成并阻止 recurring 再入队。
+// TestWheelCancelWaitsAndPreventsRearm 验证回调已经进入执行时，取消必须等待它完成并阻止 recurring 再入队。
 func TestWheelCancelWaitsAndPreventsRearm(t *testing.T) {
 	original := newTimingWheel
 	newTimingWheel = func(_ time.Duration, _ int, execute collection.Execute) (*collection.TimingWheel, error) {

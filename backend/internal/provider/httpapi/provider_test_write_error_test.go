@@ -20,7 +20,7 @@ type failTestEventWriter struct {
 
 func (w failTestEventWriter) Write([]byte) (int, error) { return 0, w.err }
 
-// 流事件无法写出时，测试不能把已经丢失的输出报告为执行成功。
+// TestProviderTestPropagatesEventWriteFailure 验证流事件无法写出时，测试不能把已经丢失的输出报告为执行成功。
 func TestProviderTestPropagatesEventWriteFailure(t *testing.T) {
 	failed := errors.New("forced test event write failure")
 	writer := failTestEventWriter{TestStreamWriter: httptest.NewRecorder(), err: failed}

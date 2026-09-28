@@ -198,7 +198,7 @@ func TestImagesExecuteOAuthProgressBeforeFailure(t *testing.T) {
 	require.Greater(t, sink.flushed, 0)
 }
 
-// 只提供测试所需的 I/O 与观察端口，不复制任何图片解析或业务算法。
+// imagesTestResponseOptions 只提供测试所需的 I/O 与观察端口，不复制任何图片解析或业务算法。
 func imagesTestResponseOptions() ImageResponseOptions {
 	return ImageResponseOptions{
 		ReadBody:          io.ReadAll,

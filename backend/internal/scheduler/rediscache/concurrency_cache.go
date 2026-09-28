@@ -374,7 +374,7 @@ func NewConcurrencyCache(rdb *redis.Client, slotTTLMinutes int, waitQueueTTLSeco
 	}
 }
 
-// Helper functions for key generation
+// providerSlotKey 生成提供商并发槽位的 Redis 键。
 func providerSlotKey(providerID int64) string {
 	return fmt.Sprintf("%s%d", providerSlotKeyPrefix, providerID)
 }

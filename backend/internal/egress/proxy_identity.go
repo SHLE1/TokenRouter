@@ -1,4 +1,3 @@
-// 连接身份包含地址、认证及状态，用于识别代理连接配置是否变化。
 package egress
 
 type ProxyConnectionIdentity struct {

@@ -1,4 +1,3 @@
-// 资金投影只参与调用方 SQL 事务，不提交、不回滚、不发布失效。
 package postgres
 
 import (
@@ -17,6 +16,7 @@ type FundingParticipant struct {
 func NewFundingParticipant(tx *sql.Tx, id string) *FundingParticipant {
 	return &FundingParticipant{tx: tx, id: id}
 }
+
 func (p *FundingParticipant) SaveReservation(ctx context.Context, balance float64, allocations []billing.BillingAllocation, hold, estimated float64) error {
 	encoded, err := json.Marshal(allocations)
 	if err != nil {
@@ -28,10 +28,12 @@ func (p *FundingParticipant) SaveReservation(ctx context.Context, balance float6
  WHERE run_id = $1`, p.id, balance, string(encoded), hold, estimated)
 	return fundingAffected(result, err)
 }
+
 func (p *FundingParticipant) SetAllowanceReserved(ctx context.Context, reserved bool) error {
 	result, err := p.tx.ExecContext(ctx, `UPDATE creative_runs SET allowance_reserved = $2, updated_at = NOW() WHERE run_id = $1`, p.id, reserved)
 	return fundingAffected(result, err)
 }
+
 func fundingAffected(result sql.Result, err error) error {
 	if err != nil {
 		return err

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// HTTP 组合测试保留原生授权与响应断言，共享生产参数投影。
+// newGrokAuthorizationForTest HTTP 组合测试保留原生授权与响应断言，共享生产参数投影。
 func newGrokAuthorizationForTest(proxies egress.ProxyRepository, client provider.GrokAuthorizationClient, enabled ...bool) *provider.GrokAuthorization {
 	return provider.NewGrokAuthorization(client, provideradapter.GrokAuthorizationOptions(proxies, func() bool {
 		return len(enabled) > 0 && enabled[0]

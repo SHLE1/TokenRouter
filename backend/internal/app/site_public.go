@@ -1,4 +1,3 @@
-// 公开 API、HTML 注入与 CSP 使用同一站点实例。
 package app
 
 import (

@@ -437,7 +437,7 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityProvider_ForcePlatfor
 	require.Equal(t, "claude-sonnet-4-5", resp["model"])
 }
 
-// 夹具提供锁持有者句柄，并控制获取失败与等待结果。
+// AcquireBucketLease 夹具提供锁持有者句柄，并控制获取失败与等待结果。
 func (f *fakeSchedulerCache) AcquireBucketLease(ctx context.Context, bucket scheduler.SchedulerBucket, ttl time.Duration) (*scheduler.BucketLease, bool, error) {
 	ok, err := f.TryLockBucket(ctx, bucket, ttl)
 	if err != nil || !ok {

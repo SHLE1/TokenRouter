@@ -1,4 +1,3 @@
-// Grok 原始额度头的脱敏观测值；解析与平台档位判断由供应商实现拥有。
 package usageview
 
 type QuotaSnapshot struct {

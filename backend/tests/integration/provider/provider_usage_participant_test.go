@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 使用真实事务验证消费写入和配置修改同连接；参与方法不发布 outbox，也不自行提交。
+// TestProviderUsageParticipantKeepsOuterTransaction 验证使用真实事务验证消费写入和配置修改同连接；参与方法不发布 outbox，也不自行提交。
 func TestProviderUsageParticipantKeepsOuterTransaction(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 逐入口执行真实路由；禁用时不进入缺少上游依赖的 handler，所有别名共用同一准入。
+// TestProtocolAllPublicRoutesDeniedBeforeUpstream 验证逐入口执行真实路由；禁用时不进入缺少上游依赖的 handler，所有别名共用同一准入。
 func TestProtocolAllPublicRoutesDeniedBeforeUpstream(t *testing.T) {
 	paths := []struct{ platform, method, path string }{
 		{"openai", "POST", "/v1/messages"},
@@ -99,7 +99,7 @@ func TestProtocolAuxiliaryAndExistingJobs(t *testing.T) {
 	require.Equal(t, protocol.ProtocolCustomVoices, extendedRouteProtocol(http.MethodDelete, "/v1/custom-voices/id"))
 }
 
-// 别名复用相同协议；相似前缀和错误方法不能命中合法入口。
+// TestProtocolRouteAliases 验证别名复用相同协议；相似前缀和错误方法不能命中合法入口。
 func TestProtocolRouteAliases(t *testing.T) {
 	for _, tc := range []struct {
 		method, path string

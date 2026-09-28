@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 根内外链接均用临时目录，不读取宿主真实备份。
+// TestLocalRoots 验证根内外链接均用临时目录，不读取宿主真实备份。
 func TestLocalRoots(t *testing.T) {
 	root, outside := t.TempDir(), t.TempDir()
 	s := NewLocalBackupStore(root)
@@ -38,7 +38,7 @@ func TestLocalRoots(t *testing.T) {
 	require.NoError(t, s.Delete(context.Background(), "alias/new"))
 }
 
-// 在校验后替换路径，目录句柄仍必须拒绝越界目标。
+// TestPathReplacement 验证在校验后替换路径，目录句柄仍必须拒绝越界目标。
 func TestPathReplacement(t *testing.T) {
 	base, outside := t.TempDir(), t.TempDir()
 	s := NewLocalBackupStore(base)
@@ -57,7 +57,7 @@ func TestPathReplacement(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
-// 根内最终符号链接删除只删除链接，保持原对象存储的文件删除语义。
+// TestDeleteInnerLinkPreservesTarget 验证根内最终符号链接删除只删除链接，保持原对象存储的文件删除语义。
 func TestDeleteInnerLinkPreservesTarget(t *testing.T) {
 	base := t.TempDir()
 	s := NewLocalBackupStore(base)

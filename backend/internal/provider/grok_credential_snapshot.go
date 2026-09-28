@@ -1,4 +1,3 @@
-// 凭据失败带上原快照，由调用方按原 CAS 与错误顺序处理；快照不写普通日志。
 package provider
 
 import (

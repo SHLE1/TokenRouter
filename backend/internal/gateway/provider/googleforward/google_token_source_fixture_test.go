@@ -8,7 +8,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// 旧执行链夹具直接使用原生源，技术依赖按原零配置构造注入。
+// newGeminiTokenSourceForTest 旧执行链夹具直接使用原生源，技术依赖按原零配置构造注入。
 func newGeminiTokenSourceForTest() *provider.GeminiTokenSource {
 	return &provider.GeminiTokenSource{Options: provider.GeminiTokenOptions{
 		Debug: slog.Debug,

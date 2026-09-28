@@ -1,4 +1,3 @@
-// Qoder Messages/Responses 的 HTTP 边界保留原校验与等待顺序。
 package httpapi
 
 import (

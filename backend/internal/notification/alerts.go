@@ -1,4 +1,3 @@
-// AlertDelivery 发送已经确定的余额/额度事件，不重新判断资金条件。
 package notification
 
 import (
@@ -55,7 +54,7 @@ func (s *AlertDelivery) sendEmails(recipients []string, subject, body string, lo
 	}
 }
 
-// sendBalanceLowEmails sends balance low notification to all recipients.
+// SendBalanceLowEmails 向所有收件人发送余额不足通知。
 func (s *AlertDelivery) SendBalanceLowEmails(recipients []string, userID int64, userName, userEmail string, balance, threshold float64, siteName, rechargeURL string) {
 	displayName := userName
 	if displayName == "" {
@@ -99,7 +98,7 @@ func (s *AlertDelivery) SendBalanceLowEmails(recipients []string, userID int64, 
 	s.sendEmails(recipients, subject, body, "user_email", userEmail, "balance", balance)
 }
 
-// sendQuotaAlertEmails sends quota alert notification to admin emails.
+// SendQuotaAlertEmails 向管理员邮箱发送提供商配额告警。
 func (s *AlertDelivery) SendQuotaAlertEmails(adminEmails []string, providerID int64, providerName, platform string, dim contract.QuotaDimension, used float64, siteName string) {
 	dimLabel := quotaDimLabels[dim.Name]
 	if dimLabel == "" {
@@ -240,7 +239,7 @@ const quotaAlertEmailTemplate = `<!DOCTYPE html>
 </body>
 </html>`
 
-// buildBalanceLowEmailBody builds HTML email for balance low notification.
+// BuildBalanceLowEmailBody 构建余额不足通知的 HTML 正文。
 func (s *AlertDelivery) BuildBalanceLowEmailBody(userName string, balance, threshold float64, siteName, rechargeURL string) string {
 	rechargeBlock := ""
 	if rechargeURL != "" {
@@ -249,7 +248,7 @@ func (s *AlertDelivery) BuildBalanceLowEmailBody(userName string, balance, thres
 	return fmt.Sprintf(balanceLowEmailTemplate, siteName, userName, userName, balance, threshold, threshold, rechargeBlock)
 }
 
-// buildQuotaAlertEmailBody builds HTML email for provider quota alert.
+// BuildQuotaAlertEmailBody 构建提供商配额告警的 HTML 正文。
 func (s *AlertDelivery) BuildQuotaAlertEmailBody(providerID int64, providerName, platform, dimLabel string, used, limit, remaining float64, thresholdDisplay, siteName string) string {
 	limitStr := fmt.Sprintf("$%.2f", limit)
 	if limit <= 0 {

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 每个候选独立验证启用集合，旧计划不受之后的配置或返回切片修改影响。
+// TestRoutePlanCandidateRecalculationAndIsolation 验证每个候选独立验证启用集合，旧计划不受之后的配置或返回切片修改影响。
 func TestRoutePlanCandidateRecalculationAndIsolation(t *testing.T) {
 	group := &Group{
 		ID: 7, SchedulerType: GroupSchedulerTypeAdvanced,
@@ -39,7 +39,7 @@ func TestRoutePlanCandidateRecalculationAndIsolation(t *testing.T) {
 	require.Equal(t, []capability.ProtocolID{capability.ProtocolAnthropicMessages}, plan.AllowedProtocols())
 }
 
-// 模型链的客户端/Key/分组模型事实固定，但提供商映射在每次匹配时读取独立快照。
+// TestRoutePlanModelChainAndAttemptSnapshots 验证模型链的客户端/Key/分组模型事实固定，但提供商映射在每次匹配时读取独立快照。
 func TestRoutePlanModelChainAndAttemptSnapshots(t *testing.T) {
 	groupID := int64(7)
 	mapping := GroupMappingResult{MappedModel: "group-model", PricingConfigID: 9, Mapped: true, BillingModelSource: "requested", RestrictModels: true, RestrictionModelSource: BillingModelSourceUpstream, ClientModel: "prefix/client-model", APIKeyRedirected: true}

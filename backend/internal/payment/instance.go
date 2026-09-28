@@ -1,4 +1,3 @@
-// ProviderInstance 是渠道配置与订单关联需要的值，不携带数据库客户端。
 package payment
 
 import "time"

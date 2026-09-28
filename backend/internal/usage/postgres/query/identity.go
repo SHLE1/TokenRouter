@@ -1,4 +1,3 @@
-// 查询参与函数复用调用者的连接与主查询，保持批量及分页前排序。
 package query
 
 import (
@@ -31,6 +30,7 @@ func IdentityUserLastUsedAtOrder(sortOrder string) []func(*entsql.Selector) {
 		orderExpr("DESC", "LAST", entsql.Desc),
 	}
 }
+
 func GetLatestUsedAtByUserIDs(ctx context.Context, db infra.Executor, userIDs []int64) (map[int64]*time.Time, error) {
 	result := make(map[int64]*time.Time, len(userIDs))
 	if len(userIDs) == 0 {

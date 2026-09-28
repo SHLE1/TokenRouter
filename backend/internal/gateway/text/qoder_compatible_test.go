@@ -84,7 +84,7 @@ func TestQoderCompatibleAttemptBoundaries(t *testing.T) {
 	})
 }
 
-// 原旧 helper 的提供商排除与预算断言现在执行实际兼容入口循环。
+// TestQoderGatewayRefreshInProgressMarksProviderForFailoverUntilBudgetExhausted 验证原旧 helper 的提供商排除与预算断言现在执行实际兼容入口循环。
 func TestQoderGatewayRefreshInProgressMarksProviderForFailoverUntilBudgetExhausted(t *testing.T) {
 	failure := errors.New("refresh pending")
 	result := QoderCompatibleOutcome{Err: failure, CanRefresh: true}

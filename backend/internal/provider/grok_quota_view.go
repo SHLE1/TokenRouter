@@ -1,4 +1,3 @@
-// 提供商额度展示复用原观测顺序；供应商档位解释通过无状态端口提供。
 package provider
 
 import (
@@ -252,7 +251,7 @@ func GrokQuotaSnapshotFromExtra(extra map[string]any) (*usageview.QuotaSnapshot,
 	}
 }
 
-// applyGrokBillingProgressWindows 根据账单探测摘要填充官方周度（seven_day）
+// ApplyGrokBillingProgressWindows 根据账单探测摘要填充官方周度（seven_day）
 // 与月度（thirty_day）UsageProgress。
 func (f GrokQuotaView) ApplyGrokBillingProgressWindows(usage *UsageInfo, billing *usageview.BillingSummary, now time.Time) {
 	if usage == nil || billing == nil {

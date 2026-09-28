@@ -1,4 +1,3 @@
-// 本文件定义平台端点和默认提示词，调用方共享这些值。
 package anthropic
 
 import (

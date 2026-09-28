@@ -1,4 +1,3 @@
-// 本文件仅构建 Qoder 原生凭据与执行供应商交换，缓存和失效由 provider 拥有。
 package qoder
 
 import (

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// 关闭输出时仅保留调用方需要的诊断，API Key 普通请求不生成闲置快照。
+// TestCaptureOnlyForRetainedDiagnosticOrEnabledLogging 验证关闭输出时仅保留调用方需要的诊断，API Key 普通请求不生成闲置快照。
 func TestCaptureOnlyForRetainedDiagnosticOrEnabledLogging(t *testing.T) {
 	request := httptest.NewRequest("POST", "https://example.test/v1/messages", nil)
 	request.Header.Set("Authorization", "Bearer fixture-secret")

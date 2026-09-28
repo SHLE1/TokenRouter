@@ -1,4 +1,3 @@
-// Grok 凭据查询复用提供商刷新协调器；源对象不复制缓存、锁或策略状态。
 package provider
 
 import (

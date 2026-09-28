@@ -1,4 +1,3 @@
-// Agent Identity 错误中的凭据和断言沿用原字面替换边界。
 package openai
 
 import "strings"

@@ -1,4 +1,3 @@
-// 响应适配保留各协议独立的流与非流时序；实际 HTTP 写入由 OutputSink 承担。
 package gemini
 
 import (
@@ -62,6 +61,7 @@ func (s *ResponseAdapter) HandleChatCompletionsNonStreamingResponseFromGemini(
 	c.Data(http.StatusOK, "application/json; charset=utf-8", body)
 	return usage, nil
 }
+
 func GeminiResponseToChatCompletions(geminiResp map[string]any, originalModel string, rawData []byte, usageOverride *upstream.TokenUsage) (*protocolopenai.ChatCompletionsResponse, *upstream.TokenUsage, error) {
 	var override *bridge.NativeGeminiUsage
 	if usageOverride != nil {
@@ -92,6 +92,7 @@ func GeminiResponseToResponses(geminiResp map[string]any, originalModel string, 
 	}
 	return result, LegacyNativeGeminiUsage(usage), nil
 }
+
 func (s *ResponseAdapter) HandleResponsesNonStreamingResponseFromGemini(
 	c *upstream.OutputContext,
 	resp *http.Response,
@@ -123,6 +124,7 @@ func (s *ResponseAdapter) HandleResponsesNonStreamingResponseFromGemini(
 	}
 	return usage, nil
 }
+
 func (s *ResponseAdapter) WriteGeminiResponsesResponse(
 	c *upstream.OutputContext,
 	resp *http.Response,
@@ -146,6 +148,7 @@ func (s *ResponseAdapter) WriteGeminiResponsesResponse(
 	c.Data(http.StatusOK, "application/json; charset=utf-8", body)
 	return nil
 }
+
 func (s *ResponseAdapter) HandleOpenAICompatStreamingResponseFromGemini(
 	c *upstream.OutputContext,
 	resp *http.Response,

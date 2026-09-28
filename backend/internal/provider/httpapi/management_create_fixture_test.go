@@ -33,7 +33,7 @@ func (s *managementCreateFixture) ForceAntigravityPrivacy(context.Context, *prov
 	return ""
 }
 
-// 测试使用同一原生 HTTP、批处理和展示实现，不构造旧管理员聚合。
+// newManagementCreateFixtureHandler 测试使用同一原生 HTTP、批处理和展示实现，不构造旧管理员聚合。
 func newManagementCreateFixtureHandler(source *managementCreateFixture) *ManagementHandler {
 	presenter := NewRuntimePresenter(provider.NewRuntimeStatusReader(provider.RuntimeStatusOptions{}), source, nil)
 	batch := provider.NewManagementBatch(source, nil, provider.ManagementCreationOptions{Privacy: source})

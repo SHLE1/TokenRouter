@@ -1451,7 +1451,7 @@ func TestAntigravityRetryLoop_SmartRetryFailed_StickySession_SwitchErrorPropagat
 	require.Equal(t, "sticky-loop-test", cache.deleteCalls[0].sessionHash)
 }
 
-// 夹具只装配生产重试与窄健康端口，不重建旧网关。
+// newAntigravityRetryFixture 夹具只装配生产重试与窄健康端口，不重建旧网关。
 func newAntigravityRetryFixture() *AntigravityRetry {
 	noop := func(string, ...any) {}
 	return &AntigravityRetry{

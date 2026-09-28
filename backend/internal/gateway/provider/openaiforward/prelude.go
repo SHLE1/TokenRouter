@@ -1,4 +1,3 @@
-// 请求准备按原时点推进，技术兼容转换与提供商策略通过明确端口组合。
 package openaiforward
 
 import (

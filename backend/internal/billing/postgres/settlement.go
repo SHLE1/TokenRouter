@@ -1082,7 +1082,7 @@ func nullTimePtr(value *time.Time) sql.NullTime {
 	return sql.NullTime{Time: *value, Valid: true}
 }
 
-// usage billing 必须完整记录本次请求成本，余额不足时扣成负数作为欠费。
+// deductUsageBillingBalance usage billing 必须完整记录本次请求成本，余额不足时扣成负数作为欠费。
 // 此处不能升级为 FOR UPDATE，否则取得订阅锁后会再次与 usage_logs 的用户外键锁形成锁环。
 func deductUsageBillingBalance(ctx context.Context, tx *sql.Tx, userID int64, amount float64) (float64, float64, error) {
 	// 余额列是 NUMERIC(20,8)，必须在执行减法前固定刻度，避免与配额加法向相反方向舍入。

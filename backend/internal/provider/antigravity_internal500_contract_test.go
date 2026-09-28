@@ -260,7 +260,7 @@ func TestResetInternal500Counter(t *testing.T) {
 	})
 }
 
-// 只组合原生计数器与存储替身；日志不影响本组状态断言。
+// newInternal500Health 只组合原生计数器与存储替身；日志不影响本组状态断言。
 func newInternal500Health(store acctcore.AntigravityHealthStore, counter acctcore.Internal500CounterCache) *acctcore.AntigravityHealth {
 	noop := func(string, ...any) {}
 	return &acctcore.AntigravityHealth{Store: store, Counter: counter, Error: noop, Warn: noop, Info: noop, Logf: noop}

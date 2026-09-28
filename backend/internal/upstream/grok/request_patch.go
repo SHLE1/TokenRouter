@@ -1,4 +1,3 @@
-// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有提供商或请求全局状态。
 package grok
 
 import (
@@ -135,7 +134,7 @@ func (m BodyCodec) DropEmptyGrokReplayReasoning(requestBody map[string]any) bool
 	return changed
 }
 
-// requestHasGrokEncryptedReasoning 判断出站 Responses 请求体是否仍包含可在重试前
+// RequestHasGrokEncryptedReasoning 判断出站 Responses 请求体是否仍包含可在重试前
 // 剥离的 reasoning.encrypted_content。
 func (m BodyCodec) RequestHasGrokEncryptedReasoning(body []byte) bool {
 	input := gjson.GetBytes(body, "input")
@@ -305,7 +304,7 @@ func (m BodyCodec) PatchGrokResponsesBodyBase(body []byte, upstreamModel string)
 	return out, nil
 }
 
-// grokModelRejectsLogprobs 识别不接受 OpenAI logprobs 字段的 Grok 4.20 模型族。
+// GrokModelRejectsLogprobs 识别不接受 OpenAI logprobs 字段的 Grok 4.20 模型族。
 func (m BodyCodec) GrokModelRejectsLogprobs(model string) bool {
 	model = strings.ToLower(strings.TrimSpace(model))
 	if slash := strings.LastIndex(model, "/"); slash >= 0 {
@@ -314,7 +313,7 @@ func (m BodyCodec) GrokModelRejectsLogprobs(model string) bool {
 	return strings.HasPrefix(model, "grok-4.20")
 }
 
-// sanitizeGrokResponsesModelCapabilities 移除目标模型明确不支持的 Responses 参数。
+// SanitizeGrokResponsesModelCapabilities 移除目标模型明确不支持的 Responses 参数。
 func (m BodyCodec) SanitizeGrokResponsesModelCapabilities(body []byte, upstreamModel string) ([]byte, error) {
 	if !m.GrokModelRejectsReasoningEffort(upstreamModel) {
 		return body, nil
@@ -334,7 +333,7 @@ func (m BodyCodec) SanitizeGrokResponsesModelCapabilities(body []byte, upstreamM
 	return out, nil
 }
 
-// grokModelRejectsReasoningEffort 判断 Composer 别名是否拒绝 reasoning 参数。
+// GrokModelRejectsReasoningEffort 判断 Composer 别名是否拒绝 reasoning 参数。
 func (m BodyCodec) GrokModelRejectsReasoningEffort(model string) bool {
 	model = strings.TrimSpace(strings.ToLower(model))
 	if slash := strings.LastIndex(model, "/"); slash >= 0 {
@@ -501,7 +500,7 @@ func (m BodyCodec) DeleteJSONFields(value any, fields map[string]struct{}) bool 
 	}
 }
 
-// sanitizeGrokResponsesInput 移除 Codex/Responses Lite 私有的 additional_tools 载体，
+// SanitizeGrokResponsesInput 移除 Codex/Responses Lite 私有的 additional_tools 载体，
 // 同时按载体顺序把其中受支持的工具提升到顶层并保留原顶层顺序；最终由
 // sanitizeGrokResponsesTools 过滤 xAI 不支持的类型。
 func (m BodyCodec) SanitizeGrokResponsesInput(body []byte) ([]byte, error) {
@@ -567,7 +566,7 @@ func (m BodyCodec) SanitizeGrokResponsesInput(body []byte) ([]byte, error) {
 	return sjson.SetRawBytes(body, "tools", encodedTools)
 }
 
-// 当前轮的内联 input_image 已由 Grok 直接读取；同时保留本地 view_image
+// StripRedundantGrokViewImageTool 当前轮的内联 input_image 已由 Grok 直接读取；同时保留本地 view_image
 // 可能让 Grok 只宣告工具调用而不继续作答，因此只移除该冗余自动工具。
 func (m BodyCodec) StripRedundantGrokViewImageTool(body []byte) ([]byte, error) {
 	input := gjson.GetBytes(body, "input")
@@ -645,7 +644,7 @@ func (m BodyCodec) GrokResponsesToolDedupKey(tool gjson.Result) string {
 	return "json:" + protocolopenai.NormalizeCompatSeedJSON(json.RawMessage(tool.Raw))
 }
 
-// sanitizeGrokReasoningNullContent 清理 Responses input 中显式的 JSON null；
+// SanitizeGrokReasoningNullContent 清理 Responses input 中显式的 JSON null；
 // xAI 的 untagged ModelInput 反序列化器会拒收这些字段，compaction 项保持原样。
 func (m BodyCodec) SanitizeGrokReasoningNullContent(body []byte) ([]byte, error) {
 	input := gjson.GetBytes(body, "input")
@@ -1057,7 +1056,7 @@ func (m BodyCodec) GrokResponsesOutputText(resp *protocolopenai.ResponsesRespons
 	return strings.Join(parts, "\n\n")
 }
 
-// rewriteGrokComposerImagesAsText 按图片出现顺序替换消息内容，同时保留原文本块。
+// RewriteGrokComposerImagesAsText 按图片出现顺序替换消息内容，同时保留原文本块。
 func (m BodyCodec) RewriteGrokComposerImagesAsText(reqBody map[string]any, descriptions []string) bool {
 	messages, ok := reqBody["messages"].([]any)
 	if !ok {

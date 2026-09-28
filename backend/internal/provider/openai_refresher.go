@@ -1,4 +1,3 @@
-// 提供商后台与请求刷新复用同一资格、合并和 PAT 清理规则，交换从提供商端口取得。
 package provider
 
 import (

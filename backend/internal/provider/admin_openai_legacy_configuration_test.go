@@ -30,7 +30,7 @@ func (r *importDefaultsMemoryRepo) Set(_ context.Context, _ string, value string
 	return nil
 }
 
-// 读取、保存旧模板时都清理旧字段，缺省配置保持缺省，显式关闭不变。
+// TestOpenAIImportDefaultsNormalizeLegacyConfiguration 验证读取、保存旧模板时都清理旧字段，缺省配置保持缺省，显式关闭不变。
 func TestOpenAIImportDefaultsNormalizeLegacyConfiguration(t *testing.T) {
 	ctx := context.Background()
 	repo := &importDefaultsMemoryRepo{value: `{"extra":{"openai_compact_mode":"auto","openai_native_compaction_v2_mode":"force_off","openai_responses_probe_status":{},"keep":7}}`}
@@ -51,7 +51,7 @@ func TestOpenAIImportDefaultsNormalizeLegacyConfiguration(t *testing.T) {
 	require.Empty(t, got.Extra)
 }
 
-// 只有废弃键的单提供商更新不得覆盖管理员保存的路由和两个压缩开关。
+// TestUpdateProviderDeprecatedProbeOnlyPreservesConfiguration 验证只有废弃键的单提供商更新不得覆盖管理员保存的路由和两个压缩开关。
 func TestUpdateProviderDeprecatedProbeOnlyPreservesConfiguration(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()

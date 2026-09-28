@@ -108,7 +108,7 @@ func TestSettingService_GetPublicSettings_ExposesForceEmailOnThirdPartySignup(t 
 	require.True(t, settings.ForceEmailOnThirdPartySignup)
 }
 
-// 公开配置必须透传邀请返利开关，否则前端侧栏和路由守卫会把入口隐藏。
+// TestSettingService_GetPublicSettings_ExposesAffiliateEnabled 验证公开配置必须透传邀请返利开关，否则前端侧栏和路由守卫会把入口隐藏。
 func TestSettingService_GetPublicSettings_ExposesAffiliateEnabled(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{
@@ -122,7 +122,7 @@ func TestSettingService_GetPublicSettings_ExposesAffiliateEnabled(t *testing.T) 
 	require.True(t, settings.AffiliateEnabled)
 }
 
-// 页面开关必须在公开设置中明确返回，供侧边栏和路由守卫共用。
+// TestSettingService_GetPublicSettings_ExposesPageFeatureFlags 验证页面开关必须在公开设置中明确返回，供侧边栏和路由守卫共用。
 func TestSettingService_GetPublicSettings_ExposesPageFeatureFlags(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{
@@ -138,7 +138,7 @@ func TestSettingService_GetPublicSettings_ExposesPageFeatureFlags(t *testing.T) 
 	require.False(t, settings.CreativeEnabled)
 }
 
-// 创作台开关缺省视为开启：旧版本库未写入该键时不能隐藏创作台入口。
+// TestSettingService_GetPublicSettings_CreativeEnabledDefaultsTrue 验证创作台开关缺省视为开启：旧版本库未写入该键时不能隐藏创作台入口。
 func TestSettingService_GetPublicSettings_CreativeEnabledDefaultsTrue(t *testing.T) {
 	repo := &settingPublicRepoStub{values: map[string]string{}}
 	svc := newSitePublicSettingsFixture(repo, &config.Config{})
@@ -168,7 +168,7 @@ func TestSettingService_GetPublicSettings_ExposesAllowUserViewErrorRequests(t *t
 	require.True(t, settings.AllowUserViewErrorRequests)
 }
 
-// HTML 首屏注入配置要与 /settings/public 保持一致，避免刷新后菜单先按旧默认值渲染。
+// TestSettingService_GetPublicSettingsForInjection_ExposesPublicFeatureFlags 验证HTML 首屏注入配置要与 /settings/public 保持一致，避免刷新后菜单先按旧默认值渲染。
 func TestSettingService_GetPublicSettingsForInjection_ExposesPublicFeatureFlags(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{

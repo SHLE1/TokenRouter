@@ -1,4 +1,3 @@
-// 模型健康快照记录指定范围的限流时间和原因。
 package provider
 
 import (

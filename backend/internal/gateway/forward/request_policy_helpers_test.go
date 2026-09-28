@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 这些测试辅助函数只检查工具配对和解析断言，供旧入口的型号策略契约使用。
 // assertAnthropicPairing 校验 Anthropic Messages 工具配对不变量，避免上游返回 400。
+// 这些测试辅助函数只检查工具配对和解析断言，供旧入口的型号策略契约使用。
 func assertAnthropicPairing(t *testing.T, messages []protocolanthropic.AnthropicMessage) {
 	t.Helper()
 	for i, m := range messages {

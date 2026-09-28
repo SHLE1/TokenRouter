@@ -1,4 +1,3 @@
-// 标量 SQL 转换复用基础层定义，保持原 NULL 语义。
 package postgres
 
 import (

@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 所有写入口共享同一协调器，独立装配不能覆盖既有处理器的期限。
+// TestIdempotencyHTTPUsesExplicitApplicationCoordinator 验证所有写入口共享同一协调器，独立装配不能覆盖既有处理器的期限。
 func TestIdempotencyHTTPUsesExplicitApplicationCoordinator(t *testing.T) {
 	options := idempotency.DefaultIdempotencyConfig()
 	options.DefaultTTL = 2 * time.Hour

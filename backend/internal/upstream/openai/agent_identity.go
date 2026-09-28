@@ -1,4 +1,3 @@
-// Agent Identity 签名、解密和原生 task 注册只接收本次执行的受控密钥快照。
 package openai
 
 import (
@@ -62,6 +61,7 @@ func BuildAgentAssertion(key AgentIdentityKey, now time.Time) (string, error) {
 	}
 	return "AgentAssertion " + base64.RawURLEncoding.EncodeToString(encoded), nil
 }
+
 func SignAgentTaskRegistration(key AgentIdentityKey, timestamp time.Time) (string, string, error) {
 	if key.RuntimeID == "" {
 		return "", "", errors.New("agent identity runtime id is missing")
@@ -73,6 +73,7 @@ func SignAgentTaskRegistration(key AgentIdentityKey, timestamp time.Time) (strin
 	}
 	return formatted, base64.StdEncoding.EncodeToString(signature), nil
 }
+
 func DecryptAgentTaskID(key AgentIdentityKey, encoded string) (string, error) {
 	ciphertext, err := base64.StdEncoding.DecodeString(strings.TrimSpace(encoded))
 	if err != nil {
@@ -101,6 +102,7 @@ func DecryptAgentTaskID(key AgentIdentityKey, encoded string) (string, error) {
 	}
 	return taskID, nil
 }
+
 func IsAgentTaskInvalidHTTPResponse(statusCode int, body []byte) bool {
 	if statusCode != http.StatusUnauthorized {
 		return false
@@ -133,6 +135,7 @@ func IsAgentTaskInvalidHTTPResponse(statusCode int, body []byte) bool {
 	}
 	return false
 }
+
 func ParseAgentIdentityPrivateKey(raw string) (ed25519.PrivateKey, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -152,6 +155,7 @@ func ParseAgentIdentityPrivateKey(raw string) (ed25519.PrivateKey, error) {
 	}
 	return privateKey, nil
 }
+
 func RegisterAgentIdentityTask(ctx context.Context, key AgentIdentityKey, proxyURL, baseURL string, now time.Time) (string, error) {
 	timestamp, signature, err := SignAgentTaskRegistration(key, now)
 	if err != nil {

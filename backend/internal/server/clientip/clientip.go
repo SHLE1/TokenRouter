@@ -1,4 +1,3 @@
-// Package clientip 拥有 HTTP 请求的可信代理选择与转发头快照。
 package clientip
 
 import (

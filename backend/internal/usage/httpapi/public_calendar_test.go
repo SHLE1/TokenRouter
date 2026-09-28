@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 不同处理器独立持有时区，公开查询仍按日历日扩展结束日期。
+// TestPublicUsageDateRangeInjectedCalendar 验证不同处理器独立持有时区，公开查询仍按日历日扩展结束日期。
 func TestPublicUsageDateRangeInjectedCalendar(t *testing.T) {
 	newYork, err := time.LoadLocation("America/New_York")
 	require.NoError(t, err)
@@ -30,7 +30,7 @@ func TestPublicUsageDateRangeInjectedCalendar(t *testing.T) {
 	}
 }
 
-// 带明确偏移的时间不受服务端日界影响，也不额外增加一天。
+// TestPublicUsageDateRangeExplicitOffset 验证带明确偏移的时间不受服务端日界影响，也不额外增加一天。
 func TestPublicUsageDateRangeExplicitOffset(t *testing.T) {
 	h := NewPublicUsageHandler(nil, nil, nil, nil, PublicUsageContext{}, timezone.NewCalendar(time.UTC))
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())

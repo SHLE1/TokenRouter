@@ -23,10 +23,11 @@ type NativeGeminiCompatStream struct {
 	usage          NativeGeminiUsage
 }
 
-// 构造仅创建本次流的状态；负索引表示尚未打开任何内容块。
+// NewNativeGeminiCompatStream 构造仅创建本次流的状态；负索引表示尚未打开任何内容块。
 func NewNativeGeminiCompatStream(runtime NativeGeminiRuntime) *NativeGeminiCompatStream {
 	return &NativeGeminiCompatStream{runtime: runtime, openBlockIndex: -1, openToolIndex: -1}
 }
+
 func (s *NativeGeminiCompatStream) Usage() *NativeGeminiUsage {
 	value := s.usage
 	return &value
@@ -50,7 +51,6 @@ func (s *NativeGeminiCompatStream) Begin(messageID, originalModel string) iter.S
 		}) {
 			return
 		}
-
 	}
 }
 
@@ -220,9 +220,9 @@ func (s *NativeGeminiCompatStream) Finish() iter.Seq[*AnthropicStreamEvent] {
 		if emit(&AnthropicStreamEvent{Type: "message_stop"}) {
 			return
 		}
-
 	}
 }
+
 func (s *NativeGeminiCompatStream) closeOpenBlock(emit func(*AnthropicStreamEvent) bool) bool {
 	if s.openBlockIndex < 0 {
 		return false

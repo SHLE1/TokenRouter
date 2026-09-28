@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 消费者在第一个工具事件后停止时，不应预先生成后续工具 ID。
+// TestNativeGeminiCompatIteratorPreservesPartialUsageAndLazyIDs 验证消费者在第一个工具事件后停止时，不应预先生成后续工具 ID。
 func TestNativeGeminiCompatIteratorPreservesPartialUsageAndLazyIDs(t *testing.T) {
 	generated := 0
 	runtime := NativeGeminiRuntime{RandomHex: func(size int) string { generated++; return strings.Repeat("a", size*2) }}
@@ -28,7 +28,7 @@ func TestNativeGeminiCompatIteratorPreservesPartialUsageAndLazyIDs(t *testing.T)
 	require.Equal(t, 2, state.Usage().CacheReadInputTokens)
 }
 
-// Messages 直转链原本在分片处理后才累计 usage，与 OpenAI 兼容链保持区别。
+// TestNativeGeminiMessagesIteratorKeepsUsageUpdateAfterOutput 验证Messages 直转链原本在分片处理后才累计 usage，与 OpenAI 兼容链保持区别。
 func TestNativeGeminiMessagesIteratorKeepsUsageUpdateAfterOutput(t *testing.T) {
 	state := NewNativeGeminiMessagesStream(NativeGeminiRuntime{})
 	response := map[string]any{"candidates": []any{map[string]any{"content": map[string]any{"parts": []any{map[string]any{"text": "hello"}}}}}}

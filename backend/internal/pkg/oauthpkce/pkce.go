@@ -1,4 +1,3 @@
-// Package oauthpkce 提供 OAuth 复用的随机原语与 S256，编码选择仍由平台调用方确定。
 package oauthpkce
 
 import (

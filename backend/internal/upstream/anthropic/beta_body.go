@@ -1,4 +1,3 @@
-// 本文件按最终 beta 净化协议字段，未知其它字段保持原样。
 package anthropic
 
 import (

@@ -10,9 +10,11 @@ import (
 
 type IdempotencyRecord = idempotency.IdempotencyRecord
 
-const IdempotencyStatusProcessing = idempotency.IdempotencyStatusProcessing
-const IdempotencyStatusSucceeded = idempotency.IdempotencyStatusSucceeded
-const IdempotencyStatusFailedRetryable = idempotency.IdempotencyStatusFailedRetryable
+const (
+	IdempotencyStatusProcessing      = idempotency.IdempotencyStatusProcessing
+	IdempotencyStatusSucceeded       = idempotency.IdempotencyStatusSucceeded
+	IdempotencyStatusFailedRetryable = idempotency.IdempotencyStatusFailedRetryable
+)
 
 func HashIdempotencyKey(s string) string { return idempotency.HashIdempotencyKey(s) }
 func ptrTime(t time.Time) *time.Time     { return &t }
@@ -20,7 +22,7 @@ func errorCode(err error) int            { return int(apperror.FromError(err).Co
 func errorReason(err error) string       { return apperror.FromError(err).Reason }
 func closedTestChannel() chan struct{}   { ch := make(chan struct{}); close(ch); return ch }
 
-// 维护锁测试替身与生产存储一样比较独立认领代次。
+// ClaimOperation 维护锁测试替身与生产存储一样比较独立认领代次。
 func (r *inMemoryIdempotencyRepo) ClaimOperation(ctx context.Context, c idempotency.OperationClaim) (*idempotency.IdempotencyRecord, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -41,6 +43,7 @@ func (r *inMemoryIdempotencyRepo) ClaimOperation(ctx context.Context, c idempote
 	copy := *record
 	return &copy, true, nil
 }
+
 func (r *inMemoryIdempotencyRepo) RenewOperation(ctx context.Context, id int64, operation, ownership string, until, expires time.Time) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -53,6 +56,7 @@ func (r *inMemoryIdempotencyRepo) RenewOperation(ctx context.Context, id int64, 
 	}
 	return false, nil
 }
+
 func (r *inMemoryIdempotencyRepo) FinishOperation(ctx context.Context, id int64, operation, ownership string, success bool, reason string, expires time.Time) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -85,9 +89,11 @@ func (s *systemLockRepoStub) ClaimOperation(ctx context.Context, c idempotency.O
 	}
 	return cloneRecord(s.existing), s.reclaimOK, nil
 }
+
 func (s *systemLockRepoStub) RenewOperation(context.Context, int64, string, string, time.Time, time.Time) (bool, error) {
 	return true, nil
 }
+
 func (s *systemLockRepoStub) FinishOperation(ctx context.Context, id int64, op, owner string, success bool, reason string, expires time.Time) (bool, error) {
 	if success {
 		return true, s.markSuccErr

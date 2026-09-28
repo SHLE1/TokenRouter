@@ -1,4 +1,3 @@
-// 透传 failover 分类只返回当前错误能否交还上层换号，不执行重试。
 package openaiforward
 
 import "net/http"

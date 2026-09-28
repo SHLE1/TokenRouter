@@ -1,4 +1,3 @@
-// Raw Chat 和两种回退输出复用唯一 wire/bridge 算法，各自保留取消与终态规则。
 package openai
 
 import (

@@ -1,4 +1,3 @@
-// SSE 计量 patch 保留原 message_start/message_delta 的覆盖和缺省语义。
 package anthropic
 
 import (
@@ -126,6 +125,7 @@ func ExtractSSEUsagePatch(event map[string]any) *SseUsagePatch {
 
 	return nil
 }
+
 func MergeSSEUsagePatch(usage *protocol.TokenUsage, patch *SseUsagePatch) {
 	if usage == nil || patch == nil {
 		return
@@ -153,6 +153,7 @@ func MergeSSEUsagePatch(usage *protocol.TokenUsage, patch *SseUsagePatch) {
 		usage.CacheCreation1hTokens = patch.CacheCreation1hTokens
 	}
 }
+
 func ParseSSEUsageInt(value any) (int, bool) {
 	switch v := value.(type) {
 	case float64:

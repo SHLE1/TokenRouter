@@ -1,4 +1,3 @@
-// 验证授权会话清理任务的停止等待。
 package provider
 
 import (

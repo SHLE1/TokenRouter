@@ -1,4 +1,3 @@
-// 订阅提醒的资格属于 billing，app 只投影通知事件。
 package app
 
 import (
@@ -25,6 +24,7 @@ func (n expiryNotifications) Ready(ctx context.Context) error {
 	}
 	return err
 }
+
 func (n expiryNotifications) Send(ctx context.Context, r billing.ExpiryReminder) error {
 	return n.Service.Send(ctx, notification.SendRequest{
 		Event:          notification.NotificationEmailEventSubscriptionExpiryReminder,

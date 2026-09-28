@@ -417,7 +417,7 @@ func NewOpenAIOAuthHandler(auth *providercore.OpenAIAuthorization, admin OpenAIA
 	}
 }
 
-// 无缓存用例只复用 handler 已持有的唯一提供商/授权依赖。
+// providerImport 无缓存用例只复用 handler 已持有的唯一提供商/授权依赖。
 func (h *OpenAIOAuthHandler) providerImport() *providercore.OpenAIProviderImport {
 	if h.Import != nil {
 		return h.Import

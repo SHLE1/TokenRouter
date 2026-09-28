@@ -1,4 +1,3 @@
-// 本地 HTTP 验证项目查询与优先级，测试不会访问 Google 生产接口。
 package codeassist
 
 import (

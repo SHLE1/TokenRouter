@@ -46,8 +46,8 @@ func SettlementSubscriptionRateMultiplier(row SettlementSubscription, groupID *i
 	return NonNegativeRate(rate)
 }
 
-// @project-doc docs/domains/payments_and_entitlements.md#subscription_quota_windows
 // NormalizeSettlementSubscription 统一解析倍率与事务扣费看到的额度窗口状态。
+// @project-doc docs/domains/payments_and_entitlements.md#subscription_quota_windows
 func NormalizeSettlementSubscription(row SettlementSubscription, now time.Time) SettlementSubscription {
 	windowStart := startOfDay(now)
 	dailyHasFiniteOuterLimit := PositiveSubscriptionLimit(row.WeeklyLimitUSD) || PositiveSubscriptionLimit(row.MonthlyLimitUSD)

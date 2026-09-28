@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 以下合同直接验证所属模块，保留原输入与断言。
+// TestSanitizeGrokResponsesModelInputNormalizesReplayHistory 验证 Grok Responses 回放历史的规范化。
 func TestSanitizeGrokResponsesModelInputNormalizesReplayHistory(t *testing.T) {
 	body := []byte(`{
 		"input":[
@@ -22,7 +22,8 @@ func TestSanitizeGrokResponsesModelInputNormalizesReplayHistory(t *testing.T) {
 		]}`)
 
 	patched, err := (grok.BodyCodec{
-		NewID: uuid.NewString}).SanitizeGrokResponsesModelInput(body)
+		NewID: uuid.NewString,
+	}).SanitizeGrokResponsesModelInput(body)
 	require.NoError(t, err)
 	require.Equal(t, "message", gjson.GetBytes(patched, "input.0.type").String())
 	require.Equal(t, "done", gjson.GetBytes(patched, "input.1.content").String())
@@ -44,7 +45,8 @@ func TestSanitizeGrokResponsesModelInputStripsOnlyNonPairCallIDs(t *testing.T) {
 	]}`)
 
 	patched, err := (grok.BodyCodec{
-		NewID: uuid.NewString}).SanitizeGrokResponsesModelInput(body)
+		NewID: uuid.NewString,
+	}).SanitizeGrokResponsesModelInput(body)
 	require.NoError(t, err)
 	for i := 0; i < 3; i++ {
 		require.False(t, gjson.GetBytes(patched, "input."+strconv.Itoa(i)+".call_id").Exists())
@@ -66,7 +68,8 @@ func TestSanitizeGrokResponsesModelInputPairsCallsInTwoPasses(t *testing.T) {
 		]}`)
 
 	patched, err := (grok.BodyCodec{
-		NewID: uuid.NewString}).SanitizeGrokResponsesModelInput(body)
+		NewID: uuid.NewString,
+	}).SanitizeGrokResponsesModelInput(body)
 	require.NoError(t, err)
 	generated := gjson.GetBytes(patched, "input.1.call_id").String()
 	require.NotEmpty(t, generated)
@@ -102,7 +105,8 @@ func TestSanitizeGrokResponsesModelInputMapsAllItemAliasesAndRejectsConflicts(t 
 	]}`)
 
 	patched, err := (grok.BodyCodec{
-		NewID: uuid.NewString}).SanitizeGrokResponsesModelInput(body)
+		NewID: uuid.NewString,
+	}).SanitizeGrokResponsesModelInput(body)
 	require.NoError(t, err)
 	require.Equal(t, "call_canonical", gjson.GetBytes(patched, "input.0.call_id").String())
 	require.Equal(t, "call_canonical", gjson.GetBytes(patched, "input.1.call_id").String())
@@ -128,7 +132,8 @@ func TestSanitizeGrokResponsesModelInputPreservesGrokShellOutputImages(t *testin
 	]}`)
 
 	patched, err := (grok.BodyCodec{
-		NewID: uuid.NewString}).SanitizeGrokResponsesModelInput(body)
+		NewID: uuid.NewString,
+	}).SanitizeGrokResponsesModelInput(body)
 	require.NoError(t, err)
 	require.Equal(t, "function_call_output", gjson.GetBytes(patched, "input.2.type").String())
 	require.Equal(t, "Read image file: /tmp/a.png", gjson.GetBytes(patched, "input.2.output").String())
@@ -153,7 +158,8 @@ func TestSanitizeGrokResponsesModelInputPreservesGrok105StructuredOutputImages(t
 	]}`)
 
 	patched, err := (grok.BodyCodec{
-		NewID: uuid.NewString}).SanitizeGrokResponsesModelInput(body)
+		NewID: uuid.NewString,
+	}).SanitizeGrokResponsesModelInput(body)
 	require.NoError(t, err)
 	require.Equal(t, "function_call_output", gjson.GetBytes(patched, "input.1.type").String())
 	require.Equal(t, "Read image file: /tmp/example.png", gjson.GetBytes(patched, "input.1.output").String())
@@ -170,7 +176,8 @@ func TestSanitizeGrokResponsesModelInputSkipsInvalidOutputImages(t *testing.T) {
 	]}`)
 
 	patched, err := (grok.BodyCodec{
-		NewID: uuid.NewString}).SanitizeGrokResponsesModelInput(body)
+		NewID: uuid.NewString,
+	}).SanitizeGrokResponsesModelInput(body)
 	require.NoError(t, err)
 	require.Len(t, gjson.GetBytes(patched, "input").Array(), 2)
 	require.Equal(t, "function_call_output", gjson.GetBytes(patched, "input.0.type").String())

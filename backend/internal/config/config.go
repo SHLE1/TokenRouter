@@ -1,4 +1,3 @@
-// Package config provides configuration loading, defaults, and validation.
 package config
 
 import (
@@ -1534,7 +1533,7 @@ func LoadForBootstrap() (*Config, error) {
 	return load(true)
 }
 
-// 进程配置、引导配置和数据库运行时设置的分层由对应工程文档维护。
+// load 进程配置、引导配置和数据库运行时设置的分层由对应工程文档维护。
 // @project-doc docs/interfaces/configuration.md#configuration_sources
 func load(allowMissingJWTSecret bool) (*Config, error) {
 	viper.SetConfigName("config")

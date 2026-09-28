@@ -1,4 +1,3 @@
-// 模型只读查询不取得请求消费槽，关闭响应体后返回受控 Header 与报文。
 package gemini
 
 import (

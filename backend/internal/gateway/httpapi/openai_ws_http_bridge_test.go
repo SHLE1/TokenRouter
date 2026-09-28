@@ -1040,7 +1040,7 @@ func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testin
 	require.Contains(t, string(upstream.bodies[2]), "second")
 }
 
-// 桥接转发 error / response.failed 给 WS 客户端前必须把容量降载码改写为可重试
+// TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient 验证桥接转发 error / response.failed 给 WS 客户端前必须把容量降载码改写为可重试
 // 的 server_error：Codex 对 server_is_overloaded/slow_down 判致命并终止会话。
 // 提供商状态判定使用改写前的原始事件，不受影响。
 func TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient(t *testing.T) {

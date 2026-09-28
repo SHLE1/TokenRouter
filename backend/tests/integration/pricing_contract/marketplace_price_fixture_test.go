@@ -1,4 +1,3 @@
-// 跨模块合同通过只读投影使用实际目录与报价能力。
 //go:build unit
 
 package pricingcontract

@@ -1,4 +1,3 @@
-// 共用 OpenAI 兼容版本路径拼接，原端点及查询处理保持。
 package httpclient
 
 import (

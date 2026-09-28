@@ -1,4 +1,3 @@
-// HTTP 客户端识别保持 UA 快路径，不增加请求体读取。
 package httpapi
 
 import (

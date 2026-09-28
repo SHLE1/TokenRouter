@@ -747,7 +747,7 @@ func codexUnixTime(value int64) time.Time {
 	return time.Unix(value, 0).UTC()
 }
 
-// 未配置技术校验时失败关闭，不能把 Agent Identity 私钥当成普通字符串接受。
+// validateCodexPrivateKey 未配置技术校验时失败关闭，不能把 Agent Identity 私钥当成普通字符串接受。
 func validateCodexPrivateKey(validate func(string) error, key string) error {
 	if validate == nil {
 		return errors.New("agent identity private key validator is not configured")

@@ -1,4 +1,3 @@
-// 退款权限、强制提示和原权益计划计算；实际扣减在存储闭合事务中复核。
 package payment
 
 import (
@@ -37,6 +36,7 @@ func (s *RefundWorkflow) RequestRefund(ctx context.Context, oid, uid int64, reas
 	s.runtime.Audit(ctx, oid, "REFUND_REQUESTED", fmt.Sprintf("user:%d", uid), map[string]any{"amount": o.Amount, "reason": nr})
 	return nil
 }
+
 func (s *RefundWorkflow) ValidateRefundRequest(ctx context.Context, oid, uid int64) (*Order, error) {
 	o, err := s.store.Order(ctx, oid)
 	if err != nil {
@@ -61,6 +61,7 @@ func (s *RefundWorkflow) ValidateRefundRequest(ctx context.Context, oid, uid int
 	}
 	return o, nil
 }
+
 func (s *RefundWorkflow) PrepareRefund(ctx context.Context, oid int64, amt float64, reason string, force, deduct bool) (*RefundPlan, *RefundResult, error) {
 	o, err := s.store.Order(ctx, oid)
 	if err != nil {
@@ -118,6 +119,7 @@ func (s *RefundWorkflow) PrepareRefund(ctx context.Context, oid int64, amt float
 	}
 	return p, nil, nil
 }
+
 func (s *RefundWorkflow) PrepDeduct(ctx context.Context, o *Order, p *RefundPlan, force bool) *RefundResult {
 	if o.OrderType == OrderTypeSubscription {
 		p.DeductionType = DeductionTypeSubscription

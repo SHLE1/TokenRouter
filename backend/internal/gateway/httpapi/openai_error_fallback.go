@@ -1,11 +1,11 @@
 package httpapi
 
 import (
-	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
 	"net/http"
 	"strings"
+
+	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
 	"github.com/gin-gonic/gin"
 )
@@ -63,7 +63,7 @@ func ShouldLogOpenAIForwardFailureAsWarn(c *gin.Context, wroteFallback bool) boo
 	return c.Writer.Written()
 }
 
-// 判断转发层是否已把上游终止错误写给客户端。
+// OpenAIForwardErrorAlreadyCommunicated 判断转发层是否已把上游终止错误写给客户端。
 //
 // 响应流可能收到状态码 200 里的终止失败事件，例如安全策略拒绝。
 // 转发层会先原样转发该终止事件，再返回错误给处理层做日志和统计；

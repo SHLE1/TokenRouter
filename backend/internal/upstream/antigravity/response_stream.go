@@ -1,4 +1,3 @@
-// 保留原生、兼容与静态上游各自的输出循环；实际写入由同步 sink 承担。
 package antigravity
 
 import (

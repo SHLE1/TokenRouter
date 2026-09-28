@@ -1,4 +1,3 @@
-// 历史 upstream 类型的 Claude 直连保留双 Header 鉴权，与 OAuth 原生链分开。
 package antigravity
 
 import (

@@ -154,7 +154,7 @@ func TestGetOpenAIUsage_SparkShadow_WritesExtraAndReturnsNonEmptyWindows(t *test
 		"returned UsageInfo.SevenDay must be non-nil (rebuild from merged Extra must happen)")
 }
 
-// 影子写回必须定位本次读取的同一行与身份，不把母提供商凭据写入影子行。
+// UpdateUsageExtraIfUnchanged 影子写回必须定位本次读取的同一行与身份，不把母提供商凭据写入影子行。
 func (r *sparkShadowUsageTestRepo) UpdateUsageExtraIfUnchanged(ctx context.Context, version provider.UsageObservationVersion, updates map[string]any) (bool, error) {
 	current := r.providers[version.ID]
 	if current == nil || !reflect.DeepEqual(provider.ObserveUsageVersion(current), version) {

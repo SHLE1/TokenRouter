@@ -27,7 +27,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 历史夹具只在构造边界转换 Key 服务，生产签名使用原生实例。
+// legacyRouteMiddleware 历史夹具只在构造边界转换 Key 服务，生产签名使用原生实例。
 func legacyRouteMiddleware(auth keyhttp.APIKeyAuthMiddleware, keys *apikey.APIKeyService, subscriptions *billing.SubscriptionService, ops *opscore.OpsService, settings *routing.RuntimeSettings, cfg *config.Config) gatewayhttp.RouteMiddleware {
 	var native *apikey.APIKeyService
 	if keys != nil {

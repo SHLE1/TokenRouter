@@ -1,4 +1,3 @@
-// 计数 HTTP 入口保留鉴权、报文与资金预检顺序，不取得并发槽或提交费用。
 package httpapi
 
 import (

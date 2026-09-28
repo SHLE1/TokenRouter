@@ -966,7 +966,7 @@ func TestGrokQuotaServiceResetQuotaUnsupported(t *testing.T) {
 	require.Equal(t, "GROK_QUOTA_RESET_UNSUPPORTED", apperror.Reason(err))
 }
 
-// 夹具只组合生产构造器与窄存储、传输替身，不重建旧聚合服务。
+// newGrokQuotaFixture 夹具只组合生产构造器与窄存储、传输替身，不重建旧聚合服务。
 func newGrokQuotaFixture(store GrokQuotaStore, proxy *grokQuotaProxyRepo, token *providercore.GrokTokenSource, transport interface {
 	Do(*http.Request, string, int64, int) (*http.Response, error)
 }, validator xai.BaseURLValidator, readers ...providercore.LocalUsageStats,

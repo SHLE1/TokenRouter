@@ -1,4 +1,3 @@
-// app 装配唯一用量存储、查询、聚合与旧形状投影。
 package app
 
 import (

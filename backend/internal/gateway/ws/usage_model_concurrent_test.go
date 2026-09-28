@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// 复用生产上下行调用的两个方法，以同一开始屏障固定并发读写。
+// TestWSUsageModelConcurrentDirections 验证复用生产上下行调用的两个方法，以同一开始屏障固定并发读写。
 func TestWSUsageModelConcurrentDirections(t *testing.T) {
 	m := NewUsageMeta("first", nil, nil)
 	start := make(chan struct{})

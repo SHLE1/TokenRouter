@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-// CleanGeminiNativeThoughtSignatures 从 Gemini 原生 API 请求中替换 thoughtSignature 字段为 dummy 签名，
+// CleanNativeThoughtSignatures 从 Gemini 原生 API 请求中替换 thoughtSignature 字段为 dummy 签名，
 // 以避免跨提供商签名验证错误。
 //
 // 当粘性会话切换提供商时（例如原提供商异常、不可调度等），旧提供商返回的 thoughtSignature

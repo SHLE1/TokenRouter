@@ -1,4 +1,3 @@
-// 金额规则沿用原浮点/decimal 顺序、舍入和币种容差，不改变资金算法。
 package payment
 
 import (
@@ -7,8 +6,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const DefaultBalanceRechargeMultiplier = 1.0
-const ProviderAmountTolerance = 0.01
+const (
+	DefaultBalanceRechargeMultiplier = 1.0
+	ProviderAmountTolerance          = 0.01
+)
 
 func NormalizeBalanceRechargeMultiplier(multiplier float64) float64 {
 	if math.IsNaN(multiplier) || math.IsInf(multiplier, 0) || multiplier <= 0 {

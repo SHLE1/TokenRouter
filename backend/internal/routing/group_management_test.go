@@ -27,7 +27,7 @@ func ptrGroupClientProtocols(value []protocol.ProtocolID) *[]protocol.ProtocolID
 	return &value
 }
 
-// 新分组统一开放三个文本协议，非文本入口保持关闭。
+// TestAdminServiceCreateGroupUsesUnifiedClientProtocolDefaults 验证新分组统一开放三个文本协议，非文本入口保持关闭。
 func TestAdminServiceCreateGroupUsesUnifiedClientProtocolDefaults(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}
 	group, err := newGroupAdminForTest(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "mixed", RateMultiplier: 1})
@@ -230,7 +230,7 @@ func TestAdminServiceUpdateGroupPreservesExplicitEmptyClientProtocols(t *testing
 	require.Empty(t, group.AllowedProtocols)
 }
 
-// 更新名称或其他策略不会隐式修改客户端入口。
+// TestAdminServiceUpdateGroupPreservesAllConfiguredProtocols 验证更新名称或其他策略不会隐式修改客户端入口。
 func TestAdminServiceUpdateGroupPreservesAllConfiguredProtocols(t *testing.T) {
 	protocols := []protocol.ProtocolID{protocol.ProtocolAnthropicMessages, protocol.ProtocolOpenAIResponses, protocol.ProtocolGeminiGenerateContent, protocol.ProtocolImageBatches}
 	repo := &groupRepoStubForAdmin{getByID: &routing.Group{ID: 1, Name: "before", Status: billing.StatusActive, AllowedProtocols: protocols}}
@@ -475,7 +475,7 @@ func TestAdminService_CreateGroup_DisablesBatchImageWhenImageGenerationDisabled(
 	require.False(t, group.AllowBatchImageGeneration)
 }
 
-// 批量图片准入独立于提供商平台，实际provider在创建任务时选择。
+// TestAdminServiceCreateGroupAllowsExplicitBatchProtocol 验证批量图片准入独立于提供商平台，实际provider在创建任务时选择。
 func TestAdminServiceCreateGroupAllowsExplicitBatchProtocol(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}
 	group, err := newGroupAdminForTest(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "batch", RateMultiplier: 1, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolImageBatches}})
@@ -483,7 +483,7 @@ func TestAdminServiceCreateGroupAllowsExplicitBatchProtocol(t *testing.T) {
 	require.True(t, group.AllowBatchImageGeneration)
 }
 
-// 功能策略保存于分组，执行时仅由适用提供商使用。
+// TestAdminServiceCreateGroupPreservesFastPolicies 验证功能策略保存于分组，执行时仅由适用提供商使用。
 func TestAdminServiceCreateGroupPreservesFastPolicies(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}
 	group, err := newGroupAdminForTest(repo, nil, nil).CreateGroup(context.Background(), &routing.CreateGroupInput{Name: "fast", RateMultiplier: 1, ForceOpenAIFast: true})

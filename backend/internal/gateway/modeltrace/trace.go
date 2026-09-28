@@ -1,4 +1,3 @@
-// Package modeltrace 拥有单次请求的模型链与响应元数据恢复。
 package modeltrace
 
 import (

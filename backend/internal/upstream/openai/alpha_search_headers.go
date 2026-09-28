@@ -1,4 +1,3 @@
-// Alpha Search 专用请求头不复用 Responses 的会话协议，保留原最小头集合。
 package openai
 
 import (
@@ -129,7 +128,7 @@ func BuildAlphaSearchResponsesRequest(ctx context.Context, alphaBody []byte, bod
 	return req, nil
 }
 
-// stripOpenAIAlphaSearchResponsesHeaders 让独立搜索请求与官方 Codex
+// StripAlphaSearchResponsesHeaders 让独立搜索请求与官方 Codex
 // SearchClient 的线协议保持一致。alpha/search 不是 /responses 的子请求：官方
 // 客户端仅在 Provider/Auth 基础头之外附加 x-codex-turn-metadata，不发送
 // OpenAI-Beta、会话隔离或 Responses Lite 状态头。originator 与 User-Agent

@@ -1,4 +1,3 @@
-// 共享上传值与 data URL 编码不含提供商、平台和资金规则，保留原 MIME 探测行为。
 package upstream
 
 import (

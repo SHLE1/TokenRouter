@@ -25,7 +25,7 @@ func (f billingPlanHTTPFixture) ListPlans(context.Context) ([]*billing.Subscript
 	return f.plans, nil
 }
 
-// 旧管理接口直接编码没有预加载关系的 Ent 套餐；新 handler 必须逐字段保持其 JSON。
+// TestBillingPlanHTTPPreservesEntJSON 验证旧管理接口直接编码没有预加载关系的 Ent 套餐；新 handler 必须逐字段保持其 JSON。
 func TestBillingPlanHTTPPreservesEntJSON(t *testing.T) {
 	zero, original := 0.0, 25.0
 	now := time.Date(2026, 9, 12, 10, 15, 0, 0, time.FixedZone("test", 8*60*60))

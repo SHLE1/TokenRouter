@@ -2033,8 +2033,7 @@ func (a *Record) GetExtraBool(key string) bool {
 	return false
 }
 
-// GetExtraString 从 Extra 中读取指定 key 的字符串值
-// GetExtraStringDefault 从 Extra 中读取指定 key 的字符串值，不存在时返回 defaultVal
+// GetExtraStringDefault 读取 Extra 中的字符串值，缺失或为空时返回 defaultVal。
 func (a *Record) GetExtraStringDefault(key, defaultVal string) string {
 	if v := a.GetExtraString(key); v != "" {
 		return v

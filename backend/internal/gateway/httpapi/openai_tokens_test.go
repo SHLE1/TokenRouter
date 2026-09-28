@@ -34,7 +34,7 @@ func assertOpenAITextEventBefore(t *testing.T, events []string, a, b string) {
 	require.Greater(t, bi, ai, events)
 }
 
-// 计数端口不暴露用户/提供商槽或完成提交，测试失败路径不能偷偷进入这些能力。
+// CountExecution 计数端口不暴露用户/提供商槽或完成提交，测试失败路径不能偷偷进入这些能力。
 func (p *tokenEntryProbeForTest) CountExecution(_ *gin.Context, call OpenAICountCall) textflow.SingleCountPorts {
 	p.mark("count-execution")
 	return &openAITextCountProbe{parent: p, call: call}
@@ -94,7 +94,7 @@ func TestOpenAITextCountTokensHTTP(t *testing.T) {
 	})
 }
 
-// 原计数断言改为构造独立原生入口。
+// newOpenAITokensEntryProbe 原计数断言改为构造独立原生入口。
 func newOpenAITokensEntryProbe(p *tokenEntryProbeForTest) *OpenAITokensHandler {
 	return NewOpenAITokensHandler(OpenAITokenOptions{MaxBodyBytes: 1024 * 1024, MaxSwitches: 2}, p, p)
 }

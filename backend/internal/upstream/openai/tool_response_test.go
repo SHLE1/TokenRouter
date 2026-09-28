@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// 原网关工具修正断言直接验证同一原生修正器。
+// TestOpenAIGatewayService_ToolCorrection 验证原网关工具修正断言直接验证同一原生修正器。
 func TestOpenAIGatewayService_ToolCorrection(t *testing.T) {
 	// 使用与生产同型的修正器，保留修正次数与报文断言。
 	corrector := openai.NewCodexToolCorrector()

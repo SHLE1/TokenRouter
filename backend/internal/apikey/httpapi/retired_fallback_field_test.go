@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 身份认证后、读取 Key 服务前拒绝旧回退字段，包括显式 false 和 null。
+// TestKeyWritesRejectRetiredDefaultGroupFallback 验证身份认证后、读取 Key 服务前拒绝旧回退字段，包括显式 false 和 null。
 func TestKeyWritesRejectRetiredDefaultGroupFallback(t *testing.T) {
 	handler := NewAPIKeyHandler[struct{}](nil, nil)
 	router := gin.New()

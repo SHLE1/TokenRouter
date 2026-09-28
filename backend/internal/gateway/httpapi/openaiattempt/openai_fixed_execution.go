@@ -1,4 +1,3 @@
-// OpenAI 固定执行适配只创建状态，不按请求装配选择、刷新、计费或完成回调。
 package openaiattempt
 
 import (

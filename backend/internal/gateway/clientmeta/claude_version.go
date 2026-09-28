@@ -6,7 +6,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// IsSupportedCLIVersion 判断运维给的覆盖值是否可用。
+// IsSupportedClaudeCLIVersion 判断运维给的覆盖值是否可用。
 //
 // 判据有两条，缺一不可：
 //  1. 严格三段纯数字（"2.1.251"）。带 -local / -dev / +build 等后缀的版本号会被

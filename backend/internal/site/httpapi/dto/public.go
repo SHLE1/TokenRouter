@@ -1,4 +1,3 @@
-// 公开 API DTO 与 embed 注入字段保持各自原有形状。
 package dto
 
 type LoginAgreementDocument struct {

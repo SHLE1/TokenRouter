@@ -1,4 +1,3 @@
-// 关联投影只保存当前用量 HTTP 所需字段，避免引入完整身份递归图。
 package usage
 
 import (

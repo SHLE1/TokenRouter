@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// 通过路由存储验证分组字段的保存与回读。
+// TestUnifiedProtocolRoundTrip 验证通过路由存储验证分组字段的保存与回读。
 func (s *GroupRepoSuite) TestUnifiedProtocolRoundTrip() {
 	original := &routing.Group{Name: "protocol-group", Status: billing.StatusActive, RateMultiplier: 1, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages}, ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolAnthropicMessages: {protocol.ProtocolOpenAIResponses}}, ResponsesImagePolicy: "disabled"}
 	s.Require().NoError(s.repo.Create(s.ctx, original))

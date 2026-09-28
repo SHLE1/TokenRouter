@@ -1,4 +1,3 @@
-// 本文件拥有提供商错误策略与状态变更顺序；供应商只传入解析结果。
 package provider
 
 import (

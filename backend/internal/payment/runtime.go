@@ -1,4 +1,3 @@
-// Runtime 组合固定的支付用例实例，不复制状态或业务算法。
 package payment
 
 type Runtime struct {

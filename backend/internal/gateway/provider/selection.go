@@ -17,7 +17,7 @@ type SelectionResult struct {
 	AdvancedSchedulerFeedback *policy.FeedbackConfig
 }
 
-// capturedTextSelection 在候选返回时立即取得实际计划，结束后不再查看可变候选状态。
+// CaptureTextSelection 在候选返回时立即取得实际计划，结束后不再查看可变候选状态。
 func CaptureTextSelection(provider *ExecutionProvider) textflow.Selection {
 	plan, provided := ExecutionCandidatePlan(provider)
 	return textflow.Selection{Provider: ExecutionSnapshot(provider), RetryLimit: provider.View().GetPoolModeRetryCount(), Plan: plan, PlanProvided: provided}

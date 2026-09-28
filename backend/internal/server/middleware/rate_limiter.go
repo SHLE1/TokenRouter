@@ -1,4 +1,3 @@
-// 本文件拥有 HTTP 限流维度、故障策略与响应，计数通过调用方契约注入。
 package middleware
 
 import (

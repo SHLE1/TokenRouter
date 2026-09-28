@@ -1,4 +1,3 @@
-// 组合根只投影静态配置，响应头规则及编译由 egress 唯一拥有。
 package app
 
 import (

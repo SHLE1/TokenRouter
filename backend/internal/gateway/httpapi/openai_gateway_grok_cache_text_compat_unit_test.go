@@ -1,6 +1,5 @@
 //go:build unit
 
-// unit 断言通过测试兼容入口验证生产实现。
 package httpapi
 
 import (

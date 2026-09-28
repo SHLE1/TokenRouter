@@ -70,7 +70,7 @@ func TestApplyAnthropicReasoningEffortPolicyForRequest_CapsOutputConfigEffort(t 
 	require.Equal(t, "max", *requested)
 }
 
-// 强制平台入口与缺省请求都不能被 Anthropic 分组策略意外改写。
+// TestAnthropicReasoningPolicy_PreservesForcedPlatformAndDefault 验证强制平台入口与缺省请求都不能被 Anthropic 分组策略意外改写。
 func TestAnthropicReasoningPolicy_PreservesForcedPlatformAndDefault(t *testing.T) {
 	apiKey := &apikey.APIKey{Group: &routing.Group{MaxReasoningEffort: "low"}}
 	for _, forced := range []bool{false, true} {

@@ -1,4 +1,3 @@
-// 本地真实 HTTP 验证单次 Execute 的协议输出、部分事实及资源释放。
 package gemini
 
 import (

@@ -1,4 +1,3 @@
-// v1internal 封装、身份补丁与恢复选项的唯一平台实现，输入仅含 wire 值。
 package antigravity
 
 import (

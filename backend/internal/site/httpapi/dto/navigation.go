@@ -1,4 +1,3 @@
-// 站点导航 DTO 保留原字段、排序与解析失败回退。
 package dto
 
 import (

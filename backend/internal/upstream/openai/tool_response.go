@@ -2,7 +2,7 @@ package openai
 
 import protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 
-// correctToolCallsInResponseBody 修正响应体中的工具调用
+// CorrectResponseBody 修正响应体中的工具调用
 func (c *CodexToolCorrector) CorrectResponseBody(body []byte) []byte {
 	if len(body) == 0 {
 		return body

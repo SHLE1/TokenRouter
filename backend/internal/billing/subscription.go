@@ -222,8 +222,8 @@ func (s *UserSubscription) CanStartFullQuotaWindow(windowStart time.Time, durati
 	return !windowStart.Add(duration).After(s.ExpiresAt)
 }
 
-// @project-doc docs/domains/payments_and_entitlements.md#subscription_quota_windows
 // CanStartQuotaWindow 判断窗口能否开始；更高层有限额度存在时，它负责约束低层尾段的总消耗。
+// @project-doc docs/domains/payments_and_entitlements.md#subscription_quota_windows
 func (s *UserSubscription) CanStartQuotaWindow(windowStart time.Time, duration time.Duration) bool {
 	if s == nil || s.ExpiresAt.IsZero() || !windowStart.Before(s.ExpiresAt) {
 		return false
@@ -304,9 +304,9 @@ func (s *UserSubscription) AvailableQuotaUSD() float64 {
 	)
 }
 
-// @project-doc docs/domains/payments_and_entitlements.md#subscription_self_revoke
 // HighestQuotaExhausted 判断最高层有限额度是否已耗尽。
 // 月、周、日按优先级选择第一个正数额度；低层窗口耗尽但高层仍有额度时不能撤销套餐。
+// @project-doc docs/domains/payments_and_entitlements.md#subscription_self_revoke
 func (s *UserSubscription) HighestQuotaExhausted() bool {
 	if s == nil {
 		return false

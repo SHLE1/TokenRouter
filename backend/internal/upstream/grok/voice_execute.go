@@ -1,4 +1,3 @@
-// Voice 单次执行持有响应资源，输出由同步 sink 完成；资金与错误策略通过外层处理。
 package grok
 
 import (

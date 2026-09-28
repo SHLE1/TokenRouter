@@ -1,4 +1,3 @@
-// 通用 wire JSON 保留 UseNumber、严格单值校验与不转义 HTML 的既有字节契约。
 package wirejson
 
 import (
@@ -23,6 +22,7 @@ func DecodeUseNumber(data []byte, dst any) error {
 	}
 	return nil
 }
+
 func Marshal(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

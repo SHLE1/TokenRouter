@@ -1,4 +1,3 @@
-// 下单快照与限额比较保持原金额算法及读取后的校验顺序。
 package payment
 
 import (
@@ -60,6 +59,7 @@ func BuildCheckoutDraft(req CreateOrderRequest, user *Buyer, plan *SubscriptionP
 		TimeoutMinutes: timeout,
 	}
 }
+
 func ValidateCheckoutPending(count, max int) error {
 	if max <= 0 {
 		max = ConfigDefaultMaxPendingOrders
@@ -69,6 +69,7 @@ func ValidateCheckoutPending(count, max int) error {
 	}
 	return nil
 }
+
 func ValidateCheckoutDaily(orders []*Order, amount, limit float64) error {
 	var used float64
 	for _, o := range orders {

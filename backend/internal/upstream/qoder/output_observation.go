@@ -1,4 +1,3 @@
-// 本文件标注已编码的完整 SSE 帧，不缓冲、重排或改写报文。
 package qoder
 
 import (
@@ -23,6 +22,7 @@ func (o *executionOutput) Begin(h upstream.OutputHead) error {
 	}
 	return err
 }
+
 func (o *executionOutput) Emit(event upstream.OutputEvent) error {
 	if len(event.Data) > 0 {
 		semantic, terminal := qoderOutputMeaning(event.Data)

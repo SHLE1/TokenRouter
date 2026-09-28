@@ -19,7 +19,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// 夹具只组合真实策略、平台执行与事件用例，不复制测试分支或凭据算法。
+// configureOpenAIProbe 夹具只组合真实策略、平台执行与事件用例，不复制测试分支或凭据算法。
 func configureOpenAIProbe(executor *provideradapter.OpenAIProviderTest) {
 	policy := &provideradapter.OpenAIProbePolicy{Available: true, DefaultBrowserUserAgent: gateway.DefaultOpenAICodexUserAgent}
 	if executor.Store != nil {
@@ -110,7 +110,7 @@ func (f *openAIProbeTransport) DoWithTLS(req *http.Request, _ string, _ int64, _
 	return f.resp, nil
 }
 
-// 固定协议测试沿用真实原生分派，存储只负责提供目标记录。
+// newCNProtocolTestCore 固定协议测试沿用真实原生分派，存储只负责提供目标记录。
 func newCNProtocolTestCore(read func(context.Context, int64) (*provider.Record, error), transport provideradapter.QoderTransport) *provider.TestService {
 	policy := egress.OperatorURLPolicy{}
 	openaiExecutor := &provideradapter.OpenAIProviderTest{Transport: transport, ValidateURL: policy.Validate}

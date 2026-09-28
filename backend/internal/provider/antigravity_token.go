@@ -1,4 +1,3 @@
-// Antigravity 请求凭据与 project 回填冷却由此实例管理，外部依赖通过端口注入。
 package provider
 
 import (

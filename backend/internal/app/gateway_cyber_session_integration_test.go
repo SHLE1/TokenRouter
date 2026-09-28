@@ -31,7 +31,7 @@ func (cyberRuntimeSettingsFixture) GetValue(_ context.Context, key string) (stri
 	}
 }
 
-// 原生组合根及 HTTP 查询必须读写同一真实 Redis 命名空间，保持 scope 与 TTL。
+// TestNativeCyberSessionBindingOnRedis 验证原生组合根及 HTTP 查询必须读写同一真实 Redis 命名空间，保持 scope 与 TTL。
 func TestNativeCyberSessionBindingOnRedis(t *testing.T) {
 	client := rediscontainer.New(t)
 	cache := gatewayredis.NewGatewayCache(client)

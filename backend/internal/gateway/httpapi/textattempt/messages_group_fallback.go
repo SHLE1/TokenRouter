@@ -83,7 +83,7 @@ func (b *messageAttemptBridge) Fallback(cause error, fallbackUsed bool) bool {
 	return true
 }
 
-// 兼容入口保留自己的报文投影，回退成功后必须同步 context 和模型映射。
+// Fallback 兼容入口保留自己的报文投影，回退成功后必须同步 context 和模型映射。
 func (b *genericResponsesAttemptBridge) Fallback(cause error, used bool) bool {
 	if !b.messageAttemptBridge.Fallback(cause, used) {
 		return false

@@ -1,4 +1,3 @@
-// Qoder 会话增量状态仅由平台拥有；身份和请求元数据显式传入。
 package qoder
 
 import (

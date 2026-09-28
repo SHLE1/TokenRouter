@@ -1,4 +1,3 @@
-// 独立搜索 HTTP 绑定鉴权、资金、审核及完成快照，尝试循环由 searchtools 唯一拥有。
 package httpapi
 
 import (

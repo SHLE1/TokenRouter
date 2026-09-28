@@ -88,7 +88,7 @@ func TestResponsesEventToChatChunks_NoServiceTierStaysClean(t *testing.T) {
 	require.NotContains(t, string(raw), "service_tier")
 }
 
-// 上游 JSON 反序列化时 service_tier 进入 ResponsesResponse（缓冲桥读取链路）。
+// TestResponsesResponse_UnmarshalPreservesServiceTier 验证上游 JSON 反序列化时 service_tier 进入 ResponsesResponse（缓冲桥读取链路）。
 func TestResponsesResponse_UnmarshalPreservesServiceTier(t *testing.T) {
 	var resp ResponsesResponse
 	require.NoError(t, json.Unmarshal([]byte(`{"id":"resp_1","object":"response","model":"gpt-5.5","status":"completed","service_tier":"flex","output":[]}`), &resp))

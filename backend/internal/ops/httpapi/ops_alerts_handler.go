@@ -1,4 +1,3 @@
-// Ops HTTP 保留原端点和响应契约；查询与运行状态由核心拥有。
 package httpapi
 
 import (
@@ -461,9 +460,7 @@ func (h *OpsHandler) UpdateAlertEventStatus(c *gin.Context) {
 	response.Success(c, gin.H{"updated": true})
 }
 
-// ListAlertEvents lists recent ops alert events.
-// GET /api/v1/admin/ops/alert-events
-// CreateAlertSilence creates a scoped silence for ops alerts.
+// CreateAlertSilence 创建指定范围的运维告警静默规则。
 // POST /api/v1/admin/ops/alert-silences
 func (h *OpsHandler) CreateAlertSilence(c *gin.Context) {
 	if h.opsService == nil {

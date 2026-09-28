@@ -1,10 +1,3 @@
-// Package httpclient 提供共享 HTTP 客户端池
-//
-// 客户端池行为：
-// 1. 相同配置复用同一 http.Client 实例
-// 2. 复用 Transport 连接池，减少 TCP/TLS 握手开销
-// 3. 支持 HTTP/HTTPS/SOCKS5/SOCKS5H 代理
-// 4. 代理配置失败时直接返回错误，不会回退到直连（避免 IP 关联风险）
 package httpclient
 
 import (

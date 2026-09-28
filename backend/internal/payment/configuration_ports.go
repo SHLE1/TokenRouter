@@ -1,4 +1,3 @@
-// 核心配置用例只接收窄读取/写入端口，不拥有存储或 provider 构造。
 package payment
 
 import (
@@ -8,12 +7,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-type SubscriptionPlan = billing.SubscriptionPlan
-type ConfigurationSettings interface {
-	GetValue(context.Context, string) (string, error)
-	GetMultiple(context.Context, []string) (map[string]string, error)
-	SetMultiple(context.Context, map[string]string) error
-}
+type (
+	SubscriptionPlan      = billing.SubscriptionPlan
+	ConfigurationSettings interface {
+		GetValue(context.Context, string) (string, error)
+		GetMultiple(context.Context, []string) (map[string]string, error)
+		SetMultiple(context.Context, map[string]string) error
+	}
+)
+
 type ConfigurationPlans interface {
 	GetPlan(context.Context, int64) (*billing.SubscriptionPlan, error)
 }
@@ -45,6 +47,7 @@ func NewConfigService(store ConfigurationStore, settings ConfigurationSettings, 
 	}
 	return &ConfigService{store: store, settingRepo: settings, encryptionKey: key, plans: plans, runtime: runtime}
 }
+
 func (s *ConfigService) warn(message string, attrs ...any) {
 	if s.runtime.Warn != nil {
 		s.runtime.Warn(message, attrs...)

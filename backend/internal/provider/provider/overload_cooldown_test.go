@@ -169,7 +169,7 @@ func TestHandleUpstreamError_529CustomCodeDisablesInsteadOfOverloadCooldown(t *t
 	require.Zero(t, repo.overloadCalls)
 }
 
-// 只绑定原生健康实现；供应商窗口和模型端口未被这些过载用例调用。
+// newOverloadObserver 只绑定原生健康实现；供应商窗口和模型端口未被这些过载用例调用。
 func newOverloadObserver(repo providercore.HealthStore, options providercore.HealthOptions) *UpstreamHealth {
 	return &UpstreamHealth{Core: providercore.NewHealthService(repo, nil, options)}
 }

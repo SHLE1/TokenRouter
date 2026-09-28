@@ -27,7 +27,7 @@ type usageTrackedBody struct {
 
 func (b *usageTrackedBody) Close() error { b.closed.Add(1); return b.ReadCloser.Close() }
 
-// 通过本地 TLS 完成七种原生适配器的实际请求，保留固定端点、认证覆盖顺序和计量口径。
+// TestNativeUsageAdaptersLocalTLS 验证通过本地 TLS 完成七种原生适配器的实际请求，保留固定端点、认证覆盖顺序和计量口径。
 func TestNativeUsageAdaptersLocalTLS(t *testing.T) {
 	tests := []struct {
 		name                string

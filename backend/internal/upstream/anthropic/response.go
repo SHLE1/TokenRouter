@@ -1,4 +1,3 @@
-// 本文件保持 Anthropic 两种非流返回路径的独立语义，HTTP 写入由 OutputSink 完成。
 package anthropic
 
 import (
@@ -154,7 +153,7 @@ func NonStreamResponsePassthrough(
 	return usage, nil
 }
 
-// replaceModelInResponseBody 替换响应体中的model字段
+// ReplaceModelInResponseBody 替换响应体中的model字段
 // 使用 gjson/sjson 精确替换，避免全量 JSON 反序列化
 func ReplaceModelInResponseBody(body []byte, fromModel, toModel string) []byte {
 	if m := gjson.GetBytes(body, "model"); m.Exists() && m.Str == fromModel {
@@ -167,7 +166,7 @@ func ReplaceModelInResponseBody(body []byte, fromModel, toModel string) []byte {
 	return body
 }
 
-// classifyAnthropicResponseInputAsCacheRead 将故障转移后的输入 token 归类为缓存读取。
+// ClassifyResponseInputAsCacheRead 将故障转移后的输入 token 归类为缓存读取。
 func ClassifyResponseInputAsCacheRead(body []byte, usage *upstream.TokenUsage) ([]byte, error) {
 	classified, err := sjson.SetBytes(body, "usage.input_tokens", 0)
 	if err != nil {

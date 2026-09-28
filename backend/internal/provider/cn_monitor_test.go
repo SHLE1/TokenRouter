@@ -31,7 +31,7 @@ func (s *cnLifecycleStore) ListByPlatform(ctx context.Context, _ string) ([]Reco
 
 type cnNoQueries struct{ CNMonitorQueries }
 
-// 原构造无后台上下文及停止后不能重启的断言跟随生命周期所有者迁入本包。
+// TestCNMonitorStopPreventsLaterStart 验证原构造无后台上下文及停止后不能重启的断言跟随生命周期所有者迁入本包。
 func TestCNMonitorStopPreventsLaterStart(t *testing.T) {
 	store := &cnLifecycleStore{}
 	disabled := NewCNUsageMonitor(store, cnNoQueries{}, CNMonitorOptions{})

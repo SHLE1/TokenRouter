@@ -1,4 +1,3 @@
-// 公共视频完成规则独立于 HTTP、原生平台客户端和资金提交。
 package media
 
 import (

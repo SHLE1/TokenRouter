@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 序列化断言仍校验对外数值形状，不使用查询服务包装解析器。
+// mustJSONMarshal 序列化断言仍校验对外数值形状，不使用查询服务包装解析器。
 func mustJSONMarshal(t *testing.T, value any) []byte {
 	t.Helper()
 	encoded, err := json.Marshal(value)

@@ -1,4 +1,3 @@
-// 本文件拥有上游连接池及响应释放机制；平台选择和回退由调用方提供技术快照。
 package httpclient
 
 import (

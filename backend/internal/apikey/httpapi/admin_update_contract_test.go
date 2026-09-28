@@ -19,7 +19,6 @@ import (
 )
 
 func setupAPIKeyHandler(adminSvc KeyAdministration) *gin.Engine {
-
 	router := gin.New()
 	h := NewAdminAPIKeyHandler(adminSvc, func(g *routing.Group) *groupdto.Group { return groupdto.GroupFromRouting(apikey.RoutingGroup(g)) })
 	router.PUT("/api/v1/admin/api-keys/:id", h.UpdateGroup)
@@ -175,7 +174,7 @@ func TestAdminAPIKeyHandler_UpdateGroup_ServiceError(t *testing.T) {
 	require.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
-// H2: empty body → group_id is nil → no-op, returns original key
+// TestAdminAPIKeyHandler_UpdateGroup_EmptyBody_NoChange 验证空请求体不修改 group_id，并返回原 Key。
 func TestAdminAPIKeyHandler_UpdateGroup_EmptyBody_NoChange(t *testing.T) {
 	router := setupAPIKeyHandler(newAdminUpdateFixture())
 
@@ -199,7 +198,7 @@ func TestAdminAPIKeyHandler_UpdateGroup_EmptyBody_NoChange(t *testing.T) {
 	require.Equal(t, int64(10), resp.Data.APIKey.ID)
 }
 
-// M2: service returns GROUP_NOT_ACTIVE → handler maps to 400
+// TestAdminAPIKeyHandler_UpdateGroup_GroupNotActive 验证 GROUP_NOT_ACTIVE 映射为 HTTP 400。
 func TestAdminAPIKeyHandler_UpdateGroup_GroupNotActive(t *testing.T) {
 	svc := &failingUpdateGroupService{
 		adminUpdateFixture: newAdminUpdateFixture(),
@@ -216,7 +215,7 @@ func TestAdminAPIKeyHandler_UpdateGroup_GroupNotActive(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "GROUP_NOT_ACTIVE")
 }
 
-// M2: service returns INVALID_GROUP_ID → handler maps to 400
+// TestAdminAPIKeyHandler_UpdateGroup_NegativeGroupID 验证 INVALID_GROUP_ID 映射为 HTTP 400。
 func TestAdminAPIKeyHandler_UpdateGroup_NegativeGroupID(t *testing.T) {
 	svc := &failingUpdateGroupService{
 		adminUpdateFixture: newAdminUpdateFixture(),

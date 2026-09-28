@@ -211,8 +211,7 @@ func ReasoningEffortRank(raw string) (int, bool) {
 	}
 }
 
-// NormalizeReasoningEffortMappings 根据 OpenAI 分组支持的档位及协议关闭值，
-// 校验并标准化分组映射规则。
+// NormalizeReasoningEffortMatchType 校验并规范化模型匹配类型；模型为空时返回空类型。
 func NormalizeReasoningEffortMatchType(matchType, model string) (string, error) {
 	model = strings.TrimSpace(model)
 	matchType = strings.ToLower(strings.TrimSpace(matchType))

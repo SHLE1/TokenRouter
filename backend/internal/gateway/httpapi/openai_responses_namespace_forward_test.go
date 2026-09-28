@@ -30,7 +30,7 @@ const codexNamespaceRequestBody = `{
 
 const namespaceForwardOKResponse = `{"id":"resp_ns","output":[],"usage":{"input_tokens":1,"output_tokens":1,"input_tokens_details":{"cached_tokens":0}}}`
 
-// OAuth 普通 Responses 必须原样保留 namespace 声明和历史工具调用字段。
+// TestOpenAIGatewayService_OAuthPreservesCodexNamespaceTools 验证OAuth 普通 Responses 必须原样保留 namespace 声明和历史工具调用字段。
 func TestOpenAIGatewayService_OAuthPreservesCodexNamespaceTools(t *testing.T) {
 	body := []byte(codexNamespaceRequestBody)
 	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
@@ -56,7 +56,7 @@ func TestOpenAIGatewayService_OAuthPreservesCodexNamespaceTools(t *testing.T) {
 	require.Empty(t, OpenAIResponsesNamespaceNames(c))
 }
 
-// API Key 自定义上游若接受 namespace 工具声明，也要求历史 function_call 原样携带
+// TestOpenAIGatewayService_APIKeyPreservesDeclaredNamespaceToolCalls 验证API Key 自定义上游若接受 namespace 工具声明，也要求历史 function_call 原样携带
 // namespace。声明仍为命名空间工具却清掉调用项字段，会触发 Missing namespace。
 func TestOpenAIGatewayService_APIKeyPreservesDeclaredNamespaceToolCalls(t *testing.T) {
 	body := []byte(codexNamespaceRequestBody)
@@ -79,7 +79,7 @@ func TestOpenAIGatewayService_APIKeyPreservesDeclaredNamespaceToolCalls(t *testi
 	require.False(t, gjson.GetBytes(forwarded, "input.1.namespace").Exists())
 }
 
-// compact 端点 schema 更窄：input[].namespace 会 400 Unknown parameter（issue #4761），
+// TestOpenAIGatewayService_OAuthCompactKeepsFlattening 验证compact 端点 schema 更窄：input[].namespace 会 400 Unknown parameter（issue #4761），
 // 且没有证据表明它接受 namespace 工具声明。compact 只做历史摘要、不需要模型寻址工具，
 // 因此保持既有的摊平 + 全量清理行为，不随默认值翻转扩大风险面。
 func TestOpenAIGatewayService_OAuthCompactKeepsFlattening(t *testing.T) {
@@ -102,7 +102,7 @@ func TestOpenAIGatewayService_OAuthCompactKeepsFlattening(t *testing.T) {
 	require.Equal(t, "collaboration__spawn_agent", gjson.GetBytes(forwarded, "input.0.name").String())
 }
 
-// 提供商兼容开关打开后恢复 namespace 摊平旧行为。
+// TestOpenAIGatewayService_OAuthFlattenFlagRestoresLegacyBehavior 验证提供商兼容开关打开后恢复 namespace 摊平旧行为。
 func TestOpenAIGatewayService_OAuthFlattenFlagRestoresLegacyBehavior(t *testing.T) {
 	body := []byte(codexNamespaceRequestBody)
 	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
@@ -126,7 +126,7 @@ func TestOpenAIGatewayService_OAuthFlattenFlagRestoresLegacyBehavior(t *testing.
 	}, OpenAIResponsesNamespaceNames(c)["collaboration__spawn_agent"])
 }
 
-// failover 复用 gin.Context 时，每次转发都必须清除上一个提供商留下的映射。
+// TestOpenAIGatewayService_ForwardClearsStaleNamespaceNames 验证failover 复用 gin.Context 时，每次转发都必须清除上一个提供商留下的映射。
 func TestOpenAIGatewayService_ForwardClearsStaleNamespaceNames(t *testing.T) {
 	body := []byte(codexNamespaceRequestBody)
 	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{

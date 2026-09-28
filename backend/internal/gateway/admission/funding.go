@@ -1,4 +1,3 @@
-// Package admission 拥有网关准入的阶段顺序和只读资金来源投影。
 package admission
 
 import (
@@ -9,8 +8,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-const FundingSourceSubscription = "subscription"
-const FundingSourceBalance = "balance"
+const (
+	FundingSourceSubscription = "subscription"
+	FundingSourceBalance      = "balance"
+)
 
 // FundingInput 不包含身份实体、Key 凭据或可修改的共享缓存。
 type FundingInput struct {
@@ -28,7 +29,7 @@ type SubscriptionReader interface {
 	ValidateAndCheckLimits(*billing.UserSubscription) (bool, error)
 }
 
-// resolveAPIKeyBillingContext 统一解析 API Key 的结算来源。
+// ResolveFunding 统一解析 API Key 的结算来源。
 // auto 保留现有的可用订阅优先策略；subscription 和 balance 则绝不发生隐式回退。
 func ResolveFunding(ctx context.Context, input FundingInput, subscriptionService SubscriptionReader, enforce bool) (*billing.APIKeyBillingContext, error) {
 	mode := input.Mode

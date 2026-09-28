@@ -1,4 +1,3 @@
-// Package app 是生产应用的唯一组合根。
 package app
 
 import (

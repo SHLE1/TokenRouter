@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 真实 Redis 订阅的最后一个回调返回前，Stop 不得允许关闭共享连接。
+// TestSubscriptionsWaitForInFlightCallback 验证真实 Redis 订阅的最后一个回调返回前，Stop 不得允许关闭共享连接。
 func TestSubscriptionsWaitForInFlightCallback(t *testing.T) {
 	for _, factory := range []struct {
 		name, channel string

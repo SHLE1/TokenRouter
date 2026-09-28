@@ -1,4 +1,3 @@
-// 可见输出与协议结构进度分离；原 TTFT 和重试裁决继续使用各自入口。
 package openai
 
 import (
@@ -21,7 +20,7 @@ func StreamItemHasVisibleOutput(item gjson.Result) bool {
 	return false
 }
 
-// 结构进度可以提交当前 attempt 并解除首输出故障转移，但只有客户端可用内容才开始计算 TTFT。
+// StreamDataStartsVisibleOutput 结构进度可以提交当前 attempt 并解除首输出故障转移，但只有客户端可用内容才开始计算 TTFT。
 func StreamDataStartsVisibleOutput(data, eventType string) bool {
 	trimmed := strings.TrimSpace(data)
 	if trimmed == "" || trimmed == "[DONE]" || !gjson.Valid(trimmed) {

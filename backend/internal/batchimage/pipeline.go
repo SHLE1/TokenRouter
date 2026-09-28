@@ -1,4 +1,3 @@
-// PipelineProcessor 在查询/索引和结算之间推进，不包含第二套供应商提交重试。
 package batchimage
 
 import (

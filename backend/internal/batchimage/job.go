@@ -1,4 +1,3 @@
-// 任务契约、状态规则及展示值由所属模块唯一维护。
 package batchimage
 
 import (

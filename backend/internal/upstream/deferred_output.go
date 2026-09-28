@@ -1,4 +1,3 @@
-// 延迟输出适配保持尚未交付时的 Header 访问时点，避免停止原 HTTP 等待心跳。
 package upstream
 
 import "net/http"

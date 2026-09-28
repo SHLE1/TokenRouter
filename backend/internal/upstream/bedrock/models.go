@@ -1,4 +1,3 @@
-// Bedrock 平台模型预设，来源区域决策另由已核实规则完成。
 package bedrock
 
 // DefaultBedrockModelMapping 是 AWS Bedrock 平台的默认模型映射

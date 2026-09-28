@@ -1,4 +1,3 @@
-// Codex 原生转换只接收 wire 输入与显式选项；平台选择和提供商元数据由外层投影。
 package openai
 
 import (
@@ -1909,7 +1908,8 @@ func OpenAIResponsesInputItemIDPrefix(itemType string) (string, bool) {
 	}
 }
 
-// 回放请求中的无效 ID 必须删除而不是改写，因为伪造的 ID 可能会指向另一个上游对象。
+// ShouldStripOpenAIResponsesInputItemID 判断回放请求中的 ID 是否无效。
+// 无效 ID 必须删除，伪造替代 ID 可能指向另一个上游对象。
 func ShouldStripOpenAIResponsesInputItemID(itemType, id string) bool {
 	prefix, constrained := OpenAIResponsesInputItemIDPrefix(itemType)
 	if !constrained {

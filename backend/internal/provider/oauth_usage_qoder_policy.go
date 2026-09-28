@@ -1,4 +1,3 @@
-// Qoder 用量策略决定缓存有效期及配额限流的恢复条件。
 package provider
 
 import (

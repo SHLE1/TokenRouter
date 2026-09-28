@@ -1,4 +1,3 @@
-// ReleaseQuery 只负责发布信息与缓存，不执行二进制替换或回滚。
 package ops
 
 import (
@@ -169,7 +168,7 @@ func normalizeRollbackVersion(raw string) (string, bool) {
 // NormalizeRollbackVersion 保留旧比较入口的唯一规则。
 func NormalizeRollbackVersion(raw string) (string, bool) { return normalizeRollbackVersion(raw) }
 
-// fetchRollbackCandidates 拉取最近 release，并只保留严格早于当前版本的最新候选。
+// FetchRollbackCandidates 拉取最近 release，并只保留严格早于当前版本的最新候选。
 func (s *ReleaseQuery) FetchRollbackCandidates(ctx context.Context) ([]*GitHubRelease, error) {
 	releases, err := s.githubClient.FetchRecentReleases(ctx, githubRepo, rollbackFetchPageSize)
 	if err != nil {

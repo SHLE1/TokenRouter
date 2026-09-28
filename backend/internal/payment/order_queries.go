@@ -1,4 +1,3 @@
-// 订单权限与查询错误形状保留原入口契约。
 package payment
 
 import (
@@ -17,6 +16,7 @@ func (s *OrderQueries) GetOrder(ctx context.Context, orderID, userID int64) (*Or
 	}
 	return o, nil
 }
+
 func (s *OrderQueries) GetOrderByID(ctx context.Context, orderID int64) (*Order, error) {
 	o, err := s.store.Order(ctx, orderID)
 	if err != nil {
@@ -24,9 +24,11 @@ func (s *OrderQueries) GetOrderByID(ctx context.Context, orderID int64) (*Order,
 	}
 	return o, nil
 }
+
 func (s *OrderQueries) GetUserOrders(ctx context.Context, userID int64, p OrderListParams) ([]*Order, int, error) {
 	return s.store.GetUserOrders(ctx, userID, p)
 }
+
 func (s *OrderQueries) AdminListOrders(ctx context.Context, userID int64, p OrderListParams) ([]*Order, int, error) {
 	return s.store.AdminListOrders(ctx, userID, p)
 }

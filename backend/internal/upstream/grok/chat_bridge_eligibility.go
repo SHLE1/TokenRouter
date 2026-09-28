@@ -1,4 +1,3 @@
-// Grok 报文规则保留旧平台差异；所有方法只处理本次输入，不持有提供商或请求全局状态。
 package grok
 
 import (
@@ -53,7 +52,7 @@ var grokChatResponsesBridgeTopLevelFields = map[string]struct{}{
 	"service_tier": {},
 }
 
-// grokChatResponsesBridgeEligibility 只接受能由 Responses 桥接完整保留语义的
+// GrokChatResponsesBridgeEligibility 只接受能由 Responses 桥接完整保留语义的
 // Chat Completions 请求；其它请求继续走原始 Chat，避免字段被静默丢弃或改写。
 func (m BodyCodec) GrokChatResponsesBridgeEligibility(body []byte) (bool, string) {
 	var root map[string]json.RawMessage
@@ -500,7 +499,7 @@ func (m BodyCodec) GrokChatResponsesCacheIntentBody(body []byte) ([]byte, error)
 	return json.Marshal(root)
 }
 
-// grokChatResponsesBridgeModel 判断模型是否支持 Chat 到 Responses 的 Grok 桥接。
+// GrokChatResponsesBridgeModel 判断模型是否支持 Chat 到 Responses 的 Grok 桥接。
 func (m BodyCodec) GrokChatResponsesBridgeModel(model string) bool {
 	switch strings.ToLower(StripGrokProviderPrefix(strings.TrimSpace(model))) {
 	case "grok-4.5", "grok-4.6", "grok-4.6-latest":

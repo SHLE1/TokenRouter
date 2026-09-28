@@ -43,7 +43,7 @@ func (f *clientFallbackFunding) CheckKey(_ context.Context, key *apikey.APIKey, 
 	return nil
 }
 
-// HTTP 全程使用真实端口适配；只替换授权服务、资金读和执行终点。
+// TestClientGroupFallbackPrecedesPoliciesAndExecution 验证HTTP 全程使用真实端口适配；只替换授权服务、资金读和执行终点。
 func TestClientGroupFallbackPrecedesPoliciesAndExecution(t *testing.T) {
 	cases := []struct {
 		name   string

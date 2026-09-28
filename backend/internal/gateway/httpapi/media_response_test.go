@@ -12,9 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// HTTP 投影只转发白名单下载头；提交标记必须先于第一块响应体。
+// TestMediaContentResponsePreservesRangeAndCommit 验证HTTP 投影只转发白名单下载头；提交标记必须先于第一块响应体。
 func TestMediaContentResponsePreservesRangeAndCommit(t *testing.T) {
-
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	committed := false
@@ -38,6 +37,7 @@ func TestMediaContentReadFailureRemainsVisible(t *testing.T) {
 	err := WriteGrokMediaContentResponse(c, &http.Response{StatusCode: 200, ContentLength: -1, Header: make(http.Header), Body: mediaReadFailure{}}, nil)
 	require.ErrorContains(t, err, "download failed")
 }
+
 func TestVoiceMissingBodyPreservesMethodDifference(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = &http.Request{Method: http.MethodGet}

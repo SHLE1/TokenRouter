@@ -1,4 +1,3 @@
-// 本文件拥有 Redis 固定窗口计数、TTL 修复和剩余窗口读取，不选择 HTTP 故障策略。
 package redis
 
 import (

@@ -1,4 +1,3 @@
-// Sub2API、New API 与 Zivv 的固定只读请求及解析唯一实现在此。
 package usageprovider
 
 import (

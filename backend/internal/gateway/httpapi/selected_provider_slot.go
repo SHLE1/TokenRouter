@@ -1,4 +1,3 @@
-// 已选择提供商的 HTTP 等待适配保留快速抢槽、计数、粘性绑定及原错误格式。
 package httpapi
 
 import (

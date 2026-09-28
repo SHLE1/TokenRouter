@@ -1,4 +1,3 @@
-// Codex 指纹收敛只操作每次尝试的 ID 状态，提供商配置与种子读取由调用方投影。
 package openai
 
 import (

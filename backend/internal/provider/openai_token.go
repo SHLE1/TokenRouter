@@ -1,4 +1,3 @@
-// OpenAI 凭据回源、TTL 与锁等待归提供商，复用同一缓存、刷新协调器和指标实例。
 package provider
 
 import (

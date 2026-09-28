@@ -109,7 +109,7 @@ func (s *DeferredService) StopContext(ctx context.Context) error {
 func (s *DeferredService) flushLastUsed()          { _ = s.flushLastUsedErr() }
 func (s *DeferredService) flushLastUsedErr() error { return s.flush(s.waitCtx, false) }
 
-// 拿取批次与入队共用锁；失败回填只补空位，不能覆盖批次发出之后的新活动。
+// flush 拿取批次与入队共用锁；失败回填只补空位，不能覆盖批次发出之后的新活动。
 func (s *DeferredService) flush(ctx context.Context, final bool) error {
 	if err := s.flushMu.Lock(ctx); err != nil {
 		return err

@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// 管理员配置覆盖历史探测结论，两种压缩能力相互独立。
+// TestProviderCompactionControlledByAdministrator 验证管理员配置覆盖历史探测结论，两种压缩能力相互独立。
 func TestProviderCompactionControlledByAdministrator(t *testing.T) {
 	for _, mode := range []string{"", "force_on", "force_off"} {
 		for _, probed := range []bool{false, true} {

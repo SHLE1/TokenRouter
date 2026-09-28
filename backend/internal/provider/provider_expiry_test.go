@@ -16,7 +16,7 @@ func (r *providerExpiryRepo) AutoPauseExpiredProviders(context.Context, time.Tim
 	return 0, nil
 }
 
-// 已停止的拥有者不能因重复 Start 再执行到期扫描。
+// TestProviderExpiryCannotRestartAfterStop 验证已停止的拥有者不能因重复 Start 再执行到期扫描。
 func TestProviderExpiryCannotRestartAfterStop(t *testing.T) {
 	repo := &providerExpiryRepo{started: make(chan struct{})}
 	svc := NewExpiryService(repo, ExpiryOptions{Interval: time.Hour})

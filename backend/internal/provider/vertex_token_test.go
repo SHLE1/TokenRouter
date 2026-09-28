@@ -1,4 +1,3 @@
-// 使用可控端口验证等锁取消与缓存故障降级。
 package provider
 
 import (

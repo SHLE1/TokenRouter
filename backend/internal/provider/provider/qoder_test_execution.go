@@ -1,4 +1,3 @@
-// Qoder 提供商测试复用原生会话与交换，不持有旧提供商服务。
 package provider
 
 import (
@@ -210,7 +209,7 @@ func qoderTestProfile(value *providercore.Record) (qoder.Profile, error) {
 	return qoder.ProfileForSite(site)
 }
 
-// 自定义客户端保持原注入行为，真实客户端按提供商站点构造原协议端点。
+// qoderTestClient 自定义客户端保持原注入行为，真实客户端按提供商站点构造原协议端点。
 func qoderTestClient(configured qoder.StreamClient, value *providercore.Record) (qoder.StreamClient, error) {
 	if configured != nil {
 		if _, production := configured.(*qoder.Client); !production {

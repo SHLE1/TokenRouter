@@ -1,4 +1,3 @@
-// WebSocket 握手复用同一提供商身份端口，保留平台专属头的原始应用顺序。
 package openai
 
 import (

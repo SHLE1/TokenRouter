@@ -43,7 +43,7 @@ func TestPrivacyObservationDoesNotOverwriteNewIdentity(t *testing.T) {
 	require.Equal(t, "new-identity-mode", writer.current.Extra["privacy_mode"])
 }
 
-// 条件写入夹具模拟与真实 PostgreSQL 同样的身份冲突，不执行回写。
+// UpdatePrivacyModeIfUnchanged 条件写入夹具模拟与真实 PostgreSQL 同样的身份冲突，不执行回写。
 func (w *privacyIdentityWriter) UpdatePrivacyModeIfUnchanged(_ context.Context, v providercore.UsageObservationVersion, mode string) (bool, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()

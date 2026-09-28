@@ -1,4 +1,3 @@
-// 原生 Anthropic 请求构造保留 beta 清洗、鉴权覆盖及最终提供商 Header 的顺序。
 package openaiforward
 
 import (

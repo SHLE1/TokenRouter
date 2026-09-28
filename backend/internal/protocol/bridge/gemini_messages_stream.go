@@ -31,7 +31,7 @@ type NativeGeminiMessagesStream struct {
 	usage          NativeGeminiUsage
 }
 
-// 构造仅创建本次流的状态；负索引表示尚未打开任何内容块。
+// NewNativeGeminiMessagesStream 构造仅创建本次流的状态；负索引表示尚未打开任何内容块。
 func NewNativeGeminiMessagesStream(runtime NativeGeminiRuntime) *NativeGeminiMessagesStream {
 	return &NativeGeminiMessagesStream{runtime: runtime, openBlockIndex: -1, openToolIndex: -1}
 }
@@ -69,7 +69,6 @@ func (s *NativeGeminiMessagesStream) Begin(messageID, originalModel string) iter
 		if !flush() {
 			return
 		}
-
 	}
 }
 
@@ -240,7 +239,6 @@ func (s *NativeGeminiMessagesStream) Process(geminiResp map[string]any, raw []by
 		if u := NativeExtractGeminiUsage(raw); u != nil {
 			s.usage = *u
 		}
-
 	}
 }
 
@@ -296,6 +294,5 @@ func (s *NativeGeminiMessagesStream) Finish() iter.Seq[NativeMessageEvent] {
 		if !flush() {
 			return
 		}
-
 	}
 }

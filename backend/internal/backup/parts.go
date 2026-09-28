@@ -29,8 +29,7 @@ func OrderedBackupParts(parts []BackupPart) ([]BackupPart, error) {
 	return ordered, nil
 }
 
-// downloadBackupParts 先下载并校验全部分卷，再把完整 gzip 归档交给恢复流程。
-// 这样任一后续分卷损坏都不会让数据库进入部分恢复状态。
+// BackupPartStorageKey 优先返回 StorageKey，为空时兼容读取 S3Key。
 func BackupPartStorageKey(part BackupPart) string {
 	if strings.TrimSpace(part.StorageKey) != "" {
 		return strings.TrimSpace(part.StorageKey)

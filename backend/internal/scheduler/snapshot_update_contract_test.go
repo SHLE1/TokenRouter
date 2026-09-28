@@ -28,7 +28,7 @@ func (c *updateSnapshotCache) SetProvider(_ context.Context, value SnapshotProvi
 	return c.err
 }
 
-// 保留旧快照包装的四项更新断言，直接验证唯一核心实现。
+// TestSchedulerSnapshotService_UpdateProviderInCache 验证保留旧快照包装的四项更新断言，直接验证唯一核心实现。
 func TestSchedulerSnapshotService_UpdateProviderInCache(t *testing.T) {
 	t.Run("calls cache.SetProvider", func(t *testing.T) {
 		cache := &updateSnapshotCache{}

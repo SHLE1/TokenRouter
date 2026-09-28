@@ -1,11 +1,5 @@
 //go:build integration
 
-// Package tlsfingerprint provides TLS fingerprint simulation for HTTP clients.
-//
-// Integration tests for verifying TLS fingerprint correctness.
-// These tests make actual network requests to external services and should be run manually.
-//
-// Run with: go test -v -tags=integration ./internal/infra/httpclient/tlsfingerprint/...
 package tlsfingerprint
 
 import (

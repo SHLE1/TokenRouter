@@ -1214,7 +1214,7 @@ func TestCreativeModelSettingsFilterAndCreateValidation(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// 测试存储模拟闭合成功事实操作；真实回滚由 PostgreSQL 集成测试验证。
+// RecordProviderOutcome 测试存储模拟闭合成功事实操作；真实回滚由 PostgreSQL 集成测试验证。
 func (r *creativeFakeRunRepo) RecordProviderOutcome(ctx context.Context, id string, providerID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
 	run, err := r.GetCreativeRunByRunID(ctx, id)
 	if err != nil {

@@ -242,7 +242,7 @@ func (w *CreativeRunWorker) runOnce(ctx context.Context, stop <-chan struct{}) e
 	return w.queue.RequeueAfter(ctx, reserved.RunID, reserved.LeaseToken, delay)
 }
 
-// process 处理单个任务：加载载荷 → 执行 → 结算。所有结算动作幂等。
+// Process 处理单个任务：加载载荷 → 执行 → 结算。所有结算动作幂等。
 func (w *CreativeRunWorker) Process(ctx context.Context, runID string) (CreativeProcessResult, error) {
 	run, err := w.repo.GetCreativeRunByRunID(ctx, runID)
 	if err != nil {

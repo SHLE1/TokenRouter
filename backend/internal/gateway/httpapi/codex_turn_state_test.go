@@ -117,7 +117,7 @@ func TestWriteOpenAIPassthroughResponseHeaders_RelaysReasoningIncluded(t *testin
 	require.Equal(t, "1", dst.Get("X-Reasoning-Included"))
 }
 
-// 对齐真实 Codex：该头是会话级常量，挂在 OAuth 的每个请求上，而不是只在
+// TestApplyOpenAICodexBetaFeatures 验证对齐真实 Codex：该头是会话级常量，挂在 OAuth 的每个请求上，而不是只在
 // 压缩回合出现（codex-rs build_model_client_beta_features_header）。
 func TestApplyOpenAICodexBetaFeatures(t *testing.T) {
 	oauthProvider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}

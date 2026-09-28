@@ -1,4 +1,3 @@
-// OpenAI 错误与输出判定只依赖原生报文；提供商健康写入与全局重试由外层拥有。
 package openai
 
 import (

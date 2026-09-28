@@ -1,4 +1,3 @@
-// 上游额度模型标识只做原格式规范化，调度资格仍由提供商拥有。
 package antigravity
 
 import "strings"

@@ -94,7 +94,7 @@ func TestBulkUpdateAcceptsFilterTargetRequest(t *testing.T) {
 	require.Equal(t, float64(0), resp["code"])
 }
 
-// 旧入口返回404，旧确认和默认组字段在任何写操作之前拒绝。
+// TestProviderManagementRejectsRetiredGroupInputs 验证旧入口返回404，旧确认和默认组字段在任何写操作之前拒绝。
 func TestProviderManagementRejectsRetiredGroupInputs(t *testing.T) {
 	for _, endpoint := range []struct{ method, path, body string }{
 		{http.MethodPost, "/api/v1/admin/providers", `{"name":"mixed","platform":"openai","type":"apikey","credentials":{"api_key":"test"}}`},

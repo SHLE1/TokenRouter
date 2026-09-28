@@ -1,4 +1,3 @@
-// Package testkit 提供网关契约测试的可控客户端和原生装配，不复制请求编排。
 package testkit
 
 import (

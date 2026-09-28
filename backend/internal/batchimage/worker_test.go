@@ -20,6 +20,7 @@ type leaseLossQueue struct {
 func (q leaseLossQueue) Reserve(context.Context, time.Duration) (ReservedBatchImageJob, error) {
 	return ReservedBatchImageJob{BatchID: "imgbatch_lease"}, nil
 }
+
 func (q leaseLossQueue) TryAcquireJobLock(context.Context, string, time.Duration) (BatchImageJobLock, bool, error) {
 	return q.lock, true, nil
 }
@@ -46,7 +47,7 @@ func (p *leaseLossProcessor) Process(ctx context.Context, _ string) (BatchImageP
 	return BatchImageProcessResult{Terminal: true}, nil
 }
 
-// 取消必须传到实际 processor；即便其迟到返回终态，也不能 ACK 或重排接管者任务。
+// TestWorkerLostLeaseCancelsProcessingWithoutQueueMutation 验证取消必须传到实际 processor；即便其迟到返回终态，也不能 ACK 或重排接管者任务。
 func TestWorkerLostLeaseCancelsProcessingWithoutQueueMutation(t *testing.T) {
 	for _, test := range []struct {
 		name               string

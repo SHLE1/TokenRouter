@@ -1,4 +1,3 @@
-// moderationflow 只组织网关审核观测与完成记录；处置规则由 moderation 唯一拥有。
 package moderationflow
 
 import (

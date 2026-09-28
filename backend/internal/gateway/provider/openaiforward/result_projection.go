@@ -15,7 +15,7 @@ func ToForwardResult(result *Result) *forwardcore.OpenAIResult {
 	return value
 }
 
-// HTTP 子协议尚未改签名前，只在 Adapter 往返当前文本完成字段。
+// FromForwardResult HTTP 子协议尚未改签名前，只在 Adapter 往返当前文本完成字段。
 func FromForwardResult(r *forwardcore.OpenAIResult) *Result {
 	if r == nil {
 		return nil

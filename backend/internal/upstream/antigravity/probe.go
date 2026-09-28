@@ -1,4 +1,3 @@
-// 指定提供商的探测使用原生客户端及同一重试规则，提供商资格由调用者先确认。
 package antigravity
 
 import (

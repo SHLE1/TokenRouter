@@ -1,4 +1,3 @@
-// 退出登录时清除各 OAuth 流程的状态、绑定和待完成会话 Cookie。
 package httpapi
 
 import (

@@ -1,4 +1,3 @@
-// 提供商配额窗口与健康建议保持原自适应冷却和调度阈值，不负责供应商 I/O。
 package provider
 
 import (

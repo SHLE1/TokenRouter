@@ -1,4 +1,3 @@
-// Package model 定义服务层使用的数据模型。
 package errorpolicy
 
 import (

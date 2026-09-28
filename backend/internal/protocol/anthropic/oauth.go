@@ -1,4 +1,3 @@
-// Claude OAuth 交换返回的 wire 字段，不包含提供商存取或授权状态。
 package anthropic
 
 // OAuthTokenResponse represents the token response from OAuth provider

@@ -1,9 +1,3 @@
-// Package proxy 提供代理 URL 的统一验证（fail-fast，无效代理不回退直连）
-//
-// 所有需要解析代理 URL 的地方必须通过此包的 Parse 函数。
-// 直接使用 url.Parse 处理代理 URL 是被禁止的。
-// 这确保了 fail-fast 行为：无效代理配置在创建时立即失败，
-// 而不是在运行时静默回退到直连（产生 IP 关联风险）。
 package proxy
 
 import (

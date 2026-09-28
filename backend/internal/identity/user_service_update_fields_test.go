@@ -49,7 +49,7 @@ func TestUpdateProfile_OnlyDeclaresRequestedColumns(t *testing.T) {
 	}
 }
 
-// 只改头像时用户行没有任何列要写，不应产生一次整行更新。
+// TestUpdateProfile_AvatarOnlySkipsUserRowWrite 验证只改头像时用户行没有任何列要写，不应产生一次整行更新。
 func TestUpdateProfile_AvatarOnlySkipsUserRowWrite(t *testing.T) {
 	repo := &mockUserRepo{getByIDUser: &identity.User{ID: 7, Balance: 0.30}}
 	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)

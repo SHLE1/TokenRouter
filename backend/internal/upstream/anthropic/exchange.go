@@ -1,4 +1,3 @@
-// 本文件保留 Anthropic 单提供商的签名/预算恢复与有界重试，不执行提供商切换或资金操作。
 package anthropic
 
 import (

@@ -1,4 +1,3 @@
-// Google Drive 配额响应保留原 JSON 数值字段。
 package google
 
 // DriveStorageInfo represents Google Drive storage quota information

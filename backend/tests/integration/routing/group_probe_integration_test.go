@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 验证真实 PostgreSQL 租约竞争、到期回收、最终结果与下次时间的原子保存。
+// TestGroupProbeLeaseAndAtomicResult 验证真实 PostgreSQL 租约竞争、到期回收、最终结果与下次时间的原子保存。
 func TestGroupProbeLeaseAndAtomicResult(t *testing.T) {
 	ctx := context.Background()
 	client, integrationDB := routingDatabase(t)

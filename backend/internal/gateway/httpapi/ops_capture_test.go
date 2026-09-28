@@ -381,7 +381,7 @@ func TestOpsErrorLoggerMiddleware_PrefersContextRequestID(t *testing.T) {
 	require.Equal(t, "context-request-id", job.entry.RequestID)
 }
 
-// 就地 SSE 错误挂在已固化的 HTTP 200 流上：实际状态码为 200，
+// TestLogOpsStreamError_RecordsInBandConcurrencyLimit 验证就地 SSE 错误挂在已固化的 HTTP 200 流上：实际状态码为 200，
 // 常规 status>=400 采集路径不会触发。logOpsStreamError 必须据 MarkOpsStreamError
 // 补记一条错误日志，且用 IntendedStatus(429) 分级、StatusCode 仍记实际的 200。
 func TestLogOpsStreamError_RecordsInBandConcurrencyLimit(t *testing.T) {
@@ -440,7 +440,7 @@ func TestLogOpsStreamError_UpstreamFailureCountsTowardsSLA(t *testing.T) {
 	require.Contains(t, job.entry.ErrorBody, openai.OpenAIUpstreamHTTP2StreamErrorCode)
 }
 
-// 未标记流内错误时 logOpsStreamError 必须是 no-op（不误记正常的 200 流）。
+// TestLogOpsStreamError_NoopWhenNotMarked 验证未标记流内错误时 logOpsStreamError 必须是 no-op（不误记正常的 200 流）。
 func TestLogOpsStreamError_NoopWhenNotMarked(t *testing.T) {
 	setupOpsErrorLogTestQueue(t, 4)
 
@@ -454,7 +454,7 @@ func TestLogOpsStreamError_NoopWhenNotMarked(t *testing.T) {
 	require.Equal(t, int64(0), OpsErrorLogEnqueuedTotal())
 }
 
-// 命中 skip_monitoring=true 透传规则时不落库，与其它采集分支一致。
+// TestLogOpsStreamError_SkipWhenPassthroughSkipMonitoring 验证命中 skip_monitoring=true 透传规则时不落库，与其它采集分支一致。
 func TestLogOpsStreamError_SkipWhenPassthroughSkipMonitoring(t *testing.T) {
 	setupOpsErrorLogTestQueue(t, 4)
 
@@ -486,7 +486,7 @@ func TestShouldSkipFinalOpsFailureUsesOnlyFinalAttemptRule(t *testing.T) {
 	require.True(t, shouldSkipFinalOpsFailure(c))
 }
 
-// MarkOpsStreamError 采用「首个标记生效」：后续的通用兜底帧不得覆盖根因错误。
+// TestMarkOpsStreamError_FirstWins 验证MarkOpsStreamError 采用「首个标记生效」：后续的通用兜底帧不得覆盖根因错误。
 func TestMarkOpsStreamError_FirstWins(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)

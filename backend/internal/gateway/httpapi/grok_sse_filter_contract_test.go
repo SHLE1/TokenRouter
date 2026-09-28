@@ -89,7 +89,7 @@ func TestGrokResponsesBillingPingFilterComposesWithClientToolStream(t *testing.T
 	require.Contains(t, string(output), `"id":"resp_1"`)
 }
 
-// `event: ping` 不属于 Responses 事件闭集，无论载荷形态都会破坏严格客户端，
+// TestGrokResponsesBillingPingFilterConvertsPingVariants 验证`event: ping` 不属于 Responses 事件闭集，无论载荷形态都会破坏严格客户端，
 // 因此所有兼容变体都改写为 SSE 注释（issue #5105）。
 func TestGrokResponsesBillingPingFilterConvertsPingVariants(t *testing.T) {
 	frames := []string{
@@ -134,13 +134,13 @@ func TestGrokResponsesBillingPingFilterPreservesNonPingFrames(t *testing.T) {
 	require.Equal(t, input, filterGrokPingTestInput(t, input))
 }
 
-// 携带意外 SSE 字段的候选帧不是供应商计费或保活 ping，必须逐字节回放。
+// TestGrokResponsesBillingPingFilterPassesThroughPingFrameWithUnknownField 验证携带意外 SSE 字段的候选帧不是供应商计费或保活 ping，必须逐字节回放。
 func TestGrokResponsesBillingPingFilterPassesThroughPingFrameWithUnknownField(t *testing.T) {
 	input := "event: ping\nid: 7\ndata: {\"type\":\"ping\",\"cost\":\"0\"}\n\n"
 	require.Equal(t, input, filterGrokPingTestInput(t, input))
 }
 
-// 超过行数或字节上限的候选帧应原样直通，避免无界占用内存。
+// TestGrokResponsesBillingPingFilterPassesThroughOversizedPingFrame 验证超过行数或字节上限的候选帧应原样直通，避免无界占用内存。
 func TestGrokResponsesBillingPingFilterPassesThroughOversizedPingFrame(t *testing.T) {
 	lines := []string{"event: ping"}
 	for i := 0; i < grok.ResponsesPingFrameMaxLines; i++ {
@@ -176,7 +176,7 @@ func TestGrokResponsesBillingPingFilterConvertsPartialPingFrameAtEOF(t *testing.
 	require.Equal(t, ": ping\n\n", filterGrokPingTestInput(t, input))
 }
 
-// 非 Grok 入口经过实际响应输出，保留 ping 与终态报文。
+// TestGrokResponsesBillingPingFilterDoesNotFilterNonGrokProviders 验证非 Grok 入口经过实际响应输出，保留 ping 与终态报文。
 func TestGrokResponsesBillingPingFilterDoesNotFilterNonGrokProviders(t *testing.T) {
 	input := "event: ping\ndata: {\"type\":\"ping\",\"cost\":\"0\"}\n\n" +
 		"event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"non-grok\",\"usage\":{\"input_tokens\":1,\"output_tokens\":1},\"output\":[]}}\n\n"

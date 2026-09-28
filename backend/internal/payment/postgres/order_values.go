@@ -1,4 +1,3 @@
-// 订单存储边界只转换快照值，不导出 ORM 客户端。
 package postgres
 
 import (

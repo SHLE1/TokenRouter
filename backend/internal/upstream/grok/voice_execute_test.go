@@ -34,7 +34,7 @@ type voiceBody struct {
 
 func (b *voiceBody) Close() error { b.closed.Add(1); return b.ReadCloser.Close() }
 
-// 本地 HTTP 从构造请求到同步输出，核对原生协议、音频单位和响应关闭。
+// TestVoiceExecuteLocalHTTP 验证本地 HTTP 从构造请求到同步输出，核对原生协议、音频单位和响应关闭。
 func TestVoiceExecuteLocalHTTP(t *testing.T) {
 	cases := []struct {
 		endpoint                       string
@@ -101,7 +101,7 @@ func TestVoiceExecuteLocalHTTP(t *testing.T) {
 	}
 }
 
-// 失败策略的处理发生在输出和计量之前，同时仍由执行器关闭响应。
+// TestVoiceExecuteHTTPErrorDoesNotEmitOrMeter 验证失败策略的处理发生在输出和计量之前，同时仍由执行器关闭响应。
 func TestVoiceExecuteHTTPErrorDoesNotEmitOrMeter(t *testing.T) {
 	var closed atomic.Int64
 	req, err := http.NewRequest(http.MethodPost, "https://fixture.invalid", strings.NewReader(`{}`))

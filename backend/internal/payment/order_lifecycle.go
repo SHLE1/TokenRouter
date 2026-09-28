@@ -1,4 +1,3 @@
-// 取消、主动查单与后台对账保持原状态、预算及分页游标语义。
 package payment
 
 import (
@@ -41,6 +40,7 @@ func (s *OrderLifecycle) CancelOrder(ctx context.Context, orderID, userID int64)
 	}
 	return s.CancelCore(ctx, o, OrderStatusCancelled, fmt.Sprintf("user:%d", userID), "user cancelled order")
 }
+
 func (s *OrderLifecycle) AdminCancelOrder(ctx context.Context, orderID int64) (string, error) {
 	o, err := s.store.Order(ctx, orderID)
 	if err != nil {
@@ -52,9 +52,9 @@ func (s *OrderLifecycle) AdminCancelOrder(ctx context.Context, orderID int64) (s
 	return s.CancelCore(ctx, o, OrderStatusCancelled, "admin", "admin cancelled order")
 }
 
-// @project-doc docs/domains/payments_and_entitlements.md#forced_expiration_recovery
 // ForceExpireOrder 由管理员显式确认后终结无法确认上游状态的待支付订单。
 // 保留 EXPIRED 状态使验签通过的迟到付款仍能进入既有恢复和履约流程。
+// @project-doc docs/domains/payments_and_entitlements.md#forced_expiration_recovery
 func (s *OrderLifecycle) ForceExpireOrder(ctx context.Context, orderID int64, reason string) error {
 	reason = strings.TrimSpace(reason)
 	if reason == "" || len([]rune(reason)) > 500 {
@@ -63,6 +63,7 @@ func (s *OrderLifecycle) ForceExpireOrder(ctx context.Context, orderID int64, re
 
 	return s.store.ForceExpire(ctx, orderID, reason)
 }
+
 func (s *OrderLifecycle) CancelCore(ctx context.Context, o *Order, fs, op, ad string) (string, error) {
 	if o.PaymentTradeNo != "" || o.PaymentType != "" {
 		prov, queryRef, resp, err := s.QueryPaymentOrderProvider(ctx, o)
@@ -118,12 +119,14 @@ func (s *OrderLifecycle) CancelCore(ctx context.Context, o *Order, fs, op, ad st
 	}
 	return s.FinalizePendingOrder(ctx, o, fs, op, ad)
 }
+
 func (s *OrderLifecycle) ProcessingCancellationResult(finalStatus string) (string, error) {
 	if finalStatus == OrderStatusExpired {
 		return LifecycleCheckPaidResultProcessing, nil
 	}
 	return LifecycleCheckPaidResultProcessing, infraerrors.BadRequest("INVALID_STATUS", "payment is processing and cannot be cancelled")
 }
+
 func (s *OrderLifecycle) FinalizePendingOrder(ctx context.Context, o *Order, fs, op, ad string) (string, error) {
 	c, err := s.store.TransitionOrder(ctx, OrderTransition{ID: o.ID, From: []string{OrderStatusPending}, Status: fs})
 	if err != nil {
@@ -154,6 +157,7 @@ func (s *OrderLifecycle) FinalizePendingOrder(ctx context.Context, o *Order, fs,
 		return "", fmt.Errorf("order status changed to %s while cancelling", current.Status)
 	}
 }
+
 func (s *OrderLifecycle) RecordPaymentCancelFailure(ctx context.Context, o *Order, prov Provider, queryRef string, cancelErr error, resp *QueryOrderResponse) {
 	if !s.HasAuditLog(ctx, o.ID, "PAYMENT_CANCEL_FAILED") {
 		providerKey := "system"
@@ -176,9 +180,11 @@ func (s *OrderLifecycle) RecordPaymentCancelFailure(ctx context.Context, o *Orde
 		s.runtime.Log("warn", "record payment cancellation retry time failed", "orderID", o.ID, "error", err)
 	}
 }
+
 func PaymentStatusUnavailableError(cause error) error {
 	return infraerrors.ServiceUnavailable("PAYMENT_STATUS_UNAVAILABLE", "payment status is temporarily unavailable").WithCause(cause)
 }
+
 func (s *OrderLifecycle) CheckPaid(ctx context.Context, o *Order) (string, error) {
 	prov, queryRef, resp, err := s.QueryPaymentOrderProvider(ctx, o)
 	if err != nil {
@@ -187,6 +193,7 @@ func (s *OrderLifecycle) CheckPaid(ctx context.Context, o *Order) (string, error
 	}
 	return s.ApplyQueriedPaymentStatus(ctx, o, prov, queryRef, resp)
 }
+
 func (s *OrderLifecycle) QueryPaymentOrderProvider(ctx context.Context, o *Order) (Provider, string, *QueryOrderResponse, error) {
 	prov, err := s.bindings.GetOrderProvider(ctx, o)
 	if err != nil {
@@ -199,6 +206,7 @@ func (s *OrderLifecycle) QueryPaymentOrderProvider(ctx context.Context, o *Order
 	resp, err := s.QueryPaymentOrderWithProvider(ctx, prov, queryRef)
 	return prov, queryRef, resp, err
 }
+
 func (s *OrderLifecycle) QueryPaymentOrderWithProvider(ctx context.Context, prov Provider, queryRef string) (*QueryOrderResponse, error) {
 	finishProviderCall := s.observe(ctx)
 	resp, err := prov.QueryOrder(ctx, queryRef)
@@ -211,6 +219,7 @@ func (s *OrderLifecycle) QueryPaymentOrderWithProvider(ctx context.Context, prov
 	}
 	return resp, nil
 }
+
 func (s *OrderLifecycle) ApplyQueriedPaymentStatus(ctx context.Context, o *Order, prov Provider, queryRef string, resp *QueryOrderResponse) (string, error) {
 	if resp == nil {
 		return "", fmt.Errorf("missing provider query response")
@@ -269,6 +278,7 @@ func (s *OrderLifecycle) ApplyQueriedPaymentStatus(ctx context.Context, o *Order
 	}
 	return "", nil
 }
+
 func (s *OrderLifecycle) RequeryPaidOrderOnce(ctx context.Context, prov Provider, queryRef string) (*QueryOrderResponse, bool) {
 	if prov == nil || strings.TrimSpace(queryRef) == "" {
 		return nil, false
@@ -285,6 +295,7 @@ func (s *OrderLifecycle) RequeryPaidOrderOnce(ctx context.Context, prov Provider
 	}
 	return resp, true
 }
+
 func PaymentOrderQueryReference(order *Order, prov Provider) string {
 	if order == nil {
 		return ""
@@ -327,6 +338,7 @@ func PaymentOrderQueryReference(order *Order, prov Provider) string {
 		return strings.TrimSpace(order.OutTradeNo)
 	}
 }
+
 func PaymentOrderShouldPersistUpstreamTradeNo(queryRef, upstreamTradeNo, currentTradeNo string) bool {
 	upstreamTradeNo = strings.TrimSpace(upstreamTradeNo)
 	if upstreamTradeNo == "" {
@@ -412,6 +424,7 @@ func (s *OrderLifecycle) VerifyOrderPublic(ctx context.Context, outTradeNo strin
 	}
 	return o, nil
 }
+
 func NormalizeOrderLookupOutTradeNo(raw string) (string, error) {
 	outTradeNo := strings.TrimSpace(raw)
 	if outTradeNo == "" {
@@ -432,10 +445,12 @@ func NormalizeOrderLookupOutTradeNo(raw string) (string, error) {
 	}
 	return outTradeNo, nil
 }
+
 func (s *OrderLifecycle) ExpireTimedOutOrders(ctx context.Context) (int, error) {
 	now := s.runtime.Now()
 	return s.ExpireTimedOutOrdersAt(ctx, now)
 }
+
 func (s *OrderLifecycle) ExpireTimedOutOrdersAt(ctx context.Context, now time.Time) (int, error) {
 	orders, err := s.store.ExpiredPending(ctx, now)
 	if err != nil {
@@ -465,6 +480,7 @@ func (s *OrderLifecycle) ExpireTimedOutOrdersAt(ctx context.Context, now time.Ti
 	}
 	return n, nil
 }
+
 func (s *OrderLifecycle) ShouldRetryTimedOutOrder(ctx context.Context, order *Order, now time.Time) bool {
 	if order == nil || !s.HasAuditLog(ctx, order.ID, "PAYMENT_CANCEL_FAILED") {
 		return true
@@ -476,6 +492,7 @@ func (s *OrderLifecycle) ShouldRetryTimedOutOrder(ctx context.Context, order *Or
 func (s *OrderLifecycle) ReconcileProcessingOrders(ctx context.Context) (int, error) {
 	return s.ReconcileProcessingOrdersAt(ctx, s.runtime.Now())
 }
+
 func (s *OrderLifecycle) ReconcileProcessingOrdersAt(ctx context.Context, now time.Time) (int, error) {
 	ids, err := s.store.ProcessingIDs(ctx)
 	if err != nil {
@@ -524,6 +541,7 @@ func (s *OrderLifecycle) ReconcileProcessingOrdersAt(ctx context.Context, now ti
 func (s *OrderLifecycle) ReconcilePaidFulfillmentOrders(ctx context.Context) (int, error) {
 	return s.ReconcilePaidFulfillmentOrdersAt(ctx, s.runtime.Now())
 }
+
 func (s *OrderLifecycle) ReconcilePaidFulfillmentOrdersAt(ctx context.Context, now time.Time) (int, error) {
 	ids, err := s.store.RecoverableFulfillmentIDs(ctx, now, LifecycleFulfillmentRetryDelay, FulfillmentLeaseDuration)
 	if err != nil {
@@ -554,6 +572,7 @@ func (s *OrderLifecycle) ReconcilePaidFulfillmentOrdersAt(ctx context.Context, n
 	}
 	return recovered, nil
 }
+
 func (s *OrderLifecycle) NextReconcilePageIDs(ids []int64, cursor *uint64, limit int) []int64 {
 	s.reconcileCursorMu.Lock()
 	defer s.reconcileCursorMu.Unlock()
@@ -564,6 +583,7 @@ func (s *OrderLifecycle) NextReconcilePageIDs(ids []int64, cursor *uint64, limit
 	}
 	return pageIDs
 }
+
 func ReconcilePageIDs(ids []int64, cursor uint64, limit int) []int64 {
 	if len(ids) == 0 || limit <= 0 {
 		return nil
@@ -582,6 +602,7 @@ func ReconcilePageIDs(ids []int64, cursor uint64, limit int) []int64 {
 	}
 	return append([]int64(nil), ids[start:end]...)
 }
+
 func (s *OrderLifecycle) MaybeAuditStaleProcessingOrder(ctx context.Context, order *Order, now time.Time, providerStatus string) {
 	if order == nil || order.UpdatedAt.After(now.Add(-LifecycleProcessingStaleAfter)) || s.HasAuditLog(ctx, order.ID, "PAYMENT_PROCESSING_STALE") {
 		return

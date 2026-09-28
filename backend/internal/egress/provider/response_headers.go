@@ -1,4 +1,3 @@
-// 响应头按已编译的过滤规则复制到下游。
 package provider
 
 import (

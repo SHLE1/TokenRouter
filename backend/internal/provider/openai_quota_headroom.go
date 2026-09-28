@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// openAIQuotaHeadroomFactor 把 Codex quota 快照转换成 0..1 的调度因子。
+// OpenAIQuotaHeadroomFactor 把 Codex quota 快照转换成 0..1 的调度因子。
 // 7d/primary 剩余额度越高分越高；5h/secondary 接近耗尽时会折扣该分值。
 func OpenAIQuotaHeadroomFactor(provider *Record, now time.Time) float64 {
 	if provider == nil || len(provider.Extra) == 0 || openAIQuotaHeadroomSnapshotStale(provider.Extra, now) {

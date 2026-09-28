@@ -129,7 +129,7 @@ func TestGetAvailableModels_ErrorAndGlobalListBranches(t *testing.T) {
 	require.Equal(t, int64(1), okRepo.listAllCalls.Load())
 }
 
-// 透传只改变传输，显式白名单及映射在目录聚合时仍生效。
+// TestGetAvailableModelsPassthroughPreservesExplicitScope 验证透传只改变传输，显式白名单及映射在目录聚合时仍生效。
 func TestGetAvailableModelsPassthroughPreservesExplicitScope(t *testing.T) {
 	groupID := int64(10)
 	first := provider.Record{ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Credentials: map[string]any{

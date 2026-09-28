@@ -145,7 +145,7 @@ func setGatewayRequestRanges(parsed *ParsedRequest, protocol string, jsonStr str
 
 const claudeCodeLongContextModelSuffix = "[1m]"
 
-// Claude Code 将 [1m] 作为客户端上下文选择器，转发前应移除泄漏到模型名末尾的
+// normalizeClaudeCodeLongContextModel Claude Code 将 [1m] 作为客户端上下文选择器，转发前应移除泄漏到模型名末尾的
 // 单个或重复后缀。
 func normalizeClaudeCodeLongContextModel(model string) string {
 	for len(model) > len(claudeCodeLongContextModelSuffix) &&

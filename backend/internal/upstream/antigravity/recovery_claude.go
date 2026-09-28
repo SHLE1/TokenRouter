@@ -1,4 +1,3 @@
-// Claude 的平台恢复只操作当前 attempt 的报文；开关和提供商副作用由端口提供。
 package antigravity
 
 import (

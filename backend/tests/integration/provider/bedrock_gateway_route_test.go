@@ -61,7 +61,7 @@ func newBedrockRoutingTestUpstream() *bedrockRoutingTransport {
 	}}
 }
 
-// 正式转发与管理员测试必须使用相同 ID；全局推理不改变来源端点和 SigV4 签名范围。
+// TestBedrockRegionRouting_ForwardAndProviderTestUseSameRoute 验证正式转发与管理员测试必须使用相同 ID；全局推理不改变来源端点和 SigV4 签名范围。
 func TestBedrockRegionRouting_ForwardAndProviderTestUseSameRoute(t *testing.T) {
 	for _, tc := range []struct {
 		name, model, region, wantID string
@@ -111,7 +111,7 @@ func TestBedrockRegionRouting_ForwardAndProviderTestUseSameRoute(t *testing.T) {
 	}
 }
 
-// 无有效路由时不调用上游或写提供商状态，管理员仅在确有全局能力时收到开启提示。
+// TestBedrockRegionRouting_InvalidRouteStopsBeforeUpstream 验证无有效路由时不调用上游或写提供商状态，管理员仅在确有全局能力时收到开启提示。
 func TestBedrockRegionRouting_InvalidRouteStopsBeforeUpstream(t *testing.T) {
 	for _, tc := range []struct {
 		name, model, region string

@@ -1,4 +1,3 @@
-// 跨解码上下文的一次修复仅操作 wire 字段，保持 reasoning 与 compaction 的不同规则。
 package openai
 
 import "strings"

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 删列迁移可以重放，不修改模型价卡和独立于分组配置的历史任务快照。
+// TestRemoveGroupMediaPricingMigration 验证删列迁移可以重放，不修改模型价卡和独立于分组配置的历史任务快照。
 func TestRemoveGroupMediaPricingMigration(t *testing.T) {
 	tx, err := integrationDB.BeginTx(context.Background(), nil)
 	require.NoError(t, err)

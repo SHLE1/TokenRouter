@@ -18,7 +18,7 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// 同一隔离 Redis 验证原键、归属和失败释放，不把内存替身当作持久认领证据。
+// TestVideoTasksRedisOwnershipAndCompletion 验证同一隔离 Redis 验证原键、归属和失败释放，不把内存替身当作持久认领证据。
 func TestVideoTasksRedisOwnershipAndCompletion(t *testing.T) {
 	ctx := context.Background()
 	container, err := tcredis.Run(ctx, "redis:8.4-alpine")

@@ -493,7 +493,7 @@ func smokeTestPNG(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
-// 新成功事实端口沿用本冒烟测试的内存仓储；真正的原子回滚由 PostgreSQL 回归覆盖。
+// RecordProviderOutcome 新成功事实端口沿用本冒烟测试的内存仓储；真正的原子回滚由 PostgreSQL 回归覆盖。
 func (r *smokeFakeRunRepo) RecordProviderOutcome(ctx context.Context, id string, providerID int64, outputs []creative.CreativeRunOutput, now time.Time) error {
 	run, err := r.GetCreativeRunByRunID(ctx, id)
 	if err != nil {

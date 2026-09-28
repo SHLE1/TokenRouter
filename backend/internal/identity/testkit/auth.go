@@ -1,4 +1,3 @@
-// Package testkit 只组合身份契约测试所需的原生端口，不持有认证规则或缓存副本。
 package testkit
 
 import (

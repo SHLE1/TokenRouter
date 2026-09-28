@@ -1,4 +1,3 @@
-// 生成图片的技术执行不接收任务实体；操作资格和重试裁决由调用者拥有。
 package gemini
 
 import (
@@ -35,7 +34,7 @@ type ImageOptions struct {
 	Enter                              func() (func(), error)
 }
 
-// buildCreativeGeminiRequest 构造 Gemini generateContent 请求体：
+// BuildImageRequest 构造 Gemini generateContent 请求体：
 // parts 为 prompt 文本与每张参考图 inlineData；创作台不向 Gemini 发送独立 mask。
 func BuildImageRequest(input ImageRequestInput) wire.ImageGenerateRequest {
 	parts := make([]wire.BatchPart, 0, len(input.Sources)+1)
@@ -72,7 +71,7 @@ func BuildImageRequest(input ImageRequestInput) wire.ImageGenerateRequest {
 	}
 }
 
-// parseCreativeGeminiImageOutputs 从 generateContent 响应中提取 inlineData 图片输出。
+// ParseImageOutputs 从 generateContent 响应中提取 inlineData 图片输出。
 func ParseImageOutputs(body []byte, httpError func(int, string) error) ([]upstream.ImageOutput, error) {
 	parts := gjson.GetBytes(body, "candidates.0.content.parts")
 	if !parts.IsArray() || len(parts.Array()) == 0 {
@@ -212,7 +211,7 @@ func GenerateImages(ctx context.Context, request wire.ImageGenerateRequest, opti
 	return ParseImageOutputs(respBody, options.HTTPError)
 }
 
-// applyGeminiAuth 按提供商类型设置鉴权头：apikey 用 x-goog-api-key，其余用 Bearer token。
+// applyImageAuth 按提供商类型设置鉴权头：apikey 用 x-goog-api-key，其余用 Bearer token。
 func applyImageAuth(ctx context.Context, req *http.Request, options ImageOptions) error {
 	if options.Mode == APIKeyCredential {
 		apiKey := strings.TrimSpace(options.APIKey())

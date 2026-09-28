@@ -101,7 +101,7 @@ func (f *qoderRuntimeContract) Record(ctx context.Context, _ *completion.Input, 
 	return nil
 }
 
-// 两种兼容协议保持一次执行、已观测部分结果一次完成以及成功专属粘性绑定。
+// TestQoderCompatibleNativeHTTPCompletionBoundary 验证两种兼容协议保持一次执行、已观测部分结果一次完成以及成功专属粘性绑定。
 func TestQoderCompatibleNativeHTTPCompletionBoundary(t *testing.T) {
 	for _, endpoint := range []QoderEndpoint{QoderMessages, QoderResponses} {
 		for _, partial := range []bool{false, true} {

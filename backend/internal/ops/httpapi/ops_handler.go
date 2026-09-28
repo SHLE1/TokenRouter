@@ -1,4 +1,3 @@
-// Ops HTTP 保留原端点和响应契约；查询与运行状态由核心拥有。
 package httpapi
 
 import (
@@ -80,6 +79,7 @@ func applyOpsErrorSortParams(c *gin.Context, filter *ops.OpsErrorLogFilter) {
 	filter.SetSort(c.Query("sort_by"), c.Query("sort_order"))
 }
 
+// GetErrorLogs 查询运维错误日志。
 // GET /api/v1/admin/ops/errors
 func (h *OpsHandler) GetErrorLogs(c *gin.Context) {
 	if h.opsService == nil {

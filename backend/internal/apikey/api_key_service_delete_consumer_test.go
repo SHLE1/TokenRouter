@@ -1,9 +1,5 @@
 //go:build unit
 
-// API Key 服务删除方法的单元测试
-// 测试 APIKeyService.Delete 方法在各种场景下的行为，
-// 包括权限验证、缓存清理和错误处理
-
 package apikey_test
 
 import (
@@ -195,6 +191,7 @@ func (s *apiKeyRepoStub) SearchAPIKeys(ctx context.Context, userID int64, keywor
 func (s *apiKeyRepoStub) ClearGroupIDByGroupID(ctx context.Context, groupID int64) (int64, error) {
 	panic("unexpected ClearGroupIDByGroupID call")
 }
+
 func (s *apiKeyRepoStub) UpdateGroupIDByUserAndGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (int64, error) {
 	panic("unexpected UpdateGroupIDByUserAndGroup call")
 }

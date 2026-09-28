@@ -1,4 +1,3 @@
-// 本文件拥有累计禁止响应的冷却、计数和升级；HTML/供应商错误解析由外层提供。
 package provider
 
 import (

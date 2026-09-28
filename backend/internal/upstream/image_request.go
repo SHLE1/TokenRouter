@@ -1,4 +1,3 @@
-// 共享图片模型字段改写保留 multipart 各部分与原字段顺序，不涉及模型策略。
 package upstream
 
 import (
@@ -29,6 +28,7 @@ func RewriteImageModel(body []byte, contentType string, model string) ([]byte, s
 	}
 	return rewritten, contentType, nil
 }
+
 func RewriteImageMultipartModel(body []byte, contentType string, model string) ([]byte, string, error) {
 	_, params, err := mime.ParseMediaType(contentType)
 	if err != nil {
@@ -87,6 +87,7 @@ func RewriteImageMultipartModel(body []byte, contentType string, model string) (
 	}
 	return buffer.Bytes(), writer.FormDataContentType(), nil
 }
+
 func CloneMultipartHeader(src textproto.MIMEHeader) textproto.MIMEHeader {
 	dst := make(textproto.MIMEHeader, len(src))
 	for key, values := range src {

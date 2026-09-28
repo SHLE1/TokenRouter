@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 路径提取与协议白名单复用唯一实现，保持旧 Responses 子路径拒绝边界。
+// OpenAIResponsesRequestPathSuffix 路径提取与协议白名单复用唯一实现，保持旧 Responses 子路径拒绝边界。
 func OpenAIResponsesRequestPathSuffix(c *gin.Context) string {
 	suffix, ok := upstream.SanitizedUpstreamPathSuffix(RawOpenAIResponsesRequestPathSuffix(c))
 	if !ok {

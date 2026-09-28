@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 当前请求计划不能污染共享提供商；模型读取仍按每次原匹配时机获得最新配置。
+// TestRoutePlanRebuildsCandidateAndKeepsModelReadTiming 验证当前请求计划不能污染共享提供商；模型读取仍按每次原匹配时机获得最新配置。
 func TestRoutePlanRebuildsCandidateAndKeepsModelReadTiming(t *testing.T) {
 	group := &routing.Group{ID: 7, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolAnthropicMessages}, ProtocolFallbacks: map[protocol.ProtocolID][]protocol.ProtocolID{protocol.ProtocolAnthropicMessages: {protocol.ProtocolOpenAIResponses}}}
 	ctx := requeststate.WithClientProtocol(requeststate.WithGroup(context.Background(), group), protocol.ProtocolAnthropicMessages)

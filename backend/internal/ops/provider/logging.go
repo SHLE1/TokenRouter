@@ -1,4 +1,3 @@
-// LogControl 只操作已有唯一日志后端，不持有第二份状态。
 package provider
 
 import (
@@ -30,6 +29,7 @@ func (LogControl) Apply(cfg *ops.OpsRuntimeLogConfig) error {
 	}
 	return nil
 }
+
 func (LogControl) Changed(operatorID int64, oldCfg *ops.OpsRuntimeLogConfig, newCfg *ops.OpsRuntimeLogConfig, action string) {
 	oldRaw, _ := json.Marshal(oldCfg)
 	newRaw, _ := json.Marshal(newCfg)
@@ -41,6 +41,7 @@ func (LogControl) Changed(operatorID int64, oldCfg *ops.OpsRuntimeLogConfig, new
 		zap.String("new", string(newRaw)),
 	).Info("runtime log config changed")
 }
+
 func (LogControl) Failed(operatorID int64, oldCfg *ops.OpsRuntimeLogConfig, newCfg *ops.OpsRuntimeLogConfig, reason string) {
 	oldRaw, _ := json.Marshal(oldCfg)
 	newRaw, _ := json.Marshal(newCfg)

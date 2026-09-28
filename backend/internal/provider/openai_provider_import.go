@@ -1,4 +1,3 @@
-// OpenAI 授权创建与手动刷新保留原校验、交换、凭据合并及保存顺序；HTTP 不再执行这些规则。
 package provider
 
 import (

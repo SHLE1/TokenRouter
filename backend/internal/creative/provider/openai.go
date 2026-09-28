@@ -1,4 +1,3 @@
-// 任务平台 Adapter 保持原协议载荷与传输顺序；输入只包含本次绑定的技术能力。
 package provider
 
 import (

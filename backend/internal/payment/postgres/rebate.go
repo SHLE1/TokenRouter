@@ -1,4 +1,3 @@
-// 支付返利审计认领与 promotion 计提使用原同一事务，普通失败审计仍尽力。
 package postgres
 
 import (
@@ -82,6 +81,7 @@ func (s *OrderStore) ApplyOrderRebate(ctx context.Context, o *payment.Order, bas
 	}
 	return nil
 }
+
 func (s *OrderStore) TryClaimAffiliateRebateAudit(ctx context.Context, client *dbent.Client, orderID int64, basePoints float64) (bool, error) {
 	if client == nil {
 		return false, errors.New("nil payment client")
@@ -109,6 +109,7 @@ func (s *OrderStore) TryClaimAffiliateRebateAudit(ctx context.Context, client *d
 	}
 	return true, nil
 }
+
 func BuildAffiliateRebateAuditClaimQuery(client *dbent.Client, orderID, detail string) (string, []any) {
 	nowExpr := PaymentAuditCurrentTimestampExpr(client)
 	if PaymentAuditDialect(client) == dialect.Postgres {
@@ -136,18 +137,21 @@ WHERE NOT EXISTS (
 ON CONFLICT (order_id, action) DO NOTHING
 RETURNING id`, nowExpr), []any{orderID, detail, orderID}
 }
+
 func PaymentAuditCurrentTimestampExpr(client *dbent.Client) string {
 	if PaymentAuditDialect(client) == dialect.Postgres {
 		return "NOW()"
 	}
 	return "CURRENT_TIMESTAMP"
 }
+
 func PaymentAuditDialect(client *dbent.Client) string {
 	if client == nil || client.Driver() == nil {
 		return ""
 	}
 	return client.Driver().Dialect()
 }
+
 func (s *OrderStore) UpdateClaimedAffiliateRebateAudit(ctx context.Context, client *dbent.Client, orderID int64, action string, detail map[string]any) error {
 	if client == nil {
 		return errors.New("nil payment client")
