@@ -28,7 +28,7 @@
         class="app-main flex min-w-0 flex-1 flex-col"
         :class="fullViewport ? 'min-h-0 p-0' : 'px-4 pb-4 pt-4 md:px-6 md:pb-6 lg:px-8 lg:pb-8'"
       >
-        <div v-if="pageTitle" class="page-heading mb-4 flex flex-shrink-0 flex-wrap items-start justify-between gap-3">
+        <div v-if="pageTitle && !hidePageHeading" class="page-heading mb-4 flex flex-shrink-0 flex-wrap items-start justify-between gap-3">
           <div>
             <h1 class="page-title">{{ pageTitle }}</h1>
             <p v-if="pageDescription" class="page-description">{{ pageDescription }}</p>
@@ -58,10 +58,13 @@ import AppHeader from './AppHeader.vue'
 interface Props {
   // 全屏工作区使用动态视口锁定布局，并在组件存续期间禁止页面滚动。
   fullViewport?: boolean
+  // 页面已有标题时，可隐藏布局提供的标题和说明。
+  hidePageHeading?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   fullViewport: false,
+  hidePageHeading: false,
 })
 
 const appStore = useAppStore()
