@@ -669,6 +669,7 @@ marketplace: {
     },
     planFeatures: '功能特性',
     planCard: {
+      current: '当前套餐',
       rate: '倍率',
       peakRate: '高峰倍率',
       dailyLimit: '日限额',

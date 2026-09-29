@@ -646,6 +646,7 @@ marketplace: {
     },
     planFeatures: 'Features',
     planCard: {
+      current: 'Current plan',
       rate: 'Rate',
       peakRate: 'Peak Rate',
       dailyLimit: 'Daily',

@@ -82,24 +82,28 @@
             </div>
             <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('payment.noPlans') }}</p>
           </div>
-          <!-- 主区在 lg 仍需让出侧栏宽度，三列放到 xl 才不拥挤。 -->
-          <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <SubscriptionPlanCard
-              v-for="plan in checkout.plans"
-              :key="plan.id"
-              :plan="plan"
-              :active-subscriptions="activeSubscriptions"
-              @select="selectPlan"
-            />
-          </div>
+          <section v-else class="space-y-4">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('payment.selectPlan') }}</h2>
+            <!-- 主区在 lg 仍需让出侧栏宽度，三列放到 xl 才不拥挤。 -->
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <SubscriptionPlanCard
+                v-for="plan in checkout.plans"
+                :key="plan.id"
+                :plan="plan"
+                :active-subscriptions="activeSubscriptions"
+                @select="selectPlan"
+              />
+            </div>
+          </section>
 
+          <!-- 当前订阅：沿用兑换页的用量列表，直接展示各周期用量与剩余时间。 -->
           <section
             v-if="activeSubscriptions.length > 0"
             data-testid="purchase-active-subscriptions"
-            class="card overflow-hidden"
+            class="space-y-4"
           >
-            <div class="flex items-center justify-between gap-4 border-b border-gray-100 px-4 py-3 dark:border-dark-700 sm:px-6">
-              <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.activeSubscription') }}</h2>
+            <div class="flex items-center justify-between gap-4">
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('payment.activeSubscription') }}</h2>
               <router-link
                 to="/subscriptions"
                 class="shrink-0 text-sm text-primary-600 hover:underline dark:text-primary-400"
@@ -107,23 +111,11 @@
                 {{ t('subscriptionProgress.viewAll') }}
               </router-link>
             </div>
-            <ul class="divide-y divide-gray-100 dark:divide-dark-700">
-              <li
-                v-for="sub in activeSubscriptions"
-                :key="sub.id"
-                class="flex items-center gap-3 px-4 py-3 sm:px-6"
-              >
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ subscriptionName(sub) }}</p>
-                  <p class="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-dark-400">
-                    <span v-if="subscriptionUnlimited(sub)">{{ t('payment.planCard.quota') }}: {{ t('payment.planCard.unlimited') }}</span>
-                    <span v-if="sub.expires_at">{{ t('userSubscriptions.daysRemaining', { days: getDaysRemaining(sub.expires_at) }) }}</span>
-                    <span v-else>{{ t('userSubscriptions.noExpiration') }}</span>
-                  </p>
-                </div>
-                <span class="badge badge-success shrink-0">{{ t('userSubscriptions.status.active') }}</span>
-              </li>
-            </ul>
+            <SubscriptionUsageList
+              :subscriptions="activeSubscriptions"
+              class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+              item-class="card p-4"
+            />
           </section>
 
           <PaymentHelpNote
@@ -383,6 +375,7 @@ import {
 } from '@/components/payment/paymentFlow'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import PaymentHelpNote from '@/components/payment/PaymentHelpNote.vue'
+import SubscriptionUsageList from '@/components/common/SubscriptionUsageList.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -412,11 +405,6 @@ marked.setOptions({
 
 const user = computed(() => authStore.user)
 const activeSubscriptions = computed(() => subscriptionStore.activeSubscriptions)
-
-function getDaysRemaining(expiresAt: string): number {
-  const diff = new Date(expiresAt).getTime() - Date.now()
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
-}
 
 const loading = ref(true)
 const submitting = ref(false)
@@ -987,23 +975,6 @@ async function selectPlan(plan: SubscriptionPlan) {
     return
   }
   applySelectedPlan(plan)
-}
-
-function findCheckoutPlan(planId: number): SubscriptionPlan | undefined {
-  return checkout.value.plans.find(plan => plan.id === planId)
-}
-
-function resolveSubscriptionPlan(sub: UserSubscription): UserSubscription['plan'] | SubscriptionPlan | undefined {
-  return sub.plan ?? findCheckoutPlan(sub.plan_id)
-}
-
-
-function subscriptionName(sub: UserSubscription): string {
-  return resolveSubscriptionPlan(sub)?.name || `Plan #${sub.plan_id}`
-}
-
-function subscriptionUnlimited(sub: UserSubscription): boolean {
-  return !hasPlanQuota(sub.daily_limit_usd) && !hasPlanQuota(sub.weekly_limit_usd) && !hasPlanQuota(sub.monthly_limit_usd)
 }
 
 function hasPlanQuota(value: number | null | undefined): boolean {
