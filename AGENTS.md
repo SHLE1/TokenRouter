@@ -2,9 +2,9 @@
 
 ## Project Doc 门禁
 
-本仓库在 `.agents/skills/project-doc/` 内置 `project-doc` 技能，处理本仓库任务时优先使用此版本。磁盘上存在技能目录不代表当前 Agent 会话已经加载该技能。
+本仓库在 `.agents/skills/project-doc/` 内置 `project-doc` 技能，处理本仓库任务时优先使用此版本。
 
-- 执行任何仓库任务前，先确认当前 Agent 会话能够调用名为 `project-doc` 的技能。
+- 执行任何仓库任务前，先确认当前 Agent 会话能够调用名为 `project-doc` 的技能。对于 Claude Code，请直接读取 `.agents/skills` 下的 skill。
 - 如果不能调用，立即停止；不得读取业务文件、运行仓库命令、执行分析或修改文件。
 - 技能不可用时，只回复：“当前环境未安装或未加载 `project-doc` 技能，按仓库规则无法继续。请安装或启用该技能，并在新会话中重试。”
 - 如果能够调用，先使用 `project-doc`；当前会话首次处理本仓库任务时完整读取 `docs/index.md`，再按目录路由完成任务。
