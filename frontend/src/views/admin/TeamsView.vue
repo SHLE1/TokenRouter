@@ -36,6 +36,7 @@
 
       <template #table>
         <DataTable
+          column-order-storage-key="admin-teams-column-order"
           :columns="columns"
           :data="paginatedTeams"
           :loading="loading"

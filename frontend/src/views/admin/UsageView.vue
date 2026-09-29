@@ -134,6 +134,7 @@
 
       <div v-show="activeTab === 'usage'" v-content-reveal="activeTab === 'usage'" class="space-y-4" data-testid="admin-usage-table-section">
         <UsageTable
+          column-order-storage-key="admin-usage-column-order"
           :data="usageLogs"
           :loading="loading"
           :columns="visibleColumns"

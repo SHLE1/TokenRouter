@@ -74,6 +74,7 @@
 
       <template #table>
         <DataTable
+          column-order-storage-key="admin-redeem-column-order"
           :columns="columns"
           :data="codes"
           :loading="loading"

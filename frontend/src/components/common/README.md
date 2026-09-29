@@ -16,6 +16,7 @@ A generic data table component with sorting, loading states, and custom cell ren
 - `defaultSortKey?: string` - Default sort key (only used if no persisted sort state)
 - `defaultSortOrder?: 'asc' | 'desc'` - Default sort order (default: `asc`)
 - `sortStorageKey?: string` - Persist sort state (key + order) to localStorage
+- `columnOrderStorageKey?: string` - Enable header drag handles and persist column order under a stable, table-specific key. Left/right arrow keys also move a focused handle. Selection and action columns keep their positions; hidden columns retain their saved order.
 - `rowKey?: string | (row: any) => string | number` - Row key field or resolver (defaults to `row.id`, falls back to index)
 
 **Slots:**

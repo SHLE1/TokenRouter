@@ -31,6 +31,7 @@ export default {
     no: 'No',
     all: 'All',
     selectAll: 'Select all',
+    reorderColumn: 'Drag to move {column}, or use the left and right arrow keys',
     none: 'None',
     or: 'or',
     noData: 'No data',

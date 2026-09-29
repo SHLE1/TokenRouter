@@ -105,6 +105,7 @@
 
       <template #table>
         <DataTable
+          column-order-storage-key="user-keys-column-order"
           :columns="columns"
           :data="apiKeys"
           :loading="loading"

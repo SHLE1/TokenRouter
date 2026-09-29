@@ -35,6 +35,7 @@
 
       <template #table>
         <DataTable
+          column-order-storage-key="admin-promo-codes-column-order"
           :columns="columns"
           :data="codes"
           :loading="loading"

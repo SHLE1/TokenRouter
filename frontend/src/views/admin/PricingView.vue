@@ -53,6 +53,7 @@
 
       <template #table>
         <DataTable
+          column-order-storage-key="admin-pricing-column-order"
           :columns="columns"
           :data="pricingConfigs"
           :loading="loading"

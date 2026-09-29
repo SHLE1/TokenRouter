@@ -118,6 +118,7 @@
 
       <template #table>
         <DataTable
+          column-order-storage-key="admin-groups-column-order"
           :columns="columns"
           :data="groups"
           :loading="loading"

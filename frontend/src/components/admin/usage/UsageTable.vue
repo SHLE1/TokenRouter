@@ -18,6 +18,7 @@
     </div>
     <div class="overflow-auto">
       <DataTable
+        :column-order-storage-key="columnOrderStorageKey"
         :columns="columns"
         :data="data"
         :loading="loading"
@@ -713,6 +714,8 @@ interface Props {
   data: AdminUsageLog[]
   loading?: boolean
   columns: Column[]
+  /** 用户端和管理端分别保存列顺序。 */
+  columnOrderStorageKey?: string
   serverSideSort?: boolean
   defaultSortKey?: string
   defaultSortOrder?: 'asc' | 'desc'
@@ -732,6 +735,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
+  columnOrderStorageKey: 'usage-column-order',
   serverSideSort: false,
   defaultSortKey: '',
   defaultSortOrder: 'asc',

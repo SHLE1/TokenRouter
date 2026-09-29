@@ -224,6 +224,7 @@
         />
         <div ref="providerTableRef" class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DataTable
+          column-order-storage-key="admin-providers-column-order"
           ref="dataTableRef"
           :columns="cols"
           :data="providers"
@@ -248,7 +249,12 @@
             />
           </template>
           <template #cell-select="{ row }">
-            <input type="checkbox" :checked="isSelected(row.id)" @change="toggleSel(row.id)" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" />
+            <input
+              type="checkbox"
+              :checked="isSelected(row.id)"
+              @change="toggleSel(row.id)"
+              class="h-4 w-4 cursor-pointer rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
           </template>
           <template #cell-id="{ value }">
             <span class="font-mono text-xs text-gray-500 dark:text-gray-400">#{{ value }}</span>

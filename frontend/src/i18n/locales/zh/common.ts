@@ -31,6 +31,7 @@ export default {
     no: '否',
     all: '全部',
     selectAll: '全选',
+    reorderColumn: '拖动调整“{column}”的位置，也可使用左右方向键',
     none: '无',
     or: '或',
     noData: '暂无数据',

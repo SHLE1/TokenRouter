@@ -42,6 +42,7 @@
 
       <template #table>
         <DataTable
+          column-order-storage-key="admin-announcements-column-order"
           :columns="columns"
           :data="announcements"
           :loading="loading"

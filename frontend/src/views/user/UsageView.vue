@@ -224,6 +224,7 @@
 
       <div v-if="activeTab === 'usage'" v-content-reveal class="space-y-4" data-tour="team-usage-records">
         <UsageTable
+          column-order-storage-key="user-usage-column-order"
           :data="usageLogs"
           :loading="loading"
           :columns="visibleColumns"

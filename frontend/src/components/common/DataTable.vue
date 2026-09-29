@@ -99,6 +99,9 @@
       'actions-expanded': actionsExpanded,
       'is-scrollable': isScrollable
     }"
+    @dragover="handleTableDragOver"
+    @dragenter="handleTableDragOver"
+    @dragleave="handleTableDragLeave"
   >
     <table class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
       <thead class="table-header bg-gray-50 dark:bg-dark-900">
@@ -106,7 +109,7 @@
           <th
             v-if="selectable"
             scope="col"
-            class="sticky-header-cell w-11 min-w-11 px-3 py-2 text-center"
+            class="sticky-header-cell table-selection-cell py-2"
           >
             <input
               type="checkbox"
@@ -119,20 +122,45 @@
             />
           </th>
           <th data-icon-trigger
-            v-for="(column, index) in columns"
+            v-for="(column, index) in orderedColumns"
             :key="column.key"
+            :data-column-key="column.key"
             scope="col"
             :aria-sort="column.sortable ? getColumnAriaSort(column.key) : undefined"
             :class="[
               'sticky-header-cell py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-300',
-              getAdaptivePaddingClass(),
+              getColumnLayoutClass(column),
               { 'cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-700': column.sortable },
+              {
+                'opacity-50': draggingColumn === column.key,
+                'column-drop-before': dropTarget?.key === column.key && dropTarget.side === 'before',
+                'column-drop-after': dropTarget?.key === column.key && dropTarget.side === 'after'
+              },
               getStickyColumnClass(column, index),
               column.class
             ]"
             @click="column.sortable && handleSort(column.key)"
+            @dragover="handleColumnDragOver($event, column.key)"
+            @dragenter="handleColumnDragOver($event, column.key)"
+            @drop="handleColumnDrop($event, column.key)"
           >
             <div :class="['flex items-center space-x-1', getHeaderContentAlignmentClass(column)]">
+              <button
+                v-if="canReorder(column.key)"
+                type="button"
+                draggable="true"
+                class="column-drag-handle"
+                :data-column-key="column.key"
+                :title="t('common.reorderColumn', { column: column.label })"
+                :aria-label="t('common.reorderColumn', { column: column.label })"
+                @click.stop
+                @dragstart.stop="startColumnDrag($event, column.key)"
+                @dragend="endColumnDrag"
+                @keydown.left.prevent.stop="moveColumnByKeyboard(column.key, -1)"
+                @keydown.right.prevent.stop="moveColumnByKeyboard(column.key, 1)"
+              >
+                <Icon name="grip" size="sm" class="pointer-events-none" :animate-on-hover="false" />
+              </button>
               <slot
                 :name="`header-${column.key}`"
                 :column="column"
@@ -168,11 +196,15 @@
       <tbody class="table-body divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
         <!-- 表格按列占位，与移动端卡片共用骨架配方。 -->
         <tr v-if="loading" v-for="i in 5" :key="i">
-          <td v-if="selectable" class="w-11 min-w-11 px-3 py-3">
+          <td v-if="selectable" class="table-selection-cell py-3">
             <Skeleton :width="16" :height="16" class="mx-auto" />
           </td>
-          <td v-for="column in columns" :key="column.key" :class="['whitespace-nowrap py-3', getAdaptivePaddingClass()]">
-            <Skeleton width="75%" :height="16" />
+          <td v-for="column in orderedColumns" :key="column.key" :class="['whitespace-nowrap py-3', getColumnLayoutClass(column)]">
+            <Skeleton
+              :width="column.key === 'select' ? 16 : '75%'"
+              :height="16"
+              :class="column.key === 'select' ? 'mx-auto' : ''"
+            />
           </td>
         </tr>
 
@@ -180,7 +212,7 @@
         <tr v-else-if="!data || data.length === 0">
           <td
             :colspan="tableColumnCount"
-            :class="['py-12 text-center text-gray-500 dark:text-dark-400', getAdaptivePaddingClass()]"
+            :class="['py-12 text-center text-gray-500 dark:text-dark-400', getColumnLayoutClass()]"
           >
             <slot name="empty">
               <div class="flex flex-col items-center">
@@ -217,7 +249,7 @@
             }"
             @click="clickableRows && emit('rowClick', item.row)"
           >
-            <td v-if="selectable" class="w-11 min-w-11 px-3 py-3 text-center">
+            <td v-if="selectable" class="table-selection-cell py-3">
               <input
                 type="checkbox"
                 class="h-4 w-4 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
@@ -229,11 +261,12 @@
               />
             </td>
             <td
-              v-for="(column, colIndex) in columns"
+              v-for="(column, colIndex) in orderedColumns"
               :key="column.key"
+              :data-column-key="column.key"
               :class="[
                 'whitespace-nowrap py-3 text-sm text-gray-900 dark:text-dark-100',
-                getAdaptivePaddingClass(),
+                getColumnLayoutClass(column),
                 getStickyColumnClass(column, colIndex),
                 column.class
               ]"
@@ -267,6 +300,7 @@ import type { Column } from './types'
 import Icon from '@/components/icons/Icon.vue'
 import Skeleton from './Skeleton.vue'
 import { TABLE_DESKTOP_MEDIA_QUERY } from '@/constants/layout'
+import { useTableColumnOrder } from '@/composables/useTableColumnOrder'
 
 const { t } = useI18n()
 
@@ -449,6 +483,8 @@ interface Props {
    * If provided, DataTable will load the stored sort state on mount.
    */
   sortStorageKey?: string
+  /** 提供稳定的表格标识以启用列拖拽，并在当前浏览器保存列顺序。 */
+  columnOrderStorageKey?: string
   /**
    * Enable server-side sorting mode. When true, clicking sort headers
    * will emit 'sort' events instead of performing client-side sorting.
@@ -487,6 +523,92 @@ const props = withDefaults(defineProps<Props>(), {
 const sortKey = ref<string>('')
 const sortOrder = ref<'asc' | 'desc'>('asc')
 const actionsExpanded = ref(false)
+
+const { orderedColumns, movableColumns, canReorder, moveColumn } = useTableColumnOrder(
+  () => props.columns,
+  computed(() => props.columnOrderStorageKey)
+)
+const draggingColumn = ref<string | null>(null)
+const dropTarget = ref<{ key: string; side: 'before' | 'after' } | null>(null)
+let dragScrollFrame: number | null = null
+let dragScrollSpeed = 0
+
+const endColumnDrag = () => {
+  draggingColumn.value = null
+  dropTarget.value = null
+  dragScrollSpeed = 0
+  if (dragScrollFrame !== null) cancelAnimationFrame(dragScrollFrame)
+  dragScrollFrame = null
+}
+
+const startColumnDrag = (event: DragEvent, key: string) => {
+  if (!canReorder(key) || !event.dataTransfer) {
+    event.preventDefault()
+    return
+  }
+  draggingColumn.value = key
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', key)
+}
+
+// 宽表格拖到边缘时继续滚动，便于把列移到当前视口以外。
+const scrollDuringColumnDrag = () => {
+  if (!draggingColumn.value || !tableWrapperRef.value || dragScrollSpeed === 0) {
+    dragScrollFrame = null
+    return
+  }
+  tableWrapperRef.value.scrollLeft += dragScrollSpeed
+  dragScrollFrame = requestAnimationFrame(scrollDuringColumnDrag)
+}
+
+const handleTableDragOver = (event: DragEvent) => {
+  if (!draggingColumn.value || !tableWrapperRef.value) return
+  event.preventDefault()
+  const rect = tableWrapperRef.value.getBoundingClientRect()
+  dragScrollSpeed = event.clientX < rect.left + 48 ? -12 : event.clientX > rect.right - 48 ? 12 : 0
+  if (dragScrollFrame === null && dragScrollSpeed !== 0) {
+    dragScrollFrame = requestAnimationFrame(scrollDuringColumnDrag)
+  }
+}
+
+const handleTableDragLeave = (event: DragEvent) => {
+  if (event.relatedTarget instanceof Node && tableWrapperRef.value?.contains(event.relatedTarget)) return
+  dragScrollSpeed = 0
+  dropTarget.value = null
+}
+
+const handleColumnDragOver = (event: DragEvent, key: string) => {
+  if (!draggingColumn.value || !canReorder(key) || key === draggingColumn.value) {
+    dropTarget.value = null
+    return
+  }
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  dropTarget.value = { key, side: event.clientX < rect.left + rect.width / 2 ? 'before' : 'after' }
+}
+
+const handleColumnDrop = (event: DragEvent, key: string) => {
+  if (!draggingColumn.value) return
+  event.preventDefault()
+  if (dropTarget.value?.key === key) {
+    moveColumn(draggingColumn.value, key, dropTarget.value.side)
+  }
+  endColumnDrag()
+}
+
+const moveColumnByKeyboard = async (key: string, direction: number) => {
+  const index = movableColumns.value.findIndex(column => column.key === key)
+  const target = movableColumns.value[index + direction]
+  if (!target || !moveColumn(key, target.key, direction < 0 ? 'before' : 'after')) return
+  await nextTick()
+  // 移动 DOM 节点后恢复手柄焦点，允许连续用方向键调整。
+  const handles = tableWrapperRef.value?.querySelectorAll<HTMLButtonElement>('.column-drag-handle')
+  Array.from(handles ?? []).find(handle => handle.dataset.columnKey === key)?.focus()
+}
+
+watch([() => props.columnOrderStorageKey, isDesktopViewport], endColumnDrag)
+onUnmounted(endColumnDrag)
 
 type PersistedSortState = {
   key: string
@@ -569,6 +691,7 @@ const getColumnAriaSort = (key: string) => {
 }
 
 const getHeaderContentAlignmentClass = (column: Column) => {
+  if (column.key === 'select') return 'justify-center'
   const className = column.class || ''
   if (className.includes('text-center')) return 'justify-center'
   if (className.includes('text-right')) return 'justify-end'
@@ -636,9 +759,9 @@ const resolveStableRowKey = (row: any): string | number | undefined => {
 
 const resolveRowKey = (row: any, index: number) => resolveStableRowKey(row) ?? index
 
-const dataColumns = computed(() => props.columns.filter((column) => column.key !== 'actions'))
+const dataColumns = computed(() => orderedColumns.value.filter((column) => column.key !== 'actions'))
 const columnsSignature = computed(() =>
-  props.columns.map((column) => `${column.key}:${column.sortable ? '1' : '0'}`).join('|')
+  orderedColumns.value.map((column) => `${column.key}:${column.sortable ? '1' : '0'}`).join('|')
 )
 
 watch(
@@ -858,20 +981,10 @@ const hasSelectColumn = computed(() => {
 const getStickyColumnClass = (column: Column, index: number) => {
   const classes: string[] = []
 
-  if (props.stickyFirstColumn) {
-    // 如果第一列是勾选列，固定前两列（勾选+名称）
-    if (hasSelectColumn.value) {
-      if (index === 0) {
-        classes.push('sticky-col sticky-col-left-first')
-      } else if (index === 1) {
-        classes.push('sticky-col sticky-col-left-second')
-      }
-    } else {
-      // 否则只固定第一列
-      if (index === 0) {
-        classes.push('sticky-col sticky-col-left')
-      }
-    }
+  // 选择列随横向滚动移出，首个数据列在到达左边缘后固定。
+  const firstDataColumnIndex = hasSelectColumn.value ? 1 : 0
+  if (props.stickyFirstColumn && index === firstDataColumnIndex) {
+    classes.push('sticky-col sticky-col-left')
   }
 
   // 操作列固定（最后一列）
@@ -882,8 +995,10 @@ const getStickyColumnClass = (column: Column, index: number) => {
   return classes.join(' ')
 }
 
-// 根据列数自适应调整内边距
-const getAdaptivePaddingClass = () => {
+// 选择列单独控制宽度，其余列按列数调整内边距。
+const getColumnLayoutClass = (column?: Column) => {
+  // 自定义选择列与内置行选择使用相同的宽度和居中布局。
+  if (column?.key === 'select') return 'table-selection-cell'
   const columnCount = props.columns.length
 
   // 列数越多，内边距越小
@@ -955,7 +1070,6 @@ defineExpose({
 <style scoped>
 /* 表格横向滚动 */
 .table-wrapper {
-  --select-col-width: 52px; /* 勾选列宽度：px-6 (24px*2) + checkbox (16px) */
   --sticky-boundary-line-color: rgb(228 228 231);
   position: relative;
   overflow-x: auto;
@@ -967,6 +1081,24 @@ defineExpose({
 
 .dark .table-wrapper {
   --sticky-boundary-line-color: theme('borderColor.dark.600');
+}
+
+/* 选择列布局由表格自身维护，避免外层页面的通用单元格样式覆盖。 */
+.table-wrapper .table-selection-cell {
+  @apply w-11 min-w-11 px-3 text-center;
+}
+
+/* 拖拽手柄与排序指示器同高，保持表头密度。 */
+.column-drag-handle {
+  @apply inline-flex h-5 w-4 shrink-0 cursor-grab items-center justify-center rounded-compact text-gray-400 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 active:cursor-grabbing dark:text-dark-400 dark:hover:text-primary-400;
+}
+
+.column-drop-before {
+  box-shadow: inset 3px 0 0 theme('colors.primary.500');
+}
+
+.column-drop-after {
+  box-shadow: inset -3px 0 0 theme('colors.primary.500');
 }
 
 /* 表头容器，确保在滚动时覆盖表体内容 */
@@ -1005,19 +1137,9 @@ defineExpose({
   z-index: 20; /* 表体固定列 */ /* check-ui-allow: 局部堆叠 */
 }
 
-/* 单列固定（无勾选列时） */
+/* 首个数据列贴住左边缘，选择列不占用固定区域。 */
 .sticky-col-left {
   left: 0;
-}
-
-/* 双列固定（有勾选列时）：第一列（勾选） */
-.sticky-col-left-first {
-  left: 0;
-}
-
-/* 双列固定（有勾选列时）：第二列（名称） */
-.sticky-col-left-second {
-  left: var(--select-col-width);
 }
 
 /* 操作列固定 */
@@ -1049,8 +1171,7 @@ tbody tr:hover .sticky-col {
 }
 
 /* 所有固定列统一使用细线边界，避免滚动时出现渐变阴影带。 */
-.sticky-boundary-line.is-scrollable .sticky-col-left::after,
-.sticky-boundary-line.is-scrollable .sticky-col-left-second::after {
+.sticky-boundary-line.is-scrollable .sticky-col-left::after {
   content: '';
   position: absolute;
   top: 0;

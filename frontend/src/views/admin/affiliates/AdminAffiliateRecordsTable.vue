@@ -29,6 +29,7 @@
           default-sort-key="created_at"
           default-sort-order="desc"
           :sort-storage-key="sortStorageKey"
+          :column-order-storage-key="`${sortStorageKey}-columns`"
           @sort="handleSort"
         >
           <template #cell-inviter="{ row }">

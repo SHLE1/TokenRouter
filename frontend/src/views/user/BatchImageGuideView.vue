@@ -86,6 +86,7 @@
 
       <template #table>
         <DataTable
+          column-order-storage-key="batch-image-column-order"
           :columns="columns"
           :data="visibleBatchJobs"
           :loading="loadingKeys || loadingJobs"
@@ -892,7 +893,7 @@ const outputCountSelectOptions = computed<SelectOption[]>(() =>
 )
 
 const columns = computed<Column[]>(() => [
-  { key: 'select', label: '', sortable: false, class: 'w-12 text-center' },
+  { key: 'select', label: '', sortable: false },
   { key: 'id', label: t('batchImage.columns.taskName'), sortable: false, class: 'w-[240px] max-w-[240px]' },
   { key: 'model', label: t('batchImage.columns.model'), sortable: false, class: 'w-[180px] max-w-[180px] text-center' },
   { key: 'api_key_name', label: t('batchImage.columns.apiKey'), sortable: false, class: 'w-40 max-w-40 text-center' },
