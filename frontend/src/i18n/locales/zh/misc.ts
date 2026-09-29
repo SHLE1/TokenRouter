@@ -211,7 +211,7 @@ marketplace: {
     startsAt: '开始时间',
     expires: '到期时间',
     noExpiration: '无到期时间',
-    extendsThrough: '当前订阅结束后延续至 {date}',
+    currentPackEnds: '当前套餐 {date} 结束',
     unlimited: '无限制',
     unlimitedDesc: '该订阅无用量限制',
     daily: '每日',

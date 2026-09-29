@@ -214,7 +214,7 @@ marketplace: {
     startsAt: 'Starts at',
     expires: 'Expires',
     noExpiration: 'No expiration',
-    extendsThrough: 'Extends through {date}',
+    currentPackEnds: 'Current pack ends {date}',
     unlimited: 'Unlimited',
     unlimitedDesc: 'No usage limits on this subscription',
     daily: 'Daily',
