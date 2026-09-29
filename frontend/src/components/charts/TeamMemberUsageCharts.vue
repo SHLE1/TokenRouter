@@ -4,9 +4,7 @@
       <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
         {{ t('usage.teamMemberTrend') }}
       </h3>
-      <div v-if="loading" class="flex h-48 items-center justify-center">
-        <LoadingSpinner />
-      </div>
+      <ChartSkeleton v-if="loading" variant="plot" />
       <div v-else-if="lineData" class="h-48">
         <Line :data="lineData" :options="lineOptions" />
       </div>
@@ -19,9 +17,7 @@
       <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
         {{ t('usage.teamMemberComparison') }}
       </h3>
-      <div v-if="loading" class="flex h-48 items-center justify-center">
-        <LoadingSpinner />
-      </div>
+      <ChartSkeleton v-if="loading" variant="plot" />
       <div v-else-if="comparisonData" class="h-48">
         <Bar :data="comparisonData" :options="comparisonOptions" />
       </div>
@@ -46,7 +42,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import { Bar, Line } from 'vue-chartjs'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { useChartTheme, CHART_TICK_FONT_SIZE, CHART_LEGEND_FONT_SIZE } from '@/composables/useChartTheme'
 import { externalTooltipHandler, hideExternalTooltip } from '@/utils/chartExternalTooltip'

@@ -56,7 +56,7 @@
     <template v-if="!isAuthenticated">
       <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-      <header class="glass relative z-20 border-b border-primary-900/10 px-4 dark:border-dark-600/80 sm:px-6">
+      <header class="site-header relative z-20 border-b border-primary-900/10 px-4 sm:px-6">
         <nav class="mx-auto flex h-[var(--header-h)] max-w-7xl items-center justify-between gap-4">
           <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
             <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">
@@ -162,10 +162,7 @@
           </div>
         </div>
 
-        <div v-if="loading" class="card px-6 py-14 text-center">
-          <LoadingSpinner size="lg" />
-          <p class="mt-4 text-sm text-gray-500 dark:text-dark-400">{{ t('common.loading') }}</p>
-        </div>
+        <ModelMarketplaceSkeleton v-if="loading" />
 
         <div v-else-if="errorMessage" class="card border-red-200 p-6 dark:border-red-500/30">
           <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -316,7 +313,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ModelMarketplaceSkeleton from '@/components/marketplace/ModelMarketplaceSkeleton.vue'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import GroupAvailabilityBar from '@/components/marketplace/GroupAvailabilityBar.vue'
 import ModelCapabilityTags from '@/components/marketplace/ModelCapabilityTags.vue'

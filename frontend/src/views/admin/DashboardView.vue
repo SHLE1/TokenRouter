@@ -14,9 +14,7 @@
 
     <div class="space-y-6">
       <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <LoadingSpinner />
-      </div>
+      <DashboardSkeleton v-if="loading && !stats" />
 
       <template v-else-if="stats">
         <!-- Row 1: Core Stats -->
@@ -282,9 +280,7 @@
               {{ t('admin.dashboard.recentUsage') }} (Top 12)
             </h3>
             <div class="h-64">
-              <div v-if="userTrendLoading" class="flex h-full items-center justify-center">
-                <LoadingSpinner size="md" />
-              </div>
+              <ChartSkeleton v-if="userTrendLoading" height="100%" />
               <Line v-else-if="userTrendChartData" :data="userTrendChartData" :options="lineOptions" />
               <div
                 v-else
@@ -317,7 +313,8 @@ import type {
   UserSpendingRankingItem
 } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
+import DashboardSkeleton from '@/components/common/DashboardSkeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
@@ -358,7 +355,7 @@ const router = useRouter()
 const { formatBalanceAmount, formatUsdAmount } = useBalanceDisplay()
 const { refreshBatchImageAccess } = useBatchImageAccess()
 const stats = ref<DashboardStats | null>(null)
-const loading = ref(false)
+const loading = ref(true)
 const chartsLoading = ref(false)
 const userTrendLoading = ref(false)
 const rankingLoading = ref(false)

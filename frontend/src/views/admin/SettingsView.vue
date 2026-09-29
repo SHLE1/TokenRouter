@@ -1,12 +1,8 @@
 <template>
   <AppLayout>
     <div class="mx-auto max-w-6xl space-y-6">
-      <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <div
-          class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"
-        ></div>
-      </div>
+      <!-- 设置尚未返回时，先保留页签和表单控件的位置。 -->
+      <SettingsSkeleton v-if="loading" />
 
       <!-- Settings Form -->
       <form v-else @submit.prevent="saveSettings" class="space-y-6" novalidate>
@@ -8758,6 +8754,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import SettingsSkeleton from "@/components/admin/SettingsSkeleton.vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { adminAPI } from "@/api";

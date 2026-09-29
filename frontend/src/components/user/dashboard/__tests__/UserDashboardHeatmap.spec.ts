@@ -75,6 +75,22 @@ describe('UserDashboardHeatmap', () => {
     vi.mocked(usageAPI.getDashboardTrend).mockReset()
   })
 
+  it('首次请求未返回时也有占位格，成功后替换为日期数据', async () => {
+    let resolveTrend!: (value: typeof emptyTrend) => void
+    vi.mocked(usageAPI.getDashboardTrend).mockImplementationOnce(() => new Promise(resolve => { resolveTrend = resolve }))
+    const wrapper = await mountHeatmap()
+    expect(wrapper.findAll('[data-testid="heatmap-skeleton-cell"]').length).toBeGreaterThan(0)
+    expect(wrapper.find('[data-testid="heatmap-cell"]').exists()).toBe(false)
+    expect(wrapper.attributes('aria-busy')).toBe('true')
+
+    resolveTrend(emptyTrend)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="heatmap-skeleton-cell"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="heatmap-cell"]').exists()).toBe(true)
+    expect(wrapper.attributes('aria-busy')).toBe('false')
+    wrapper.unmount()
+  })
+
   it('按近三年整周范围请求按日趋势数据', async () => {
     vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(emptyTrend)
 

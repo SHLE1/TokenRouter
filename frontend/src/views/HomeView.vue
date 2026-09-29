@@ -21,7 +21,7 @@
   <div v-else class="ba-theme-shell relative flex min-h-screen flex-col overflow-hidden text-gray-950 dark:text-white">
     <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-    <header class="glass relative z-20 border-b border-primary-900/10 px-4 dark:border-dark-600/80 sm:px-6">
+    <header class="site-header relative z-20 border-b border-primary-900/10 px-4 sm:px-6">
       <nav class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4">
         <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
           <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">

@@ -28,9 +28,19 @@
       <div
         v-if="loading"
         data-testid="announcement-timeline-loading"
-        class="flex items-center justify-center py-12"
+        class="space-y-5 py-4"
+        role="status"
+        :aria-label="t('common.loading')"
+        aria-busy="true"
       >
-        <LoadingSpinner size="lg" />
+        <div v-for="row in 3" :key="row" class="flex items-start gap-4" aria-hidden="true">
+          <Skeleton variant="circle" :width="12" :height="12" class="shrink-0" />
+          <div class="min-w-0 flex-1 space-y-3">
+            <Skeleton width="65%" :height="16" />
+            <Skeleton width="90%" :height="12" />
+            <Skeleton width="35%" :height="12" />
+          </div>
+        </div>
       </div>
 
       <div v-else-if="timelineItems.length === 0" class="py-8">
@@ -124,7 +134,7 @@ import { formatDate, formatDateTime } from '@/utils/format'
 import type { UserAnnouncement } from '@/types'
 import AnnouncementPopup from '@/components/common/AnnouncementPopup.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const MAX_ANNOUNCEMENTS = 5

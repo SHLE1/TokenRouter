@@ -1,5 +1,5 @@
 <template>
-  <header class="glass fixed inset-x-0 top-0 z-header border-b border-primary-900/10 dark:border-dark-600">
+  <header class="site-header fixed inset-x-0 top-0 z-header border-b border-primary-900/10">
     <!-- 水平内边距与主内容区保持同一条链，两侧边缘在所有断点对齐。 -->
     <div class="flex h-[var(--header-h)] items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
       <!-- 品牌固定在全局顶栏，避免与侧栏和页面标题争夺层级。 -->

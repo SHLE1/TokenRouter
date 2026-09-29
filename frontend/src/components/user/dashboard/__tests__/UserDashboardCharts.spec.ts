@@ -21,6 +21,18 @@ vi.mock('@/composables/useBalanceDisplay', () => ({
 }))
 
 describe('UserDashboardCharts', () => {
+  it('图表数据加载期间显示骨架，不显示暂无数据', async () => {
+    const wrapper = mount(UserDashboardCharts, {
+      props: { loading: true, startDate: '', endDate: '', granularity: 'day', trend: [], models: [] },
+      global: { stubs: { DateRangePicker: true, Select: true, TokenUsageTrend: true } }
+    })
+    expect(wrapper.find('[aria-busy="true"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="model-distribution-empty"]').exists()).toBe(false)
+    await wrapper.setProps({ loading: false })
+    expect(wrapper.find('[data-testid="model-distribution-empty"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('only renders the centered empty state when model data is absent', () => {
     const wrapper = mount(UserDashboardCharts, {
       props: {

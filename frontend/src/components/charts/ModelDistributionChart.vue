@@ -96,9 +96,7 @@
       </div>
     </div>
 
-    <div v-if="activeView === 'model_distribution' && loading" class="flex h-48 items-center justify-center">
-      <LoadingSpinner />
-    </div>
+    <ChartSkeleton v-if="activeView === 'model_distribution' && loading" variant="distribution" />
     <div
       v-else-if="activeView === 'model_distribution' && displayModelStats.length > 0 && chartData"
       class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6"
@@ -174,9 +172,7 @@
       {{ t('admin.dashboard.noDataAvailable') }}
     </div>
 
-    <div v-else-if="rankingLoading" class="flex h-48 items-center justify-center">
-      <LoadingSpinner />
-    </div>
+    <ChartSkeleton v-else-if="rankingLoading" variant="distribution" />
     <div
       v-else-if="rankingError"
       class="flex h-48 items-center justify-center text-sm text-gray-500 dark:text-gray-400"
@@ -249,7 +245,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'vue-chartjs'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import UserBreakdownSubTable from './UserBreakdownSubTable.vue'
 import { toLogarithmicDisplayValues } from '@/utils/chartDisplayScale'

@@ -1,14 +1,14 @@
 <template>
-  <div v-if="!isDesktopViewport" class="space-y-3">
+  <div v-if="!isDesktopViewport" class="space-y-3" :aria-busy="loading">
     <template v-if="loading">
       <div v-for="i in 5" :key="i" class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
         <div class="space-y-3">
           <div v-for="column in dataColumns" :key="column.key" class="flex justify-between">
-            <div class="h-4 w-20 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
-            <div class="h-4 w-32 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
+            <Skeleton :width="80" :height="16" />
+            <Skeleton :width="128" :height="16" />
           </div>
           <div v-if="hasActionsColumn" class="border-t border-gray-200 pt-3 dark:border-dark-700">
-            <div class="h-8 w-full animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
+            <Skeleton :height="32" />
           </div>
         </div>
       </div>
@@ -94,6 +94,7 @@
     v-else
     ref="tableWrapperRef"
     class="table-wrapper sticky-boundary-line"
+    :aria-busy="loading"
     :class="{
       'actions-expanded': actionsExpanded,
       'is-scrollable': isScrollable
@@ -167,15 +168,13 @@
         </tr>
       </thead>
       <tbody class="table-body divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
-        <!-- Loading skeleton -->
+        <!-- 表格按列占位，与移动端卡片共用骨架配方。 -->
         <tr v-if="loading" v-for="i in 5" :key="i">
           <td v-if="selectable" class="w-11 min-w-11 px-3 py-3">
-            <div class="mx-auto h-4 w-4 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>
+            <Skeleton :width="16" :height="16" class="mx-auto" />
           </td>
           <td v-for="column in columns" :key="column.key" :class="['whitespace-nowrap py-3', getAdaptivePaddingClass()]">
-            <div class="animate-pulse">
-              <div class="h-4 w-3/4 rounded-compact bg-gray-200 dark:bg-dark-700"></div>
-            </div>
+            <Skeleton width="75%" :height="16" />
           </td>
         </tr>
 
@@ -268,6 +267,7 @@ import { useVirtualizer, observeElementRect as observeElementRectDefault } from 
 import { useI18n } from 'vue-i18n'
 import type { Column } from './types'
 import Icon from '@/components/icons/Icon.vue'
+import Skeleton from './Skeleton.vue'
 import { TABLE_DESKTOP_MEDIA_QUERY } from '@/constants/layout'
 
 const { t } = useI18n()

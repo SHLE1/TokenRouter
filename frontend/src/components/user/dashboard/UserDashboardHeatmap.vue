@@ -1,9 +1,6 @@
 <template>
-  <div ref="cardRef" class="card relative p-4">
-    <!-- 加载遮罩，与图表卡片保持一致 -->
-    <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-sm dark:bg-dark-800/50">
-      <LoadingSpinner size="md" />
-    </div>
+  <div ref="cardRef" class="card relative p-4" :aria-busy="loading">
+    <!-- 数据未返回时直接用日期格子占位，保留自适应网格和月份标签。 -->
 
     <div class="mb-4 flex items-center justify-between gap-2">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.activityHeatmap') }}</h3>
@@ -31,6 +28,22 @@
           gap: CELL_GAP,
         }"
       >
+        <!-- 首次取数还没有日期数据，也要按当前可见周数填满占位格。 -->
+        <template v-if="loading && days.length === 0">
+          <div
+            aria-hidden="true"
+            class="h-4 w-8 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700 motion-reduce:animate-none"
+            :style="{ gridColumn: 2, gridRow: 1 }"
+          ></div>
+          <div
+            v-for="cell in visibleWeeks * 7"
+            :key="`loading-${cell}`"
+            data-testid="heatmap-skeleton-cell"
+            aria-hidden="true"
+            class="heatmap-cell h-3 w-3 animate-pulse bg-gray-200 dark:bg-dark-700 motion-reduce:animate-none"
+            :style="{ gridColumn: Math.floor((cell - 1) / 7) + 2, gridRow: ((cell - 1) % 7) + 2 }"
+          ></div>
+        </template>
         <!-- 月份标签：本周首格月份与上一列不同才显示 -->
         <div
           v-for="m in monthItems"
@@ -53,9 +66,9 @@
           :key="day.date"
           data-testid="heatmap-cell"
           class="heatmap-cell h-3 w-3"
-          :class="day.future ? 'invisible' : levelClass(day.level)"
+          :class="day.future ? 'invisible' : loading ? 'animate-pulse bg-gray-200 dark:bg-dark-700 motion-reduce:animate-none' : levelClass(day.level)"
           :style="{ gridColumn: day.weekIndex + 2, gridRow: day.dayOfWeek + 2 }"
-          @mouseenter="onCellHover(day, $event)"
+          @mouseenter="!loading && onCellHover(day, $event)"
         />
       </div>
     </div>
@@ -89,7 +102,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { usageAPI } from '@/api/usage'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { formatDateLocalInput, formatNumberLocaleString as formatNumber, formatTokensK as formatTokens } from '@/utils/format'
@@ -126,7 +138,7 @@ interface HeatmapDay {
 const { t, locale } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()
 
-const loading = ref(false)
+const loading = ref(true)
 const days = ref<HeatmapDay[]>([])
 const hoveredDay = ref<HeatmapDay | null>(null)
 const cardRef = ref<HTMLElement | null>(null)
@@ -167,6 +179,7 @@ const computeLevel = (tokens: number, sortedNonZero: number[]): number => {
 
 const load = async () => {
   loading.value = true
+  hoveredDay.value = null
   try {
     const { start, end } = buildDateRange()
     const res = await usageAPI.getDashboardTrend({

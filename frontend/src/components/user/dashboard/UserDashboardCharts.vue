@@ -20,12 +20,10 @@
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <!-- Model Distribution Chart -->
       <div class="card relative overflow-hidden p-4">
-        <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-sm dark:bg-dark-800/50">
-          <LoadingSpinner size="md" />
-        </div>
         <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.modelDistribution') }}</h3>
         <!-- 桌面端顶部对齐，避免数据较少时表格被圆环图垂直居中。 -->
-        <div v-if="modelData" class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6" data-testid="model-distribution-content">
+        <ChartSkeleton v-if="loading" variant="distribution" />
+        <div v-else-if="modelData" class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6" data-testid="model-distribution-content">
           <div class="h-48 w-48 shrink-0">
             <Doughnut :data="modelData" :options="doughnutOptions" />
           </div>
@@ -66,7 +64,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Select from '@/components/common/Select.vue'
 import { Doughnut } from 'vue-chartjs'

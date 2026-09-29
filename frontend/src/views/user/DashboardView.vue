@@ -13,7 +13,7 @@
     </template>
 
     <div class="space-y-6">
-      <div v-if="loading" class="flex items-center justify-center py-12"><LoadingSpinner /></div>
+      <DashboardSkeleton v-if="loading && !stats" />
       <template v-else-if="stats">
         <UserDashboardStats :stats="stats" :balance="user?.balance || 0" />
         <UserDashboardCharts v-model:startDate="startDate" v-model:endDate="endDate" v-model:granularity="granularity" :loading="loadingCharts" :trend="trendData" :models="modelStats" @dateRangeChange="onDateRangeChange" @granularityChange="loadCharts" @refresh="refreshAll" />
@@ -34,7 +34,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useAnnouncementStore } from '@/stores/announcements'
 import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import DashboardSkeleton from '@/components/common/DashboardSkeleton.vue'
 import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.vue'
 import UserDashboardCharts from '@/components/user/dashboard/UserDashboardCharts.vue'
 import UserDashboardHeatmap from '@/components/user/dashboard/UserDashboardHeatmap.vue'
@@ -49,7 +49,7 @@ const { t } = useI18n()
 const announcementStore = useAnnouncementStore()
 const user = computed(() => authStore.user)
 const stats = ref<UserStatsType | null>(null)
-const loading = ref(false)
+const loading = ref(true)
 const loadingCharts = ref(false)
 const trendData = ref<TrendDataPoint[]>([])
 const modelStats = ref<ModelStat[]>([])
