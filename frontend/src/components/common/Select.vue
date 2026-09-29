@@ -493,8 +493,8 @@ onUnmounted(() => {
 /* 基线配方(h-9/px-4/py-1.5/边框/焦点环)已与 .input 同源,模板以 input input-trigger 组合;
    这里只保留展开/错误/禁用三个状态增量。 */
 .select-trigger-open {
-  /* 浅色展开态使用中性灰描边和外圈，避免筛选控件出现蓝色光晕。 */
-  @apply border-primary-900/10 ring-2 ring-black/10 dark:border-primary-500 dark:ring-primary-500/30;
+  /* 展开态使用中性描边和外圈，与输入框焦点保持一致。 */
+  @apply border-primary-900/10 ring-2 ring-black/10 dark:border-dark-400 dark:ring-white/10;
 }
 
 .select-trigger-error {
@@ -552,18 +552,19 @@ onUnmounted(() => {
   @apply px-4 py-2.5 text-sm;
   @apply text-gray-700 dark:text-gray-300;
   @apply cursor-pointer transition-colors duration-150;
-  @apply hover:bg-gray-50 dark:hover:bg-dark-800;
+  @apply hover:bg-gray-50 dark:hover:bg-dark-700;
   pointer-events: auto !important;
 }
 
 .select-dropdown-portal .select-option-selected {
-  /* 选中项保留品牌文字和勾选，仅将浅色背景中性化。 */
+  /* 深色选中项用中性灰底加亮白文字。 */
   @apply bg-gray-100 dark:bg-dark-700;
-  @apply text-primary-700 dark:text-primary-300;
+  @apply text-primary-700 dark:text-dark-50;
 }
 
 .select-dropdown-portal .select-option-focused {
-  @apply bg-gray-100 dark:bg-dark-800;
+  /* 键盘焦点与 hover 共用中性填充，保持已选项打开后的底色。 */
+  @apply bg-gray-100 dark:bg-dark-700;
 }
 
 .select-dropdown-portal .select-option-disabled {

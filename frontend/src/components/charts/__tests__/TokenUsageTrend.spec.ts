@@ -160,7 +160,7 @@ describe('TokenUsageTrend', () => {
     })
 
     expect(JSON.parse(wrapper.find('.chart-options').text()).plugins.legend.labels.color).toBe(
-      '#E4E4E7'
+      '#DEE0E2'
     )
 
     setTheme(false)

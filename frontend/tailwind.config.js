@@ -98,20 +98,20 @@ export default {
           900: '#18181B',
           950: '#09090B'
         },
-        // 深色模式背景 - 成熟黑色系(zinc 中性色相),品牌蓝仅作强调色
-        // 注意:950 比 900 略亮,历史上作为"提升面"(elevated surface)使用,保持该关系
+        // @project-doc docs/architecture/frontend_ui_conventions.md#dark_colors
+        // 深色表面接近页面底色，以主边框分层；控件底略亮于卡片。
         dark: {
-          50: '#FAFAFA',
-          100: '#F0F0F1',
-          200: '#D9D9DE',
-          300: '#A6A6AF',
-          400: '#77777F',
-          500: '#55555C',
-          600: '#333338',
-          700: '#29292E',
-          800: '#1F1F23',
-          900: '#121215',
-          950: '#18181B'
+          50: '#FAFAFA', // 标题与强调文字
+          100: '#DEE0E2', // 正文文字
+          200: '#D4D4D8', // 次强文字、占位文字底色
+          300: '#A1A1AA', // 次要文字、导航默认文字
+          400: '#8B8B94', // 辅助文字、表头文字
+          500: '#5F5F67', // 图标、禁用文字、边框 hover
+          600: '#3D3D42', // 主边框（卡片、输入框、弹层、分隔线）
+          700: '#27272A', // 中性填充：hover、选中、chip、内部分隔线
+          800: '#17171A', // 弱填充：表格行 hover、嵌套面板
+          900: '#0F0F10', // 卡片、侧栏、弹窗、下拉面板
+          950: '#141416' // 控件底：输入框、次级按钮、Tab 轨道、行内代码
         }
       },
       fontFamily: {
@@ -155,7 +155,7 @@ export default {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-primary': 'linear-gradient(135deg, #00D2FF 0%, #0B8FD8 100%)',
-        'gradient-dark': 'linear-gradient(135deg, #1F1F23 0%, #0F0F11 100%)',
+        'gradient-dark': 'linear-gradient(135deg, #17171A 0%, #0A0A0B 100%)',
         'gradient-glass':
           'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
         'mesh-gradient':

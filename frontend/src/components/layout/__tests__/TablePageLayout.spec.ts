@@ -40,7 +40,7 @@ describe('TablePageLayout responsive table scrolling', () => {
   })
 
   it('keeps shared sticky table headers opaque and free of blur filters', () => {
-    expect(componentSource).toContain('@apply bg-gray-50 dark:bg-dark-950;')
+    expect(componentSource).toContain('@apply bg-gray-50 dark:bg-dark-900;')
     expect(componentSource).not.toContain('backdrop-blur-sm')
   })
 

@@ -1,5 +1,5 @@
 <template>
-  <header class="glass fixed inset-x-0 top-0 z-header border-b border-primary-900/10 dark:border-dark-600/80">
+  <header class="glass fixed inset-x-0 top-0 z-header border-b border-primary-900/10 dark:border-dark-600">
     <!-- 水平内边距与主内容区保持同一条链，两侧边缘在所有断点对齐。 -->
     <div class="flex h-[var(--header-h)] items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
       <!-- 品牌固定在全局顶栏，避免与侧栏和页面标题争夺层级。 -->
@@ -14,7 +14,7 @@
         </button>
 
         <!-- 版本标签与首页链接分离，避免按钮嵌套在链接内触发错误跳转。 -->
-        <div class="header-brand flex min-w-0 items-center gap-2.5 rounded-control px-1.5 py-1 transition-colors hover:bg-primary-100/70 dark:hover:bg-dark-800/80">
+        <div class="header-brand flex min-w-0 items-center gap-2.5 rounded-control px-1.5 py-1 transition-colors hover:bg-primary-100/70 dark:hover:bg-dark-700">
           <router-link
             :to="homePath"
             class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-control bg-primary-100 dark:bg-dark-800"
@@ -399,19 +399,19 @@ onBeforeUnmount(() => {
 }
 
 .header-status-divider {
-  @apply h-9 w-px shrink-0 bg-primary-900/10 dark:bg-dark-600/90;
+  @apply h-9 w-px shrink-0 bg-primary-900/10 dark:bg-dark-600;
 }
 
 .header-status-icon-button {
-  @apply flex h-9 w-9 items-center justify-center rounded-control text-primary-900/90 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white;
+  @apply flex h-9 w-9 items-center justify-center rounded-control text-primary-900/90 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-300 dark:hover:bg-dark-700 dark:hover:text-white;
 }
 
 .header-status-balance {
-  @apply h-8 min-w-[104px] items-center justify-center rounded-control border border-primary-200/70 bg-primary-100/80 px-3 shadow-sm dark:border-transparent dark:bg-dark-800/80 dark:shadow-none;
+  @apply h-8 min-w-[104px] items-center justify-center rounded-control border border-primary-200/70 bg-primary-100/80 px-3 shadow-sm dark:border-dark-600 dark:bg-transparent dark:shadow-none;
 }
 
 .header-status-user-button {
-  @apply flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-primary-100 dark:hover:bg-dark-800;
+  @apply flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-primary-100 dark:hover:bg-dark-700;
 }
 
 .dropdown-enter-active,

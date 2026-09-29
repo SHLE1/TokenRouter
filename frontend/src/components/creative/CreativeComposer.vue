@@ -53,7 +53,7 @@
               :key="creativeOptionKey(option)"
               type="button"
               class="composer-option flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-dark-700"
-              :class="studio.selectedOptionKey.value === creativeOptionKey(option) && 'bg-primary-600/5 dark:bg-primary-900/20'"
+              :class="studio.selectedOptionKey.value === creativeOptionKey(option) && 'bg-primary-600/5 dark:bg-dark-700 dark:text-dark-50'"
               @click="selectModel(option)"
             >
               <ProviderIcon :brand="option.model" size="16px" class="flex-shrink-0" />
@@ -200,7 +200,7 @@
               :key="op"
               type="button"
               class="composer-option flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-gray-100 dark:hover:bg-dark-700"
-              :class="studio.operation.value === op && 'bg-primary-600/5 dark:bg-primary-900/20'"
+              :class="studio.operation.value === op && 'bg-primary-600/5 dark:bg-dark-700 dark:text-dark-50'"
               @click="selectOperation(op)"
             >
               <span class="min-w-0 flex-1">

@@ -32,7 +32,7 @@ describe('light theme text contrast', () => {
     const sidebarLinkBlock = styleSource.match(/\.sidebar-link\s*\{[\s\S]*?\n {2}\}/)
 
     expect(sidebarLinkBlock).not.toBeNull()
-    expect(sidebarLinkBlock?.[0]).toContain('@apply text-primary-900 dark:text-dark-100;')
+    expect(sidebarLinkBlock?.[0]).toContain('@apply text-primary-900 dark:text-dark-300;')
     expect(sidebarLinkBlock?.[0]).not.toContain('text-primary-900/75')
     expect(styleSource).toContain('html:not(.dark) :is(')
     expect(styleSource).toContain('.text-gray-500')

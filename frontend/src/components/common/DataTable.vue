@@ -73,7 +73,7 @@
             :data-field="column.key"
             class="flex min-w-0 items-start justify-between gap-4"
           >
-            <span class="text-xs font-medium tracking-wider text-gray-500 dark:text-dark-400">
+            <span class="text-xs font-medium tracking-wider text-gray-500 dark:text-dark-300">
               {{ column.label }}
             </span>
             <div class="min-w-0 max-w-full text-right text-sm text-gray-900 dark:text-gray-100">
@@ -100,7 +100,7 @@
     }"
   >
     <table class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
-      <thead class="table-header bg-gray-50 dark:bg-dark-950">
+      <thead class="table-header bg-gray-50 dark:bg-dark-900">
         <tr>
           <th
             v-if="selectable"
@@ -123,7 +123,7 @@
             scope="col"
             :aria-sort="column.sortable ? getColumnAriaSort(column.key) : undefined"
             :class="[
-              'sticky-header-cell py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-400',
+              'sticky-header-cell py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-300',
               getAdaptivePaddingClass(),
               { 'cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-700': column.sortable },
               getStickyColumnClass(column, index),
@@ -235,7 +235,7 @@
               v-for="(column, colIndex) in columns"
               :key="column.key"
               :class="[
-                'whitespace-nowrap py-3 text-sm text-gray-900 dark:text-gray-100',
+                'whitespace-nowrap py-3 text-sm text-gray-900 dark:text-dark-100',
                 getAdaptivePaddingClass(),
                 getStickyColumnClass(column, colIndex),
                 column.class
@@ -968,7 +968,7 @@ defineExpose({
 }
 
 .dark .table-wrapper {
-  --sticky-boundary-line-color: rgb(51 51 56);
+  --sticky-boundary-line-color: rgb(61 61 66);
 }
 
 /* 表头容器，确保在滚动时覆盖表体内容 */
@@ -980,7 +980,7 @@ defineExpose({
 }
 
 .dark .table-wrapper .table-header {
-  background-color: rgb(31 31 35);
+  background-color: rgb(15 15 16);
 }
 
 /* 表体保持在表头下方 */
@@ -998,7 +998,7 @@ defineExpose({
 }
 
 .dark .sticky-header-cell {
-  background-color: rgb(31 31 35);
+  background-color: rgb(15 15 16);
 }
 
 /* Sticky 列基础样式 */
@@ -1038,7 +1038,7 @@ tbody .sticky-col {
 }
 
 .dark tbody .sticky-col {
-  background-color: rgb(18 18 21);
+  background-color: rgb(15 15 16);
 }
 
 /* hover 状态保持 */
@@ -1047,7 +1047,7 @@ tbody tr:hover .sticky-col {
 }
 
 .dark tbody tr:hover .sticky-col {
-  background-color: rgb(31 31 35);
+  background-color: rgb(23 23 26);
 }
 
 /* 所有固定列统一使用细线边界，避免滚动时出现渐变阴影带。 */
@@ -1111,10 +1111,10 @@ tbody tr:hover .sticky-col {
 }
 
 .dark .table-wrapper::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.75) !important;
+  background-color: rgba(161, 161, 170, 0.45) !important;
 }
 .dark .table-wrapper::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(209, 213, 219, 0.9) !important;
+  background-color: rgba(161, 161, 170, 0.65) !important;
 }
 
 @supports (-moz-appearance:none) {

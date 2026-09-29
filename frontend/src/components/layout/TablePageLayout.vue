@@ -77,7 +77,7 @@ onUnmounted(() => {
 
 .table-scroll-container :deep(thead) {
   /* sticky 表头使用不透明底色，避免合成层模糊表头文字边缘。 */
-  @apply bg-gray-50 dark:bg-dark-950;
+  @apply bg-gray-50 dark:bg-dark-900;
 }
 
 .table-scroll-container :deep(tbody) {
@@ -86,11 +86,11 @@ onUnmounted(() => {
 
 .table-scroll-container :deep(th) {
   /* 表头与 DataTable、.table 保持同一密度:py-2 + text-xs,给数据行留出可视空间。 */
-  @apply px-4 py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-400 border-b border-gray-200 dark:border-dark-700;
+  @apply px-4 py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-300 border-b border-gray-200 dark:border-dark-700;
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-dark-800;
+  @apply px-4 py-3 text-sm text-gray-700 dark:text-dark-100 border-b border-gray-100 dark:border-dark-700;
 }
 
 /* 桌面分页器与表头共用同一外框，表体滚动时保持固定。 */
@@ -103,7 +103,7 @@ onUnmounted(() => {
 }
 
 .table-page-layout:not(.mobile-mode) .table-pagination-footer {
-  @apply border-t border-gray-200 bg-gray-50/80 dark:border-dark-700 dark:bg-dark-950;
+  @apply border-t border-gray-200 bg-gray-50/80 dark:border-dark-700 dark:bg-dark-900;
 }
 
 /* 页脚内的分页器去掉自带边框与底色,与表格外框融为一体;控件保持全站 36px 基线。 */

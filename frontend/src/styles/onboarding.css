@@ -49,9 +49,9 @@
 }
 
 .dark .driver-popover.theme-tour-popover {
-  background-color: #121215 !important;
-  border-color: #29292E !important;
-  color: #F0F0F1 !important;
+  background-color: #0F0F10 !important;
+  border-color: #3D3D42 !important;
+  color: #DEE0E2 !important;
 }
 
 /* 3. Header Area */
@@ -92,7 +92,7 @@
   justify-content: center !important;
 }
 .theme-tour-popover .driver-popover-close-btn:hover { background-color: #f3f4f6 !important; color: #4b5563 !important; }
-.dark .theme-tour-popover .driver-popover-close-btn:hover { background-color: #29292E !important; }
+.dark .theme-tour-popover .driver-popover-close-btn:hover { background-color: #27272A !important; }
 
 /* 4. Body Content */
 .theme-tour-popover .driver-popover-description {
@@ -108,7 +108,7 @@
   line-height: 1.6 !important;
   background-color: transparent !important;
 }
-.dark .theme-tour-popover .driver-popover-description { color: #F0F0F1 !important; }
+.dark .theme-tour-popover .driver-popover-description { color: #DEE0E2 !important; }
 
 /* 5. 底部保留页码和操作按钮，键盘提示不再注入。 */
 .theme-tour-popover .driver-popover-footer {
@@ -124,8 +124,8 @@
   margin: 0 !important;
 }
 .dark .theme-tour-popover .driver-popover-footer {
-  background-color: #18181B !important;
-  border-top-color: #29292E !important;
+  background-color: #141416 !important;
+  border-top-color: #27272A !important;
 }
 
 .theme-tour-popover .driver-popover-progress-text {
@@ -137,7 +137,7 @@
   font-weight: 500 !important;
   white-space: nowrap !important;
 }
-.dark .theme-tour-popover .driver-popover-progress-text { color: #F0F0F1 !important; }
+.dark .theme-tour-popover .driver-popover-progress-text { color: #DEE0E2 !important; }
 
 .theme-tour-popover .driver-popover-navigation-btns {
   display: flex !important;
@@ -191,9 +191,9 @@
 }
 .theme-tour-popover .driver-popover-prev-btn:hover { background-color: #F6FCFF !important; color: #2D4F68 !important; }
 .dark .theme-tour-popover .driver-popover-prev-btn {
-  background-color: #121215 !important;
-  border-color: #29292E !important;
-  color: #F0F0F1 !important;
+  background-color: #0F0F10 !important;
+  border-color: #3D3D42 !important;
+  color: #DEE0E2 !important;
 }
 
 @media (max-width: 480px) {
@@ -227,7 +227,7 @@
 .driver-popover-arrow-side-top.driver-popover-arrow { border-top-color: #ffffff !important; }
 .driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: #ffffff !important; }
 
-.dark .driver-popover-arrow-side-left.driver-popover-arrow { border-left-color: #121215 !important; }
-.dark .driver-popover-arrow-side-right.driver-popover-arrow { border-right-color: #121215 !important; }
-.dark .driver-popover-arrow-side-top.driver-popover-arrow { border-top-color: #121215 !important; }
-.dark .driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: #121215 !important; }
+.dark .driver-popover-arrow-side-left.driver-popover-arrow { border-left-color: #0F0F10 !important; }
+.dark .driver-popover-arrow-side-right.driver-popover-arrow { border-right-color: #0F0F10 !important; }
+.dark .driver-popover-arrow-side-top.driver-popover-arrow { border-top-color: #0F0F10 !important; }
+.dark .driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: #0F0F10 !important; }

@@ -14,7 +14,7 @@
               <BalanceIcon size="xl" class="text-primary-600 dark:text-primary-400" />
             </div>
             <p class="text-sm font-medium text-primary-900/65 dark:text-dark-300">{{ t('redeem.currentBalance') }}</p>
-            <p class="mt-2 text-4xl font-bold text-dark-950 dark:text-white">
+            <p class="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
               {{ formatBalanceAmount(user?.balance, { fractionDigits: 2 }) }}
             </p>
             <p class="mt-2 text-sm text-primary-900/65 dark:text-dark-300">

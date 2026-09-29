@@ -12,7 +12,7 @@ describe('useChartTheme', () => {
     expect(theme.colors.value).toEqual({ text: '#3F3F46', muted: '#71717A', grid: '#E4E4E7' })
 
     setTheme(true)
-    expect(theme.colors.value).toEqual({ text: '#E4E4E7', muted: '#A1A1AA', grid: '#3F3F46' })
+    expect(theme.colors.value).toEqual({ text: '#DEE0E2', muted: '#A1A1AA', grid: '#27272A' })
 
     scope.stop()
     setTheme(false)

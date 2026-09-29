@@ -50,7 +50,7 @@ export function useChartTheme() {
 
   const colors = computed(() =>
     isDark.value
-      ? { text: '#E4E4E7', muted: '#A1A1AA', grid: '#3F3F46' }
+      ? { text: '#DEE0E2', muted: '#A1A1AA', grid: '#27272A' }
       : { text: '#3F3F46', muted: '#71717A', grid: '#E4E4E7' }
   )
 

@@ -2030,7 +2030,7 @@ defineExpose({
 }
 
 .dark .brush-size::-webkit-slider-runnable-track {
-  background: rgb(41 41 46);
+  background: rgb(39 39 42);
 }
 
 .brush-size::-webkit-slider-thumb {
@@ -2051,7 +2051,7 @@ defineExpose({
 }
 
 .dark .brush-size::-moz-range-track {
-  background: rgb(41 41 46);
+  background: rgb(39 39 42);
 }
 
 .brush-size::-moz-range-thumb {

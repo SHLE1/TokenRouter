@@ -32,7 +32,7 @@
               :key="config.groupId"
               class="group relative overflow-hidden rounded-surface border-2 p-4 transition-all duration-200"
               :class="config.isSelected
-                ? 'border-primary-400 bg-primary-50/50 shadow-sm dark:border-primary-500 dark:bg-primary-900/20'
+                ? 'border-primary-400 bg-primary-50/50 shadow-sm dark:border-primary-500 dark:bg-dark-700 dark:text-dark-50'
                 : 'border-gray-200 bg-white hover:border-gray-300 dark:border-dark-600 dark:bg-dark-800 dark:hover:border-dark-500'"
             >
               <div class="flex items-center gap-4">

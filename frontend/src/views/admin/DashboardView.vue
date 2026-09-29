@@ -407,8 +407,8 @@ const granularityOptions = computed(() => [
 // 修复为非一次性快照,主题切换即刻重绘。
 const { isDark } = useChartTheme()
 const chartColors = computed(() => ({
-  text: isDark.value ? '#D9D9DE' : '#2D4F68',
-  grid: isDark.value ? '#29292E' : '#DDF4FC'
+  text: isDark.value ? '#D4D4D8' : '#2D4F68',
+  grid: isDark.value ? '#27272A' : '#DDF4FC'
 }))
 
 // Line chart options (for user trend chart)

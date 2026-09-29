@@ -40,8 +40,8 @@ const { isDark } = useChartTheme()
 const colors = computed(() => ({
   primary: '#00D2FF',
   primaryAlpha: '#00D2FF26',
-  grid: isDark.value ? '#29292E' : '#DDF4FC',
-  text: isDark.value ? '#D9D9DE' : '#2D4F68'
+  grid: isDark.value ? '#27272A' : '#DDF4FC',
+  text: isDark.value ? '#D4D4D8' : '#2D4F68'
 }))
 
 const totalRequests = computed(() => sumNumbers(props.points.map((p) => p.request_count)))

@@ -8,7 +8,7 @@
       :class="[
         'rounded-control px-3 py-1 text-xs transition-colors',
         isActive(preset)
-          ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+          ? 'bg-primary-100 text-primary-700 dark:bg-dark-700 dark:text-dark-50'
           : 'bg-gray-100 text-gray-700 hover:bg-primary-50 hover:text-primary-700 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-primary-900/30 dark:hover:text-primary-400'
       ]"
       @click="emit('select', preset)"

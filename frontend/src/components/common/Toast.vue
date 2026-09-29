@@ -18,8 +18,9 @@
           :key="toast.id"
           :class="[
             'pointer-events-auto min-w-[320px] max-w-md overflow-hidden rounded-surface shadow-lg',
-            'bg-white dark:bg-dark-800',
-            'border-l-4',
+            'bg-white dark:bg-dark-900',
+            'dark:border dark:border-dark-600',
+            'border-l-4 dark:border-l-4',
             getBorderColor(toast.type)
           ]"
         >
@@ -109,12 +110,13 @@ const getIconColor = (type: string): string => {
   return colors[type] || colors.info
 }
 
+// 深色外框使用中性边框，左侧状态条保留各状态的颜色。
 const getBorderColor = (type: string): string => {
   const colors: Record<string, string> = {
-    success: 'border-green-500',
-    error: 'border-red-500',
-    warning: 'border-yellow-500',
-    info: 'border-blue-500'
+    success: 'border-green-500 dark:border-l-green-500',
+    error: 'border-red-500 dark:border-l-red-500',
+    warning: 'border-yellow-500 dark:border-l-yellow-500',
+    info: 'border-blue-500 dark:border-l-blue-500'
   }
   return colors[type] || colors.info
 }
