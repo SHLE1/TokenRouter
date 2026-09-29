@@ -23,6 +23,8 @@
                   'sidebar-link-collapsed': sidebarCollapsed
                 }"
                 :title="sidebarCollapsed ? item.label : undefined"
+                :aria-expanded="!sidebarCollapsed && isGroupExpanded(item)"
+                :aria-controls="`sidebar-group-${item.path}`"
                 @click="sidebarCollapsed ? undefined : toggleGroup(item)"
               >
                 <Icon :name="item.icon ?? 'home'" class="h-5 w-5 flex-shrink-0" />
@@ -36,25 +38,27 @@
                     name="chevronDown"
                     size="sm"
                     :animate-on-hover="false"
-                    class="h-4 w-4 flex-shrink-0 transition-transform duration-200"
+                    class="h-4 w-4 flex-shrink-0 transition-transform duration-normal"
                     :class="isGroupExpanded(item) ? 'rotate-180' : ''"
                   />
                 </span>
               </button>
               <!-- Children -->
-              <div v-if="!sidebarCollapsed && isGroupExpanded(item)" class="mb-1 ml-4 border-l border-primary-900/10 pl-2 dark:border-dark-600">
-                <router-link
-                  v-for="child in item.children"
-                  :key="child.path"
-                  :to="child.path"
-                  class="sidebar-link mb-0.5 py-1.5 text-sm"
-                  :class="{ 'sidebar-link-active': route.path === child.path }"
-                  @click="handleMenuItemClick(child.path)"
-                >
-                  <Icon :name="child.icon ?? 'home'" size="sm" class="h-4 w-4 flex-shrink-0" />
-                  <span>{{ child.label }}</span>
-                </router-link>
-              </div>
+              <Collapse :id="`sidebar-group-${item.path}`" :open="!sidebarCollapsed && isGroupExpanded(item)" unmount-on-hide>
+                <div class="mb-1 ml-4 border-l border-primary-900/10 pl-2 dark:border-dark-600">
+                  <router-link
+                    v-for="child in item.children"
+                    :key="child.path"
+                    :to="child.path"
+                    class="sidebar-link mb-0.5 py-1.5 text-sm"
+                    :class="{ 'sidebar-link-active': route.path === child.path }"
+                    @click="handleMenuItemClick(child.path)"
+                  >
+                    <Icon :name="child.icon ?? 'home'" size="sm" class="h-4 w-4 flex-shrink-0" />
+                    <span>{{ child.label }}</span>
+                  </router-link>
+                </div>
+              </Collapse>
             </template>
             <!-- Normal item (no children) -->
             <router-link
@@ -130,16 +134,19 @@
   </aside>
 
   <!-- Mobile Overlay -->
-  <transition name="fade">
+  <MotionTransition name="fade">
     <div
       v-if="mobileOpen"
       class="mobile-overlay fixed inset-x-0 bottom-0 top-[var(--header-h)] z-sidebar-overlay bg-black/50 lg:hidden"
       @click="closeMobile"
     ></div>
-  </transition>
+  </MotionTransition>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
+import Collapse from '@/components/common/Collapse.vue'
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
 import type { IconName } from '@/components/icons/registry'
@@ -451,13 +458,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 遮罩淡入 200ms / 淡出 150ms,变量由全局 fade 配方读取(默认档为 0.2s 双侧);
-   reduced-motion 收敛由全局配方统一处理。 */
-.mobile-overlay {
-  --fade-duration-enter: 200ms;
-  --fade-duration-leave: 150ms;
-}
-
 .sidebar-link-collapsed {
   gap: 0;
   padding-left: 0.875rem;
@@ -479,8 +479,8 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   transition:
-    opacity 0.16s ease,
-    transform 0.16s ease;
+    opacity var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
 }
 
 .sidebar-section-title::after {
@@ -493,7 +493,7 @@ onBeforeUnmount(() => {
   background: rgb(229 231 235);
   opacity: 0;
   transform: translateY(-50%);
-  transition: opacity 0.18s ease;
+  transition: opacity var(--motion-fast) var(--motion-ease);
 }
 
 .dark .sidebar-section-title::after {
@@ -507,7 +507,6 @@ onBeforeUnmount(() => {
 
 .sidebar-section-title-collapsed::after {
   opacity: 1;
-  transition-delay: 0.08s;
 }
 
 .sidebar-label {
@@ -517,9 +516,9 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   transition:
-    max-width 0.2s ease,
-    opacity 0.12s ease,
-    transform 0.12s ease;
+    max-width var(--motion-layout) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
   max-width: 12rem;
 }
 

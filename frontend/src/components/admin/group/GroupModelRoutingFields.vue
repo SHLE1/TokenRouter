@@ -85,34 +85,36 @@
               "
               @focus="emit('focus', rule)"
             />
-            <div
-              v-if="
-                search.open[getKey(rule)] &&
-                search.results[getKey(rule)]?.length
-              "
-              class="dropdown absolute left-0 right-0 z-50 mt-1 max-h-menu-sm overflow-auto"
-            >
-              <button
-                v-for="provider in search.results[getKey(rule)]"
-                :key="provider.id"
-                type="button"
-                class="dropdown-item-sm"
-                :disabled="
-                  rule.providers.some((selected) => selected.id === provider.id)
+            <MotionTransition name="dropdown-fade">
+              <div
+                v-if="
+                  search.open[getKey(rule)] &&
+                  search.results[getKey(rule)]?.length
                 "
-                :class="{
-                  'opacity-50': rule.providers.some(
-                    (selected) => selected.id === provider.id,
-                  ),
-                }"
-                @click="emit('selectProvider', rule, provider)"
+                class="dropdown absolute left-0 right-0 z-50 mt-1 max-h-menu-sm overflow-auto"
               >
-                <span class="min-w-0 break-all">{{ provider.name }}</span>
-                <span class="shrink-0 text-xs text-gray-400"
-                  >#{{ provider.id }}</span
+                <button
+                  v-for="provider in search.results[getKey(rule)]"
+                  :key="provider.id"
+                  type="button"
+                  class="dropdown-item-sm"
+                  :disabled="
+                    rule.providers.some((selected) => selected.id === provider.id)
+                  "
+                  :class="{
+                    'opacity-50': rule.providers.some(
+                      (selected) => selected.id === provider.id,
+                    ),
+                  }"
+                  @click="emit('selectProvider', rule, provider)"
                 >
-              </button>
-            </div>
+                  <span class="min-w-0 break-all">{{ provider.name }}</span>
+                  <span class="shrink-0 text-xs text-gray-400"
+                    >#{{ provider.id }}</span
+                  >
+                </button>
+              </div>
+            </MotionTransition>
           </div>
           <p class="input-hint">
             {{ t('admin.groups.modelRouting.providersHint') }}
@@ -129,6 +131,8 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
+
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import GroupFormSection from './GroupFormSection.vue'

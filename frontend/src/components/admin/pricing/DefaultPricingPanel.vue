@@ -14,16 +14,18 @@
                 <Icon name="filter" size="sm" />
                 <span v-if="activeFilterCount" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">{{ activeFilterCount }}</span>
               </button>
-              <div v-if="showFilters" class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-72 rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
-                <div class="mb-3 flex items-center justify-between">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                  <button v-if="activeFilterCount" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="platform = ''; mode = ''">{{ t('common.reset') }}</button>
+              <MotionTransition name="dropdown-fade">
+                <div v-if="showFilters" :inert="!(showFilters) || undefined" class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-72 rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
+                  <div class="mb-3 flex items-center justify-between">
+                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                    <button v-if="activeFilterCount" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="platform = ''; mode = ''">{{ t('common.reset') }}</button>
+                  </div>
+                  <div class="space-y-3">
+                    <Select v-model="platform" :options="platformOptions" :aria-label="t('admin.pricing.defaults.columns.platform')" />
+                    <Select v-model="mode" :options="modeOptions" :aria-label="t('admin.pricing.defaults.columns.billing_mode')" />
+                  </div>
                 </div>
-                <div class="space-y-3">
-                  <Select v-model="platform" :options="platformOptions" :aria-label="t('admin.pricing.defaults.columns.platform')" />
-                  <Select v-model="mode" :options="modeOptions" :aria-label="t('admin.pricing.defaults.columns.billing_mode')" />
-                </div>
-              </div>
+              </MotionTransition>
             </div>
           </div>
           <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-3">
@@ -113,6 +115,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'

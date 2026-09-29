@@ -42,7 +42,7 @@
         <Icon
           name="chevronDown"
           size="md"
-          :class="['transition-transform duration-200', isOpen && 'rotate-180']"
+          :class="['transition-transform duration-normal', isOpen && 'rotate-180']"
           :animate-on-hover="false"
         />
       </span>
@@ -50,7 +50,7 @@
 
     <!-- Teleport dropdown to body to escape stacking context -->
     <Teleport to="body">
-      <Transition name="dropdown-fade">
+      <MotionTransition name="dropdown-fade">
         <div
           v-if="isOpen"
           ref="dropdownRef"
@@ -119,12 +119,14 @@
             </div>
           </div>
         </div>
-      </Transition>
+      </MotionTransition>
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useFloatingMotion } from '@/composables/useFloatingMotion'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
@@ -211,6 +213,7 @@ const dropdownStyle = computed(() => {
   const estimatedWidth = Math.min(Math.max(rect.width, 200), maxDropdownWidth)
   const fallbackLeft = clampDropdownLeft(rect.left, estimatedWidth)
   const style: Record<string, string> = {
+    '--dropdown-shift': dropdownPosition.value === 'top' ? 'var(--motion-shift)' : 'calc(-1 * var(--motion-shift))',
     position: 'fixed',
     left: `${dropdownLeft.value ?? fallbackLeft}px`,
     minWidth: `${rect.width}px`,
@@ -403,6 +406,9 @@ watch(isOpen, (open) => {
   }
 })
 
+// 折叠父区退出时关闭 portal，展开过程中让定位跟随触发按钮。
+useFloatingMotion(containerRef, () => isOpen.value, () => { isOpen.value = false }, updateTriggerRect)
+
 const selectOption = (option: any) => {
   const value = getOptionValue(option) ?? null
   emit('update:modelValue', value)
@@ -553,7 +559,7 @@ onUnmounted(() => {
   @apply flex items-center justify-between gap-2;
   @apply px-4 py-2.5 text-sm;
   @apply text-gray-700 dark:text-gray-300;
-  @apply cursor-pointer transition-colors duration-150;
+  @apply cursor-pointer transition-colors duration-fast;
   @apply hover:bg-gray-50 dark:hover:bg-dark-800 dark:hover:text-primary-500;
   pointer-events: auto !important;
 }

@@ -13,7 +13,7 @@
     <AppSidebar v-if="!hideSidebar" />
 
     <div
-      class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-all duration-300"
+      class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-[margin-left] duration-layout"
       :class="[
         fullViewport ? 'h-full min-h-0' : 'min-h-screen',
         hideSidebar
@@ -24,7 +24,7 @@
       ]"
     >
       <!-- Main Content：布局组件统一负责空间分配,子页面不再复制父级尺寸或抵消内边距。 -->
-      <main
+      <main v-content-reveal="route.path"
         class="app-main flex min-w-0 flex-1 flex-col"
         :class="fullViewport ? 'min-h-0 p-0' : 'px-4 pb-4 pt-4 md:px-6 md:pb-6 lg:px-8 lg:pb-8'"
       >
@@ -44,6 +44,8 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+
 import '@/styles/onboarding.css'
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'

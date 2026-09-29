@@ -95,65 +95,67 @@
               </span>
             </button>
 
-            <div v-show="showFilterDropdown" class="absolute left-0 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
-              <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-              <div v-if="activeTab === 'errors'" class="flex flex-wrap items-end gap-4">
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
-              <label class="input-label">{{ t('usage.errors.keyName') }}</label>
-              <Select v-model="errorFilter.api_key_id" :options="errorKeyOptions" @change="applyErrorFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
-              <label class="input-label">{{ t('usage.errors.model') }}</label>
-              <Select
-                v-model="errorFilter.model"
-                :options="errorModelOptions"
-                searchable
-                creatable
-                clearable
-                :placeholder="t('usage.errors.modelPlaceholder')"
-                @change="applyErrorFilters"
-              />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
-              <label class="input-label">{{ t('usage.errors.category') }}</label>
-              <Select v-model="errorFilter.category" :options="errorCategoryOptions" @change="applyErrorFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[180px]">
-              <label class="input-label">{{ t('usage.errors.status') }}</label>
-              <Select v-model="errorFilter.status_code" :options="errorStatusOptions" @change="applyErrorFilters" />
-            </div>
-          </div>
-              <div v-else class="flex flex-wrap items-end gap-4">
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
-              <label class="input-label">{{ t('usage.apiKeyFilter') }}</label>
-              <Select v-model="filters.api_key_id" :options="apiKeyOptions" @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
-              <label class="input-label">{{ t('usage.model') }}</label>
-              <Select v-model="filters.model" :options="modelOptions" searchable @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
-              <label class="input-label">{{ t('admin.usage.group') }}</label>
-              <Select v-model="filters.group_id" :options="groupOptions" searchable @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[180px]">
-              <label class="input-label">{{ t('usage.type') }}</label>
-              <Select v-model="filters.request_type" :options="requestTypeOptions" @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
-              <label class="input-label">{{ t('admin.usage.billingType') }}</label>
-              <Select v-model="filters.billing_type" :options="billingTypeOptions" @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[200px]">
-              <label class="input-label">{{ t('admin.usage.billingMode') }}</label>
-              <Select v-model="filters.billing_mode" :options="billingModeOptions" @change="applyFilters" />
-            </div>
-            <div class="w-full sm:w-auto sm:min-w-[220px]">
-              <label class="input-label">{{ t('usage.compactionFilter') }}</label>
-              <Select v-model="filters.native_compaction_v2" :options="compactionOptions" @change="applyFilters" />
-            </div>
+            <MotionTransition persisted name="dropdown-fade">
+              <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute left-0 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
+                <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                <div v-if="activeTab === 'errors'" v-content-reveal class="flex flex-wrap items-end gap-4">
+              <div class="w-full sm:w-auto sm:min-w-[220px]">
+                <label class="input-label">{{ t('usage.errors.keyName') }}</label>
+                <Select v-model="errorFilter.api_key_id" :options="errorKeyOptions" @change="applyErrorFilters" />
+              </div>
+              <div class="w-full sm:w-auto sm:min-w-[220px]">
+                <label class="input-label">{{ t('usage.errors.model') }}</label>
+                <Select
+                  v-model="errorFilter.model"
+                  :options="errorModelOptions"
+                  searchable
+                  creatable
+                  clearable
+                  :placeholder="t('usage.errors.modelPlaceholder')"
+                  @change="applyErrorFilters"
+                />
+              </div>
+              <div class="w-full sm:w-auto sm:min-w-[200px]">
+                <label class="input-label">{{ t('usage.errors.category') }}</label>
+                <Select v-model="errorFilter.category" :options="errorCategoryOptions" @change="applyErrorFilters" />
+              </div>
+              <div class="w-full sm:w-auto sm:min-w-[180px]">
+                <label class="input-label">{{ t('usage.errors.status') }}</label>
+                <Select v-model="errorFilter.status_code" :options="errorStatusOptions" @change="applyErrorFilters" />
               </div>
             </div>
+                <div v-else class="flex flex-wrap items-end gap-4">
+              <div class="w-full sm:w-auto sm:min-w-[220px]">
+                <label class="input-label">{{ t('usage.apiKeyFilter') }}</label>
+                <Select v-model="filters.api_key_id" :options="apiKeyOptions" @change="applyFilters" />
+              </div>
+              <div class="w-full sm:w-auto sm:min-w-[220px]">
+                <label class="input-label">{{ t('usage.model') }}</label>
+                <Select v-model="filters.model" :options="modelOptions" searchable @change="applyFilters" />
+              </div>
+              <div class="w-full sm:w-auto sm:min-w-[200px]">
+                <label class="input-label">{{ t('admin.usage.group') }}</label>
+                <Select v-model="filters.group_id" :options="groupOptions" searchable @change="applyFilters" />
+              </div>
+              <div class="w-full sm:w-auto sm:min-w-[180px]">
+                <label class="input-label">{{ t('usage.type') }}</label>
+                <Select v-model="filters.request_type" :options="requestTypeOptions" @change="applyFilters" />
+              </div>
+              <div class="w-full sm:w-auto sm:min-w-[200px]">
+                <label class="input-label">{{ t('admin.usage.billingType') }}</label>
+                <Select v-model="filters.billing_type" :options="billingTypeOptions" @change="applyFilters" />
+              </div>
+              <div class="w-full sm:w-auto sm:min-w-[200px]">
+                <label class="input-label">{{ t('admin.usage.billingMode') }}</label>
+                <Select v-model="filters.billing_mode" :options="billingModeOptions" @change="applyFilters" />
+              </div>
+              <div class="w-full sm:w-auto sm:min-w-[220px]">
+                <label class="input-label">{{ t('usage.compactionFilter') }}</label>
+                <Select v-model="filters.native_compaction_v2" :options="compactionOptions" @change="applyFilters" />
+              </div>
+                </div>
+              </div>
+            </MotionTransition>
           </div>
 
           <div class="flex flex-wrap items-center justify-end gap-2">
@@ -174,27 +176,29 @@
                 <Icon name="grid" size="sm" />
                 <span class="hidden">{{ t('admin.users.columnSettings') }}</span>
               </button>
-              <div
-                v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
-              >
-                <button
-                  v-for="col in currentToggleableColumns"
-                  :key="col.key"
-                  type="button"
-                  @click="toggleCurrentColumn(col.key)"
-                  class="dropdown-item justify-between"
+              <MotionTransition name="dropdown-fade">
+                <div
+                  v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
+                  class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
                 >
-                  <span>{{ col.label }}</span>
-                  <Icon
-                    v-if="isCurrentColumnVisible(col.key)"
-                    name="check"
-                    size="sm"
-                    class="text-primary-500"
-                    :animate-on-hover="false"
-                  />
-                </button>
-              </div>
+                  <button
+                    v-for="col in currentToggleableColumns"
+                    :key="col.key"
+                    type="button"
+                    @click="toggleCurrentColumn(col.key)"
+                    class="dropdown-item justify-between"
+                  >
+                    <span>{{ col.label }}</span>
+                    <Icon
+                      v-if="isCurrentColumnVisible(col.key)"
+                      name="check"
+                      size="sm"
+                      class="text-primary-500"
+                      :animate-on-hover="false"
+                    />
+                  </button>
+                </div>
+              </MotionTransition>
             </div>
             <IpGeoBatchToolbar
               v-if="activeTab === 'usage'"
@@ -218,7 +222,7 @@
         </button>
       </div>
 
-      <div v-if="activeTab === 'usage'" class="space-y-4" data-tour="team-usage-records">
+      <div v-if="activeTab === 'usage'" v-content-reveal class="space-y-4" data-tour="team-usage-records">
         <UsageTable
           :data="usageLogs"
           :loading="loading"
@@ -264,6 +268,9 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
+import { vContentReveal } from '@/directives/contentReveal'
+
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

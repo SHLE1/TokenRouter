@@ -51,7 +51,7 @@
       </button>
 
       <!-- 画笔组：仅局部重绘模式可用（选中图片后自动进入涂抹，可用开关暂停去移动视角） -->
-      <Transition name="canvas-toolbar-extension">
+      <MotionTransition name="canvas-toolbar-extension">
         <div v-if="isInpaint" class="canvas-toolbar-extension">
           <span class="mx-0.5 h-5 w-px flex-none bg-primary-900/10 dark:bg-dark-600"></span>
           <button
@@ -116,7 +116,7 @@
             <Icon name="square" size="sm" class="h-4 w-4" />
           </button>
         </div>
-      </Transition>
+      </MotionTransition>
 
       <span class="mx-0.5 h-5 w-px bg-primary-900/10 dark:bg-dark-600"></span>
       <!-- 删除选中图片 -->
@@ -159,6 +159,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 /**
  * 创作台无限画布（fabric 7）
  * - 逻辑尺寸跟随容器；空白处拖拽或普通 wheel 平移视角，触控板捏合（ctrlKey wheel）与移动端双指手势缩放（0.2–3）
@@ -1973,10 +1974,10 @@ defineExpose({
 .canvas-toolbar-extension-enter-active,
 .canvas-toolbar-extension-leave-active {
   transition:
-    max-width 280ms cubic-bezier(0.22, 1, 0.36, 1),
-    max-height 280ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 280ms ease,
-    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    max-width var(--motion-layout) var(--motion-ease),
+    max-height var(--motion-layout) var(--motion-ease),
+    opacity var(--motion-layout) var(--motion-ease),
+    transform var(--motion-layout) var(--motion-ease);
   will-change: max-width, max-height, opacity, transform;
 }
 
@@ -1996,8 +1997,8 @@ defineExpose({
   .canvas-toolbar-extension-enter-active > *,
   .canvas-toolbar-extension-leave-active > * {
     transition:
-      opacity 160ms ease,
-      transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+      opacity var(--motion-fast) var(--motion-ease),
+      transform var(--motion-layout) var(--motion-ease);
   }
 
   .canvas-toolbar-extension-enter-from > *,

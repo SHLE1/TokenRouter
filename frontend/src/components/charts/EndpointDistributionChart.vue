@@ -96,18 +96,12 @@
                 <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300' : 'text-gray-900 dark:text-white'" :title="item.endpoint">
                   <span class="inline-flex items-center gap-1">
                     <Icon
-                      name="chevronDown"
-                      size="xs"
-                      :animate-on-hover="false"
-                      v-if="enableBreakdown && expandedKey === item.endpoint"
-                      class="h-3 w-3 shrink-0"
-                    />
-                    <Icon
+                      v-if="enableBreakdown"
                       name="chevronRight"
                       size="xs"
                       :animate-on-hover="false"
-                      v-else-if="enableBreakdown"
-                      class="h-3 w-3 shrink-0"
+                      class="h-3 w-3 shrink-0 transition-transform duration-normal"
+                      :class="{ 'rotate-90': expandedKey === item.endpoint }"
                     />
                     {{ item.endpoint }}
                   </span>
@@ -125,14 +119,12 @@
                   {{ usdUnitSymbol }}{{ formatCost(item.cost) }}
                 </td>
               </tr>
-              <tr v-if="expandedKey === item.endpoint">
-                <td :colspan="distributionColspan" class="p-0">
+              <ExpandableTableRow :open="expandedKey === item.endpoint" :colspan="distributionColspan">
                   <UserBreakdownSubTable
                     :items="breakdownItems"
                     :loading="breakdownLoading"
                   />
-                </td>
-              </tr>
+                </ExpandableTableRow>
             </template>
           </tbody>
         </table>
@@ -145,6 +137,7 @@
 </template>
 
 <script setup lang="ts">
+import ExpandableTableRow from '@/components/common/ExpandableTableRow.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

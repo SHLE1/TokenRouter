@@ -28,26 +28,28 @@
         </div>
 
         <div v-else-if="isMarkdownMode" class="flex h-full overflow-hidden">
-          <aside v-show="tocVisible" class="toc-sidebar">
-            <div class="toc-header">
-              <span class="toc-title">{{ t('customPage.toc') }}</span>
-              <button class="toc-close-btn" type="button" :title="t('customPage.hideToc')" @click="tocVisible = false">
-                <Icon name="chevronLeft" size="sm" :animate-on-hover="false" />
-              </button>
-            </div>
-            <nav class="toc-nav">
-              <a
-                v-for="item in tocItems"
-                :key="item.id"
-                :href="'#' + item.id"
-                class="toc-item"
-                :class="[`toc-level-${item.level}`, { 'toc-active': activeHeadingId === item.id }]"
-                @click.prevent="scrollToHeading(item.id)"
-              >
-                {{ item.text }}
-              </a>
-            </nav>
-          </aside>
+          <MotionTransition persisted name="toc">
+            <aside v-show="tocVisible" class="toc-sidebar">
+              <div class="toc-header">
+                <span class="toc-title">{{ t('customPage.toc') }}</span>
+                <button class="toc-close-btn" type="button" :title="t('customPage.hideToc')" @click="tocVisible = false">
+                  <Icon name="chevronLeft" size="sm" :animate-on-hover="false" />
+                </button>
+              </div>
+              <nav class="toc-nav">
+                <a
+                  v-for="item in tocItems"
+                  :key="item.id"
+                  :href="'#' + item.id"
+                  class="toc-item"
+                  :class="[`toc-level-${item.level}`, { 'toc-active': activeHeadingId === item.id }]"
+                  @click.prevent="scrollToHeading(item.id)"
+                >
+                  {{ item.text }}
+                </a>
+              </nav>
+            </aside>
+          </MotionTransition>
 
           <button
             v-show="!tocVisible && tocItems.length > 0"
@@ -106,6 +108,8 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
+
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -397,6 +401,37 @@ onUnmounted(() => {
   }
 }
 
+/* 桌面目录折叠实际宽度；窄屏抽屉只改变位移，不挤压正文。 */
+.toc-enter-active,
+.toc-leave-active {
+  transition: width var(--motion-layout) var(--motion-ease),
+    min-width var(--motion-layout) var(--motion-ease),
+    opacity var(--motion-layout) var(--motion-ease);
+}
+.toc-enter-from,
+.toc-leave-to {
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+}
+/* BREAKPOINT_SM 减 1，与目录原有窄屏定位一致。 */
+@media (max-width: 639px) {
+  .toc-enter-active,
+  .toc-leave-active {
+    transition: transform var(--motion-layout) var(--motion-ease), opacity var(--motion-layout) var(--motion-ease);
+  }
+  .toc-enter-from,
+  .toc-leave-to {
+    width: 70%;
+    min-width: 160px;
+    transform: translateX(-100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toc-enter-from,
+  .toc-leave-to { transform: none; }
+}
+
 .toc-header {
   @apply flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-dark-600;
 }
@@ -494,7 +529,7 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, background 0.2s;
+  transition: opacity var(--motion-normal), background var(--motion-normal);
   font-family: inherit;
 }
 .copy-btn:hover { background: rgba(255, 255, 255, 0.25); }

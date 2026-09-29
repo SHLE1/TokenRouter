@@ -81,7 +81,7 @@
       </nav>
     </header>
 
-    <main class="relative z-10 flex-1 px-4 pb-20 pt-16 sm:px-6 lg:px-8">
+    <main v-content-reveal="motionRoute?.path" class="relative z-10 flex-1 px-4 pb-20 pt-16 sm:px-6 lg:px-8">
       <section class="mx-auto max-w-5xl text-center">
         <h1 class="mx-auto max-w-4xl text-4xl font-bold leading-[1.05] tracking-tight text-gray-950 dark:text-white sm:text-5xl md:text-6xl lg:text-7xl">
           {{ homeHeroTitle }}
@@ -104,7 +104,7 @@
           >
             {{ t('home.exploreMarketplace') }}
             <span class="relative flex h-5 w-5 items-center justify-center overflow-hidden">
-              <Transition name="home-marketplace-icon" mode="out-in">
+              <MotionTransition name="home-marketplace-icon" mode="out-in">
                 <ProviderIcon
                   v-if="homeMarketplaceButtonBrand"
                   :key="homeMarketplaceButtonBrand"
@@ -112,7 +112,7 @@
                   size="18px"
                 />
                 <Icon v-else key="marketplace-fallback" name="sparkles" size="sm" class="text-primary-500" />
-              </Transition>
+              </MotionTransition>
             </span>
           </router-link>
         </div>
@@ -146,7 +146,7 @@
       </section>
 
       <section class="mx-auto mt-20 grid max-w-7xl gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-300 hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
+        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
           <div class="relative h-44 overflow-hidden border-b border-gray-200 bg-white dark:border-dark-800 dark:bg-dark-950">
             <div class="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-110">
               <span
@@ -181,7 +181,7 @@
           </div>
         </article>
 
-        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-300 hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
+        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
           <div class="relative flex h-44 items-center justify-center overflow-hidden border-b border-gray-200 bg-white dark:border-dark-800 dark:bg-dark-950">
             <div class="relative h-full w-full transition-transform duration-500 ease-out group-hover:scale-110">
               <div class="absolute left-1/2 top-7 z-10 max-w-[82%] -translate-x-1/2 truncate rounded-control bg-gray-100 px-3.5 py-1.5 text-xs font-medium text-gray-800 shadow-sm dark:bg-dark-900 dark:text-dark-100">
@@ -231,7 +231,7 @@
           </div>
         </article>
 
-        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-300 hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
+        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
           <div class="flex h-44 items-center justify-center border-b border-gray-200 bg-gray-50 p-6 dark:border-dark-800 dark:bg-dark-950">
             <div class="w-full max-w-[200px] rounded-surface border border-gray-200 bg-white p-4 shadow-sm transition-transform duration-500 ease-out group-hover:scale-110 dark:border-dark-700 dark:bg-dark-900">
               <div class="mb-4 flex items-center justify-between text-xs text-gray-500 dark:text-dark-400">
@@ -260,7 +260,7 @@
           </div>
         </article>
 
-        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-300 hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
+        <article class="group overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]">
           <div class="flex h-44 items-center justify-center border-b border-gray-200 bg-gray-50 dark:border-dark-800 dark:bg-dark-950">
             <div class="relative flex h-24 w-24 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition-transform duration-500 ease-out group-hover:scale-110 dark:border-dark-700 dark:bg-dark-900">
               <Icon name="shield" size="xl" class="text-gray-400 dark:text-dark-300" />
@@ -329,7 +329,7 @@
             <article
               v-for="featured in featuredModels"
               :key="featured.model.id"
-              class="rounded-surface border border-gray-200 bg-white p-6 shadow-sm ring-1 ring-transparent transition duration-300 hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]"
+              class="rounded-surface border border-gray-200 bg-white p-6 shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]"
             >
               <div class="flex items-start gap-4">
                 <!-- 图标与模型广场保持一致：模型图标体系 + 白底圆角方形 -->
@@ -358,7 +358,7 @@
             <article
               v-for="provider in supportedProviders.slice(0, 6)"
               :key="provider.key"
-              class="rounded-surface border border-gray-200 bg-white p-6 shadow-sm ring-1 ring-transparent transition duration-300 hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]"
+              class="rounded-surface border border-gray-200 bg-white p-6 shadow-sm ring-1 ring-transparent transition duration-layout hover:-translate-y-1 hover:border-black/20 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] focus-within:border-black/20 dark:border-dark-800 dark:bg-dark-900 dark:hover:border-dark-600 dark:hover:shadow-[0_12px_32px_rgba(0,0,0,0.4)]"
             >
               <div class="flex items-start gap-4">
                 <span
@@ -549,6 +549,11 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import { useRoute as useMotionRoute } from 'vue-router'
+const motionRoute = useMotionRoute()
+
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
@@ -1269,7 +1274,7 @@ onUnmounted(() => {
 <style scoped>
 .home-marketplace-icon-enter-active,
 .home-marketplace-icon-leave-active {
-  transition: opacity 220ms ease, transform 220ms ease;
+  transition: opacity var(--motion-layout) var(--motion-ease), transform var(--motion-layout) var(--motion-ease);
 }
 
 .home-marketplace-icon-enter-from {

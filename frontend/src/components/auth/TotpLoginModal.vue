@@ -1,5 +1,5 @@
 <template>
-  <AuthCardDialog :close-on-overlay="false" @close="$emit('cancel')">
+  <AuthCardDialog :show="show" @after-leave="$emit('after-leave')" :close-on-overlay="false" @close="$emit('cancel')">
         <!-- Header -->
         <div class="mb-6 text-center">
           <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30">
@@ -78,12 +78,14 @@ import { ref, watch, nextTick, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 
-defineProps<{
+withDefaults(defineProps<{
+  show?: boolean
   tempToken: string
   userEmailMasked?: string
-}>()
+}>(), { show: true })
 
 const emit = defineEmits<{
+  'after-leave': []
   verify: [code: string]
   cancel: []
 }>()

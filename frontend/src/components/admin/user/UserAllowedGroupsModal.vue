@@ -32,7 +32,7 @@
             <div
               v-for="config in exclusiveGroupConfigs"
               :key="config.groupId"
-              class="group relative overflow-hidden rounded-surface border-2 p-4 transition-all duration-200"
+              class="group relative overflow-hidden rounded-surface border-2 p-4 transition duration-normal"
               :class="config.isSelected
                 ? 'border-primary-400 bg-primary-50/50 shadow-sm dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                 : 'border-gray-200 bg-white hover:border-gray-300 dark:border-dark-600 dark:bg-dark-800 dark:hover:border-dark-500'"
@@ -47,7 +47,7 @@
                       @change="toggleExclusiveGroup(config.groupId)"
                       class="peer sr-only"
                     />
-                    <div class="h-5 w-5 rounded-control border-2 border-gray-300 transition-all peer-checked:border-primary-500 peer-checked:bg-primary-500 dark:border-dark-500 peer-checked:dark:border-primary-500">
+                    <div class="h-5 w-5 rounded-control border-2 border-gray-300 transition peer-checked:border-primary-500 peer-checked:bg-primary-500 dark:border-dark-500 peer-checked:dark:border-primary-500">
                       <Icon
                         name="check"
                         size="md"
@@ -106,7 +106,7 @@
             <div
               v-for="config in publicGroupConfigs"
               :key="config.groupId"
-              class="group relative overflow-hidden rounded-surface border-2 p-4 transition-all duration-200"
+              class="group relative overflow-hidden rounded-surface border-2 p-4 transition duration-normal"
               :class="config.isSelected
                 ? 'border-green-300 bg-green-50/50 shadow-sm dark:border-green-700/60 dark:bg-green-900/10'
                 : 'border-gray-200 bg-white hover:border-gray-300 dark:border-dark-600 dark:bg-dark-800 dark:hover:border-dark-500'"
@@ -121,7 +121,7 @@
                       @change="togglePublicGroup(config.groupId)"
                       class="peer sr-only"
                     />
-                    <div class="h-5 w-5 rounded-control border-2 border-gray-300 transition-all peer-checked:border-green-500 peer-checked:bg-green-500 dark:border-dark-500 peer-checked:dark:border-green-600 peer-checked:dark:bg-green-600">
+                    <div class="h-5 w-5 rounded-control border-2 border-gray-300 transition peer-checked:border-green-500 peer-checked:bg-green-500 dark:border-dark-500 peer-checked:dark:border-green-600 peer-checked:dark:bg-green-600">
                       <Icon
                         name="check"
                         size="md"

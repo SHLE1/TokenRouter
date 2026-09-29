@@ -25,24 +25,26 @@
                     {{ activeFilterCount }}
                   </span>
                 </button>
-                <div v-show="showFilterDropdown" class="absolute left-0 right-auto top-full z-modal-nested mt-2 w-[min(32rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 max-[639px]:left-auto max-[639px]:right-0" @click.stop>
-                  <div class="mb-3 flex items-center justify-between">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                    <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetKeyFilters">
-                      {{ t('common.reset') }}
-                    </button>
-                  </div>
-                  <div class="space-y-3">
-                    <div>
-                      <label class="input-label">{{ t('keys.allGroups') }}</label>
-                      <Select :model-value="filterGroupId" :options="groupFilterOptions" @update:model-value="onGroupFilterChange" />
+                <MotionTransition persisted name="dropdown-fade">
+                  <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute left-0 right-auto top-full z-modal-nested mt-2 w-[min(32rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 max-[639px]:left-auto max-[639px]:right-0" @click.stop>
+                    <div class="mb-3 flex items-center justify-between">
+                      <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                      <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetKeyFilters">
+                        {{ t('common.reset') }}
+                      </button>
                     </div>
-                    <div>
-                      <label class="input-label">{{ t('keys.allStatus') }}</label>
-                      <Select :model-value="filterStatus" :options="statusFilterOptions" @update:model-value="onStatusFilterChange" />
+                    <div class="space-y-3">
+                      <div>
+                        <label class="input-label">{{ t('keys.allGroups') }}</label>
+                        <Select :model-value="filterGroupId" :options="groupFilterOptions" @update:model-value="onGroupFilterChange" />
+                      </div>
+                      <div>
+                        <label class="input-label">{{ t('keys.allStatus') }}</label>
+                        <Select :model-value="filterStatus" :options="statusFilterOptions" @update:model-value="onStatusFilterChange" />
+                      </div>
                     </div>
                   </div>
-                </div>
+                </MotionTransition>
               </div>
             </div>
             <div class="flex shrink-0 justify-end gap-3">
@@ -62,27 +64,29 @@
                 >
                   <Icon name="grid" size="md" />
                 </button>
-                <div
-                  v-if="showColumnDropdown"
-                  class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-control border border-gray-200 bg-white p-2 shadow-xl dark:border-dark-600 dark:bg-gray-800"
-                >
-                  <button
-                    v-for="column in toggleableColumns"
-                    :key="column.key"
-                    @click="toggleColumn(column.key)"
-                    class="dropdown-item-sm justify-between rounded-control"
+                <MotionTransition name="dropdown-fade">
+                  <div
+                    v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
+                    class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-control border border-gray-200 bg-white p-2 shadow-xl dark:border-dark-600 dark:bg-gray-800"
                   >
-                    <span>{{ column.label }}</span>
-                    <Icon
-                      v-if="isColumnVisible(column.key)"
-                      name="check"
-                      size="sm"
-                      class="text-primary-500"
-                      :stroke-width="2"
-                      :animate-on-hover="false"
-                    />
-                  </button>
-                </div>
+                    <button
+                      v-for="column in toggleableColumns"
+                      :key="column.key"
+                      @click="toggleColumn(column.key)"
+                      class="dropdown-item-sm justify-between rounded-control"
+                    >
+                      <span>{{ column.label }}</span>
+                      <Icon
+                        v-if="isColumnVisible(column.key)"
+                        name="check"
+                        size="sm"
+                        class="text-primary-500"
+                        :stroke-width="2"
+                        :animate-on-hover="false"
+                      />
+                    </button>
+                  </div>
+                </MotionTransition>
               </div>
               <ScopeDropdown v-if="teamFeatureEnabled" v-model="scope" @change="onScopeChange" />
               <button @click="openCreateModal" class="btn btn-primary" data-tour="keys-create-btn">
@@ -158,25 +162,37 @@
               v-if="row.is_composite"
               type="button"
               data-test="composite-group-summary"
-              class="flex max-w-[22rem] flex-wrap items-center gap-1.5 rounded-control px-1 py-1 text-left hover:bg-gray-100 dark:hover:bg-dark-700"
+              class="-mx-2 -my-1 flex max-w-[22rem] flex-col gap-1 rounded-control px-2 py-1.5 text-left transition duration-normal hover:bg-gray-100 dark:hover:bg-dark-700"
               :title="t('keys.composite.editMappings')"
               @click="editKey(row)"
             >
+              <!-- 复合 Key 按“前缀 → 分组”逐行对齐展示，超出部分折叠为计数。 -->
               <span
-                v-for="binding in row.composite_groups"
+                v-for="binding in visibleCompositeGroups(row)"
                 :key="`${row.id}-${binding.group_id}`"
-                class="inline-flex min-w-0 items-center gap-1 rounded-compact border border-gray-200 bg-gray-50 px-1.5 py-1 dark:border-dark-600 dark:bg-dark-800"
+                class="flex min-w-0 items-center gap-2 text-xs leading-5"
               >
-                <span class="max-w-24 truncate font-mono text-xs font-semibold text-primary-700 dark:text-primary-300">{{ binding.prefix }}</span>
-                <span class="text-gray-300 dark:text-dark-500">/</span>
-                <span class="max-w-28 truncate text-xs text-gray-600 dark:text-dark-300">{{ binding.group?.name || `#${binding.group_id}` }}</span>
+                <span class="w-16 shrink-0 truncate font-mono text-gray-900 dark:text-white">{{ binding.prefix }}</span>
+                <Icon name="arrowRight" size="xs" :animate-on-hover="false" class="h-3 w-3 shrink-0 text-gray-300 dark:text-dark-500" />
+                <ProviderIcon
+                  v-if="binding.group?.display_brand"
+                  :brand="binding.group.display_brand"
+                  size="14px"
+                />
+                <span class="min-w-0 truncate text-gray-500 dark:text-dark-300">{{ binding.group?.name || `#${binding.group_id}` }}</span>
+              </span>
+              <span
+                v-if="hiddenCompositeGroupCount(row) > 0"
+                class="text-xs leading-5 text-gray-400 dark:text-dark-400"
+              >
+                {{ t('keys.composite.moreMappings', { count: hiddenCompositeGroupCount(row) }) }}
               </span>
             </button>
             <div v-else class="group/dropdown relative">
               <button
                 :ref="(el) => setGroupButtonRef(row.id, el)"
                 @click="openGroupSelector(row)"
-                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-control px-2 py-1 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-dark-700"
+                class="-mx-2 -my-1 flex cursor-pointer items-center gap-2 rounded-control px-2 py-1 transition duration-normal hover:bg-gray-100 dark:hover:bg-dark-700"
                 :title="t('keys.clickToChangeGroup')"
               >
                 <GroupBadge
@@ -248,7 +264,7 @@
                 <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       row.quota_used >= row.quota ? 'bg-red-500' :
                       row.quota_used >= row.quota * 0.8 ? 'bg-yellow-500' :
                       'bg-primary-500'
@@ -278,7 +294,7 @@
                 <div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       row.usage_5h >= row.rate_limit_5h ? 'bg-red-500' :
                       row.usage_5h >= row.rate_limit_5h * 0.8 ? 'bg-yellow-500' :
                       'bg-emerald-500'
@@ -306,7 +322,7 @@
                 <div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       row.usage_1d >= row.rate_limit_1d ? 'bg-red-500' :
                       row.usage_1d >= row.rate_limit_1d * 0.8 ? 'bg-yellow-500' :
                       'bg-emerald-500'
@@ -334,7 +350,7 @@
                 <div class="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       row.usage_7d >= row.rate_limit_7d ? 'bg-red-500' :
                       row.usage_7d >= row.rate_limit_7d * 0.8 ? 'bg-yellow-500' :
                       'bg-emerald-500'
@@ -878,7 +894,7 @@
                 <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       selectedKey.usage_5h >= selectedKey.rate_limit_5h ? 'bg-red-500' :
                       selectedKey.usage_5h >= selectedKey.rate_limit_5h * 0.8 ? 'bg-yellow-500' :
                       'bg-green-500'
@@ -924,7 +940,7 @@
                 <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       selectedKey.usage_1d >= selectedKey.rate_limit_1d ? 'bg-red-500' :
                       selectedKey.usage_1d >= selectedKey.rate_limit_1d * 0.8 ? 'bg-yellow-500' :
                       'bg-green-500'
@@ -970,7 +986,7 @@
                 <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
                     :class="[
-                      'h-full rounded-full transition-all',
+                      'h-full rounded-full transition-[width,background-color]',
                       selectedKey.usage_7d >= selectedKey.rate_limit_7d ? 'bg-red-500' :
                       selectedKey.usage_7d >= selectedKey.rate_limit_7d * 0.8 ? 'bg-yellow-500' :
                       'bg-green-500'
@@ -1173,73 +1189,76 @@
 
     <!-- Group Selector Dropdown (Teleported to body to avoid overflow clipping) -->
     <Teleport to="body">
-      <div
-        v-if="groupSelectorKeyId !== null && dropdownPosition"
-        ref="dropdownRef"
-        class="animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-max max-w-[calc(100vw-16px)] overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-200 sm:min-w-[380px] dark:bg-dark-800 dark:ring-white/10"
-        style="pointer-events: auto !important;"
-        :style="{
-          top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
-          bottom: dropdownPosition.bottom !== undefined ? dropdownPosition.bottom + 'px' : undefined,
-          left: dropdownPosition.left + 'px'
-        }"
-      >
-        <!-- Search box -->
-        <div class="border-b border-gray-100 p-2 dark:border-dark-700">
-          <div class="relative">
-            <Icon
-              name="search"
-              size="sm"
-              class="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              v-model="groupSearchQuery"
-              type="text"
-              class="w-full rounded-control border border-primary-900/10 bg-gray-50 py-1.5 pl-8 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary-900/10 focus:ring-2 focus:ring-black/10 dark:border-dark-600 dark:bg-dark-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-primary-600 dark:focus:ring-primary-600"
-              :placeholder="t('keys.searchGroup')"
-              @click.stop
-            />
+      <MotionTransition name="dropdown-fade">
+        <div
+          v-if="groupSelectorKeyId !== null && dropdownPosition" :inert="!(groupSelectorKeyId !== null && dropdownPosition) || undefined"
+          ref="dropdownRef"
+          class="animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-max max-w-[calc(100vw-16px)] overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-normal sm:min-w-[380px] dark:bg-dark-800 dark:ring-white/10"
+          style="pointer-events: auto !important;"
+          :style="{
+            top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
+            bottom: dropdownPosition.bottom !== undefined ? dropdownPosition.bottom + 'px' : undefined,
+            left: dropdownPosition.left + 'px'
+          }"
+        >
+          <!-- Search box -->
+          <div class="border-b border-gray-100 p-2 dark:border-dark-700">
+            <div class="relative">
+              <Icon
+                name="search"
+                size="sm"
+                class="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                v-model="groupSearchQuery"
+                type="text"
+                class="w-full rounded-control border border-primary-900/10 bg-gray-50 py-1.5 pl-8 pr-3 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary-900/10 focus:ring-2 focus:ring-black/10 dark:border-dark-600 dark:bg-dark-700 dark:text-white dark:placeholder-gray-500 dark:focus:border-primary-600 dark:focus:ring-primary-600"
+                :placeholder="t('keys.searchGroup')"
+                @click.stop
+              />
+            </div>
           </div>
-        </div>
-        <!-- Group list -->
-        <div class="max-h-80 overflow-y-auto p-1.5">
-          <button
-            v-for="option in filteredGroupOptions"
-            :key="option.value ?? 'null'"
-            @click="changeGroup(selectedKeyForGroup!, option.value)"
-            :class="[
-              'flex w-full items-center justify-between rounded-control px-3 py-2.5 text-sm transition-colors',
-              'border-b border-gray-100 last:border-0 dark:border-dark-700',
-              selectedKeyForGroup?.group_id === option.value ||
-              (!selectedKeyForGroup?.group_id && option.value === null)
-                ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
-                : 'hover:bg-gray-100 dark:hover:bg-dark-700'
-            ]"
-            :title="option.description || undefined"
-          >
-            <GroupOptionItem
-              :name="option.label"
-              :display-brand="option.displayBrand"
-              :rate-multiplier="option.rate"
-              :user-rate-multiplier="option.userRate"
-              :description="option.description"
-              :selected="
+          <!-- Group list -->
+          <div class="max-h-80 overflow-y-auto p-1.5">
+            <button
+              v-for="option in filteredGroupOptions"
+              :key="option.value ?? 'null'"
+              @click="changeGroup(selectedKeyForGroup!, option.value)"
+              :class="[
+                'flex w-full items-center justify-between rounded-control px-3 py-2.5 text-sm transition-colors',
+                'border-b border-gray-100 last:border-0 dark:border-dark-700',
                 selectedKeyForGroup?.group_id === option.value ||
                 (!selectedKeyForGroup?.group_id && option.value === null)
-              "
-            />
-          </button>
-          <!-- Empty state when search has no results -->
-          <div v-if="filteredGroupOptions.length === 0" class="py-4 text-center text-sm text-gray-400 dark:text-gray-500">
-            {{ t('keys.noGroupFound') }}
+                  ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
+                  : 'hover:bg-gray-100 dark:hover:bg-dark-700'
+              ]"
+              :title="option.description || undefined"
+            >
+              <GroupOptionItem
+                :name="option.label"
+                :display-brand="option.displayBrand"
+                :rate-multiplier="option.rate"
+                :user-rate-multiplier="option.userRate"
+                :description="option.description"
+                :selected="
+                  selectedKeyForGroup?.group_id === option.value ||
+                  (!selectedKeyForGroup?.group_id && option.value === null)
+                "
+              />
+            </button>
+            <!-- Empty state when search has no results -->
+            <div v-if="filteredGroupOptions.length === 0" class="py-4 text-center text-sm text-gray-400 dark:text-gray-500">
+              {{ t('keys.noGroupFound') }}
+            </div>
           </div>
         </div>
-      </div>
+      </MotionTransition>
     </Teleport>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 	import { watch, ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
@@ -1268,6 +1287,7 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import TfCliImportDialog from '@/components/keys/TfCliImportDialog.vue'
 	import EndpointPopover from '@/components/keys/EndpointPopover.vue'
 	import GroupBadge from '@/components/common/GroupBadge.vue'
+	import ProviderIcon from '@/components/common/ProviderIcon.vue'
 	import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 	import ScopeDropdown, { type DataScope } from '@/components/team/ScopeDropdown.vue'
 	import type {
@@ -1323,6 +1343,24 @@ const formatBalancePair = (
 ) => {
   const separator = spaced ? ' / ' : '/'
   return `${formatBalanceAmount(used, { fractionDigits: usedDigits })}${separator}${formatBalanceAmount(limit, { fractionDigits: limitDigits })}`
+}
+
+// COMPOSITE_GROUP_PREVIEW_LIMIT 是列表中复合 Key 直接展示的映射行数上限。
+const COMPOSITE_GROUP_PREVIEW_LIMIT = 3
+
+// visibleCompositeGroups 返回表格中需要直接展示的复合映射。
+// 恰好只多出一条时直接全部展示，避免用计数行替代单条映射。
+const visibleCompositeGroups = (row: ApiKey) => {
+  const groups = row.composite_groups ?? []
+  if (groups.length <= COMPOSITE_GROUP_PREVIEW_LIMIT + 1) {
+    return groups
+  }
+  return groups.slice(0, COMPOSITE_GROUP_PREVIEW_LIMIT)
+}
+
+// hiddenCompositeGroupCount 返回被折叠的复合映射数量。
+const hiddenCompositeGroupCount = (row: ApiKey) => {
+  return (row.composite_groups?.length ?? 0) - visibleCompositeGroups(row).length
 }
 
 const allColumns = computed<Column[]>(() => [

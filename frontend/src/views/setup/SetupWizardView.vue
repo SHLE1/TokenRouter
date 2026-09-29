@@ -2,7 +2,7 @@
   <div
     class="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4 dark:from-dark-900 dark:to-dark-800"
   >
-    <div class="w-full max-w-2xl">
+    <div v-content-reveal="motionRoute?.path" class="w-full max-w-2xl">
       <!-- Logo & Title -->
       <div class="mb-8 text-center">
         <div
@@ -21,7 +21,7 @@
             <div class="flex items-center">
               <div
                 :class="[
-                  'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-all',
+                  'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition',
                   currentStep > index
                     ? 'bg-primary-500 text-white'
                     : currentStep === index
@@ -61,7 +61,7 @@
       <!-- Step Content -->
       <div class="rounded-surface bg-white p-8 shadow-xl dark:bg-dark-800">
         <!-- Step 1: Database -->
-        <div v-if="currentStep === 0" class="space-y-6">
+        <div v-if="currentStep === 0" v-content-reveal class="space-y-6">
           <div class="mb-6 text-center">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
               {{ t('setup.database.title') }}
@@ -180,7 +180,7 @@
         </div>
 
         <!-- Step 2: Redis -->
-        <div v-if="currentStep === 1" class="space-y-6">
+        <div v-if="currentStep === 1" v-content-reveal class="space-y-6">
           <div class="mb-6 text-center">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
               {{ t('setup.redis.title') }}
@@ -284,7 +284,7 @@
         </div>
 
         <!-- Step 3: Admin -->
-        <div v-if="currentStep === 2" class="space-y-6">
+        <div v-if="currentStep === 2" v-content-reveal class="space-y-6">
           <div class="mb-6 text-center">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
               {{ t('setup.admin.title') }}
@@ -332,7 +332,7 @@
         </div>
 
         <!-- Step 4: Complete -->
-        <div v-if="currentStep === 3" class="space-y-6">
+        <div v-if="currentStep === 3" v-content-reveal class="space-y-6">
           <div class="mb-6 text-center">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
               {{ t('setup.ready.title') }}
@@ -462,6 +462,11 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import { useRoute as useMotionRoute } from 'vue-router'
+const motionRoute = useMotionRoute()
+
+
 import { ref, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { testDatabase, testRedis, install, type InstallRequest } from '@/api/setup'

@@ -122,7 +122,7 @@
 	                @click.stop="toggleChildRows(row.id)"
 	              >
 	                <Icon
-	                  :name="expandedParentIds.has(row.id) ? 'chevronDown' : 'chevronRight'"
+	                  name="chevronRight" class="transition-transform duration-normal" :class="{ 'rotate-90': expandedParentIds.has(row.id) }"
 	                  size="xs"
 	                  :animate-on-hover="false"
 	                />
@@ -331,27 +331,29 @@
     </Teleport>
 
     <Teleport to="body">
-      <div
-        v-if="promptPopover.visible"
-        class="batch-prompt-popover fixed z-teleport-tooltip rounded-surface border border-gray-200 bg-white p-3 text-sm text-gray-800 shadow-xl ring-1 ring-black/5 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-100 dark:ring-white/10"
-        :style="promptPopover.style"
-        @mouseenter="cancelPromptPopoverClose"
-        @mouseleave="schedulePromptPopoverClose"
-      >
-        <div class="mb-2 flex items-center justify-between gap-3">
-          <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('batchImage.promptPopover.title') }}</span>
-          <button
-            type="button"
-            class="rounded-control px-2 py-1 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 dark:text-primary-300 dark:hover:bg-primary-900/20"
-            @click="copyPromptPopover"
-          >
-            {{ t('common.copy') }}
-          </button>
+      <MotionTransition name="fade">
+        <div
+          v-if="promptPopover.visible" :inert="!(promptPopover.visible) || undefined"
+          class="batch-prompt-popover fixed z-teleport-tooltip rounded-surface border border-gray-200 bg-white p-3 text-sm text-gray-800 shadow-xl ring-1 ring-black/5 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-100 dark:ring-white/10"
+          :style="promptPopover.style"
+          @mouseenter="cancelPromptPopoverClose"
+          @mouseleave="schedulePromptPopoverClose"
+        >
+          <div class="mb-2 flex items-center justify-between gap-3">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('batchImage.promptPopover.title') }}</span>
+            <button
+              type="button"
+              class="rounded-control px-2 py-1 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 dark:text-primary-300 dark:hover:bg-primary-900/20"
+              @click="copyPromptPopover"
+            >
+              {{ t('common.copy') }}
+            </button>
+          </div>
+          <p class="max-h-48 overflow-y-auto whitespace-pre-wrap break-words leading-6 selection:bg-primary-100 selection:text-primary-900 dark:selection:bg-primary-900/60 dark:selection:text-primary-100">
+            {{ promptPopover.text }}
+          </p>
         </div>
-        <p class="max-h-48 overflow-y-auto whitespace-pre-wrap break-words leading-6 selection:bg-primary-100 selection:text-primary-900 dark:selection:bg-primary-900/60 dark:selection:text-primary-100">
-          {{ promptPopover.text }}
-        </p>
-      </div>
+      </MotionTransition>
     </Teleport>
 
     <BaseDialog :show="!!currentJob" :title="t('batchImage.detail.title')" width="extra-wide" @close="closeDetail">
@@ -791,6 +793,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'

@@ -31,16 +31,18 @@
                 <Icon name="filter" size="sm" />
                 <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">{{ activeFilterCount }}</span>
               </button>
-              <div v-if="showFilterDropdown" class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-72 rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
-                <div class="mb-3 flex items-center justify-between">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                  <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetProxyFilters">{{ t('common.reset') }}</button>
+              <MotionTransition name="dropdown-fade">
+                <div v-if="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-72 rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
+                  <div class="mb-3 flex items-center justify-between">
+                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                    <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetProxyFilters">{{ t('common.reset') }}</button>
+                  </div>
+                  <div class="space-y-3">
+                    <Select v-model="filters.protocol" :options="protocolOptions" :placeholder="t('admin.proxies.allProtocols')" @change="loadProxies" />
+                    <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.proxies.allStatus')" @change="loadProxies" />
+                  </div>
                 </div>
-                <div class="space-y-3">
-                  <Select v-model="filters.protocol" :options="protocolOptions" :placeholder="t('admin.proxies.allProtocols')" @change="loadProxies" />
-                  <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.proxies.allStatus')" @change="loadProxies" />
-                </div>
-              </div>
+              </MotionTransition>
             </div>
           </div>
 
@@ -66,46 +68,48 @@
                 {{ t('admin.proxies.moreActions') }}
                 <Icon name="chevronDown" size="xs" :animate-on-hover="false" />
               </button>
-              <div
-                v-if="showMoreActionsDropdown"
-                class="absolute right-0 top-full z-modal-nested mt-2 w-56 rounded-control border border-gray-200 bg-white p-1 shadow-xl dark:border-dark-600 dark:bg-dark-900"
-                @click.stop
-              >
-                <button
-                  type="button"
-                  class="dropdown-item-sm rounded-control disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="batchTesting || loading"
-                  @click="showMoreActionsDropdown = false; handleBatchTest()"
+              <MotionTransition name="dropdown-fade">
+                <div
+                  v-if="showMoreActionsDropdown" :inert="!(showMoreActionsDropdown) || undefined"
+                  class="absolute right-0 top-full z-modal-nested mt-2 w-56 rounded-control border border-gray-200 bg-white p-1 shadow-xl dark:border-dark-600 dark:bg-dark-900"
+                  @click.stop
                 >
-                  <Icon name="play" size="sm" />
-                  {{ t('admin.proxies.testConnection') }}
-                </button>
-                <button
-                  type="button"
-                  class="dropdown-item-sm rounded-control disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="batchQualityChecking || loading"
-                  @click="showMoreActionsDropdown = false; handleBatchQualityCheck()"
-                >
-                  <Icon name="shield" size="sm" :class="batchQualityChecking ? 'animate-pulse' : ''" />
-                  {{ t('admin.proxies.batchQualityCheck') }}
-                </button>
-                <button
-                  type="button"
-                  class="dropdown-item-sm rounded-control"
-                  @click="showMoreActionsDropdown = false; showImportData = true"
-                >
-                  <Icon name="upload" size="sm" />
-                  {{ t('admin.proxies.dataImport') }}
-                </button>
-                <button
-                  type="button"
-                  class="dropdown-item-sm rounded-control"
-                  @click="showMoreActionsDropdown = false; showExportDataDialog = true"
-                >
-                  <Icon name="download" size="sm" />
-                  {{ selectedCount > 0 ? t('admin.proxies.dataExportSelected') : t('admin.proxies.dataExport') }}
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    class="dropdown-item-sm rounded-control disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="batchTesting || loading"
+                    @click="showMoreActionsDropdown = false; handleBatchTest()"
+                  >
+                    <Icon name="play" size="sm" />
+                    {{ t('admin.proxies.testConnection') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item-sm rounded-control disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="batchQualityChecking || loading"
+                    @click="showMoreActionsDropdown = false; handleBatchQualityCheck()"
+                  >
+                    <Icon name="shield" size="sm" :class="batchQualityChecking ? 'animate-pulse' : ''" />
+                    {{ t('admin.proxies.batchQualityCheck') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item-sm rounded-control"
+                    @click="showMoreActionsDropdown = false; showImportData = true"
+                  >
+                    <Icon name="upload" size="sm" />
+                    {{ t('admin.proxies.dataImport') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item-sm rounded-control"
+                    @click="showMoreActionsDropdown = false; showExportDataDialog = true"
+                  >
+                    <Icon name="download" size="sm" />
+                    {{ selectedCount > 0 ? t('admin.proxies.dataExportSelected') : t('admin.proxies.dataExport') }}
+                  </button>
+                </div>
+              </MotionTransition>
             </div>
             <button
               @click="openBatchDelete"
@@ -183,19 +187,21 @@
                   <Icon name="copy" size="sm" />
                 </button>
                 <!-- 右键展开格式选择菜单 -->
-                <div
-                  v-if="copyMenuProxyId === row.id"
-                  class="absolute left-0 top-full z-50 mt-1 w-auto min-w-[180px] rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-500 dark:bg-dark-700"
-                >
-                  <button
-                    v-for="fmt in getCopyFormats(row)"
-                    :key="fmt.label"
-                    class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-100 dark:hover:bg-dark-600"
-                    @click.stop="copyFormat(fmt.value)"
+                <MotionTransition name="dropdown-fade">
+                  <div
+                    v-if="copyMenuProxyId === row.id" :inert="!(copyMenuProxyId === row.id) || undefined"
+                    class="absolute left-0 top-full z-50 mt-1 w-auto min-w-[180px] rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-500 dark:bg-dark-700"
                   >
-                    <span class="truncate font-mono text-gray-600 dark:text-gray-300">{{ fmt.label }}</span>
-                  </button>
-                </div>
+                    <button
+                      v-for="fmt in getCopyFormats(row)"
+                      :key="fmt.label"
+                      class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-gray-100 dark:hover:bg-dark-600"
+                      @click.stop="copyFormat(fmt.value)"
+                    >
+                      <span class="truncate font-mono text-gray-600 dark:text-gray-300">{{ fmt.label }}</span>
+                    </button>
+                  </div>
+                </MotionTransition>
               </div>
             </div>
           </template>
@@ -919,6 +925,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

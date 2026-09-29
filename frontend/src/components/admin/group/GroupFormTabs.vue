@@ -23,7 +23,7 @@
       <!-- 所有页签持续挂载，避免模型策略和推理规则的内部草稿在切页时丢失。 -->
       <section
         v-for="tab in allTabs"
-        v-show="activeTab === tab && visibleTabs.includes(tab)"
+        v-show="activeTab === tab && visibleTabs.includes(tab)" v-content-reveal="activeTab === tab && visibleTabs.includes(tab)"
         :id="`${idPrefix}-panel-${tab}`"
         :key="tab"
         role="tabpanel"
@@ -39,6 +39,8 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 

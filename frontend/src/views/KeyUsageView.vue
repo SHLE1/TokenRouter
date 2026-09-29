@@ -36,7 +36,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="relative z-10 flex-1 w-full max-w-5xl mx-auto px-6 py-12">
+    <main v-content-reveal="motionRoute?.path" class="relative z-10 flex-1 w-full max-w-5xl mx-auto px-6 py-12">
       <!-- Hero -->
       <div class="text-center mb-12">
         <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-3 text-gray-900 dark:text-white">
@@ -58,7 +58,7 @@
               v-model="apiKey"
               :type="keyVisible ? 'text' : 'password'"
               :placeholder="t('keyUsage.placeholder')"
-              class="input-ring h-9 w-full pl-12 pr-12 rounded-control border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 transition-all dark:border-dark-700 dark:bg-dark-900 dark:text-white dark:placeholder:text-dark-500"
+              class="input-ring h-9 w-full pl-12 pr-12 rounded-control border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 transition dark:border-dark-700 dark:bg-dark-900 dark:text-white dark:placeholder:text-dark-500"
               @keydown.enter="queryKey"
             />
             <button
@@ -72,7 +72,7 @@
           <button
             @click="queryKey"
             :disabled="isQuerying"
-            class="h-9 px-7 rounded-control bg-primary-500 hover:bg-primary-600 text-white font-medium text-sm transition-all active:scale-[0.97] flex items-center gap-2 whitespace-nowrap disabled:opacity-60"
+            class="h-9 px-7 rounded-control bg-primary-500 hover:bg-primary-600 text-white font-medium text-sm transition active:scale-[0.97] flex items-center gap-2 whitespace-nowrap disabled:opacity-60"
           >
             <Icon
               name="loader"
@@ -97,7 +97,7 @@
               v-for="range in dateRanges"
               :key="range.key"
               @click="setDateRange(range.key)"
-              class="text-xs px-3 py-1.5 rounded-control border transition-all"
+              class="text-xs px-3 py-1.5 rounded-control border transition"
               :class="currentRange === range.key
                 ? 'bg-primary-500 text-white border-primary-500'
                 : 'border-gray-200 bg-white text-gray-700 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200 hover:border-black/20 dark:hover:border-dark-600'"
@@ -168,7 +168,7 @@
             <div
               v-for="(ring, i) in ringItems"
               :key="i"
-              class="fade-up rounded-surface border border-gray-200 bg-white/90 p-8 backdrop-blur-sm transition-all duration-300 hover:shadow-lg dark:border-dark-700 dark:bg-dark-900/90"
+              class="fade-up rounded-surface border border-gray-200 bg-white/90 p-8 backdrop-blur-sm transition duration-layout hover:shadow-lg dark:border-dark-700 dark:bg-dark-900/90"
               :class="`fade-up-delay-${Math.min(i + 1, 4)}`"
             >
               <div class="flex items-center justify-between mb-6">
@@ -423,6 +423,10 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import { useRoute as useMotionRoute } from 'vue-router'
+const motionRoute = useMotionRoute()
+
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
@@ -1001,7 +1005,7 @@ onUnmounted(() => {
 <style scoped>
 /* 自定义日期输入在浅色模式使用中性焦点圈，暗色模式保留原品牌强调。 */
 .input-ring {
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: box-shadow var(--motion-normal) var(--motion-ease), border-color var(--motion-normal) var(--motion-ease);
 }
 .input-ring:focus {
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);

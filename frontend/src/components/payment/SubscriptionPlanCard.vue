@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'group relative flex flex-col overflow-hidden rounded-surface border transition-all',
+      'group relative flex flex-col overflow-hidden rounded-surface border transition',
       'hover:shadow-xl hover:-translate-y-0.5',
       borderClass,
       'bg-white dark:bg-dark-800',
@@ -85,7 +85,7 @@
       <!-- Subscribe Button -->
       <button
         type="button"
-        :class="['h-9 w-full rounded-control py-1.5 text-sm font-semibold transition-all active:scale-[0.98]', btnClass]"
+        :class="['h-9 w-full rounded-control py-1.5 text-sm font-semibold transition active:scale-[0.98]', btnClass]"
         @click="emit('select', plan)"
       >
         {{ isRenewal ? t('payment.renewNow') : t('payment.subscribeNow') }}

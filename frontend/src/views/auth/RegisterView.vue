@@ -130,7 +130,7 @@
             </div>
           </div>
           <!-- Invitation code validation result -->
-          <transition name="fade-slow">
+          <MotionTransition name="fade-slow">
             <div v-if="invitationValidation.valid" class="mt-2 flex items-center gap-2 rounded-control bg-green-50 px-3 py-2 dark:bg-green-900/20">
               <Icon
                 name="checkCircle"
@@ -142,7 +142,7 @@
                 {{ t('auth.invitationCodeValid') }}
               </span>
             </div>
-          </transition>
+          </MotionTransition>
         </div>
 
         <!-- 推广邀请码输入（可选） -->
@@ -210,14 +210,14 @@
             </div>
           </div>
           <!-- Promo code validation result -->
-          <transition name="fade-slow">
+          <MotionTransition name="fade-slow">
             <div v-if="promoValidation.valid" class="mt-2 flex items-center gap-2 rounded-control bg-green-50 px-3 py-2 dark:bg-green-900/20">
               <Icon name="gift" size="sm" class="text-green-600 dark:text-green-400" />
               <span class="text-sm text-green-700 dark:text-green-400">
                 {{ t('auth.promoCodeValid', { amount: formatBalanceAmount(promoValidation.bonusAmount, { fractionDigits: 2 }) }) }}
               </span>
             </div>
-          </transition>
+          </MotionTransition>
         </div>
 
         <!-- Turnstile Widget -->
@@ -336,6 +336,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'

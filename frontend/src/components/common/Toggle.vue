@@ -2,7 +2,7 @@
   <button
     type="button"
     @click="toggle"
-    class="toggle-control relative inline-flex flex-shrink-0 cursor-pointer rounded-full border-0 p-0 transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-dark-800"
+    class="toggle-control relative inline-flex flex-shrink-0 cursor-pointer rounded-full border-0 p-0 transition-colors duration-normal ease-standard focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-dark-800"
     :class="[
       props.modelValue ? props.onClass : offTrackClass,
       props.disabled && 'cursor-not-allowed opacity-50'
@@ -16,7 +16,7 @@
   >
     <!-- 滑块尺寸、边距与开态位移全部由下方 CSS 变量推导,改档位只调变量不改位移。 -->
     <span
-      class="toggle-thumb pointer-events-none absolute block transform rounded-full bg-white shadow ring-0 transition-transform duration-200 ease-in-out"
+      class="toggle-thumb pointer-events-none absolute block transform rounded-full bg-white shadow ring-0 transition-transform duration-normal ease-standard"
     />
   </button>
 </template>

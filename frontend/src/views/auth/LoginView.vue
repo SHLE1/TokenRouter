@@ -205,7 +205,9 @@
 
   <!-- 2FA Modal -->
   <TotpLoginModal
-    v-if="show2FAModal"
+    v-if="totpPresent"
+    :show="show2FAModal"
+    @after-leave="totpAfterLeave"
     ref="totpModalRef"
     :temp-token="totpTempToken"
     :user-email-masked="totpUserEmailMasked"
@@ -215,6 +217,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLeavingPresence } from '@/composables/useLeavingPresence'
 import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -320,6 +323,7 @@ const captchaEnabled = computed(
 
 // 2FA state
 const show2FAModal = ref<boolean>(false)
+const { present: totpPresent, afterLeave: totpAfterLeave } = useLeavingPresence(() => show2FAModal.value)
 const totpTempToken = ref<string>('')
 const totpUserEmailMasked = ref<string>('')
 const totpModalRef = ref<InstanceType<typeof TotpLoginModal> | null>(null)

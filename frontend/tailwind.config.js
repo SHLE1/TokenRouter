@@ -182,6 +182,18 @@ export default {
         'mesh-gradient':
           'radial-gradient(at 40% 20%, rgba(0, 210, 255, 0.14) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(139, 221, 248, 0.12) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(18, 167, 232, 0.1) 0px, transparent 50%)'
       },
+      // 动效变量由 style.css 持有，工具类只负责引用。
+      transitionDuration: {
+        DEFAULT: 'var(--motion-fast)',
+        fast: 'var(--motion-fast)',
+        normal: 'var(--motion-normal)',
+        layout: 'var(--motion-layout)',
+      },
+      transitionTimingFunction: {
+        DEFAULT: 'var(--motion-ease)',
+        standard: 'var(--motion-ease)',
+        exit: 'var(--motion-ease-exit)',
+      },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-up': 'slideUp 0.3s ease-out',

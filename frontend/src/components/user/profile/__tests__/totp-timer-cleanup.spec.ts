@@ -96,8 +96,12 @@ describe('TOTP 弹窗定时器清理', () => {
     await sendButton!.trigger('click')
     await flushPromises()
 
-    expect(setIntervalSpy).toHaveBeenCalledTimes(1)
-    const timerId = setIntervalSpy.mock.results[0]?.value
+    // 弹窗进入动画也可能使用浏览器帧计时，仅核对业务倒计时的生命周期。
+    const cooldownCalls = setIntervalSpy.mock.calls
+      .map((call, index) => ({ delay: call[1], id: setIntervalSpy.mock.results[index]?.value }))
+      .filter(call => call.delay === 1000)
+    expect(cooldownCalls).toHaveLength(1)
+    const timerId = cooldownCalls[0].id
 
     wrapper.unmount()
 
@@ -116,8 +120,12 @@ describe('TOTP 弹窗定时器清理', () => {
     await sendButton!.trigger('click')
     await flushPromises()
 
-    expect(setIntervalSpy).toHaveBeenCalledTimes(1)
-    const timerId = setIntervalSpy.mock.results[0]?.value
+    // 弹窗进入动画也可能使用浏览器帧计时，仅核对业务倒计时的生命周期。
+    const cooldownCalls = setIntervalSpy.mock.calls
+      .map((call, index) => ({ delay: call[1], id: setIntervalSpy.mock.results[index]?.value }))
+      .filter(call => call.delay === 1000)
+    expect(cooldownCalls).toHaveLength(1)
+    const timerId = cooldownCalls[0].id
 
     wrapper.unmount()
 

@@ -162,11 +162,11 @@
 
         <!-- Tab Content -->
         <form ref="dialogForm" novalidate id="pricing-form" @submit.prevent="handleSubmit" class="flex-1 overflow-y-auto pt-4">
-          <section id="pricing-panel-billing" v-show="activeTab === 'billing'" role="tabpanel" aria-labelledby="pricing-tab-billing" data-pricing-panel="billing">
+          <section id="pricing-panel-billing" v-show="activeTab === 'billing'" v-content-reveal="activeTab === 'billing'" role="tabpanel" aria-labelledby="pricing-tab-billing" data-pricing-panel="billing">
             <BillingSettingsPanel v-model="form.billing_settings" />
           </section>
           <!-- Basic Settings Tab -->
-          <div id="pricing-panel-basic" v-show="activeTab === 'basic'" role="tabpanel" aria-labelledby="pricing-tab-basic" data-pricing-panel="basic" class="space-y-5">
+          <div id="pricing-panel-basic" v-show="activeTab === 'basic'" v-content-reveal="activeTab === 'basic'" role="tabpanel" aria-labelledby="pricing-tab-basic" data-pricing-panel="basic" class="space-y-5">
             <!-- Name -->
             <div>
               <label class="input-label">{{ t('admin.pricing.form.name', 'Name') }} <span class="text-red-500">*</span></label>
@@ -213,7 +213,7 @@
             v-for="(section, sIdx) in form.sections"
             :key="sIdx"
             id="pricing-panel-pricing" role="tabpanel" aria-labelledby="pricing-tab-pricing" data-pricing-panel="pricing"
-            v-show="activeTab === 'pricing'"
+            v-show="activeTab === 'pricing'" v-content-reveal="activeTab === 'pricing'"
             class="space-y-4"
           >
             <!-- Groups -->
@@ -386,23 +386,25 @@
                       @focus="onRuleProviderSearchFocus('pricing', ruleIndex)"
                     />
                     <!-- Search results dropdown -->
-                    <div
-                      v-if="showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0"
-                      class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-control border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
-                    >
-                      <button
-                        v-for="provider in ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]"
-                        :key="provider.id"
-                        type="button"
-                        @click="selectRuleProvider(rule, provider, 'pricing', ruleIndex)"
-                        class="dropdown-item-sm"
-                        :class="{ 'opacity-50': rule.provider_ids.includes(provider.id) }"
-                        :disabled="rule.provider_ids.includes(provider.id)"
+                    <MotionTransition name="dropdown-fade">
+                      <div
+                        v-if="showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0" :inert="!(showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0) || undefined"
+                        class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-control border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
                       >
-                        <span :class="platformTextClass(provider.platform)">{{ provider.name }}</span>
-                        <span class="text-xs text-gray-400">#{{ provider.id }}</span>
-                      </button>
-                    </div>
+                        <button
+                          v-for="provider in ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]"
+                          :key="provider.id"
+                          type="button"
+                          @click="selectRuleProvider(rule, provider, 'pricing', ruleIndex)"
+                          class="dropdown-item-sm"
+                          :class="{ 'opacity-50': rule.provider_ids.includes(provider.id) }"
+                          :disabled="rule.provider_ids.includes(provider.id)"
+                        >
+                          <span :class="platformTextClass(provider.platform)">{{ provider.name }}</span>
+                          <span class="text-xs text-gray-400">#{{ provider.id }}</span>
+                        </button>
+                      </div>
+                    </MotionTransition>
                   </div>
                   <p class="mt-1 text-xs text-gray-400">
                     {{ t('admin.pricing.form.ruleProvidersHint') }}
@@ -473,6 +475,9 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
+import { vContentReveal } from '@/directives/contentReveal'
+
 import { nextTick, ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

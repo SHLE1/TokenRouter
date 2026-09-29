@@ -20,7 +20,7 @@
   </button>
 
   <!-- 悬浮历史列表：点击展开 / 收起，选择行后不自动收起 -->
-  <Transition name="pop-float">
+  <MotionTransition name="pop-float">
     <div
       v-if="open"
       class="history-pop-float absolute right-3 top-14 z-20 flex max-h-[70%] w-80 flex-col overflow-hidden rounded-surface border border-primary-900/10 bg-white/95 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-900/95"
@@ -92,7 +92,7 @@
           </button>
 
           <!-- 进行中的任务只显示加载状态，终态任务才显示素材与操作按钮。 -->
-          <Transition name="history-details">
+          <MotionTransition name="history-details">
             <div v-if="expandedRunId === run.id" class="history-details-grid">
               <div class="min-h-0 overflow-hidden">
                 <div class="space-y-2 border-t border-primary-900/10 px-3 pb-3 pt-2 dark:border-dark-600">
@@ -164,7 +164,7 @@
                 </div>
               </div>
             </div>
-          </Transition>
+          </MotionTransition>
         </div>
       </div>
       <p v-else-if="!studio.loadingHistory.value" class="py-6 text-center text-xs text-gray-400 dark:text-dark-400">
@@ -172,10 +172,11 @@
       </p>
     </div>
     </div>
-  </Transition>
+  </MotionTransition>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 /**
  * 创作 run 历史（悬浮层）：
  * - 画布右上角图标按钮展开 / 收起；列表每行 = 状态徽章 + 模型名 + 时间（+ 实际费用）
@@ -351,8 +352,7 @@ async function refresh(): Promise<void> {
 /* 历史面板动效用全局 pop-float,锚点方向(右上锚、向上收起)用局部变量表达;
    条目详情折叠(history-details)是网格轨道动画,保留本地。 */
 .history-pop-float {
-  --pop-origin: top right;
-  --pop-shift: -6px;
+  --pop-shift: calc(-1 * var(--motion-shift));
 }
 
 .history-details-grid {
@@ -364,8 +364,8 @@ async function refresh(): Promise<void> {
 .history-details-leave-active {
   overflow: hidden;
   transition:
-    grid-template-rows 220ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    grid-template-rows var(--motion-layout) var(--motion-ease),
+    opacity var(--motion-layout) var(--motion-ease);
 }
 
 .history-details-enter-from,

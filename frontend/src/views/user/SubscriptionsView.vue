@@ -150,7 +150,7 @@
                 </div>
                 <div class="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-600">
                   <div
-                    class="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                    class="absolute inset-y-0 left-0 rounded-full transition-[width,background-color] duration-layout"
                     :class="getProgressBarClass(window.used, window.limit)"
                     :style="{ width: getProgressWidth(window.used, window.limit) }"
                   />

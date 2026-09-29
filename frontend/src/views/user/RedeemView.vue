@@ -67,7 +67,7 @@
         </div>
 
         <!-- Success Message -->
-        <transition name="fade-slow">
+        <MotionTransition name="fade-slow">
           <div
             v-if="redeemResult"
             class="card border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-900/20"
@@ -123,10 +123,10 @@
               </div>
             </div>
           </div>
-        </transition>
+        </MotionTransition>
 
         <!-- Error Message -->
-        <transition name="fade-slow">
+        <MotionTransition name="fade-slow">
           <div
             v-if="errorMessage"
             class="card border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20"
@@ -153,7 +153,7 @@
               </div>
             </div>
           </div>
-        </transition>
+        </MotionTransition>
 
       </div>
 
@@ -291,6 +291,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'

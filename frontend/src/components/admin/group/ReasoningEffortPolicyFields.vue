@@ -53,7 +53,7 @@
         </button>
       </div>
 
-      <div v-if="mappings.length > 0" class="space-y-2">
+      <TransitionGroup name="motion-list" tag="div" class="relative space-y-2" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement"> 0" class="space-y-2">
         <div
           v-for="group in mappings"
           :key="group.id"
@@ -201,12 +201,14 @@
             {{ t("admin.groups.form.addReasoningEffortPair") }}
           </button>
         </div>
-      </div>
+      </TransitionGroup>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { prepareListLeave, restoreEnteringElement } from '@/utils/leavingElement'
+
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import Icon from "@/components/icons/Icon.vue";

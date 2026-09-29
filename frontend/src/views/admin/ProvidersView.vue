@@ -30,43 +30,45 @@
                 >
                   <Icon name="clock" size="sm" :class="autoRefreshEnabled ? 'text-primary-500' : ''" />
                 </button>
-                <div
-                  v-if="showAutoRefreshDropdown"
-                  class="fixed z-50 w-56 origin-top-left overflow-hidden rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
-                  :style="autoRefreshDropdownStyle"
-                >
-                  <div class="p-2">
-                    <button
-                      @click="setAutoRefreshEnabled(!autoRefreshEnabled)"
-                      class="dropdown-item-sm justify-between rounded-control"
-                    >
-                      <span>{{ t('admin.providers.enableAutoRefresh') }}</span>
-                      <Icon
-                        v-if="autoRefreshEnabled"
-                        name="check"
-                        size="sm"
-                        class="text-primary-500"
-                        :animate-on-hover="false"
-                      />
-                    </button>
-                    <div class="my-1 border-t border-gray-100 dark:border-dark-600"></div>
-                    <button
-                      v-for="sec in autoRefreshIntervals"
-                      :key="sec"
-                      @click="setAutoRefreshInterval(sec)"
-                      class="dropdown-item-sm justify-between rounded-control"
-                    >
-                      <span>{{ autoRefreshIntervalLabel(sec) }}</span>
-                      <Icon
-                        v-if="autoRefreshIntervalSeconds === sec"
-                        name="check"
-                        size="sm"
-                        class="text-primary-500"
-                        :animate-on-hover="false"
-                      />
-                    </button>
+                <MotionTransition name="dropdown-fade">
+                  <div
+                    v-if="showAutoRefreshDropdown" :inert="!(showAutoRefreshDropdown) || undefined"
+                    class="fixed z-50 w-56 origin-top-left overflow-hidden rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
+                    :style="autoRefreshDropdownStyle"
+                  >
+                    <div class="p-2">
+                      <button
+                        @click="setAutoRefreshEnabled(!autoRefreshEnabled)"
+                        class="dropdown-item-sm justify-between rounded-control"
+                      >
+                        <span>{{ t('admin.providers.enableAutoRefresh') }}</span>
+                        <Icon
+                          v-if="autoRefreshEnabled"
+                          name="check"
+                          size="sm"
+                          class="text-primary-500"
+                          :animate-on-hover="false"
+                        />
+                      </button>
+                      <div class="my-1 border-t border-gray-100 dark:border-dark-600"></div>
+                      <button
+                        v-for="sec in autoRefreshIntervals"
+                        :key="sec"
+                        @click="setAutoRefreshInterval(sec)"
+                        class="dropdown-item-sm justify-between rounded-control"
+                      >
+                        <span>{{ autoRefreshIntervalLabel(sec) }}</span>
+                        <Icon
+                          v-if="autoRefreshIntervalSeconds === sec"
+                          name="check"
+                          size="sm"
+                          class="text-primary-500"
+                          :animate-on-hover="false"
+                        />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                </MotionTransition>
               </div>
 
               <!-- 更多工具下拉菜单 -->
@@ -88,98 +90,100 @@
                   />
                 </button>
                 <Teleport to="body">
-                  <div
-                    v-if="showProviderToolsDropdown"
-                    class="fixed z-teleport-tooltip origin-top-right overflow-hidden rounded-control border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-gray-800"
-                    :style="providerToolsDropdownStyle"
-                    @click.stop
-                  >
-                    <div class="overflow-y-auto p-2" :style="{ maxHeight: `${providerToolsDropdownPosition.maxHeight}px` }">
-                    <div class="px-2 py-2">
-                      <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                        {{ t('admin.providers.dataActions') }}
+                  <MotionTransition name="dropdown-fade">
+                    <div
+                      v-if="showProviderToolsDropdown" :inert="!(showProviderToolsDropdown) || undefined"
+                      class="fixed z-teleport-tooltip origin-top-right overflow-hidden rounded-control border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-gray-800"
+                      :style="providerToolsDropdownStyle"
+                      @click.stop
+                    >
+                      <div class="overflow-y-auto p-2" :style="{ maxHeight: `${providerToolsDropdownPosition.maxHeight}px` }">
+                      <div class="px-2 py-2">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                          {{ t('admin.providers.dataActions') }}
+                        </div>
                       </div>
-                    </div>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openSyncFromCrs">
-                      <span class="provider-tools-menu-icon bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
-                        <Icon name="sync" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.providers.syncFromCrs') }}</span>
-                    </button>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openImportData">
-                      <span class="provider-tools-menu-icon bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
-                        <Icon name="upload" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.providers.dataImport') }}</span>
-                    </button>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openExportDataDialogFromMenu">
-                      <span class="provider-tools-menu-icon bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
-                        <Icon name="download" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">
-                        {{ selIds.length ? t('admin.providers.dataExportSelected') : t('admin.providers.dataExport') }}
-                      </span>
-                      <span
-                        v-if="selIds.length"
-                        class="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
-                      >
-                        {{ t('admin.providers.selectedCount', { count: selIds.length }) }}
-                      </span>
-                    </button>
-
-                    <div class="my-2 border-t border-gray-100 dark:border-dark-600"></div>
-                    <div class="px-2 py-2">
-                      <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                        {{ t('admin.providers.toolActions') }}
-                      </div>
-                    </div>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openErrorPassthrough">
-                      <span class="provider-tools-menu-icon bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
-                        <Icon name="shield" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.errorPassthrough.title') }}</span>
-                    </button>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openTLSFingerprintProfiles">
-                      <span class="provider-tools-menu-icon bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
-                        <Icon name="lock" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.tlsFingerprintProfiles.title') }}</span>
-                    </button>
-                    <button class="dropdown-item-sm gap-3 rounded-control" @click="openTLSFingerprintRouters">
-                      <span class="provider-tools-menu-icon bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300">
-                        <Icon name="swap" size="sm" />
-                      </span>
-                      <span class="flex-1 text-left">{{ t('admin.tlsFingerprintRouters.title') }}</span>
-                    </button>
-
-                    <div class="my-2 border-t border-gray-100 dark:border-dark-600"></div>
-                    <div class="px-2 py-2">
-                      <div class="flex items-center justify-between gap-3">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                          {{ t('admin.providers.viewColumns') }}
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openSyncFromCrs">
+                        <span class="provider-tools-menu-icon bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                          <Icon name="sync" size="sm" />
                         </span>
-                        <Icon name="grid" size="sm" class="text-gray-400" />
+                        <span class="flex-1 text-left">{{ t('admin.providers.syncFromCrs') }}</span>
+                      </button>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openImportData">
+                        <span class="provider-tools-menu-icon bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
+                          <Icon name="upload" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ t('admin.providers.dataImport') }}</span>
+                      </button>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openExportDataDialogFromMenu">
+                        <span class="provider-tools-menu-icon bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
+                          <Icon name="download" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">
+                          {{ selIds.length ? t('admin.providers.dataExportSelected') : t('admin.providers.dataExport') }}
+                        </span>
+                        <span
+                          v-if="selIds.length"
+                          class="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+                        >
+                          {{ t('admin.providers.selectedCount', { count: selIds.length }) }}
+                        </span>
+                      </button>
+
+                      <div class="my-2 border-t border-gray-100 dark:border-dark-600"></div>
+                      <div class="px-2 py-2">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                          {{ t('admin.providers.toolActions') }}
+                        </div>
+                      </div>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openErrorPassthrough">
+                        <span class="provider-tools-menu-icon bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
+                          <Icon name="shield" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ t('admin.errorPassthrough.title') }}</span>
+                      </button>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openTLSFingerprintProfiles">
+                        <span class="provider-tools-menu-icon bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                          <Icon name="lock" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ t('admin.tlsFingerprintProfiles.title') }}</span>
+                      </button>
+                      <button class="dropdown-item-sm gap-3 rounded-control" @click="openTLSFingerprintRouters">
+                        <span class="provider-tools-menu-icon bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300">
+                          <Icon name="swap" size="sm" />
+                        </span>
+                        <span class="flex-1 text-left">{{ t('admin.tlsFingerprintRouters.title') }}</span>
+                      </button>
+
+                      <div class="my-2 border-t border-gray-100 dark:border-dark-600"></div>
+                      <div class="px-2 py-2">
+                        <div class="flex items-center justify-between gap-3">
+                          <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                            {{ t('admin.providers.viewColumns') }}
+                          </span>
+                          <Icon name="grid" size="sm" class="text-gray-400" />
+                        </div>
+                      </div>
+                      <div class="grid grid-cols-1 gap-1">
+                        <button
+                          v-for="col in toggleableColumns"
+                          :key="col.key"
+                          @click="toggleColumn(col.key)"
+                          class="dropdown-item-sm justify-between rounded-control"
+                        >
+                          <span class="truncate">{{ col.label }}</span>
+                          <Icon
+                            v-if="isColumnVisible(col.key)"
+                            name="check"
+                            size="sm"
+                            class="text-primary-500"
+                            :animate-on-hover="false"
+                          />
+                        </button>
+                      </div>
                       </div>
                     </div>
-                    <div class="grid grid-cols-1 gap-1">
-                      <button
-                        v-for="col in toggleableColumns"
-                        :key="col.key"
-                        @click="toggleColumn(col.key)"
-                        class="dropdown-item-sm justify-between rounded-control"
-                      >
-                        <span class="truncate">{{ col.label }}</span>
-                        <Icon
-                          v-if="isColumnVisible(col.key)"
-                          name="check"
-                          size="sm"
-                          class="text-primary-500"
-                          :animate-on-hover="false"
-                        />
-                      </button>
-                    </div>
-                    </div>
-                  </div>
+                  </MotionTransition>
                 </Teleport>
               </div>
             </template>
@@ -494,6 +498,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, nextTick, onMounted, onUnmounted, toRaw, watch } from 'vue'
 import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'

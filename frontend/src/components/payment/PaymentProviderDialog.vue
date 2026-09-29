@@ -43,7 +43,7 @@
               type="button"
               @click="form.payment_mode = mode.value"
               :class="[
-                'rounded-control border px-2.5 py-1 text-xs font-medium transition-all',
+                'rounded-control border px-2.5 py-1 text-xs font-medium transition',
                 form.payment_mode === mode.value
                   ? 'border-primary-500 bg-primary-500 text-white shadow-sm'
                   : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-dark-500',
@@ -60,7 +60,7 @@
               type="button"
               @click="toggleType(pt.value)"
               :class="[
-                'rounded-control border px-2.5 py-1 text-xs font-medium transition-all',
+                'rounded-control border px-2.5 py-1 text-xs font-medium transition',
                 isTypeSelected(pt.value)
                   ? 'border-primary-500 bg-primary-500 text-white shadow-sm'
                   : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-dark-500',
@@ -256,45 +256,47 @@
             :class="['h-4 w-4 text-gray-400 transition-transform', limitsExpanded && 'rotate-180']"
           />
         </button>
-        <div v-show="limitsExpanded" class="mt-3 space-y-3">
-          <div
-            v-for="lt in limitableTypes"
-            :key="lt.value"
-            class="rounded-control border border-gray-100 p-3 dark:border-dark-700"
-          >
-            <p class="mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">{{ lt.label }}</p>
-            <div class="grid grid-cols-3 gap-3">
-              <div>
-                <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.limitSingleMin') }}</label>
-                <input
-                  type="number"
-                  :value="getLimitVal(lt.value, 'singleMin')"
-                  @input="setLimitVal(lt.value, 'singleMin', ($event.target as HTMLInputElement).value)"
-                  class="input mt-0.5" min="1" step="0.01" :placeholder="limitPlaceholder(lt.value)"
-                />
-              </div>
-              <div>
-                <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.limitSingleMax') }}</label>
-                <input
-                  type="number"
-                  :value="getLimitVal(lt.value, 'singleMax')"
-                  @input="setLimitVal(lt.value, 'singleMax', ($event.target as HTMLInputElement).value)"
-                  class="input mt-0.5" min="1" step="0.01" :placeholder="limitPlaceholder(lt.value)"
-                />
-              </div>
-              <div>
-                <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.limitDaily') }}</label>
-                <input
-                  type="number"
-                  :value="getLimitVal(lt.value, 'dailyLimit')"
-                  @input="setLimitVal(lt.value, 'dailyLimit', ($event.target as HTMLInputElement).value)"
-                  class="input mt-0.5" min="1" step="0.01" :placeholder="limitPlaceholder(lt.value)"
-                />
+        <Collapse :open="limitsExpanded">
+          <div class="mt-3 space-y-3">
+            <div
+              v-for="lt in limitableTypes"
+              :key="lt.value"
+              class="rounded-control border border-gray-100 p-3 dark:border-dark-700"
+            >
+              <p class="mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">{{ lt.label }}</p>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.limitSingleMin') }}</label>
+                  <input
+                    type="number"
+                    :value="getLimitVal(lt.value, 'singleMin')"
+                    @input="setLimitVal(lt.value, 'singleMin', ($event.target as HTMLInputElement).value)"
+                    class="input mt-0.5" min="1" step="0.01" :placeholder="limitPlaceholder(lt.value)"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.limitSingleMax') }}</label>
+                  <input
+                    type="number"
+                    :value="getLimitVal(lt.value, 'singleMax')"
+                    @input="setLimitVal(lt.value, 'singleMax', ($event.target as HTMLInputElement).value)"
+                    class="input mt-0.5" min="1" step="0.01" :placeholder="limitPlaceholder(lt.value)"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.limitDaily') }}</label>
+                  <input
+                    type="number"
+                    :value="getLimitVal(lt.value, 'dailyLimit')"
+                    @input="setLimitVal(lt.value, 'dailyLimit', ($event.target as HTMLInputElement).value)"
+                    class="input mt-0.5" min="1" step="0.01" :placeholder="limitPlaceholder(lt.value)"
+                  />
+                </div>
               </div>
             </div>
+            <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('admin.settings.payment.limitsHint') }}</p>
           </div>
-          <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('admin.settings.payment.limitsHint') }}</p>
-        </div>
+        </Collapse>
       </div>
     </form>
 
@@ -319,6 +321,8 @@
 </template>
 
 <script setup lang="ts">
+import Collapse from '@/components/common/Collapse.vue'
+
 import Icon from '@/components/icons/Icon.vue'
 import { reactive, computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

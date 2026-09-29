@@ -31,7 +31,7 @@
           :aria-checked="modelValue === option.value"
           :data-testid="`${testIdPrefix}-${option.value}`"
           :class="[
-            'group flex min-h-[62px] items-start gap-2 rounded-control border px-3 py-2 text-left transition-all',
+            'group flex min-h-[62px] items-start gap-2 rounded-control border px-3 py-2 text-left transition',
             modelValue === option.value
               ? option.selectedCardClass
               : 'border-transparent bg-transparent text-slate-600 hover:border-gray-200 hover:bg-gray-50 dark:text-slate-300 dark:hover:border-dark-500 dark:hover:bg-dark-700'

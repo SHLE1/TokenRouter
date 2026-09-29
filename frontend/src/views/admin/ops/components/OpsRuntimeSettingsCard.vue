@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import Disclosure from '@/components/common/Disclosure.vue'
+
 import Icon from '@/components/icons/Icon.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -284,10 +286,10 @@ onMounted(() => {
             <span class="ml-1 font-mono text-gray-900 dark:text-white">{{ alertSettings.silencing.global_until_rfc3339 }}</span>
           </div>
 
-          <details class="col-span-1 md:col-span-2">
-            <summary class="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">
+          <Disclosure summary-class="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400" class="col-span-1 md:col-span-2">
+            <template #summary>
               {{ t('admin.ops.runtime.showAdvancedDeveloperSettings') }}
-            </summary>
+            </template>
             <div class="mt-2 grid grid-cols-1 gap-3 rounded-control bg-gray-100 p-3 dark:bg-dark-900 md:grid-cols-2">
               <div class="text-xs text-gray-500 dark:text-gray-400">
                 {{ t('admin.ops.runtime.lockEnabled') }}:
@@ -302,7 +304,7 @@ onMounted(() => {
                 <span class="ml-1 font-mono text-gray-700 dark:text-gray-300">{{ alertSettings.distributed_lock.ttl_seconds }}s</span>
               </div>
             </div>
-          </details>
+          </Disclosure>
         </div>
       </div>
     </div>
@@ -504,8 +506,8 @@ onMounted(() => {
         </div>
       </div>
 
-      <details class="rounded-surface border border-gray-200 bg-gray-50 p-3 dark:border-dark-600 dark:bg-dark-900">
-        <summary class="cursor-pointer text-xs font-medium text-gray-600 dark:text-gray-400">{{ t('admin.ops.runtime.advancedSettingsSummary') }}</summary>
+      <Disclosure summary-class="cursor-pointer text-xs font-medium text-gray-600 dark:text-gray-400" class="rounded-surface border border-gray-200 bg-gray-50 p-3 dark:border-dark-600 dark:bg-dark-900">
+        <template #summary>{{ t('admin.ops.runtime.advancedSettingsSummary') }}</template>
         <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
@@ -525,7 +527,7 @@ onMounted(() => {
             <input v-model.number="draftAlert.distributed_lock.ttl_seconds" type="number" min="1" max="86400" class="input text-xs font-mono" />
           </div>
         </div>
-      </details>
+      </Disclosure>
     </div>
 
     <template #footer>

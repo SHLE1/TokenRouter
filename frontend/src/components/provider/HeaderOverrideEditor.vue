@@ -1,5 +1,5 @@
 <template>
-  <div v-if="rows.length > 0" class="space-y-2">
+  <TransitionGroup name="motion-list" tag="div" class="relative space-y-2" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement"> 0" class="space-y-2">
     <div
       v-for="(row, index) in rows"
       :key="getHeaderOverrideRowKey(row)"
@@ -26,7 +26,7 @@
         <Icon name="trash" size="sm" />
       </button>
     </div>
-  </div>
+  </TransitionGroup>
 
   <button
     type="button"
@@ -47,6 +47,9 @@
 </template>
 
 <script setup lang="ts">
+import Icon from '@/components/icons/Icon.vue'
+import { prepareListLeave, restoreEnteringElement } from '@/utils/leavingElement'
+
 import { useI18n } from 'vue-i18n'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import HeaderOverrideJsonTools from './HeaderOverrideJsonTools.vue'

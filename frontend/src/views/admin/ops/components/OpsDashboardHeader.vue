@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
@@ -923,23 +924,25 @@ function handleToolbarRefresh() {
                 {{ activeFilterCount }}
               </span>
             </button>
-            <div
-              v-if="showFilterDropdown"
-              class="absolute left-0 right-auto top-full z-modal-nested mt-2 w-[calc(100vw-4rem)] max-w-[calc(100vw-4rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:w-[min(34rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-2rem)]"
-              @click.stop
-            >
-              <div class="mb-3 flex items-center justify-between">
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetOpsFilters">
-                  {{ t('common.reset') }}
-                </button>
+            <MotionTransition name="dropdown-fade">
+              <div
+                v-if="showFilterDropdown" :inert="!(showFilterDropdown) || undefined"
+                class="absolute left-0 right-auto top-full z-modal-nested mt-2 w-[calc(100vw-4rem)] max-w-[calc(100vw-4rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:w-[min(34rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-2rem)]"
+                @click.stop
+              >
+                <div class="mb-3 flex items-center justify-between">
+                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                  <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetOpsFilters">
+                    {{ t('common.reset') }}
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Select :model-value="platform" :options="platformOptions" @update:model-value="handlePlatformChange" />
+                  <Select :model-value="groupId" :options="groupOptions" @update:model-value="handleGroupChange" />
+                  <Select :model-value="timeRange" :options="timeRangeOptions" class="sm:col-span-2" @update:model-value="handleTimeRangeChange" />
+                </div>
               </div>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Select :model-value="platform" :options="platformOptions" @update:model-value="handlePlatformChange" />
-                <Select :model-value="groupId" :options="groupOptions" @update:model-value="handleGroupChange" />
-                <Select :model-value="timeRange" :options="timeRangeOptions" class="sm:col-span-2" @update:model-value="handleTimeRangeChange" />
-              </div>
-            </div>
+            </MotionTransition>
           </div>
         </template>
 
@@ -1007,11 +1010,11 @@ function handleToolbarRefresh() {
         <div class="grid h-full grid-cols-1 gap-6 md:grid-cols-[200px_1fr] md:items-center">
           <!-- 1) Health Score -->
           <div
-            class="group relative flex cursor-pointer flex-col items-center justify-center rounded-surface py-2 transition-all hover:bg-white/60 dark:hover:bg-dark-800/60 md:border-r md:border-gray-200 md:pr-6 dark:md:border-dark-700"
+            class="group relative flex cursor-pointer flex-col items-center justify-center rounded-surface py-2 transition hover:bg-white/60 dark:hover:bg-dark-800/60 md:border-r md:border-gray-200 md:pr-6 dark:md:border-dark-700"
           >
             <!-- Diagnosis Popover (hover) -->
             <div
-              class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100 md:left-full md:top-0 md:ml-2 md:mt-0 md:translate-x-0"
+              class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 opacity-0 transition-opacity duration-normal group-hover:pointer-events-auto group-hover:opacity-100 md:left-full md:top-0 md:ml-2 md:mt-0 md:translate-x-0"
             >
               <div class="rounded-surface bg-white p-4 shadow-xl ring-1 ring-black/5 dark:bg-gray-800 dark:ring-white/10">
                 <h4 class="mb-3 border-b border-gray-100 pb-2 text-sm font-bold text-gray-900 dark:border-dark-600 dark:text-white flex items-center gap-2">
@@ -1075,7 +1078,7 @@ function handleToolbarRefresh() {
                   stroke-linecap="round"
                   :stroke-dasharray="circumference"
                   :stroke-dashoffset="dashOffset"
-                  class="transition-all duration-1000 ease-out"
+                  class="transition-[stroke,stroke-dashoffset] duration-1000 ease-out"
                 />
               </svg>
 
@@ -1268,7 +1271,7 @@ function handleToolbarRefresh() {
             {{ slaPercent == null ? '-' : `${slaPercent.toFixed(3)}%` }}
           </div>
           <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-700">
-            <div class="h-full transition-all" :class="getSLAThresholdLevel(slaPercent) === 'critical' ? 'bg-red-500' : getSLAThresholdLevel(slaPercent) === 'warning' ? 'bg-yellow-500' : 'bg-green-500'" :style="{ width: `${Math.max((slaPercent ?? 0) - 90, 0) * 10}%` }"></div>
+            <div class="h-full transition-[width,background-color]" :class="getSLAThresholdLevel(slaPercent) === 'critical' ? 'bg-red-500' : getSLAThresholdLevel(slaPercent) === 'warning' ? 'bg-yellow-500' : 'bg-green-500'" :style="{ width: `${Math.max((slaPercent ?? 0) - 90, 0) * 10}%` }"></div>
           </div>
           <div class="mt-3 text-xs">
             <div class="flex justify-between">

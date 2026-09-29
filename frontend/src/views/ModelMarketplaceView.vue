@@ -27,28 +27,30 @@
               {{ activeFilterCount }}
             </span>
           </button>
-          <div v-show="showFilterDropdown" class="absolute right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
-            <div class="mb-3 flex items-center justify-between">
-              <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-              <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetFilters">
-                {{ t('common.reset') }}
-              </button>
+          <MotionTransition persisted name="dropdown-fade">
+            <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
+              <div class="mb-3 flex items-center justify-between">
+                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetFilters">
+                  {{ t('common.reset') }}
+                </button>
+              </div>
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label class="input-label">{{ t('marketplace.allBrands') }}</label>
+                  <Select v-model="selectedBrand" :options="brandSelectOptions" />
+                </div>
+                <div>
+                  <label class="input-label">{{ t('marketplace.allTypes') }}</label>
+                  <Select v-model="selectedPricingMode" :options="pricingSelectOptions" />
+                </div>
+                <div>
+                  <label class="input-label">{{ t('marketplace.allGroups') }}</label>
+                  <Select v-model="selectedGroupId" :options="groupSelectOptions" searchable />
+                </div>
+              </div>
             </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label class="input-label">{{ t('marketplace.allBrands') }}</label>
-                <Select v-model="selectedBrand" :options="brandSelectOptions" />
-              </div>
-              <div>
-                <label class="input-label">{{ t('marketplace.allTypes') }}</label>
-                <Select v-model="selectedPricingMode" :options="pricingSelectOptions" />
-              </div>
-              <div>
-                <label class="input-label">{{ t('marketplace.allGroups') }}</label>
-                <Select v-model="selectedGroupId" :options="groupSelectOptions" searchable />
-              </div>
-            </div>
-          </div>
+          </MotionTransition>
         </div>
       </div>
     </template>
@@ -104,7 +106,7 @@
       </header>
     </template>
 
-    <section
+    <section v-content-reveal="!isAuthenticated && motionRoute?.path"
       :class="isAuthenticated
         ? 'space-y-4'
         : 'relative z-10 px-4 pb-12 pt-6 sm:px-6 lg:px-8'"
@@ -137,28 +139,30 @@
                 {{ activeFilterCount }}
               </span>
             </button>
-            <div v-show="showFilterDropdown" class="absolute right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
-              <div class="mb-3 flex items-center justify-between">
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetFilters">
-                  {{ t('common.reset') }}
-                </button>
+            <MotionTransition persisted name="dropdown-fade">
+              <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
+                <div class="mb-3 flex items-center justify-between">
+                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                  <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetFilters">
+                    {{ t('common.reset') }}
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label class="input-label">{{ t('marketplace.allBrands') }}</label>
+                    <Select v-model="selectedBrand" :options="brandSelectOptions" />
+                  </div>
+                  <div>
+                    <label class="input-label">{{ t('marketplace.allTypes') }}</label>
+                    <Select v-model="selectedPricingMode" :options="pricingSelectOptions" />
+                  </div>
+                  <div>
+                    <label class="input-label">{{ t('marketplace.allGroups') }}</label>
+                    <Select v-model="selectedGroupId" :options="groupSelectOptions" searchable />
+                  </div>
+                </div>
               </div>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label class="input-label">{{ t('marketplace.allBrands') }}</label>
-                  <Select v-model="selectedBrand" :options="brandSelectOptions" />
-                </div>
-                <div>
-                  <label class="input-label">{{ t('marketplace.allTypes') }}</label>
-                  <Select v-model="selectedPricingMode" :options="pricingSelectOptions" />
-                </div>
-                <div>
-                  <label class="input-label">{{ t('marketplace.allGroups') }}</label>
-                  <Select v-model="selectedGroupId" :options="groupSelectOptions" searchable />
-                </div>
-              </div>
-            </div>
+            </MotionTransition>
           </div>
         </div>
 
@@ -309,6 +313,11 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import { useRoute as useMotionRoute } from 'vue-router'
+const motionRoute = useMotionRoute()
+
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'

@@ -45,7 +45,7 @@
             :animate-on-hover="false"
           />
         </button>
-        <Transition name="pop-float">
+        <MotionTransition name="pop-float">
           <div
             v-if="openPanel === 'model'"
             class="chip-popover"
@@ -76,7 +76,7 @@
               />
             </button>
           </div>
-        </Transition>
+        </MotionTransition>
       </span>
 
       <!-- 参数：弹层锚定在该按钮上方 -->
@@ -99,7 +99,7 @@
             :animate-on-hover="false"
           />
         </button>
-        <Transition name="pop-float">
+        <MotionTransition name="pop-float">
           <div
             v-if="openPanel === 'params'"
             class="chip-popover"
@@ -193,7 +193,7 @@
               </div>
             </div>
           </div>
-        </Transition>
+        </MotionTransition>
       </span>
 
       <!-- 操作：弹层锚定在该按钮上方 -->
@@ -216,7 +216,7 @@
             :animate-on-hover="false"
           />
         </button>
-        <Transition name="pop-float">
+        <MotionTransition name="pop-float">
           <div
             v-if="openPanel === 'operation'"
             class="chip-popover"
@@ -246,7 +246,7 @@
               />
             </button>
           </div>
-        </Transition>
+        </MotionTransition>
       </span>
 
       <div class="ml-auto flex items-center gap-2">
@@ -276,6 +276,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 /**
  * 创作台聊天式输入框（替代旧左侧面板）：
  * - 主体为提示词输入区 + 右下圆形发送按钮；左下三个调参 chip 展开模型 / 参数 / 操作面板

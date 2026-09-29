@@ -33,16 +33,18 @@
                 <Icon name="filter" size="sm" />
                 <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">{{ activeFilterCount }}</span>
               </button>
-              <div v-if="showFilterDropdown" class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-72 rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
-                <div class="mb-3 flex items-center justify-between">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                  <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetGroupFilters">{{ t('common.reset') }}</button>
-                </div>
-                <div class="space-y-3">
+              <MotionTransition name="dropdown-fade">
+                <div v-if="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-72 rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
+                  <div class="mb-3 flex items-center justify-between">
+                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                    <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetGroupFilters">{{ t('common.reset') }}</button>
+                  </div>
+                  <div class="space-y-3">
 
-                  <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.groups.allStatus')" @change="loadGroups" />
+                    <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.groups.allStatus')" @change="loadGroups" />
+                  </div>
                 </div>
-              </div>
+              </MotionTransition>
             </div>
           </div>
 
@@ -71,27 +73,29 @@
                 <Icon name="grid" size="md" />
                 <span class="hidden">{{ t("admin.groups.columnSettings") }}</span>
               </button>
-              <div
-                v-if="showColumnDropdown"
-                class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
-              >
-                <button
-                  v-for="col in toggleableColumns"
-                  :key="col.key"
-                  @click="toggleColumn(col.key)"
-                  class="dropdown-item justify-between"
+              <MotionTransition name="dropdown-fade">
+                <div
+                  v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
+                  class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
                 >
-                  <span>{{ col.label }}</span>
-                  <Icon
-                    v-if="isColumnVisible(col.key)"
-                    name="check"
-                    size="sm"
-                    class="text-primary-500"
-                    :stroke-width="2"
-                    :animate-on-hover="false"
-                  />
-                </button>
-              </div>
+                  <button
+                    v-for="col in toggleableColumns"
+                    :key="col.key"
+                    @click="toggleColumn(col.key)"
+                    class="dropdown-item justify-between"
+                  >
+                    <span>{{ col.label }}</span>
+                    <Icon
+                      v-if="isColumnVisible(col.key)"
+                      name="check"
+                      size="sm"
+                      class="text-primary-500"
+                      :stroke-width="2"
+                      :animate-on-hover="false"
+                    />
+                  </button>
+                </div>
+              </MotionTransition>
             </div>
             <button
               @click="openSortModal"
@@ -602,6 +606,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";

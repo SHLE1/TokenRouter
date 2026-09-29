@@ -148,7 +148,7 @@
         <button
           v-if="outputLines.length > 0"
           @click="copyOutput"
-          class="absolute right-2 top-2 rounded-control bg-gray-800/80 p-1.5 text-gray-400 opacity-0 transition-all hover:bg-gray-700 hover:text-white group-hover:opacity-100"
+          class="absolute right-2 top-2 rounded-control bg-gray-800/80 p-1.5 text-gray-400 opacity-0 transition hover:bg-gray-700 hover:text-white group-hover:opacity-100"
           :title="t('admin.providers.copyOutput')"
         >
           <Icon name="link" size="sm" :stroke-width="2" />
@@ -184,7 +184,7 @@
 
       <!-- Image Lightbox -->
       <Teleport to="body">
-        <Transition name="fade">
+        <MotionTransition name="fade">
           <div
             v-if="previewImageUrl"
             class="fixed inset-0 z-tooltip flex items-center justify-center bg-[var(--overlay-bg-strong)] p-4"
@@ -202,7 +202,7 @@
               class="max-h-[90vh] max-w-[90vw] rounded-control object-contain shadow-2xl"
             />
           </div>
-        </Transition>
+        </MotionTransition>
       </Teleport>
 
       <!-- Test Info -->
@@ -232,7 +232,7 @@
           @click="startTest"
           :disabled="status === 'connecting' || !selectedModelId"
           :class="[
-            'flex items-center gap-2 rounded-control px-4 py-2 text-sm font-medium transition-all',
+            'flex items-center gap-2 rounded-control px-4 py-2 text-sm font-medium transition',
             status === 'connecting' || !selectedModelId
               ? 'cursor-not-allowed bg-primary-400 text-white'
               : status === 'success'
@@ -268,6 +268,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'

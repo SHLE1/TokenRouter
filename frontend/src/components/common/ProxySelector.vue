@@ -18,13 +18,13 @@
         <Icon
           name="chevronDown"
           size="md"
-          :class="['transition-transform duration-200', isOpen && 'rotate-180']"
+          :class="['transition-transform duration-normal', isOpen && 'rotate-180']"
           :animate-on-hover="false"
         />
       </span>
     </button>
 
-    <Transition name="dropdown-fade">
+    <MotionTransition name="dropdown-fade">
       <div v-if="isOpen" class="select-dropdown">
         <!-- Search and Batch Test Header -->
         <div class="select-header">
@@ -151,11 +151,12 @@
           </div>
         </div>
       </div>
-    </Transition>
+    </MotionTransition>
   </div>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api/admin'
@@ -365,7 +366,7 @@ onUnmounted(() => {
   @apply flex items-center justify-between gap-2;
   @apply px-4 py-2.5 text-sm;
   @apply text-gray-700 dark:text-gray-300;
-  @apply cursor-pointer transition-colors duration-150;
+  @apply cursor-pointer transition-colors duration-fast;
   @apply hover:bg-gray-50 dark:hover:bg-dark-800;
 }
 

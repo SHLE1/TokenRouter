@@ -7,10 +7,11 @@
       @click="collapsed = !collapsed"
     >
       <Icon
-        :name="collapsed ? 'chevronRight' : 'chevronDown'"
+        name="chevronRight"
+        :class="{ 'rotate-90': !collapsed }"
         size="sm"
         :stroke-width="2"
-        class="flex-shrink-0 text-gray-400 transition-transform duration-200"
+        class="flex-shrink-0 text-gray-400 transition-transform duration-normal"
         :animate-on-hover="false"
       />
 
@@ -93,12 +94,9 @@
       </button>
     </div>
 
-    <!-- Expandable content with transition -->
-    <div
-      class="collapsible-content"
-      :class="{ 'collapsible-content--collapsed': collapsed }"
-    >
-      <div class="collapsible-inner">
+    <!-- 折叠保留输入组件，校验定位可通过 form-field-reveal 立即展开。 -->
+    <Collapse :open="!collapsed">
+      <div>
         <!-- Header: Models + Billing Mode -->
         <div
           class="mt-3 grid grid-cols-1 items-start gap-2"
@@ -357,11 +355,12 @@
           </div>
         </div>
       </div>
-    </div>
+    </Collapse>
   </div>
 </template>
 
 <script setup lang="ts">
+import Collapse from '@/components/common/Collapse.vue'
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
@@ -521,17 +520,4 @@ async function onModelsUpdate(newModels: string[]) {
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
 }
 
-.collapsible-content {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows 0.25s ease;
-}
-
-.collapsible-content--collapsed {
-  grid-template-rows: 0fr;
-}
-
-.collapsible-inner {
-  overflow: hidden;
-}
 </style>

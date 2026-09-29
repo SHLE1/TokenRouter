@@ -1,5 +1,5 @@
 <template>
-  <AuthCardDialog @close="$emit('close')">
+  <AuthCardDialog :show="show" @after-leave="$emit('after-leave')" @close="$emit('close')">
         <!-- Header -->
         <div class="mb-6">
           <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
@@ -82,7 +82,10 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { totpAPI } from '@/api'
 
+withDefaults(defineProps<{ show?: boolean }>(), { show: true })
+
 const emit = defineEmits<{
+  'after-leave': []
   close: []
   success: []
 }>()

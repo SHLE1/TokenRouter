@@ -176,7 +176,7 @@
                   @click="toggleUpstreamDetail(ev.id)"
                 >
                   <Icon
-                    :name="expandedUpstreamDetailIds.has(ev.id) ? 'chevronDown' : 'chevronRight'"
+                    name="chevronRight" class="transition-transform duration-normal" :class="{ 'rotate-90': expandedUpstreamDetailIds.has(ev.id) }"
                     size="xs"
                     :stroke-width="2"
                     :animate-on-hover="false"
@@ -205,10 +205,12 @@
 
             <div v-if="ev.message" class="mt-3 break-words text-sm font-medium text-gray-900 dark:text-white">{{ ev.message }}</div>
 
-            <pre
-              v-if="expandedUpstreamDetailIds.has(ev.id)"
-              class="mt-3 max-h-menu-sm overflow-auto rounded-surface border border-gray-200 bg-gray-50 p-3 text-xs text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-100"
-            ><code>{{ prettyJSON(getUpstreamResponsePreview(ev)) }}</code></pre>
+            <Collapse :open="expandedUpstreamDetailIds.has(ev.id)" unmount-on-hide>
+              <pre
+
+                class="mt-3 max-h-menu-sm overflow-auto rounded-surface border border-gray-200 bg-gray-50 p-3 text-xs text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-100"
+              ><code>{{ prettyJSON(getUpstreamResponsePreview(ev)) }}</code></pre>
+            </Collapse>
           </div>
         </div>
       </div>
@@ -227,6 +229,8 @@
 </template>
 
 <script setup lang="ts">
+import Collapse from '@/components/common/Collapse.vue'
+
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'

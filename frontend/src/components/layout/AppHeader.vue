@@ -107,8 +107,8 @@
           </button>
 
           <!-- Dropdown Menu -->
-          <transition name="dropdown">
-            <div v-if="dropdownOpen" class="dropdown right-0 z-50 mt-2 w-64 origin-top-right animate-scale-in">
+          <MotionTransition name="dropdown-fade">
+            <div v-if="dropdownOpen" class="dropdown right-0 z-50 mt-2 w-64 origin-top-right">
               <!-- User Info -->
               <div class="border-b border-primary-900/10 px-4 py-3 dark:border-dark-600">
                 <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -209,7 +209,7 @@
                 </button>
               </div>
             </div>
-          </transition>
+          </MotionTransition>
         </div>
       </div>
     </div>
@@ -217,6 +217,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -386,14 +387,4 @@ onBeforeUnmount(() => {
   @apply flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-primary-100 dark:hover:bg-dark-700;
 }
 
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: all 0.2s ease;
-}
-
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
-}
 </style>

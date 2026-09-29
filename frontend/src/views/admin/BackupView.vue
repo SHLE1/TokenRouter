@@ -286,7 +286,7 @@
 
     <!-- Cloudflare R2 配置教程弹窗 -->
     <teleport to="body">
-      <transition name="modal">
+      <MotionTransition name="modal">
         <div v-if="showR2Guide" class="fixed inset-0 z-50 flex items-center justify-center p-4" @mousedown.self="showR2Guide = false">
           <div class="fixed inset-0 bg-[var(--overlay-bg)]" @click="showR2Guide = false"></div>
           <div class="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-surface bg-white p-6 shadow-2xl dark:bg-dark-800 sm:rounded-dialog">
@@ -365,11 +365,11 @@
             </div>
           </div>
         </div>
-      </transition>
+      </MotionTransition>
     </teleport>
     <!-- 分卷下载链接 -->
     <teleport to="body">
-      <transition name="modal">
+      <MotionTransition name="modal">
         <div
           v-if="downloadPartsModalOpen"
           class="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -408,12 +408,13 @@
             </div>
           </div>
         </div>
-      </transition>
+      </MotionTransition>
     </teleport>
     <TotpStepUpDialog :controller="backupStepUp" />
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api'
@@ -965,7 +966,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--motion-normal) var(--motion-ease);
 }
 .modal-enter-from,
 .modal-leave-to {

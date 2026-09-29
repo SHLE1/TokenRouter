@@ -6,7 +6,7 @@
         @click="toggleDropdown"
         class="cursor-pointer rounded-control border border-gray-300 bg-white px-3 py-2 dark:border-dark-500 dark:bg-dark-700"
       >
-        <div class="grid grid-cols-2 gap-1.5">
+        <TransitionGroup name="motion-list" tag="div" class="relative grid grid-cols-2 gap-1.5" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement">
           <span
             v-for="model in modelValue"
             :key="model"
@@ -24,74 +24,76 @@
               <Icon name="x" size="xs" class="h-3.5 w-3.5" :stroke-width="2" />
             </button>
           </span>
-        </div>
+        </TransitionGroup>
         <div class="mt-2 flex items-center justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
           <span class="text-xs text-gray-400">{{ t('admin.providers.modelCount', { count: modelValue.length }) }}</span>
           <Icon name="chevronDown" size="md" :animate-on-hover="false" class="h-5 w-5 text-gray-400" />
         </div>
       </div>
       <!-- Dropdown List -->
-      <div
-        v-if="showDropdown"
-        class="absolute left-0 right-0 top-full z-50 mt-1 rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-dark-700"
-      >
-        <div class="sticky top-0 border-b border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-700">
-          <input
-            v-model="searchQuery"
-            type="text"
-            class="input w-full text-sm"
-            :placeholder="t('admin.providers.searchModels')"
-            @click.stop
-          />
-        </div>
-        <div class="max-h-52 overflow-auto">
-          <div
-            v-for="model in filteredModels"
-            :key="model.value"
-            data-testid="model-option"
-            class="group flex items-center hover:bg-gray-100 dark:hover:bg-dark-600"
-          >
-            <button
-              type="button"
-              data-testid="select-model"
-              class="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm"
-              @click="toggleModel(model.value)"
+      <MotionTransition name="dropdown-fade">
+        <div
+          v-if="showDropdown" :inert="!(showDropdown) || undefined"
+          class="absolute left-0 right-0 top-full z-50 mt-1 rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-dark-700"
+        >
+          <div class="sticky top-0 border-b border-gray-200 bg-white p-2 dark:border-dark-600 dark:bg-dark-700">
+            <input
+              v-model="searchQuery"
+              type="text"
+              class="input w-full text-sm"
+              :placeholder="t('admin.providers.searchModels')"
+              @click.stop
+            />
+          </div>
+          <div class="max-h-52 overflow-auto">
+            <div
+              v-for="model in filteredModels"
+              :key="model.value"
+              data-testid="model-option"
+              class="group flex items-center hover:bg-gray-100 dark:hover:bg-dark-600"
             >
-              <span
-                :class="[
-                  'flex h-4 w-4 shrink-0 items-center justify-center rounded-compact border',
-                  modelValue.includes(model.value)
-                    ? 'border-primary-500 bg-primary-500 text-white'
-                    : 'border-gray-300 dark:border-dark-500'
-                ]"
+              <button
+                type="button"
+                data-testid="select-model"
+                class="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm"
+                @click="toggleModel(model.value)"
               >
-                <Icon
-                  name="check"
-                  size="xs"
-                  :animate-on-hover="false"
-                  v-if="modelValue.includes(model.value)"
-                  class="h-3 w-3"
-                />
-              </span>
-              <ModelIcon :model="model.value" size="18px" />
-              <span class="truncate text-gray-900 dark:text-white">{{ model.value }}</span>
-            </button>
-            <button
-              type="button"
-              data-testid="copy-model-id"
-              class="mr-2 shrink-0 rounded-compact p-1.5 text-gray-400 opacity-70 transition-colors hover:bg-gray-200 hover:text-primary-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 group-hover:opacity-100 dark:text-gray-500 dark:hover:bg-dark-500 dark:hover:text-primary-400 dark:focus-visible:ring-primary-500"
-              :title="`${t('common.copy')} ${model.value}`"
-              :aria-label="`${t('common.copy')} ${model.value}`"
-              @click="copyModelId(model.value)"
-            >
-              <Icon name="copy" size="sm" />
-            </button>
-          </div>
-          <div v-if="filteredModels.length === 0" class="px-3 py-4 text-center text-sm text-gray-500">
-            {{ t('admin.providers.noMatchingModels') }}
+                <span
+                  :class="[
+                    'flex h-4 w-4 shrink-0 items-center justify-center rounded-compact border',
+                    modelValue.includes(model.value)
+                      ? 'border-primary-500 bg-primary-500 text-white'
+                      : 'border-gray-300 dark:border-dark-500'
+                  ]"
+                >
+                  <Icon
+                    name="check"
+                    size="xs"
+                    :animate-on-hover="false"
+                    v-if="modelValue.includes(model.value)"
+                    class="h-3 w-3"
+                  />
+                </span>
+                <ModelIcon :model="model.value" size="18px" />
+                <span class="truncate text-gray-900 dark:text-white">{{ model.value }}</span>
+              </button>
+              <button
+                type="button"
+                data-testid="copy-model-id"
+                class="mr-2 shrink-0 rounded-compact p-1.5 text-gray-400 opacity-70 transition-colors hover:bg-gray-200 hover:text-primary-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 group-hover:opacity-100 dark:text-gray-500 dark:hover:bg-dark-500 dark:hover:text-primary-400 dark:focus-visible:ring-primary-500"
+                :title="`${t('common.copy')} ${model.value}`"
+                :aria-label="`${t('common.copy')} ${model.value}`"
+                @click="copyModelId(model.value)"
+              >
+                <Icon name="copy" size="sm" />
+              </button>
+            </div>
+            <div v-if="filteredModels.length === 0" class="px-3 py-4 text-center text-sm text-gray-500">
+              {{ t('admin.providers.noMatchingModels') }}
+            </div>
           </div>
         </div>
-      </div>
+      </MotionTransition>
     </div>
 
     <!-- Quick Actions -->
@@ -147,6 +149,9 @@
 </template>
 
 <script setup lang="ts">
+import { prepareListLeave, restoreEnteringElement } from '@/utils/leavingElement'
+
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

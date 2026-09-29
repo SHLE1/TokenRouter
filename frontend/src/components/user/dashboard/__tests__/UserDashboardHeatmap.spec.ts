@@ -145,8 +145,8 @@ describe('UserDashboardHeatmap', () => {
     expect(tooltip.text()).toContain('dashboard.heatmapCost')
     expect(tooltip.text()).toContain('0.2')
     expect(tooltip.attributes('aria-hidden')).toBe('false')
-    expect(tooltip.attributes('style')).toContain('left 400ms cubic-bezier(0.25, 1, 0.5, 1)')
-    expect(tooltip.attributes('style')).toContain('width 400ms cubic-bezier(0.25, 1, 0.5, 1)')
+    expect(tooltip.attributes('style')).toContain('opacity var(--motion-fast) var(--motion-ease)')
+    expect(tooltip.attributes('style')).not.toMatch(/transition:.*(?:width|left) /)
 
     await wrapper.get('[data-testid="heatmap-grid-wrap"]').trigger('mouseleave')
     expect(wrapper.get('[data-testid="heatmap-tooltip"]').attributes('aria-hidden')).toBe('true')

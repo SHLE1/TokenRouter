@@ -12,13 +12,13 @@
         v-if="variant !== 'status'"
         name="chevronDown"
         size="xs"
-        class="text-gray-400 transition-transform duration-200"
+        class="text-gray-400 transition-transform duration-normal"
         :class="{ 'rotate-180': isOpen }"
         :animate-on-hover="false"
       />
     </button>
 
-    <transition name="dropdown">
+    <MotionTransition name="dropdown-fade">
       <div
         v-if="isOpen"
         class="absolute right-0 z-50 mt-1 w-32 overflow-hidden rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-700 dark:bg-dark-800"
@@ -45,11 +45,12 @@
           />
         </button>
       </div>
-    </transition>
+    </MotionTransition>
   </div>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
@@ -111,14 +112,4 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: all 0.15s ease;
-}
-
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
-}
 </style>

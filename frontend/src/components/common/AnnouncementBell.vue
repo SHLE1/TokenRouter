@@ -23,7 +23,7 @@
 
     <!-- 公告列表弹窗与公告详情共用同一套轻量卡片风格。 -->
     <Teleport to="body">
-      <Transition name="pop-fade">
+      <MotionTransition name="pop-fade">
         <div
           v-if="isModalOpen"
           class="fixed inset-0 z-announcement flex items-center justify-center overflow-y-auto bg-[var(--overlay-bg)] p-3 backdrop-blur-sm sm:p-6"
@@ -163,7 +163,7 @@
             </div>
           </section>
         </div>
-      </Transition>
+      </MotionTransition>
     </Teleport>
 
     <!-- 铃铛详情与仪表盘共用同一个轻量公告浮层。 -->
@@ -178,6 +178,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
@@ -208,7 +209,7 @@ const triggerClass = computed(() => {
   if (props.variant === 'status') {
     return 'relative flex h-9 w-9 items-center justify-center rounded-control text-primary-900/70 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white'
   }
-  return 'relative flex h-9 w-9 items-center justify-center rounded-control text-gray-600 transition-all hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800'
+  return 'relative flex h-9 w-9 items-center justify-center rounded-control text-gray-600 transition hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800'
 })
 
 // 列表弹窗和详情弹窗分别维护显示状态。

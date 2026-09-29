@@ -63,18 +63,12 @@
                 >
                   <span class="inline-flex items-center gap-1">
                     <Icon
-                      name="chevronDown"
-                      size="xs"
-                      :animate-on-hover="false"
-                      v-if="enableBreakdown && group.group_id > 0 && expandedKey === `group-${group.group_id}`"
-                      class="h-3 w-3 shrink-0"
-                    />
-                    <Icon
+                      v-if="enableBreakdown && group.group_id > 0"
                       name="chevronRight"
                       size="xs"
                       :animate-on-hover="false"
-                      v-else-if="enableBreakdown && group.group_id > 0"
-                      class="h-3 w-3 shrink-0"
+                      class="h-3 w-3 shrink-0 transition-transform duration-normal"
+                      :class="{ 'rotate-90': expandedKey === `group-${group.group_id}` }"
                     />
                     {{ group.group_name || t('admin.dashboard.noGroup') }}
                   </span>
@@ -96,16 +90,14 @@
                 </td>
               </tr>
               <!-- User breakdown sub-rows -->
-              <tr v-if="expandedKey === `group-${group.group_id}`">
-                <td :colspan="distributionColspan" class="p-0">
+              <ExpandableTableRow :open="expandedKey === `group-${group.group_id}`" :colspan="distributionColspan">
                   <UserBreakdownSubTable
                     :items="breakdownItems"
                     :loading="breakdownLoading"
                     :show-provider-cost="showProviderCost"
                     :show-standard-cost="showStandardCost"
                   />
-                </td>
-              </tr>
+                </ExpandableTableRow>
             </template>
           </tbody>
         </table>
@@ -121,6 +113,7 @@
 </template>
 
 <script setup lang="ts">
+import ExpandableTableRow from '@/components/common/ExpandableTableRow.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

@@ -71,62 +71,65 @@
 
   <!-- Group Selector Dropdown -->
   <Teleport to="body">
-    <div
-      v-if="groupSelectorKeyId !== null && dropdownPosition"
-      ref="dropdownRef"
-      class="animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-64 overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-200 dark:bg-dark-800 dark:ring-white/10"
-      :style="{
-        top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
-        bottom: dropdownPosition.bottom !== undefined ? dropdownPosition.bottom + 'px' : undefined,
-        left: dropdownPosition.left + 'px'
-      }"
-    >
-      <div class="max-h-64 overflow-y-auto p-1.5">
-        <!-- Unbind option -->
-        <button
-          @click="changeGroup(selectedKeyForGroup!, null)"
-          :class="[
-            'flex w-full items-center rounded-control px-3 py-2 text-sm transition-colors',
-            !selectedKeyForGroup?.group_id
-              ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
-              : 'hover:bg-gray-100 dark:hover:bg-dark-700'
-          ]"
-        >
-          <span class="text-gray-500 italic">{{ t('admin.users.none') }}</span>
-          <Icon
-            name="check"
-            size="sm"
-            :animate-on-hover="false"
-            v-if="!selectedKeyForGroup?.group_id"
-            class="ml-auto h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400"
-          />
-        </button>
-        <!-- Group options -->
-        <button
-          v-for="group in allGroups"
-          :key="group.id"
-          @click="changeGroup(selectedKeyForGroup!, group.id)"
-          :class="[
-            'flex w-full items-center justify-between rounded-control px-3 py-2 text-sm transition-colors',
-            selectedKeyForGroup?.group_id === group.id
-              ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
-              : 'hover:bg-gray-100 dark:hover:bg-dark-700'
-          ]"
-        >
-          <GroupOptionItem
-            :name="group.name"
-            :display-brand="group.display_brand"
-            :rate-multiplier="group.rate_multiplier"
-            :description="group.description"
-            :selected="selectedKeyForGroup?.group_id === group.id"
-          />
-        </button>
+    <MotionTransition name="dropdown-fade">
+      <div
+        v-if="groupSelectorKeyId !== null && dropdownPosition" :inert="!(groupSelectorKeyId !== null && dropdownPosition) || undefined"
+        ref="dropdownRef"
+        class="animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-64 overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-normal dark:bg-dark-800 dark:ring-white/10"
+        :style="{
+          top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
+          bottom: dropdownPosition.bottom !== undefined ? dropdownPosition.bottom + 'px' : undefined,
+          left: dropdownPosition.left + 'px'
+        }"
+      >
+        <div class="max-h-64 overflow-y-auto p-1.5">
+          <!-- Unbind option -->
+          <button
+            @click="changeGroup(selectedKeyForGroup!, null)"
+            :class="[
+              'flex w-full items-center rounded-control px-3 py-2 text-sm transition-colors',
+              !selectedKeyForGroup?.group_id
+                ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
+                : 'hover:bg-gray-100 dark:hover:bg-dark-700'
+            ]"
+          >
+            <span class="text-gray-500 italic">{{ t('admin.users.none') }}</span>
+            <Icon
+              name="check"
+              size="sm"
+              :animate-on-hover="false"
+              v-if="!selectedKeyForGroup?.group_id"
+              class="ml-auto h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400"
+            />
+          </button>
+          <!-- Group options -->
+          <button
+            v-for="group in allGroups"
+            :key="group.id"
+            @click="changeGroup(selectedKeyForGroup!, group.id)"
+            :class="[
+              'flex w-full items-center justify-between rounded-control px-3 py-2 text-sm transition-colors',
+              selectedKeyForGroup?.group_id === group.id
+                ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
+                : 'hover:bg-gray-100 dark:hover:bg-dark-700'
+            ]"
+          >
+            <GroupOptionItem
+              :name="group.name"
+              :display-brand="group.display_brand"
+              :rate-multiplier="group.rate_multiplier"
+              :description="group.description"
+              :selected="selectedKeyForGroup?.group_id === group.id"
+            />
+          </button>
+        </div>
       </div>
-    </div>
+    </MotionTransition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { ref, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 import { useI18n } from 'vue-i18n'

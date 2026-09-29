@@ -165,13 +165,13 @@
                 <button
                   @click="toggleEnabled(rule)"
                   :class="[
-                    'relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                    'relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-normal ease-standard focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
                     rule.enabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
                   ]"
                 >
                   <span
                     :class="[
-                      'pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                      'pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-normal ease-standard',
                       rule.enabled ? 'translate-x-3' : 'translate-x-0'
                     ]"
                   />

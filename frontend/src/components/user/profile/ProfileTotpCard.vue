@@ -80,14 +80,18 @@
 
     <!-- Setup Modal -->
     <TotpSetupModal
-      v-if="showSetupModal"
+      v-if="setupPresent"
+    :show="showSetupModal"
+    @after-leave="setupAfterLeave"
       @close="showSetupModal = false"
       @success="handleSetupSuccess"
     />
 
     <!-- Disable Dialog -->
     <TotpDisableDialog
-      v-if="showDisableDialog"
+      v-if="disablePresent"
+    :show="showDisableDialog"
+    @after-leave="disableAfterLeave"
       @close="showDisableDialog = false"
       @success="handleDisableSuccess"
     />
@@ -95,6 +99,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLeavingPresence } from '@/composables/useLeavingPresence'
 import Icon from '@/components/icons/Icon.vue'
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -108,7 +113,9 @@ const { t } = useI18n()
 const loading = ref(true)
 const status = ref<TotpStatus | null>(null)
 const showSetupModal = ref(false)
+const { present: setupPresent, afterLeave: setupAfterLeave } = useLeavingPresence(() => showSetupModal.value)
 const showDisableDialog = ref(false)
+const { present: disablePresent, afterLeave: disableAfterLeave } = useLeavingPresence(() => showDisableDialog.value)
 
 const loadStatus = async () => {
   loading.value = true

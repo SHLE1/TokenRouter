@@ -12,7 +12,7 @@
       ></div>
     </div>
 
-    <div class="relative z-10 w-full max-w-md text-center">
+    <div v-content-reveal="motionRoute?.path" class="relative z-10 w-full max-w-md text-center">
       <!-- 404 Display -->
       <div class="mb-8">
         <div class="relative inline-block">
@@ -66,6 +66,10 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import { useRoute as useMotionRoute } from 'vue-router'
+const motionRoute = useMotionRoute()
+
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import Icon from '@/components/icons/Icon.vue'

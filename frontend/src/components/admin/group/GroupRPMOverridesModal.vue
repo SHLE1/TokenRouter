@@ -27,22 +27,24 @@
               @input="handleSearchUsers"
               @focus="showDropdown = true"
             />
-            <div
-              v-if="showDropdown && searchResults.length > 0"
-              class="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-500 dark:bg-dark-700"
-            >
-              <button
-                v-for="user in searchResults"
-                :key="user.id"
-                type="button"
-                class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-dark-600"
-                @click="selectUser(user)"
+            <MotionTransition name="dropdown-fade">
+              <div
+                v-if="showDropdown && searchResults.length > 0" :inert="!(showDropdown && searchResults.length > 0) || undefined"
+                class="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-500 dark:bg-dark-700"
               >
-                <span class="text-gray-400">#{{ user.id }}</span>
-                <span class="text-gray-900 dark:text-white">{{ user.username || user.email }}</span>
-                <span v-if="user.username" class="text-xs text-gray-400">{{ user.email }}</span>
-              </button>
-            </div>
+                <button
+                  v-for="user in searchResults"
+                  :key="user.id"
+                  type="button"
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-dark-600"
+                  @click="selectUser(user)"
+                >
+                  <span class="text-gray-400">#{{ user.id }}</span>
+                  <span class="text-gray-900 dark:text-white">{{ user.username || user.email }}</span>
+                  <span v-if="user.username" class="text-xs text-gray-400">{{ user.email }}</span>
+                </button>
+              </div>
+            </MotionTransition>
           </div>
           <div class="w-24">
             <input
@@ -216,6 +218,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

@@ -27,7 +27,7 @@
       </div>
     </button>
 
-    <transition name="dropdown">
+    <MotionTransition name="dropdown-fade">
       <div
         v-if="tooltipOpen"
         class="subscription-progress-popover absolute right-0 z-50 mt-2 w-[340px] overflow-hidden rounded-control border border-gray-200 bg-white shadow-xl dark:border-dark-700 dark:bg-dark-800"
@@ -78,7 +78,7 @@
                   </span>
                   <div class="h-1.5 min-w-0 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
                     <div
-                      class="h-1.5 rounded-full transition-all"
+                      class="h-1.5 rounded-full transition-[width,background-color]"
                       :class="getProgressBarClass(window.used, window.limit)"
                       :style="{ width: getProgressWidth(window.used, window.limit) }"
                     />
@@ -102,11 +102,12 @@
           </router-link>
         </div>
       </div>
-    </transition>
+    </MotionTransition>
   </div>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
@@ -250,16 +251,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: all 0.2s ease;
-}
-
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
-}
 
 /* 手机端顶部状态栏空间有限，弹层按视口留边居中，避免右侧按钮定位把内容挤出左边界。 */
 @media (max-width: 639px) {

@@ -35,33 +35,35 @@
               </button>
 
               <!-- User Dropdown -->
-              <div
-                v-if="showFilterUserDropdown && (filterUserResults.length > 0 || filterUserKeyword)"
-                class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
-              >
+              <MotionTransition name="dropdown-fade">
                 <div
-                  v-if="filterUserLoading"
-                  class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+                  v-if="showFilterUserDropdown && (filterUserResults.length > 0 || filterUserKeyword)" :inert="!(showFilterUserDropdown && (filterUserResults.length > 0 || filterUserKeyword)) || undefined"
+                  class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
                 >
-                  {{ t('common.loading') }}
+                  <div
+                    v-if="filterUserLoading"
+                    class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+                  >
+                    {{ t('common.loading') }}
+                  </div>
+                  <div
+                    v-else-if="filterUserResults.length === 0 && filterUserKeyword"
+                    class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+                  >
+                    {{ t('common.noOptionsFound') }}
+                  </div>
+                  <button
+                    v-for="user in filterUserResults"
+                    :key="user.id"
+                    type="button"
+                    @click="selectFilterUser(user)"
+                    class="dropdown-item"
+                  >
+                    <span class="font-medium text-gray-900 dark:text-white">{{ user.email }}</span>
+                    <span class="text-gray-500 dark:text-gray-400">#{{ user.id }}</span>
+                  </button>
                 </div>
-                <div
-                  v-else-if="filterUserResults.length === 0 && filterUserKeyword"
-                  class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
-                >
-                  {{ t('common.noOptionsFound') }}
-                </div>
-                <button
-                  v-for="user in filterUserResults"
-                  :key="user.id"
-                  type="button"
-                  @click="selectFilterUser(user)"
-                  class="dropdown-item"
-                >
-                  <span class="font-medium text-gray-900 dark:text-white">{{ user.email }}</span>
-                  <span class="text-gray-500 dark:text-gray-400">#{{ user.id }}</span>
-                </button>
-              </div>
+              </MotionTransition>
             </div>
 
             <!-- Filters -->
@@ -85,36 +87,38 @@
               </button>
 
               <Teleport to="body">
-                <div
-                  v-if="showFilterDropdown"
-                  class="fixed z-modal-nested max-w-[calc(100vw-2rem)] overflow-y-auto rounded-surface border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-dark-900"
-                  :style="filterDropdownStyle"
-                  @click.stop
-                >
-                <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-dark-700">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                  <button
-                    v-if="activeFilterCount > 0"
-                    type="button"
-                    class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                    @click="resetSubscriptionFilters"
+                <MotionTransition name="dropdown-fade">
+                  <div
+                    v-if="showFilterDropdown" :inert="!(showFilterDropdown) || undefined"
+                    class="fixed z-modal-nested max-w-[calc(100vw-2rem)] overflow-y-auto rounded-surface border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-dark-900"
+                    :style="filterDropdownStyle"
+                    @click.stop
                   >
-                    {{ t('common.reset') }}
-                  </button>
-                </div>
-                <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
-                  <div>
-                    <label class="input-label">{{ t('admin.subscriptions.columns.status') }}</label>
-                    <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.subscriptions.allStatus')" @change="applyFilters" />
+                  <div class="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-dark-700">
+                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                    <button
+                      v-if="activeFilterCount > 0"
+                      type="button"
+                      class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                      @click="resetSubscriptionFilters"
+                    >
+                      {{ t('common.reset') }}
+                    </button>
                   </div>
-                  <div>
-                    <label class="input-label">{{ t('admin.subscriptions.form.group') }}</label>
-                    <Select v-model="filters.plan_id" :options="planOptions" :placeholder="t('admin.announcements.form.selectPackages')" @change="applyFilters" />
+                  <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
+                    <div>
+                      <label class="input-label">{{ t('admin.subscriptions.columns.status') }}</label>
+                      <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.subscriptions.allStatus')" @change="applyFilters" />
+                    </div>
+                    <div>
+                      <label class="input-label">{{ t('admin.subscriptions.form.group') }}</label>
+                      <Select v-model="filters.plan_id" :options="planOptions" :placeholder="t('admin.announcements.form.selectPackages')" @change="applyFilters" />
+                    </div>
+                    <div class="sm:col-span-2">
+                    </div>
                   </div>
-                  <div class="sm:col-span-2">
                   </div>
-                </div>
-                </div>
+                </MotionTransition>
               </Teleport>
             </div>
           </div>
@@ -140,36 +144,54 @@
                 <span class="hidden">{{ t('admin.users.columnSettings') }}</span>
               </button>
               <!-- Dropdown menu -->
-              <div
-                v-if="showColumnDropdown"
-                class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
-              >
-                <div class="p-2">
-                  <!-- User column mode selection -->
-                  <div class="mb-2 border-b border-gray-200 pb-2 dark:border-dark-600">
-                    <div class="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t('admin.subscriptions.columns.user') }}
+              <MotionTransition name="dropdown-fade">
+                <div
+                  v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
+                  class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
+                >
+                  <div class="p-2">
+                    <!-- User column mode selection -->
+                    <div class="mb-2 border-b border-gray-200 pb-2 dark:border-dark-600">
+                      <div class="px-3 py-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t('admin.subscriptions.columns.user') }}
+                      </div>
+                      <button
+                        @click="setUserColumnMode('email')"
+                        class="dropdown-item-sm justify-between rounded-control"
+                      >
+                        <span>{{ t('admin.users.columns.email') }}</span>
+                        <Icon
+                          v-if="userColumnMode === 'email'"
+                          name="check"
+                          size="sm"
+                          class="text-primary-500"
+                          :animate-on-hover="false"
+                        />
+                      </button>
+                      <button
+                        @click="setUserColumnMode('username')"
+                        class="dropdown-item-sm justify-between rounded-control"
+                      >
+                        <span>{{ t('admin.users.columns.username') }}</span>
+                        <Icon
+                          v-if="userColumnMode === 'username'"
+                          name="check"
+                          size="sm"
+                          class="text-primary-500"
+                          :animate-on-hover="false"
+                        />
+                      </button>
                     </div>
+                    <!-- Other columns toggle -->
                     <button
-                      @click="setUserColumnMode('email')"
+                      v-for="col in toggleableColumns"
+                      :key="col.key"
+                      @click="toggleColumn(col.key)"
                       class="dropdown-item-sm justify-between rounded-control"
                     >
-                      <span>{{ t('admin.users.columns.email') }}</span>
+                      <span>{{ col.label }}</span>
                       <Icon
-                        v-if="userColumnMode === 'email'"
-                        name="check"
-                        size="sm"
-                        class="text-primary-500"
-                        :animate-on-hover="false"
-                      />
-                    </button>
-                    <button
-                      @click="setUserColumnMode('username')"
-                      class="dropdown-item-sm justify-between rounded-control"
-                    >
-                      <span>{{ t('admin.users.columns.username') }}</span>
-                      <Icon
-                        v-if="userColumnMode === 'username'"
+                        v-if="isColumnVisible(col.key)"
                         name="check"
                         size="sm"
                         class="text-primary-500"
@@ -177,24 +199,8 @@
                       />
                     </button>
                   </div>
-                  <!-- Other columns toggle -->
-                  <button
-                    v-for="col in toggleableColumns"
-                    :key="col.key"
-                    @click="toggleColumn(col.key)"
-                    class="dropdown-item-sm justify-between rounded-control"
-                  >
-                    <span>{{ col.label }}</span>
-                    <Icon
-                      v-if="isColumnVisible(col.key)"
-                      name="check"
-                      size="sm"
-                      class="text-primary-500"
-                      :animate-on-hover="false"
-                    />
-                  </button>
                 </div>
-              </div>
+              </MotionTransition>
             </div>
             <button
               @click="showGuideModal = true"
@@ -257,7 +263,7 @@
                   <span class="usage-label">{{ t('admin.subscriptions.daily') }}</span>
                   <div class="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
                     <div
-                      class="h-1.5 rounded-full transition-all"
+                      class="h-1.5 rounded-full transition-[width,background-color]"
                       :class="getProgressClass(row.daily_usage_usd, row.daily_limit_usd)"
                       :style="{
                         width: getProgressWidth(row.daily_usage_usd, row.daily_limit_usd)
@@ -282,7 +288,7 @@
                   <span class="usage-label">{{ t('admin.subscriptions.weekly') }}</span>
                   <div class="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
                     <div
-                      class="h-1.5 rounded-full transition-all"
+                      class="h-1.5 rounded-full transition-[width,background-color]"
                       :class="getProgressClass(row.weekly_usage_usd, row.weekly_limit_usd)"
                       :style="{
                         width: getProgressWidth(row.weekly_usage_usd, row.weekly_limit_usd)
@@ -307,7 +313,7 @@
                   <span class="usage-label">{{ t('admin.subscriptions.monthly') }}</span>
                   <div class="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
                     <div
-                      class="h-1.5 rounded-full transition-all"
+                      class="h-1.5 rounded-full transition-[width,background-color]"
                       :class="getProgressClass(row.monthly_usage_usd, row.monthly_limit_usd)"
                       :style="{
                         width: getProgressWidth(row.monthly_usage_usd, row.monthly_limit_usd)
@@ -482,33 +488,35 @@
               <Icon name="x" size="sm" :stroke-width="2" />
             </button>
             <!-- User Dropdown -->
-            <div
-              v-if="showUserDropdown && (userSearchResults.length > 0 || userSearchKeyword)"
-              class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
-            >
+            <MotionTransition name="dropdown-fade">
               <div
-                v-if="userSearchLoading"
-                class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+                v-if="showUserDropdown && (userSearchResults.length > 0 || userSearchKeyword)" :inert="!(showUserDropdown && (userSearchResults.length > 0 || userSearchKeyword)) || undefined"
+                class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
               >
-                {{ t('common.loading') }}
+                <div
+                  v-if="userSearchLoading"
+                  class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+                >
+                  {{ t('common.loading') }}
+                </div>
+                <div
+                  v-else-if="userSearchResults.length === 0 && userSearchKeyword"
+                  class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
+                >
+                  {{ t('common.noOptionsFound') }}
+                </div>
+                <button
+                  v-for="user in userSearchResults"
+                  :key="user.id"
+                  type="button"
+                  @click="selectUser(user)"
+                  class="dropdown-item"
+                >
+                  <span class="font-medium text-gray-900 dark:text-white">{{ user.email }}</span>
+                  <span class="text-gray-500 dark:text-gray-400">#{{ user.id }}</span>
+                </button>
               </div>
-              <div
-                v-else-if="userSearchResults.length === 0 && userSearchKeyword"
-                class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400"
-              >
-                {{ t('common.noOptionsFound') }}
-              </div>
-              <button
-                v-for="user in userSearchResults"
-                :key="user.id"
-                type="button"
-                @click="selectUser(user)"
-                class="dropdown-item"
-              >
-                <span class="font-medium text-gray-900 dark:text-white">{{ user.email }}</span>
-                <span class="text-gray-500 dark:text-gray-400">#{{ user.id }}</span>
-              </button>
-            </div>
+            </MotionTransition>
           </div>
         </div>
         <div>
@@ -654,7 +662,7 @@
     />
     <!-- Subscription Guide Modal -->
     <teleport to="body">
-      <transition name="modal">
+      <MotionTransition name="modal">
         <div v-if="showGuideModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @mousedown.self="showGuideModal = false">
           <div class="fixed inset-0 bg-[var(--overlay-bg)]" @click="showGuideModal = false"></div>
           <div class="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-surface bg-white p-6 shadow-2xl dark:bg-dark-800 sm:rounded-dialog">
@@ -729,12 +737,13 @@
             </div>
           </div>
         </div>
-      </transition>
+      </MotionTransition>
     </teleport>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

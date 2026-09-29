@@ -18,7 +18,7 @@
           <Icon name="cog" size="md" />
         </button>
         <!-- 向下展开的设置面板：清空画布 / 清空本机创作数据 -->
-        <Transition name="pop-float">
+        <MotionTransition name="pop-float">
           <div
             v-if="settingsOpen"
             class="settings-pop-float absolute left-0 top-12 w-64 rounded-surface border border-primary-900/10 bg-white/95 p-3 shadow-lg backdrop-blur dark:border-dark-600 dark:bg-dark-900/95"
@@ -40,7 +40,7 @@
               {{ t('creative.history.clearData') }}
             </button>
           </div>
-        </Transition>
+        </MotionTransition>
       </div>
 
       <!-- 聊天式输入框：固定底部居中，不随选中图片移动 -->
@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 /**
  * 创作台主视图：全幅无限画布 + 聊天式输入框。
  * - 输入框固定底部居中（早期试过跟随选中图片，缩放场景下位置不稳定，按用户要求回退为固定）
@@ -342,8 +343,7 @@ async function onClearLocalData(): Promise<void> {
 <style scoped>
 /* 设置面板动效用全局 pop-float,锚点方向(左上锚、向上收起)用局部变量表达。 */
 .settings-pop-float {
-  --pop-origin: top left;
-  --pop-shift: -6px;
+  --pop-shift: calc(-1 * var(--motion-shift));
 }
 
 /* 信封沿运行时计算的向量匀速飞行，透明度收尾避免落到历史按钮上时产生遮挡。 */

@@ -1,5 +1,5 @@
 <template>
-  <AuthCardDialog @close="$emit('close')">
+  <AuthCardDialog :show="show" @after-leave="$emit('after-leave')" @close="$emit('close')">
         <!-- Header -->
         <div class="mb-6 text-center">
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -11,7 +11,7 @@
         </div>
 
         <!-- Step 0: Identity Verification -->
-        <div v-if="step === 0" class="space-y-6">
+        <div v-if="step === 0" v-content-reveal class="space-y-6">
           <!-- Loading verification method -->
           <div v-if="methodLoading" class="flex items-center justify-center py-8">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
@@ -74,7 +74,7 @@
         </div>
 
         <!-- Step 1: Show QR Code -->
-        <div v-if="step === 1" class="space-y-6">
+        <div v-if="step === 1" v-content-reveal class="space-y-6">
           <!-- QR Code and Secret -->
           <template v-if="setupData">
             <div class="flex justify-center">
@@ -118,7 +118,7 @@
         </div>
 
         <!-- Step 2: Verify Code -->
-        <div v-if="step === 2" class="space-y-6">
+        <div v-if="step === 2" v-content-reveal class="space-y-6">
           <form @submit.prevent="handleVerify">
             <div class="mb-6">
               <label class="input-label text-center block mb-3">
@@ -163,6 +163,8 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+
 import Icon from '@/components/icons/Icon.vue'
 import AuthCardDialog from '@/components/common/AuthCardDialog.vue'
 import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
@@ -172,7 +174,10 @@ import { totpAPI } from '@/api'
 import type { TotpSetupResponse } from '@/types'
 import QRCode from 'qrcode'
 
+withDefaults(defineProps<{ show?: boolean }>(), { show: true })
+
 const emit = defineEmits<{
+  'after-leave': []
   close: []
   success: []
 }>()

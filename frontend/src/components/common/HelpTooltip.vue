@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useFloatingMotion } from '@/composables/useFloatingMotion'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
@@ -22,13 +24,15 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 const internalShow = ref(false)
-const show = computed(() => props.open ?? internalShow.value)
+const requestedShow = computed(() => props.open ?? internalShow.value)
 const clickPinned = ref(false)
 const resolvedPlacement = ref<'top' | 'bottom'>(props.placement)
 const triggerRef = useTemplateRef<HTMLElement>('trigger')
 const tooltipRef = useTemplateRef<HTMLElement>('tooltip')
 const tooltipStyle = ref({ top: '0px', left: '0px' })
 const caretLeft = ref('50%')
+const ancestorBlocked = useFloatingMotion(triggerRef, () => requestedShow.value, closeTooltip, updatePosition)
+const show = computed(() => requestedShow.value && !ancestorBlocked.value)
 
 watch(show, (visible) => {
   if (visible) nextTick(updatePosition)
@@ -199,43 +203,45 @@ onBeforeUnmount(() => {
     <!-- 挂载到 body，避免被弹窗的 overflow 裁剪 -->
     <Teleport to="body">
       <!-- before: 伪元素向下延伸一段透明区域，盖住提示框与触发图标之间的空隙，让指针能连续移入提示框。 -->
-      <div
-        ref="tooltip"
-        :id="tooltipId"
-        v-show="show"
-        role="tooltip"
-        :class="[
-          'fixed z-help-tooltip max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-control bg-gray-900 text-white shadow-xl ring-1 ring-white/10 dark:bg-gray-800',
-          resolvedPlacement === 'top' ? '-translate-y-full' : 'translate-y-0',
-          props.widthClass,
-        ]"
-        :style="{
-          top: resolvedPlacement === 'top'
-            ? `calc(${tooltipStyle.top} - 8px)`
-            : tooltipStyle.top,
-          left: tooltipStyle.left,
-        }"
-        @mouseleave="onTooltipLeave"
-      >
-        <!-- 滚动只发生在内容层，避免小箭头伸出边框被 overflow 裁剪或挤出滚动条。 -->
-        <div class="relative max-h-[calc(100vh-1.5rem)] overflow-y-auto p-3 text-xs leading-relaxed">
-          <button
-            v-if="clickEnabled() && closable"
-            type="button"
-            class="absolute right-1.5 top-1.5 rounded-compact p-1 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
-            aria-label="Close"
-            @click.stop="closeTooltip"
-          >
-            <Icon name="x" size="xs" class="h-3.5 w-3.5" />
-          </button>
-          <slot>{{ content }}</slot>
-        </div>
+      <MotionTransition name="fade" persisted>
         <div
-          class="absolute h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800"
-          :style="{ left: caretLeft }"
-          :class="resolvedPlacement === 'top' ? '-bottom-1' : '-top-1'"
-        ></div>
-      </div>
+          ref="tooltip"
+          :id="tooltipId"
+          v-show="show" :inert="!(show) || undefined"
+          role="tooltip"
+          :class="[
+            'fixed z-help-tooltip max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-control bg-gray-900 text-white shadow-xl ring-1 ring-white/10 dark:bg-gray-800',
+            resolvedPlacement === 'top' ? '-translate-y-full' : 'translate-y-0',
+            props.widthClass,
+          ]"
+          :style="{
+            top: resolvedPlacement === 'top'
+              ? `calc(${tooltipStyle.top} - 8px)`
+              : tooltipStyle.top,
+            left: tooltipStyle.left,
+          }"
+          @mouseleave="onTooltipLeave"
+        >
+          <!-- 滚动只发生在内容层，避免小箭头伸出边框被 overflow 裁剪或挤出滚动条。 -->
+          <div class="relative max-h-[calc(100vh-1.5rem)] overflow-y-auto p-3 text-xs leading-relaxed">
+            <button
+              v-if="clickEnabled() && closable"
+              type="button"
+              class="absolute right-1.5 top-1.5 rounded-compact p-1 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="Close"
+              @click.stop="closeTooltip"
+            >
+              <Icon name="x" size="xs" class="h-3.5 w-3.5" />
+            </button>
+            <slot>{{ content }}</slot>
+          </div>
+          <div
+            class="absolute h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800"
+            :style="{ left: caretLeft }"
+            :class="resolvedPlacement === 'top' ? '-bottom-1' : '-top-1'"
+          ></div>
+        </div>
+      </MotionTransition>
     </Teleport>
   </div>
 </template>

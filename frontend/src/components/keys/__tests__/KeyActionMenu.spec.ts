@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import KeyActionMenu from '../KeyActionMenu.vue'
 import type { ApiKey } from '@/types'
+import { finishMotion, mockMotionEnvironment } from '@/__tests__/helpers/motion'
 
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
@@ -45,6 +46,28 @@ const apiKey: ApiKey = {
 describe('KeyActionMenu', () => {
   afterEach(() => {
     document.body.innerHTML = ''
+    vi.restoreAllMocks()
+  })
+
+  it('关闭时立即移除捕获层，清空选中 Key 后仍能完成面板退出', async () => {
+    mockMotionEnvironment()
+    const wrapper = mount(KeyActionMenu, {
+      attachTo: document.body,
+      props: { show: true, apiKey, position: { top: 80, left: 100 }, allowImport: true },
+      global: { stubs: { transition: false, Icon: true } },
+    })
+    try {
+      const menu = document.body.querySelector('[role="menu"]')!
+      await wrapper.setProps({ show: false, apiKey: null, position: null })
+      expect(document.body.querySelector('.z-menu-overlay')).toBeNull()
+      expect(menu.id).toBe('key-action-menu-7')
+      expect(menu.hasAttribute('inert')).toBe(true)
+      expect(menu.textContent).toContain('keys.useKey')
+      await finishMotion(menu)
+      expect(document.body.querySelector('[role="menu"]')).toBeNull()
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('将使用、tf/CCS 导入和删除收纳到更多菜单', async () => {

@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'group relative rounded-control border transition-all',
+      'group relative rounded-control border transition',
       enabled ? 'border-gray-200 dark:border-dark-600' : 'border-gray-200 bg-gray-50 opacity-50 dark:border-dark-700 dark:bg-dark-800/50',
       updating && 'opacity-75',
     ]"
@@ -35,7 +35,7 @@
             :disabled="updating"
             @click.stop="emit('toggleType', pt.value)"
             :class="[
-              'rounded-compact px-2 py-0.5 text-xs font-medium transition-all',
+              'rounded-compact px-2 py-0.5 text-xs font-medium transition',
               updating ? 'cursor-wait opacity-60' : '',
               isSelected(pt.value)
                 ? 'bg-primary-500 text-white'

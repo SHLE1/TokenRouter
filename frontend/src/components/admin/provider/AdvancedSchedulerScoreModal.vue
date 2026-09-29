@@ -221,17 +221,17 @@
                   </table>
                 </div>
                 <div class="mt-3 space-y-2 lg:hidden">
-                  <details v-for="metric in detail.metrics" :key="metric.key" class="rounded-control border border-gray-200 px-3 py-2 dark:border-dark-600">
-                    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm">
+                  <Disclosure summary-class="flex cursor-pointer list-none items-center justify-between gap-3 text-sm" v-for="metric in detail.metrics" :key="metric.key" class="rounded-control border border-gray-200 px-3 py-2 dark:border-dark-600">
+                    <template #summary>
                       <span class="font-medium text-gray-900 dark:text-gray-100">{{ metricLabel(metric.key) }}</span>
                       <span class="font-mono text-xs text-gray-600 dark:text-dark-300">{{ formatNumber(metric.weighted_contribution) }}</span>
-                    </summary>
+                    </template>
                     <dl class="mt-3 grid gap-2 border-t border-gray-100 pt-3 text-xs dark:border-dark-700">
                       <div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.raw') }}</dt><dd class="mt-0.5 text-gray-800 dark:text-dark-200">{{ metric.raw_value }}</dd></div>
                       <div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.normalization') }}</dt><dd class="mt-0.5 break-words font-mono text-xs leading-5 text-gray-800 dark:text-dark-200">{{ metric.normalization }}</dd></div>
                       <div class="grid grid-cols-3 gap-2"><div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.normalized') }}</dt><dd class="mt-0.5 font-mono">{{ formatNumber(metric.normalized_value) }}</dd></div><div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.weight') }}</dt><dd class="mt-0.5 font-mono">{{ formatNumber(metric.weight) }}</dd></div><div><dt class="text-gray-500 dark:text-dark-400">{{ t('admin.providers.advancedSchedulerScore.metricColumns.contribution') }}</dt><dd class="mt-0.5 font-mono">{{ formatNumber(metric.weighted_contribution) }}</dd></div></div>
                     </dl>
-                  </details>
+                  </Disclosure>
                 </div>
               </section>
             </template>
@@ -283,6 +283,8 @@
 </template>
 
 <script setup lang="ts">
+import Disclosure from '@/components/common/Disclosure.vue'
+
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'

@@ -27,11 +27,11 @@
       </button>
 
       <!-- Dropdown -->
-      <transition name="dropdown">
+      <MotionTransition name="dropdown-fade">
         <div
           v-if="dropdownOpen"
           ref="dropdownRef"
-          class="absolute left-0 z-50 mt-2 overflow-hidden whitespace-normal rounded-control border border-gray-200 bg-white shadow-lg transition-all duration-200 dark:border-dark-700 dark:bg-dark-800"
+          class="absolute left-0 z-50 mt-2 overflow-hidden whitespace-normal rounded-control border border-gray-200 bg-white shadow-lg transition duration-normal dark:border-dark-700 dark:bg-dark-800"
           :class="rollbackPanelOpen && isReleaseBuild ? 'w-80' : 'w-64'"
         >
           <!-- Header with refresh button -->
@@ -342,14 +342,14 @@
                       name="chevronDown"
                       size="xs"
                       :stroke-width="2"
-                      class="transition-transform duration-200"
+                      class="transition-transform duration-normal"
                       :class="{ 'rotate-180': rollbackPanelOpen }"
                       :animate-on-hover="false"
                     />
                   </button>
 
-                  <transition name="rollback">
-                    <div v-if="rollbackPanelOpen" class="mt-2 space-y-2">
+                  <Collapse :open="rollbackPanelOpen" unmount-on-hide>
+                    <div class="mt-2 space-y-2">
                       <!-- 源码构建不支持在线回退，需要使用 git。 -->
                       <div
                         v-if="!isReleaseBuild"
@@ -412,7 +412,7 @@
                           :key="item.version"
                           @click="selectRollbackVersion(item.version)"
                           :disabled="rollingBack"
-                          class="flex w-full items-center justify-between rounded-control border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60"
+                          class="flex w-full items-center justify-between rounded-control border px-3 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-60"
                           :class="
                             selectedRollbackVersion === item.version
                               ? 'border-amber-300 bg-amber-50 shadow-sm dark:border-amber-700 dark:bg-amber-900/20'
@@ -449,8 +449,8 @@
                         </button>
 
                         <!-- 选中版本后显示不同部署方式的手动命令与确认按钮。 -->
-                        <transition name="rollback">
-                          <div v-if="selectedRollbackVersion" class="space-y-2">
+                        <Collapse :open="!!selectedRollbackVersion" unmount-on-hide>
+                          <div class="space-y-2">
                             <p class="px-0.5 text-xs text-gray-400 dark:text-dark-500">
                               {{ t('version.manualRollbackCommand') }}
                             </p>
@@ -539,16 +539,16 @@
                               }}</span>
                             </button>
                           </div>
-                        </transition>
+                        </Collapse>
                       </template>
                     </div>
-                  </transition>
+                  </Collapse>
                 </div>
               </div>
             </template>
           </div>
         </div>
-      </transition>
+      </MotionTransition>
     </template>
 
     <!-- Non-admin: Simple static version text -->
@@ -559,6 +559,9 @@
 </template>
 
 <script setup lang="ts">
+import Collapse from '@/components/common/Collapse.vue'
+
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
@@ -843,27 +846,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: all 0.2s ease;
-}
 
-.dropdown-enter-from,
-.dropdown-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
-}
-
-.rollback-enter-active,
-.rollback-leave-active {
-  transition: all 0.2s ease;
-}
-
-.rollback-enter-from,
-.rollback-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
 
 .line-clamp-3 {
   display: -webkit-box;

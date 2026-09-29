@@ -19,67 +19,69 @@
                 </span>
               </button>
 
-              <div v-show="showFilterDropdown" class="absolute -left-4 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0" @click.stop>
-                <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                <div class="flex flex-wrap items-end gap-4">
-              <div class="w-full sm:w-auto sm:min-w-[240px]">
-                <label class="input-label">{{ t('admin.audit.filters.q') }}</label>
-                <div class="input-icon-wrap">
-                  <Icon
-                    name="search"
-                    size="md"
-                    class="input-icon text-gray-400"
-                  />
-                  <input
-                    v-model.trim="filters.q"
-                    type="text"
-                    class="input input-has-icon"
-                    :placeholder="t('admin.audit.filters.qPlaceholder')"
-                    @keyup.enter="search"
+              <MotionTransition persisted name="dropdown-fade">
+                <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute -left-4 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0" @click.stop>
+                  <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+                  <div class="flex flex-wrap items-end gap-4">
+                <div class="w-full sm:w-auto sm:min-w-[240px]">
+                  <label class="input-label">{{ t('admin.audit.filters.q') }}</label>
+                  <div class="input-icon-wrap">
+                    <Icon
+                      name="search"
+                      size="md"
+                      class="input-icon text-gray-400"
+                    />
+                    <input
+                      v-model.trim="filters.q"
+                      type="text"
+                      class="input input-has-icon"
+                      :placeholder="t('admin.audit.filters.qPlaceholder')"
+                      @keyup.enter="search"
+                    />
+                  </div>
+                </div>
+
+                <div class="w-full sm:w-auto sm:min-w-[200px]">
+                  <label class="input-label">{{ t('admin.audit.filters.actorEmail') }}</label>
+                  <input v-model.trim="filters.actor_email" type="text" class="input" @keyup.enter="search" />
+                </div>
+
+                <div class="w-full sm:w-auto sm:min-w-[180px]">
+                  <label class="input-label">{{ t('admin.audit.filters.action') }}</label>
+                  <input v-model.trim="filters.action" type="text" class="input" @keyup.enter="search" />
+                </div>
+
+                <div class="w-full sm:w-auto sm:min-w-[160px]">
+                  <label class="input-label">{{ t('admin.audit.filters.clientIp') }}</label>
+                  <input v-model.trim="filters.client_ip" type="text" class="input" @keyup.enter="search" />
+                </div>
+
+                <div class="w-full sm:w-auto sm:min-w-[140px]">
+                  <label class="input-label">{{ t('admin.audit.filters.method') }}</label>
+                  <Select v-model="filters.method" :options="methodOptions" @change="search" />
+                </div>
+
+                <div class="w-full sm:w-auto sm:min-w-[170px]">
+                  <label class="input-label">{{ t('admin.audit.filters.authMethod') }}</label>
+                  <Select v-model="filters.auth_method" :options="authMethodOptions" @change="search" />
+                </div>
+
+                <div class="w-full sm:w-auto sm:min-w-[140px]">
+                  <label class="input-label">{{ t('admin.audit.filters.result') }}</label>
+                  <Select v-model="filters.success" :options="resultOptions" @change="search" />
+                </div>
+
+                <div class="w-full sm:w-auto sm:min-w-[170px]">
+                  <label class="input-label">{{ t('admin.dashboard.timeRange') }}</label>
+                  <Select
+                    :model-value="timeRange"
+                    :options="timeRangeOptions"
+                    @update:model-value="handleTimeRangeChange"
                   />
                 </div>
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[200px]">
-                <label class="input-label">{{ t('admin.audit.filters.actorEmail') }}</label>
-                <input v-model.trim="filters.actor_email" type="text" class="input" @keyup.enter="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[180px]">
-                <label class="input-label">{{ t('admin.audit.filters.action') }}</label>
-                <input v-model.trim="filters.action" type="text" class="input" @keyup.enter="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[160px]">
-                <label class="input-label">{{ t('admin.audit.filters.clientIp') }}</label>
-                <input v-model.trim="filters.client_ip" type="text" class="input" @keyup.enter="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[140px]">
-                <label class="input-label">{{ t('admin.audit.filters.method') }}</label>
-                <Select v-model="filters.method" :options="methodOptions" @change="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[170px]">
-                <label class="input-label">{{ t('admin.audit.filters.authMethod') }}</label>
-                <Select v-model="filters.auth_method" :options="authMethodOptions" @change="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[140px]">
-                <label class="input-label">{{ t('admin.audit.filters.result') }}</label>
-                <Select v-model="filters.success" :options="resultOptions" @change="search" />
-              </div>
-
-              <div class="w-full sm:w-auto sm:min-w-[170px]">
-                <label class="input-label">{{ t('admin.dashboard.timeRange') }}</label>
-                <Select
-                  :model-value="timeRange"
-                  :options="timeRangeOptions"
-                  @update:model-value="handleTimeRangeChange"
-                />
-              </div>
+                  </div>
                 </div>
-              </div>
+              </MotionTransition>
             </div>
 
             <div class="flex flex-wrap items-center justify-end gap-2">
@@ -363,6 +365,7 @@
   </AppLayout>
 </template>
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI, type AuditLog } from '@/api/admin'

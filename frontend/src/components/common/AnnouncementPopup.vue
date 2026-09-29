@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <Transition name="pop-fade" @after-leave="handleAfterLeave">
+    <MotionTransition name="pop-fade" @after-leave="handleAfterLeave">
       <div
         v-if="displayedAnnouncement"
         class="fixed inset-0 z-announcement-raised flex items-center justify-center overflow-y-auto bg-[var(--overlay-bg)] p-3 backdrop-blur-sm sm:p-6"
@@ -86,11 +86,12 @@
           </footer>
         </section>
       </div>
-    </Transition>
+    </MotionTransition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'

@@ -130,18 +130,12 @@
                 >
                   <span class="inline-flex items-center gap-1">
                     <Icon
-                      name="chevronDown"
-                      size="xs"
-                      :animate-on-hover="false"
-                      v-if="enableBreakdown && expandedKey === `model-${model.model}`"
-                      class="h-3 w-3 shrink-0"
-                    />
-                    <Icon
+                      v-if="enableBreakdown"
                       name="chevronRight"
                       size="xs"
                       :animate-on-hover="false"
-                      v-else-if="enableBreakdown"
-                      class="h-3 w-3 shrink-0"
+                      class="h-3 w-3 shrink-0 transition-transform duration-normal"
+                      :class="{ 'rotate-90': expandedKey === `model-${model.model}` }"
                     />
                     {{ model.model }}
                   </span>
@@ -162,16 +156,14 @@
                   {{ usdUnitSymbol }}{{ formatCost(model.cost) }}
                 </td>
               </tr>
-              <tr v-if="expandedKey === `model-${model.model}`">
-                <td :colspan="distributionColspan" class="p-0">
+              <ExpandableTableRow :open="expandedKey === `model-${model.model}`" :colspan="distributionColspan">
                   <UserBreakdownSubTable
                     :items="breakdownItems"
                     :loading="breakdownLoading"
                     :show-provider-cost="showProviderCost"
                     :show-standard-cost="showStandardCost"
                   />
-                </td>
-              </tr>
+                </ExpandableTableRow>
             </template>
           </tbody>
         </table>
@@ -253,6 +245,7 @@
 </template>
 
 <script setup lang="ts">
+import ExpandableTableRow from '@/components/common/ExpandableTableRow.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

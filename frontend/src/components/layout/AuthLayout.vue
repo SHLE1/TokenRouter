@@ -5,7 +5,7 @@
     <AuthBackground />
 
     <!-- Content Container -->
-    <div class="relative z-10 w-full max-w-md">
+    <div v-content-reveal="motionRoute?.path" class="relative z-10 w-full max-w-md">
       <!-- Logo/Brand -->
       <div class="mb-8 text-center">
         <!-- Custom Logo or Default Logo -->
@@ -44,6 +44,10 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import { useRoute as useMotionRoute } from 'vue-router'
+const motionRoute = useMotionRoute()
+
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AuthBackground from '@/components/auth/AuthBackground.vue'

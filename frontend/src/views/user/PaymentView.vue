@@ -8,7 +8,7 @@
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
         <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="flex space-x-1 rounded-control bg-gray-100 p-1 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"
-            class="flex h-9 flex-1 items-center justify-center rounded-control px-4 py-1.5 text-sm font-medium transition-all"
+            class="flex h-9 flex-1 items-center justify-center rounded-control px-4 py-1.5 text-sm font-medium transition"
             :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
             @click="activeTab = tab.key">{{ tab.label }}</button>
         </div>
@@ -316,16 +316,17 @@
     />
     <!-- Image Preview Overlay -->
     <Teleport to="body">
-      <Transition name="modal">
+      <MotionTransition name="modal">
         <div v-if="previewImage" class="fixed inset-0 z-modal-nested flex items-center justify-center bg-[var(--overlay-bg-strong)] backdrop-blur-sm" @click="previewImage = ''">
           <img :src="previewImage" alt="" class="max-h-[85vh] max-w-[90vw] rounded-surface object-contain shadow-2xl" />
         </div>
-      </Transition>
+      </MotionTransition>
     </Teleport>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'

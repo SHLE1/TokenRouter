@@ -458,7 +458,7 @@ watch(
 
           <!-- 进度条 -->
           <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-700">
-            <div class="h-full rounded-full transition-all duration-300" :class="getLoadBarClass(row.load_percentage)" :style="getLoadBarStyle(row.load_percentage)"></div>
+            <div class="h-full rounded-full transition-[width,background-color] duration-layout" :class="getLoadBarClass(row.load_percentage)" :style="getLoadBarStyle(row.load_percentage)"></div>
           </div>
 
           <!-- 等待队列 -->
@@ -490,7 +490,7 @@ watch(
           <!-- 进度条 -->
           <div class="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-700">
             <div
-              class="h-full rounded-full transition-all duration-300"
+              class="h-full rounded-full transition-[width,background-color] duration-layout"
               :class="getLoadBarClass(row.concurrency_percentage)"
               :style="getLoadBarStyle(row.concurrency_percentage)"
             ></div>
@@ -591,7 +591,7 @@ watch(
 
           <!-- 进度条 -->
           <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-700">
-            <div class="h-full rounded-full transition-all duration-300" :class="getLoadBarClass(row.load_percentage)" :style="getLoadBarStyle(row.load_percentage)"></div>
+            <div class="h-full rounded-full transition-[width,background-color] duration-layout" :class="getLoadBarClass(row.load_percentage)" :style="getLoadBarStyle(row.load_percentage)"></div>
           </div>
 
           <!-- 等待队列 -->

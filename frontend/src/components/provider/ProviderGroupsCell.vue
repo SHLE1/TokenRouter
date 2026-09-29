@@ -24,14 +24,7 @@
 
     <!-- Popover 显示完整列表 -->
     <Teleport to="body">
-      <Transition
-        enter-active-class="transition duration-150 ease-out"
-        enter-from-class="opacity-0 scale-95"
-        enter-to-class="opacity-100 scale-100"
-        leave-active-class="transition duration-100 ease-in"
-        leave-from-class="opacity-100 scale-100"
-        leave-to-class="opacity-0 scale-95"
-      >
+      <MotionTransition name="dropdown-fade">
         <div
           v-if="showPopover"
           ref="popoverRef"
@@ -60,7 +53,7 @@
             />
           </div>
         </div>
-      </Transition>
+      </MotionTransition>
     </Teleport>
 
     <!-- 点击外部关闭 popover -->
@@ -74,6 +67,8 @@
 </template>
 
 <script setup lang="ts">
+import { useFloatingMotion } from '@/composables/useFloatingMotion'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -144,6 +139,8 @@ const handleKeydown = (e: KeyboardEvent) => {
     showPopover.value = false
   }
 }
+
+useFloatingMotion(moreButtonRef, () => showPopover.value, () => { showPopover.value = false }, () => {})
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)

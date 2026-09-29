@@ -124,7 +124,7 @@
               :key="opt.value"
               type="button"
               :class="[
-                'rounded-control border-2 px-3 py-1.5 text-xs transition-all',
+                'rounded-control border-2 px-3 py-1.5 text-xs transition',
                 editProviderMode === opt.value
                   ? 'border-primary-500 bg-primary-50 font-medium text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                   : 'border-gray-200 text-gray-700 hover:border-gray-400 dark:border-dark-600 dark:text-gray-300 dark:hover:border-dark-500'
@@ -231,7 +231,7 @@
                 type="button"
                 @click="modelRestrictionMode = 'whitelist'"
                 :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                   modelRestrictionMode === 'whitelist'
                     ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -244,7 +244,7 @@
                 type="button"
                 @click="modelRestrictionMode = 'mapping'"
                 :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                   modelRestrictionMode === 'mapping'
                     ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -259,7 +259,7 @@
             </p>
 
             <!-- Whitelist Mode -->
-            <div v-if="modelRestrictionMode === 'whitelist'">
+            <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
               <ModelWhitelistSelector :model-value="allowedModels" :platform="provider?.platform || 'anthropic'" :provider-id="provider?.id" @update:model-value="setAllowedModels" />
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
@@ -344,43 +344,49 @@
             </div>
             <Toggle v-model="poolModeEnabled" variant="flush" off-tone="soft" />
           </div>
-          <div v-if="poolModeEnabled" class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-              <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.providers.poolModeInfo') }}
-            </p>
-          </div>
-          <div v-if="poolModeEnabled" class="mt-3">
-            <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
-            <input
-              v-model.number="poolModeRetryCount"
-              type="number"
-              min="0"
-              :max="MAX_POOL_MODE_RETRY_COUNT"
-              step="1"
-              class="input"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{
-                t('admin.providers.poolModeRetryCountHint', {
-                  default: DEFAULT_POOL_MODE_RETRY_COUNT,
-                  max: MAX_POOL_MODE_RETRY_COUNT
-                })
-              }}
-            </p>
-          </div>
-          <div v-if="poolModeEnabled" class="mt-3">
-            <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
-            <input
-              v-model="poolModeRetryStatusCodesInput"
-              type="text"
-              class="input"
-              :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
-            </p>
-          </div>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
+              <p class="text-xs text-blue-700 dark:text-blue-400">
+                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                {{ t('admin.providers.poolModeInfo') }}
+              </p>
+            </div>
+          </Collapse>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
+              <input
+                v-model.number="poolModeRetryCount"
+                type="number"
+                min="0"
+                :max="MAX_POOL_MODE_RETRY_COUNT"
+                step="1"
+                class="input"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{
+                  t('admin.providers.poolModeRetryCountHint', {
+                    default: DEFAULT_POOL_MODE_RETRY_COUNT,
+                    max: MAX_POOL_MODE_RETRY_COUNT
+                  })
+                }}
+              </p>
+            </div>
+          </Collapse>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
+              <input
+                v-model="poolModeRetryStatusCodesInput"
+                type="text"
+                class="input"
+                :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
+              </p>
+            </div>
+          </Collapse>
         </div>
 
         <!-- 自定义错误码区域 -->
@@ -395,69 +401,71 @@
             <Toggle v-model="customErrorCodesEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="customErrorCodesEnabled" class="space-y-3">
-            <div class="rounded-control bg-amber-50 p-3 dark:bg-amber-900/20">
-              <p class="text-xs text-amber-700 dark:text-amber-400">
-                <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
-                {{ t('admin.providers.customErrorCodesWarning') }}
-              </p>
-            </div>
+          <Collapse :open="customErrorCodesEnabled" unmount-on-hide>
+            <div class="space-y-3">
+              <div class="rounded-control bg-amber-50 p-3 dark:bg-amber-900/20">
+                <p class="text-xs text-amber-700 dark:text-amber-400">
+                  <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                  {{ t('admin.providers.customErrorCodesWarning') }}
+                </p>
+              </div>
 
-            <!-- 错误码快捷按钮 -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="code in commonErrorCodes"
-                :key="code.value"
-                type="button"
-                @click="toggleErrorCode(code.value)"
-                :class="[
-                  'rounded-control px-3 py-1.5 text-sm font-medium transition-colors',
-                  selectedErrorCodes.includes(code.value)
-                    ? 'bg-red-100 text-red-700 ring-1 ring-red-500 dark:bg-red-900/30 dark:text-red-400'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                ]"
-              >
-                {{ code.value }} {{ code.label }}
-              </button>
-            </div>
-
-            <!-- 手动输入 -->
-            <div class="flex items-center gap-2">
-              <input
-                v-model.number="customErrorCodeInput"
-                type="number"
-                min="100"
-                max="599"
-                class="input flex-1"
-                :placeholder="t('admin.providers.enterErrorCode')"
-                @keyup.enter="addCustomErrorCode"
-              />
-              <button type="button" @click="addCustomErrorCode" class="btn btn-secondary px-3">
-                <Icon name="plus" size="sm" class="h-4 w-4" />
-              </button>
-            </div>
-
-            <!-- 已选错误码汇总 -->
-            <div class="flex flex-wrap gap-1.5">
-              <span
-                v-for="code in selectedErrorCodes.sort((a, b) => a - b)"
-                :key="code"
-                class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
-              >
-                {{ code }}
+              <!-- 错误码快捷按钮 -->
+              <div class="flex flex-wrap gap-2">
                 <button
+                  v-for="code in commonErrorCodes"
+                  :key="code.value"
                   type="button"
-                  @click="removeErrorCode(code)"
-                  class="hover:text-red-900 dark:hover:text-red-300"
+                  @click="toggleErrorCode(code.value)"
+                  :class="[
+                    'rounded-control px-3 py-1.5 text-sm font-medium transition-colors',
+                    selectedErrorCodes.includes(code.value)
+                      ? 'bg-red-100 text-red-700 ring-1 ring-red-500 dark:bg-red-900/30 dark:text-red-400'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                  ]"
                 >
-                  <Icon name="x" size="sm" :stroke-width="2" />
+                  {{ code.value }} {{ code.label }}
                 </button>
-              </span>
-              <span v-if="selectedErrorCodes.length === 0" class="text-xs text-gray-400">
-                {{ t('admin.providers.noneSelectedUsesDefault') }}
-              </span>
+              </div>
+
+              <!-- 手动输入 -->
+              <div class="flex items-center gap-2">
+                <input
+                  v-model.number="customErrorCodeInput"
+                  type="number"
+                  min="100"
+                  max="599"
+                  class="input flex-1"
+                  :placeholder="t('admin.providers.enterErrorCode')"
+                  @keyup.enter="addCustomErrorCode"
+                />
+                <button type="button" @click="addCustomErrorCode" class="btn btn-secondary px-3">
+                  <Icon name="plus" size="sm" class="h-4 w-4" />
+                </button>
+              </div>
+
+              <!-- 已选错误码汇总 -->
+              <div class="flex flex-wrap gap-1.5">
+                <span
+                  v-for="code in selectedErrorCodes.sort((a, b) => a - b)"
+                  :key="code"
+                  class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                >
+                  {{ code }}
+                  <button
+                    type="button"
+                    @click="removeErrorCode(code)"
+                    class="hover:text-red-900 dark:hover:text-red-300"
+                  >
+                    <Icon name="x" size="sm" :stroke-width="2" />
+                  </button>
+                </span>
+                <span v-if="selectedErrorCodes.length === 0" class="text-xs text-gray-400">
+                  {{ t('admin.providers.noneSelectedUsesDefault') }}
+                </span>
+              </div>
             </div>
-          </div>
+          </Collapse>
         </div>
 
       </div>
@@ -496,16 +504,18 @@
           </div>
           <Toggle v-model="grokOAuthCustomBaseUrlEnabled" variant="flush" off-tone="soft" data-testid="grok-custom-base-url-toggle" />
         </div>
-        <div v-if="grokOAuthCustomBaseUrlEnabled" class="space-y-2">
-          <input
-            v-model="grokOAuthBaseUrl"
-            type="text"
-            class="input"
-            data-testid="grok-custom-base-url-input"
-            :placeholder="t('admin.providers.grokCustomBaseUrl.placeholder')"
-          />
-          <GrokBaseUrlPresets @select="grokOAuthBaseUrl = $event" />
-        </div>
+        <Collapse :open="grokOAuthCustomBaseUrlEnabled" unmount-on-hide>
+          <div class="space-y-2">
+            <input
+              v-model="grokOAuthBaseUrl"
+              type="text"
+              class="input"
+              data-testid="grok-custom-base-url-input"
+              :placeholder="t('admin.providers.grokCustomBaseUrl.placeholder')"
+            />
+            <GrokBaseUrlPresets @select="grokOAuthBaseUrl = $event" />
+          </div>
+        </Collapse>
       </div>
 
       <!-- 请求头覆写区域（支持的平台 API Key 与 Grok OAuth） -->
@@ -520,19 +530,21 @@
           <Toggle v-model="headerOverrideEnabled" variant="flush" off-tone="soft" />
         </div>
 
-        <div v-if="headerOverrideEnabled" class="space-y-3">
-          <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-              <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.providers.headerOverride.info') }}
-            </p>
-          </div>
+        <Collapse :open="headerOverrideEnabled" unmount-on-hide>
+          <div class="space-y-3">
+            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
+              <p class="text-xs text-blue-700 dark:text-blue-400">
+                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                {{ t('admin.providers.headerOverride.info') }}
+              </p>
+            </div>
 
-          <HeaderOverrideEditor
-            :rows="headerOverrideRows"
-            @update:rows="headerOverrideRows = $event"
-          />
-        </div>
+            <HeaderOverrideEditor
+              :rows="headerOverrideRows"
+              @update:rows="headerOverrideRows = $event"
+            />
+          </div>
+        </Collapse>
       </div>
 
       <!-- OAuth/COSY 模型映射：这类提供商没有 apikey 容器，需要独立的模型映射区域 -->
@@ -548,7 +560,7 @@
               type="button"
               @click="modelRestrictionMode = 'whitelist'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'whitelist'
                   ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -560,7 +572,7 @@
               type="button"
               @click="modelRestrictionMode = 'mapping'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'mapping'
                   ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -574,7 +586,7 @@
           </p>
 
           <!-- Whitelist Mode -->
-          <div v-if="modelRestrictionMode === 'whitelist'">
+          <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
             <ModelWhitelistSelector
               :model-value="allowedModels"
               :platform="provider?.platform || 'anthropic'"
@@ -711,7 +723,7 @@
               type="button"
               @click="modelRestrictionMode = 'whitelist'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'whitelist'
                   ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -724,7 +736,7 @@
               type="button"
               @click="modelRestrictionMode = 'mapping'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'mapping'
                   ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -736,7 +748,7 @@
           </div>
 
           <!-- Whitelist Mode -->
-          <div v-if="modelRestrictionMode === 'whitelist'">
+          <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
             <ModelWhitelistSelector :model-value="allowedModels" :platform="provider?.platform || 'anthropic'" :provider-id="provider?.id" @update:model-value="setAllowedModels" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
@@ -892,7 +904,7 @@
               type="button"
               @click="modelRestrictionMode = 'whitelist'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'whitelist'
                   ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -904,7 +916,7 @@
               type="button"
               @click="modelRestrictionMode = 'mapping'"
               :class="[
-                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                 modelRestrictionMode === 'mapping'
                   ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -918,7 +930,7 @@
           </p>
 
           <!-- Whitelist Mode -->
-          <div v-if="modelRestrictionMode === 'whitelist'">
+          <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
             <ModelWhitelistSelector :model-value="allowedModels" platform="anthropic" @update:model-value="setAllowedModels" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.providers.selectedModels', { count: allowedModels.length }) }}
@@ -965,43 +977,49 @@
             </div>
             <Toggle v-model="poolModeEnabled" variant="flush" off-tone="soft" />
           </div>
-          <div v-if="poolModeEnabled" class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-              <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.providers.poolModeInfo') }}
-            </p>
-          </div>
-          <div v-if="poolModeEnabled" class="mt-3">
-            <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
-            <input
-              v-model.number="poolModeRetryCount"
-              type="number"
-              min="0"
-              :max="MAX_POOL_MODE_RETRY_COUNT"
-              step="1"
-              class="input"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{
-                t('admin.providers.poolModeRetryCountHint', {
-                  default: DEFAULT_POOL_MODE_RETRY_COUNT,
-                  max: MAX_POOL_MODE_RETRY_COUNT
-                })
-              }}
-            </p>
-          </div>
-          <div v-if="poolModeEnabled" class="mt-3">
-            <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
-            <input
-              v-model="poolModeRetryStatusCodesInput"
-              type="text"
-              class="input"
-              :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
-            </p>
-          </div>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
+              <p class="text-xs text-blue-700 dark:text-blue-400">
+                <Icon name="exclamationCircle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                {{ t('admin.providers.poolModeInfo') }}
+              </p>
+            </div>
+          </Collapse>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label">{{ t('admin.providers.poolModeRetryCount') }}</label>
+              <input
+                v-model.number="poolModeRetryCount"
+                type="number"
+                min="0"
+                :max="MAX_POOL_MODE_RETRY_COUNT"
+                step="1"
+                class="input"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{
+                  t('admin.providers.poolModeRetryCountHint', {
+                    default: DEFAULT_POOL_MODE_RETRY_COUNT,
+                    max: MAX_POOL_MODE_RETRY_COUNT
+                  })
+                }}
+              </p>
+            </div>
+          </Collapse>
+          <Collapse :open="poolModeEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label">{{ t('admin.providers.poolModeRetryStatusCodes') }}</label>
+              <input
+                v-model="poolModeRetryStatusCodesInput"
+                type="text"
+                class="input"
+                :placeholder="DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ')"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.providers.poolModeRetryStatusCodesHint', { default: DEFAULT_POOL_MODE_RETRY_STATUS_CODES.join(', ') }) }}
+              </p>
+            </div>
+          </Collapse>
         </div>
       </div>
 
@@ -1124,117 +1142,119 @@
           <Toggle v-model="tempUnschedEnabled" variant="flush" off-tone="soft" />
         </div>
 
-        <div v-if="tempUnschedEnabled" class="space-y-3">
-          <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-            <p class="text-xs text-blue-700 dark:text-blue-400">
-              <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
-              {{ t('admin.providers.tempUnschedulable.notice') }}
-            </p>
-          </div>
+        <Collapse :open="tempUnschedEnabled" unmount-on-hide>
+          <div class="space-y-3">
+            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
+              <p class="text-xs text-blue-700 dark:text-blue-400">
+                <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
+                {{ t('admin.providers.tempUnschedulable.notice') }}
+              </p>
+            </div>
 
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="preset in tempUnschedPresets"
-              :key="preset.label"
-              type="button"
-              @click="addTempUnschedRule(preset.rule)"
-              class="rounded-control bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500"
-            >
-              + {{ preset.label }}
-            </button>
-          </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="preset in tempUnschedPresets"
+                :key="preset.label"
+                type="button"
+                @click="addTempUnschedRule(preset.rule)"
+                class="rounded-control bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500"
+              >
+                + {{ preset.label }}
+              </button>
+            </div>
 
-          <div v-if="tempUnschedRules.length > 0" class="space-y-3">
-            <div
-              v-for="(rule, index) in tempUnschedRules"
-              :key="getTempUnschedRuleKey(rule)"
-              class="rounded-control border border-gray-200 p-3 dark:border-dark-600"
-            >
-              <div class="mb-2 flex items-center justify-between">
-                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                  {{ t('admin.providers.tempUnschedulable.ruleIndex', { index: index + 1 }) }}
-                </span>
-                <div class="flex items-center gap-2">
-                  <button
-                    type="button"
-                    :disabled="index === 0"
-                    @click="moveTempUnschedRule(index, -1)"
-                    class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
-                  >
-                    <Icon name="chevronUp" size="sm" :stroke-width="2" :animate-on-hover="false" />
-                  </button>
-                  <button
-                    type="button"
-                    :disabled="index === tempUnschedRules.length - 1"
-                    @click="moveTempUnschedRule(index, 1)"
-                    class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
-                  >
-                    <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    @click="removeTempUnschedRule(index)"
-                    class="rounded-compact p-1 text-red-500 transition-colors hover:text-red-600"
-                  >
-                    <Icon name="x" size="sm" :stroke-width="2" />
-                  </button>
+            <div v-if="tempUnschedRules.length > 0" class="space-y-3">
+              <div
+                v-for="(rule, index) in tempUnschedRules"
+                :key="getTempUnschedRuleKey(rule)"
+                class="rounded-control border border-gray-200 p-3 dark:border-dark-600"
+              >
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    {{ t('admin.providers.tempUnschedulable.ruleIndex', { index: index + 1 }) }}
+                  </span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      :disabled="index === 0"
+                      @click="moveTempUnschedRule(index, -1)"
+                      class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
+                    >
+                      <Icon name="chevronUp" size="sm" :stroke-width="2" :animate-on-hover="false" />
+                    </button>
+                    <button
+                      type="button"
+                      :disabled="index === tempUnschedRules.length - 1"
+                      @click="moveTempUnschedRule(index, 1)"
+                      class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
+                    >
+                      <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      @click="removeTempUnschedRule(index)"
+                      class="rounded-compact p-1 text-red-500 transition-colors hover:text-red-600"
+                    >
+                      <Icon name="x" size="sm" :stroke-width="2" />
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label class="input-label">{{ t('admin.providers.tempUnschedulable.errorCode') }}</label>
-                  <input
-                    v-model.number="rule.error_code"
-                    type="number"
-                    min="100"
-                    max="599"
-                    class="input"
-                    :placeholder="t('admin.providers.tempUnschedulable.errorCodePlaceholder')"
-                  />
-                </div>
-                <div>
-                  <label class="input-label">{{ t('admin.providers.tempUnschedulable.durationMinutes') }}</label>
-                  <input
-                    v-model.number="rule.duration_minutes"
-                    type="number"
-                    min="1"
-                    class="input"
-                    :placeholder="t('admin.providers.tempUnschedulable.durationPlaceholder')"
-                  />
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="input-label">{{ t('admin.providers.tempUnschedulable.keywords') }}</label>
-                  <input
-                    v-model="rule.keywords"
-                    type="text"
-                    class="input"
-                    :placeholder="t('admin.providers.tempUnschedulable.keywordsPlaceholder')"
-                  />
-                  <p class="input-hint">{{ t('admin.providers.tempUnschedulable.keywordsHint') }}</p>
-                </div>
-                <div class="sm:col-span-2">
-                  <label class="input-label">{{ t('admin.providers.tempUnschedulable.description') }}</label>
-                  <input
-                    v-model="rule.description"
-                    type="text"
-                    class="input"
-                    :placeholder="t('admin.providers.tempUnschedulable.descriptionPlaceholder')"
-                  />
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label class="input-label">{{ t('admin.providers.tempUnschedulable.errorCode') }}</label>
+                    <input
+                      v-model.number="rule.error_code"
+                      type="number"
+                      min="100"
+                      max="599"
+                      class="input"
+                      :placeholder="t('admin.providers.tempUnschedulable.errorCodePlaceholder')"
+                    />
+                  </div>
+                  <div>
+                    <label class="input-label">{{ t('admin.providers.tempUnschedulable.durationMinutes') }}</label>
+                    <input
+                      v-model.number="rule.duration_minutes"
+                      type="number"
+                      min="1"
+                      class="input"
+                      :placeholder="t('admin.providers.tempUnschedulable.durationPlaceholder')"
+                    />
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="input-label">{{ t('admin.providers.tempUnschedulable.keywords') }}</label>
+                    <input
+                      v-model="rule.keywords"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.providers.tempUnschedulable.keywordsPlaceholder')"
+                    />
+                    <p class="input-hint">{{ t('admin.providers.tempUnschedulable.keywordsHint') }}</p>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <label class="input-label">{{ t('admin.providers.tempUnschedulable.description') }}</label>
+                    <input
+                      v-model="rule.description"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.providers.tempUnschedulable.descriptionPlaceholder')"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <button
-            type="button"
-            @click="addTempUnschedRule()"
-            class="w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-          >
-            <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
-            {{ t('admin.providers.tempUnschedulable.addRule') }}
-          </button>
-        </div>
+            <button
+              type="button"
+              @click="addTempUnschedRule()"
+              class="w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
+            >
+              <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
+              {{ t('admin.providers.tempUnschedulable.addRule') }}
+            </button>
+          </div>
+        </Collapse>
       </div>
 
       <div
@@ -1255,18 +1275,20 @@
             :aria-label="t('admin.providers.providerSchedulingThresholdOverride')"
           />
         </div>
-        <div v-if="providerSchedulingThresholdOverrideEnabled">
-          <label class="input-label">{{ t('admin.providers.providerSchedulingThresholdOverrideValue') }}</label>
-          <input
-            v-model.number="providerSchedulingThresholdOverrideValue"
-            data-testid="provider-scheduling-threshold-override-value"
-            type="number"
-            min="1"
-            max="100"
-            class="input"
-          />
-          <p class="input-hint">{{ t('admin.providers.providerSchedulingThresholdOverrideDisabledHint') }}</p>
-        </div>
+        <Collapse :open="providerSchedulingThresholdOverrideEnabled" unmount-on-hide>
+          <div >
+            <label class="input-label">{{ t('admin.providers.providerSchedulingThresholdOverrideValue') }}</label>
+            <input
+              v-model.number="providerSchedulingThresholdOverrideValue"
+              data-testid="provider-scheduling-threshold-override-value"
+              type="number"
+              min="1"
+              max="100"
+              class="input"
+            />
+            <p class="input-hint">{{ t('admin.providers.providerSchedulingThresholdOverrideDisabledHint') }}</p>
+          </div>
+        </Collapse>
       </div>
 
       <!-- Intercept Warmup Requests (Anthropic/Antigravity) -->
@@ -1712,21 +1734,23 @@
           </div>
           <Toggle v-model="tlsFingerprintEnabled" variant="flush" off-tone="soft" data-testid="edit-openai-tls-fingerprint-toggle" />
         </div>
-        <div v-if="tlsFingerprintEnabled" class="mt-3 space-y-3">
-          <Select
-            v-model="tlsFingerprintProfileId"
-            data-testid="edit-openai-tls-fingerprint-profile"
-            :options="tlsFingerprintProfileOptions"
-          />
-          <div v-if="supportsTLSFingerprintRouter">
+        <Collapse :open="tlsFingerprintEnabled" unmount-on-hide>
+          <div class="mt-3 space-y-3">
             <Select
-              v-model="tlsFingerprintRouterId"
-              data-testid="edit-openai-tls-fingerprint-router"
-              :options="tlsFingerprintRouterOptions"
+              v-model="tlsFingerprintProfileId"
+              data-testid="edit-openai-tls-fingerprint-profile"
+              :options="tlsFingerprintProfileOptions"
             />
-            <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
+            <div v-if="supportsTLSFingerprintRouter">
+              <Select
+                v-model="tlsFingerprintRouterId"
+                data-testid="edit-openai-tls-fingerprint-router"
+                :options="tlsFingerprintRouterOptions"
+              />
+              <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
+            </div>
           </div>
-        </div>
+        </Collapse>
       </div>
 
       <div
@@ -1856,38 +1880,40 @@
             <Toggle v-model="windowCostEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="windowCostEnabled" class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.limit') }}</label>
-              <div class="relative">
-                <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
-                <input
-                  v-model.number="windowCostLimit"
-                  type="number"
-                  min="0"
-                  step="1"
-                  class="input input-has-icon input-icon-text"
-                  :placeholder="t('admin.providers.quotaControl.windowCost.limitPlaceholder')"
-                />
+          <Collapse :open="windowCostEnabled" unmount-on-hide>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.limit') }}</label>
+                <div class="relative">
+                  <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    v-model.number="windowCostLimit"
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="input input-has-icon input-icon-text"
+                    :placeholder="t('admin.providers.quotaControl.windowCost.limitPlaceholder')"
+                  />
+                </div>
+                <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.limitHint') }}</p>
               </div>
-              <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.limitHint') }}</p>
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.stickyReserve') }}</label>
-              <div class="relative">
-                <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
-                <input
-                  v-model.number="windowCostStickyReserve"
-                  type="number"
-                  min="0"
-                  step="1"
-                  class="input input-has-icon input-icon-text"
-                  :placeholder="t('admin.providers.quotaControl.windowCost.stickyReservePlaceholder')"
-                />
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.windowCost.stickyReserve') }}</label>
+                <div class="relative">
+                  <span class="input-icon text-gray-500 dark:text-gray-400">$</span>
+                  <input
+                    v-model.number="windowCostStickyReserve"
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="input input-has-icon input-icon-text"
+                    :placeholder="t('admin.providers.quotaControl.windowCost.stickyReservePlaceholder')"
+                  />
+                </div>
+                <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.stickyReserveHint') }}</p>
               </div>
-              <p class="input-hint">{{ t('admin.providers.quotaControl.windowCost.stickyReserveHint') }}</p>
             </div>
-          </div>
+          </Collapse>
         </div>
 
         <!-- Session Limit -->
@@ -1902,35 +1928,37 @@
             <Toggle v-model="sessionLimitEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="sessionLimitEnabled" class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.maxSessions') }}</label>
-              <input
-                v-model.number="maxSessions"
-                type="number"
-                min="1"
-                step="1"
-                class="input"
-                :placeholder="t('admin.providers.quotaControl.sessionLimit.maxSessionsPlaceholder')"
-              />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.maxSessionsHint') }}</p>
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeout') }}</label>
-              <div class="relative">
+          <Collapse :open="sessionLimitEnabled" unmount-on-hide>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.maxSessions') }}</label>
                 <input
-                  v-model.number="sessionIdleTimeout"
+                  v-model.number="maxSessions"
                   type="number"
                   min="1"
                   step="1"
-                  class="input pr-12"
-                  :placeholder="t('admin.providers.quotaControl.sessionLimit.idleTimeoutPlaceholder')"
+                  class="input"
+                  :placeholder="t('admin.providers.quotaControl.sessionLimit.maxSessionsPlaceholder')"
                 />
-                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">{{ t('common.minutes') }}</span>
+                <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.maxSessionsHint') }}</p>
               </div>
-              <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeoutHint') }}</p>
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeout') }}</label>
+                <div class="relative">
+                  <input
+                    v-model.number="sessionIdleTimeout"
+                    type="number"
+                    min="1"
+                    step="1"
+                    class="input pr-12"
+                    :placeholder="t('admin.providers.quotaControl.sessionLimit.idleTimeoutPlaceholder')"
+                  />
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">{{ t('common.minutes') }}</span>
+                </div>
+                <p class="input-hint">{{ t('admin.providers.quotaControl.sessionLimit.idleTimeoutHint') }}</p>
+              </div>
             </div>
-          </div>
+          </Collapse>
         </div>
 
         <!-- RPM Limit -->
@@ -1945,71 +1973,73 @@
             <Toggle v-model="rpmLimitEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="rpmLimitEnabled" class="space-y-4">
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.baseRpm') }}</label>
-              <input
-                v-model.number="baseRpm"
-                type="number"
-                min="1"
-                max="1000"
-                step="1"
-                class="input"
-                :placeholder="t('admin.providers.quotaControl.rpmLimit.baseRpmPlaceholder')"
-              />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.baseRpmHint') }}</p>
-            </div>
-
-            <div>
-              <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.strategy') }}</label>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  @click="rpmStrategy = 'tiered'"
-                  :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
-                    rpmStrategy === 'tiered'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                  ]"
-                >
-                  <div class="text-center">
-                    <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyTiered') }}</div>
-                    <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyTieredHint') }}</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  @click="rpmStrategy = 'sticky_exempt'"
-                  :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
-                    rpmStrategy === 'sticky_exempt'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
-                  ]"
-                >
-                  <div class="text-center">
-                    <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExempt') }}</div>
-                    <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExemptHint') }}</div>
-                  </div>
-                </button>
+          <Collapse :open="rpmLimitEnabled" unmount-on-hide>
+            <div class="space-y-4">
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.baseRpm') }}</label>
+                <input
+                  v-model.number="baseRpm"
+                  type="number"
+                  min="1"
+                  max="1000"
+                  step="1"
+                  class="input"
+                  :placeholder="t('admin.providers.quotaControl.rpmLimit.baseRpmPlaceholder')"
+                />
+                <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.baseRpmHint') }}</p>
               </div>
-            </div>
 
-            <div v-if="rpmStrategy === 'tiered'">
-              <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.stickyBuffer') }}</label>
-              <input
-                v-model.number="rpmStickyBuffer"
-                type="number"
-                min="1"
-                step="1"
-                class="input"
-                :placeholder="t('admin.providers.quotaControl.rpmLimit.stickyBufferPlaceholder')"
-              />
-              <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.stickyBufferHint') }}</p>
-            </div>
+              <div>
+                <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.strategy') }}</label>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    @click="rpmStrategy = 'tiered'"
+                    :class="[
+                      'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
+                      rpmStrategy === 'tiered'
+                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                    ]"
+                  >
+                    <div class="text-center">
+                      <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyTiered') }}</div>
+                      <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyTieredHint') }}</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    @click="rpmStrategy = 'sticky_exempt'"
+                    :class="[
+                      'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
+                      rpmStrategy === 'sticky_exempt'
+                        ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
+                    ]"
+                  >
+                    <div class="text-center">
+                      <div>{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExempt') }}</div>
+                      <div class="mt-0.5 text-xs opacity-70">{{ t('admin.providers.quotaControl.rpmLimit.strategyStickyExemptHint') }}</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
 
-          </div>
+              <div v-if="rpmStrategy === 'tiered'" v-content-reveal>
+                <label class="input-label">{{ t('admin.providers.quotaControl.rpmLimit.stickyBuffer') }}</label>
+                <input
+                  v-model.number="rpmStickyBuffer"
+                  type="number"
+                  min="1"
+                  step="1"
+                  class="input"
+                  :placeholder="t('admin.providers.quotaControl.rpmLimit.stickyBufferPlaceholder')"
+                />
+                <p class="input-hint">{{ t('admin.providers.quotaControl.rpmLimit.stickyBufferHint') }}</p>
+              </div>
+
+            </div>
+          </Collapse>
 
           <!-- 用户消息限速模式（独立于 RPM 开关，始终可见） -->
           <div class="mt-4">
@@ -2073,17 +2103,19 @@
             </div>
             <Toggle v-model="cacheTTLOverrideEnabled" variant="flush" off-tone="soft" />
           </div>
-          <div v-if="cacheTTLOverrideEnabled" class="mt-3">
-            <label class="input-label text-xs">{{ t('admin.providers.quotaControl.cacheTTLOverride.target') }}</label>
-            <Select
-              v-model="cacheTTLOverrideTarget"
-              :options="cacheTTLOverrideTargetOptions"
-              class="mt-1"
-            />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.providers.quotaControl.cacheTTLOverride.targetHint') }}
-            </p>
-          </div>
+          <Collapse :open="cacheTTLOverrideEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <label class="input-label text-xs">{{ t('admin.providers.quotaControl.cacheTTLOverride.target') }}</label>
+              <Select
+                v-model="cacheTTLOverrideTarget"
+                :options="cacheTTLOverrideTargetOptions"
+                class="mt-1"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ t('admin.providers.quotaControl.cacheTTLOverride.targetHint') }}
+              </p>
+            </div>
+          </Collapse>
         </div>
 
         <!-- Custom Base URL Relay -->
@@ -2097,14 +2129,16 @@
             </div>
             <Toggle v-model="customBaseUrlEnabled" variant="flush" off-tone="soft" />
           </div>
-          <div v-if="customBaseUrlEnabled" class="mt-3">
-            <input
-              v-model="customBaseUrl"
-              type="text"
-              class="input"
-              :placeholder="t('admin.providers.quotaControl.customBaseUrl.urlHint')"
-            />
-          </div>
+          <Collapse :open="customBaseUrlEnabled" unmount-on-hide>
+            <div class="mt-3">
+              <input
+                v-model="customBaseUrl"
+                type="text"
+                class="input"
+                :placeholder="t('admin.providers.quotaControl.customBaseUrl.urlHint')"
+              />
+            </div>
+          </Collapse>
         </div>
       </div>
 
@@ -2182,6 +2216,9 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import Collapse from '@/components/common/Collapse.vue'
+
 // 统一协议选择只保存原生集合，不在提供商侧配置转换。
 const upstreamProtocols = ref<ProtocolID[] | undefined>(undefined)
 

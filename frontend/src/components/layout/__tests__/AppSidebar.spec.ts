@@ -94,17 +94,17 @@ describe('global header and sidebar hierarchy', () => {
 
   it('keeps the scrolling content below the fixed global header', () => {
     // 主内容不能与顶栏使用同级 z-index，否则滚动时后渲染内容会盖住顶栏。
-    expect(layoutSource).toContain('class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-all duration-300"')
+    expect(layoutSource).toContain('class="relative z-10 flex min-w-0 flex-col pt-[var(--header-h)] transition-[margin-left] duration-layout"')
     expect(layoutSource).toContain("fullViewport ? 'h-full min-h-0' : 'min-h-screen'")
     expect(layoutSource).not.toContain('lg:z-50')
   })
 
   it('fades the mobile overlay in and out', () => {
     // 遮罩应渐进显示和隐藏，避免打开侧栏时页面突然变暗。
-    // 配方已收敛为全局 fade,本组件只用 --fade-duration-* 覆盖进/退时长。
-    expect(componentSource).toContain('<transition name="fade">')
-    expect(componentSource).toContain('--fade-duration-enter: 200ms;')
-    expect(componentSource).toContain('--fade-duration-leave: 150ms;')
+    // 遮罩与全站淡入配方共用时长，不在侧栏保留局部副本。
+    expect(componentSource).toContain('<MotionTransition name="fade">')
+    expect(styleSource).toContain('transition: opacity var(--motion-fast) var(--motion-ease);')
+    expect(styleSource).toContain('transition: opacity var(--motion-exit) var(--motion-ease-exit);')
   })
 })
 

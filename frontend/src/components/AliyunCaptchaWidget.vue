@@ -303,9 +303,9 @@ onUnmounted(() => {
   font-weight: 500;
   color: rgb(55 65 81);
   transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    color 0.15s ease;
+    border-color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
 }
 
 .aliyun-captcha-button:hover:not(:disabled) {

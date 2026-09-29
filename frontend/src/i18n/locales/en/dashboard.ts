@@ -135,6 +135,7 @@ export default {
       hint: 'Choose a group with a prefix/model ID.',
       addMapping: 'Add group mapping',
       editMappings: 'Edit composite key mappings',
+      moreMappings: '+{count} more mappings',
       prefixPlaceholder: 'For example, GPT',
       groupRequired: 'Select a group',
       prefixRequired: 'Enter a prefix',

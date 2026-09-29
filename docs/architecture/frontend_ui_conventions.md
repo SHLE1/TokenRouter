@@ -56,7 +56,7 @@
 
 ## 菜单与浮层
 
-- 下拉容器统一用 `.dropdown` 纯容器配方（定位、圆角、阴影、暗色）；箭头定位与入场动效不进门配方，由调用点自补（目前仅 AppHeader 一处）。
+- 下拉容器统一用 `.dropdown` 纯容器配方（定位、圆角、阴影、暗色）；箭头定位由调用点维护，展开和收起使用公共动效配方。
 - 菜单项两档：`.dropdown-item`（px-4）与紧凑档 `.dropdown-item-sm`（px-3），配色、hover、过渡都在配方里，站点只补 `gap-*`、`rounded-control` 这类布局增量。配方基线是中性色；品牌色场景（顶栏用户菜单）加 `.dropdown-item-brand` 修饰类，它定义在基线之后，同层同优先级时后定义生效。
 - 表格行内操作菜单（4 个 `*ActionMenu`）的浮层容器统一 `.action-menu` 类（fixed 定位 + 层级 + 面板样式），宽度类（w-48/w-52）与 `action-menu-content` 钩子类留在调用点。
 - 遮罩透明度只有两档，唯一来源是 CSS 变量：浅色在 `:root` 定义常规 `--overlay-bg`(black/50)、媒体灯箱等强遮罩 `--overlay-bg-strong`(black/70)。深色模式在 `html.dark` 中整体加深为 black/70 和 black/85。模板写 `bg-[var(--overlay-bg)]`，禁止手写 `bg-black/50` 这类字面值——原 /55、/60 漂移值已就近归并入标准档。
@@ -170,13 +170,21 @@
 - 图标默认 `aria-hidden`，不新增焦点。具备独立语义时传入无障碍标签；图标按钮仍由按钮提供名称和点击区域。
 - 新增通用图标必须进入统一映射。品牌标志、用户上传的 SVG、图表和业务插画保留专用实现，自定义 SVG 继续经过既有净化流程。
 
+<a id="ui_motion"></a>
 ## 动画与时长
 
-- 配对双写的「CSS 动画 + JS 定时器」一律改事件驱动：节点移除挂 `@animationend`/`after-leave` 等事件，不用 `setTimeout` 猜时长。已收敛四处：CreativeStudioView 提交飞信（`@animationend` 移除节点，删掉多留 100ms 的缓冲定时器）、AppSidebar 移动抽屉（路由变化事件收起，同路由点击立即收起）、公告连播（`dismissPopup` 后由弹层 after-leave 回调 `onPopupClosed` 推进队列；动画途中被卸载时由组件 onBeforeUnmount 补推）。
-- 同一次动效的 JS/CSS 两处时长必须同源：KeyUsageView 圆环用 `RING_ANIMATION_MS` 常量内联注入 `transitionDuration`，数字滚动共用同一常量（修复历史上 1000ms 对 1.2s 的漂移，数字比圆环先停 200ms）。
-- 共享时长常量在 `constants/ui.ts`:`COPY_FEEDBACK_MS`(2000，「已复制」反馈；EndpointPopover 1800 与 KeysView 800 已就近归并）与 `SEARCH_DEBOUNCE_MS`(300，搜索/筛选防抖；OpsDashboard 的 250ms 路由同步防抖语义不同，保留）。
-- 全局过渡配方在 `style.css`（自带 reduced-motion 收敛）：`fade`（默认 0.2s，调用点用 `--fade-duration-enter/leave` 覆盖，如侧栏遮罩 200/150ms)、`fade-slow`(0.3s+上移，auth 页区块）、`pop-fade`（公告类浮层，内层 section 缩放）、`dropdown-fade`（下拉面板，只动画透明度与位移，定位由 JS 计算不参与过渡）、`pop-float`（锚定弹层，调用点用 `--pop-origin`/`--pop-shift` 表达锚点方向）。迁入后不得再写 scoped 副本。
-- 结构性展开动画不入全局配方，保留本地：CreativeCanvas 工具条 max-width/max-height 扩展、CreativeRunHistory 条目详情的 grid-template-rows 折叠。
+普通交互共用 `style.css` 的动效变量，Tailwind 的 `duration-fast/normal/layout` 只引用变量。按钮、提示和内容淡入使用 `--motion-fast`（150ms），菜单、开关与短列表使用 `--motion-normal`（200ms），折叠、侧栏及弹窗进入使用 `--motion-layout`（220ms）；浮层退出共用 `--motion-exit`（150ms）。缓动为 `--motion-ease`，浮层退出使用 `--motion-ease-exit`，菜单位移为 `--motion-shift`（4px）。不在调用方复制普通动效时长。
+
+- Vue 在运行时添加过渡类，这些配方写在 Tailwind `@layer` 外，避免静态类名扫描将它们裁剪。全局显隐配方包括 `fade` / `fade-slow`（纯透明度）、`dropdown-fade` / `pop-float`（透明度与短距离位移）、`modal` / `pop-fade`（遮罩与面板，面板从 0.98 缩放进入）。`fade-slow` 保留已有调用名，使用内容淡入档。向上打开的菜单用 `--dropdown-shift` 调整方向。定位使用的 top、left、bottom 不参与浮层过渡；带定位 transform 的提示只使用 fade。调用方不保留 scoped 副本。
+- 显隐入口使用 `MotionTransition`，它将 Vue Transition 的属性和事件原样透传，并在退出时设置 inert、暂时禁用表单控件，防止旧节点响应操作或阻止原生校验。`v-show` 调用点显式传 `persisted`。菜单的点击捕获层随关闭立即移除，面板保留到退出结束。Select、HelpTooltip 等通过 `useFloatingMotion` 跟随正在折叠的触发器，祖先变为 inert 时同步关闭 Teleport 浮层。
+- 纵向展开使用 `Collapse`：`open` 控制显隐，默认保留内容；`unmountOnHide` 让原本按需挂载的内容在退出后卸载，退出期间保留上一帧的 slot 数据。`animate=false` 跳过动效，`appear` 控制首次可见挂载，`after-enter` / `after-leave` 通知完成。Grid 行高自动适配内容，过渡时裁剪，展开结束恢复正常溢出；收起内容设置 inert。表格明细使用 `ExpandableTableRow`，保持 tr/td 结构，关闭完成后不留空行。
+- 原生 details 的交互迁入 `Disclosure`，折叠头使用按钮并关联 `aria-expanded` / `aria-controls`。校验和引导通过 `form-field-reveal` / `onboarding-reveal` 展开字段时，Collapse 跳过动画，保证下一次 DOM 更新后即可定位。
+- 页签和页面内容使用 `vContentReveal`：只对已有元素执行 150ms 透明度动画，不增加包装层或重新挂载组件。AppLayout 仅处理 main，AuthLayout 仅处理内容区，公开页面在自身内容容器接入。路由以 `route.path` 触发，同路径 query/hash 更新不重播；快速换页取消旧动画，导航进度条继续独立表示路由加载。保留页签原有的 v-if/v-show 策略。
+- 两类弹窗共用 `useDialogLifecycle`，滚动锁保留到实际退出结束，快速重开不会重复计数，旧弹窗不覆盖新弹窗的焦点，Escape 仅关闭最上层 BaseDialog。父级按需挂载的安全凭证弹窗使用 `useLeavingPresence`，关闭后等待外壳 `after-leave` 再卸载。
+- Toast 和用户直接增删的短列表使用 `motion-list`，以稳定业务 key 识别进入、退出与位置变化。分页表格、虚拟列表和轮询结果不逐行播放动效。
+- 系统减少动态效果时，普通过渡变量缩短至 1ms、位移归零，Collapse 和内容淡入直接完成状态切换；动态改变偏好会取消内容淡入。完成和清理继续通过 Vue 生命周期、动画完成事件执行，不用业务定时器猜测结束时间。
+- 专用动画保留自身几何：CreativeCanvas 工具条扩展、CreativeRunHistory 详情及 CustomPageView 目录抽屉共用普通时长和缓动；通用图标、加载反馈、计时进度和公开页数字滚动保留专用节奏与各自的减少动态效果处理。主题切换沿用临时关闭过渡的规则。
+- 同一次动效的 JS/CSS 时长必须同源。KeyUsageView 圆环和数字滚动共用 `RING_ANIMATION_MS`。`constants/ui.ts` 的 `COPY_FEEDBACK_MS`（2000）和 `SEARCH_DEBOUNCE_MS`（300）属于反馈保留与防抖，不并入过渡档位。公告连播仍由 after-leave 推进队列，组件途中卸载时由卸载回调完成清理。
 
 ## 表格密度
 

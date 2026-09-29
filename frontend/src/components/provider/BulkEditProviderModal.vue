@@ -233,7 +233,7 @@
               <button
                 type="button"
                 :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                   modelRestrictionMode === 'whitelist'
                     ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -246,7 +246,7 @@
               <button
                 type="button"
                 :class="[
-                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
+                  'flex-1 rounded-control px-4 py-2 text-sm font-medium transition',
                   modelRestrictionMode === 'mapping'
                     ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -262,7 +262,7 @@
             </p>
 
             <!-- Whitelist Mode -->
-            <div v-if="modelRestrictionMode === 'whitelist'">
+            <div v-if="modelRestrictionMode === 'whitelist'" v-content-reveal>
               <div class="mb-3 rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
                 <p class="text-xs text-blue-700 dark:text-blue-400">
                   <Icon name="infoCircle" size="sm" class="mr-1 inline h-4 w-4" />
@@ -1164,7 +1164,8 @@
             <Toggle v-model="rpmLimitEnabled" variant="flush" off-tone="soft" />
           </div>
 
-          <div v-if="rpmLimitEnabled" class="space-y-3">
+          <Collapse :open="rpmLimitEnabled" unmount-on-hide>
+            <div class="space-y-3">
             <div>
               <label class="input-label text-xs">{{ t('admin.providers.quotaControl.rpmLimit.baseRpm') }}</label>
               <input
@@ -1186,7 +1187,7 @@
                   type="button"
                   @click="bulkRpmStrategy = 'tiered'"
                   :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
+                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
                     bulkRpmStrategy === 'tiered'
                       ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -1198,7 +1199,7 @@
                   type="button"
                   @click="bulkRpmStrategy = 'sticky_exempt'"
                   :class="[
-                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
+                    'flex-1 rounded-control px-3 py-2 text-sm font-medium transition',
                     bulkRpmStrategy === 'sticky_exempt'
                       ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
@@ -1223,6 +1224,7 @@
             </div>
 
             </div>
+          </Collapse>
           </div>
 
         <!-- 用户消息限速模式（独立于 RPM 开关，始终可见） -->
@@ -1284,15 +1286,17 @@
             data-testid="bulk-edit-tls-fingerprint-profile"
             :options="tlsFingerprintProfileOptions"
           />
-          <div v-if="tlsFingerprintEnabled && allOpenAIOAuth" class="mt-3">
-            <Select
-              v-model="tlsFingerprintRouterId"
-              id="bulk-edit-tls-fingerprint-router"
-              data-testid="bulk-edit-tls-fingerprint-router"
-              :options="tlsFingerprintRouterOptions"
-            />
-            <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
-          </div>
+          <Collapse :open="tlsFingerprintEnabled && allOpenAIOAuth" unmount-on-hide>
+            <div class="mt-3">
+              <Select
+                v-model="tlsFingerprintRouterId"
+                id="bulk-edit-tls-fingerprint-router"
+                data-testid="bulk-edit-tls-fingerprint-router"
+                :options="tlsFingerprintRouterOptions"
+              />
+              <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
+            </div>
+          </Collapse>
         </div>
       </div>
 
@@ -1354,6 +1358,9 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+import Collapse from '@/components/common/Collapse.vue'
+
 import ProviderProtocolSelector from './ProviderProtocolSelector.vue'
 import type { ProtocolID } from '@/types'
 import OpenAICompactionCheckbox from './OpenAICompactionCheckbox.vue'

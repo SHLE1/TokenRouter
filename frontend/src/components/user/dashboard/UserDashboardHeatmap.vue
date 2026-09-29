@@ -317,19 +317,13 @@ const tooltipStyle = computed(() => {
     opacity: hoveredDay.value ? '1' : '0',
     overflow: 'hidden',
     boxSizing: 'border-box' as const,
-    transition: [
-      'left 400ms cubic-bezier(0.25, 1, 0.5, 1)',
-      'top 400ms cubic-bezier(0.25, 1, 0.5, 1)',
-      'width 400ms cubic-bezier(0.25, 1, 0.5, 1)',
-      'height 400ms cubic-bezier(0.25, 1, 0.5, 1)',
-      'transform 400ms cubic-bezier(0.25, 1, 0.5, 1)',
-      'opacity 200ms linear',
-    ].join(', '),
-    willChange: 'left, top, width, height, transform, opacity',
+    // 定位随日期立即更新，提示只做淡入淡出。
+    transition: 'opacity var(--motion-fast) var(--motion-ease)',
+    willChange: 'opacity',
   }
 })
 
-// 内容更新后测量自然尺寸，让 tooltip 在不同日期之间平滑过渡宽高。
+// 内容更新后测量自然尺寸，让 tooltip 的容器匹配当前日期的内容。
 const updateTooltipSize = async () => {
   await nextTick()
   const content = tooltipContentRef.value

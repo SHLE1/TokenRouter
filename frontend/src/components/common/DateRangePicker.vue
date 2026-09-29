@@ -20,13 +20,13 @@
         <Icon
           name="chevronDown"
           size="sm"
-          :class="['transition-transform duration-200', isOpen && 'rotate-180']"
+          :class="['transition-transform duration-normal', isOpen && 'rotate-180']"
           :animate-on-hover="false"
         />
       </span>
     </button>
 
-    <Transition name="dropdown-fade">
+    <MotionTransition name="dropdown-fade">
       <div v-if="isOpen" class="date-picker-dropdown" :style="dropdownStyle">
         <!-- Quick presets -->
         <div class="date-picker-presets">
@@ -77,11 +77,13 @@
           </button>
         </div>
       </div>
-    </Transition>
+    </MotionTransition>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useFloatingMotion } from '@/composables/useFloatingMotion'
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
@@ -380,6 +382,8 @@ const updateDropdownPosition = () => {
   dropdownTop.value = trigger.bottom + 8
 }
 
+useFloatingMotion(containerRef, () => isOpen.value, () => { isOpen.value = false }, updateDropdownPosition)
+
 const handleClickOutside = (event: MouseEvent) => {
   if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
     isOpen.value = false
@@ -469,7 +473,7 @@ onUnmounted(() => {
   @apply rounded-compact px-3 py-1.5 text-xs font-medium;
   @apply text-gray-600 dark:text-gray-400;
   @apply hover:bg-gray-100 dark:hover:bg-dark-800;
-  @apply transition-colors duration-150;
+  @apply transition-colors duration-fast;
 }
 
 .date-picker-preset-active {

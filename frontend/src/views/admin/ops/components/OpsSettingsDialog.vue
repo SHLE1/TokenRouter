@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import Disclosure from '@/components/common/Disclosure.vue'
+
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -454,10 +456,10 @@ async function saveAllSettings() {
       </div>
 
       <!-- 高级设置 -->
-      <details class="rounded-surface bg-gray-50 dark:bg-dark-950">
-        <summary class="cursor-pointer p-4 text-sm font-semibold text-gray-900 dark:text-white">
+      <Disclosure summary-class="cursor-pointer p-4 text-sm font-semibold text-gray-900 dark:text-white" class="rounded-surface bg-gray-50 dark:bg-dark-950">
+        <template #summary>
           {{ t('admin.ops.settings.advancedSettings') }}
-        </summary>
+        </template>
         <div class="space-y-4 px-4 pb-4">
           <!-- 数据保留策略 -->
           <div class="space-y-3">
@@ -641,7 +643,7 @@ async function saveAllSettings() {
 
           </div>
         </div>
-      </details>
+      </Disclosure>
     </div>
 
     <template #footer>

@@ -1,18 +1,11 @@
 <template>
   <Teleport to="body">
     <div
-      class="pointer-events-none fixed right-4 top-4 z-toast space-y-3"
+      class="pointer-events-none fixed right-4 top-4 z-toast flex flex-col gap-3"
       aria-live="polite"
       aria-atomic="true"
     >
-      <TransitionGroup
-        enter-active-class="transition ease-out duration-300"
-        enter-from-class="opacity-0 translate-x-full"
-        enter-to-class="opacity-100 translate-x-0"
-        leave-active-class="transition ease-in duration-200"
-        leave-from-class="opacity-100 translate-x-0"
-        leave-to-class="opacity-0 translate-x-full"
-      >
+      <TransitionGroup name="motion-list" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement">
         <div
           v-for="toast in toasts"
           :key="toast.id"
@@ -78,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { prepareListLeave, restoreEnteringElement } from '@/utils/leavingElement'
 import { computed } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores/app'

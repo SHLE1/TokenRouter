@@ -89,7 +89,7 @@
           </button>
         </nav>
 
-        <section v-if="activeTab === 'overview'" class="space-y-6">
+        <section v-if="activeTab === 'overview'" v-content-reveal class="space-y-6">
           <div v-if="!isOwner" class="card p-6" data-tour="team-limit-progress">
             <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.limitProgress') }}</h2>
             <div class="mt-5 grid gap-5 md:grid-cols-3">
@@ -303,6 +303,8 @@
 </template>
 
 <script setup lang="ts">
+import { vContentReveal } from '@/directives/contentReveal'
+
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'

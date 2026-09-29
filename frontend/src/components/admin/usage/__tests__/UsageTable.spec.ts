@@ -1,3 +1,4 @@
+import { nextMotionFrame } from '@/__tests__/helpers/motion'
 const ipGeoMocks = vi.hoisted(() => ({
   getEntry: vi.fn(() => ({ status: 'idle' as const })),
   fetchOne: vi.fn(),
@@ -232,6 +233,7 @@ describe('admin UsageTable detailed timing tooltip', () => {
 
     await timingButton.trigger('click')
     await nextTick()
+    await nextMotionFrame()
     expect(wrapper.find('[data-testid="timing-detail-tooltip"]').exists()).toBe(false)
   })
 })

@@ -12,19 +12,12 @@
         <Icon name="eye" size="sm" />
         {{ expanded ? t('marketplace.collapsePricing') : t('marketplace.viewPricing') }}
       </span>
-      <Icon :name="expanded ? 'chevronUp' : 'chevronDown'" size="sm" :animate-on-hover="false" />
+      <Icon name="chevronDown" class="transition-transform duration-normal" :class="{ 'rotate-180': expanded }" size="sm" :animate-on-hover="false" />
     </button>
 
-    <!-- 抽屉式定价面板：grid 行高 0fr -> 1fr 过渡实现原地展开收起。 -->
-    <div
-      class="grid min-w-0 grid-cols-1 transition-[grid-template-rows,opacity] duration-300 ease-in-out"
-      :class="expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 invisible'"
-    >
-      <!-- 抽屉内容顶部间距：仅展开时保留，收起时归零，不占卡片空间。 -->
-      <div
-        class="min-h-0 min-w-0 overflow-hidden transition-[padding-top] duration-300 ease-in-out"
-        :class="{ 'pt-3': expanded }"
-      >
+    <!-- 收起后保留上下文区间和 fast mode，退出期间同步折叠高度。 -->
+    <Collapse :open="expanded">
+      <div class="pt-3">
         <!-- 右上角：上下文区间 / fast mode 切换，定价行随选择联动。 -->
         <div
           v-if="selectableIntervals.length > 0 || hasFastPricing"
@@ -85,11 +78,12 @@
           {{ t('marketplace.pricingUnavailable') }}
         </p>
       </div>
-    </div>
+    </Collapse>
   </div>
 </template>
 
 <script setup lang="ts">
+import Collapse from '@/components/common/Collapse.vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'

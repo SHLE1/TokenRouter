@@ -105,16 +105,16 @@ describe('ModelPricingPanel', () => {
   it('点击触发条展开收起面板，右下角箭头同步切换方向', async () => {
     const wrapper = mountPanel(marketplaceModel('m1', tokenPricing))
     const toggle = wrapper.get('[data-testid="model-pricing-toggle"]')
-    const drawer = wrapper.find('.grid')
+    const drawer = wrapper.get('.motion-collapse')
 
     expect(toggle.attributes('aria-expanded')).toBe('false')
     expect(toggle.get('.icon-stub[data-icon="chevronDown"]').exists()).toBe(true)
-    expect(drawer.classes()).toContain('grid-rows-[0fr]')
+    expect((drawer.element as HTMLElement).style.display).toBe('none')
 
     await toggle.trigger('click')
     expect(toggle.attributes('aria-expanded')).toBe('true')
-    expect(toggle.get('.icon-stub[data-icon="chevronUp"]').exists()).toBe(true)
-    expect(wrapper.find('.grid').classes()).toContain('grid-rows-[1fr]')
+    expect(toggle.get('.icon-stub[data-icon="chevronDown"]').classes()).toContain('rotate-180')
+    expect((drawer.element as HTMLElement).style.display).not.toBe('none')
 
     await toggle.trigger('click')
     expect(toggle.attributes('aria-expanded')).toBe('false')

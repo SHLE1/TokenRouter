@@ -28,54 +28,57 @@
         </span>
       </button>
 
-      <div
-        v-if="showFilters"
-        class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto"
-        @click.stop
-      >
-        <div class="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-dark-700">
-          <div>
-            <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-            <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.providers.filterHint') }}</div>
+      <MotionTransition name="dropdown-fade">
+        <div
+          v-if="showFilters" :inert="!(showFilters) || undefined"
+          class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto"
+          @click.stop
+        >
+          <div class="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-dark-700">
+            <div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+              <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.providers.filterHint') }}</div>
+            </div>
+            <button
+              v-if="activeFilterCount > 0"
+              type="button"
+              class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+              @click="clearFilters"
+            >
+              {{ t('common.reset') }}
+            </button>
           </div>
-          <button
-            v-if="activeFilterCount > 0"
-            type="button"
-            class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-            @click="clearFilters"
-          >
-            {{ t('common.reset') }}
-          </button>
-        </div>
 
-        <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
-          <div>
-            <label class="input-label">{{ t('admin.providers.columns.platform') }}</label>
-            <Select :model-value="filters.platform" class="w-full" :options="pOpts" @update:model-value="updatePlatform" @change="$emit('change')" />
-          </div>
-          <div>
-            <label class="input-label">{{ t('admin.providers.columns.type') }}</label>
-            <Select :model-value="filters.type" class="w-full" :options="tOpts" @update:model-value="updateType" @change="$emit('change')" />
-          </div>
-          <div>
-            <label class="input-label">{{ t('admin.providers.columns.status') }}</label>
-            <Select :model-value="filters.status" class="w-full" :options="sOpts" @update:model-value="updateStatus" @change="$emit('change')" />
-          </div>
-          <div>
-            <label class="input-label">{{ t('admin.providers.privacyFilter') }}</label>
-            <Select :model-value="filters.privacy_mode" class="w-full" :options="privacyOpts" @update:model-value="updatePrivacyMode" @change="$emit('change')" />
-          </div>
-          <div class="sm:col-span-2">
-            <label class="input-label">{{ t('admin.providers.columns.groups') }}</label>
-            <Select :model-value="filters.group" class="w-full" :options="gOpts" searchable @update:model-value="updateGroup" @change="$emit('change')" />
+          <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
+            <div>
+              <label class="input-label">{{ t('admin.providers.columns.platform') }}</label>
+              <Select :model-value="filters.platform" class="w-full" :options="pOpts" @update:model-value="updatePlatform" @change="$emit('change')" />
+            </div>
+            <div>
+              <label class="input-label">{{ t('admin.providers.columns.type') }}</label>
+              <Select :model-value="filters.type" class="w-full" :options="tOpts" @update:model-value="updateType" @change="$emit('change')" />
+            </div>
+            <div>
+              <label class="input-label">{{ t('admin.providers.columns.status') }}</label>
+              <Select :model-value="filters.status" class="w-full" :options="sOpts" @update:model-value="updateStatus" @change="$emit('change')" />
+            </div>
+            <div>
+              <label class="input-label">{{ t('admin.providers.privacyFilter') }}</label>
+              <Select :model-value="filters.privacy_mode" class="w-full" :options="privacyOpts" @update:model-value="updatePrivacyMode" @change="$emit('change')" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="input-label">{{ t('admin.providers.columns.groups') }}</label>
+              <Select :model-value="filters.group" class="w-full" :options="gOpts" searchable @update:model-value="updateGroup" @change="$emit('change')" />
+            </div>
           </div>
         </div>
-      </div>
+      </MotionTransition>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
