@@ -461,7 +461,6 @@ marketplace: {
     amountLabel: '充值金额',
     paymentAmount: '支付金额',
     creditedBalance: '到账余额',
-    quickAmounts: '快捷金额',
     customAmount: '自定义金额',
     enterAmount: '输入金额',
     paymentMethod: '支付方式',
@@ -470,6 +469,7 @@ marketplace: {
     rateFee: '比例手续费',
     feeTotal: '手续费合计',
     actualPay: '实付金额',
+    orderSummary: '订单摘要',
     createOrder: '确认支付',
     methods: {
       easypay: '易支付',
@@ -546,6 +546,7 @@ marketplace: {
       invoice: '账单',
     },
     billing: {
+      title: '账单信息',
       name: '账单抬头',
       email: '账单邮箱',
       country: '国家/地区代码',

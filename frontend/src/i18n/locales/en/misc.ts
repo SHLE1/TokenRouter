@@ -438,7 +438,6 @@ marketplace: {
     amountLabel: 'Amount',
     paymentAmount: 'Payment Amount',
     creditedBalance: 'Credited Balance',
-    quickAmounts: 'Quick Amounts',
     customAmount: 'Custom Amount',
     enterAmount: 'Enter amount',
     paymentMethod: 'Payment Method',
@@ -447,6 +446,7 @@ marketplace: {
     rateFee: 'Rate Fee',
     feeTotal: 'Total Fee',
     actualPay: 'Actual Payment',
+    orderSummary: 'Order summary',
     createOrder: 'Confirm Payment',
     methods: {
       easypay: 'EasyPay',
@@ -523,6 +523,7 @@ marketplace: {
       invoice: 'Invoice',
     },
     billing: {
+      title: 'Billing details',
       name: 'Billing Name',
       email: 'Billing Email',
       country: 'Country Code',
