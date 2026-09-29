@@ -1,6 +1,7 @@
 export default {
 // Common
   common: {
+    ruleIndex: '规则 #{index}',
     retry: '重试',
     loading: '加载中...',
     justNow: '刚刚',

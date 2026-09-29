@@ -1191,7 +1191,6 @@
                         :options="openaiFastPolicyTierOptions"
                       />
                     </div>
-
                     <!-- Action -->
                     <div>
                       <label
@@ -1212,7 +1211,6 @@
                         :options="openaiFastPolicyActionOptions"
                       />
                     </div>
-
                     <!-- Scope -->
                     <div>
                       <label
@@ -5024,137 +5022,120 @@
                 <Toggle v-model="form.user_prompt_replacement_config.enabled" />
               </div>
             </div>
-            <div class="space-y-5 p-6">
-              <div class="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm h-9"
-                  @click="addUserPromptReplacementRule"
-                >
-                  {{ t("admin.settings.userPromptReplacement.addRule") }}
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm h-9"
-                  @click="resetUserPromptReplacementRules"
-                >
-                  {{ t("admin.settings.userPromptReplacement.resetDefault") }}
-                </button>
-              </div>
-
-              <div
-                v-if="form.user_prompt_replacement_config.rules.length === 0"
-                class="rounded-control border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400 dark:border-dark-600"
+            <div class="p-6">
+              <RuleListEditor
+                :items="form.user_prompt_replacement_config.rules"
+                variant="card"
+                :item-label="(index) => t('common.ruleIndex', { index: index + 1 })"
+                :add-label="t('admin.settings.userPromptReplacement.addRule')"
+                :empty-text="t('admin.settings.userPromptReplacement.empty')"
+                test-id="prompt-replacement-rules"
+                @add="addUserPromptReplacementRule"
+                @remove="removeUserPromptReplacementRule"
               >
-                {{ t("admin.settings.userPromptReplacement.empty") }}
-              </div>
-
-              <div
-                v-for="(rule, index) in form.user_prompt_replacement_config.rules"
-                :key="rule.id || index"
-                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
-              >
-                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div class="flex min-w-0 flex-1 items-center gap-3">
-                    <Toggle v-model="rule.enabled" />
-                    <input
-                      v-model="rule.name"
-                      type="text"
-                      class="input min-w-0 flex-1 text-sm"
-                      :placeholder="
-                        t('admin.settings.userPromptReplacement.namePlaceholder')
-                      "
-                    />
-                  </div>
+                <template #header-actions>
                   <button
                     type="button"
-                    class="btn btn-secondary btn-sm h-9 text-red-600 hover:text-red-700 dark:text-red-400"
-                    @click="removeUserPromptReplacementRule(index)"
+                    class="btn btn-secondary"
+                    @click="resetUserPromptReplacementRules"
                   >
-                    {{ t("common.delete") }}
+                    {{ t("admin.settings.userPromptReplacement.resetDefault") }}
                   </button>
-                </div>
-
-                <div class="grid gap-4 lg:grid-cols-6">
-                  <div class="lg:col-span-4">
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.pattern") }}
-                    </label>
-                    <textarea
-                      v-model="rule.pattern"
-                      rows="3"
-                      class="input font-mono text-xs"
-                      :placeholder="
-                        t('admin.settings.userPromptReplacement.patternPlaceholder')
-                      "
-                    />
+                </template>
+                <template #row="{ item: rule }">
+                  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex min-w-0 flex-1 items-center gap-3">
+                      <Toggle v-model="rule.enabled" />
+                      <input
+                        v-model="rule.name"
+                        type="text"
+                        class="input min-w-0 flex-1 text-sm"
+                        :placeholder="
+                          t('admin.settings.userPromptReplacement.namePlaceholder')
+                        "
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.targetGroup") }}
-                    </label>
-                    <input
-                      v-model.number="rule.target_group"
-                      type="number"
-                      min="0"
-                      step="1"
-                      class="input text-sm"
-                    />
+                  <div class="grid gap-4 lg:grid-cols-6">
+                    <div class="lg:col-span-4">
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.pattern") }}
+                      </label>
+                      <textarea
+                        v-model="rule.pattern"
+                        rows="3"
+                        class="input font-mono text-xs"
+                        :placeholder="
+                          t('admin.settings.userPromptReplacement.patternPlaceholder')
+                        "
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.targetGroup") }}
+                      </label>
+                      <input
+                        v-model.number="rule.target_group"
+                        type="number"
+                        min="0"
+                        step="1"
+                        class="input text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.replacementType") }}
+                      </label>
+                      <Select
+                        v-model="rule.replacement_type"
+                        :options="userPromptReplacementTypeOptions"
+                        class="text-sm"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.replacementType") }}
-                    </label>
-                    <Select
-                      v-model="rule.replacement_type"
-                      :options="userPromptReplacementTypeOptions"
-                      class="text-sm"
-                    />
+                  <div class="mt-4 grid gap-4 md:grid-cols-3">
+                    <div v-if="rule.replacement_type === 'static'">
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.staticText") }}
+                      </label>
+                      <input
+                        v-model="rule.static_text"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t('admin.settings.userPromptReplacement.staticTextPlaceholder')
+                        "
+                      />
+                    </div>
+                    <div v-if="rule.replacement_type !== 'static'">
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.timezone") }}
+                      </label>
+                      <Select
+                        v-model="rule.timezone"
+                        :options="userPromptReplacementTimezoneOptions"
+                        searchable
+                        creatable
+                        :creatable-prefix="
+                          t('admin.settings.userPromptReplacement.useTimezone')
+                        "
+                        class="text-sm"
+                      />
+                    </div>
+                    <div v-if="rule.replacement_type === 'current_time'">
+                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.userPromptReplacement.timeFormat") }}
+                      </label>
+                      <input
+                        v-model="rule.time_format"
+                        type="text"
+                        class="input font-mono text-sm"
+                        placeholder="2006-01-02"
+                      />
+                    </div>
                   </div>
-                </div>
-
-                <div class="mt-4 grid gap-4 md:grid-cols-3">
-                  <div v-if="rule.replacement_type === 'static'">
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.staticText") }}
-                    </label>
-                    <input
-                      v-model="rule.static_text"
-                      type="text"
-                      class="input text-sm"
-                      :placeholder="
-                        t('admin.settings.userPromptReplacement.staticTextPlaceholder')
-                      "
-                    />
-                  </div>
-                  <div v-if="rule.replacement_type !== 'static'">
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.timezone") }}
-                    </label>
-                    <Select
-                      v-model="rule.timezone"
-                      :options="userPromptReplacementTimezoneOptions"
-                      searchable
-                      creatable
-                      :creatable-prefix="
-                        t('admin.settings.userPromptReplacement.useTimezone')
-                      "
-                      class="text-sm"
-                    />
-                  </div>
-                  <div v-if="rule.replacement_type === 'current_time'">
-                    <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.userPromptReplacement.timeFormat") }}
-                    </label>
-                    <input
-                      v-model="rule.time_format"
-                      type="text"
-                      class="input font-mono text-sm"
-                      placeholder="2006-01-02"
-                    />
-                  </div>
-                </div>
-              </div>
+                </template>
+              </RuleListEditor>
             </div>
           </div>
           <!-- Web Search Emulation -->
@@ -5191,40 +5172,24 @@
 
               <!-- Providers -->
               <Collapse :open="webSearchConfig.enabled" unmount-on-hide>
-                <div class="space-y-4">
-                  <div class="flex items-center justify-between">
-                    <label
-                      class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.webSearchEmulation.providers") }}
-                    </label>
-                    <button
-                      type="button"
-                      class="btn btn-secondary btn-sm h-9"
-                      @click="addWebSearchProvider"
-                    >
-                      {{ t("admin.settings.webSearchEmulation.addProvider") }}
-                    </button>
-                  </div>
-
-                  <div
-                    v-if="webSearchConfig.providers.length === 0"
-                    class="rounded-control border border-dashed border-gray-300 p-4 text-center text-sm text-gray-400 dark:border-dark-600"
-                  >
-                    {{ t("admin.settings.webSearchEmulation.noProviders") }}
-                  </div>
-
-                  <div
-                    v-for="(provider, pIdx) in webSearchConfig.providers"
-                    :key="pIdx"
-                    class="rounded-control border border-gray-200 dark:border-dark-600"
-                  >
+                <RuleListEditor
+                  :items="webSearchConfig.providers"
+                  variant="card"
+                  :title="t('admin.settings.webSearchEmulation.providers')"
+                  :add-label="t('admin.settings.webSearchEmulation.addProvider')"
+                  :remove-label="t('admin.settings.webSearchEmulation.removeProvider')"
+                  :empty-text="t('admin.settings.webSearchEmulation.noProviders')"
+                  test-id="web-search-providers"
+                  @add="addWebSearchProvider"
+                  @remove="removeWebSearchProvider"
+                >
+                  <template #row="{ item: provider, index: pIdx }">
                     <!-- Collapsible header -->
                     <div data-icon-trigger
-                      class="flex cursor-pointer items-center justify-between px-4 py-3"
+                      class="flex cursor-pointer flex-wrap items-center gap-3"
                       @click="toggleProviderExpand(pIdx)"
                     >
-                      <div class="flex items-center gap-3">
+                      <div class="flex min-w-0 flex-wrap items-center gap-3">
                         <Icon
                           name="chevronRight"
                           size="sm"
@@ -5265,22 +5230,11 @@
                           }}
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        class="text-red-500 hover:text-red-700 text-xs"
-                        @click.stop="removeWebSearchProvider(pIdx)"
-                      >
-                        {{
-                          t("admin.settings.webSearchEmulation.removeProvider")
-                        }}
-                      </button>
                     </div>
-
                     <!-- Expanded content -->
                     <Collapse :open="expandedProviders[pIdx]" unmount-on-hide>
                       <div
-
-                        class="space-y-3 border-t border-gray-100 px-4 pb-4 pt-3 dark:border-dark-700"
+                        class="mt-3 space-y-3 border-t border-gray-100 pt-3 dark:border-dark-700"
                       >
                         <!-- API Key with inline show/copy -->
                         <div>
@@ -5344,7 +5298,6 @@
                             </div>
                           </div>
                         </div>
-
                         <!-- Quota + Subscription in compact row -->
                         <div class="grid grid-cols-2 gap-3">
                           <div>
@@ -5389,7 +5342,6 @@
                             </p>
                           </div>
                         </div>
-
                         <!-- Usage display -->
                         <div class="flex items-center gap-2">
                           <span class="text-xs text-gray-500"
@@ -5439,7 +5391,6 @@
                             {{ t("admin.settings.webSearchEmulation.resetUsage") }}
                           </button>
                         </div>
-
                         <!-- Proxy + Test on same row -->
                         <div class="flex items-end gap-3">
                           <div class="flex-1">
@@ -5461,8 +5412,8 @@
                         </div>
                       </div>
                     </Collapse>
-                  </div>
-                </div>
+                  </template>
+                </RuleListEditor>
               </Collapse>
             </div>
           </div>
@@ -6060,111 +6011,79 @@
               </div>
 
               <!-- Custom Endpoints -->
-              <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.site.customEndpoints.title") }}
-                </label>
-                <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.site.customEndpoints.description") }}
-                </p>
-
-                <div class="space-y-3">
-                  <div
-                    v-for="(ep, index) in form.custom_endpoints"
-                    :key="index"
-                    class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
-                  >
-                    <div class="mb-3 flex items-center justify-between">
-                      <span
-                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
+              <RuleListEditor
+                :items="form.custom_endpoints"
+                variant="card"
+                :title="t('admin.settings.site.customEndpoints.title')"
+                :hint="t('admin.settings.site.customEndpoints.description')"
+                :item-label="(index) => t('admin.settings.site.customEndpoints.itemLabel', { n: index + 1 })"
+                :add-label="t('admin.settings.site.customEndpoints.add')"
+                test-id="custom-endpoints"
+                @add="addEndpoint"
+                @remove="removeEndpoint"
+              >
+                <template #row="{ item: ep }">
+                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.site.customEndpoints.name") }}
+                      </label>
+                      <input
+                        v-model="ep.name"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t(
+                            'admin.settings.site.customEndpoints.namePlaceholder',
+                          )
+                        "
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
                       >
                         {{
-                          t("admin.settings.site.customEndpoints.itemLabel", {
-                            n: index + 1,
-                          })
+                          t("admin.settings.site.customEndpoints.endpointUrl")
                         }}
-                      </span>
-                      <button
-                        type="button"
-                        class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                        @click="removeEndpoint(index)"
-                      >
-                        <Icon name="trash" size="sm" class="h-4 w-4" />
-                      </button>
+                      </label>
+                      <input
+                        v-model="ep.endpoint"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t(
+                            'admin.settings.site.customEndpoints.endpointUrlPlaceholder',
+                          )
+                        "
+                      />
                     </div>
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div>
-                        <label
-                          class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                        >
-                          {{ t("admin.settings.site.customEndpoints.name") }}
-                        </label>
-                        <input
-                          v-model="ep.name"
-                          type="text"
-                          class="input text-sm"
-                          :placeholder="
-                            t(
-                              'admin.settings.site.customEndpoints.namePlaceholder',
-                            )
-                          "
-                        />
-                      </div>
-                      <div>
-                        <label
-                          class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                        >
-                          {{
-                            t("admin.settings.site.customEndpoints.endpointUrl")
-                          }}
-                        </label>
-                        <input
-                          v-model="ep.endpoint"
-                          type="url"
-                          class="input font-mono text-sm"
-                          :placeholder="
-                            t(
-                              'admin.settings.site.customEndpoints.endpointUrlPlaceholder',
-                            )
-                          "
-                        />
-                      </div>
-                      <div class="sm:col-span-2">
-                        <label
-                          class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                        >
-                          {{
-                            t(
-                              "admin.settings.site.customEndpoints.descriptionLabel",
-                            )
-                          }}
-                        </label>
-                        <input
-                          v-model="ep.description"
-                          type="text"
-                          class="input text-sm"
-                          :placeholder="
-                            t(
-                              'admin.settings.site.customEndpoints.descriptionPlaceholder',
-                            )
-                          "
-                        />
-                      </div>
+                    <div class="sm:col-span-2">
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{
+                          t(
+                            "admin.settings.site.customEndpoints.descriptionLabel",
+                          )
+                        }}
+                      </label>
+                      <input
+                        v-model="ep.description"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t(
+                            'admin.settings.site.customEndpoints.descriptionPlaceholder',
+                          )
+                        "
+                      />
                     </div>
                   </div>
-                </div>
-
-                <button
-                  type="button"
-                  class="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 px-4 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
-                  @click="addEndpoint"
-                >
-                  <Icon name="plus" size="sm" class="h-4 w-4" />
-                  {{ t("admin.settings.site.customEndpoints.add") }}
-                </button>
-              </div>
+                </template>
+              </RuleListEditor>
 
               <!-- Contact Info -->
               <div>
@@ -6270,127 +6189,82 @@
                 {{ t("admin.settings.customMenu.description") }}
               </p>
             </div>
-            <div class="space-y-4 p-6">
-              <!-- Existing menu items -->
-              <div
-                v-for="(item, index) in form.custom_menu_items"
-                :key="item.id || index"
-                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
+            <div class="p-6">
+              <RuleListEditor
+                :items="form.custom_menu_items"
+                variant="card"
+                :item-label="(index) => t('admin.settings.customMenu.itemLabel', { n: index + 1 })"
+                :add-label="t('admin.settings.customMenu.add')"
+                :remove-label="t('admin.settings.customMenu.remove')"
+                add-placement="footer"
+                reorderable
+                test-id="custom-menu-items"
+                @add="addMenuItem"
+                @remove="removeMenuItem"
+                @move="(from, to) => moveMenuItem(from, to > from ? 1 : -1)"
               >
-                <div class="mb-3 flex items-center justify-between">
-                  <span
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{
-                      t("admin.settings.customMenu.itemLabel", { n: index + 1 })
-                    }}
-                  </span>
-                  <div class="flex items-center gap-2">
-                    <!-- Move up -->
-                    <button
-                      v-if="index > 0"
-                      type="button"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                      :title="t('admin.settings.customMenu.moveUp')"
-                      @click="moveMenuItem(index, -1)"
-                    >
-                      <Icon name="chevronUp" size="sm" :animate-on-hover="false" class="h-4 w-4" />
-                    </button>
-                    <!-- Move down -->
-                    <button
-                      v-if="index < form.custom_menu_items.length - 1"
-                      type="button"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                      :title="t('admin.settings.customMenu.moveDown')"
-                      @click="moveMenuItem(index, 1)"
-                    >
-                      <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
-                    </button>
-                    <!-- Delete -->
-                    <button
-                      type="button"
-                      class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                      :title="t('admin.settings.customMenu.remove')"
-                      @click="removeMenuItem(index)"
-                    >
-                      <Icon name="trash" size="sm" class="h-4 w-4" />
-                    </button>
+                <template #row="{ item }">
+                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <!-- Label -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.customMenu.name") }}
+                      </label>
+                      <input
+                        v-model="item.label"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="
+                          t('admin.settings.customMenu.namePlaceholder')
+                        "
+                      />
+                    </div>
+                    <!-- Visibility -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.customMenu.visibility") }}
+                      </label>
+                      <Select v-model="item.visibility" :options="customMenuVisibilityOptions" class="text-sm" />
+                    </div>
+                    <!-- URL (full width) -->
+                    <div class="sm:col-span-2">
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.customMenu.url") }}
+                      </label>
+                      <input
+                        v-model="item.url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          t('admin.settings.customMenu.urlPlaceholder')
+                        "
+                      />
+                    </div>
+                    <!-- SVG Icon (full width) -->
+                    <div class="sm:col-span-2">
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.customMenu.iconSvg") }}
+                      </label>
+                      <ImageUpload
+                        :model-value="item.icon_svg"
+                        mode="svg"
+                        size="sm"
+                        :upload-label="t('admin.settings.customMenu.uploadSvg')"
+                        :remove-label="t('admin.settings.customMenu.removeSvg')"
+                        @update:model-value="(v: string) => (item.icon_svg = v)"
+                      />
+                    </div>
                   </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <!-- Label -->
-                  <div>
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.customMenu.name") }}
-                    </label>
-                    <input
-                      v-model="item.label"
-                      type="text"
-                      class="input text-sm"
-                      :placeholder="
-                        t('admin.settings.customMenu.namePlaceholder')
-                      "
-                    />
-                  </div>
-
-                  <!-- Visibility -->
-                  <div>
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.customMenu.visibility") }}
-                    </label>
-                    <Select v-model="item.visibility" :options="customMenuVisibilityOptions" class="text-sm" />
-                  </div>
-
-                  <!-- URL (full width) -->
-                  <div class="sm:col-span-2">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.customMenu.url") }}
-                    </label>
-                    <input
-                      v-model="item.url"
-                      type="url"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.customMenu.urlPlaceholder')
-                      "
-                    />
-                  </div>
-
-                  <!-- SVG Icon (full width) -->
-                  <div class="sm:col-span-2">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.customMenu.iconSvg") }}
-                    </label>
-                    <ImageUpload
-                      :model-value="item.icon_svg"
-                      mode="svg"
-                      size="sm"
-                      :upload-label="t('admin.settings.customMenu.uploadSvg')"
-                      :remove-label="t('admin.settings.customMenu.removeSvg')"
-                      @update:model-value="(v: string) => (item.icon_svg = v)"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Add button -->
-              <button
-                type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
-                @click="addMenuItem"
-              >
-                <Icon name="plus" size="sm" class="h-4 w-4" />
-                {{ t("admin.settings.customMenu.add") }}
-              </button>
+                </template>
+              </RuleListEditor>
             </div>
           </div>
 
@@ -6422,56 +6296,29 @@
               </button>
             </div>
             <div class="space-y-4 p-6">
-              <div
-                v-for="(modelId, mIndex) in form.home_featured_models"
-                :key="modelId || mIndex"
-                class="flex items-center gap-2"
+              <RuleListEditor
+                :items="form.home_featured_models"
+                :add-label="localText('添加模型', 'Add model')"
+                :remove-label="localText('删除模型', 'Remove model')"
+                :max="homeFeaturedModelsMax"
+                :animated="false"
+                add-placement="footer"
+                reorderable
+                test-id="home-featured-models"
+                @add="form.home_featured_models.push('')"
+                @remove="removeHomeFeaturedModel"
+                @move="(from, to) => moveHomeFeaturedModel(from, to > from ? 1 : -1)"
               >
-                <Select
-                  v-model="form.home_featured_models[mIndex]"
-                  :options="homeFeaturedModelOptions"
-                  searchable
-                  class="flex-1"
-                  :placeholder="localText('选择模型', 'Select a model')"
-                />
-                <button
-                  v-if="mIndex > 0"
-                  type="button"
-                  class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                  :title="t('admin.settings.customMenu.moveUp')"
-                  @click="moveHomeFeaturedModel(mIndex, -1)"
-                >
-                  <Icon name="chevronUp" size="sm" :animate-on-hover="false" class="h-4 w-4" />
-                </button>
-                <button
-                  v-if="mIndex < form.home_featured_models.length - 1"
-                  type="button"
-                  class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                  :title="t('admin.settings.customMenu.moveDown')"
-                  @click="moveHomeFeaturedModel(mIndex, 1)"
-                >
-                  <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                  :title="localText('删除模型', 'Remove model')"
-                  @click="removeHomeFeaturedModel(mIndex)"
-                >
-                  <Icon name="x" size="sm" class="h-4 w-4" />
-                </button>
-              </div>
-
-              <!-- Add model button -->
-              <button
-                type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
-                :disabled="form.home_featured_models.length >= homeFeaturedModelsMax"
-                @click="form.home_featured_models.push('')"
-              >
-                <Icon name="plus" size="sm" class="h-4 w-4" />
-                {{ localText("添加模型", "Add model") }}
-              </button>
+                <template #row="{ index: mIndex }">
+                  <Select
+                    v-model="form.home_featured_models[mIndex]"
+                    :options="homeFeaturedModelOptions"
+                    searchable
+                    class="min-w-0"
+                    :placeholder="localText('选择模型', 'Select a model')"
+                  />
+                </template>
+              </RuleListEditor>
               <p
                 v-if="homeFeaturedModelOptions.length === 0"
                 class="text-xs text-gray-400 dark:text-gray-500"
@@ -6509,95 +6356,56 @@
             </div>
             <div class="space-y-4 p-6">
               <!-- Link groups -->
-              <div
-                v-for="(group, gIndex) in form.footer_links"
-                :key="gIndex"
-                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
+              <RuleListEditor
+                :items="form.footer_links"
+                variant="card"
+                :item-label="(index) => localText(`分组 #${index + 1}`, `Group #${index + 1}`)"
+                :add-label="localText('添加分组', 'Add group')"
+                :remove-label="localText('删除分组', 'Remove group')"
+                add-placement="footer"
+                reorderable
+                test-id="footer-groups"
+                @add="addFooterGroup"
+                @remove="removeFooterGroup"
+                @move="(from, to) => moveFooterGroup(from, to > from ? 1 : -1)"
               >
-                <div class="mb-3 flex items-center justify-between gap-3">
-                  <input
-                    v-model="group.title"
-                    type="text"
-                    class="input max-w-xs text-sm font-medium"
-                    :placeholder="localText('分组标题，如：产品', 'Group title, e.g. Product')"
-                  />
-                  <div class="flex items-center gap-2">
-                    <button
-                      v-if="gIndex > 0"
-                      type="button"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                      :title="t('admin.settings.customMenu.moveUp')"
-                      @click="moveFooterGroup(gIndex, -1)"
-                    >
-                      <Icon name="chevronUp" size="sm" :animate-on-hover="false" class="h-4 w-4" />
-                    </button>
-                    <button
-                      v-if="gIndex < form.footer_links.length - 1"
-                      type="button"
-                      class="rounded-compact p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700"
-                      :title="t('admin.settings.customMenu.moveDown')"
-                      @click="moveFooterGroup(gIndex, 1)"
-                    >
-                      <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                      :title="localText('删除分组', 'Remove group')"
-                      @click="removeFooterGroup(gIndex)"
-                    >
-                      <Icon name="trash" size="sm" class="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div class="space-y-2">
-                  <div
-                    v-for="(link, lIndex) in group.links"
-                    :key="lIndex"
-                    class="flex items-center gap-2"
-                  >
+                <template #row="{ item: group, index: gIndex }">
+                  <div class="space-y-3">
                     <input
-                      v-model="link.label"
+                      v-model="group.title"
                       type="text"
-                      class="input w-40 text-sm"
-                      :placeholder="localText('名称', 'Label')"
+                      class="input max-w-xs text-sm font-medium"
+                      :placeholder="localText('分组标题，如：产品', 'Group title, e.g. Product')"
                     />
-                    <input
-                      v-model="link.url"
-                      type="text"
-                      class="input flex-1 font-mono text-sm"
-                      :placeholder="localText('https://... 或 /models', 'https://... or /models')"
-                    />
-                    <button
-                      type="button"
-                      class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                      :title="localText('删除链接', 'Remove link')"
-                      @click="group.links.splice(lIndex, 1)"
+                    <RuleListEditor
+                      :items="group.links"
+                      :add-label="localText('添加链接', 'Add link')"
+                      :remove-label="localText('删除链接', 'Remove link')"
+                      add-placement="footer"
+                      :test-id="`footer-links-${gIndex}`"
+                      @add="group.links.push({ label: '', url: '' })"
+                      @remove="group.links.splice($event, 1)"
                     >
-                      <Icon name="x" size="sm" class="h-4 w-4" />
-                    </button>
+                      <template #row="{ item: link }">
+                        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                          <input
+                            v-model="link.label"
+                            type="text"
+                            class="input text-sm"
+                            :placeholder="localText('名称', 'Label')"
+                          />
+                          <input
+                            v-model="link.url"
+                            type="text"
+                            class="input min-w-0 font-mono text-sm"
+                            :placeholder="localText('https://... 或 /models', 'https://... or /models')"
+                          />
+                        </div>
+                      </template>
+                    </RuleListEditor>
                   </div>
-                  <button
-                    type="button"
-                    class="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                    @click="group.links.push({ label: '', url: '' })"
-                  >
-                    <Icon name="plus" size="xs" class="h-3.5 w-3.5" />
-                    {{ localText("添加链接", "Add link") }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Add group button -->
-              <button
-                type="button"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
-                @click="addFooterGroup"
-              >
-                <Icon name="plus" size="sm" class="h-4 w-4" />
-                {{ localText("添加分组", "Add group") }}
-              </button>
+                </template>
+              </RuleListEditor>
 
               <!-- Footer text -->
               <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
@@ -6701,118 +6509,87 @@
                 </div>
               </div>
 
-              <div>
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 class="text-sm font-medium text-gray-900 dark:text-white">
-                      {{ localText("协议文档", "Agreement documents") }}
-                    </h3>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        localText(
-                          "文档名称可自定义，内容按 Markdown 保存。可参考：服务条款、使用政策、支持的国家和地区、服务特定条款。",
-                          "Document titles are customizable and content is saved as Markdown.",
-                        )
-                      }}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-primary btn-sm h-9 inline-flex items-center gap-1.5"
-                    @click="addLoginAgreementDocument"
-                  >
-                    <Icon name="plus" size="sm" />
-                    {{ localText("添加文档", "Add document") }}
-                  </button>
-                </div>
-
-                <div class="mt-4 space-y-3">
-                  <div
-                    v-for="(doc, index) in form.login_agreement_documents"
-                    :key="doc.id || index"
-                    class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-800/60"
-                  >
-                    <div class="mb-3 flex items-center justify-between gap-3">
-                      <div class="flex min-w-0 items-center gap-3">
-                        <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
-                          <Icon
-                            :name="
-                              index === 1
-                                ? 'shield'
-                                : index === 2
-                                  ? 'globe'
-                                  : index === 3
-                                    ? 'cog'
-                                    : 'document'
-                            "
-                            size="sm"
-                          />
-                        </span>
-                        <div class="min-w-0">
-                          <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                            {{ doc.title || localText("未命名文档", "Untitled document") }}
-                          </p>
-                          <p class="truncate text-xs text-gray-500 dark:text-gray-400">
-                            {{ loginAgreementRoutePath(doc, index) }}
-                          </p>
-                        </div>
+              <RuleListEditor
+                :items="form.login_agreement_documents"
+                :title="localText('协议文档', 'Agreement documents')"
+                :hint="localText('文档名称可自定义，内容按 Markdown 保存。可参考：服务条款、使用政策、支持的国家和地区、服务特定条款。', 'Document titles are customizable and content is saved as Markdown.')"
+                :add-label="localText('添加文档', 'Add document')"
+                variant="card"
+                :item-label="(index) => localText(`文档 #${index + 1}`, `Document #${index + 1}`)"
+                :min="form.login_agreement_enabled ? 1 : 0"
+                test-id="login-agreement-documents"
+                @add="addLoginAgreementDocument"
+                @remove="removeLoginAgreementDocument"
+              >
+                <template #row="{ item: doc, index }">
+                  <div class="mb-3 flex items-center justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                      <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
+                        <Icon
+                          :name="
+                            index === 1
+                              ? 'shield'
+                              : index === 2
+                                ? 'globe'
+                                : index === 3
+                                  ? 'cog'
+                                  : 'document'
+                          "
+                          size="sm"
+                        />
+                      </span>
+                      <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                          {{ doc.title || localText("未命名文档", "Untitled document") }}
+                        </p>
+                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                          {{ loginAgreementRoutePath(doc, index) }}
+                        </p>
                       </div>
-                      <button
-                        type="button"
-                        class="rounded-control p-2 text-red-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-900/20"
-                        :disabled="
-                          form.login_agreement_enabled &&
-                          form.login_agreement_documents.length <= 1
-                        "
-                        @click="removeLoginAgreementDocument(index)"
-                      >
-                        <Icon name="trash" size="sm" />
-                      </button>
                     </div>
-
-                    <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                      <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {{ localText("文档名称", "Document title") }}
-                        </label>
+                  </div>
+                  <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <div>
+                      <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {{ localText("文档名称", "Document title") }}
+                      </label>
+                      <input
+                        v-model="doc.title"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="localText('例如：服务条款', 'Example: Terms of Service')"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {{ localText("路由标识", "Route slug") }}
+                      </label>
+                      <div class="flex overflow-hidden rounded-control border border-primary-900/10 bg-white focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:border-dark-600 dark:bg-dark-900 dark:focus-within:border-primary-500 dark:focus-within:ring-primary-500">
+                        <span class="inline-flex flex-shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-400">
+                          /legal/
+                        </span>
                         <input
-                          v-model="doc.title"
+                          v-model="doc.id"
                           type="text"
-                          class="input text-sm"
-                          :placeholder="localText('例如：服务条款', 'Example: Terms of Service')"
+                          class="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-dark-500"
+                          placeholder="usage-policy"
                         />
                       </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {{ localText("路由标识", "Route slug") }}
-                        </label>
-                        <div class="flex overflow-hidden rounded-control border border-primary-900/10 bg-white focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:border-dark-600 dark:bg-dark-900 dark:focus-within:border-primary-500 dark:focus-within:ring-primary-500">
-                          <span class="inline-flex flex-shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-400">
-                            /legal/
-                          </span>
-                          <input
-                            v-model="doc.id"
-                            type="text"
-                            class="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-dark-500"
-                            placeholder="usage-policy"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div class="mt-3">
-                      <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                        {{ localText("Markdown 内容", "Markdown content") }}
-                      </label>
-                        <textarea
-                          v-model="doc.content_md"
-                          rows="8"
-                          class="input font-mono text-sm"
-                          :placeholder="localText('在这里填写正式 Markdown 内容。', 'Write the final Markdown content here.')"
-                        ></textarea>
                     </div>
                   </div>
-                </div>
-              </div>
+                  <div class="mt-3">
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                      {{ localText("Markdown 内容", "Markdown content") }}
+                    </label>
+                      <textarea
+                        v-model="doc.content_md"
+                        rows="8"
+                        class="input font-mono text-sm"
+                        :placeholder="localText('在这里填写正式 Markdown 内容。', 'Write the final Markdown content here.')"
+                      ></textarea>
+                  </div>
+                </template>
+              </RuleListEditor>
             </div>
           </div>
         </div>
@@ -6904,111 +6681,80 @@
                 </div>
               </div>
 
-              <div class="mt-6 border-t border-gray-100 pt-5 dark:border-dark-700">
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 class="font-medium text-gray-900 dark:text-white">
-                      {{ t("admin.settings.features.creative.modelSettings.title") }}
-                    </h3>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.features.creative.modelSettings.description") }}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-primary inline-flex items-center gap-1.5"
-                    :disabled="creativeModelCandidatesLoading || !creativeModelCandidates.some((candidate) => !form.creative_model_settings.some((item) => creativeModelSettingKey(item) === creativeModelSettingKey(candidate)))"
-                    @click="addCreativeModelSetting"
-                  >
-                    <Icon name="plus" size="sm" />
-                    {{ t("admin.settings.features.creative.modelSettings.add") }}
-                  </button>
-                </div>
-
-                <p v-if="creativeModelCandidatesLoading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.features.creative.modelSettings.loading") }}
-                </p>
-                <p v-else-if="creativeModelCandidatesError" class="mt-4 text-sm text-amber-600 dark:text-amber-400">
-                  {{ t("admin.settings.features.creative.modelSettings.loadError") }}
-                </p>
-
-                <!-- 模型能力列表：列头与行共用同一网格分栏，模型选择、能力开关、删除操作对齐，避免行内松散留白。 -->
-                <div
-                  v-if="form.creative_model_settings.length > 0"
-                  class="mt-4 overflow-hidden rounded-surface border border-gray-200 dark:border-dark-600"
-                >
+              <RuleListEditor
+                class="mt-6 border-t border-gray-100 pt-5 dark:border-dark-700"
+                :items="form.creative_model_settings"
+                :title="t('admin.settings.features.creative.modelSettings.title')"
+                :hint="t('admin.settings.features.creative.modelSettings.description')"
+                :add-label="t('admin.settings.features.creative.modelSettings.add')"
+                :remove-label="t('admin.settings.features.creative.modelSettings.remove')"
+                :empty-text="t('admin.settings.features.creative.modelSettings.empty')"
+                :add-disabled="creativeModelCandidatesLoading || !creativeModelCandidates.some((candidate) => !form.creative_model_settings.some((item) => creativeModelSettingKey(item) === creativeModelSettingKey(candidate)))"
+                test-id="creative-model-settings"
+                @add="addCreativeModelSetting"
+                @remove="removeCreativeModelSetting"
+              >
+                <template #header-extra>
+                  <p v-if="creativeModelCandidatesLoading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.features.creative.modelSettings.loading") }}
+                  </p>
+                  <p v-else-if="creativeModelCandidatesError" class="mt-4 text-sm text-amber-600 dark:text-amber-400">
+                    {{ t("admin.settings.features.creative.modelSettings.loadError") }}
+                  </p>
                   <div
-                    class="hidden items-center gap-4 border-b border-gray-100 bg-gray-50 px-4 py-2 text-xs font-medium text-gray-500 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_auto] dark:border-dark-700 dark:bg-dark-800/60 dark:text-dark-300"
+                    class="hidden grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-xs font-medium text-gray-500 sm:grid dark:text-dark-300"
                   >
-                    <span>{{ t("admin.settings.features.creative.modelSettings.modelColumn") }}</span>
-                    <span>{{ t("admin.settings.features.creative.modelSettings.operationsColumn") }}</span>
+                    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                      <span>{{ t("admin.settings.features.creative.modelSettings.modelColumn") }}</span>
+                      <span>{{ t("admin.settings.features.creative.modelSettings.operationsColumn") }}</span>
+                    </div>
                     <span class="w-9" aria-hidden="true"></span>
                   </div>
-                  <div class="divide-y divide-gray-100 dark:divide-dark-700">
-                    <div
-                      v-for="(item, index) in form.creative_model_settings"
-                      :key="`${creativeModelSettingKey(item)}-${index}`"
-                      class="grid grid-cols-1 items-center gap-3 px-4 py-3 transition-colors hover:bg-gray-50 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-4 dark:hover:bg-dark-800/40"
-                    >
-                      <div class="min-w-0">
-                        <Select
-                          :model-value="creativeModelSettingKey(item)"
-                          :options="creativeModelOptionsForRow(index)"
-                          :placeholder="t('admin.settings.features.creative.modelSettings.selectModel')"
-                          :searchable="'auto'"
-                          class="w-full sm:max-w-xs"
-                          @change="onCreativeModelSelected(index, $event)"
-                        />
-                        <p v-if="!creativeCandidateForSetting(item)" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                          {{ t("admin.settings.features.creative.modelSettings.unavailableHint") }}
-                        </p>
-                      </div>
-                      <!-- 能力开关：胶囊按钮替代原生复选框，选中态带对勾，禁用态沿用“至少保留一项能力”等约束。 -->
-                      <div class="flex flex-wrap items-center gap-2">
-                        <button
-                          v-for="operation in creativeOperationChoices"
-                          :key="operation"
-                          type="button"
-                          class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-                          :class="[
-                            item.operations.includes(operation)
-                              ? 'border-primary-500/60 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
-                              : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-dark-600 dark:text-dark-300 dark:hover:border-dark-400 dark:hover:text-dark-100',
-                            creativeOperationCheckboxDisabled(index, operation) && 'cursor-not-allowed opacity-50',
-                          ]"
-                          :disabled="creativeOperationCheckboxDisabled(index, operation)"
-                          :aria-pressed="item.operations.includes(operation)"
-                          @click="toggleCreativeOperation(index, operation, !item.operations.includes(operation))"
-                        >
-                          <Icon
-                            v-if="item.operations.includes(operation)"
-                            name="check"
-                            size="xs"
-                            :animate-on-hover="false"
-                          />
-                          {{ t(`admin.settings.features.creative.modelSettings.operations.${operation}`) }}
-                        </button>
-                      </div>
+                </template>
+                <template #row="{ item, index }">
+                  <div class="grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4">
+                    <div class="min-w-0">
+                      <Select
+                        :model-value="creativeModelSettingKey(item)"
+                        :options="creativeModelOptionsForRow(index)"
+                        :placeholder="t('admin.settings.features.creative.modelSettings.selectModel')"
+                        :searchable="'auto'"
+                        class="w-full sm:max-w-xs"
+                        @change="onCreativeModelSelected(index, $event)"
+                      />
+                      <p v-if="!creativeCandidateForSetting(item)" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                        {{ t("admin.settings.features.creative.modelSettings.unavailableHint") }}
+                      </p>
+                    </div>
+                    <!-- 能力开关：胶囊按钮替代原生复选框，选中态带对勾，禁用态沿用“至少保留一项能力”等约束。 -->
+                    <div class="flex flex-wrap items-center gap-2">
                       <button
+                        v-for="operation in creativeOperationChoices"
+                        :key="operation"
                         type="button"
-                        class="btn-icon justify-self-start text-gray-500 hover:text-red-600 sm:justify-self-end dark:text-dark-300 dark:hover:text-red-400"
-                        :aria-label="t('admin.settings.features.creative.modelSettings.remove')"
-                        :title="t('admin.settings.features.creative.modelSettings.remove')"
-                        @click="removeCreativeModelSetting(index)"
+                        class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                        :class="[
+                          item.operations.includes(operation)
+                            ? 'border-primary-500/60 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
+                            : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-dark-600 dark:text-dark-300 dark:hover:border-dark-400 dark:hover:text-dark-100',
+                          creativeOperationCheckboxDisabled(index, operation) && 'cursor-not-allowed opacity-50',
+                        ]"
+                        :disabled="creativeOperationCheckboxDisabled(index, operation)"
+                        :aria-pressed="item.operations.includes(operation)"
+                        @click="toggleCreativeOperation(index, operation, !item.operations.includes(operation))"
                       >
-                        <Icon name="trash" size="sm" />
+                        <Icon
+                          v-if="item.operations.includes(operation)"
+                          name="check"
+                          size="xs"
+                          :animate-on-hover="false"
+                        />
+                        {{ t(`admin.settings.features.creative.modelSettings.operations.${operation}`) }}
                       </button>
                     </div>
                   </div>
-                </div>
-                <p
-                  v-else
-                  class="mt-4 flex items-center justify-center gap-2 rounded-surface border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500 dark:border-dark-600 dark:text-dark-300"
-                >
-                  <Icon name="infoCircle" size="sm" />
-                  {{ t("admin.settings.features.creative.modelSettings.empty") }}
-                </p>
-              </div>
+                </template>
+              </RuleListEditor>
             </div>
           </div>
 
@@ -8119,18 +7865,17 @@
                 <Toggle v-model="form.provider_quota_notify_enabled" />
               </div>
               <Collapse :open="form.provider_quota_notify_enabled" unmount-on-hide>
-                <div >
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >{{ t("admin.settings.quotaNotify.emails") }}</label
-                  >
-                  <div class="space-y-2">
-                    <div
-                      v-for="(entry, index) in form.provider_quota_notify_emails ||
-                      []"
-                      :key="index"
-                      class="flex items-center gap-2"
-                    >
+                <RuleListEditor
+                  :items="form.provider_quota_notify_emails || []"
+                  :title="t('admin.settings.quotaNotify.emails')"
+                  :hint="t('admin.settings.quotaNotify.emailsHint')"
+                  :add-label="t('admin.settings.quotaNotify.addEmail')"
+                  test-id="quota-notify-emails"
+                  @add="addQuotaNotifyEmail"
+                  @remove="form.provider_quota_notify_emails.splice($event, 1)"
+                >
+                  <template #row="{ item: entry }">
+                    <div class="flex items-center gap-2">
                       <label
                         class="relative inline-flex items-center cursor-pointer shrink-0"
                       >
@@ -8144,31 +7889,14 @@
                       <input
                         v-model="entry.email"
                         type="email"
-                        class="input flex-1"
+                        class="input min-w-0 flex-1"
                         :placeholder="
                           t('admin.settings.quotaNotify.emailPlaceholder')
                         "
                       />
-                      <button
-                        @click="form.provider_quota_notify_emails.splice(index, 1)"
-                        class="btn btn-secondary px-2"
-                        type="button"
-                      >
-                        <Icon name="x" size="xs" class="h-4 w-4" />
-                      </button>
                     </div>
-                    <button
-                      @click="addQuotaNotifyEmail"
-                      class="btn btn-secondary btn-sm h-9"
-                      type="button"
-                    >
-                      + {{ t("admin.settings.quotaNotify.addEmail") }}
-                    </button>
-                  </div>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.quotaNotify.emailsHint") }}
-                  </p>
-                </div>
+                  </template>
+                </RuleListEditor>
               </Collapse>
             </div>
           </div>

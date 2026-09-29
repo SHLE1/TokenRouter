@@ -1,6 +1,7 @@
 export default {
 // Common
   common: {
+    ruleIndex: 'Rule #{index}',
     retry: 'Retry',
     loading: 'Loading...',
     justNow: 'just now',
