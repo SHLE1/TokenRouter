@@ -978,6 +978,7 @@ export default {
         info: 'Applies to outbound requests of this provider only: configured headers override client/gateway-generated headers of the same name before forwarding. Auth headers (authorization, x-api-key) and connection-control headers cannot be overridden.',
         namePlaceholder: 'Header name (e.g. user-agent)',
         valuePlaceholder: 'Override value (leave empty to skip)',
+        empty: 'No header overrides configured',
         addRow: 'Add Header',
         importJson: 'Import JSON',
         importJsonApply: 'Parse & Fill',

@@ -906,117 +906,7 @@
         </div>
 
         <Collapse :open="tempUnschedEnabled" unmount-on-hide>
-          <div class="space-y-3">
-            <div class="rounded-control bg-blue-50 p-3 dark:bg-blue-900/20">
-              <p class="text-xs text-blue-700 dark:text-blue-400">
-                <Icon name="exclamationTriangle" size="sm" class="mr-1 inline" :stroke-width="2" />
-                {{ t('admin.providers.tempUnschedulable.notice') }}
-              </p>
-            </div>
-
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="preset in tempUnschedPresets"
-                :key="preset.label"
-                type="button"
-                @click="addTempUnschedRule(preset.rule)"
-                class="rounded-control bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-300 dark:hover:bg-dark-500"
-              >
-                + {{ preset.label }}
-              </button>
-            </div>
-
-            <div v-if="tempUnschedRules.length > 0" class="space-y-3">
-              <div
-                v-for="(rule, index) in tempUnschedRules"
-                :key="getTempUnschedRuleKey(rule)"
-                class="rounded-control border border-gray-200 p-3 dark:border-dark-600"
-              >
-                <div class="mb-2 flex items-center justify-between">
-                  <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {{ t('admin.providers.tempUnschedulable.ruleIndex', { index: index + 1 }) }}
-                  </span>
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      :disabled="index === 0"
-                      @click="moveTempUnschedRule(index, -1)"
-                      class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
-                    >
-                      <Icon name="chevronUp" size="sm" :stroke-width="2" :animate-on-hover="false" />
-                    </button>
-                    <button
-                      type="button"
-                      :disabled="index === tempUnschedRules.length - 1"
-                      @click="moveTempUnschedRule(index, 1)"
-                      class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
-                    >
-                      <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      @click="removeTempUnschedRule(index)"
-                      class="rounded-compact p-1 text-red-500 transition-colors hover:text-red-600"
-                    >
-                      <Icon name="x" size="sm" :stroke-width="2" />
-                    </button>
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label class="input-label">{{ t('admin.providers.tempUnschedulable.errorCode') }}</label>
-                    <input
-                      v-model.number="rule.error_code"
-                      type="number"
-                      min="100"
-                      max="599"
-                      class="input"
-                      :placeholder="t('admin.providers.tempUnschedulable.errorCodePlaceholder')"
-                    />
-                  </div>
-                  <div>
-                    <label class="input-label">{{ t('admin.providers.tempUnschedulable.durationMinutes') }}</label>
-                    <input
-                      v-model.number="rule.duration_minutes"
-                      type="number"
-                      min="1"
-                      class="input"
-                      :placeholder="t('admin.providers.tempUnschedulable.durationPlaceholder')"
-                    />
-                  </div>
-                  <div class="sm:col-span-2">
-                    <label class="input-label">{{ t('admin.providers.tempUnschedulable.keywords') }}</label>
-                    <input
-                      v-model="rule.keywords"
-                      type="text"
-                      class="input"
-                      :placeholder="t('admin.providers.tempUnschedulable.keywordsPlaceholder')"
-                    />
-                    <p class="input-hint">{{ t('admin.providers.tempUnschedulable.keywordsHint') }}</p>
-                  </div>
-                  <div class="sm:col-span-2">
-                    <label class="input-label">{{ t('admin.providers.tempUnschedulable.description') }}</label>
-                    <input
-                      v-model="rule.description"
-                      type="text"
-                      class="input"
-                      :placeholder="t('admin.providers.tempUnschedulable.descriptionPlaceholder')"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              @click="addTempUnschedRule()"
-              class="w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            >
-              <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
-              {{ t('admin.providers.tempUnschedulable.addRule') }}
-            </button>
-          </div>
+          <TempUnschedRulesEditor v-model="tempUnschedRules" />
         </Collapse>
       </div>
 
@@ -1988,6 +1878,7 @@ import UpstreamRequestIdHeaderField from '@/components/provider/UpstreamRequestI
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
+import TempUnschedRulesEditor, { type TempUnschedRuleForm } from '@/components/provider/TempUnschedRulesEditor.vue'
 import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import ProxySelector from '@/components/common/ProxySelector.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
@@ -2022,7 +1913,6 @@ import {
   type HeaderOverrideRow
 } from '@/components/provider/credentialsBuilder'
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
-import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import {
   applyCodexImageToolMode,
   readCodexImageToolMode,
@@ -2093,13 +1983,6 @@ const antigravityPresetMappings = computed(() => getPresetMappingsByPlatform('an
 const bedrockPresets = computed(() => getPresetMappingsByPlatform('bedrock'))
 
 // Model mapping type
-interface TempUnschedRuleForm {
-  error_code: number | null
-  keywords: string
-  duration_minutes: number | null
-  description: string
-}
-
 // State
 const submitting = ref(false)
 const editBaseUrl = ref('https://api.anthropic.com')
@@ -2338,7 +2221,6 @@ const supportsProviderSchedulingThresholdOverride = computed(() =>
   supportsProviderSchedulingThresholdOverridePlatform(props.provider?.platform)
 )
 const tempUnschedRules = ref<TempUnschedRuleForm[]>([])
-const getTempUnschedRuleKey = createStableObjectKeyResolver<TempUnschedRuleForm>('edit-temp-unsched-rule')
 
 // Quota control state (Anthropic OAuth/SetupToken only)
 const windowCostEnabled = ref(false)
@@ -2524,35 +2406,6 @@ const presetMappings = computed(() =>
     isQoderCosyProvider.value ? qoderSite.value : undefined
   )
 )
-const tempUnschedPresets = computed(() => [
-  {
-    label: t('admin.providers.tempUnschedulable.presets.overloadLabel'),
-    rule: {
-      error_code: 529,
-      keywords: 'overloaded, too many',
-      duration_minutes: 60,
-      description: t('admin.providers.tempUnschedulable.presets.overloadDesc')
-    }
-  },
-  {
-    label: t('admin.providers.tempUnschedulable.presets.rateLimitLabel'),
-    rule: {
-      error_code: 429,
-      keywords: 'rate limit, too many requests',
-      duration_minutes: 10,
-      description: t('admin.providers.tempUnschedulable.presets.rateLimitDesc')
-    }
-  },
-  {
-    label: t('admin.providers.tempUnschedulable.presets.unavailableLabel'),
-    rule: {
-      error_code: 503,
-      keywords: 'unavailable, maintenance',
-      duration_minutes: 30,
-      description: t('admin.providers.tempUnschedulable.presets.unavailableDesc')
-    }
-  }
-])
 
 // Computed: default base URL based on platform
 const defaultBaseUrl = computed(() => {
@@ -3308,32 +3161,6 @@ const removeErrorCode = (code: number) => {
   if (index !== -1) {
     selectedErrorCodes.value.splice(index, 1)
   }
-}
-
-const addTempUnschedRule = (preset?: TempUnschedRuleForm) => {
-  if (preset) {
-    tempUnschedRules.value.push({ ...preset })
-    return
-  }
-  tempUnschedRules.value.push({
-    error_code: null,
-    keywords: '',
-    duration_minutes: 30,
-    description: ''
-  })
-}
-
-const removeTempUnschedRule = (index: number) => {
-  tempUnschedRules.value.splice(index, 1)
-}
-
-const moveTempUnschedRule = (index: number, direction: number) => {
-  const target = index + direction
-  if (target < 0 || target >= tempUnschedRules.value.length) return
-  const rules = tempUnschedRules.value
-  const current = rules[index]
-  rules[index] = rules[target]
-  rules[target] = current
 }
 
 const buildTempUnschedRules = (rules: TempUnschedRuleForm[]) => {

@@ -1035,6 +1035,7 @@ export default {
         info: '仅对本提供商的出站请求生效：配置的请求头会在转发前覆盖客户端/网关生成的同名头。认证头（authorization、x-api-key）与连接控制头不允许覆写。',
         namePlaceholder: '请求头名称（如 user-agent）',
         valuePlaceholder: '覆写值（留空表示不覆写）',
+        empty: '未配置请求头覆写',
         addRow: '添加请求头',
         importJson: 'JSON 导入',
         importJsonApply: '解析并填入',
