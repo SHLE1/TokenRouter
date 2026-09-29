@@ -42,6 +42,10 @@ func (s *authRepoStub) GetByKeyForAuth(ctx context.Context, key string) (*APIKey
 	return s.getByKeyForAuth(ctx, key)
 }
 
+func (s *authRepoStub) RotateCredential(context.Context, *APIKey, string) error {
+	panic("unexpected RotateCredential call")
+}
+
 func (s *authRepoStub) Update(ctx context.Context, key *APIKey, _ APIKeyUpdateFields) error {
 	panic("unexpected Update call")
 }

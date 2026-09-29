@@ -1099,6 +1099,47 @@
       </template>
     </BaseDialog>
 
+    <!-- 轮换前明确告知旧凭据失效，提交期间保留弹窗以防重复操作。 -->
+    <ConfirmDialog
+      :show="rotationKey !== null"
+      :title="t('keys.rotateKey')"
+      :message="t('keys.rotateConfirmMessage', { name: rotationKey?.name })"
+      :confirm-text="t('keys.confirmRotate')"
+      :danger="true"
+      :loading="rotatingKey"
+      @confirm="handleRotate"
+      @cancel="cancelRotate"
+    />
+
+    <!-- 轮换成功后展示新凭据，便于立即复制到客户端。 -->
+    <BaseDialog
+      :show="rotatedKey !== null"
+      :title="t('keys.keyRotatedSuccess')"
+      width="narrow"
+      @close="rotatedKey = null"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('keys.rotatedKeyHint') }}</p>
+        <code class="block break-all rounded-surface bg-gray-50 p-4 text-sm text-gray-900 dark:bg-dark-800 dark:text-gray-100">
+          {{ rotatedKey?.key }}
+        </code>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button type="button" class="btn btn-secondary" @click="rotatedKey = null">
+            {{ t('common.close') }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            @click="rotatedKey && copyToClipboard(rotatedKey.key, rotatedKey.id)"
+          >
+            {{ t('common.copy') }}
+          </button>
+        </div>
+      </template>
+    </BaseDialog>
+
     <!-- Delete Confirmation Dialog -->
     <ConfirmDialog
       :show="showDeleteDialog"
@@ -1160,6 +1201,7 @@
       @use="openUseKeyModal"
       @import-tf="openTfCliImportDialog"
       @import="importToCcswitch"
+      @rotate="confirmRotate"
       @delete="confirmDelete"
     />
 
@@ -1507,6 +1549,9 @@ const filterDropdownRef = ref<HTMLElement | null>(null)
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDeleteDialog = ref(false)
+const rotationKey = ref<ApiKey | null>(null)
+const rotatedKey = ref<ApiKey | null>(null)
+const rotatingKey = ref(false)
 const showResetQuotaDialog = ref(false)
 const showResetRateLimitDialog = ref(false)
 const showUseKeyModal = ref(false)
@@ -2183,7 +2228,7 @@ const openKeyActionMenu = (key: ApiKey, event: MouseEvent) => {
   // 固定高菜单(高度随 CCS 导入项显隐):下方放不下即整体上翻;窄屏保持右缘对齐触发器。
   const position = getFloatingPanelPosition(rect, window.innerWidth, window.innerHeight, {
     maxWidth: 192,
-    fixedHeight: publicSettings.value?.hide_ccs_import_button ? 138 : 178,
+    fixedHeight: publicSettings.value?.hide_ccs_import_button ? 178 : 218,
     viewportPadding: 8,
     gap: 4,
     pinLeftOnMobile: false
@@ -2268,6 +2313,38 @@ const closeGroupSelector = (event: MouseEvent) => {
 const confirmDelete = (key: ApiKey) => {
   selectedKey.value = key
   showDeleteDialog.value = true
+}
+
+const confirmRotate = (key: ApiKey) => {
+  rotationKey.value = key
+}
+
+const cancelRotate = () => {
+  if (!rotatingKey.value) rotationKey.value = null
+}
+
+const handleRotate = async () => {
+  if (!rotationKey.value || rotatingKey.value) return
+  rotatingKey.value = true
+  try {
+    const updated = await keysAPI.rotate(rotationKey.value.id)
+    // 先替换页面中的凭据，避免列表刷新失败时仍复制到旧值。
+    apiKeys.value = apiKeys.value.map(key =>
+      key.id === updated.id ? { ...key, key: updated.key, updated_at: updated.updated_at } : key
+    )
+    if (selectedKey.value?.id === updated.id) selectedKey.value = updated
+    if (copiedKeyId.value === updated.id) copiedKeyId.value = null
+    rotationKey.value = null
+    rotatedKey.value = updated
+    void loadApiKeys()
+  } catch (error: unknown) {
+    const message = error instanceof Error
+      ? error.message
+      : (error as { message?: string } | null)?.message
+    appStore.showError(message || t('keys.failedToRotate'))
+  } finally {
+    rotatingKey.value = false
+  }
 }
 
 const buildKeyFormPayload = () => {

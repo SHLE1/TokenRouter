@@ -28,6 +28,7 @@ var (
 	ErrGroupNotAllowed                   = infraerrors.Forbidden("GROUP_NOT_ALLOWED", "user is not allowed to bind this group")
 	ErrGroupDisabledForUser              = infraerrors.Forbidden("GROUP_DISABLED_FOR_USER", "user is not allowed to use this public group")
 	ErrAPIKeyExists                      = infraerrors.Conflict("API_KEY_EXISTS", "api key already exists")
+	ErrAPIKeyRotationConflict            = infraerrors.Conflict("API_KEY_ROTATION_CONFLICT", "API Key 已变更，请刷新后重试")
 	ErrAPIKeyLimitReached                = infraerrors.Conflict("API_KEY_LIMIT_REACHED", "api key limit reached")
 	ErrAPIKeyTooShort                    = infraerrors.BadRequest("API_KEY_TOO_SHORT", "api key must be at least 16 characters")
 	ErrAPIKeyInvalidChars                = infraerrors.BadRequest("API_KEY_INVALID_CHARS", "api key can only contain letters, numbers, underscores, and hyphens")
@@ -134,6 +135,8 @@ type APIKeyRepository interface {
 	GetByKeyForAuth(ctx context.Context, key string) (*APIKey, error)
 	// Update 只写 fields 中显式声明的列，其余列保持库中当前值。
 	Update(ctx context.Context, key *APIKey, fields APIKeyUpdateFields) error
+	// RotateCredential 仅替换凭据，以旧凭据和所有者校验并发变更。
+	RotateCredential(ctx context.Context, key *APIKey, oldKey string) error
 	Delete(ctx context.Context, id int64) error
 	// DeleteWithAudit 为兼容滚动升级保留历史接口名。
 	// 实现必须以原子方式写入墓碑并软删除 Key，且不得保留已删除的凭据材料。

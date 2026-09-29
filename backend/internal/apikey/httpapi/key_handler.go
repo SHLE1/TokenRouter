@@ -362,6 +362,26 @@ func (h *APIKeyHandler[G]) Update(c *gin.Context) {
 	response.Success(c, h.keyResponse(key))
 }
 
+// RotateCredential 轮换当前用户的 API Key 凭据并返回原记录的新凭据。
+func (h *APIKeyHandler[G]) RotateCredential(c *gin.Context) {
+	subject, ok := authctx.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	keyID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || keyID <= 0 {
+		response.BadRequest(c, "Invalid key ID")
+		return
+	}
+	key, err := h.apiKeyService.RotateCredential(c.Request.Context(), keyID, subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, h.keyResponse(key))
+}
+
 // Delete handles deleting an API key
 // DELETE /api/v1/api-keys/:id
 func (h *APIKeyHandler[G]) Delete(c *gin.Context) {

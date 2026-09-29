@@ -82,6 +82,10 @@ func (s *apiKeyRepoStub) GetByKeyForAuth(ctx context.Context, key string) (*apik
 	panic("unexpected GetByKeyForAuth call")
 }
 
+func (s *apiKeyRepoStub) RotateCredential(context.Context, *apikey.APIKey, string) error {
+	panic("unexpected RotateCredential call")
+}
+
 func (s *apiKeyRepoStub) Update(ctx context.Context, key *apikey.APIKey, _ apikey.APIKeyUpdateFields) error {
 	if key != nil {
 		s.updatedKeys = append(s.updatedKeys, *key)

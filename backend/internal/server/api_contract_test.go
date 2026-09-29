@@ -2739,6 +2739,10 @@ func (r *stubApiKeyRepo) GetByKeyForAuth(ctx context.Context, key string) (*apik
 	return r.GetByKey(ctx, key)
 }
 
+func (r *stubApiKeyRepo) RotateCredential(context.Context, *apikey.APIKey, string) error {
+	panic("unexpected RotateCredential call")
+}
+
 func (r *stubApiKeyRepo) Update(ctx context.Context, key *apikey.APIKey, _ apikey.APIKeyUpdateFields) error {
 	if key == nil {
 		return errors.New("nil key")
