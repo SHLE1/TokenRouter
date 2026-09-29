@@ -1,3 +1,5 @@
+import { isValidWildcardPattern } from '@/utils/modelMappingRules'
+
 // =====================
 // 模型列表（硬编码，与 new-api 一致）
 // =====================
@@ -558,14 +560,8 @@ export function getPresetMappingsByPlatform(platform: string, qoderSite?: QoderS
 // 构建模型映射对象（用于 API）
 // =====================
 
-// isValidWildcardPattern 校验通配符格式：* 只能放在末尾
-// 导出供表单组件使用实时校验
-export function isValidWildcardPattern(pattern: string): boolean {
-  const starIndex = pattern.indexOf('*')
-  if (starIndex === -1) return true // 无通配符，有效
-  // * 必须在末尾，且只能有一个
-  return starIndex === pattern.length - 1 && pattern.lastIndexOf('*') === starIndex
-}
+// 通配符校验与映射编辑器共用同一实现，继续从这里导出以兼容现有调用方。
+export { isValidWildcardPattern }
 
 export function buildModelMappingObject(
   mode: 'whitelist' | 'mapping',

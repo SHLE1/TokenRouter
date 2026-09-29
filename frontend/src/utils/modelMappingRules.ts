@@ -1,5 +1,3 @@
-import { isValidWildcardPattern } from '@/composables/useModelWhitelist'
-
 /** ModelMappingRow 是映射编辑器的一行，来源与目标都保留用户输入的原文。 */
 export interface ModelMappingRow {
   from: string
@@ -46,6 +44,13 @@ export const KEY_REDIRECT_RULES: ModelMappingRuleOptions = {
 export const WILDCARD_ONLY_RULES: ModelMappingRuleOptions = {
   sourceWildcard: 'trailing',
   forbidTargetWildcard: true,
+}
+
+/** isValidWildcardPattern 校验通配符格式：* 最多一个且只能放在末尾。 */
+export function isValidWildcardPattern(pattern: string): boolean {
+  const starIndex = pattern.indexOf('*')
+  if (starIndex === -1) return true
+  return starIndex === pattern.length - 1 && pattern.lastIndexOf('*') === starIndex
 }
 
 // 模型名长度按码点计算，与后端的 rune 计数一致。
