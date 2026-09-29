@@ -635,7 +635,7 @@ affiliates: {
       amountRequired: '请输入有效金额',
       insufficientBalance: '余额不足',
       setAllowedGroups: '设置允许分组',
-      allowedGroupsHint: '选择此用户可以使用的标准分组。订阅类型分组请在订阅管理中配置。',
+      allowedGroupsHint: '选择此用户可以使用的标准分组。订阅类型分组请在「用户订阅」页面中配置。',
       noStandardGroups: '暂无标准分组',
       allowAllGroups: '允许全部分组',
       allowAllGroupsHint: '用户可以使用任何非专属分组',

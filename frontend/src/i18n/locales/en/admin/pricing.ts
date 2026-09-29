@@ -594,9 +594,9 @@ riskControl: {
          syncModelsError: 'Failed to sync models'
        }
      },
-// Subscriptions
+// 用户订阅
     subscriptions: {
-      title: 'Subscription Management',
+      title: 'User Subscriptions',
       description: 'Manage user subscriptions and quota limits',
       assignSubscription: 'Assign Subscription',
       adjustSubscription: 'Adjust Subscription',
@@ -690,7 +690,7 @@ riskControl: {
       cancelPendingConfirm:
         "Cancel the pending subscription for '{user}'? Later pending subscriptions will move forward automatically. This action cannot be undone.",
       guide: {
-        title: 'Subscription Management Guide',
+        title: 'User Subscriptions Guide',
         subtitle: 'Subscription mode lets you assign time-based usage quotas to users, with daily/weekly/monthly limits. Follow these steps to get started.',
         showGuide: 'Usage Guide',
         step1: {

@@ -328,7 +328,18 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/teams', label: t('nav.teams'), icon: 'users' as const, featureFlag: flagTeamAccess },
     { path: '/admin/groups', label: t('nav.groups'), icon: 'folder' as const },
     { path: '/admin/pricing', label: t('nav.pricing', '价格管理'), icon: 'pricing' as const },
-    { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: 'creditCard' as const },
+    {
+      path: '/admin/subscriptions',
+      label: t('nav.subscriptions'),
+      icon: 'creditCard' as const,
+      children: [
+        { path: '/admin/subscriptions', label: t('nav.userSubscriptions'), icon: 'users' as const },
+        // 套餐入口随支付功能开放，用户订阅入口始终保留。
+        ...(adminSettingsStore.paymentEnabled
+          ? [{ path: '/admin/orders/plans', label: t('nav.paymentPlans'), icon: 'creditCard' as const }]
+          : []),
+      ],
+    },
     { path: '/admin/providers', label: t('nav.providers'), icon: 'globe' as const },
     { path: '/admin/announcements', label: t('nav.announcements'), icon: 'bell' as const },
     { path: '/admin/proxies', label: t('nav.proxies'), icon: 'server' as const },
@@ -363,7 +374,6 @@ const adminNavItems = computed((): NavItem[] => {
             children: [
               { path: '/admin/orders/dashboard', label: t('nav.paymentDashboard'), icon: 'chart' as const },
               { path: '/admin/orders', label: t('nav.orderManagement'), icon: 'order' as const },
-              { path: '/admin/orders/plans', label: t('nav.paymentPlans'), icon: 'creditCard' as const },
             ],
           },
         ]

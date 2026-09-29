@@ -594,9 +594,9 @@ riskControl: {
         syncModelsError: '同步模型失败'
       }
     },
-// Subscriptions Management
+// 用户订阅
     subscriptions: {
-      title: '订阅管理',
+      title: '用户订阅',
       description: '管理用户订阅和配额限制',
       assignSubscription: '分配订阅',
       adjustSubscription: '调整订阅',
@@ -687,7 +687,7 @@ riskControl: {
       restoreConfirm: "确定要恢复 '{user}' 的已撤销订阅吗？如果该订阅与同套餐的生效或待生效订阅重叠，请求会失败。",
       cancelPendingConfirm: "确定要取消 '{user}' 的待生效订阅吗？后续待生效订阅会自动向前衔接，此操作无法撤销。",
       guide: {
-        title: '订阅管理教程',
+        title: '用户订阅教程',
         subtitle: '订阅模式允许你按时间周期为用户分配使用额度，支持日/周/月配额限制。按照以下步骤即可完成配置。',
         showGuide: '使用指南',
         step1: {
