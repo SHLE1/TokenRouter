@@ -2,7 +2,15 @@
 
 > 上级目录：[架构文档目录](index.md)
 
-本文记录前端设计 token 与组件样式的强制约定：圆角层级、间距网格、控件尺寸、菜单与浮层、弹窗、层级、断点、动画时长、表格密度、图表主题和字号下限。覆盖 `frontend/tailwind.config.js`、`frontend/src/style.css` 与全部 Vue 组件；不覆盖颜色主题、深色模式实现（图表除外，见「图表主题」节）和业务组件的局部布局。修改前端组件、样式或这两个文件前先读本文。
+本文记录前端设计 token 与组件样式的强制约定：圆角层级、间距网格、控件尺寸、菜单与浮层、弹窗、层级、断点、动画时长、表格密度、深色配色角色、图表主题和字号下限。覆盖 `frontend/tailwind.config.js`、`frontend/src/style.css` 与全部 Vue 组件；不覆盖浅色配色主题和业务组件的局部布局。修改前端组件、样式或这两个文件前先读本文。
+
+## 章节导航
+
+- [圆角层级](#圆角层级)、[间距约定](#间距约定)、[控件尺寸](#控件尺寸)、[开关](#开关)：调整基础组件时读取。
+- [菜单与浮层](#菜单与浮层)、[层级 z-index](#层级-z-index)、[弹窗](#弹窗)：调整浮层及遮罩时读取。
+- [断点](#断点)、[动画与时长](#动画与时长)、[表格密度](#表格密度)：调整响应式布局和交互时读取。
+- [深色配色](#dark_colors)、[图表主题](#图表主题)、[字号](#字号)：调整颜色和文字时读取。
+- [合法例外](#合法例外)、[校验](#校验)：确认局部例外及验证入口时读取。
 
 ## 圆角层级
 
@@ -50,7 +58,7 @@
 - 下拉容器统一用 `.dropdown` 纯容器配方（定位、圆角、阴影、暗色）；箭头定位与入场动效不进门配方，由调用点自补（目前仅 AppHeader 一处）。
 - 菜单项两档：`.dropdown-item`（px-4）与紧凑档 `.dropdown-item-sm`（px-3），配色、hover、过渡都在配方里，站点只补 `gap-*`、`rounded-control` 这类布局增量。配方基线是中性色；品牌色场景（顶栏用户菜单）加 `.dropdown-item-brand` 修饰类，它定义在基线之后，同层同优先级时后定义生效。
 - 表格行内操作菜单（4 个 `*ActionMenu`）的浮层容器统一 `.action-menu` 类（fixed 定位 + 层级 + 面板样式），宽度类（w-48/w-52）与 `action-menu-content` 钩子类留在调用点。
-- 遮罩透明度只有两档，唯一来源是 `:root` 变量：常规 `--overlay-bg`(black/50)、媒体灯箱等强遮罩 `--overlay-bg-strong`(black/70)。模板写 `bg-[var(--overlay-bg)]`，禁止手写 `bg-black/50` 这类字面值——原 /55、/60 漂移值已就近归并入标准档。
+- 遮罩透明度只有两档，唯一来源是 CSS 变量：浅色在 `:root` 定义常规 `--overlay-bg`(black/50)、媒体灯箱等强遮罩 `--overlay-bg-strong`(black/70)。深色模式在 `html.dark` 中整体加深为 black/70 和 black/85。模板写 `bg-[var(--overlay-bg)]`，禁止手写 `bg-black/50` 这类字面值——原 /55、/60 漂移值已就近归并入标准档。
 - 浮层面板最大高度三档，唯一来源是 `:root` 的 `--max-h-menu-sm`(15rem)、`--max-h-menu`(20rem)、`--max-h-panel`(26.25rem)，模板对应 `max-h-menu-sm/menu/panel`；像素任意值 `max-h-[Npx]` 由门禁拦截，局部特例（如告警表 520px）加 `check-ui-allow` 说明。vh/dvh/calc 等视口相对值语义不同，不入档也不拦截。
 - 挂载到 body 的浮层定位只有一份实现：`utils/floatingPanel.ts` 的 `getFloatingPanelPosition`（翻转、对齐、夹取、窄屏行为全部由 options 表达：固定高菜单用 `fixedHeight`，左对齐面板用 `align: 'left'`，菜单类传 `pinLeftOnMobile: false`)。禁止在组件里重写 rect/spaceBelow 翻转几何。JS 侧面板尺寸常量在 `constants/overlay.ts`(`SELECT_PANEL_MAX_HEIGHT`、`MIN_COMFORTABLE_PANEL_HEIGHT`)，与样式档位同源。
 
@@ -88,11 +96,38 @@
 - 安全凭证流程（TOTP 设置/禁用/登录验证/提权）走 `AuthCardDialog`：居中图标头、无右上角关闭按钮、整卡 p-6，是与 BaseDialog 并存的独立风格族。它不 teleport、保持内联渲染，嵌套层级由 `z-index` prop 决胜。
 - 分诊标准：结构同构（标题头 + 内容 + 按钮行）的手写弹窗迁 BaseDialog；有定制视觉结构的保留并登记在下面的例外清单。
 
+<a id="dark_colors"></a>
+## 深色配色
+
+深色色阶的唯一来源是 `tailwind.config.js` 的 `colors.dark`。按组件角色选择 token，保留现有 `dark-*` 档位名称：
+
+| 档位 | 值 | 角色 |
+|---|---|---|
+| `dark-50` | `#FAFAFA` | 标题与强调文字 |
+| `dark-100` | `#DEE0E2` | 正文文字 |
+| `dark-200` | `#D4D4D8` | 次强文字、占位文字底色 |
+| `dark-300` | `#A1A1AA` | 次要文字、导航默认文字 |
+| `dark-400` | `#8B8B94` | 辅助文字、表头文字 |
+| `dark-500` | `#5F5F67` | 图标、禁用文字、边框 hover |
+| `dark-600` | `#3D3D42` | 主边框：卡片、输入框、弹层、分隔线 |
+| `dark-700` | `#27272A` | 中性填充：hover、选中、chip、内部分隔线 |
+| `dark-800` | `#17171A` | 弱填充：表格行 hover、嵌套面板 |
+| `dark-900` | `#0F0F10` | 卡片、侧栏、弹窗、下拉面板 |
+| `dark-950` | `#141416` | 控件底：输入框、次级按钮、Tab 轨道、行内代码 |
+
+页面底色统一引用 `--page-bg`：浅色为 `#FCFCFE`，深色在 `html.dark` 覆盖为 `#0A0A0B`。`html`、`body`、主题外壳与背景层共用纯色背景，深色页面滚动条轨道也引用该变量，不使用页面背景渐变。
+
+深色分层使用近黑底色和 `dark-600` 边框，不靠提亮表面。表头与卡片同为 `dark-900`，表内分隔线用 `dark-700`，表格行 hover 用 `dark-800`。控件底 `dark-950` 略亮于卡片。
+
+导航、分段控件和列表选中行使用 `dark-700` 中性填充与 `dark-50` 文字。品牌青用于主操作、链接、开关和图表；图标底座、状态提示、徽章、信息提示框及表格勾选行保留原有品牌色和状态色。
+
+输入框焦点与 Select 展开态使用 `dark-400` 边框和 `white/10` 外圈；次级按钮焦点边框用 `dark-500`，外圈同为 `white/10`。按钮的深色焦点环 offset 使用 `dark-900`。深色遮罩由 `html.dark` 将 `--overlay-bg` / `--overlay-bg-strong` 加深为 0.7 / 0.85。
+
 ## 图表主题
 
 - 图表主题的唯一入口是 `composables/useChartTheme.ts`：响应式 `colors`（text/muted/grid 三档语义，zinc 体系）+ `onThemeChange` 重绘钩子。禁止 `document.documentElement.classList.contains('dark')` 快照判断（门禁拦截）——它没有响应式依赖，切主题不重算，曾导致 8 处图表切主题不换色。vue-chartjs 场景 colors 变响应式即自动重绘；Stripe Elements 等命令式场景用 watch + `elements.update({ appearance })` 重应用。
 - 分布图调色板只有一份 `CHART_PALETTE`（12 色，按切片排名取色），"Others" 聚合切片用 `CHART_OTHER_COLOR`;token 趋势序列色用 `CHART_SERIES_COLORS`。刻度字号 `CHART_TICK_FONT_SIZE`(10)、图例字号 `CHART_LEGEND_FONT_SIZE`(11)。
-- 业务色例外留在本地：TeamMemberUsageCharts 成员固定配色（跨图表按成员稳定取色）、OpsSwitchRateTrendChart 与 DashboardView 的品牌调网格/刻度色（dark-200/primary-900 字面值）、DailyRevenueChart 的线/填充色对。
+- 业务色例外留在本地：TeamMemberUsageCharts 成员固定配色（跨图表按成员稳定取色）、OpsSwitchRateTrendChart 与 DashboardView 的本地图表主题（深色刻度 `#D4D4D8`、网格 `#27272A`，浅色保留品牌调字面值）、DailyRevenueChart 的线/填充色对。
 - token 数量格式化统一 `utils/format.ts` 的 `formatTokens`（两位小数 + 千分位）与 `formatTokensK`（一位小数），语义不同不混用；ProviderTodayStatsCell 的 K1/M2 混合精度是有意的本地变体。
 
 ## 动画与时长
