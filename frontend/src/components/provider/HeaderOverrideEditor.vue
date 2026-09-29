@@ -1,5 +1,5 @@
 <template>
-  <TransitionGroup name="motion-list" tag="div" class="relative space-y-2" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement"> 0" class="space-y-2">
+  <TransitionGroup name="motion-list" tag="div" class="relative space-y-2" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement">
     <div
       v-for="(row, index) in rows"
       :key="getHeaderOverrideRowKey(row)"
@@ -21,6 +21,7 @@
         type="button"
         class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
         :title="t('common.delete')"
+        :aria-label="t('common.delete')"
         @click="removeRow(index)"
       >
         <Icon name="trash" size="sm" />

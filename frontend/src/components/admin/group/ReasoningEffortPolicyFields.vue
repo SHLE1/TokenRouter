@@ -53,7 +53,7 @@
         </button>
       </div>
 
-      <TransitionGroup name="motion-list" tag="div" class="relative space-y-2" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement"> 0" class="space-y-2">
+      <TransitionGroup name="motion-list" tag="div" class="relative space-y-2" @before-leave="prepareListLeave" @before-enter="restoreEnteringElement">
         <div
           v-for="group in mappings"
           :key="group.id"
