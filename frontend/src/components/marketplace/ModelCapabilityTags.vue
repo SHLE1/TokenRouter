@@ -1,5 +1,5 @@
 <template>
-  <!-- 模型能力标识：输入模态图标 -> 输出模态图标，样式对齐 OpenRouter（Lucide 图标 + 类型色）。 -->
+  <!-- 模型能力标识：输入模态图标 -> 输出模态图标，小图标底座使用 compact 圆角。 -->
   <span
     class="inline-flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1"
     data-testid="model-capability-tags"
@@ -9,7 +9,7 @@
       v-for="modality in capabilities.input"
       :key="`input-${modality}`"
       :data-modality="`input-${modality}`"
-      class="inline-flex h-5 w-5 items-center justify-center rounded-control"
+      class="inline-flex h-5 w-5 items-center justify-center rounded-compact"
       :class="modalityTagClass(modality)"
     >
       <Icon :name="modalityIconName(modality)" size="xs" :stroke-width="2.5" />
@@ -19,7 +19,7 @@
       v-for="modality in capabilities.output"
       :key="`output-${modality}`"
       :data-modality="`output-${modality}`"
-      class="inline-flex h-5 w-5 items-center justify-center rounded-control"
+      class="inline-flex h-5 w-5 items-center justify-center rounded-compact"
       :class="modalityTagClass(modality)"
     >
       <Icon :name="modalityIconName(modality)" size="xs" :stroke-width="2.5" />
