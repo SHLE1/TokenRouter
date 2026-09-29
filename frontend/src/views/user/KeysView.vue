@@ -162,28 +162,26 @@
               v-if="row.is_composite"
               type="button"
               data-test="composite-group-summary"
-              class="-mx-2 -my-1 flex max-w-[22rem] flex-col gap-1 rounded-control px-2 py-1.5 text-left transition duration-normal hover:bg-gray-100 dark:hover:bg-dark-700"
+              class="-mx-1 -my-1 flex max-w-[22rem] flex-wrap items-center gap-1.5 rounded-control p-1 text-left transition duration-normal hover:bg-gray-100 dark:hover:bg-dark-700"
               :title="t('keys.composite.editMappings')"
               @click="editKey(row)"
             >
-              <!-- 复合 Key 按“前缀 → 分组”逐行对齐展示，超出部分折叠为计数。 -->
+              <!-- 复合 Key 用品牌色胶囊展示“前缀 / 分组”，超出部分折叠为计数胶囊。 -->
               <span
                 v-for="binding in visibleCompositeGroups(row)"
                 :key="`${row.id}-${binding.group_id}`"
-                class="flex min-w-0 items-center gap-2 text-xs leading-5"
+                :class="[
+                  'inline-flex min-w-0 items-center gap-1.5 rounded-compact px-2 py-0.5 text-xs leading-5',
+                  compositeGroupChipClass(binding.group?.display_brand)
+                ]"
               >
-                <span class="w-16 shrink-0 truncate font-mono text-gray-900 dark:text-white">{{ binding.prefix }}</span>
-                <Icon name="arrowRight" size="xs" :animate-on-hover="false" class="h-3 w-3 shrink-0 text-gray-300 dark:text-dark-500" />
-                <ProviderIcon
-                  v-if="binding.group?.display_brand"
-                  :brand="binding.group.display_brand"
-                  size="14px"
-                />
-                <span class="min-w-0 truncate text-gray-500 dark:text-dark-300">{{ binding.group?.name || `#${binding.group_id}` }}</span>
+                <span class="max-w-24 truncate font-mono font-medium">{{ binding.prefix }}</span>
+                <span class="opacity-40">/</span>
+                <span class="max-w-28 truncate opacity-75">{{ binding.group?.name || `#${binding.group_id}` }}</span>
               </span>
               <span
                 v-if="hiddenCompositeGroupCount(row) > 0"
-                class="text-xs leading-5 text-gray-400 dark:text-dark-400"
+                class="inline-flex items-center rounded-compact bg-gray-100 px-2 py-0.5 text-xs leading-5 text-gray-500 dark:bg-dark-800 dark:text-dark-400"
               >
                 {{ t('keys.composite.moreMappings', { count: hiddenCompositeGroupCount(row) }) }}
               </span>
@@ -1287,7 +1285,6 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import TfCliImportDialog from '@/components/keys/TfCliImportDialog.vue'
 	import EndpointPopover from '@/components/keys/EndpointPopover.vue'
 	import GroupBadge from '@/components/common/GroupBadge.vue'
-	import ProviderIcon from '@/components/common/ProviderIcon.vue'
 	import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 	import ScopeDropdown, { type DataScope } from '@/components/team/ScopeDropdown.vue'
 	import type {
@@ -1303,6 +1300,7 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
+import { resolveProviderBrand } from '@/utils/providerBrand'
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import {
   buildCcSwitchImportDeeplink,
@@ -1345,17 +1343,27 @@ const formatBalancePair = (
   return `${formatBalanceAmount(used, { fractionDigits: usedDigits })}${separator}${formatBalanceAmount(limit, { fractionDigits: limitDigits })}`
 }
 
-// COMPOSITE_GROUP_PREVIEW_LIMIT 是列表中复合 Key 直接展示的映射行数上限。
-const COMPOSITE_GROUP_PREVIEW_LIMIT = 3
+// COMPOSITE_GROUP_PREVIEW_LIMIT 是列表中复合 Key 直接展示的映射胶囊数量上限。
+const COMPOSITE_GROUP_PREVIEW_LIMIT = 4
 
 // visibleCompositeGroups 返回表格中需要直接展示的复合映射。
-// 恰好只多出一条时直接全部展示，避免用计数行替代单条映射。
+// 恰好只多出一条时直接全部展示，避免用计数胶囊替代单条映射。
 const visibleCompositeGroups = (row: ApiKey) => {
   const groups = row.composite_groups ?? []
   if (groups.length <= COMPOSITE_GROUP_PREVIEW_LIMIT + 1) {
     return groups
   }
   return groups.slice(0, COMPOSITE_GROUP_PREVIEW_LIMIT)
+}
+
+// compositeGroupChipClass 返回复合映射胶囊的配色，与 GroupBadge 共用分组展示品牌的色板。
+// 未配置展示品牌时使用中性底色，避免和品牌色混淆。
+const compositeGroupChipClass = (displayBrand?: string | null) => {
+  const brand = displayBrand?.trim()
+  if (!brand) {
+    return 'bg-gray-100 text-gray-900 dark:bg-dark-800 dark:text-dark-50'
+  }
+  return `ring-1 ring-inset ${resolveProviderBrand(brand).badgeClass}`
 }
 
 // hiddenCompositeGroupCount 返回被折叠的复合映射数量。

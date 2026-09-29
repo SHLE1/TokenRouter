@@ -135,7 +135,7 @@ export default {
       hint: '通过“前缀/模型 ID”选择不同分组。',
       addMapping: '添加分组映射',
       editMappings: '编辑复合 Key 映射',
-      moreMappings: '另有 {count} 个映射',
+      moreMappings: '+{count}',
       prefixPlaceholder: '例如 GPT',
       groupRequired: '请选择分组',
       prefixRequired: '请输入前缀',
