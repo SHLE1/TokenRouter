@@ -580,55 +580,46 @@
           </Select>
         </div>
 
-        <div v-else class="space-y-3" data-test="composite-group-editor">
-          <div
-            v-for="(binding, index) in formData.composite_groups"
-            :key="binding.local_id"
-            class="grid min-w-0 grid-cols-1 items-start gap-2 rounded-control border border-gray-200 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,0.65fr)_auto] dark:border-dark-600"
-          >
-            <Select
-              v-model="binding.group_id"
-              :options="formGroupOptions"
-              :placeholder="t('keys.selectGroup')"
-              :searchable="true"
-              :disabled="formGroupsLoading"
-              class="min-w-0"
-            />
-            <div class="min-w-0">
-              <input
-                v-model="binding.prefix"
-                type="text"
-                maxlength="32"
-                class="input min-w-0 font-mono"
-                :class="{ 'border-red-500 dark:border-red-500': compositeBindingError(index) }"
-                :placeholder="t('keys.composite.prefixPlaceholder')"
+        <RuleListEditor
+          v-else
+          :items="formData.composite_groups"
+          :item-key="(binding) => binding.local_id"
+          :add-label="t('keys.composite.addMapping')"
+          add-placement="footer"
+          :min="1"
+          :max="20"
+          reorderable
+          data-test="composite-group-editor"
+          @add="addCompositeBinding"
+          @remove="removeCompositeBinding"
+          @move="moveCompositeBinding"
+        >
+          <template #row="{ item: binding, index }">
+            <div class="grid min-w-0 grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(7rem,0.65fr)]">
+              <Select
+                v-model="binding.group_id"
+                :options="formGroupOptions"
+                :placeholder="t('keys.selectGroup')"
+                :searchable="true"
+                :disabled="formGroupsLoading"
+                class="min-w-0"
               />
-              <p v-if="compositeBindingError(index)" class="mt-1 text-xs text-red-500">
-                {{ compositeBindingError(index) }}
-              </p>
+              <div class="min-w-0">
+                <input
+                  v-model="binding.prefix"
+                  type="text"
+                  maxlength="32"
+                  class="input min-w-0 font-mono"
+                  :class="{ 'input-error': compositeBindingError(index) }"
+                  :placeholder="t('keys.composite.prefixPlaceholder')"
+                />
+                <p v-if="compositeBindingError(index)" class="input-error-text">
+                  {{ compositeBindingError(index) }}
+                </p>
+              </div>
             </div>
-            <div class="flex items-center justify-end gap-1 sm:justify-start">
-              <button type="button" class="rounded-compact p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-700" :disabled="index === 0" :title="t('keys.composite.moveUp')" @click="moveCompositeBinding(index, -1)">
-                <Icon name="arrowUp" size="sm" />
-              </button>
-              <button type="button" class="rounded-compact p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-dark-700" :disabled="index === formData.composite_groups.length - 1" :title="t('keys.composite.moveDown')" @click="moveCompositeBinding(index, 1)">
-                <Icon name="arrowDown" size="sm" />
-              </button>
-              <button type="button" class="rounded-compact p-1.5 text-red-500 hover:bg-red-50 disabled:opacity-30 dark:hover:bg-red-900/20" :disabled="formData.composite_groups.length <= 1" :title="t('common.delete')" @click="removeCompositeBinding(index)">
-                <Icon name="trash" size="sm" />
-              </button>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="btn btn-secondary w-full"
-            :disabled="formData.composite_groups.length >= 20"
-            @click="addCompositeBinding"
-          >
-            <Icon name="plus" size="sm" class="mr-1.5" />
-            {{ t('keys.composite.addMapping') }}
-          </button>
-        </div>
+          </template>
+        </RuleListEditor>
 
         <!-- 单 Key Fast 策略使用项目统一选择框，系统策略仍在服务端最终裁决。 -->
         <div>
@@ -648,81 +639,21 @@
         </div>
 
         <!-- 模型重定向按行编辑，删除全部行会在更新时提交空对象。 -->
-        <div class="space-y-3" data-test="model-mapping-editor">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <label class="input-label mb-0">{{ t('keys.modelRedirect.label') }}</label>
-              <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
-                {{ t('keys.modelRedirect.hint') }}
-              </p>
-            </div>
-            <button
-              type="button"
-              class="btn btn-secondary shrink-0"
-              :disabled="formData.model_mapping_rows.length >= 100"
-              :title="t('keys.modelRedirect.addRule')"
-              data-test="model-mapping-add"
-              @click="addModelMappingRow"
-            >
-              <Icon name="plus" size="sm" class="mr-1.5" />
-              {{ t('keys.modelRedirect.addRule') }}
-            </button>
-          </div>
-
-          <p
-            v-if="formData.model_mapping_rows.length === 0"
-            class="rounded-control border border-dashed border-gray-200 px-3 py-4 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
-          >
-            {{ t('keys.modelRedirect.empty') }}
-          </p>
-
-          <div
-            v-for="(row, index) in formData.model_mapping_rows"
-            :key="row.local_id"
-            class="grid min-w-0 grid-cols-1 items-start gap-2 border-b border-gray-200 pb-3 last:border-b-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] dark:border-dark-600"
-            data-test="model-mapping-row"
-          >
-            <div class="min-w-0">
-              <input
-                v-model="row.source"
-                type="text"
-                class="input min-w-0 font-mono"
-                :class="{ 'border-red-500 dark:border-red-500': modelMappingRowErrors[row.local_id]?.source }"
-                :placeholder="t('keys.modelRedirect.sourcePlaceholder')"
-                :aria-label="t('keys.modelRedirect.source')"
-                :data-test="`model-mapping-source-${index}`"
-              />
-              <p v-if="modelMappingRowErrors[row.local_id]?.source" class="mt-1 text-xs text-red-500" role="alert">
-                {{ modelMappingRowErrors[row.local_id]?.source }}
-              </p>
-            </div>
-            <Icon name="arrowRight" size="sm" class="hidden text-gray-400 sm:mt-3 sm:block" />
-            <div class="min-w-0">
-              <input
-                v-model="row.target"
-                type="text"
-                class="input min-w-0 font-mono"
-                :class="{ 'border-red-500 dark:border-red-500': modelMappingRowErrors[row.local_id]?.target }"
-                :placeholder="t('keys.modelRedirect.targetPlaceholder')"
-                :aria-label="t('keys.modelRedirect.target')"
-                :data-test="`model-mapping-target-${index}`"
-              />
-              <p v-if="modelMappingRowErrors[row.local_id]?.target" class="mt-1 text-xs text-red-500" role="alert">
-                {{ modelMappingRowErrors[row.local_id]?.target }}
-              </p>
-            </div>
-            <button
-              type="button"
-              class="flex rounded-compact text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 btn-icon"
-              :title="t('common.delete')"
-              :aria-label="t('common.delete')"
-              :data-test="`model-mapping-remove-${index}`"
-              @click="removeModelMappingRow(index)"
-            >
-              <Icon name="trash" size="sm" />
-            </button>
-          </div>
-        </div>
+        <ModelMappingEditor
+          v-model="formData.model_mapping_rows"
+          :title="t('keys.modelRedirect.label')"
+          :hint="t('keys.modelRedirect.hint')"
+          :add-label="t('keys.modelRedirect.addRule')"
+          :empty-text="t('keys.modelRedirect.empty')"
+          :max="MODEL_REDIRECT_MAX_RULES"
+          :source-label="t('keys.modelRedirect.source')"
+          :target-label="t('keys.modelRedirect.target')"
+          :source-placeholder="t('keys.modelRedirect.sourcePlaceholder')"
+          :target-placeholder="t('keys.modelRedirect.targetPlaceholder')"
+          :field-errors="modelMappingFieldErrors"
+          test-id="model-mapping"
+          data-test="model-mapping-editor"
+        />
 
         <!-- Custom Key Section (only for create) -->
         <div v-if="!showEditModal" class="space-y-3">
@@ -1322,6 +1253,8 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import Select from '@/components/common/Select.vue'
 	import Toggle from '@/components/common/Toggle.vue'
 	import SearchInput from '@/components/common/SearchInput.vue'
+	import RuleListEditor from '@/components/common/RuleListEditor.vue'
+	import ModelMappingEditor from '@/components/common/ModelMappingEditor.vue'
 	import Icon from '@/components/icons/Icon.vue'
 	import KeyActionMenu from '@/components/keys/KeyActionMenu.vue'
 	import UseKeyModal from '@/components/keys/UseKeyModal.vue'
@@ -1343,6 +1276,13 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
+import {
+  KEY_REDIRECT_RULES,
+  firstModelMappingIssue,
+  mappingRowsToRecord,
+  validateModelMappingRows,
+  type ModelMappingRow
+} from '@/utils/modelMappingRules'
 import { resolveProviderBrand } from '@/utils/providerBrand'
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import {
@@ -1573,7 +1513,6 @@ const dropdownPosition = ref<{ top?: number; bottom?: number; left: number } | n
 const groupButtonRefs = ref<Map<number, HTMLElement>>(new Map())
 let abortController: AbortController | null = null
 let compositeBindingSequence = 0
-let modelMappingSequence = 0
 let formGroupsRequestID = 0
 
 // 新建本地映射行时使用稳定 ID，排序不会导致输入框重建。
@@ -1581,13 +1520,6 @@ const newCompositeBinding = (groupId: number | null = null, prefix = '') => ({
   local_id: ++compositeBindingSequence,
   group_id: groupId,
   prefix
-})
-
-// 模型重定向行使用稳定 ID，输入校验更新时不会重建相邻输入框。
-const newModelMappingRow = (source = '', target = '') => ({
-  local_id: ++modelMappingSequence,
-  source,
-  target
 })
 
 // 获取当前正在切换分组的 API Key。
@@ -1613,7 +1545,7 @@ const formData = ref({
   fast_mode_policy: 'follow_request' as ApiKeyFastModePolicy,
   billing_mode: 'auto' as ApiKeyBillingMode,
   preferred_subscription_id: null as number | null,
-  model_mapping_rows: [] as Array<ReturnType<typeof newModelMappingRow>>,
+  model_mapping_rows: [] as ModelMappingRow[],
   use_custom_key: false,
   custom_key: '',
   enable_ip_restriction: false,
@@ -1633,73 +1565,27 @@ const formData = ref({
   fallback_when_group_unavailable: true
 })
 
-type ModelMappingRowError = { source?: string; target?: string }
+const MODEL_REDIRECT_MAX_RULES = 100
 
 // 前端与后端共享相同的大小写敏感、单尾通配符和长度约束。
-const modelMappingRowErrors = computed<Record<number, ModelMappingRowError>>(() => {
-  const errors: Record<number, ModelMappingRowError> = {}
-  const sourceCounts = new Map<string, number>()
-  for (const row of formData.value.model_mapping_rows) {
-    const source = row.source.trim()
-    if (source) sourceCounts.set(source, (sourceCounts.get(source) ?? 0) + 1)
-  }
+const modelMappingIssues = computed(() =>
+  validateModelMappingRows(formData.value.model_mapping_rows, KEY_REDIRECT_RULES)
+)
 
-  for (const row of formData.value.model_mapping_rows) {
-    const source = row.source.trim()
-    const target = row.target.trim()
-    const rowError: ModelMappingRowError = {}
-    if (!source) {
-      rowError.source = t('keys.modelRedirect.sourceRequired')
-    } else if ([...source].length > 100) {
-      rowError.source = t('keys.modelRedirect.nameTooLong')
-    } else {
-      const wildcardCount = (source.match(/\*/g) ?? []).length
-      if (wildcardCount > 1 || (wildcardCount === 1 && !source.endsWith('*'))) {
-        rowError.source = t('keys.modelRedirect.sourceWildcardInvalid')
-      } else if ((sourceCounts.get(source) ?? 0) > 1) {
-        rowError.source = t('keys.modelRedirect.duplicateSource')
-      }
-    }
-
-    if (!target) {
-      rowError.target = t('keys.modelRedirect.targetRequired')
-    } else if ([...target].length > 100) {
-      rowError.target = t('keys.modelRedirect.nameTooLong')
-    } else if (target.includes('*')) {
-      rowError.target = t('keys.modelRedirect.targetWildcardInvalid')
-    } else if (source && source === target) {
-      rowError.target = t('keys.modelRedirect.selfMapping')
-    }
-    if (rowError.source || rowError.target) errors[row.local_id] = rowError
-  }
-  return errors
-})
+const modelMappingFieldErrors = computed(() =>
+  modelMappingIssues.value.map((issue) => ({
+    from: issue.from ? t(`keys.modelRedirect.${issue.from}`) : undefined,
+    to: issue.to ? t(`keys.modelRedirect.${issue.to}`) : undefined
+  }))
+)
 
 const modelMappingFormError = computed(() => {
-  if (formData.value.model_mapping_rows.length > 100) {
+  if (formData.value.model_mapping_rows.length > MODEL_REDIRECT_MAX_RULES) {
     return t('keys.modelRedirect.tooManyRules')
   }
-  for (const row of formData.value.model_mapping_rows) {
-    const error = modelMappingRowErrors.value[row.local_id]
-    if (error?.source) return error.source
-    if (error?.target) return error.target
-  }
-  return ''
+  const issue = firstModelMappingIssue(modelMappingIssues.value)
+  return issue ? t(`keys.modelRedirect.${issue}`) : ''
 })
-
-const addModelMappingRow = () => {
-  if (formData.value.model_mapping_rows.length >= 100) return
-  formData.value.model_mapping_rows.push(newModelMappingRow())
-}
-
-const removeModelMappingRow = (index: number) => {
-  formData.value.model_mapping_rows.splice(index, 1)
-}
-
-const buildModelMappingPayload = (): Record<string, string> =>
-  Object.fromEntries(
-    formData.value.model_mapping_rows.map((row) => [row.source.trim(), row.target.trim()])
-  )
 
 // 自定义Key验证
 const customKeyError = computed(() => {
@@ -1859,8 +1745,7 @@ const removeCompositeBinding = (index: number) => {
   formData.value.composite_groups.splice(index, 1)
 }
 
-const moveCompositeBinding = (index: number, offset: -1 | 1) => {
-  const target = index + offset
+const moveCompositeBinding = (index: number, target: number) => {
   if (target < 0 || target >= formData.value.composite_groups.length) return
   const [binding] = formData.value.composite_groups.splice(index, 1)
   if (binding) formData.value.composite_groups.splice(target, 0, binding)
@@ -2170,7 +2055,7 @@ const editKey = (key: ApiKey) => {
     preferred_subscription_id: key.preferred_subscription_id ?? null,
     model_mapping_rows: Object.entries(key.model_mapping ?? {})
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(([source, target]) => newModelMappingRow(source, target)),
+      .map(([from, to]) => ({ from, to })),
     use_custom_key: false,
     custom_key: '',
     enable_ip_restriction: hasIPRestriction,
@@ -2390,7 +2275,7 @@ const buildKeyFormPayload = () => {
     expiresInDays,
     expiresAt,
     rateLimitData,
-    modelMapping: buildModelMappingPayload()
+    modelMapping: mappingRowsToRecord(formData.value.model_mapping_rows)
   }
 }
 
