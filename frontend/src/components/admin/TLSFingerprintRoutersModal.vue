@@ -237,90 +237,70 @@
           </div>
         </div>
 
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <label class="input-label mb-0">{{ t('admin.tlsFingerprintRouters.form.rules') }}</label>
-            <button type="button" class="btn btn-secondary btn-sm" @click="addRule">
-              <Icon name="plus" size="sm" class="mr-1" />
-              {{ t('admin.tlsFingerprintRouters.form.addRule') }}
-            </button>
-          </div>
-
-          <div v-if="form.rules.length === 0" class="rounded-control border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
-            {{ t('admin.tlsFingerprintRouters.form.noRules') }}
-          </div>
-
-          <div
-            v-for="(rule, index) in form.rules"
-            :key="index"
-            class="space-y-3 rounded-control border border-gray-200 p-3 dark:border-dark-600"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div class="text-sm font-medium text-gray-900 dark:text-white">
-                {{ t('admin.tlsFingerprintRouters.form.ruleTitle', { index: index + 1 }) }}
+        <RuleListEditor
+          :items="form.rules"
+          :title="t('admin.tlsFingerprintRouters.form.rules')"
+          :add-label="t('admin.tlsFingerprintRouters.form.addRule')"
+          :empty-text="t('admin.tlsFingerprintRouters.form.noRules')"
+          variant="card"
+          :item-label="(index) => t('admin.tlsFingerprintRouters.form.ruleTitle', { index: index + 1 })"
+          reorderable
+          @add="addRule"
+          @remove="removeRule"
+          @move="moveRule"
+        >
+          <template #row="{ item: rule }">
+            <div class="space-y-3">
+              <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.ruleName') }}</label>
+                  <input v-model="rule.name" type="text" class="input" />
+                </div>
+                <div>
+                  <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.profile') }}</label>
+                  <Select
+                    :model-value="rule.tls_fingerprint_profile_id"
+                    :options="profileOptions"
+                    @change="rule.tls_fingerprint_profile_id = Number($event ?? 0)"
+                  />
+                </div>
+                <div>
+                  <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.matchType') }}</label>
+                  <Select
+                    :model-value="rule.match_type"
+                    :options="matchTypeOptions"
+                    @change="rule.match_type = normalizeMatchType($event)"
+                  />
+                </div>
+                <div>
+                  <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.pattern') }}</label>
+                  <input v-model="rule.pattern" type="text" required class="input font-mono text-sm" />
+                </div>
+                <div>
+                  <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.upstreamUserAgent') }}</label>
+                  <input v-model="rule.upstream_user_agent" type="text" class="input font-mono text-sm" />
+                  <p class="input-hint">{{ t('admin.tlsFingerprintRouters.form.upstreamUserAgentHint') }}</p>
+                </div>
+                <div>
+                  <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.upstreamOriginator') }}</label>
+                  <input v-model="rule.upstream_originator" type="text" class="input font-mono text-sm" />
+                  <p class="input-hint">{{ t('admin.tlsFingerprintRouters.form.upstreamOriginatorHint') }}</p>
+                </div>
               </div>
-              <div class="flex items-center gap-1">
-                <button type="button" class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white" :disabled="index === 0" @click="moveRule(index, -1)">
-                  <Icon name="arrowUp" size="sm" />
-                </button>
-                <button type="button" class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white" :disabled="index === form.rules.length - 1" @click="moveRule(index, 1)">
-                  <Icon name="arrowDown" size="sm" />
-                </button>
-                <button type="button" class="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400" @click="removeRule(index)">
-                  <Icon name="trash" size="sm" />
-                </button>
+
+              <div class="flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
+                <label class="inline-flex items-center gap-2">
+                  <input v-model="rule.enabled" type="checkbox" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" />
+                  <span>{{ t('admin.tlsFingerprintRouters.form.ruleEnabled') }}</span>
+                </label>
+                <label class="inline-flex items-center gap-2">
+                  <input v-model="rule.case_sensitive" type="checkbox" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" />
+                  <span>{{ t('admin.tlsFingerprintRouters.form.caseSensitive') }}</span>
+                </label>
               </div>
             </div>
-
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div>
-                <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.ruleName') }}</label>
-                <input v-model="rule.name" type="text" class="input" />
-              </div>
-              <div>
-                <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.profile') }}</label>
-                <Select
-                  :model-value="rule.tls_fingerprint_profile_id"
-                  :options="profileOptions"
-                  @change="rule.tls_fingerprint_profile_id = Number($event ?? 0)"
-                />
-              </div>
-              <div>
-                <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.matchType') }}</label>
-                <Select
-                  :model-value="rule.match_type"
-                  :options="matchTypeOptions"
-                  @change="rule.match_type = normalizeMatchType($event)"
-                />
-              </div>
-              <div>
-                <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.pattern') }}</label>
-                <input v-model="rule.pattern" type="text" required class="input font-mono text-sm" />
-              </div>
-              <div>
-                <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.upstreamUserAgent') }}</label>
-                <input v-model="rule.upstream_user_agent" type="text" class="input font-mono text-sm" />
-                <p class="input-hint">{{ t('admin.tlsFingerprintRouters.form.upstreamUserAgentHint') }}</p>
-              </div>
-              <div>
-                <label class="input-label text-xs">{{ t('admin.tlsFingerprintRouters.form.upstreamOriginator') }}</label>
-                <input v-model="rule.upstream_originator" type="text" class="input font-mono text-sm" />
-                <p class="input-hint">{{ t('admin.tlsFingerprintRouters.form.upstreamOriginatorHint') }}</p>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300">
-              <label class="inline-flex items-center gap-2">
-                <input v-model="rule.enabled" type="checkbox" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" />
-                <span>{{ t('admin.tlsFingerprintRouters.form.ruleEnabled') }}</span>
-              </label>
-              <label class="inline-flex items-center gap-2">
-                <input v-model="rule.case_sensitive" type="checkbox" class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" />
-                <span>{{ t('admin.tlsFingerprintRouters.form.caseSensitive') }}</span>
-              </label>
-            </div>
-          </div>
-        </div>
+          </template>
+        </RuleListEditor>
       </form>
 
       <template #footer>
@@ -372,6 +352,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
 
 const props = defineProps<{
   show: boolean
@@ -536,8 +517,7 @@ function removeRule(index: number) {
   form.rules.splice(index, 1)
 }
 
-function moveRule(index: number, delta: number) {
-  const target = index + delta
+function moveRule(index: number, target: number) {
   if (target < 0 || target >= form.rules.length) return
   const [rule] = form.rules.splice(index, 1)
   form.rules.splice(target, 0, rule)
