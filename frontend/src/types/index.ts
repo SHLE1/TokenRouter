@@ -520,7 +520,6 @@ export interface Toast {
   message: string
   title?: string
   duration?: number // in milliseconds, undefined means no auto-dismiss
-  startTime?: number // timestamp when toast was created, for progress bar
 }
 
 export interface AppState {

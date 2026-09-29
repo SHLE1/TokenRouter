@@ -119,8 +119,7 @@ export const useAppStore = defineStore('app', () => {
       id,
       type,
       message,
-      duration,
-      startTime: duration !== undefined ? Date.now() : undefined
+      duration
     }
 
     toasts.value.push(toast)
