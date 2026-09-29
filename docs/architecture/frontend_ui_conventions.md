@@ -58,7 +58,7 @@
 
 ## 菜单与浮层
 
-- 下拉容器统一用 `.dropdown` 纯容器配方（定位、圆角、阴影、暗色）；箭头定位由调用点维护，展开和收起使用公共动效配方。
+- 菜单和搜索建议列表统一用 `.dropdown` 容器配方，复用圆角、边框、阴影和深色背景。默认绝对定位、上下留白 `py-1`；需要固定定位时补 `fixed`，内容自带留白时补 `py-0`。定位偏移、尺寸和箭头由调用点维护，展开和收起使用公共动效配方。自定义信息浮层及箭头同样使用 `dark-900` 面板底色和 `dark-600` 默认边框。
 - 菜单项两档：`.dropdown-item`（px-4）与紧凑档 `.dropdown-item-sm`（px-3），配色、hover、过渡都在配方里，站点只补 `gap-*`、`rounded-control` 这类布局增量。配方基线是中性色；品牌色场景（顶栏用户菜单）加 `.dropdown-item-brand` 修饰类，它定义在基线之后，同层同优先级时后定义生效。
 - 表格行内操作菜单（4 个 `*ActionMenu`）的浮层容器统一 `.action-menu` 类（fixed 定位 + 层级 + 面板样式），宽度类（w-48/w-52）与 `action-menu-content` 钩子类留在调用点。
 - 遮罩透明度只有两档，唯一来源是 CSS 变量：浅色在 `:root` 定义常规 `--overlay-bg`(black/50)、媒体灯箱等强遮罩 `--overlay-bg-strong`(black/70)。深色模式在 `html.dark` 中整体加深为 black/70 和 black/85。模板写 `bg-[var(--overlay-bg)]`，禁止手写 `bg-black/50` 这类字面值——原 /55、/60 漂移值已就近归并入标准档。
@@ -209,7 +209,7 @@
 - `onboarding.css` 覆盖 driver.js 第三方样式时的 `!important`。
 - i18n 文案中内嵌的导览 HTML（`src/i18n/**`）属于内容字符串，其 inline style 不参与 token 校验。
 - 测试文件里的负断言（断言某类名不存在）会命中扫描，行尾加 `check-ui-allow` 豁免。
-- 弹窗分诊保留的手写外壳：RedeemView 成功结果弹窗（成功图标头 + 着色 footer）、BackupView R2Guide 与 SubscriptionsView 指南弹窗（max-w-2xl 无 BaseDialog 对应档位）、AnnouncementPopup 与 AnnouncementBell 弹窗（独立层级梯队 + 定制过渡）、两个 ProviderTestModal 的图片灯箱（媒体覆盖层，用强遮罩档）、KeysView 列设置面板（p-2/shadow-xl 漂移值保留）。新增弹窗默认走 BaseDialog，不复刻这些结构。
+- 弹窗分诊保留的手写外壳：RedeemView 成功结果弹窗（成功图标头 + 着色 footer）、BackupView R2Guide 与 SubscriptionsView 指南弹窗（max-w-2xl 无 BaseDialog 对应档位）、AnnouncementPopup 与 AnnouncementBell 弹窗（独立层级梯队 + 定制过渡）、两个 ProviderTestModal 的图片灯箱（媒体覆盖层，用强遮罩档）。新增弹窗默认走 BaseDialog，不复刻这些结构。
 - RiskControlView 搜索框的 `pl-9` 图标留白（与 `input-icon-*` 档位值都不重合，局部保留）。
 - ProvidersView 的鼠标跟随操作菜单（定位语义独特，不走 `getFloatingPanelPosition`）。
 - textarea 内容驱动高度、GroupBadge 方角造型、OpsDashboard 的 250ms 路由同步防抖（语义不同于搜索防抖）、CreativeCanvas 工具条与 CreativeRunHistory 条目详情的结构性展开动画，均属局部语义，不强行入档。

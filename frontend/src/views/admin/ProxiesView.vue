@@ -190,7 +190,7 @@
                 <MotionTransition name="dropdown-fade">
                   <div
                     v-if="copyMenuProxyId === row.id" :inert="!(copyMenuProxyId === row.id) || undefined"
-                    class="absolute left-0 top-full z-50 mt-1 w-auto min-w-[180px] rounded-control border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-500 dark:bg-dark-700"
+                    class="dropdown left-0 top-full z-50 mt-1 w-auto min-w-[180px]"
                   >
                     <button
                       v-for="fmt in getCopyFormats(row)"

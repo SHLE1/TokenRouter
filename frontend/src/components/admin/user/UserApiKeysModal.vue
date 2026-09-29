@@ -75,7 +75,7 @@
       <div
         v-if="groupSelectorKeyId !== null && dropdownPosition" :inert="!(groupSelectorKeyId !== null && dropdownPosition) || undefined"
         ref="dropdownRef"
-        class="animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-64 overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-normal dark:bg-dark-800 dark:ring-white/10"
+        class="dropdown animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-64 overflow-hidden duration-normal py-0"
         :style="{
           top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
           bottom: dropdownPosition.bottom !== undefined ? dropdownPosition.bottom + 'px' : undefined,

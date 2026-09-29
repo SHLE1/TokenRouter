@@ -48,7 +48,7 @@
     <MotionTransition name="dropdown-fade">
       <div
         v-if="showDropdown && searchQuery.trim()" :inert="!(showDropdown && searchQuery.trim()) || undefined"
-        class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-dark-700"
+        class="dropdown z-50 mt-1 max-h-menu-sm w-full overflow-auto py-0"
       >
         <div v-if="searchLoading" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
           {{ t("common.loading") }}

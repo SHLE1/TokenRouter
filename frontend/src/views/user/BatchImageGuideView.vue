@@ -295,7 +295,7 @@
     <Teleport to="body">
       <div
         v-if="openMoreJobId"
-        class="fixed z-teleport-tooltip w-44 overflow-hidden rounded-control bg-white py-1 text-sm shadow-lg ring-1 ring-black/5 dark:bg-dark-800 dark:ring-white/10"
+        class="dropdown fixed z-teleport-tooltip w-44 overflow-hidden text-sm"
         :style="moreMenuStyle"
         @click.stop
       >

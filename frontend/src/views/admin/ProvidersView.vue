@@ -33,7 +33,7 @@
                 <MotionTransition name="dropdown-fade">
                   <div
                     v-if="showAutoRefreshDropdown" :inert="!(showAutoRefreshDropdown) || undefined"
-                    class="fixed z-50 w-56 origin-top-left overflow-hidden rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
+                    class="dropdown fixed z-50 w-56 origin-top-left overflow-hidden py-0"
                     :style="autoRefreshDropdownStyle"
                   >
                     <div class="p-2">
@@ -93,7 +93,7 @@
                   <MotionTransition name="dropdown-fade">
                     <div
                       v-if="showProviderToolsDropdown" :inert="!(showProviderToolsDropdown) || undefined"
-                      class="fixed z-teleport-tooltip origin-top-right overflow-hidden rounded-control border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-gray-800"
+                      class="dropdown fixed z-teleport-tooltip origin-top-right overflow-hidden py-0"
                       :style="providerToolsDropdownStyle"
                       @click.stop
                     >

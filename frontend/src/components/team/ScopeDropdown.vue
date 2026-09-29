@@ -17,7 +17,7 @@
     <MotionTransition name="dropdown-fade">
       <div
         v-if="open" :inert="!(open) || undefined"
-        class="absolute right-0 top-full z-50 mt-2 w-48 rounded-control border border-gray-200 bg-white p-2 shadow-xl dark:border-dark-600 dark:bg-gray-800"
+        class="dropdown right-0 top-full z-50 mt-2 w-48 p-2"
         role="menu"
         data-test="scope-dropdown-menu"
       >

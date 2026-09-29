@@ -38,7 +38,7 @@
               <MotionTransition name="dropdown-fade">
                 <div
                   v-if="showFilterUserDropdown && (filterUserResults.length > 0 || filterUserKeyword)" :inert="!(showFilterUserDropdown && (filterUserResults.length > 0 || filterUserKeyword)) || undefined"
-                  class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
+                  class="dropdown z-50 mt-1 max-h-menu-sm w-full overflow-auto py-0"
                 >
                   <div
                     v-if="filterUserLoading"
@@ -147,7 +147,7 @@
               <MotionTransition name="dropdown-fade">
                 <div
                   v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
-                  class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
+                  class="dropdown right-0 z-50 mt-2 w-48 origin-top-right py-0"
                 >
                   <div class="p-2">
                     <!-- User column mode selection -->
@@ -491,7 +491,7 @@
             <MotionTransition name="dropdown-fade">
               <div
                 v-if="showUserDropdown && (userSearchResults.length > 0 || userSearchKeyword)" :inert="!(showUserDropdown && (userSearchResults.length > 0 || userSearchKeyword)) || undefined"
-                class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
+                class="dropdown z-50 mt-1 max-h-menu-sm w-full overflow-auto py-0"
               >
                 <div
                   v-if="userSearchLoading"

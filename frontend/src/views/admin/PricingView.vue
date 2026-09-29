@@ -389,7 +389,7 @@
                     <MotionTransition name="dropdown-fade">
                       <div
                         v-if="showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0" :inert="!(showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0) || undefined"
-                        class="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-control border bg-white shadow-lg dark:border-dark-600 dark:bg-dark-800"
+                        class="dropdown z-50 mt-1 max-h-48 w-full overflow-auto py-0"
                       >
                         <button
                           v-for="provider in ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]"

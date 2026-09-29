@@ -49,7 +49,7 @@
             <MotionTransition name="dropdown-fade">
               <div
                 v-if="showUserDropdown && (userResults.length > 0 || userKeyword)" :inert="!(showUserDropdown && (userResults.length > 0 || userKeyword)) || undefined"
-                class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border bg-white shadow-lg dark:bg-gray-800"
+                class="dropdown z-50 mt-1 max-h-menu-sm w-full overflow-auto py-0"
               >
                 <button
                   v-for="u in userResults"
@@ -88,7 +88,7 @@
             <MotionTransition name="dropdown-fade">
               <div
                 v-if="showApiKeyDropdown && apiKeyResults.length > 0" :inert="!(showApiKeyDropdown && apiKeyResults.length > 0) || undefined"
-                class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border bg-white shadow-lg dark:bg-gray-800"
+                class="dropdown z-50 mt-1 max-h-menu-sm w-full overflow-auto py-0"
               >
                 <button
                   v-for="k in apiKeyResults"
@@ -133,7 +133,7 @@
             <MotionTransition name="dropdown-fade">
               <div
                 v-if="showProviderDropdown && (providerResults.length > 0 || providerKeyword)" :inert="!(showProviderDropdown && (providerResults.length > 0 || providerKeyword)) || undefined"
-                class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-control border bg-white shadow-lg dark:bg-gray-800"
+                class="dropdown z-50 mt-1 max-h-menu-sm w-full overflow-auto py-0"
               >
                 <button
                   v-for="a in providerResults"

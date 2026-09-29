@@ -30,7 +30,7 @@
             <MotionTransition name="dropdown-fade">
               <div
                 v-if="showDropdown && searchResults.length > 0" :inert="!(showDropdown && searchResults.length > 0) || undefined"
-                class="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-500 dark:bg-dark-700"
+                class="dropdown left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto py-0"
               >
                 <button
                   v-for="user in searchResults"

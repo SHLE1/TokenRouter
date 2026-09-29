@@ -67,7 +67,7 @@
                 <MotionTransition name="dropdown-fade">
                   <div
                     v-if="showColumnDropdown" :inert="!(showColumnDropdown) || undefined"
-                    class="absolute right-0 top-full z-50 mt-2 max-h-80 w-52 overflow-y-auto rounded-control border border-gray-200 bg-white p-2 shadow-xl dark:border-dark-600 dark:bg-gray-800"
+                    class="dropdown right-0 top-full z-50 mt-2 max-h-menu w-52 overflow-y-auto p-2"
                   >
                     <button
                       v-for="column in toggleableColumns"
@@ -1191,7 +1191,7 @@
         <div
           v-if="groupSelectorKeyId !== null && dropdownPosition" :inert="!(groupSelectorKeyId !== null && dropdownPosition) || undefined"
           ref="dropdownRef"
-          class="animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-max max-w-[calc(100vw-16px)] overflow-hidden rounded-control bg-white shadow-lg ring-1 ring-black/5 duration-normal sm:min-w-[380px] dark:bg-dark-800 dark:ring-white/10"
+          class="dropdown animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-max max-w-[calc(100vw-16px)] overflow-hidden duration-normal sm:min-w-[380px] py-0"
           style="pointer-events: auto !important;"
           :style="{
             top: dropdownPosition.top !== undefined ? dropdownPosition.top + 'px' : undefined,
