@@ -7,28 +7,35 @@
     >
       <section data-testid="redeem-panel" class="card p-4 sm:p-6">
         <div class="flex flex-col gap-4">
-          <dl class="grid grid-cols-2 gap-4">
-            <div>
-              <dt class="text-xs font-medium text-gray-500 dark:text-dark-400">
-                {{ t('redeem.currentBalance') }}
-              </dt>
-              <dd class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
-                {{ formatBalanceAmount(user?.balance, { fractionDigits: 2 }) }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-xs font-medium text-gray-500 dark:text-dark-400">
-                {{ t('redeem.concurrency') }}
-              </dt>
-              <dd class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
-                {{ user?.concurrency || 0 }}
-                <span class="text-sm font-normal text-gray-500 dark:text-dark-400">{{ t('redeem.requests') }}</span>
-              </dd>
-            </div>
-          </dl>
+          <RedeemCelebration
+            :sequence="celebration?.sequence ?? 0"
+            :title="celebration?.title ?? ''"
+            :detail="celebration?.detail ?? ''"
+          >
+            <dl class="grid grid-cols-2 gap-4">
+              <div>
+                <dt class="text-xs font-medium text-gray-500 dark:text-dark-400">
+                  {{ t('redeem.currentBalance') }}
+                </dt>
+                <dd class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
+                  {{ formatBalanceAmount(user?.balance, { fractionDigits: 2 }) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs font-medium text-gray-500 dark:text-dark-400">
+                  {{ t('redeem.concurrency') }}
+                </dt>
+                <dd class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
+                  {{ user?.concurrency || 0 }}
+                  <span class="text-sm font-normal text-gray-500 dark:text-dark-400">{{ t('redeem.requests') }}</span>
+                </dd>
+              </div>
+            </dl>
+          </RedeemCelebration>
 
           <!-- 中等宽度下输入框与按钮同排，宽屏左栏较窄时恢复纵向排列。 -->
           <form
+            ref="redeemForm"
             class="flex flex-col gap-3 border-t border-gray-100 pt-4 dark:border-dark-700 sm:flex-row lg:flex-col"
             @submit.prevent="handleRedeem"
           >
@@ -39,6 +46,7 @@
               </div>
               <input
                 id="code"
+                ref="codeInput"
                 v-model="redeemCode"
                 type="text"
                 required
@@ -210,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
@@ -222,6 +230,7 @@ import BalanceIcon from '@/components/common/BalanceIcon.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import SubscriptionUsageList from '@/components/common/SubscriptionUsageList.vue'
 import Icon from '@/components/icons/Icon.vue'
+import RedeemCelebration from '@/components/user/RedeemCelebration.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { formatDateTime } from '@/utils/format'
 
@@ -234,7 +243,12 @@ const { formatBalanceAmount } = useBalanceDisplay()
 const user = computed(() => authStore.user)
 
 const redeemCode = ref('')
+const redeemForm = ref<HTMLFormElement | null>(null)
+const codeInput = ref<HTMLInputElement | null>(null)
 const submitting = ref(false)
+const celebration = ref<{ sequence: number; title: string; detail: string } | null>(null)
+let celebrationSequence = 0
+let disposed = false
 
 // 兑换历史按固定页容量分页，宽屏下列表在卡内滚动，页面本身不再增高。
 const HISTORY_PAGE_SIZE = 10
@@ -253,7 +267,7 @@ const redeemErrorMap = computed<Record<string, string>>(() => ({
   REDEEM_CODE_USED: t('redeem.codeMaxUsed')
 }))
 
-// Helper functions for history display
+// 余额类记录共用金额与正负号格式。
 const isBalanceType = (type: string) => {
   return type === 'balance' || type === 'admin_balance' || type === 'affiliate_balance'
 }
@@ -327,12 +341,14 @@ const fetchHistory = async (page = historyPage.value) => {
   loadingHistory.value = true
   try {
     const result = await redeemAPI.getHistory(page, HISTORY_PAGE_SIZE)
-    if (requestId !== historyRequestId) return
+    if (disposed || requestId !== historyRequestId) return true
     history.value = result.items
     historyTotal.value = result.total
     historyPage.value = page
+    return true
   } catch (error) {
     console.error('Failed to fetch history:', error)
+    return false
   } finally {
     if (requestId === historyRequestId) {
       loadingHistory.value = false
@@ -340,45 +356,78 @@ const fetchHistory = async (page = historyPage.value) => {
   }
 }
 
+// 成功内容来自兑换响应，不依赖后续刷新，也不从余额差额推算到账金额。
+const getCelebrationDetail = (result: RedeemHistoryItem) => {
+  if (result.type === 'balance') {
+    return t('redeem.balanceReceived', { amount: formatSignedBalanceAmount(result.value, 2) })
+  }
+  if (result.type === 'concurrency') {
+    const count = `${result.value >= 0 ? '+' : ''}${result.value}`
+    return t('redeem.concurrencyReceived', { count })
+  }
+  return t('redeem.subscriptionReceived')
+}
+
 const handleRedeem = async () => {
+  if (submitting.value) return
   if (!redeemCode.value.trim()) {
     appStore.showError(t('redeem.pleaseEnterCode'))
     return
   }
 
+  const restoreInputFocus = redeemForm.value?.contains(document.activeElement) ?? false
   submitting.value = true
+  celebration.value = null
 
   try {
-    const result = await redeemAPI.redeem(redeemCode.value.trim())
-
-    // Refresh user data to get updated balance/concurrency
-    await authStore.refreshUser()
-
-    // If subscription type, immediately refresh subscription status
-    if (result.type === 'subscription') {
-      try {
-        await subscriptionStore.fetchActiveSubscriptions(true) // force refresh
-      } catch (error) {
-        console.error('Failed to refresh subscriptions after redeem:', error)
-        appStore.showWarning(t('redeem.subscriptionRefreshFailed'))
+    let result: RedeemHistoryItem
+    try {
+      result = await redeemAPI.redeem(redeemCode.value.trim())
+    } catch (error) {
+      if (!disposed) {
+        appStore.showError(extractApiErrorMessage(error, t('redeem.failedToRedeem'), redeemErrorMap.value))
       }
+      return
+    }
+    if (disposed) return
+
+    redeemCode.value = ''
+    celebration.value = {
+      sequence: ++celebrationSequence,
+      title: t('redeem.codeRedeemSuccess'),
+      detail: getCelebrationDetail(result)
     }
 
-    // Clear the input
-    redeemCode.value = ''
-
-    // 新记录排在最前，兑换成功后回到第一页。
-    await fetchHistory(1)
-
-    // Show success toast
-    appStore.showSuccess(t('redeem.codeRedeemSuccess'))
-  } catch (error: any) {
-    // 兑换结果只通过 Toast 反馈，余额和历史列表会同步刷新。
-    appStore.showError(extractApiErrorMessage(error, t('redeem.failedToRedeem'), redeemErrorMap.value))
+    // 权益已发放，后续刷新独立完成；局部失败不会把兑换成功改报成失败。
+    // 历史回到第一页，订阅兑换强制刷新，任一刷新失败也不阻止其余数据更新。
+    const results = await Promise.allSettled([
+      authStore.refreshUser(),
+      fetchHistory(1),
+      result.type === 'subscription'
+        ? subscriptionStore.fetchActiveSubscriptions(true)
+        : Promise.resolve()
+    ])
+    const historyResult = results[1]
+    const refreshFailed = results.some((entry) => entry.status === 'rejected') ||
+      (historyResult.status === 'fulfilled' && historyResult.value === false)
+    if (!disposed && refreshFailed) {
+      appStore.showWarning(t('redeem.dataRefreshFailed'))
+    }
   } finally {
+    // 提交状态只跟随请求，不等待庆祝动画或成功信息的保留时长。
     submitting.value = false
+    await nextTick()
+    // 禁用控件可能让焦点落到 body；用户已移到其他控件时不抢回焦点。
+    if (!disposed && restoreInputFocus && document.activeElement === document.body) {
+      codeInput.value?.focus({ preventScroll: true })
+    }
   }
 }
+
+onBeforeUnmount(() => {
+  disposed = true
+  historyRequestId++
+})
 
 onMounted(() => {
   fetchHistory()

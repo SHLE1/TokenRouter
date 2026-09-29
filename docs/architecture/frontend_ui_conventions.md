@@ -187,6 +187,7 @@
 - Toast 和用户直接增删的短列表使用 `motion-list`，以稳定业务 key 识别进入、退出与位置变化。分页表格、虚拟列表和轮询结果不逐行播放动效。
 - 系统减少动态效果时，普通过渡变量缩短至 1ms、位移归零，Collapse 和内容淡入直接完成状态切换；动态改变偏好会取消内容淡入。完成和清理继续通过 Vue 生命周期、动画完成事件执行，不用业务定时器猜测结束时间。
 - 专用动画保留自身几何：CreativeCanvas 工具条扩展、CreativeRunHistory 详情及 CustomPageView 目录抽屉共用普通时长和缓动；通用图标、加载反馈、计时进度和公开页数字滚动保留专用节奏与各自的减少动态效果处理。主题切换沿用临时关闭过渡的规则。
+- 用户兑换成功使用卡片内的 `RedeemCelebration`：统计区保留占位，显示成功图标与权益信息，彩纸使用独立的 2 秒节奏并通过动画完成事件移除；提示保留 3 秒后按公共 fade 配方退出。每次成功以独立序号触发，再次提交或卸载时清理旧效果。减少动态效果时只展示静态成功信息，播放期间修改偏好也立即取消装饰；成功消息通过礼貌播报区域通知辅助技术。
 - 同一次动效的 JS/CSS 时长必须同源。KeyUsageView 圆环和数字滚动共用 `RING_ANIMATION_MS`。`constants/ui.ts` 的 `COPY_FEEDBACK_MS`（2000）和 `SEARCH_DEBOUNCE_MS`（300）属于反馈保留与防抖，不并入过渡档位。公告连播仍由 after-leave 推进队列，组件途中卸载时由卸载回调完成清理。
 
 ## 表格密度
@@ -215,7 +216,7 @@
 - `onboarding.css` 覆盖 driver.js 第三方样式时的 `!important`。
 - i18n 文案中内嵌的导览 HTML（`src/i18n/**`）属于内容字符串，其 inline style 不参与 token 校验。
 - 测试文件里的负断言（断言某类名不存在）会命中扫描，行尾加 `check-ui-allow` 豁免。
-- 弹窗分诊保留的手写外壳：RedeemView 成功结果弹窗（成功图标头 + 着色 footer）、BackupView R2Guide 与 SubscriptionsView 指南弹窗（max-w-2xl 无 BaseDialog 对应档位）、AnnouncementPopup 与 AnnouncementBell 弹窗（独立层级梯队 + 定制过渡）、两个 ProviderTestModal 的图片灯箱（媒体覆盖层，用强遮罩档）。新增弹窗默认走 BaseDialog，不复刻这些结构。
+- 弹窗分诊保留的手写外壳：BackupView R2Guide 与 SubscriptionsView 指南弹窗（max-w-2xl 无 BaseDialog 对应档位）、AnnouncementPopup 与 AnnouncementBell 弹窗（独立层级梯队 + 定制过渡）、两个 ProviderTestModal 的图片灯箱（媒体覆盖层，用强遮罩档）。新增弹窗默认走 BaseDialog，不复刻这些结构。
 - RiskControlView 搜索框的 `pl-9` 图标留白（与 `input-icon-*` 档位值都不重合，局部保留）。
 - ProvidersView 的鼠标跟随操作菜单（定位语义独特，不走 `getFloatingPanelPosition`）。
 - textarea 内容驱动高度、GroupBadge 方角造型、OpsDashboard 的 250ms 路由同步防抖（语义不同于搜索防抖）、CreativeCanvas 工具条与 CreativeRunHistory 条目详情的结构性展开动画，均属局部语义，不强行入档。

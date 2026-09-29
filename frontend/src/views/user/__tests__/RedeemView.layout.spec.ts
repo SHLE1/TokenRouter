@@ -30,12 +30,6 @@ describe('RedeemView responsive layout', () => {
     expect(viewSource).toContain('<SubscriptionUsageList')
   })
 
-  it('reports redeem results only through toasts', () => {
-    // 成功与失败都由 Toast 反馈，页面不再渲染重复的内联结果卡。
-    expect(viewSource).not.toContain('redeemResult')
-    expect(viewSource).not.toContain('errorMessage')
-  })
-
   it('omits supplementary redeem guidance', () => {
     // 页面只保留兑换操作与历史，避免再次加入重复说明或大小写提示。
     expect(viewSource).not.toContain("t('redeem.redeemCodeHint')")

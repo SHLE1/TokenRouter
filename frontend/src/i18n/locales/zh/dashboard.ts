@@ -557,11 +557,14 @@ export default {
     subscriptionAssigned: '订阅已分配',
     affiliateBalance: '邀请返利转余额',
     codeRedeemSuccess: '兑换成功！',
+    balanceReceived: '余额已到账 {amount}',
+    concurrencyReceived: '并发数 {count}',
+    subscriptionReceived: '订阅已领取',
+    dataRefreshFailed: '兑换成功，但数据刷新失败，请刷新页面查看。',
     codeExpired: '该兑换码已过期',
     codeMaxUsed: '该兑换码已达到兑换上限',
     codeAlreadyUsed: '您已经兑换过该兑换码',
     failedToRedeem: '兑换失败，请检查兑换码后重试。',
-    subscriptionRefreshFailed: '兑换成功，但订阅状态刷新失败。',
     pleaseEnterCode: '请输入兑换码'
   },
 affiliate: {

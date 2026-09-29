@@ -552,11 +552,14 @@ export default {
     subscriptionAssigned: 'Subscription Assigned',
     affiliateBalance: 'Affiliate Balance Transfer',
     codeRedeemSuccess: 'Code redeemed successfully!',
+    balanceReceived: 'Balance credited {amount}',
+    concurrencyReceived: 'Concurrency {count}',
+    subscriptionReceived: 'Subscription received',
+    dataRefreshFailed: 'Redeemed successfully, but data could not be refreshed. Please reload the page.',
     codeExpired: 'This redeem code has expired',
     codeMaxUsed: 'This redeem code has reached its redemption limit',
     codeAlreadyUsed: 'You have already redeemed this code',
     failedToRedeem: 'Failed to redeem code. Please check the code and try again.',
-    subscriptionRefreshFailed: 'Redeemed successfully, but failed to refresh subscription status.',
     pleaseEnterCode: 'Please enter a redeem code'
   },
 affiliate: {

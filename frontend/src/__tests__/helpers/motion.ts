@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 /** jsdom 不计算 CSS 过渡；显式提供浏览器时长，并由 transitionend 推进完成。 */
 export function mockMotionEnvironment(initiallyReduced = false) {
   let reduced = initiallyReduced
-  const listeners = new Set<() => void>()
+  const listeners = new Set<(event: MediaQueryListEvent) => void>()
   vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
     media: query,
     get matches() { return query.includes('prefers-reduced-motion') && reduced },
@@ -30,7 +30,8 @@ export function mockMotionEnvironment(initiallyReduced = false) {
   return {
     reduce(value: boolean) {
       reduced = value
-      listeners.forEach(callback => callback())
+      // VueUse 从 change 事件读取 matches，保持与浏览器通知的形状一致。
+      listeners.forEach(callback => callback({ matches: reduced } as MediaQueryListEvent))
     },
     listeners,
   }
