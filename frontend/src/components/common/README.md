@@ -246,6 +246,59 @@ Empty state placeholder with icon, message, and optional action button.
 />
 ```
 
+---
+
+### RuleListEditor.vue
+
+Shell for lists edited one row at a time: a header with title, hint and add button, a dashed empty state, and per-row move and delete buttons. It does not own the data. The parent performs every change in response to its events.
+
+**Props:**
+
+- `items: T[]` - Rows to render
+- `itemKey?: (item, index) => string | number` - Row key (defaults to object identity; primitive rows fall back to the index)
+- `title?: string` / `hint?: string` - Header text
+- `titleStyle?: 'label' | 'section'` - Form label style or group-section heading style (default: `label`)
+- `addLabel?: string` - Add button text (default: `common.add`)
+- `addPlacement?: 'header' | 'footer'` - Add button position (default: `header`; use `footer` when there is no title)
+- `addDisabled?: boolean` - Disable the add button on its own
+- `removeLabel?: string` - Delete button label (default: `common.delete`)
+- `emptyText?: string` - Empty state text; omit it to hide the empty state
+- `min?: number` / `max?: number` - Row count limits; delete is disabled at `min`, add at `max`
+- `disabled?: boolean` - Disable every action
+- `removable?: boolean` - Show the delete button (default: true)
+- `reorderable?: boolean` - Show move up/down buttons
+- `variant?: 'line' | 'card'` - Rows separated by dividers, or bordered cards (default: `line`)
+- `itemLabel?: (index) => string` - Row heading such as "Rule #1"
+- `animated?: boolean` - List enter/leave motion (default: true; turn it off when keys are indexes)
+- `error?: string` - List-level error shown as an alert
+- `testId?: string` - Prefix for `data-testid` hooks: `-add`, `-row`, `-remove-{i}`, `-move-up-{i}`, `-move-down-{i}`
+
+**Events:** `add`, `remove(index)`, `move(from, to)`
+
+**Slots:** `row({ item, index })`, `header-actions`, `header-extra`, `footer`
+
+Clicking the add button focuses the first input of the new row. Rows appended by presets or imports do not take focus.
+
+---
+
+### ModelMappingEditor.vue
+
+Source → target mapping rows built on `RuleListEditor`. `v-model` is an array of `{ from, to }` (`ModelMappingRow` in `@/utils/modelMappingRules`). Typing edits the row object in place and emits a new array; adding and removing also emit `add(row)` and `remove(row, index)`.
+
+Validation is opt-in. Compute issues with `validateModelMappingRows(rows, options)`, translate them, and pass the result as `fieldErrors`.
+
+```vue
+<ModelMappingEditor
+  v-model="rows"
+  :title="t('keys.modelRedirect.label')"
+  :add-label="t('keys.modelRedirect.addRule')"
+  :empty-text="t('keys.modelRedirect.empty')"
+  :source-label="t('keys.modelRedirect.source')"
+  :target-label="t('keys.modelRedirect.target')"
+  :field-errors="fieldErrors"
+/>
+```
+
 ## Import
 
 You can import components individually:
