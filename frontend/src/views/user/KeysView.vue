@@ -1357,11 +1357,11 @@ const visibleCompositeGroups = (row: ApiKey) => {
 }
 
 // compositeGroupChipClass 返回复合映射胶囊的配色，与 GroupBadge 共用分组展示品牌的色板。
-// 未配置展示品牌时使用中性底色，避免和品牌色混淆。
+// 未配置展示品牌时使用中性底色和内描边，与普通分组徽章保持一致。
 const compositeGroupChipClass = (displayBrand?: string | null) => {
   const brand = displayBrand?.trim()
   if (!brand) {
-    return 'bg-gray-100 text-gray-900 dark:bg-dark-800 dark:text-dark-50'
+    return 'ring-1 ring-inset bg-gray-100 text-gray-900 ring-gray-200 dark:bg-dark-800 dark:text-dark-50 dark:ring-dark-600'
   }
   return `ring-1 ring-inset ${resolveProviderBrand(brand).badgeClass}`
 }

@@ -127,6 +127,34 @@ describe('图标交互', () => {
     expect(controls.start).toHaveBeenLastCalledWith('normal')
   })
 
+  it('SVG 获得点击焦点时将焦点交回按钮，键盘焦点继续保留在按钮上', () => {
+    wrapper = host()
+    const svg = wrapper.find('svg').element
+    // 浏览器允许点击聚焦 tabindex=-1 的 SVG，不能只验证它是否退出 Tab 顺序。
+    svg.setAttribute('tabindex', '-1')
+    svg.focus()
+    expect(document.activeElement).toBe(wrapper.element)
+    expect(controls.start).toHaveBeenCalledWith('first')
+    wrapper.element.blur()
+    wrapper.element.focus()
+    expect(document.activeElement).toBe(wrapper.element)
+  })
+
+  it('label 内的 SVG 获得焦点时转交给关联控件', () => {
+    wrapper = host({ label: true })
+    const svg = wrapper.find('svg').element
+    svg.setAttribute('tabindex', '-1')
+    svg.focus()
+    expect(document.activeElement).toBe(wrapper.find('input').element)
+  })
+
+  it('独立 SVG 没有外层控件时保留自身焦点', () => {
+    wrapper = host({ standalone: true })
+    wrapper.element.setAttribute('tabindex', '-1')
+    wrapper.element.focus()
+    expect(document.activeElement).toBe(wrapper.element)
+  })
+
   it.each([{ standalone: true }, { marked: true }])(
     '支持独立图标和显式触发容器 %o',
     async (options) => {
