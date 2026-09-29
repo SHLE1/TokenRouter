@@ -284,67 +284,12 @@
             </div>
 
             <!-- Mapping Mode -->
-            <div v-else>
-              <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-                <p class="text-xs text-purple-700 dark:text-purple-400">
-                  <Icon name="infoCircle" size="sm" class="mr-1 inline h-4 w-4" />
-                  {{ t('admin.providers.mapRequestModels') }}
-                </p>
-              </div>
-
-              <!-- Model Mapping List -->
-              <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
-                <div
-                  v-for="(mapping, index) in modelMappings"
-                  :key="index"
-                  class="flex items-center gap-2"
-                >
-                  <input
-                    v-model="mapping.from"
-                    type="text"
-                    class="input flex-1"
-                    :placeholder="t('admin.providers.requestModel')"
-                  />
-                  <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
-                  <input
-                    v-model="mapping.to"
-                    type="text"
-                    class="input flex-1"
-                    :placeholder="t('admin.providers.actualModel')"
-                  />
-                  <button
-                    type="button"
-                    class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                    @click="removeModelMapping(index)"
-                  >
-                    <Icon name="trash" size="sm" class="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-                @click="addModelMapping"
-              >
-                <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
-                {{ t('admin.providers.addMapping') }}
-              </button>
-
-              <!-- Quick Add Buttons -->
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="preset in filteredPresets"
-                  :key="preset.label"
-                  type="button"
-                  :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-                  @click="addPresetMapping(preset.from, preset.to)"
-                >
-                  + {{ preset.label }}
-                </button>
-              </div>
-            </div>
-
+            <ProviderModelMappingEditor
+              v-else
+              v-model="modelMappings"
+              :presets="filteredPresets"
+              @preset="addPresetMapping"
+            />
         </div>
       </div>
 
@@ -1093,44 +1038,13 @@
           id="bulk-edit-openai-compact-model-mapping"
           :class="!enableOpenAICompactModelMapping && 'pointer-events-none opacity-50'"
         >
-          <div v-if="openAICompactModelMappings.length > 0" class="mb-3 space-y-2">
-            <div
-              v-for="(mapping, index) in openAICompactModelMappings"
-              :key="index"
-              class="flex items-center gap-2"
-            >
-              <input
-                v-model="mapping.from"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.fromModel')"
-                data-testid="bulk-edit-openai-compact-model-mapping-input"
-              />
-              <span class="text-gray-400">→</span>
-              <input
-                v-model="mapping.to"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.toModel')"
-                data-testid="bulk-edit-openai-compact-model-mapping-input"
-              />
-              <button
-                type="button"
-                class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                @click="removeOpenAICompactModelMapping(index)"
-              >
-                <Icon name="trash" size="sm" />
-              </button>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            data-testid="bulk-edit-openai-compact-model-mapping-add"
-            @click="addOpenAICompactModelMapping"
-          >
-            + {{ t('admin.providers.addMapping') }}
-          </button>
+          <ProviderModelMappingEditor
+            v-model="openAICompactModelMappings"
+            :hint="''"
+            :source-placeholder="t('admin.providers.fromModel')"
+            :target-placeholder="t('admin.providers.toModel')"
+            test-id="bulk-edit-openai-compact-model-mapping"
+          />
         </div>
       </div>
 
@@ -1385,6 +1299,8 @@ import GroupSelector from '@/components/common/GroupSelector.vue'
 import CodexImageToolModeSelector from '@/components/provider/CodexImageToolModeSelector.vue'
 import ModelWhitelistSelector from '@/components/provider/ModelWhitelistSelector.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
+import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import {
   buildModelMappingObject,
   buildPersistedModelRestriction,
@@ -1545,17 +1461,12 @@ const filteredPresets = computed(() => {
 })
 
 // Model mapping type
-interface ModelMapping {
-  from: string
-  to: string
-}
-
 type OptionalNumberInputValue = number | null | ''
 
 interface ParsedModelRestrictionState {
   mode: 'whitelist' | 'mapping'
   allowedModels: string[]
-  modelMappings: ModelMapping[]
+  modelMappings: ModelMappingRow[]
 }
 
 // State - field enable flags
@@ -1597,7 +1508,7 @@ const submitting = ref(false)
 const baseUrl = ref('')
 const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
-const modelMappings = ref<ModelMapping[]>([])
+const modelMappings = ref<ModelMappingRow[]>([])
 const selectedErrorCodes = ref<number[]>([])
 const customErrorCodeInput = ref<number | null>(null)
 const interceptWarmupRequests = ref(false)
@@ -1635,7 +1546,7 @@ const codexFingerprintModeOptions = computed(() => [
 ])
 const openAICompactMode = ref<OpenAICompactMode>('force_on')
 const openAINativeCompactionV2Mode = ref<OpenAICompactMode>('force_on')
-const openAICompactModelMappings = ref<ModelMapping[]>([])
+const openAICompactModelMappings = ref<ModelMappingRow[]>([])
 const rpmLimitEnabled = ref(false)
 const bulkBaseRpm = ref<number | null>(null)
 const bulkRpmStrategy = ref<'tiered' | 'sticky_exempt'>('tiered')
@@ -1698,10 +1609,10 @@ const openAIAPIKeyWSModeConcurrencyHintKey = computed(() =>
   resolveOpenAIWSModeConcurrencyHintKey(openaiAPIKeyResponsesWebSocketV2Mode.value)
 )
 
-const cloneModelMappings = (mappings: ModelMapping[]) =>
+const cloneModelMappings = (mappings: ModelMappingRow[]) =>
   mappings.map(({ from, to }) => ({ from, to }))
 
-const normalizeModelMappings = (mappings: ModelMapping[]) => {
+const normalizeModelMappings = (mappings: ModelMappingRow[]) => {
   return cloneModelMappings(mappings)
     .map(({ from, to }) => ({
       from: from.trim(),
@@ -1740,7 +1651,7 @@ const parseProviderModelRestriction = (provider: Provider): ParsedModelRestricti
   const credentials = (provider.credentials as Record<string, unknown>) || {}
 
   let allowedModels: string[] = []
-  let modelMappings: ModelMapping[] = []
+  let modelMappings: ModelMappingRow[] = []
 
   if (provider.platform === 'antigravity') {
     const rawMapping = credentials.model_mapping as Record<string, string> | undefined
@@ -1853,22 +1764,6 @@ const loadSelectedProviderDefaults = async () => {
 }
 
 // Model mapping helpers
-const addModelMapping = () => {
-  modelMappings.value.push({ from: '', to: '' })
-}
-
-const removeModelMapping = (index: number) => {
-  modelMappings.value.splice(index, 1)
-}
-
-const addOpenAICompactModelMapping = () => {
-  openAICompactModelMappings.value.push({ from: '', to: '' })
-}
-
-const removeOpenAICompactModelMapping = (index: number) => {
-  openAICompactModelMappings.value.splice(index, 1)
-}
-
 const addPresetMapping = (from: string, to: string) => {
   const exists = modelMappings.value.some((m) => m.from === from)
   if (exists) {

@@ -270,67 +270,14 @@
             </div>
 
             <!-- Mapping Mode -->
-            <div v-else>
-              <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-                <p class="text-xs text-purple-700 dark:text-purple-400">
-                  <Icon name="infoCircle" size="sm" class="mr-1 inline h-4 w-4" />
-                  {{ t('admin.providers.mapRequestModels') }}
-                </p>
-              </div>
-
-            <!-- Model Mapping List -->
-            <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
-              <div
-                v-for="(mapping, index) in modelMappings"
-                :key="getModelMappingKey(mapping)"
-                class="flex items-center gap-2"
-              >
-                <input
-                  v-model="mapping.from"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.requestModel')"
-                />
-                <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
-                <input
-                  v-model="mapping.to"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.actualModel')"
-                />
-                <button
-                  type="button"
-                  @click="removeModelMapping(index)"
-                  class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                >
-                  <Icon name="trash" size="sm" class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              @click="addModelMapping"
-              class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            >
-              <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
-              {{ t('admin.providers.addMapping') }}
-            </button>
-
-              <!-- Quick Add Buttons -->
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="preset in presetMappings"
-                  :key="preset.label"
-                  type="button"
-                  @click="addPresetMapping(preset.from, preset.to)"
-                  :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-                >
-                  + {{ preset.label }}
-                </button>
-              </div>
-            </div>
-
+            <ProviderModelMappingEditor
+              v-else
+              v-model="modelMappings"
+              :presets="presetMappings"
+              @add="touchQoderModelRestriction"
+              @remove="touchQoderModelRestriction"
+              @preset="addPresetMapping"
+            />
         </div>
 
         <!-- Pool Mode Section -->
@@ -603,64 +550,14 @@
           </div>
 
           <!-- Mapping Mode -->
-          <div v-else>
-            <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-              <p class="text-xs text-purple-700 dark:text-purple-400">
-                {{ t('admin.providers.mapRequestModels') }}
-              </p>
-            </div>
-
-            <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
-              <div
-                v-for="(mapping, index) in modelMappings"
-                :key="'oauth-' + getModelMappingKey(mapping)"
-                class="flex items-center gap-2"
-              >
-                <input
-                  v-model="mapping.from"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.requestModel')"
-                />
-                <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
-                <input
-                  v-model="mapping.to"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.actualModel')"
-                />
-                <button
-                  type="button"
-                  @click="removeModelMapping(index)"
-                  class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                >
-                  <Icon name="trash" size="sm" class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              @click="addModelMapping"
-              class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            >
-              + {{ t('admin.providers.addMapping') }}
-            </button>
-
-            <!-- Quick Add Buttons -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="preset in presetMappings"
-                :key="'oauth-' + preset.label"
-                type="button"
-                @click="addPresetMapping(preset.from, preset.to)"
-                :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-              >
-                + {{ preset.label }}
-              </button>
-            </div>
-          </div>
-
+          <ProviderModelMappingEditor
+            v-else
+            v-model="modelMappings"
+            :presets="presetMappings"
+            @add="touchQoderModelRestriction"
+            @remove="touchQoderModelRestriction"
+            @preset="addPresetMapping"
+          />
       </div>
 
       <!-- Upstream fields (only for upstream type) -->
@@ -759,66 +656,14 @@
           </div>
 
           <!-- Mapping Mode -->
-          <div v-else>
-            <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-              <p class="text-xs text-purple-700 dark:text-purple-400">
-                <Icon name="infoCircle" size="sm" class="mr-1 inline h-4 w-4" />
-                {{ t('admin.providers.mapRequestModels') }}
-              </p>
-            </div>
-
-            <!-- Model Mapping List -->
-            <div v-if="modelMappings.length > 0" class="mb-3 space-y-2">
-              <div
-                v-for="(mapping, index) in modelMappings"
-                :key="getModelMappingKey(mapping)"
-                class="flex items-center gap-2"
-              >
-                <input
-                  v-model="mapping.from"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.requestModel')"
-                />
-                <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
-                <input
-                  v-model="mapping.to"
-                  type="text"
-                  class="input flex-1"
-                  :placeholder="t('admin.providers.actualModel')"
-                />
-                <button
-                  type="button"
-                  @click="removeModelMapping(index)"
-                  class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                >
-                  <Icon name="trash" size="sm" class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              @click="addModelMapping"
-              class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            >
-              <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
-              {{ t('admin.providers.addMapping') }}
-            </button>
-
-            <!-- Quick Add Buttons -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="preset in presetMappings"
-                :key="preset.label"
-                type="button"
-                @click="addPresetMapping(preset.from, preset.to)"
-                :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-              >
-                + {{ preset.label }}
-              </button>
-            </div>
-          </div>
+          <ProviderModelMappingEditor
+            v-else
+            v-model="modelMappings"
+            :presets="presetMappings"
+            @add="touchQoderModelRestriction"
+            @remove="touchQoderModelRestriction"
+            @preset="addPresetMapping"
+          />
         </div>
       </div>
 
@@ -939,31 +784,14 @@
           </div>
 
           <!-- Mapping Mode -->
-          <div v-else class="space-y-3">
-            <div v-for="(mapping, index) in modelMappings" :key="getModelMappingKey(mapping)" class="flex items-center gap-2">
-              <input v-model="mapping.from" type="text" class="input flex-1" :placeholder="t('admin.providers.fromModel')" />
-              <span class="text-gray-400">→</span>
-              <input v-model="mapping.to" type="text" class="input flex-1" :placeholder="t('admin.providers.toModel')" />
-              <button type="button" @click="modelMappings.splice(index, 1)" class="text-red-500 hover:text-red-700">
-                <Icon name="trash" size="sm" />
-              </button>
-            </div>
-            <button type="button" @click="modelMappings.push({ from: '', to: '' })" class="btn btn-secondary text-sm">
-              + {{ t('admin.providers.addMapping') }}
-            </button>
-            <!-- Bedrock Preset Mappings -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-for="preset in bedrockPresets"
-                :key="preset.from"
-                type="button"
-                @click="modelMappings.push({ from: preset.from, to: preset.to })"
-                :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-              >
-                + {{ preset.label }}
-              </button>
-            </div>
-          </div>
+          <ProviderModelMappingEditor
+            v-else
+            v-model="modelMappings"
+            :presets="bedrockPresets"
+            :source-placeholder="t('admin.providers.fromModel')"
+            :target-placeholder="t('admin.providers.toModel')"
+            @preset="(from, to) => modelMappings.push({ from, to })"
+          />
         </div>
 
         <!-- Pool Mode Section for Bedrock -->
@@ -1046,12 +874,13 @@
         <ModelWhitelistSelector v-model="antigravityWhitelistModels" platform="antigravity" />
 
         <!-- Mapping Mode Only (no toggle for Antigravity) -->
-        <div>
-          <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
-            <p class="text-xs text-purple-700 dark:text-purple-400">{{ t('admin.providers.mapRequestModels') }}</p>
-          </div>
-
-          <div class="mb-3 flex flex-wrap gap-2">
+        <ProviderModelMappingEditor
+          v-model="antigravityModelMappings"
+          :presets="antigravityPresetMappings"
+          wildcard-validation
+          @preset="addAntigravityPresetMapping"
+        >
+          <template #header-actions>
             <button
               type="button"
               @click="syncAntigravityUpstreamModels"
@@ -1060,74 +889,8 @@
             >
               {{ isSyncingAntigravityUpstream ? t('admin.providers.syncUpstreamModelsLoading') : t('admin.providers.syncUpstreamModels') }}
             </button>
-          </div>
-
-          <div v-if="antigravityModelMappings.length > 0" class="mb-3 space-y-2">
-            <div
-              v-for="(mapping, index) in antigravityModelMappings"
-              :key="getAntigravityModelMappingKey(mapping)"
-              class="space-y-1"
-            >
-              <div class="flex items-center gap-2">
-                <input
-                  v-model="mapping.from"
-                  type="text"
-                  :class="[
-                    'input flex-1',
-                    !isValidWildcardPattern(mapping.from) ? 'border-red-500 dark:border-red-500' : '',
-                    mapping.to.includes('*') ? '' : ''
-                  ]"
-                  :placeholder="t('admin.providers.requestModel')"
-                />
-                <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
-                <input
-                  v-model="mapping.to"
-                  type="text"
-                  :class="[
-                    'input flex-1',
-                    mapping.to.includes('*') ? 'border-red-500 dark:border-red-500' : ''
-                  ]"
-                  :placeholder="t('admin.providers.actualModel')"
-                />
-                <button
-                  type="button"
-                  @click="removeAntigravityModelMapping(index)"
-                  class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                >
-                  <Icon name="trash" size="sm" class="h-4 w-4" />
-                </button>
-              </div>
-              <!-- 校验错误提示 -->
-              <p v-if="!isValidWildcardPattern(mapping.from)" class="text-xs text-red-500">
-                {{ t('admin.providers.wildcardOnlyAtEnd') }}
-              </p>
-              <p v-if="mapping.to.includes('*')" class="text-xs text-red-500">
-                {{ t('admin.providers.targetNoWildcard') }}
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            @click="addAntigravityModelMapping"
-            class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-          >
-            <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
-            {{ t('admin.providers.addMapping') }}
-          </button>
-
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="preset in antigravityPresetMappings"
-              :key="preset.label"
-              type="button"
-              @click="addAntigravityPresetMapping(preset.from, preset.to)"
-              :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-            >
-              + {{ preset.label }}
-            </button>
-          </div>
-        </div>
+          </template>
+        </ProviderModelMappingEditor>
       </div>
 
       <!-- Temp Unschedulable Rules -->
@@ -1761,37 +1524,14 @@
           :label="t('admin.providers.openai.nativeCompactV2Mode')" :hint="t('admin.providers.openai.nativeCompactV2ModeDesc')" />
         <OpenAICompactionCheckbox v-model="openAICompactMode" test-id="edit-openai-compact-mode"
           :label="t('admin.providers.openai.compactMode')" :hint="t('admin.providers.openai.compactModeDesc')" />
-        <div v-if="openAICompactMode !== 'force_off'">
-          <label class="input-label">{{ t('admin.providers.openai.compactModelMapping') }}</label>
-          <p class="input-hint">{{ t('admin.providers.openai.compactModelMappingDesc') }}</p>
-          <div v-if="openAICompactModelMappings.length > 0" class="mb-3 space-y-2">
-            <div
-              v-for="(mapping, index) in openAICompactModelMappings"
-              :key="getOpenAICompactModelMappingKey(mapping)"
-              class="flex items-center gap-2"
-            >
-              <input
-                v-model="mapping.from"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.fromModel')"
-              />
-              <span class="text-gray-400">→</span>
-              <input
-                v-model="mapping.to"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.toModel')"
-              />
-              <button type="button" @click="removeOpenAICompactModelMapping(index)" class="text-red-500 hover:text-red-700">
-                <Icon name="trash" size="sm" />
-              </button>
-            </div>
-          </div>
-          <button type="button" @click="addOpenAICompactModelMapping" class="btn btn-secondary text-sm">
-            + {{ t('admin.providers.addMapping') }}
-          </button>
-        </div>
+        <ProviderModelMappingEditor
+          v-if="openAICompactMode !== 'force_off'"
+          v-model="openAICompactModelMappings"
+          :title="t('admin.providers.openai.compactModelMapping')"
+          :hint="t('admin.providers.openai.compactModelMappingDesc')"
+          :source-placeholder="t('admin.providers.fromModel')"
+          :target-placeholder="t('admin.providers.toModel')"
+        />
       </div>
 
       <div>
@@ -2247,6 +1987,8 @@ import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import UpstreamRequestIdHeaderField from '@/components/provider/UpstreamRequestIdHeaderField.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
+import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import ProxySelector from '@/components/common/ProxySelector.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
 import CodexImageToolModeSelector from '@/components/provider/CodexImageToolModeSelector.vue'
@@ -2308,7 +2050,6 @@ import {
   buildPersistedModelRestriction,
   splitQoderPersistedModelRestriction,
   splitPersistedModelRestriction,
-  isValidWildcardPattern,
   type QoderSite
 } from '@/composables/useModelWhitelist'
 
@@ -2352,11 +2093,6 @@ const antigravityPresetMappings = computed(() => getPresetMappingsByPlatform('an
 const bedrockPresets = computed(() => getPresetMappingsByPlatform('bedrock'))
 
 // Model mapping type
-interface ModelMapping {
-  from: string
-  to: string
-}
-
 interface TempUnschedRuleForm {
   error_code: number | null
   keywords: string
@@ -2512,8 +2248,8 @@ const isBedrockAPIKeyMode = computed(() =>
   props.provider?.type === 'bedrock' &&
   (props.provider?.credentials as Record<string, unknown>)?.auth_mode === 'apikey'
 )
-const modelMappings = ref<ModelMapping[]>([])
-const openAICompactModelMappings = ref<ModelMapping[]>([])
+const modelMappings = ref<ModelMappingRow[]>([])
+const openAICompactModelMappings = ref<ModelMappingRow[]>([])
 const modelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const allowedModels = ref<string[]>([])
 const qoderModelRestrictionConfigured = ref(false)
@@ -2592,7 +2328,7 @@ const allowOverages = ref(false) // For antigravity providers: enable AI Credits
 const antigravityProjectId = ref('')
 const antigravityModelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const antigravityWhitelistModels = ref<string[]>([])
-const antigravityModelMappings = ref<ModelMapping[]>([])
+const antigravityModelMappings = ref<ModelMappingRow[]>([])
 const isSyncingAntigravityUpstream = ref(false)
 const tempUnschedEnabled = ref(false)
 const providerSchedulingThresholdOverrideEnabled = ref(false)
@@ -2602,9 +2338,6 @@ const supportsProviderSchedulingThresholdOverride = computed(() =>
   supportsProviderSchedulingThresholdOverridePlatform(props.provider?.platform)
 )
 const tempUnschedRules = ref<TempUnschedRuleForm[]>([])
-const getModelMappingKey = createStableObjectKeyResolver<ModelMapping>('edit-model-mapping')
-const getOpenAICompactModelMappingKey = createStableObjectKeyResolver<ModelMapping>('edit-openai-compact-model-mapping')
-const getAntigravityModelMappingKey = createStableObjectKeyResolver<ModelMapping>('edit-antigravity-model-mapping')
 const getTempUnschedRuleKey = createStableObjectKeyResolver<TempUnschedRuleForm>('edit-temp-unsched-rule')
 
 // Quota control state (Anthropic OAuth/SetupToken only)
@@ -3471,16 +3204,6 @@ const setAllowedModels = (models: string[]) => {
   allowedModels.value = models
 }
 
-const addModelMapping = () => {
-  touchQoderModelRestriction()
-  modelMappings.value.push({ from: '', to: '' })
-}
-
-const removeModelMapping = (index: number) => {
-  touchQoderModelRestriction()
-  modelMappings.value.splice(index, 1)
-}
-
 const addPresetMapping = (from: string, to: string) => {
   touchQoderModelRestriction()
   const exists = modelMappings.value.some((m) => m.from === from)
@@ -3489,22 +3212,6 @@ const addPresetMapping = (from: string, to: string) => {
     return
   }
   modelMappings.value.push({ from, to })
-}
-
-const addAntigravityModelMapping = () => {
-  antigravityModelMappings.value.push({ from: '', to: '' })
-}
-
-const addOpenAICompactModelMapping = () => {
-  openAICompactModelMappings.value.push({ from: '', to: '' })
-}
-
-const removeOpenAICompactModelMapping = (index: number) => {
-  openAICompactModelMappings.value.splice(index, 1)
-}
-
-const removeAntigravityModelMapping = (index: number) => {
-  antigravityModelMappings.value.splice(index, 1)
 }
 
 const addAntigravityPresetMapping = (from: string, to: string) => {

@@ -200,59 +200,12 @@
         </section>
 
         <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700">
-          <div class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ t('admin.providers.modelMapping') }}
-          </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.providers.mapRequestModels') }}
-          </p>
-          <div v-if="defaultModelMappings.length > 0" class="space-y-2">
-            <div
-              v-for="(mapping, index) in defaultModelMappings"
-              :key="getDefaultModelMappingKey(mapping)"
-              class="flex items-center gap-2"
-            >
-              <input
-                v-model="mapping.from"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.requestModel')"
-              />
-              <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
-              <input
-                v-model="mapping.to"
-                type="text"
-                class="input flex-1"
-                :placeholder="t('admin.providers.actualModel')"
-              />
-              <button
-                type="button"
-                class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                @click="removeDefaultModelMapping(index)"
-              >
-                <Icon name="trash" size="sm" class="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <button
-            type="button"
-            class="w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
-            @click="addDefaultModelMapping"
-          >
-            <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
-            {{ t('admin.providers.addMapping') }}
-          </button>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="preset in presetMappings"
-              :key="preset.label"
-              type="button"
-              :class="['rounded-control px-3 py-1 text-xs transition-colors', preset.color]"
-              @click="addDefaultPresetMapping(preset.from, preset.to)"
-            >
-              + {{ preset.label }}
-            </button>
-          </div>
+          <ProviderModelMappingEditor
+            v-model="defaultModelMappings"
+            :title="t('admin.providers.modelMapping')"
+            :presets="presetMappings"
+            @preset="addDefaultPresetMapping"
+          />
         </section>
 
         <section class="grid grid-cols-1 gap-4 border-t border-gray-100 pt-5 dark:border-dark-700 md:grid-cols-2">
@@ -287,7 +240,8 @@
 </template>
 
 <script setup lang="ts">
-import Icon from '@/components/icons/Icon.vue'
+import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
+import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import { normalizeLegacyOpenAIExtra, normalizeOpenAICompactMode } from '@/utils/openaiLegacyConfiguration'
 import OpenAICompactionCheckbox from '@/components/provider/OpenAICompactionCheckbox.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -304,7 +258,6 @@ import CodexImageToolModeSelector from '@/components/provider/CodexImageToolMode
 import Select, { type SelectOption } from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import { useAppStore } from '@/stores'
-import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import {
   applyCodexImageToolMode,
   CODEX_IMAGE_GENERATION_BRIDGE_KEY,
@@ -323,18 +276,13 @@ import type { OpenAICompactMode, OpenAIOAuthClientPolicy } from '@/types'
 
 type AutoPauseDefault = 'unset' | 'true' | 'false'
 type NumberInputValue = string | number
-interface ModelMapping {
-  from: string
-  to: string
-}
-
 const { t } = useI18n()
 const appStore = useAppStore()
 
 const loading = ref(true)
 const saving = ref(false)
 const defaultAllowedModels = ref<string[]>([])
-const defaultModelMappings = ref<ModelMapping[]>([])
+const defaultModelMappings = ref<ModelMappingRow[]>([])
 const credentialsJson = ref('{}')
 const extraJson = ref('{}')
 const openaiPassthrough = ref(false)
@@ -378,7 +326,6 @@ const forbiddenCredentialFields = new Set([
 
 const forbiddenExtraFields = new Set(['email', 'name'])
 const presetMappings = computed(() => getPresetMappingsByPlatform('openai'))
-const getDefaultModelMappingKey = createStableObjectKeyResolver<ModelMapping>('openai-oauth-default-mapping')
 const structuredExtraKeys = [
   'openai_passthrough',
   'openai_oauth_passthrough',
@@ -423,9 +370,6 @@ const openAIOAuthClientPolicyOptions = computed<SelectOption[]>(() => [
     label: t('admin.providers.openai.clientPolicyTLSRouterMatchedOnly')
   }
 ])
-
-
-
 
 const tlsFingerprintProfileOptions = computed<SelectOption[]>(() => [
   { value: null, label: t('admin.providers.quotaControl.tlsFingerprint.defaultProfile') },
@@ -504,14 +448,6 @@ const normalizeModelMappingObject = (value: unknown): Record<string, string> | u
     : undefined
 }
 
-const addDefaultModelMapping = () => {
-  defaultModelMappings.value.push({ from: '', to: '' })
-}
-
-const removeDefaultModelMapping = (index: number) => {
-  defaultModelMappings.value.splice(index, 1)
-}
-
 const addDefaultPresetMapping = (from: string, to: string) => {
   if (defaultModelMappings.value.some((mapping) => mapping.from === from)) {
     appStore.showInfo(t('admin.providers.mappingExists', { model: from }))
@@ -519,8 +455,6 @@ const addDefaultPresetMapping = (from: string, to: string) => {
   }
   defaultModelMappings.value.push({ from, to })
 }
-
-
 
 const normalizeTLSFingerprintProfileId = (value: unknown): number | null => {
   // 导入模板保存为 JSON，profile_id 可能来自数字或数字字符串，这里统一归一化。

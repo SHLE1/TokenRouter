@@ -926,6 +926,7 @@ export default {
       requestModel: 'Request model',
       actualModel: 'Actual model',
       addMapping: 'Add Mapping',
+      modelMappingEmpty: 'No model mappings configured',
       mappingExists: 'Mapping for {model} already exists',
       wildcardOnlyAtEnd: 'Wildcard * can only be at the end',
       targetNoWildcard: 'Target model cannot contain wildcard *',
