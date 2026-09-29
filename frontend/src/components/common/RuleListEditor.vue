@@ -33,7 +33,7 @@
     <slot name="header-extra" />
 
     <p
-      v-if="items.length === 0 && emptyText"
+      v-if="items.length === 0 && leavingCount === 0 && emptyText"
       class="rounded-control border border-dashed border-gray-200 px-3 py-4 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
     >
       {{ emptyText }}
@@ -45,7 +45,9 @@
       :css="animated"
       tag="div"
       class="relative space-y-3"
-      @before-leave="prepareListLeave"
+      @before-leave="onBeforeLeave"
+      @after-leave="onLeaveDone"
+      @leave-cancelled="onLeaveDone"
       @before-enter="restoreEnteringElement"
     >
       <div
@@ -234,6 +236,23 @@ const resolveKey = (item: T, index: number): string | number => {
 const testIdFor = (suffix: string) =>
   props.testId ? `${props.testId}-${suffix}` : undefined
 
+// 退出中的行仍占着位置，全部退出后才显示空态，避免空态与淡出的行同时出现。
+const leavingCount = ref(0)
+
+// 末尾的行没有后续行可以补位，留在文档流中淡出，避免下方内容立即上移并与之重叠。
+const onBeforeLeave = (element: Element) => {
+  leavingCount.value += 1
+  prepareListLeave(element)
+  let sibling = element.nextElementSibling
+  while (sibling?.hasAttribute('inert')) sibling = sibling.nextElementSibling
+  if (!sibling) element.classList.add('rule-list-leave-in-flow')
+}
+
+const onLeaveDone = (element: Element) => {
+  leavingCount.value = Math.max(0, leavingCount.value - 1)
+  element.classList.remove('rule-list-leave-in-flow')
+}
+
 // 只有点击添加按钮产生的新行会获得焦点，预设和导入追加的行不抢焦点。
 let pendingFocus = false
 
@@ -269,3 +288,11 @@ watch(
 
 defineExpose({ focusRow })
 </script>
+
+<style scoped>
+/* 覆盖 motion-list 退出时的绝对定位，只作用于列表末尾的行。 */
+.rule-list-leave-in-flow.motion-list-leave-active {
+  position: static;
+  width: auto;
+}
+</style>

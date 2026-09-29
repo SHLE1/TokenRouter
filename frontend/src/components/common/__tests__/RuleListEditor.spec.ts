@@ -3,6 +3,7 @@ import { defineComponent, nextTick, ref } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 
 import RuleListEditor from '../RuleListEditor.vue'
+import { finishMotion, mockMotionEnvironment } from '@/__tests__/helpers/motion'
 
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
@@ -22,6 +23,7 @@ let wrapper: VueWrapper | undefined
 afterEach(() => {
   wrapper?.unmount()
   wrapper = undefined
+  vi.restoreAllMocks()
 })
 
 const mountEditor = (props: Record<string, unknown>) => {
@@ -207,5 +209,40 @@ describe('RuleListEditor', () => {
     await wrapper.setProps({ items: [{ name: 'b' }] })
 
     expect(wrapper.findAll('input')).toHaveLength(1)
+  })
+
+  it('删除末尾的行时留在文档流中淡出，退出完成后才显示空态', async () => {
+    mockMotionEnvironment()
+    wrapper = mount(RuleListEditor, {
+      props: { items: [{ name: 'a' }], emptyText: '暂无规则', testId: 'rules' },
+      slots: { row: `<template #row="{ item }"><input :value="item.name" /></template>` },
+      global: { stubs: { Icon: iconStub } },
+      attachTo: document.body,
+    })
+
+    await wrapper.setProps({ items: [] })
+    const leaving = wrapper.get('[data-testid="rules-row"]')
+    expect(leaving.classes()).toContain('rule-list-leave-in-flow')
+    expect(wrapper.text()).not.toContain('暂无规则')
+
+    await finishMotion(leaving.element)
+    expect(wrapper.find('[data-testid="rules-row"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('暂无规则')
+  })
+
+  it('删除中间的行时后续行补位，退出行不留在文档流中', async () => {
+    mockMotionEnvironment()
+    const rows = [{ name: 'a' }, { name: 'b' }]
+    wrapper = mount(RuleListEditor, {
+      props: { items: rows, testId: 'rules' },
+      slots: { row: `<template #row="{ item }"><input :value="item.name" /></template>` },
+      global: { stubs: { Icon: iconStub } },
+      attachTo: document.body,
+    })
+
+    await wrapper.setProps({ items: [rows[1]] })
+    const leaving = wrapper.findAll('[data-testid="rules-row"]')[0]
+    expect(leaving.attributes('inert')).toBeDefined()
+    expect(leaving.classes()).not.toContain('rule-list-leave-in-flow')
   })
 })

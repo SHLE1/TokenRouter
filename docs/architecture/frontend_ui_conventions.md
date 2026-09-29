@@ -208,6 +208,7 @@
 - 行操作只有上移 `arrowUp`、下移 `arrowDown` 和删除 `trash` 三种图标，默认灰色，删除悬停变红，不使用文字删除按钮。首行不能上移，末行不能下移，行数不超过 `min` 时不能删除。
 - 行 key 默认使用对象身份（`createStableObjectKeyResolver`），不要用下标。行内容是基本类型、只能按下标区分时（如协议回退目标），传 `:animated="false"` 关闭列表动效，避免退出动画落在错误的行上。
 - 点击添加按钮后，新行的第一个输入框或选择框获得焦点；预设和 JSON 导入追加的行不抢焦点。
+- 删除时，后面还有行的退出行沿用 `motion-list` 的绝对定位，由后续行补位；末尾的退出行留在文档流中淡出，避免下方内容立即上移并与之重叠。空态等所有退出动画结束后才出现。
 - 行对象原地编辑以保持身份，结构变化（增删、排序）时发出新数组。
 - 字段错误使用 `.input-error` 与 `.input-error-text`，列表级汇总错误通过 `error` 以 `role="alert"` 显示。映射校验规则在 `utils/modelMappingRules.ts`，默认不开启，由站点按需传入 `KEY_REDIRECT_RULES`、`WILDCARD_ONLY_RULES` 等选项。统一样式时保持各站点原有的校验范围。
 - 编辑器不改变提交给后端的数据形状：API Key 和分组仍提交映射对象，提供商仍经 `buildModelMappingObject` 构造。
