@@ -13,7 +13,7 @@
     v-else-if="entry.status === 'loading'"
     class="mt-0.5 flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500"
   >
-    <Icon name="refresh" size="xs" class="animate-spin" />
+    <Icon name="refresh" size="xs" class="animate-spin" :animate-on-hover="false" />
     {{ t('usage.ipGeo.fetching') }}
   </div>
 

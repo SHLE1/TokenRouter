@@ -158,7 +158,11 @@
 
           <div class="flex flex-wrap items-center justify-end gap-2">
             <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary btn-icon" :title="t('common.refresh')">
-              <Icon name="refresh" size="sm" :class="(activeTab === 'errors' ? errorLoading : loading) ? 'animate-spin' : ''" />
+              <Icon
+                name="refresh"
+                size="sm"
+                :class="(activeTab === 'errors' ? errorLoading : loading) ? 'animate-spin' : ''"
+              />
             </button>
             <div class="relative" ref="columnDropdownRef">
               <button
@@ -182,7 +186,13 @@
                   class="dropdown-item justify-between"
                 >
                   <span>{{ col.label }}</span>
-                  <Icon v-if="isCurrentColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
+                  <Icon
+                    v-if="isCurrentColumnVisible(col.key)"
+                    name="check"
+                    size="sm"
+                    class="text-primary-500"
+                    :animate-on-hover="false"
+                  />
                 </button>
               </div>
             </div>

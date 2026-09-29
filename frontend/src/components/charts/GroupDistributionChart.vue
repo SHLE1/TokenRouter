@@ -51,7 +51,7 @@
           </thead>
           <tbody>
             <template v-for="group in displayGroupStats" :key="group.group_id">
-              <tr
+              <tr data-icon-trigger
                 class="border-t border-gray-100 transition-colors dark:border-dark-600"
                 :class="enableBreakdown && group.group_id > 0 ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''"
                 @click="enableBreakdown && group.group_id > 0 && toggleBreakdown('group', group.group_id)"
@@ -62,8 +62,20 @@
                   :title="group.group_name || String(group.group_id)"
                 >
                   <span class="inline-flex items-center gap-1">
-                    <svg v-if="enableBreakdown && group.group_id > 0 && expandedKey === `group-${group.group_id}`" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    <svg v-else-if="enableBreakdown && group.group_id > 0" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <Icon
+                      name="chevronDown"
+                      size="xs"
+                      :animate-on-hover="false"
+                      v-if="enableBreakdown && group.group_id > 0 && expandedKey === `group-${group.group_id}`"
+                      class="h-3 w-3 shrink-0"
+                    />
+                    <Icon
+                      name="chevronRight"
+                      size="xs"
+                      :animate-on-hover="false"
+                      v-else-if="enableBreakdown && group.group_id > 0"
+                      class="h-3 w-3 shrink-0"
+                    />
                     {{ group.group_name || t('admin.dashboard.noGroup') }}
                   </span>
                 </td>
@@ -109,6 +121,7 @@
 </template>
 
 <script setup lang="ts">
+import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LogarithmicScale, Tooltip, Legend } from 'chart.js'

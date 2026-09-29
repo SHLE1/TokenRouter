@@ -14,6 +14,7 @@
         size="xs"
         class="text-gray-400 transition-transform duration-200"
         :class="{ 'rotate-180': isOpen }"
+        :animate-on-hover="false"
       />
     </button>
 
@@ -35,7 +36,13 @@
         >
           <span class="text-base">{{ locale.flag }}</span>
           <span>{{ locale.name }}</span>
-          <Icon v-if="locale.code === currentLocaleCode" name="check" size="sm" class="ml-auto text-primary-500" />
+          <Icon
+            v-if="locale.code === currentLocaleCode"
+            name="check"
+            size="sm"
+            class="ml-auto text-primary-500"
+            :animate-on-hover="false"
+          />
         </button>
       </div>
     </transition>

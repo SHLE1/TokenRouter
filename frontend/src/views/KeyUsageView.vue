@@ -52,9 +52,7 @@
         <div class="flex gap-3">
           <div class="flex-1 relative">
             <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-500">
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
+              <Icon name="lock" size="md" class="w-5 h-5" />
             </div>
             <input
               v-model="apiKey"
@@ -67,13 +65,8 @@
               @click="keyVisible = !keyVisible"
               class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:text-dark-500 dark:hover:text-white transition-colors"
             >
-              <svg v-if="!keyVisible" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-              <svg v-else class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
+              <Icon name="eyeOff" size="md" v-if="!keyVisible" class="w-5 h-5" />
+              <Icon name="eye" size="md" v-else class="w-5 h-5" />
             </button>
           </div>
           <button
@@ -81,13 +74,14 @@
             :disabled="isQuerying"
             class="h-9 px-7 rounded-control bg-primary-500 hover:bg-primary-600 text-white font-medium text-sm transition-all active:scale-[0.97] flex items-center gap-2 whitespace-nowrap disabled:opacity-60"
           >
-            <svg v-if="isQuerying" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/>
-              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-            <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
+              v-if="isQuerying"
+              class="w-4 h-4 animate-spin"
+            />
+            <Icon name="search" size="sm" v-else class="w-4 h-4" />
             {{ isQuerying ? t('keyUsage.querying') : t('keyUsage.query') }}
           </button>
         </div>
@@ -182,13 +176,19 @@
                   {{ ring.title }}
                 </h3>
                 <!-- Clock icon -->
-                <svg v-if="ring.iconType === 'clock'" class="w-5 h-5 text-gray-400 dark:text-dark-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
+                <Icon
+                  name="clock"
+                  size="md"
+                  v-if="ring.iconType === 'clock'"
+                  class="w-5 h-5 text-gray-400 dark:text-dark-500"
+                />
                 <!-- Calendar icon -->
-                <svg v-else-if="ring.iconType === 'calendar'" class="w-5 h-5 text-gray-400 dark:text-dark-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
+                <Icon
+                  name="calendar"
+                  size="md"
+                  v-else-if="ring.iconType === 'calendar'"
+                  class="w-5 h-5 text-gray-400 dark:text-dark-500"
+                />
                 <BalanceIcon v-else size="md" class="text-gray-400 dark:text-dark-500" />
               </div>
               <div class="flex justify-center">

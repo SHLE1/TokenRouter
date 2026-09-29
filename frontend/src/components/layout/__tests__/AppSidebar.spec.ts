@@ -132,10 +132,10 @@ describe('AppSidebar admin personal menu', () => {
 
   it('uses distinct icons for ranking, usage, team, and affiliate entries', () => {
     // 普通用户菜单与管理员个人菜单使用相同映射，避免同组入口再次出现重复图标。
-    expect(componentSource.match(/path: '\/usage-ranking'.*icon: RankingIcon/g)).toHaveLength(2)
-    expect(componentSource.match(/path: '\/usage'.*icon: ChartIcon/g)).toHaveLength(2)
-    expect(componentSource.match(/path: '\/team'.*icon: UsersIcon/g)).toHaveLength(2)
-    expect(componentSource.match(/path: '\/affiliate',[\s\S]{0,180}?icon: AffiliateIcon/g)).toHaveLength(2)
+    expect(componentSource.match(/path: '\/usage-ranking'.*icon: 'ranking'/g)).toHaveLength(2)
+    expect(componentSource.match(/path: '\/usage'.*icon: 'chart'/g)).toHaveLength(2)
+    expect(componentSource.match(/path: '\/team'.*icon: 'users'/g)).toHaveLength(2)
+    expect(componentSource.match(/path: '\/affiliate',[\s\S]{0,180}?icon: 'affiliate'/g)).toHaveLength(2)
   })
 })
 

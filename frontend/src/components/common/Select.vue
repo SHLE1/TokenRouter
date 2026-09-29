@@ -43,6 +43,7 @@
           name="chevronDown"
           size="md"
           :class="['transition-transform duration-200', isOpen && 'rotate-180']"
+          :animate-on-hover="false"
         />
       </span>
     </button>
@@ -107,6 +108,7 @@
                   size="sm"
                   class="text-primary-500"
                   :stroke-width="2"
+                  :animate-on-hover="false"
                 />
               </slot>
             </div>

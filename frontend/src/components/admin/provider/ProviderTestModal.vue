@@ -107,7 +107,13 @@
             <span>{{ t('admin.providers.readyToTest') }}</span>
           </div>
           <div v-else-if="status === 'connecting'" class="flex items-center gap-2 text-yellow-400">
-            <Icon name="refresh" size="sm" class="animate-spin" :stroke-width="2" />
+            <Icon
+              name="refresh"
+              size="sm"
+              class="animate-spin"
+              :stroke-width="2"
+              :animate-on-hover="false"
+            />
             <span>{{ t('admin.providers.connectingToApi') }}</span>
           </div>
 
@@ -126,7 +132,7 @@
             v-if="status === 'success'"
             class="mt-3 flex items-center gap-2 border-t border-gray-700 pt-3 text-green-400"
           >
-            <Icon name="check" size="sm" :stroke-width="2" />
+            <Icon name="check" size="sm" :stroke-width="2" :animate-on-hover="false" />
             <span>{{ t('admin.providers.testCompleted') }}</span>
           </div>
           <div
@@ -154,7 +160,7 @@
           {{ t('admin.providers.imagePreview') }}
         </div>
         <div class="flex flex-wrap justify-center gap-3">
-          <div
+          <div data-icon-trigger
             v-for="(image, index) in generatedImages"
             :key="`${image.url}-${index}`"
             class="group/img relative cursor-pointer overflow-hidden rounded-surface border border-gray-200 bg-white shadow-sm transition hover:border-black/20 hover:shadow-md dark:border-dark-500 dark:bg-dark-700 dark:hover:border-primary-300"
@@ -162,7 +168,12 @@
           >
             <img :src="image.url" :alt="`test-image-${index + 1}`" class="max-h-[360px] w-full object-contain" /> <!-- check-ui-allow: 图片预览局部约束 -->
             <div class="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover/img:bg-black/20">
-              <Icon name="eye" size="lg" class="text-white opacity-0 drop-shadow-lg transition-opacity group-hover/img:opacity-100" :stroke-width="2" />
+              <Icon
+                name="eye"
+                size="lg"
+                class="text-white opacity-0 drop-shadow-lg transition-opacity group-hover/img:opacity-100"
+                :stroke-width="2"
+              />
             </div>
             <div class="border-t border-gray-100 px-3 py-1.5 text-xs text-gray-500 dark:border-dark-500 dark:text-gray-300">
               {{ image.mimeType || 'image/*' }}
@@ -237,6 +248,7 @@
             size="sm"
             class="animate-spin"
             :stroke-width="2"
+            :animate-on-hover="false"
           />
           <Icon v-else-if="status === 'idle'" name="play" size="sm" :stroke-width="2" />
           <Icon v-else name="refresh" size="sm" :stroke-width="2" />

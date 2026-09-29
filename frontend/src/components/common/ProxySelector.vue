@@ -19,6 +19,7 @@
           name="chevronDown"
           size="md"
           :class="['transition-transform duration-200', isOpen && 'rotate-180']"
+          :animate-on-hover="false"
         />
       </span>
     </button>
@@ -46,21 +47,13 @@
             class="batch-test-btn"
             :title="t('admin.proxies.batchTest')"
           >
-            <svg v-if="batchTesting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
+              v-if="batchTesting"
+              class="h-4 w-4 animate-spin"
+            />
             <Icon v-else name="play" size="sm" />
           </button>
         </div>
@@ -68,16 +61,22 @@
         <!-- Options list -->
         <div class="select-options">
           <!-- No Proxy option -->
-          <div
+          <div data-icon-trigger
             @click="selectOption(null)"
             :class="['select-option', modelValue === null && 'select-option-selected']"
           >
             <span class="select-option-label">{{ t('admin.providers.noProxy') }}</span>
-            <Icon v-if="modelValue === null" name="check" size="sm" class="text-primary-500" />
+            <Icon
+              v-if="modelValue === null"
+              name="check"
+              size="sm"
+              class="text-primary-500"
+              :animate-on-hover="false"
+            />
           </div>
 
           <!-- Proxy options -->
-          <div
+          <div data-icon-trigger
             v-for="proxy in filteredProxies"
             :key="proxy.id"
             @click="selectOption(proxy.id)"
@@ -127,26 +126,13 @@
               class="test-btn"
               :title="t('admin.proxies.testConnection')"
             >
-              <svg
+              <Icon
+                name="loader"
+                size="xs"
+                :animate-on-hover="false"
                 v-if="testingProxyIds.has(proxy.id)"
                 class="h-3.5 w-3.5 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              />
               <Icon v-else name="play" size="xs" />
             </button>
 
@@ -155,6 +141,7 @@
               name="check"
               size="sm"
               class="flex-shrink-0 text-primary-500"
+              :animate-on-hover="false"
             />
           </div>
 

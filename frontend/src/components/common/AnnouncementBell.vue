@@ -66,7 +66,7 @@
                   class="inline-flex h-8 items-center gap-1.5 rounded-compact px-2.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-dark-300 dark:hover:bg-dark-700 dark:hover:text-white dark:focus-visible:ring-primary-500/50"
                   @click="markAllAsRead"
                 >
-                  <Icon name="checkCircle" size="sm" :stroke-width="1.75" />
+                  <Icon name="checkCircle" size="sm" :stroke-width="1.75" :animate-on-hover="false" />
                   <span>{{ t('announcements.markAllRead') }}</span>
                 </button>
                 <button
@@ -124,7 +124,7 @@
                       data-testid="announcement-list-status-read"
                       class="flex h-9 w-9 items-center justify-center rounded-control bg-gray-100 text-gray-400 dark:bg-dark-800 dark:text-dark-400"
                     >
-                      <Icon name="checkCircle" size="sm" :stroke-width="1.75" />
+                      <Icon name="checkCircle" size="sm" :stroke-width="1.75" :animate-on-hover="false" />
                     </span>
 
                     <span class="min-w-0">
@@ -147,6 +147,7 @@
                       size="sm"
                       class="justify-self-end text-gray-400 transition-transform group-hover:translate-x-0.5 dark:text-dark-500"
                       :stroke-width="1.75"
+                      :animate-on-hover="false"
                     />
                   </button>
                 </li>

@@ -138,26 +138,13 @@
                   :disabled="adminApiKeyOperating"
                   class="btn btn-primary btn-sm h-9"
                 >
-                  <svg
+                  <Icon
+                    name="loader"
+                    size="sm"
+                    :animate-on-hover="false"
                     v-if="adminApiKeyOperating"
                     class="mr-1 h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  />
                   {{
                     adminApiKeyOperating
                       ? t("admin.settings.adminApiKey.creating")
@@ -319,26 +306,13 @@
                     :disabled="overloadCooldownSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="overloadCooldownSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       overloadCooldownSaving
                         ? t("common.saving")
@@ -460,26 +434,13 @@
                   :disabled="openAI403CooldownSaving"
                   class="btn btn-primary btn-sm h-9"
                 >
-                  <svg
+                  <Icon
+                    name="loader"
+                    size="sm"
+                    :animate-on-hover="false"
                     v-if="openAI403CooldownSaving"
                     class="mr-1 h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  />
                   {{ openAI403CooldownSaving ? t('common.saving') : t('common.save') }}
                 </button>
               </div>
@@ -574,26 +535,13 @@
                     :disabled="rateLimit429CooldownSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="rateLimit429CooldownSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       rateLimit429CooldownSaving
                         ? t("common.saving")
@@ -747,26 +695,13 @@
                     :disabled="streamTimeoutSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="streamTimeoutSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       streamTimeoutSaving
                         ? t("common.saving")
@@ -918,19 +853,7 @@
                         "
                         class="btn btn-ghost btn-xs text-red-500 hover:text-red-700"
                       >
-                        <svg
-                          class="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
+                        <Icon name="x" size="sm" class="h-4 w-4" />
                       </button>
                     </div>
                     <button
@@ -953,26 +876,13 @@
                     :disabled="rectifierSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="rectifierSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       rectifierSaving ? t("common.saving") : t("common.save")
                     }}
@@ -1129,19 +1039,7 @@
                         @click="rule.model_whitelist!.splice(index, 1)"
                         class="shrink-0 rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                       >
-                        <svg
-                          class="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
+                        <Icon name="x" size="sm" class="h-4 w-4" />
                       </button>
                     </div>
                     <!-- Add pattern button -->
@@ -1153,19 +1051,7 @@
                       "
                       class="mb-2 inline-flex items-center gap-1 text-xs text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
                     >
-                      <svg
-                        class="h-3.5 w-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
+                      <Icon name="plus" size="xs" class="h-3.5 w-3.5" />
                       {{ t("admin.settings.betaPolicy.addModelPattern") }}
                     </button>
                     <!-- Common pattern chips -->
@@ -1236,26 +1122,13 @@
                     :disabled="betaPolicySaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="betaPolicySaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       betaPolicySaving ? t("common.saving") : t("common.save")
                     }}
@@ -1311,19 +1184,7 @@
                     class="rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                     :title="t('admin.settings.openaiFastPolicy.removeRule')"
                   >
-                    <svg
-                      class="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
+                    <Icon name="x" size="sm" class="h-4 w-4" />
                   </button>
                 </div>
 
@@ -1511,19 +1372,7 @@
                       "
                       class="shrink-0 rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                     >
-                      <svg
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
+                      <Icon name="x" size="sm" class="h-4 w-4" />
                     </button>
                   </div>
                   <button
@@ -1531,19 +1380,7 @@
                     @click="addOpenAIFastPolicyModelPattern(rule)"
                     class="mb-2 inline-flex items-center gap-1 text-xs text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
                   >
-                    <svg
-                      class="h-3.5 w-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
+                    <Icon name="plus" size="xs" class="h-3.5 w-3.5" />
                     {{ t("admin.settings.openaiFastPolicy.addModelPattern") }}
                   </button>
                 </div>
@@ -1597,19 +1434,7 @@
                   @click="addOpenAIFastPolicyRule"
                   class="btn btn-secondary btn-sm h-9 inline-flex items-center gap-1"
                 >
-                  <svg
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
+                  <Icon name="plus" size="sm" class="h-4 w-4" />
                   {{ t("admin.settings.openaiFastPolicy.addRule") }}
                 </button>
                 <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
@@ -2176,26 +2001,13 @@
                     :disabled="panelRateLimitSaving"
                     class="btn btn-primary btn-sm h-9"
                   >
-                    <svg
+                    <Icon
+                      name="loader"
+                      size="sm"
+                      :animate-on-hover="false"
                       v-if="panelRateLimitSaving"
                       class="mr-1 h-4 w-4 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
+                    />
                     {{
                       panelRateLimitSaving
                         ? t("common.saving")
@@ -5553,25 +5365,18 @@
                   class="rounded-control border border-gray-200 dark:border-dark-600"
                 >
                   <!-- Collapsible header -->
-                  <div
+                  <div data-icon-trigger
                     class="flex cursor-pointer items-center justify-between px-4 py-3"
                     @click="toggleProviderExpand(pIdx)"
                   >
                     <div class="flex items-center gap-3">
-                      <svg
+                      <Icon
+                        name="chevronRight"
+                        size="sm"
+                        :animate-on-hover="false"
                         class="h-4 w-4 text-gray-400 transition-transform"
                         :class="{ 'rotate-90': expandedProviders[pIdx] }"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                      />
                       <Select
                         v-model="provider.type"
                         :options="[
@@ -5662,40 +5467,8 @@
                             "
                             @click="apiKeyVisible[pIdx] = !apiKeyVisible[pIdx]"
                           >
-                            <svg
-                              v-if="!apiKeyVisible[pIdx]"
-                              class="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                              />
-                            </svg>
-                            <svg
-                              v-else
-                              class="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
-                              />
-                            </svg>
+                            <Icon name="eye" size="sm" v-if="!apiKeyVisible[pIdx]" class="h-4 w-4" />
+                            <Icon name="eyeOff" size="sm" v-else class="h-4 w-4" />
                           </button>
                           <button
                             type="button"
@@ -5710,19 +5483,7 @@
                             :disabled="!provider.api_key"
                             @click="copyApiKey(pIdx)"
                           >
-                            <svg
-                              class="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                              />
-                            </svg>
+                            <Icon name="copy" size="sm" class="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -6472,19 +6233,7 @@
                         class="rounded-compact p-1 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                         @click="removeEndpoint(index)"
                       >
-                        <svg
-                          class="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          stroke-width="2"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
+                        <Icon name="trash" size="sm" class="h-4 w-4" />
                       </button>
                     </div>
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -6554,19 +6303,7 @@
                   class="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 px-4 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
                   @click="addEndpoint"
                 >
-                  <svg
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
+                  <Icon name="plus" size="sm" class="h-4 w-4" />
                   {{ t("admin.settings.site.customEndpoints.add") }}
                 </button>
               </div>
@@ -6699,19 +6436,7 @@
                       :title="t('admin.settings.customMenu.moveUp')"
                       @click="moveMenuItem(index, -1)"
                     >
-                      <svg
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M5 15l7-7 7 7"
-                        />
-                      </svg>
+                      <Icon name="chevronUp" size="sm" :animate-on-hover="false" class="h-4 w-4" />
                     </button>
                     <!-- Move down -->
                     <button
@@ -6721,19 +6446,7 @@
                       :title="t('admin.settings.customMenu.moveDown')"
                       @click="moveMenuItem(index, 1)"
                     >
-                      <svg
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
+                      <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
                     </button>
                     <!-- Delete -->
                     <button
@@ -6742,19 +6455,7 @@
                       :title="t('admin.settings.customMenu.remove')"
                       @click="removeMenuItem(index)"
                     >
-                      <svg
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
+                      <Icon name="trash" size="sm" class="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -6829,19 +6530,7 @@
                 class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
                 @click="addMenuItem"
               >
-                <svg
-                  class="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
+                <Icon name="plus" size="sm" class="h-4 w-4" />
                 {{ t("admin.settings.customMenu.add") }}
               </button>
             </div>
@@ -6894,9 +6583,7 @@
                   :title="t('admin.settings.customMenu.moveUp')"
                   @click="moveHomeFeaturedModel(mIndex, -1)"
                 >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
-                  </svg>
+                  <Icon name="chevronUp" size="sm" :animate-on-hover="false" class="h-4 w-4" />
                 </button>
                 <button
                   v-if="mIndex < form.home_featured_models.length - 1"
@@ -6905,9 +6592,7 @@
                   :title="t('admin.settings.customMenu.moveDown')"
                   @click="moveHomeFeaturedModel(mIndex, 1)"
                 >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
                 </button>
                 <button
                   type="button"
@@ -6915,9 +6600,7 @@
                   :title="localText('删除模型', 'Remove model')"
                   @click="removeHomeFeaturedModel(mIndex)"
                 >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <Icon name="x" size="sm" class="h-4 w-4" />
                 </button>
               </div>
 
@@ -6928,9 +6611,7 @@
                 :disabled="form.home_featured_models.length >= homeFeaturedModelsMax"
                 @click="form.home_featured_models.push('')"
               >
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
+                <Icon name="plus" size="sm" class="h-4 w-4" />
                 {{ localText("添加模型", "Add model") }}
               </button>
               <p
@@ -6990,9 +6671,7 @@
                       :title="t('admin.settings.customMenu.moveUp')"
                       @click="moveFooterGroup(gIndex, -1)"
                     >
-                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
-                      </svg>
+                      <Icon name="chevronUp" size="sm" :animate-on-hover="false" class="h-4 w-4" />
                     </button>
                     <button
                       v-if="gIndex < form.footer_links.length - 1"
@@ -7001,9 +6680,7 @@
                       :title="t('admin.settings.customMenu.moveDown')"
                       @click="moveFooterGroup(gIndex, 1)"
                     >
-                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
+                      <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
                     </button>
                     <button
                       type="button"
@@ -7011,9 +6688,7 @@
                       :title="localText('删除分组', 'Remove group')"
                       @click="removeFooterGroup(gIndex)"
                     >
-                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                      <Icon name="trash" size="sm" class="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -7042,9 +6717,7 @@
                       :title="localText('删除链接', 'Remove link')"
                       @click="group.links.splice(lIndex, 1)"
                     >
-                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                      <Icon name="x" size="sm" class="h-4 w-4" />
                     </button>
                   </div>
                   <button
@@ -7052,9 +6725,7 @@
                     class="inline-flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400"
                     @click="group.links.push({ label: '', url: '' })"
                   >
-                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
+                    <Icon name="plus" size="xs" class="h-3.5 w-3.5" />
                     {{ localText("添加链接", "Add link") }}
                   </button>
                 </div>
@@ -7066,9 +6737,7 @@
                 class="flex h-9 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-gray-300 py-1.5 text-sm text-gray-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
                 @click="addFooterGroup"
               >
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
+                <Icon name="plus" size="sm" class="h-4 w-4" />
                 {{ localText("添加分组", "Add group") }}
               </button>
 
@@ -7146,7 +6815,7 @@
                       "
                       @click="form.login_agreement_mode = 'checkbox'"
                     >
-                      <Icon name="checkCircle" size="sm" />
+                      <Icon name="checkCircle" size="sm" :animate-on-hover="false" />
                       {{ localText("复选框", "Checkbox") }}
                     </button>
                   </div>
@@ -7453,7 +7122,12 @@
                           :aria-pressed="item.operations.includes(operation)"
                           @click="toggleCreativeOperation(index, operation, !item.operations.includes(operation))"
                         >
-                          <Icon v-if="item.operations.includes(operation)" name="check" size="xs" />
+                          <Icon
+                            v-if="item.operations.includes(operation)"
+                            name="check"
+                            size="xs"
+                            :animate-on-hover="false"
+                          />
                           {{ t(`admin.settings.features.creative.modelSettings.operations.${operation}`) }}
                         </button>
                       </div>
@@ -7680,19 +7354,7 @@
                   rel="noopener noreferrer"
                   class="ml-2 inline-flex items-center text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
                 >
-                  <svg
-                    class="mr-0.5 h-3.5 w-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
+                  <Icon name="externalLink" size="xs" class="mr-0.5 h-3.5 w-3.5" />
                   {{ t("admin.settings.payment.configGuide") }}
                 </a>
               </p>
@@ -8192,19 +7854,7 @@
                       class="ml-1 text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300"
                     >
                       {{ t("admin.settings.payment.findProvider") }}
-                      <svg
-                        class="mb-0.5 ml-0.5 inline h-3 w-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
+                      <Icon name="externalLink" size="xs" class="mb-0.5 ml-0.5 inline h-3 w-3" />
                     </a>
                   </p>
                 </div>
@@ -8305,26 +7955,13 @@
                 :disabled="testingSmtp || loadFailed"
                 class="btn btn-secondary btn-sm h-9"
               >
-                <svg
+                <Icon
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
                   v-if="testingSmtp"
                   class="h-4 w-4 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
+                />
                 {{
                   testingSmtp
                     ? t("admin.settings.smtp.testing")
@@ -8486,26 +8123,13 @@
                   "
                   class="btn btn-secondary"
                 >
-                  <svg
+                  <Icon
+                    name="loader"
+                    size="sm"
+                    :animate-on-hover="false"
                     v-if="sendingTestEmail"
                     class="h-4 w-4 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  />
                   {{
                     sendingTestEmail
                       ? t("admin.settings.testEmail.sending")
@@ -8693,26 +8317,13 @@
             :disabled="saving || loadFailed"
             class="btn btn-primary"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="saving"
               class="h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{
               saving
                 ? t("admin.settings.saving")

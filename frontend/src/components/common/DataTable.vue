@@ -118,7 +118,7 @@
               @change="toggleAllVisible(($event.target as HTMLInputElement).checked)"
             />
           </th>
-          <th
+          <th data-icon-trigger
             v-for="(column, index) in columns"
             :key="column.key"
             scope="col"
@@ -146,22 +146,20 @@
                 class="inline-flex h-5 w-4 flex-col items-center justify-center"
                 aria-hidden="true"
               >
-                <svg
+                <Icon
+                  name="chevronUp"
+                  size="md"
+                  :animate-on-hover="false"
                   class="h-2.5 w-2.5"
                   :class="getSortIndicatorClass(column.key, 'asc')"
-                  fill="currentColor"
-                  viewBox="0 0 10 10"
-                >
-                  <path d="M5 2L1.5 6.5h7L5 2z" />
-                </svg>
-                <svg
+                />
+                <Icon
+                  name="chevronDown"
+                  size="md"
+                  :animate-on-hover="false"
                   class="-mt-0.5 h-2.5 w-2.5"
                   :class="getSortIndicatorClass(column.key, 'desc')"
-                  fill="currentColor"
-                  viewBox="0 0 10 10"
-                >
-                  <path d="M5 8L1.5 3.5h7L5 8z" />
-                </svg>
+                />
               </span>
             </div>
           </th>

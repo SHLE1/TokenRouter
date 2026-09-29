@@ -45,7 +45,14 @@
                   class="dropdown-item justify-between"
                 >
                   <span>{{ filter.name }}</span>
-                  <Icon v-if="visibleFilters.has(filter.key)" name="check" size="sm" class="text-primary-500" :stroke-width="2" />
+                  <Icon
+                    v-if="visibleFilters.has(filter.key)"
+                    name="check"
+                    size="sm"
+                    class="text-primary-500"
+                    :stroke-width="2"
+                    :animate-on-hover="false"
+                  />
                 </button>
                 <div v-if="filterableAttributes.length > 0" class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
                 <button
@@ -55,7 +62,14 @@
                   class="dropdown-item justify-between"
                 >
                   <span>{{ attr.name }}</span>
-                  <Icon v-if="visibleFilters.has(`attr_${attr.id}`)" name="check" size="sm" class="text-primary-500" :stroke-width="2" />
+                  <Icon
+                    v-if="visibleFilters.has(`attr_${attr.id}`)"
+                    name="check"
+                    size="sm"
+                    class="text-primary-500"
+                    :stroke-width="2"
+                    :animate-on-hover="false"
+                  />
                 </button>
               </div>
             </div>
@@ -181,9 +195,7 @@
                   class="btn btn-secondary shrink-0 btn-icon"
                   :title="t('admin.users.columnSettings')"
                 >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
-                  </svg>
+                  <Icon name="columns" size="sm" class="h-4 w-4" />
                   <span class="hidden">{{ t('admin.users.columnSettings') }}</span>
                 </button>
                 <!-- Dropdown menu -->
@@ -211,6 +223,7 @@
                       size="sm"
                       :class="isForcedVisibleColumn(col.key) ? 'text-gray-400 dark:text-gray-500' : 'text-primary-500'"
                       :stroke-width="2"
+                      :animate-on-hover="false"
                     />
                   </button>
                 </div>
@@ -317,7 +330,7 @@
           <template #cell-groups="{ row }">
             <div v-if="allGroups.length > 0" class="flex flex-col gap-1">
               <!-- 专属分组行 -->
-              <span
+              <span data-icon-trigger
                 v-if="getUserGroups(row).exclusive.length > 0"
                 class="group/ex relative inline-flex cursor-pointer items-center gap-1 whitespace-nowrap text-xs"
                 @click.stop="toggleExpandedGroup(row.id)"
@@ -343,7 +356,7 @@
                   <div class="border-b border-gray-100 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-gray-400 dark:border-dark-600 dark:text-dark-400">
                     {{ t('admin.users.clickToReplace') }}
                   </div>
-                  <div
+                  <div data-icon-trigger
                     v-for="g in getUserGroups(row).exclusive"
                     :key="g.id"
                     class="dropdown-item-sm hover:bg-primary-50 hover:text-primary-600 dark:text-dark-200 dark:hover:bg-primary-900/30 dark:hover:text-primary-400"
@@ -459,8 +472,9 @@
                     size="xs"
                     :class="{ 'rotate-180': usageSort.order === 'desc' }"
                     :stroke-width="2"
+                    :animate-on-hover="false"
                   />
-                  <Icon v-else name="sort" size="xs" :stroke-width="2" />
+                  <Icon v-else name="sort" size="xs" :stroke-width="2" :animate-on-hover="false" />
                 </button>
                 <!-- 弹出菜单：今日 / 近30天，点击进行三态循环切换。 -->
                 <div
@@ -485,6 +499,7 @@
                       size="xs"
                       :class="{ 'rotate-180': getUsageSortOrder(usageKey, metric) === 'desc' }"
                       :stroke-width="2"
+                      :animate-on-hover="false"
                     />
                   </button>
                   <div class="mt-1 border-t border-gray-100 px-3 py-1 text-xs normal-case tracking-normal text-gray-400 dark:border-dark-700 dark:text-dark-500">
@@ -583,7 +598,7 @@
                 ]"
               >
                 <Icon v-if="row.status === 'active'" name="ban" size="sm" />
-                <Icon v-else name="checkCircle" size="sm" />
+                <Icon v-else name="checkCircle" size="sm" :animate-on-hover="false" />
                 <span class="text-xs">{{ row.status === 'active' ? t('admin.users.disable') : t('admin.users.enable') }}</span>
               </button>
 
@@ -667,9 +682,7 @@
                 @click="handleWithdraw(user); closeActionMenu()"
                 class="dropdown-item"
               >
-                <svg class="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                </svg>
+                <Icon name="minus" size="sm" class="h-4 w-4 text-amber-500" />
                 {{ t('admin.users.withdraw') }}
               </button>
 

@@ -104,7 +104,12 @@
                     {{ detail.context.baseline ? t('admin.providers.advancedSchedulerScore.baseline') : t('admin.providers.advancedSchedulerScore.simulationActive') }}
                   </p>
                 </div>
-                <Icon name="chevronDown" size="sm" :class="['transition-transform', showScenario && 'rotate-180']" />
+                <Icon
+                  name="chevronDown"
+                  size="sm"
+                  :class="['transition-transform', showScenario && 'rotate-180']"
+                  :animate-on-hover="false"
+                />
               </button>
               <div v-if="showScenario" class="mt-4 grid gap-3 border-t border-gray-100 pt-4 dark:border-dark-700 md:grid-cols-3">
                 <label class="min-w-0">

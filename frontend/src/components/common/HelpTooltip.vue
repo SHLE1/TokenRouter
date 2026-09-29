@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '@/components/icons/Icon.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
@@ -178,7 +179,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
+  <div data-icon-trigger
     ref="trigger"
     class="group relative inline-flex items-center align-middle"
     :class="{ 'ml-1': trigger !== 'manual' }"
@@ -188,19 +189,11 @@ onBeforeUnmount(() => {
   >
     <!-- 触发图标 -->
     <slot name="trigger">
-      <svg
+      <Icon
+        name="infoCircle"
+        size="sm"
         class="h-4 w-4 cursor-help text-gray-400 transition-colors hover:text-primary-600 dark:text-gray-500 dark:hover:text-primary-400"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
+      />
     </slot>
 
     <!-- 挂载到 body，避免被弹窗的 overflow 裁剪 -->
@@ -233,9 +226,7 @@ onBeforeUnmount(() => {
             aria-label="Close"
             @click.stop="closeTooltip"
           >
-            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <Icon name="x" size="xs" class="h-3.5 w-3.5" />
           </button>
           <slot>{{ content }}</slot>
         </div>

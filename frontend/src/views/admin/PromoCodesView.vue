@@ -57,14 +57,7 @@
                 :title="copiedCode === value ? t('admin.promo.copied') : t('keys.copyToClipboard')"
               >
                 <Icon v-if="copiedCode !== value" name="copy" size="sm" :stroke-width="2" />
-                <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+                <Icon name="check" size="sm" :animate-on-hover="false" v-else class="h-4 w-4" />
               </button>
             </div>
           </template>
@@ -316,7 +309,7 @@
       @close="showUsagesDialog = false"
     >
       <div v-if="usagesLoading" class="flex items-center justify-center py-8">
-        <Icon name="refresh" size="lg" class="animate-spin text-gray-400" />
+        <Icon name="refresh" size="lg" class="animate-spin text-gray-400" :animate-on-hover="false" />
       </div>
       <div v-else-if="usages.length === 0" class="py-8 text-center text-gray-500 dark:text-gray-400">
         {{ t('admin.promo.noUsages') }}

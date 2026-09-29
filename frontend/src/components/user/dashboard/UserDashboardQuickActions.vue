@@ -16,6 +16,7 @@
           name="chevronRight"
           size="md"
           class="text-gray-400 transition-colors group-hover:text-primary-500 dark:text-dark-500"
+          :animate-on-hover="false"
         />
       </button>
 
@@ -31,6 +32,7 @@
           name="chevronRight"
           size="md"
           class="text-gray-400 transition-colors group-hover:text-emerald-500 dark:text-dark-500"
+          :animate-on-hover="false"
         />
       </button>
 
@@ -46,6 +48,7 @@
           name="chevronRight"
           size="md"
           class="text-gray-400 transition-colors group-hover:text-sky-500 dark:text-dark-500"
+          :animate-on-hover="false"
         />
       </button>
 
@@ -66,6 +69,7 @@
           name="chevronRight"
           size="md"
           class="text-gray-400 transition-colors group-hover:text-rose-500 dark:text-dark-500"
+          :animate-on-hover="false"
         />
       </button>
 
@@ -81,6 +85,7 @@
           name="chevronRight"
           size="md"
           class="text-gray-400 transition-colors group-hover:text-amber-500 dark:text-dark-500"
+          :animate-on-hover="false"
         />
       </button>
     </div>

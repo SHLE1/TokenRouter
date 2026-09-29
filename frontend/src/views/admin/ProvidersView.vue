@@ -41,7 +41,13 @@
                       class="dropdown-item-sm justify-between rounded-control"
                     >
                       <span>{{ t('admin.providers.enableAutoRefresh') }}</span>
-                      <Icon v-if="autoRefreshEnabled" name="check" size="sm" class="text-primary-500" />
+                      <Icon
+                        v-if="autoRefreshEnabled"
+                        name="check"
+                        size="sm"
+                        class="text-primary-500"
+                        :animate-on-hover="false"
+                      />
                     </button>
                     <div class="my-1 border-t border-gray-100 dark:border-dark-600"></div>
                     <button
@@ -51,7 +57,13 @@
                       class="dropdown-item-sm justify-between rounded-control"
                     >
                       <span>{{ autoRefreshIntervalLabel(sec) }}</span>
-                      <Icon v-if="autoRefreshIntervalSeconds === sec" name="check" size="sm" class="text-primary-500" />
+                      <Icon
+                        v-if="autoRefreshIntervalSeconds === sec"
+                        name="check"
+                        size="sm"
+                        class="text-primary-500"
+                        :animate-on-hover="false"
+                      />
                     </button>
                   </div>
                 </div>
@@ -68,7 +80,12 @@
                 >
                   <Icon name="more" size="sm" class="lg:hidden" />
                   <span class="hidden lg:inline">{{ t('admin.providers.moreActions') }}</span>
-                  <Icon name="chevronDown" size="xs" class="ml-1 hidden lg:inline" />
+                  <Icon
+                    name="chevronDown"
+                    size="xs"
+                    class="ml-1 hidden lg:inline"
+                    :animate-on-hover="false"
+                  />
                 </button>
                 <Teleport to="body">
                   <div
@@ -152,7 +169,13 @@
                         class="dropdown-item-sm justify-between rounded-control"
                       >
                         <span class="truncate">{{ col.label }}</span>
-                        <Icon v-if="isColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
+                        <Icon
+                          v-if="isColumnVisible(col.key)"
+                          name="check"
+                          size="sm"
+                          class="text-primary-500"
+                          :animate-on-hover="false"
+                        />
                       </button>
                     </div>
                     </div>
@@ -411,11 +434,11 @@
           <template #cell-actions="{ row }">
             <div class="flex items-center gap-1">
               <button @click="handleEdit(row)" class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                <Icon name="edit" size="sm" class="h-4 w-4" />
                 <span class="text-xs">{{ t('common.edit') }}</span>
               </button>
               <button @click="openMenu(row, $event)" class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-dark-700 dark:hover:text-white">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
+                <Icon name="more" size="sm" class="h-4 w-4" />
                 <span class="text-xs">{{ t('common.more') }}</span>
               </button>
             </div>

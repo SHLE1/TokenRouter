@@ -47,9 +47,7 @@
         :title="t('creative.canvas.boxSelect')"
         @click="setBoxSelectMode(!boxSelectMode)"
       >
-        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2">
-          <rect x="4" y="4" width="16" height="16" rx="2" />
-        </svg>
+        <Icon name="selection" size="sm" class="h-4 w-4" stroke-dasharray="3 2" />
       </button>
 
       <!-- 画笔组：仅局部重绘模式可用（选中图片后自动进入涂抹，可用开关暂停去移动视角） -->
@@ -83,9 +81,7 @@
             :title="t('creative.canvas.undoMask')"
             @click="undoMask"
           >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-            </svg>
+            <Icon name="undo" size="sm" class="h-4 w-4" />
           </button>
           <!-- 画笔粗细滑块：8–96（固定高度与工具栏按钮同高；轨道/滑块配色见 .brush-size） -->
           <div class="flex flex-none items-center gap-1.5 px-1">
@@ -108,9 +104,7 @@
             :title="t('creative.canvas.shapeRound')"
             @click="setBrushShape('round')"
           >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="12" cy="12" r="5" />
-            </svg>
+            <Icon name="circle" size="sm" class="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -119,9 +113,7 @@
             :title="t('creative.canvas.shapeSquare')"
             @click="setBrushShape('square')"
           >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="7" y="7" width="10" height="10" />
-            </svg>
+            <Icon name="square" size="sm" class="h-4 w-4" />
           </button>
         </div>
       </Transition>

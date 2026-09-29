@@ -131,19 +131,7 @@
                 t('admin.providers.stats.avgDailyRequests')
               }}</span>
               <div class="rounded-control bg-purple-100 p-1.5 dark:bg-purple-900/30">
-                <svg
-                  class="h-4 w-4 text-purple-600 dark:text-purple-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-                  />
-                </svg>
+                <Icon name="chart" size="sm" class="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
             <p class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -161,19 +149,7 @@
           <div class="card p-4">
             <div class="mb-3 flex items-center gap-2">
               <div class="rounded-control bg-cyan-100 p-1.5 dark:bg-cyan-900/30">
-                <svg
-                  class="h-4 w-4 text-cyan-600 dark:text-cyan-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <Icon name="clock" size="sm" class="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
               </div>
               <span class="text-sm font-semibold text-gray-900 dark:text-white">{{
                 t('admin.providers.stats.todayOverview')

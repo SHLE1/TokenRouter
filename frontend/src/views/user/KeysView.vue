@@ -79,6 +79,7 @@
                       size="sm"
                       class="text-primary-500"
                       :stroke-width="2"
+                      :animate-on-hover="false"
                     />
                   </button>
                 </div>
@@ -132,6 +133,7 @@
                   name="check"
                   size="sm"
                   :stroke-width="2"
+                  :animate-on-hover="false"
                 />
                 <Icon v-else name="clipboard" size="sm" />
               </button>
@@ -187,19 +189,12 @@
                 <span v-else class="text-sm text-gray-400 dark:text-dark-500">{{
                   t('keys.noGroup')
                 }}</span>
-                <svg
+                <Icon
+                  name="sort"
+                  size="xs"
+                  :animate-on-hover="false"
                   class="h-3.5 w-3.5 text-gray-400 opacity-60 transition-opacity group-hover/dropdown:opacity-100"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  stroke-width="2"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
-                  />
-                </svg>
+                />
               </button>
             </div>
           </template>
@@ -220,7 +215,7 @@
           <template #cell-usage="{ row }">
             <div class="text-sm">
               <div v-if="usageLoading && !usageStats[row.id]" class="flex h-10 items-center text-gray-400">
-                <Icon name="refresh" size="sm" class="animate-spin" />
+                <Icon name="refresh" size="sm" class="animate-spin" :animate-on-hover="false" />
               </div>
               <div v-else class="space-y-0.5">
                 <div class="flex items-center gap-1.5">
@@ -438,7 +433,7 @@
                 ]"
               >
                 <Icon v-if="row.status === 'active'" name="ban" size="sm" />
-                <Icon v-else name="checkCircle" size="sm" />
+                <Icon v-else name="checkCircle" size="sm" :animate-on-hover="false" />
                 <span class="text-xs">{{ row.status === 'active' ? t('keys.disable') : t('keys.enable') }}</span>
               </button>
               <button
@@ -1070,26 +1065,13 @@
             class="btn btn-primary py-1.5"
             data-tour="key-form-submit"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="submitting"
               class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{
               submitting
                 ? t('keys.saving')
@@ -1205,9 +1187,11 @@
         <!-- Search box -->
         <div class="border-b border-gray-100 p-2 dark:border-dark-700">
           <div class="relative">
-            <svg class="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <Icon
+              name="search"
+              size="sm"
+              class="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+            />
             <input
               v-model="groupSearchQuery"
               type="text"

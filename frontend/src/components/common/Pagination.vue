@@ -80,7 +80,7 @@
           class="pagination-control relative inline-flex h-9 items-center rounded-l-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
           :aria-label="t('pagination.previous')"
         >
-          <Icon name="chevronLeft" size="md" />
+          <Icon name="chevronLeft" size="md" :animate-on-hover="false" />
         </button>
 
         <!-- Page numbers -->
@@ -111,7 +111,7 @@
           class="pagination-control relative inline-flex h-9 items-center rounded-r-control border border-gray-300 bg-white px-2 py-0 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-600 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800"
           :aria-label="t('pagination.next')"
         >
-          <Icon name="chevronRight" size="md" />
+          <Icon name="chevronRight" size="md" :animate-on-hover="false" />
         </button>
       </nav>
     </div>

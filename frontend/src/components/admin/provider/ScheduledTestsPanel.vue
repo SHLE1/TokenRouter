@@ -120,7 +120,14 @@
             :disabled="!newPlan.model_id || !newPlan.cron_expression || creating"
             class="flex items-center gap-1.5 rounded-control bg-primary-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Icon v-if="creating" name="refresh" size="sm" class="animate-spin" :stroke-width="2" />
+            <Icon
+              v-if="creating"
+              name="refresh"
+              size="sm"
+              class="animate-spin"
+              :stroke-width="2"
+              :animate-on-hover="false"
+            />
             {{ t('common.save') }}
           </button>
         </div>
@@ -128,7 +135,13 @@
 
       <!-- Loading State -->
       <div v-if="loading" class="flex items-center justify-center py-8">
-        <Icon name="refresh" size="md" class="animate-spin text-gray-400" :stroke-width="2" />
+        <Icon
+          name="refresh"
+          size="md"
+          class="animate-spin text-gray-400"
+          :stroke-width="2"
+          :animate-on-hover="false"
+        />
         <span class="ml-2 text-sm text-gray-500">{{ t('common.loading') }}...</span>
       </div>
 
@@ -151,7 +164,7 @@
           class="rounded-surface border border-gray-200 bg-white transition-all dark:border-dark-600 dark:bg-dark-800"
         >
           <!-- Plan Header -->
-          <div
+          <div data-icon-trigger
             class="flex cursor-pointer items-center justify-between px-4 py-3"
             @click="toggleExpand(plan.id)"
           >
@@ -225,6 +238,7 @@
                   'text-gray-400 transition-transform duration-200',
                   expandedPlanId === plan.id ? 'rotate-180' : ''
                 ]"
+                :animate-on-hover="false"
               />
             </div>
           </div>
@@ -330,7 +344,14 @@
                 :disabled="!editForm.model_id || !editForm.cron_expression || updating"
                 class="flex items-center gap-1.5 rounded-control bg-primary-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Icon v-if="updating" name="refresh" size="sm" class="animate-spin" :stroke-width="2" />
+                <Icon
+                  v-if="updating"
+                  name="refresh"
+                  size="sm"
+                  class="animate-spin"
+                  :stroke-width="2"
+                  :animate-on-hover="false"
+                />
                 {{ t('common.save') }}
               </button>
             </div>
@@ -347,7 +368,13 @@
 
             <!-- Results Loading -->
             <div v-if="loadingResults" class="flex items-center justify-center py-4">
-              <Icon name="refresh" size="sm" class="animate-spin text-gray-400" :stroke-width="2" />
+              <Icon
+                name="refresh"
+                size="sm"
+                class="animate-spin text-gray-400"
+                :stroke-width="2"
+                :animate-on-hover="false"
+              />
               <span class="ml-2 text-xs text-gray-500">{{ t('common.loading') }}...</span>
             </div>
 
@@ -402,7 +429,7 @@
 
                 <!-- Response / Error (collapsible) -->
                 <div v-if="result.error_message" class="mt-2">
-                  <div
+                  <div data-icon-trigger
                     class="cursor-pointer text-xs font-medium text-red-600 dark:text-red-400"
                     @click="toggleResultDetail(result.id)"
                   >
@@ -414,6 +441,7 @@
                         'inline transition-transform duration-200',
                         expandedResultIds.has(result.id) ? 'rotate-180' : ''
                       ]"
+                      :animate-on-hover="false"
                     />
                   </div>
                   <pre
@@ -422,7 +450,7 @@
                   >{{ result.error_message }}</pre>
                 </div>
                 <div v-else-if="result.response_text" class="mt-2">
-                  <div
+                  <div data-icon-trigger
                     class="cursor-pointer text-xs font-medium text-gray-600 dark:text-gray-400"
                     @click="toggleResultDetail(result.id)"
                   >
@@ -434,6 +462,7 @@
                         'inline transition-transform duration-200',
                         expandedResultIds.has(result.id) ? 'rotate-180' : ''
                       ]"
+                      :animate-on-hover="false"
                     />
                   </div>
                   <pre

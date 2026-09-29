@@ -237,19 +237,7 @@
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                 ]"
               >
-                <svg
-                  class="mr-1.5 inline h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <Icon name="checkCircle" size="sm" :animate-on-hover="false" class="mr-1.5 inline h-4 w-4" />
                 {{ t('admin.providers.modelWhitelist') }}
               </button>
               <button
@@ -262,19 +250,7 @@
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                 ]"
               >
-                <svg
-                  class="mr-1.5 inline h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                  />
-                </svg>
+                <Icon name="swap" size="sm" class="mr-1.5 inline h-4 w-4" />
                 {{ t('admin.providers.modelMapping') }}
               </button>
             </div>
@@ -297,19 +273,7 @@
             <div v-else>
               <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
                 <p class="text-xs text-purple-700 dark:text-purple-400">
-                  <svg
-                    class="mr-1 inline h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <Icon name="infoCircle" size="sm" class="mr-1 inline h-4 w-4" />
                   {{ t('admin.providers.mapRequestModels') }}
                 </p>
               </div>
@@ -327,19 +291,7 @@
                   class="input flex-1"
                   :placeholder="t('admin.providers.requestModel')"
                 />
-                <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
+                <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
                 <input
                   v-model="mapping.to"
                   type="text"
@@ -351,14 +303,7 @@
                   @click="removeModelMapping(index)"
                   class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                 >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
+                  <Icon name="trash" size="sm" class="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -368,19 +313,7 @@
               @click="addModelMapping"
               class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
             >
-              <svg
-                class="mr-1 inline h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
+              <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
               {{ t('admin.providers.addMapping') }}
             </button>
 
@@ -500,14 +433,7 @@
                 @keyup.enter="addCustomErrorCode"
               />
               <button type="button" @click="addCustomErrorCode" class="btn btn-secondary px-3">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
+                <Icon name="plus" size="sm" class="h-4 w-4" />
               </button>
             </div>
 
@@ -684,19 +610,7 @@
                   class="input flex-1"
                   :placeholder="t('admin.providers.requestModel')"
                 />
-                <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
+                <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
                 <input
                   v-model="mapping.to"
                   type="text"
@@ -708,14 +622,7 @@
                   @click="removeModelMapping(index)"
                   class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                 >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
+                  <Icon name="trash" size="sm" class="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -810,19 +717,7 @@
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
               ]"
             >
-              <svg
-                class="mr-1.5 inline h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+              <Icon name="checkCircle" size="sm" :animate-on-hover="false" class="mr-1.5 inline h-4 w-4" />
               {{ t('admin.providers.modelWhitelist') }}
             </button>
             <button
@@ -835,19 +730,7 @@
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
               ]"
             >
-              <svg
-                class="mr-1.5 inline h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                />
-              </svg>
+              <Icon name="swap" size="sm" class="mr-1.5 inline h-4 w-4" />
               {{ t('admin.providers.modelMapping') }}
             </button>
           </div>
@@ -867,19 +750,7 @@
           <div v-else>
             <div class="mb-3 rounded-control bg-purple-50 p-3 dark:bg-purple-900/20">
               <p class="text-xs text-purple-700 dark:text-purple-400">
-                <svg
-                  class="mr-1 inline h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <Icon name="infoCircle" size="sm" class="mr-1 inline h-4 w-4" />
                 {{ t('admin.providers.mapRequestModels') }}
               </p>
             </div>
@@ -897,19 +768,7 @@
                   class="input flex-1"
                   :placeholder="t('admin.providers.requestModel')"
                 />
-                <svg
-                  class="h-4 w-4 flex-shrink-0 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
-                  />
-                </svg>
+                <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
                 <input
                   v-model="mapping.to"
                   type="text"
@@ -921,14 +780,7 @@
                   @click="removeModelMapping(index)"
                   class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                 >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
+                  <Icon name="trash" size="sm" class="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -938,19 +790,7 @@
               @click="addModelMapping"
               class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
             >
-              <svg
-                class="mr-1 inline h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
+              <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
               {{ t('admin.providers.addMapping') }}
             </button>
 
@@ -1221,9 +1061,7 @@
                   ]"
                   :placeholder="t('admin.providers.requestModel')"
                 />
-                <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
+                <Icon name="arrowRight" size="sm" class="h-4 w-4 flex-shrink-0 text-gray-400" />
                 <input
                   v-model="mapping.to"
                   type="text"
@@ -1238,14 +1076,7 @@
                   @click="removeAntigravityModelMapping(index)"
                   class="rounded-control p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                 >
-                  <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
+                  <Icon name="trash" size="sm" class="h-4 w-4" />
                 </button>
               </div>
               <!-- 校验错误提示 -->
@@ -1263,9 +1094,7 @@
             @click="addAntigravityModelMapping"
             class="mb-3 w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
           >
-            <svg class="mr-1 inline h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+            <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
             {{ t('admin.providers.addMapping') }}
           </button>
 
@@ -1332,7 +1161,7 @@
                     @click="moveTempUnschedRule(index, -1)"
                     class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
                   >
-                    <Icon name="chevronUp" size="sm" :stroke-width="2" />
+                    <Icon name="chevronUp" size="sm" :stroke-width="2" :animate-on-hover="false" />
                   </button>
                   <button
                     type="button"
@@ -1340,9 +1169,7 @@
                     @click="moveTempUnschedRule(index, 1)"
                     class="rounded-compact p-1 text-gray-400 transition-colors hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-gray-200"
                   >
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <Icon name="chevronDown" size="sm" :animate-on-hover="false" class="h-4 w-4" />
                   </button>
                   <button
                     type="button"
@@ -1404,14 +1231,7 @@
             @click="addTempUnschedRule()"
             class="w-full rounded-control border-2 border-dashed border-gray-300 px-4 py-2 text-sm text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-700 dark:border-dark-500 dark:text-gray-400 dark:hover:border-dark-400 dark:hover:text-gray-300"
           >
-            <svg
-              class="mr-1 inline h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+            <Icon name="plus" size="sm" class="mr-1 inline h-4 w-4" />
             {{ t('admin.providers.tempUnschedulable.addRule') }}
           </button>
         </div>
@@ -2344,26 +2164,13 @@
           class="btn btn-primary"
           data-tour="provider-form-submit"
         >
-          <svg
+          <Icon
+            name="loader"
+            size="sm"
+            :animate-on-hover="false"
             v-if="submitting"
             class="-ml-1 mr-2 h-4 w-4 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
+          />
           {{ submitting ? t('admin.providers.updating') : t('common.update') }}
         </button>
       </div>

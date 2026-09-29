@@ -37,7 +37,13 @@
           <ProviderIcon v-if="modelBrandName" :brand="modelBrandName" size="13px" class="flex-shrink-0" />
           <Icon v-else name="sparkles" size="xs" class="flex-shrink-0" />
           <span class="max-w-28 truncate">{{ modelChipLabel }}</span>
-          <Icon name="chevronUp" size="xs" class="flex-shrink-0 transition-transform" :class="openPanel !== 'model' && 'rotate-180'" />
+          <Icon
+            name="chevronUp"
+            size="xs"
+            class="flex-shrink-0 transition-transform"
+            :class="openPanel !== 'model' && 'rotate-180'"
+            :animate-on-hover="false"
+          />
         </button>
         <Transition name="pop-float">
           <div
@@ -61,7 +67,13 @@
                 <span class="block truncate text-xs font-medium text-gray-800 dark:text-gray-100">{{ option.model }}</span>
                 <span class="block truncate text-xs text-gray-400 dark:text-dark-400">{{ option.group_name }}</span>
               </span>
-              <Icon v-if="studio.selectedOptionKey.value === creativeOptionKey(option)" name="check" size="sm" class="flex-shrink-0 text-primary-600 dark:text-primary-300" />
+              <Icon
+                v-if="studio.selectedOptionKey.value === creativeOptionKey(option)"
+                name="check"
+                size="sm"
+                class="flex-shrink-0 text-primary-600 dark:text-primary-300"
+                :animate-on-hover="false"
+              />
             </button>
           </div>
         </Transition>
@@ -79,7 +91,13 @@
         >
           <Icon name="filter" size="xs" class="flex-shrink-0" />
           <span class="max-w-24 truncate">{{ paramsChipLabel }}</span>
-          <Icon name="chevronUp" size="xs" class="flex-shrink-0 transition-transform" :class="openPanel !== 'params' && 'rotate-180'" />
+          <Icon
+            name="chevronUp"
+            size="xs"
+            class="flex-shrink-0 transition-transform"
+            :class="openPanel !== 'params' && 'rotate-180'"
+            :animate-on-hover="false"
+          />
         </button>
         <Transition name="pop-float">
           <div
@@ -115,7 +133,13 @@
                     :class="studio.aspectRatio.value === ratio && 'param-chip-active'"
                     @click="setAspectRatio(ratio)"
                   >
-                    <Icon v-if="ratio === 'auto'" name="sparkles" size="xs" class="opacity-70" aria-hidden="true" />
+                    <Icon
+                      v-if="ratio === 'auto'"
+                      name="sparkles"
+                      size="xs"
+                      class="opacity-70"
+                      aria-hidden="true"
+                    />
                     <!-- 比例预览小方框：直观展示宽高比 -->
                     <span v-else class="ratio-preview" :style="ratioPreviewStyle(ratio)"></span>
                     {{ ratio }}
@@ -184,7 +208,13 @@
         >
           <Icon name="swap" size="xs" class="flex-shrink-0" />
           <span class="max-w-24 truncate">{{ operationChipLabel }}</span>
-          <Icon name="chevronUp" size="xs" class="flex-shrink-0 transition-transform" :class="openPanel !== 'operation' && 'rotate-180'" />
+          <Icon
+            name="chevronUp"
+            size="xs"
+            class="flex-shrink-0 transition-transform"
+            :class="openPanel !== 'operation' && 'rotate-180'"
+            :animate-on-hover="false"
+          />
         </button>
         <Transition name="pop-float">
           <div
@@ -207,7 +237,13 @@
                 <span class="block text-xs font-medium text-gray-800 dark:text-gray-100">{{ t(`creative.operations.${op}`, op) }}</span>
                 <span class="block text-xs text-gray-400 dark:text-dark-400">{{ t(`creative.operationsDesc.${op}`) }}</span>
               </span>
-              <Icon v-if="studio.operation.value === op" name="check" size="sm" class="flex-shrink-0 text-primary-600 dark:text-primary-300" />
+              <Icon
+                v-if="studio.operation.value === op"
+                name="check"
+                size="sm"
+                class="flex-shrink-0 text-primary-600 dark:text-primary-300"
+                :animate-on-hover="false"
+              />
             </button>
           </div>
         </Transition>
@@ -225,7 +261,13 @@
           :title="t('creative.composer.send')"
           @click="emit('generate')"
         >
-          <Icon v-if="studio.busy.value" name="refresh" size="sm" class="animate-spin" />
+          <Icon
+            v-if="studio.busy.value"
+            name="refresh"
+            size="sm"
+            class="animate-spin"
+            :animate-on-hover="false"
+          />
           <Icon v-else name="arrowUp" size="sm" />
         </button>
       </div>

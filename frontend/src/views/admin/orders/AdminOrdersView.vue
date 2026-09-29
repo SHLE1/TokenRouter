@@ -65,7 +65,7 @@
             <template v-if="row.status === 'REFUND_REQUESTED'">
               <span v-if="row.refund_amount" class="rounded-full bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">{{ formatOrderAmount(row.refund_amount, row) }}</span>
               <button @click="openRefundDialog(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20">
-                <Icon name="check" size="sm" />
+                <Icon name="check" size="sm" :animate-on-hover="false" />
                 {{ t('payment.admin.approveRefund') }}
               </button>
             </template>

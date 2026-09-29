@@ -94,7 +94,11 @@
           </label>
           <div class="input-icon-wrap input-icon-lg">
             <div class="input-icon">
-              <Icon name="key" size="md" :class="invitationValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'" />
+              <Icon
+                name="key"
+                size="md"
+                :class="invitationValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'"
+              />
             </div>
             <input
               id="invitation_code"
@@ -111,13 +115,15 @@
             />
             <!-- Validation indicator -->
             <div v-if="invitationValidating" class="input-icon-right">
-              <svg class="h-4 w-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <Icon
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
+                class="h-4 w-4 animate-spin text-gray-400"
+              />
             </div>
             <div v-else-if="invitationValidation.valid" class="input-icon-right">
-              <Icon name="checkCircle" size="md" class="text-green-500" />
+              <Icon name="checkCircle" size="md" class="text-green-500" :animate-on-hover="false" />
             </div>
             <div v-else-if="invitationValidation.invalid || errors.invitation_code" class="input-icon-right">
               <Icon name="exclamationCircle" size="md" class="text-red-500" />
@@ -126,7 +132,12 @@
           <!-- Invitation code validation result -->
           <transition name="fade-slow">
             <div v-if="invitationValidation.valid" class="mt-2 flex items-center gap-2 rounded-control bg-green-50 px-3 py-2 dark:bg-green-900/20">
-              <Icon name="checkCircle" size="sm" class="text-green-600 dark:text-green-400" />
+              <Icon
+                name="checkCircle"
+                size="sm"
+                class="text-green-600 dark:text-green-400"
+                :animate-on-hover="false"
+              />
               <span class="text-sm text-green-700 dark:text-green-400">
                 {{ t('auth.invitationCodeValid') }}
               </span>
@@ -163,7 +174,11 @@
           </label>
           <div class="input-icon-wrap input-icon-lg">
             <div class="input-icon">
-              <Icon name="gift" size="md" :class="promoValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'" />
+              <Icon
+                name="gift"
+                size="md"
+                :class="promoValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'"
+              />
             </div>
             <input
               id="promo_code"
@@ -180,13 +195,15 @@
             />
             <!-- Validation indicator -->
             <div v-if="promoValidating" class="input-icon-right">
-              <svg class="h-4 w-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <Icon
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
+                class="h-4 w-4 animate-spin text-gray-400"
+              />
             </div>
             <div v-else-if="promoValidation.valid" class="input-icon-right">
-              <Icon name="checkCircle" size="md" class="text-green-500" />
+              <Icon name="checkCircle" size="md" class="text-green-500" :animate-on-hover="false" />
             </div>
             <div v-else-if="promoValidation.invalid" class="input-icon-right">
               <Icon name="exclamationCircle" size="md" class="text-red-500" />
@@ -241,26 +258,13 @@
           :disabled="registrationActionDisabled || (!agreementGateActive && turnstileEnabled && !turnstileToken)"
           class="btn btn-primary w-full"
         >
-          <svg
+          <Icon
+            name="loader"
+            size="sm"
+            :animate-on-hover="false"
             v-if="isLoading"
             class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
+          />
           <Icon v-else name="userPlus" size="md" class="mr-2" />
           {{
             isLoading

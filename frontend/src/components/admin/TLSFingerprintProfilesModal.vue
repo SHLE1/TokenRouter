@@ -106,7 +106,11 @@
               :disabled="collectorCapturesLoading"
               @click="refreshCollectorCaptures"
             >
-              <Icon name="refresh" size="sm" :class="['mr-1', collectorCapturesLoading ? 'animate-spin' : '']" />
+              <Icon
+                name="refresh"
+                size="sm"
+                :class="['mr-1', collectorCapturesLoading ? 'animate-spin' : '']"
+              />
               {{ t('admin.tlsFingerprintProfiles.collector.refreshCaptures') }}
             </button>
           </div>
@@ -204,7 +208,7 @@
                     {{ t('admin.tlsFingerprintProfiles.collector.copyYaml') }}
                   </button>
                   <button type="button" class="btn btn-primary btn-xs" @click="applyCapture(record)">
-                    <Icon name="check" size="xs" class="mr-1" />
+                    <Icon name="check" size="xs" class="mr-1" :animate-on-hover="false" />
                     {{ t('admin.tlsFingerprintProfiles.collector.applyCapture') }}
                   </button>
                 </div>
@@ -216,7 +220,7 @@
 
       <!-- 模板列表 -->
       <div v-if="loading" class="flex items-center justify-center py-8">
-        <Icon name="refresh" size="lg" class="animate-spin text-gray-400" />
+        <Icon name="refresh" size="lg" class="animate-spin text-gray-400" :animate-on-hover="false" />
       </div>
 
       <div v-else-if="profiles.length === 0" class="py-8 text-center">
@@ -497,7 +501,13 @@
             {{ t('common.cancel') }}
           </button>
           <button @click="handleSubmit" :disabled="submitting" class="btn btn-primary">
-            <Icon v-if="submitting" name="refresh" size="sm" class="mr-1 animate-spin" />
+            <Icon
+              v-if="submitting"
+              name="refresh"
+              size="sm"
+              class="mr-1 animate-spin"
+              :animate-on-hover="false"
+            />
             {{ showEditModal ? t('common.update') : t('common.create') }}
           </button>
         </div>

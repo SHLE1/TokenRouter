@@ -32,7 +32,7 @@
             <div class="toc-header">
               <span class="toc-title">{{ t('customPage.toc') }}</span>
               <button class="toc-close-btn" type="button" :title="t('customPage.hideToc')" @click="tocVisible = false">
-                <Icon name="chevronLeft" size="sm" />
+                <Icon name="chevronLeft" size="sm" :animate-on-hover="false" />
               </button>
             </div>
             <nav class="toc-nav">

@@ -76,7 +76,7 @@
             :disabled="loading || resolving || !preview"
             @click="emit('resolve', 'accepted')"
           >
-            <Icon name="check" size="sm" />
+            <Icon name="check" size="sm" :animate-on-hover="false" />
             {{ t('team.accept') }}
           </button>
         </template>

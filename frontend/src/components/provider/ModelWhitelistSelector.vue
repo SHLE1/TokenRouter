@@ -2,7 +2,7 @@
   <div>
     <!-- Multi-select Dropdown -->
     <div class="relative mb-3">
-      <div
+      <div data-icon-trigger
         @click="toggleDropdown"
         class="cursor-pointer rounded-control border border-gray-300 bg-white px-3 py-2 dark:border-dark-500 dark:bg-dark-700"
       >
@@ -27,9 +27,7 @@
         </div>
         <div class="mt-2 flex items-center justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
           <span class="text-xs text-gray-400">{{ t('admin.providers.modelCount', { count: modelValue.length }) }}</span>
-          <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
+          <Icon name="chevronDown" size="md" :animate-on-hover="false" class="h-5 w-5 text-gray-400" />
         </div>
       </div>
       <!-- Dropdown List -->
@@ -67,9 +65,13 @@
                     : 'border-gray-300 dark:border-dark-500'
                 ]"
               >
-                <svg v-if="modelValue.includes(model.value)" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                </svg>
+                <Icon
+                  name="check"
+                  size="xs"
+                  :animate-on-hover="false"
+                  v-if="modelValue.includes(model.value)"
+                  class="h-3 w-3"
+                />
               </span>
               <ModelIcon :model="model.value" size="18px" />
               <span class="truncate text-gray-900 dark:text-white">{{ model.value }}</span>

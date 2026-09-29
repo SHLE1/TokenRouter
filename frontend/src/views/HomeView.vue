@@ -265,7 +265,7 @@
             <div class="relative flex h-24 w-24 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition-transform duration-500 ease-out group-hover:scale-110 dark:border-dark-700 dark:bg-dark-900">
               <Icon name="shield" size="xl" class="text-gray-400 dark:text-dark-300" />
               <span class="absolute -right-1 -top-1 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
-                <Icon name="check" size="md" :stroke-width="2" />
+                <Icon name="check" size="md" :stroke-width="2" :animate-on-hover="false" />
               </span>
             </div>
           </div>
@@ -295,7 +295,7 @@
           <div>
             <router-link to="/models" class="inline-flex items-center gap-2 text-2xl font-bold text-gray-950 hover:text-primary-600 dark:text-white dark:hover:text-primary-300">
               {{ t('home.providers.title') }}
-              <Icon name="chevronRight" size="md" />
+              <Icon name="chevronRight" size="md" :animate-on-hover="false" />
             </router-link>
             <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
               {{ formatMarketplaceStat(totalModelCount) }} {{ t('marketplace.modelsStat') }}

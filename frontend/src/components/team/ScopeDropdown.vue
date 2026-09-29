@@ -11,7 +11,7 @@
     >
       <Icon :name="scope === 'team' ? 'users' : 'user'" size="md" class="md:mr-1.5" />
       <span class="hidden md:inline">{{ currentLabel }}</span>
-      <Icon name="chevronDown" size="xs" class="ml-1 hidden md:inline" />
+      <Icon name="chevronDown" size="xs" class="ml-1 hidden md:inline" :animate-on-hover="false" />
     </button>
 
     <div
@@ -38,6 +38,7 @@
           size="sm"
           class="text-primary-500"
           :stroke-width="2"
+          :animate-on-hover="false"
         />
       </button>
     </div>

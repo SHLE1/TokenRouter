@@ -1052,6 +1052,14 @@
     @apply animate-spin;
   }
 
+  /* 加载提示保留静态形状；所有既有转圈入口共用系统动画偏好。 */
+  @media (prefers-reduced-motion: reduce) {
+    html .spinner,
+    html .animate-spin {
+      animation: none;
+    }
+  }
+
   .skeleton {
     /* 占位块只展示结构，使用中性色，并尊重系统减少动画设置。 */
     @apply animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700 motion-reduce:animate-none;

@@ -12,10 +12,12 @@
 
       <!-- 加载状态 -->
       <div v-if="loading" class="flex justify-center py-12">
-        <svg class="h-10 w-10 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
+        <Icon
+          name="loader"
+          size="md"
+          :animate-on-hover="false"
+          class="h-10 w-10 animate-spin text-primary-500"
+        />
       </div>
 
       <div v-else class="space-y-6">
@@ -46,9 +48,13 @@
                       class="peer sr-only"
                     />
                     <div class="h-5 w-5 rounded-control border-2 border-gray-300 transition-all peer-checked:border-primary-500 peer-checked:bg-primary-500 dark:border-dark-500 peer-checked:dark:border-primary-500">
-                      <svg v-if="config.isSelected" class="h-full w-full text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <Icon
+                        name="check"
+                        size="md"
+                        :animate-on-hover="false"
+                        v-if="config.isSelected"
+                        class="h-full w-full text-white"
+                      />
                     </div>
                   </label>
                 </div>
@@ -116,9 +122,13 @@
                       class="peer sr-only"
                     />
                     <div class="h-5 w-5 rounded-control border-2 border-gray-300 transition-all peer-checked:border-green-500 peer-checked:bg-green-500 dark:border-dark-500 peer-checked:dark:border-green-600 peer-checked:dark:bg-green-600">
-                      <svg v-if="config.isSelected" class="h-full w-full text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <Icon
+                        name="check"
+                        size="md"
+                        :animate-on-hover="false"
+                        v-if="config.isSelected"
+                        class="h-full w-full text-white"
+                      />
                     </div>
                   </label>
                 </div>
@@ -165,9 +175,7 @@
         <!-- 无分组提示 -->
         <div v-if="groups.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
           <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-dark-700">
-            <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
+            <Icon name="layers" size="xl" class="h-8 w-8 text-gray-400" />
           </div>
           <p class="text-gray-500 dark:text-gray-400">{{ t('common.noGroupsAvailable') }}</p>
         </div>
@@ -178,10 +186,13 @@
       <div class="flex justify-end gap-3">
         <button @click="$emit('close')" class="btn btn-secondary px-5">{{ t('common.cancel') }}</button>
         <button @click="handleSave" :disabled="submitting" class="btn btn-primary px-6">
-          <svg v-if="submitting" class="-ml-1 mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
+          <Icon
+            name="loader"
+            size="sm"
+            :animate-on-hover="false"
+            v-if="submitting"
+            class="-ml-1 mr-2 h-4 w-4 animate-spin"
+          />
           {{ submitting ? t('common.saving') : t('common.save') }}
         </button>
       </div>
@@ -190,6 +201,7 @@
 </template>
 
 <script setup lang="ts">
+import Icon from '@/components/icons/Icon.vue'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

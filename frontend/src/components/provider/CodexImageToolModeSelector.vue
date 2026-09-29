@@ -46,7 +46,7 @@
                 : 'border-gray-300 text-transparent group-hover:border-gray-400 dark:border-dark-500'
             ]"
           >
-            <Icon name="check" size="xs" :stroke-width="2" />
+            <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />
           </span>
           <span class="min-w-0">
             <span class="block text-sm font-medium">{{ option.label }}</span>

@@ -108,6 +108,7 @@
               name="chevronRight"
               size="sm"
               class="mt-1 shrink-0 text-gray-400 transition-transform group-hover:translate-x-0.5 group-hover:text-primary-500 dark:text-dark-500 dark:group-hover:text-primary-400"
+              :animate-on-hover="false"
             />
           </button>
         </li>

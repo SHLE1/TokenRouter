@@ -10,7 +10,7 @@
         </p>
         <div class="mt-4 flex gap-3">
           <button class="btn btn-primary" :disabled="resolvingToken" @click="resolvePendingToken('accepted')">
-            <Icon name="check" size="sm" />
+            <Icon name="check" size="sm" :animate-on-hover="false" />
             {{ t('team.accept') }}
           </button>
           <button class="btn btn-secondary" :disabled="resolvingToken" @click="resolvePendingToken('declined')">

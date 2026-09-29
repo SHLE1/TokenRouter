@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '@/components/icons/Icon.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { TABLE_DESKTOP_MEDIA_QUERY } from '@/constants/layout'
@@ -409,9 +410,13 @@ function cancelDelete() {
           :disabled="loading"
           @click="load"
         >
-          <svg class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <Icon
+            name="refresh"
+            size="xs"
+            :animate-on-hover="false"
+            class="h-3.5 w-3.5"
+            :class="{ 'animate-spin': loading }"
+          />
           {{ t('common.refresh') }}
         </button>
       </div>

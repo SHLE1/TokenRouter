@@ -14,18 +14,17 @@
 
       <!-- Loading State -->
       <div v-if="loading" class="flex justify-center py-12">
-        <svg class="h-8 w-8 animate-spin text-primary-500" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-        </svg>
+        <Icon
+          name="loader"
+          size="xl"
+          :animate-on-hover="false"
+          class="h-8 w-8 animate-spin text-primary-500"
+        />
       </div>
 
       <!-- Empty State -->
       <div v-else-if="attributes.length === 0" class="py-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
-        </svg>
+        <Icon name="tag" size="md" class="mx-auto h-12 w-12 text-gray-400" />
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
           {{ t('admin.users.attributes.noAttributes') }}
         </p>
@@ -213,10 +212,13 @@
           {{ t('common.cancel') }}
         </button>
         <button type="submit" form="attribute-form" :disabled="saving" class="btn btn-primary">
-          <svg v-if="saving" class="-ml-1 mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
+          <Icon
+            name="loader"
+            size="sm"
+            :animate-on-hover="false"
+            v-if="saving"
+            class="-ml-1 mr-2 h-4 w-4 animate-spin"
+          />
           {{ saving ? t('common.saving') : (editingAttribute ? t('common.update') : t('common.create')) }}
         </button>
       </div>

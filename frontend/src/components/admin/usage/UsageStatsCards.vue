@@ -15,7 +15,7 @@
     </div>
     <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
-        <div class="shrink-0 self-start rounded-control bg-amber-100 p-2 dark:bg-amber-900/30 text-amber-600"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg></div>
+        <div class="shrink-0 self-start rounded-control bg-amber-100 p-2 dark:bg-amber-900/30 text-amber-600"><Icon name="cube" size="md" class="h-5 w-5" /></div>
         <div class="min-w-0">
           <p class="text-xs font-medium text-gray-500">{{ t('usage.totalTokens') }}</p>
           <p class="mt-0.5 whitespace-nowrap text-lg font-bold tabular-nums lg:text-xl">{{ formatTokens(stats?.total_tokens || 0) }}</p>

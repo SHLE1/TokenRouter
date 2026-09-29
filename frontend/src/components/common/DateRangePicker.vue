@@ -21,6 +21,7 @@
           name="chevronDown"
           size="sm"
           :class="['transition-transform duration-200', isOpen && 'rotate-180']"
+          :animate-on-hover="false"
         />
       </span>
     </button>

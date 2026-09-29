@@ -120,7 +120,12 @@
               @click="showRules = !showRules"
             >
               <span>{{ t('admin.providers.inviteResetRules') }}</span>
-              <Icon name="chevronDown" size="sm" :class="['transition-transform', showRules && 'rotate-180']" />
+              <Icon
+                name="chevronDown"
+                size="sm"
+                :class="['transition-transform', showRules && 'rotate-180']"
+                :animate-on-hover="false"
+              />
             </button>
             <div v-if="showRules" class="rounded-control bg-gray-50 p-3 text-sm text-gray-600 dark:bg-dark-800 dark:text-gray-300">
               <ul v-if="rules.length > 0" class="list-disc space-y-1 pl-5">

@@ -9,7 +9,7 @@
     :aria-expanded="open"
     @click="open = !open"
   >
-    <HistoryIcon />
+    <Icon name="history" />
     <!-- 活动任务数量：保持在图标右上角，不展开历史也能感知后台进度。 -->
     <span
       v-if="props.activeRunCount > 0"
@@ -73,6 +73,7 @@
                 size="sm"
                 class="flex-shrink-0 text-gray-400 transition-transform dark:text-dark-400"
                 :class="expandedRunId === run.id && 'rotate-180'"
+                :animate-on-hover="false"
               />
             </div>
             <div class="mt-1 flex items-center gap-2 text-xs text-gray-400 dark:text-dark-400">
@@ -97,7 +98,12 @@
                 <div class="space-y-2 border-t border-primary-900/10 px-3 pb-3 pt-2 dark:border-dark-600">
                   <div v-if="isActive(run)" class="flex items-center gap-3 py-2 text-xs text-gray-500 dark:text-dark-300">
                     <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-control border border-primary-900/10 bg-gray-50 dark:border-dark-600 dark:bg-dark-950">
-                      <Icon name="refresh" size="md" class="animate-spin text-primary-500" />
+                      <Icon
+                        name="refresh"
+                        size="md"
+                        class="animate-spin text-primary-500"
+                        :animate-on-hover="false"
+                      />
                     </div>
                     <div class="min-w-0">
                       <span class="block">{{ t(`creative.status.${run.status}`, run.status) }}</span>
@@ -177,7 +183,7 @@
  *   图片支持拖到画布，且「导入到画布」和「下载」按钮统一放在图片下方并排展示；本地素材缺失时按钮禁用并展示缺失占位
  * - 进行中的任务只展示加载状态，不提供素材操作或取消入口
  */
-import { h, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'
 import Icon from '@/components/icons/Icon.vue'
@@ -293,32 +299,6 @@ function downloadOutput(runId: string, outputIndex: number, mimeType?: string): 
   if (!asset) return
   const extension = (mimeType || asset.blob.type || 'image/png').split('/')[1] || 'png'
   saveAs(asset.blob, `creative-${runId.slice(0, 12)}-${outputIndex}.${extension}`)
-}
-
-// 历史（回旋时钟）图标：手写 SVG，仿 🕘 样式，风格对齐 AppSidebar 内手写图标
-const HistoryIcon = {
-  render: () =>
-    h(
-      'svg',
-      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5', class: 'h-5 w-5' },
-      [
-        h('path', {
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-          d: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8',
-        }),
-        h('path', {
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-          d: 'M3 3v5h5',
-        }),
-        h('path', {
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-          d: 'M12 7v5l4 2',
-        }),
-      ],
-    ),
 }
 
 function isActive(run: CreativeRun): boolean {

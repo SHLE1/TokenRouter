@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '@/components/icons/Icon.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -135,10 +136,15 @@ const dailyFixedHint = computed(() =>
   <div class="rounded-control border border-gray-200 dark:border-dark-600">
       <!-- Header: toggle + collapse -->
       <div class="flex items-center justify-between p-4" :class="{ 'pb-0': localEnabled && !collapsed }">
-        <div class="flex items-center gap-2 flex-1 cursor-pointer" @click="localEnabled && (collapsed = !collapsed)">
-          <svg v-if="localEnabled" class="h-4 w-4 text-gray-400 transition-transform" :class="{ '-rotate-90': collapsed }" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
-          </svg>
+        <div data-icon-trigger class="flex items-center gap-2 flex-1 cursor-pointer" @click="localEnabled && (collapsed = !collapsed)">
+          <Icon
+            name="chevronDown"
+            size="sm"
+            :animate-on-hover="false"
+            v-if="localEnabled"
+            class="h-4 w-4 text-gray-400 transition-transform"
+            :class="{ '-rotate-90': collapsed }"
+          />
           <div>
             <label class="input-label mb-0 cursor-pointer">{{ t('admin.providers.quotaLimitToggle') }}</label>
             <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">

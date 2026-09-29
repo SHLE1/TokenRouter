@@ -12,7 +12,7 @@
         <Icon name="eye" size="sm" />
         {{ expanded ? t('marketplace.collapsePricing') : t('marketplace.viewPricing') }}
       </span>
-      <Icon :name="expanded ? 'chevronUp' : 'chevronDown'" size="sm" />
+      <Icon :name="expanded ? 'chevronUp' : 'chevronDown'" size="sm" :animate-on-hover="false" />
     </button>
 
     <!-- 抽屉式定价面板：grid 行高 0fr -> 1fr 过渡实现原地展开收起。 -->

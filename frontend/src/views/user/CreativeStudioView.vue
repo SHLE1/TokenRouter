@@ -69,7 +69,13 @@
         class="absolute left-1/2 top-28 z-10 hidden max-w-[calc(100%-6rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-primary-900/10 bg-white/90 px-3 py-1.5 text-xs shadow-md backdrop-blur dark:border-dark-600 dark:bg-dark-900/90 lg:bottom-3 lg:left-3 lg:top-auto lg:flex lg:max-w-[calc(100%-24rem)] lg:translate-x-0"
         :class="pillState.toneClass"
       >
-        <Icon v-if="pillState.spinning" name="refresh" size="sm" class="animate-spin" />
+        <Icon
+          v-if="pillState.spinning"
+          name="refresh"
+          size="sm"
+          class="animate-spin"
+          :animate-on-hover="false"
+        />
         <span class="whitespace-nowrap font-medium">{{ pillState.text }}</span>
         <span v-if="pillState.detail" class="truncate text-gray-500 dark:text-dark-400">{{ pillState.detail }}</span>
       </div>

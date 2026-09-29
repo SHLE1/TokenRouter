@@ -19,7 +19,7 @@
 
       <!-- Rules Table -->
       <div v-if="loading" class="flex items-center justify-center py-8">
-        <Icon name="refresh" size="lg" class="animate-spin text-gray-400" />
+        <Icon name="refresh" size="lg" class="animate-spin text-gray-400" :animate-on-hover="false" />
       </div>
 
       <div v-else-if="rules.length === 0" class="py-8 text-center">
@@ -153,6 +153,7 @@
                       name="checkCircle"
                       size="xs"
                       class="text-yellow-500"
+                      :animate-on-hover="false"
                     />
                     <span class="text-gray-600 dark:text-gray-400">
                       {{ t('admin.errorPassthrough.skipMonitoring') }}
@@ -408,7 +409,13 @@
             {{ t('common.cancel') }}
           </button>
           <button @click="handleSubmit" :disabled="submitting" class="btn btn-primary">
-            <Icon v-if="submitting" name="refresh" size="sm" class="mr-1 animate-spin" />
+            <Icon
+              v-if="submitting"
+              name="refresh"
+              size="sm"
+              class="mr-1 animate-spin"
+              :animate-on-hover="false"
+            />
             {{ showEditModal ? t('common.update') : t('common.create') }}
           </button>
         </div>

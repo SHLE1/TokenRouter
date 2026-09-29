@@ -179,6 +179,7 @@
                     :name="expandedUpstreamDetailIds.has(ev.id) ? 'chevronDown' : 'chevronRight'"
                     size="xs"
                     :stroke-width="2"
+                    :animate-on-hover="false"
                   />
                   <span>
                     {{

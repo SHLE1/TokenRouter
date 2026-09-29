@@ -377,19 +377,20 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
           :disabled="loading"
           @click="loadFirstPage"
         >
-          <svg class="h-3.5 w-3.5" :class="{ 'animate-spin': loading }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <Icon
+            name="refresh"
+            size="xs"
+            :animate-on-hover="false"
+            class="h-3.5 w-3.5"
+            :class="{ 'animate-spin': loading }"
+          />
           {{ t('common.refresh') }}
         </button>
       </div>
     </div>
 
     <div v-if="loading" class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-      <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>
+      <Icon name="loader" size="sm" :animate-on-hover="false" class="h-4 w-4 animate-spin" />
       {{ t('admin.ops.alertEvents.loading') }}
     </div>
 
@@ -400,7 +401,7 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
     <div v-else class="overflow-hidden rounded-surface border border-gray-200 dark:border-dark-700">
       <div class="max-h-[600px] overflow-y-auto" @scroll="onScroll"> <!-- check-ui-allow: 告警事件流局部高度 -->
         <div v-if="!isDesktopViewport" class="divide-y divide-gray-100 dark:divide-dark-800">
-          <div
+          <div data-icon-trigger
             v-for="row in events"
             :key="row.id"
             class="cursor-pointer space-y-2 p-4 hover:bg-gray-50 dark:hover:bg-dark-700/50"
@@ -429,6 +430,7 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
                   name="checkCircle"
                   size="xs"
                   class="text-green-600 dark:text-green-400"
+                  :animate-on-hover="false"
                 />
                 <Icon
                   v-else
@@ -472,7 +474,7 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
-            <tr
+            <tr data-icon-trigger
               v-for="row in events"
               :key="row.id"
               class="cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/50"
@@ -520,6 +522,7 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
                     name="checkCircle"
                     size="sm"
                     class="text-green-600 dark:text-green-400"
+                    :animate-on-hover="false"
                   />
                   <Icon
                     v-else
@@ -536,10 +539,7 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
           </tbody>
         </table>
         <div v-if="loadingMore" class="flex items-center justify-center gap-2 py-3 text-xs text-gray-500 dark:text-gray-400">
-          <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
+          <Icon name="loader" size="sm" :animate-on-hover="false" class="h-4 w-4 animate-spin" />
           {{ t('admin.ops.alertEvents.loading') }}
         </div>
         <div v-else-if="!hasMore && events.length > 0" class="py-3 text-center text-xs text-gray-400">
@@ -599,7 +599,7 @@ const empty = computed(() => events.value.length === 0 && !loading.value)
               </div>
 
               <button type="button" class="btn btn-secondary btn-sm" :disabled="detailActionLoading" @click="manualResolve">
-                <Icon name="checkCircle" size="sm" />
+                <Icon name="checkCircle" size="sm" :animate-on-hover="false" />
                 {{ t('admin.ops.alertEvents.detail.manualResolve') }}
               </button>
             </div>

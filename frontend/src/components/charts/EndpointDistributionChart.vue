@@ -88,15 +88,27 @@
           </thead>
           <tbody>
             <template v-for="item in displayEndpointStats" :key="item.endpoint">
-              <tr
+              <tr data-icon-trigger
                 class="border-t border-gray-100 transition-colors dark:border-dark-600"
                 :class="enableBreakdown ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''"
                 @click="enableBreakdown && toggleBreakdown(item.endpoint)"
               >
                 <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300' : 'text-gray-900 dark:text-white'" :title="item.endpoint">
                   <span class="inline-flex items-center gap-1">
-                    <svg v-if="enableBreakdown && expandedKey === item.endpoint" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    <svg v-else-if="enableBreakdown" class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <Icon
+                      name="chevronDown"
+                      size="xs"
+                      :animate-on-hover="false"
+                      v-if="enableBreakdown && expandedKey === item.endpoint"
+                      class="h-3 w-3 shrink-0"
+                    />
+                    <Icon
+                      name="chevronRight"
+                      size="xs"
+                      :animate-on-hover="false"
+                      v-else-if="enableBreakdown"
+                      class="h-3 w-3 shrink-0"
+                    />
                     {{ item.endpoint }}
                   </span>
                 </td>
@@ -133,6 +145,7 @@
 </template>
 
 <script setup lang="ts">
+import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LogarithmicScale, Tooltip, Legend } from 'chart.js'

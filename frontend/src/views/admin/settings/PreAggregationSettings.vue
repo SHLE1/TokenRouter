@@ -26,7 +26,7 @@
     </div>
 
     <div v-if="loading && !state" class="flex min-h-40 items-center justify-center text-gray-400">
-      <Icon name="refresh" size="lg" class="animate-spin" />
+      <Icon name="refresh" size="lg" class="animate-spin" :animate-on-hover="false" />
     </div>
 
     <div v-else-if="state" class="divide-y divide-gray-100 dark:divide-dark-700">
@@ -141,7 +141,11 @@
             :disabled="backfilling || !canBackfill"
             @click="startBackfill"
           >
-            <Icon :name="backfilling ? 'refresh' : 'play'" size="sm" :class="backfilling ? 'animate-spin' : ''" />
+            <Icon
+              :name="backfilling ? 'refresh' : 'play'"
+              size="sm"
+              :class="backfilling ? 'animate-spin' : ''"
+            />
             {{ t("admin.settings.preAggregation.startBackfill") }}
           </button>
         </div>

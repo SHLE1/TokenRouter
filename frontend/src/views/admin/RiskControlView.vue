@@ -367,7 +367,12 @@
                         :disabled="unbanningUserID === row.user_id"
                         @click="unbanUser(row)"
                       >
-                        <Icon name="checkCircle" size="xs" :class="unbanningUserID === row.user_id ? 'animate-spin' : ''" />
+                        <Icon
+                          name="checkCircle"
+                          size="xs"
+                          :class="unbanningUserID === row.user_id ? 'animate-spin' : ''"
+                          :animate-on-hover="false"
+                        />
                         {{ unbanningUserID === row.user_id ? t('common.processing') : t('admin.riskControl.unbanUser') }}
                       </button>
                     </td>
@@ -386,7 +391,11 @@
                         @click="openInputDetail(row)"
                       >
                         <span class="min-w-0 flex-1 truncate">{{ inputSummaryText(row) }}</span>
-                        <Icon name="eye" size="xs" class="flex-shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-500" />
+                        <Icon
+                          name="eye"
+                          size="xs"
+                          class="flex-shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-500"
+                        />
                       </button>
                     </td>
                   </tr>
@@ -449,7 +458,12 @@
                         :disabled="unbanningUserID === row.user_id"
                         @click="unbanCyberUser(row)"
                       >
-                        <Icon name="checkCircle" size="xs" :class="unbanningUserID === row.user_id ? 'animate-spin' : ''" />
+                        <Icon
+                          name="checkCircle"
+                          size="xs"
+                          :class="unbanningUserID === row.user_id ? 'animate-spin' : ''"
+                          :animate-on-hover="false"
+                        />
                         {{ unbanningUserID === row.user_id ? t('common.processing') : t('admin.riskControl.unbanUser') }}
                       </button>
                     </td>
@@ -462,7 +476,11 @@
                         @click="openCyberDetail(row)"
                       >
                         <span class="min-w-0 flex-1 truncate">{{ cyberSummaryText(row) }}</span>
-                        <Icon name="eye" size="xs" class="flex-shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-500" />
+                        <Icon
+                          name="eye"
+                          size="xs"
+                          class="flex-shrink-0 text-gray-300 transition-colors group-hover:text-primary-500 dark:text-gray-500"
+                        />
                       </button>
                     </td>
                   </tr>
@@ -749,7 +767,10 @@
                               :title="isStoredApiKeyPendingDelete(row) ? t('admin.riskControl.undoDeleteApiKey') : t('admin.riskControl.deleteApiKey')"
                               @click="toggleDeleteStoredApiKey(row)"
                             >
-                              <Icon :name="isStoredApiKeyPendingDelete(row) ? 'refresh' : 'trash'" size="xs" />
+                              <Icon
+                                :name="isStoredApiKeyPendingDelete(row) ? 'refresh' : 'trash'"
+                                size="xs"
+                              />
                             </button>
                           </div>
                         </div>
@@ -796,7 +817,11 @@
                         class="inline-flex shrink-0 items-center gap-1 rounded-compact px-2 py-1 font-medium text-primary-600 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-primary-300 dark:hover:bg-primary-900/20"
                         @click="apiKeyRowsExpanded = !apiKeyRowsExpanded"
                       >
-                        <Icon :name="apiKeyRowsExpanded ? 'chevronUp' : 'chevronDown'" size="xs" />
+                        <Icon
+                          :name="apiKeyRowsExpanded ? 'chevronUp' : 'chevronDown'"
+                          size="xs"
+                          :animate-on-hover="false"
+                        />
                         {{ apiKeyRowsExpanded ? t('admin.riskControl.collapseApiKeyRows') : t('admin.riskControl.expandApiKeyRows') }}
                       </button>
                     </div>
@@ -888,7 +913,7 @@
                     class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border"
                     :class="isGroupSelected(group.id) ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-300 text-transparent dark:border-dark-500'"
                   >
-                    <Icon name="check" size="xs" :stroke-width="2" />
+                    <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />
                   </span>
                 </button>
                 <p v-if="filteredGroups.length === 0" class="text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.noGroups') }}</p>
@@ -925,7 +950,7 @@
                         ? 'border-primary-500 bg-primary-500 text-white'
                         : 'border-gray-300 text-transparent dark:border-dark-500'"
                     >
-                      <Icon name="check" size="xs" :stroke-width="2" />
+                      <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />
                     </span>
                   </div>
                   <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ option.description }}</p>
@@ -1190,7 +1215,7 @@
                         ? 'border-primary-500 bg-primary-500 text-white'
                         : 'border-gray-300 text-transparent dark:border-dark-500'"
                     >
-                      <Icon name="check" size="xs" :stroke-width="2" />
+                      <Icon name="check" size="xs" :stroke-width="2" :animate-on-hover="false" />
                     </span>
                   </div>
                   <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{{ option.description }}</p>
@@ -1239,8 +1264,8 @@
           <div class="flex justify-end gap-2">
             <button type="button" class="btn btn-secondary" @click="settingsOpen = false">{{ t('common.cancel') }}</button>
             <button type="button" class="btn btn-primary inline-flex items-center gap-2" :disabled="saving" @click="saveConfig">
-              <Icon v-if="saving" name="refresh" size="sm" class="animate-spin" />
-              <Icon v-else name="check" size="sm" />
+              <Icon v-if="saving" name="refresh" size="sm" class="animate-spin" :animate-on-hover="false" />
+              <Icon v-else name="check" size="sm" :animate-on-hover="false" />
               {{ saving ? t('common.saving') : t('admin.riskControl.saveConfig') }}
             </button>
           </div>
@@ -1285,7 +1310,7 @@
           </div>
 
           <div v-if="inputDetailLoading" class="flex min-h-40 items-center justify-center text-gray-500 dark:text-gray-400">
-            <Icon name="refresh" size="md" class="animate-spin" />
+            <Icon name="refresh" size="md" class="animate-spin" :animate-on-hover="false" />
           </div>
 
           <div v-else class="space-y-4">
@@ -1378,7 +1403,7 @@
           </div>
 
           <div v-if="cyberDetailLoading" class="flex min-h-40 items-center justify-center text-gray-500 dark:text-gray-400">
-            <Icon name="refresh" size="md" class="animate-spin" />
+            <Icon name="refresh" size="md" class="animate-spin" :animate-on-hover="false" />
           </div>
 
           <div v-else class="space-y-4">

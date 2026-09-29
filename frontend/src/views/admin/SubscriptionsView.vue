@@ -136,9 +136,7 @@
                 class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('admin.users.columnSettings')"
               >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15m-10.875 0h15.75c.621 0 1.125-.504 1.125-1.125V5.625c0-.621-.504-1.125-1.125-1.125H4.125C3.504 4.5 3 5.004 3 5.625v12.75c0 .621.504 1.125 1.125 1.125z" />
-                </svg>
+                <Icon name="columns" size="sm" class="h-4 w-4" />
                 <span class="hidden">{{ t('admin.users.columnSettings') }}</span>
               </button>
               <!-- Dropdown menu -->
@@ -157,14 +155,26 @@
                       class="dropdown-item-sm justify-between rounded-control"
                     >
                       <span>{{ t('admin.users.columns.email') }}</span>
-                      <Icon v-if="userColumnMode === 'email'" name="check" size="sm" class="text-primary-500" />
+                      <Icon
+                        v-if="userColumnMode === 'email'"
+                        name="check"
+                        size="sm"
+                        class="text-primary-500"
+                        :animate-on-hover="false"
+                      />
                     </button>
                     <button
                       @click="setUserColumnMode('username')"
                       class="dropdown-item-sm justify-between rounded-control"
                     >
                       <span>{{ t('admin.users.columns.username') }}</span>
-                      <Icon v-if="userColumnMode === 'username'" name="check" size="sm" class="text-primary-500" />
+                      <Icon
+                        v-if="userColumnMode === 'username'"
+                        name="check"
+                        size="sm"
+                        class="text-primary-500"
+                        :animate-on-hover="false"
+                      />
                     </button>
                   </div>
                   <!-- Other columns toggle -->
@@ -175,7 +185,13 @@
                     class="dropdown-item-sm justify-between rounded-control"
                   >
                     <span>{{ col.label }}</span>
-                    <Icon v-if="isColumnVisible(col.key)" name="check" size="sm" class="text-primary-500" />
+                    <Icon
+                      v-if="isColumnVisible(col.key)"
+                      name="check"
+                      size="sm"
+                      class="text-primary-500"
+                      :animate-on-hover="false"
+                    />
                   </button>
                 </div>
               </div>
@@ -255,19 +271,7 @@
                   </span>
                 </div>
                 <div class="reset-info" v-if="row.daily_window_start">
-                  <svg
-                    class="h-3 w-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <Icon name="clock" size="xs" class="h-3 w-3" />
                   <span>{{ formatDailyUsageWindow(row) }}</span>
                 </div>
               </div>
@@ -292,19 +296,7 @@
                   </span>
                 </div>
                 <div class="reset-info" v-if="row.weekly_window_start">
-                  <svg
-                    class="h-3 w-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <Icon name="clock" size="xs" class="h-3 w-3" />
                   <span>{{ formatUsageWindow(row, row.weekly_window_start, 'weekly') }}</span>
                 </div>
               </div>
@@ -329,19 +321,7 @@
                   </span>
                 </div>
                 <div class="reset-info" v-if="row.monthly_window_start">
-                  <svg
-                    class="h-3 w-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <Icon name="clock" size="xs" class="h-3 w-3" />
                   <span>{{ formatUsageWindow(row, row.monthly_window_start, 'monthly') }}</span>
                 </div>
               </div>
@@ -557,26 +537,13 @@
             :disabled="submitting"
             class="btn btn-primary"
           >
-            <svg
+            <Icon
+              name="loader"
+              size="sm"
+              :animate-on-hover="false"
               v-if="submitting"
               class="-ml-1 mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
+            />
             {{ submitting ? t('admin.subscriptions.assigning') : t('admin.subscriptions.assign') }}
           </button>
         </div>
@@ -692,7 +659,7 @@
           <div class="fixed inset-0 bg-[var(--overlay-bg)]" @click="showGuideModal = false"></div>
           <div class="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-surface bg-white p-6 shadow-2xl dark:bg-dark-800 sm:rounded-dialog">
             <button type="button" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="showGuideModal = false">
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              <Icon name="x" size="md" class="h-5 w-5" />
             </button>
 
             <h2 class="mb-4 text-lg font-bold text-gray-900 dark:text-white">{{ t('admin.subscriptions.guide.title') }}</h2>

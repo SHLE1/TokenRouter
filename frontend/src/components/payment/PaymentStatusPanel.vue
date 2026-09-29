@@ -7,7 +7,7 @@
       <div class="card p-6">
         <div class="flex flex-col items-center space-y-4 py-4">
           <div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-            <Icon name="check" size="lg" class="text-green-500" />
+            <Icon name="check" size="lg" class="text-green-500" :animate-on-hover="false" />
           </div>
           <p class="text-lg font-bold text-gray-900 dark:text-white">{{ props.orderType === 'subscription' ? t('payment.result.subscriptionSuccess') : t('payment.result.success') }}</p>
           <div v-if="paidOrder" class="w-full rounded-surface bg-gray-50 p-4 dark:bg-dark-800">
@@ -40,9 +40,7 @@
       <div class="card p-6">
         <div class="flex flex-col items-center space-y-4 py-4">
           <div class="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-dark-700">
-            <svg class="h-8 w-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <Icon name="x" size="xl" class="h-8 w-8 text-gray-400 dark:text-gray-500" />
           </div>
           <p class="text-lg font-bold text-gray-900 dark:text-white">{{ t('payment.qr.cancelled') }}</p>
           <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.cancelledDesc') }}</p>
@@ -56,9 +54,7 @@
       <div class="card p-6">
         <div class="flex flex-col items-center space-y-4 py-4">
           <div class="flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30">
-            <svg class="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <Icon name="clock" size="xl" class="h-8 w-8 text-orange-500" />
           </div>
           <p class="text-lg font-bold text-gray-900 dark:text-white">{{ t('payment.qr.expired') }}</p>
           <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.expiredDesc') }}</p>
@@ -93,7 +89,7 @@
               v-else
               class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/30"
             >
-              <Icon name="checkCircle" size="lg" class="text-[#00AEEF]" />
+              <Icon name="checkCircle" size="lg" class="text-[#00AEEF]" :animate-on-hover="false" />
             </div>
             <p class="text-lg font-semibold text-gray-900 dark:text-white">
               {{ deepLinkState === 'backgrounded' ? t('payment.qr.alipayContinueInApp') : t('payment.qr.alipayOpening') }}

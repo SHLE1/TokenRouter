@@ -26,7 +26,7 @@
         class="flex min-h-36 flex-col items-center justify-center gap-3 py-4 text-center"
         role="status"
       >
-        <Icon name="refresh" size="lg" class="animate-spin text-primary-500" />
+        <Icon name="refresh" size="lg" class="animate-spin text-primary-500" :animate-on-hover="false" />
         <div>
           <p class="text-sm font-medium text-gray-900 dark:text-white">
             {{ t('keys.tfImport.discoveringTitle') }}
@@ -103,7 +103,7 @@
         data-test="tf-cli-accepted"
         role="status"
       >
-        <Icon name="checkCircle" size="lg" class="shrink-0" />
+        <Icon name="checkCircle" size="lg" class="shrink-0" :animate-on-hover="false" />
         <div class="min-w-0">
           <p class="text-sm font-medium">{{ t('keys.tfImport.acceptedTitle') }}</p>
           <p class="mt-1 text-xs leading-5">{{ t('keys.tfImport.acceptedDescription') }}</p>
@@ -116,7 +116,12 @@
         data-test="tf-cli-not-found"
         role="alert"
       >
-        <Icon name="xCircle" size="lg" class="shrink-0 text-gray-500 dark:text-dark-400" />
+        <Icon
+          name="xCircle"
+          size="lg"
+          class="shrink-0 text-gray-500 dark:text-dark-400"
+          :animate-on-hover="false"
+        />
         <div class="min-w-0">
           <p class="text-sm font-medium">{{ t('keys.tfImport.notFoundTitle') }}</p>
           <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-dark-400">
@@ -161,7 +166,7 @@
       </template>
       <template v-else-if="phase === 'sending'">
         <button type="button" class="btn btn-primary inline-flex cursor-wait items-center gap-2" disabled>
-          <Icon name="refresh" size="sm" class="animate-spin" />
+          <Icon name="refresh" size="sm" class="animate-spin" :animate-on-hover="false" />
           {{ t('keys.tfImport.waiting') }}
         </button>
       </template>

@@ -121,6 +121,7 @@
                     size="sm"
                     class="text-primary-500"
                     :stroke-width="2"
+                    :animate-on-hover="false"
                   />
                 </button>
               </div>

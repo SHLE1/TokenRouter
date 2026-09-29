@@ -54,6 +54,13 @@ const colorClass = computed(() => {
   animation: spin 0.75s linear infinite;
 }
 
+/* 系统减少动画时仍以静态环形和状态文本表示加载。 */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);

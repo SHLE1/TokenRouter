@@ -2,7 +2,7 @@
   <!-- 跨页校验定位价格字段时，先展开条目以便聚焦并显示错误。 -->
   <div class="rounded-surface border border-gray-200 bg-gray-50 p-3 dark:border-dark-600 dark:bg-dark-800" @form-field-reveal="collapsed = false">
     <!-- Collapsed summary header (clickable) -->
-    <div
+    <div data-icon-trigger
       class="flex cursor-pointer select-none items-center gap-2"
       @click="collapsed = !collapsed"
     >
@@ -11,6 +11,7 @@
         size="sm"
         :stroke-width="2"
         class="flex-shrink-0 text-gray-400 transition-transform duration-200"
+        :animate-on-hover="false"
       />
 
       <!-- Summary: model tags + billing badge -->

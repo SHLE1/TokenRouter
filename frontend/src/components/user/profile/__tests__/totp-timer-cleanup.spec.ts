@@ -36,6 +36,11 @@ vi.mock('@/api', () => ({
   }
 }))
 
+// 本组只验证认证流程的倒计时，图标的帧调度由图标交互测试覆盖。
+vi.mock('@/components/icons/Icon.vue', () => ({
+  default: { template: '<svg aria-hidden="true" />' }
+}))
+
 const flushPromises = async () => {
   await Promise.resolve()
   await Promise.resolve()
