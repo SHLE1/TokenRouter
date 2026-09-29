@@ -30,15 +30,17 @@
         class="space-y-6"
       >
         <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-start">
-          <div class="card space-y-4 p-4 sm:p-6">
-            <Skeleton width="6rem" height="1rem" />
-            <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
-              <Skeleton v-for="n in 10" :key="n" height="2.25rem" />
-            </div>
-            <Skeleton height="2.25rem" />
-            <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
+          <div class="space-y-6">
+            <div class="card space-y-4 p-4 sm:p-6">
               <Skeleton width="6rem" height="1rem" />
-              <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                <Skeleton v-for="n in 10" :key="n" height="2.25rem" />
+              </div>
+              <Skeleton height="2.25rem" />
+            </div>
+            <div class="card space-y-4 p-4 sm:p-6">
+              <Skeleton width="6rem" height="1rem" />
+              <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <Skeleton v-for="n in 3" :key="n" height="3.5rem" />
               </div>
             </div>
@@ -142,9 +144,10 @@
 
         <!-- 结算：充值与订阅确认共用。xl 以下按选择、摘要顺序堆叠（lg 主区还要让出侧栏，双栏会挤压支付方式），xl 起右栏摘要吸顶。 -->
         <div v-else class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-start">
-          <div class="card min-w-0 divide-y divide-gray-100 dark:divide-dark-700">
+          <!-- 金额（或套餐）、支付方式、账单信息各占一张卡片，分组更清楚。 -->
+          <div class="min-w-0 space-y-6">
             <!-- 订阅确认：套餐摘要 -->
-            <section v-if="isSubscriptionCheckout && selectedPlan" class="p-4 sm:p-6">
+            <section v-if="isSubscriptionCheckout && selectedPlan" class="card p-4 sm:p-6">
               <p class="text-xs font-medium text-gray-500 dark:text-dark-400">{{ t('payment.confirmSubscription') }}</p>
               <h2 class="mt-1 break-words text-lg font-semibold text-gray-900 dark:text-white">{{ selectedPlan.name }}</h2>
               <div class="mt-3 flex flex-wrap items-baseline gap-x-2">
@@ -180,7 +183,7 @@
             </section>
 
             <!-- 充值：金额 -->
-            <section v-else class="p-4 sm:p-6">
+            <section v-else class="card p-4 sm:p-6">
               <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.amountLabel') }}</h2>
               <AmountInput
                 v-model="amount"
@@ -192,7 +195,7 @@
               <p v-if="amountError" class="mt-2 text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
             </section>
 
-            <section v-if="enabledMethods.length >= 1" class="p-4 sm:p-6">
+            <section v-if="enabledMethods.length >= 1" class="card p-4 sm:p-6">
               <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.paymentMethod') }}</h2>
               <PaymentMethodSelector
                 :methods="checkoutMethodOptions"
@@ -202,7 +205,7 @@
             </section>
 
             <!-- Stripe 账单信息 -->
-            <section v-if="isStripeSelected" class="p-4 sm:p-6">
+            <section v-if="isStripeSelected" class="card p-4 sm:p-6">
               <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.billing.title') }}</h2>
               <div class="grid gap-4 sm:grid-cols-2">
                 <div>
