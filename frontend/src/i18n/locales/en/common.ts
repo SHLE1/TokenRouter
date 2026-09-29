@@ -63,6 +63,8 @@ export default {
     processing: 'Processing...',
     contactSupport: 'Contact Support',
     add: 'Add',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
     invalidEmail: 'Please enter a valid email address',
     optional: 'optional',
     selectOption: 'Select an option',
