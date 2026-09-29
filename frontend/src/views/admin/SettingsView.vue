@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-6xl space-y-6">
+    <!-- 设置内容填满主区，切换页签时卡片宽度保持一致。 -->
+    <div class="w-full min-w-0 space-y-6">
       <!-- 设置尚未返回时，先保留页签和表单控件的位置。 -->
       <SettingsSkeleton v-if="loading" />
 
