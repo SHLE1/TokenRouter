@@ -25,6 +25,8 @@
 | `rounded-dialog` | 16px | 桌面端弹窗（移动端弹窗仍用 surface） |
 | `rounded-full` / `rounded-none` | — | 胶囊、进度条、开关；需要直角时的覆盖 |
 
+系统设置页的吸顶导航采用胶囊分段样式：外壳、一级标签和网关二级标签都用 `rounded-full`。选中态只保留淡品牌青底、边框和图标文字着色，不再叠加底部渐变线；网关页多出二级标签行时，外壳改用 `rounded-dialog`。
+
 旧尺度名（`rounded-sm/md/lg/xl/2xl/3xl`）、裸 `rounded` 和 `rounded-[...]` 任意值一律禁用——旧 key 已从配置删除，写旧类名不会生成任何样式。裸 CSS 里的 `border-radius` 只允许 `var(--radius-*)`、`0` 或 `9999px`。
 
 唯一例外：边长 ≤16px 的微型装饰元素（如用量热力图的 12px 格子），全局最小档 compact（6px）已达边长一半、视觉上近似椭圆，允许用组件级局部变量保持更小半径（如 `.heatmap-cell` 的 `--radius-cell: 4px`），不新增全局档位。

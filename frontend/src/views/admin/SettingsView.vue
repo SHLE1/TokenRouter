@@ -7,7 +7,12 @@
       <!-- Settings Form -->
       <form v-else @submit.prevent="saveSettings" class="space-y-6" novalidate>
         <!-- Tab Navigation -->
-        <div class="settings-tabs-shell">
+        <div
+          :class="[
+            'settings-tabs-shell',
+            activeTab === 'gateway' && 'settings-tabs-shell-stacked',
+          ]"
+        >
           <nav
             ref="settingsTabsScrollRef"
             class="settings-tabs-scroll"
@@ -12791,14 +12796,19 @@ watch(
 <style scoped>
 /* ============ 系统设置 Tab 导航 ============ */
 .settings-tabs-shell {
-  @apply sticky z-20 -mx-1 rounded-control border border-gray-200 bg-white/90 p-1.5 backdrop-blur-xl dark:border-dark-600/70 dark:bg-dark-900/90;
+  @apply sticky z-20 -mx-1 rounded-full border border-gray-200 bg-white/90 p-1.5 backdrop-blur-xl dark:border-dark-600/70 dark:bg-dark-900/90;
   /* 顶栏高度 + 1.25rem 间距,合成原 4.75rem;顶栏调高时吸顶位置自动跟随。 */
   top: calc(var(--header-h) + 1.25rem);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset;
 }
 
+/* 网关页多出一行二级标签，胶囊外壳改用弹窗圆角，避免两行高度下两端过度收拢。 */
+.settings-tabs-shell-stacked {
+  @apply rounded-dialog;
+}
+
 .settings-tabs-scroll {
-  @apply overflow-x-auto;
+  @apply overflow-x-auto rounded-full;
   -ms-overflow-style: none;
   scrollbar-width: none;
   scroll-padding-inline: 0.5rem;
@@ -12813,7 +12823,7 @@ watch(
 }
 
 .settings-tab {
-  @apply relative isolate flex h-9 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-compact border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-fast ease-standard dark:text-gray-300;
+  @apply relative isolate flex h-9 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-fast ease-standard dark:text-gray-300;
 }
 
 @media (min-width: 768px) {
@@ -12831,7 +12841,7 @@ watch(
 }
 
 .settings-tab::before {
-  @apply absolute inset-0 -z-10 rounded-compact opacity-0 transition-opacity duration-normal;
+  @apply absolute inset-0 -z-10 rounded-full opacity-0 transition-opacity duration-normal;
   content: "";
   background: linear-gradient(135deg, rgb(248 250 252 / 0.95), rgb(241 245 249 / 0.8));
 }
@@ -12854,19 +12864,8 @@ watch(
   opacity: 0;
 }
 
-.settings-tab-active::after {
-  position: absolute;
-  right: 0.75rem;
-  bottom: 0.25rem;
-  left: 0.75rem;
-  height: 2px;
-  border-radius: 9999px;
-  content: "";
-  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
-}
-
 .settings-tab-icon {
-  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-control text-gray-500 transition-colors duration-normal dark:text-gray-400;
+  @apply flex h-7 w-7 shrink-0 items-center justify-center text-gray-500 transition-colors duration-normal dark:text-gray-400;
 }
 
 .settings-tab:hover .settings-tab-icon,
@@ -12875,7 +12874,7 @@ watch(
 }
 
 .settings-tab-active .settings-tab-icon {
-  @apply bg-primary-50 text-primary-600 dark:bg-primary-500/8 dark:text-primary-500;
+  @apply text-primary-600 dark:text-primary-500;
 }
 
 .settings-tab-label {
@@ -12899,7 +12898,7 @@ watch(
 }
 
 .gateway-section-tab {
-  @apply flex h-9 min-w-[7.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-control border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-normal dark:text-gray-300;
+  @apply flex h-9 min-w-[7.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-normal dark:text-gray-300;
 }
 
 .gateway-section-tab:hover,
