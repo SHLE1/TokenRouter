@@ -551,7 +551,7 @@
           <button
             type="button"
             @click="showGeminiHelpDialog = true"
-            class="flex items-center gap-1 rounded-compact px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+            class="flex items-center gap-1 rounded-compact px-2 py-1 text-xs text-primary-600 hover:bg-primary-50 dark:text-primary-500 dark:hover:bg-primary-500/8"
           >
             <Icon name="questionCircle" size="sm" class="h-4 w-4" />
             {{ t('admin.providers.gemini.helpButton') }}
@@ -658,7 +658,7 @@
           <div class="mt-2 flex flex-wrap gap-2">
             <a
               :href="geminiHelpLinks.apiKey"
-              class="font-medium text-blue-600 hover:underline dark:text-blue-400"
+              class="font-medium text-primary-600 hover:underline dark:text-primary-500"
               target="_blank"
               rel="noreferrer"
             >
@@ -753,7 +753,7 @@
                   需要激活 GCP 项目并绑定信用卡
                   <a
                     :href="geminiHelpLinks.gcpProject"
-                    class="ml-1 text-blue-600 hover:underline dark:text-blue-400"
+                    class="ml-1 text-primary-600 hover:underline dark:text-primary-500"
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -3331,7 +3331,7 @@
                 href="https://policies.google.com/terms"
                 target="_blank"
                 rel="noreferrer"
-                class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                class="text-sm text-primary-600 hover:underline dark:text-primary-500"
               >
                 {{ t('admin.providers.gemini.setupGuide.links.countryCheck') }}
               </a>
@@ -3340,7 +3340,7 @@
                 href="https://policies.google.com/country-association-form"
                 target="_blank"
                 rel="noreferrer"
-                class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                class="text-sm text-primary-600 hover:underline dark:text-primary-500"
               >
                 修改归属地
               </a>
@@ -3349,7 +3349,7 @@
                 href="https://gemini.google.com/gems/create?hl=en-US&pli=1"
                 target="_blank"
                 rel="noreferrer"
-                class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                class="text-sm text-primary-600 hover:underline dark:text-primary-500"
               >
                 {{ t('admin.providers.gemini.setupGuide.links.geminiWebActivation') }}
               </a>
@@ -3358,7 +3358,7 @@
                 href="https://console.cloud.google.com"
                 target="_blank"
                 rel="noreferrer"
-                class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                class="text-sm text-primary-600 hover:underline dark:text-primary-500"
               >
                 {{ t('admin.providers.gemini.setupGuide.links.gcpProject') }}
               </a>
@@ -3454,7 +3454,7 @@
             :href="geminiQuotaDocs.codeAssist"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-500"
           >
             {{ t('admin.providers.gemini.quotaPolicy.docs.codeAssist') }}
           </a>
@@ -3462,7 +3462,7 @@
             :href="geminiQuotaDocs.aiStudio"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-500"
           >
             {{ t('admin.providers.gemini.quotaPolicy.docs.aiStudio') }}
           </a>
@@ -3470,7 +3470,7 @@
             :href="geminiQuotaDocs.vertex"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-500"
           >
             {{ t('admin.providers.gemini.quotaPolicy.docs.vertex') }}
           </a>
@@ -3487,7 +3487,7 @@
             :href="geminiHelpLinks.apiKey"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-500"
           >
             {{ t('admin.providers.gemini.providerType.apiKeyLink') }}
           </a>
@@ -3495,7 +3495,7 @@
             :href="geminiHelpLinks.aiStudioPricing"
             target="_blank"
             rel="noreferrer"
-            class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            class="text-sm text-primary-600 hover:underline dark:text-primary-500"
           >
             {{ t('admin.providers.gemini.providerType.quotaLink') }}
           </a>

@@ -101,7 +101,7 @@
       <button
         type="button"
         @click="fillRelated"
-        class="rounded-control border border-blue-200 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/30"
+        class="rounded-control border border-primary-200 px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 dark:border-primary-500/15 dark:text-primary-500 dark:hover:bg-primary-500/8"
       >
         {{ t('admin.providers.fillRelatedModels') }}
       </button>

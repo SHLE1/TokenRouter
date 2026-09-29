@@ -190,11 +190,11 @@
               @mouseenter="showTokenTooltip($event, row)"
               @mouseleave="hideTokenTooltip"
             >
-              <div class="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-100 transition-colors group-hover:bg-blue-100 dark:bg-gray-700 dark:group-hover:bg-blue-900/50">
+              <div class="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-100 transition-colors group-hover:bg-primary-100 dark:bg-gray-700 dark:group-hover:bg-primary-500/8">
                 <Icon
                   name="infoCircle"
                   size="xs"
-                  class="text-gray-400 group-hover:text-blue-500 dark:text-gray-500 dark:group-hover:text-blue-400"
+                  class="text-gray-400 group-hover:text-primary-500 dark:text-gray-500 dark:group-hover:text-primary-500"
                 />
               </div>
             </div>
@@ -217,11 +217,11 @@
                 @mouseenter="showTooltip($event, row)"
                 @mouseleave="hideTooltip"
               >
-                <div class="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-100 transition-colors group-hover:bg-blue-100 dark:bg-gray-700 dark:group-hover:bg-blue-900/50">
+                <div class="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-gray-100 transition-colors group-hover:bg-primary-100 dark:bg-gray-700 dark:group-hover:bg-primary-500/8">
                   <Icon
                     name="infoCircle"
                     size="xs"
-                    class="text-gray-400 group-hover:text-blue-500 dark:text-gray-500 dark:group-hover:text-blue-400"
+                    class="text-gray-400 group-hover:text-primary-500 dark:text-gray-500 dark:group-hover:text-primary-500"
                   />
                 </div>
               </div>
@@ -252,7 +252,7 @@
             <button
               v-if="row.detailed_timing"
               type="button"
-              class="group relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-blue-100 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:bg-gray-700 dark:text-gray-500 dark:hover:bg-blue-900/50 dark:hover:text-blue-400"
+              class="group relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-colors hover:bg-primary-100 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:bg-gray-700 dark:text-gray-500 dark:hover:bg-primary-500/8 dark:hover:text-primary-500"
               :aria-label="t('usage.detailedTiming')"
               :title="t('usage.detailedTiming')"
               @mouseenter="showTimingTooltip($event, row)"

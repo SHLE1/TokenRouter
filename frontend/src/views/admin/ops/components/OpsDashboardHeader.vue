@@ -920,7 +920,7 @@ function handleToolbarRefresh() {
               @click="showFilterDropdown = !showFilterDropdown"
             >
               <Icon name="filter" size="sm" />
-              <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-xs font-bold text-white">
+              <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-xs font-bold text-white">
                 {{ activeFilterCount }}
               </span>
             </button>
@@ -970,7 +970,7 @@ function handleToolbarRefresh() {
           <button
           v-if="!props.fullscreen"
           type="button"
-          class="flex rounded-control bg-blue-100 p-0 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 sm:h-8 sm:w-auto sm:gap-1.5 sm:px-3 btn-icon-sm"
+          class="flex rounded-control bg-primary-100 p-0 text-xs font-bold text-primary-700 transition-colors hover:bg-primary-200 dark:bg-primary-500/8 dark:text-primary-500 dark:hover:bg-primary-500/8 sm:h-8 sm:w-auto sm:gap-1.5 sm:px-3 btn-icon-sm"
           :title="t('admin.ops.alertRules.title')"
           @click="emit('openAlertRules')"
         >
@@ -1127,7 +1127,7 @@ function handleToolbarRefresh() {
                   type="button"
                   class="rounded-compact px-1.5 py-0.5 text-xs font-bold transition-colors sm:px-2 sm:text-xs"
                   :class="realtimeWindow === window
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-dark-950 dark:text-gray-400 dark:hover:bg-dark-800'"
                   @click="realtimeWindow = window"
                 >
@@ -1223,7 +1223,7 @@ function handleToolbarRefresh() {
             </div>
             <button
               v-if="!props.fullscreen"
-              class="text-xs font-bold text-blue-500 hover:underline"
+              class="text-xs font-bold text-primary-500 hover:underline"
               type="button"
               @click="openDetails({ title: t('admin.ops.requestDetails.title') })"
             >
@@ -1260,7 +1260,7 @@ function handleToolbarRefresh() {
             </div>
             <button
               v-if="!props.fullscreen"
-              class="text-xs font-bold text-blue-500 hover:underline"
+              class="text-xs font-bold text-primary-500 hover:underline"
               type="button"
               @click="openDetails({ title: t('admin.ops.requestDetails.title'), kind: 'error', sla_only: true })"
             >
@@ -1290,7 +1290,7 @@ function handleToolbarRefresh() {
             </div>
             <button
               v-if="!props.fullscreen"
-              class="text-xs font-bold text-blue-500 hover:underline"
+              class="text-xs font-bold text-primary-500 hover:underline"
               type="button"
               @click="openDetails({ title: t('admin.ops.latencyDuration'), sort: 'duration_desc' })"
             >
@@ -1341,7 +1341,7 @@ function handleToolbarRefresh() {
             </div>
             <button
               v-if="!props.fullscreen"
-              class="text-xs font-bold text-blue-500 hover:underline"
+              class="text-xs font-bold text-primary-500 hover:underline"
               type="button"
               @click="openDetails({ title: t('admin.ops.ttftLabel'), sort: 'duration_desc' })"
             >
@@ -1390,7 +1390,7 @@ function handleToolbarRefresh() {
               <span class="text-xs font-bold uppercase text-gray-400">{{ t('admin.ops.requestErrors') }}</span>
               <HelpTooltip v-if="!props.fullscreen" :content="t('admin.ops.tooltips.errors')" />
             </div>
-            <button v-if="!props.fullscreen" class="text-xs font-bold text-blue-500 hover:underline" type="button" @click="openErrorDetails('request')">
+            <button v-if="!props.fullscreen" class="text-xs font-bold text-primary-500 hover:underline" type="button" @click="openErrorDetails('request')">
               {{ t('admin.ops.requestDetails.details') }}
             </button>
           </div>
@@ -1416,7 +1416,7 @@ function handleToolbarRefresh() {
               <span class="text-xs font-bold uppercase text-gray-400">{{ t('admin.ops.upstreamErrors') }}</span>
               <HelpTooltip v-if="!props.fullscreen" :content="t('admin.ops.tooltips.upstreamErrors')" />
             </div>
-            <button v-if="!props.fullscreen" class="text-xs font-bold text-blue-500 hover:underline" type="button" @click="openErrorDetails('upstream')">
+            <button v-if="!props.fullscreen" class="text-xs font-bold text-primary-500 hover:underline" type="button" @click="openErrorDetails('upstream')">
               {{ t('admin.ops.requestDetails.details') }}
             </button>
           </div>
@@ -1545,7 +1545,7 @@ function handleToolbarRefresh() {
               <div class="text-xs font-bold uppercase tracking-wider text-gray-400">{{ t('admin.ops.jobs') }}</div>
               <HelpTooltip v-if="!props.fullscreen" :content="t('admin.ops.tooltips.jobs')" />
             </div>
-            <button v-if="!props.fullscreen" class="text-xs font-bold text-blue-500 hover:underline" type="button" @click="openJobsDetails">
+            <button v-if="!props.fullscreen" class="text-xs font-bold text-primary-500 hover:underline" type="button" @click="openJobsDetails">
               {{ t('admin.ops.requestDetails.details') }}
             </button>
           </div>
@@ -1635,7 +1635,7 @@ function handleToolbarRefresh() {
           </button>
           <button
             type="button"
-            class="rounded-control bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+            class="btn btn-primary"
             @click="handleCustomTimeRangeConfirm"
           >
             {{ t('common.confirm') }}

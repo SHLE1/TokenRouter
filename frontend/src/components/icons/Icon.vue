@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent, h, normalizeClass, ref, type PropType } from 'vue'
+import { defineComponent, h, normalizeClass, onMounted, onUpdated, ref, type PropType } from 'vue'
 import { icons, type IconName } from './registry'
 import type { IconControls, IconDefinition } from './types'
 import { useIconAnimation } from './useIconAnimation'
@@ -38,6 +38,20 @@ export default defineComponent({
       () => props.animateOnHover
     )
 
+    // motion-v 给内部 SVG 节点注册 focus 事件后，浏览器可能将其加入 Tab 顺序。
+    // 挂载及换图后显式排除这些装饰节点，焦点和键盘操作继续由外层控件承担。
+    const excludeArtworkFromFocus = () => {
+      const artwork = svgRef.value?.querySelectorAll(
+        'g, path, circle, rect, line, polyline, polygon, ellipse'
+      )
+      artwork?.forEach((node) => {
+        node.setAttribute('tabindex', '-1')
+        node.setAttribute('focusable', 'false')
+      })
+    }
+    onMounted(excludeArtworkFromFocus)
+    onUpdated(excludeArtworkFromFocus)
+
     return () => {
       const className = normalizeClass(attrs.class)
       const [height, width] = SIZE_CLASSES[props.size]
@@ -56,12 +70,13 @@ export default defineComponent({
           'aria-hidden': labelled ? undefined : true,
           role: labelled ? 'img' : undefined,
           focusable: 'false',
+          tabindex: -1,
           ...attrs,
           ref: svgRef,
           'data-animated-icon': definition().name,
           // 调用点的显式尺寸优先，避免 h-4 和默认 h-5 同时争夺尺寸。
           class: [
-            'shrink-0',
+            'shrink-0 select-none',
             !attrs.height &&
               !/(?:^|\s)(?:\S+:)?(?:h-|size-)/.test(className) &&
               height,

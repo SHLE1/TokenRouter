@@ -20,7 +20,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="manual"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.manualAuth')
@@ -31,7 +31,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="cookie"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.cookieAutoAuth')
@@ -42,7 +42,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="refresh_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t(getOAuthKey('refreshTokenAuth'))
@@ -53,7 +53,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="sso_cookie"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t(getOAuthKey('ssoCookieAuth'))
@@ -64,7 +64,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="mobile_refresh_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.mobileRefreshTokenAuth', '手动输入 Mobile RT')
@@ -75,7 +75,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="session_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t(getOAuthKey('sessionTokenAuth'))
@@ -86,7 +86,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="access_token"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.accessTokenAuth', '手动输入 AT')
@@ -97,7 +97,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="codex_session"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.codexSessionAuth')
@@ -108,7 +108,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="agent_identity"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.agentIdentityAuth')
@@ -119,7 +119,7 @@
                 v-model="inputMethod"
                 type="radio"
                 value="codex_pat"
-                class="text-blue-600 focus:ring-blue-500"
+                class="text-primary-600 focus:ring-primary-500"
               />
               <span class="text-sm text-blue-900 dark:text-blue-200">{{
                 t('admin.providers.oauth.openai.codexPatAuth')
@@ -413,7 +413,7 @@
                 <button
                   v-if="showHelp"
                   type="button"
-                  class="text-blue-500 hover:text-blue-600"
+                  class="text-primary-500 hover:text-primary-600"
                   @click="showHelpDialog = !showHelpDialog"
                 >
                   <Icon name="questionCircle" size="sm" class="h-4 w-4" />
@@ -522,7 +522,7 @@
                       href="https://console.cloud.google.com/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="inline-flex items-center gap-1 text-xs font-normal text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                      class="inline-flex items-center gap-1 text-xs font-normal text-primary-500 hover:text-primary-600 dark:text-primary-500"
                     >
                       <Icon name="questionCircle" size="xs" class="h-3 w-3" />
                       {{ t('admin.providers.oauth.gemini.howToGetProjectId') }}
@@ -667,7 +667,7 @@
                   <button
                     type="button"
                     :disabled="loading"
-                    class="text-xs text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-400"
+                    class="text-xs text-primary-600 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-500"
                     @click="handleRegenerate"
                   >
                     <Icon name="refresh" size="xs" class="mr-1 inline" />

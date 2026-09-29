@@ -26,7 +26,7 @@
                 <Icon name="dollar" size="sm" />
                 <span>{{ t('payment.orders.requestRefund') }}</span>
               </button>
-              <button v-if="canOpenInvoice(row)" @click="openInvoice(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+              <button v-if="canOpenInvoice(row)" @click="openInvoice(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-500 dark:hover:bg-primary-500/8">
                 <Icon name="document" size="sm" />
                 <span>{{ t('payment.orders.invoice') }}</span>
               </button>

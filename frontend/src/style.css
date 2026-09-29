@@ -67,6 +67,24 @@
     @apply border-primary-900/10 dark:border-dark-600;
   }
 
+  /* 控件内的文字、SVG 和图片不参与拖选，正文和输入内容仍可复制。 */
+  button,
+  [role='button'] {
+    @apply select-none;
+  }
+
+  button img,
+  [role='button'] img {
+    -webkit-user-drag: none;
+  }
+
+  /* 原生选项控件使用品牌色；text-* 不会改变浏览器的选中填充。 */
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='range'] {
+    accent-color: theme('colors.primary.600');
+  }
+
   html {
     @apply scroll-smooth font-sans antialiased;
     width: 100%;
@@ -336,7 +354,7 @@
 @layer components {
   /* ============ 按钮样式 ============ */
   .btn {
-    @apply inline-flex items-center justify-center gap-2;
+    @apply inline-flex select-none items-center justify-center gap-2;
     @apply rounded-control px-4 py-1.5 text-sm font-medium;
     /* 常规按钮与输入控件共用 36px 基线，保持工具栏在不同页面对齐。 */
     @apply min-h-9;

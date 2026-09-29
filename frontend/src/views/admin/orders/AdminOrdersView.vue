@@ -48,7 +48,7 @@
               <Icon name="eye" size="sm" />
               {{ t('common.view') }}
             </button>
-            <button v-if="canOpenInvoice(row)" @click="openInvoice(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+            <button v-if="canOpenInvoice(row)" @click="openInvoice(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-500 dark:hover:bg-primary-500/8">
               <Icon name="document" size="sm" />
               {{ t('payment.orders.invoice') }}
             </button>
@@ -60,7 +60,7 @@
               <Icon name="exclamationTriangle" size="sm" />
               {{ t('payment.admin.forceExpire') }}
             </button>
-            <button v-if="row.status === 'FAILED'" @click="handleRetryOrder(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20">
+            <button v-if="row.status === 'FAILED'" @click="handleRetryOrder(row)" class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-500 dark:hover:bg-primary-500/8">
               <Icon name="refresh" size="sm" />
               {{ t('payment.admin.retry') }}
             </button>

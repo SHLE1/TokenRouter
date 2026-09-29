@@ -41,6 +41,8 @@
 ## 控件尺寸
 
 - 按钮、输入框、下拉触发器共用 36px 基线（`.btn` / `.input` 均为 `min-h-9`），分页器控件同为 36px——表格页脚不再压缩分页尺寸。基线之上再写 `h-9` 属冗余（门禁拦截）；紧凑档要 36px 时用 `btn-sm/md/lg + h-9` 显式提挡。
+- 主操作使用 `.btn-primary`；普通编辑、查询、筛选和链接操作使用 `primary-*` 品牌色，不单独指定 `blue-*`。状态提示、业务分类与第三方品牌保留各自的语义配色。原生 checkbox、radio 和 range 的选中色由全局 `accent-color` 引用 `primary-600`。
+- 原生按钮、`role="button"` 和 `.btn` 禁止文字选取，按钮内图片禁止浏览器拖拽；正文、表格数据和输入内容仍可选取复制。
 - 图标按钮两档：`.btn-icon`（h-9 w-9）与 `.btn-icon-sm`（h-8 w-8），自带 `rounded-control` 与居中布局，站点只补 hover/颜色类；`.btn-sm` 用于表格行内等紧凑场景。
 - 下拉触发器（Select、DateRangePicker）模板组合 `input input-trigger` + 各自状态类，不复制基线配方。
 - 输入框图标/字符前后缀统一走 `input-icon-*` 机制（`style.css`）：容器 `input-icon-wrap`，图标位 `input-icon` / `input-icon-right`（可点击内容加 `input-icon-action`），输入框按侧加 `input-has-icon` / `input-has-icon-right`；文本留白由变量推导（`留白 = inset + slot`）。档位：默认（inset 0.75rem、留白 2.5rem）、`input-icon-lg`（auth 表单，inset 0.875rem、留白 2.75rem）、`input-icon-text`（`$` 等窄字符前缀，留白 2rem），紧凑搜索框内联 `--input-icon-slot:1.5rem`（留白 2.25rem）。
@@ -167,7 +169,8 @@
 - `animateOnHover` 默认开启。动画绑定最近的按钮、链接、菜单项等控件，非标准交互容器加 `data-icon-trigger`；独立图标响应自身悬停。键盘聚焦使用同一反馈，每次进入只播放一次，鼠标和焦点都离开后复位，初次挂载不自动播放。
 - `disabled`、`aria-disabled`、父级 `inert`、加载转圈和系统减少动态效果均抑制装饰动画，状态变化立即生效。动画序列在离开、换图形或卸载时取消，禁止用定时器猜测完成时间。
 - 加载转圈继续由业务状态控制，`animate-spin` 和 `.spinner` 在减少动态效果模式下静止。展开、排序和选中指示图标设置 `:animate-on-hover="false"`，外层 CSS 旋转仍表达原有状态。
-- 图标默认 `aria-hidden`，不新增焦点。具备独立语义时传入无障碍标签；图标按钮仍由按钮提供名称和点击区域。
+- 图标默认 `aria-hidden`，不新增焦点。根 SVG 默认设置 `tabindex="-1"` 与 `focusable="false"`，内部图形在挂载和更新后补齐相同属性，避免焦点监听让浏览器将装饰节点加入 Tab 顺序。具备独立语义时传入无障碍标签；图标按钮仍由按钮提供名称和点击区域。
+- 通用图标与模型品牌图标使用 `select-none`，包括模型图标的字母占位，避免拖选文字时出现图标选中高亮；保留图标的点击和悬停事件。
 - 新增通用图标必须进入统一映射。品牌标志、用户上传的 SVG、图表和业务插画保留专用实现，自定义 SVG 继续经过既有净化流程。
 
 <a id="ui_motion"></a>

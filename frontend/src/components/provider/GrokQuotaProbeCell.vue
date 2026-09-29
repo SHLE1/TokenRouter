@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center gap-1.5">
       <button
         type="button"
-        class="inline-flex items-center gap-0.5 rounded-compact px-1.5 py-0.5 text-xs font-medium text-cyan-700 transition-colors hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-cyan-300 dark:hover:bg-cyan-900/30"
+        class="inline-flex items-center gap-0.5 rounded-compact px-1.5 py-0.5 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-500 dark:hover:bg-primary-500/8"
         :disabled="loading"
         :title="t('admin.providers.usageWindow.grokProbeTooltip')"
         @click="handleProbe"

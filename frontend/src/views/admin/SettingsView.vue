@@ -5714,7 +5714,7 @@
             <a
               :href="r.url"
               target="_blank"
-              class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+              class="text-sm font-medium text-primary-600 hover:underline dark:text-primary-500"
               >{{ r.title }}</a
             >
             <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">

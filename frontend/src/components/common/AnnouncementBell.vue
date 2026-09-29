@@ -5,7 +5,7 @@
       @click="openModal"
       :class="[
         triggerClass,
-        { 'text-blue-600 dark:text-blue-400': unreadCount > 0 }
+        { 'text-primary-600 dark:text-primary-500': unreadCount > 0 }
       ]"
       :aria-label="t('announcements.title')"
       :title="t('announcements.title')"

@@ -108,6 +108,11 @@ describe('统一图标入口', () => {
         name
       ).toBe(true)
       expect(wrapper.html(), name).not.toContain('NaN')
+      // 动画库会给 SVG 子节点注册焦点事件，所有图形都必须显式退出 Tab 顺序。
+      for (const node of wrapper.findAll('g, path, circle, rect, line, polyline, polygon, ellipse')) {
+        expect(node.attributes('tabindex'), name).toBe('-1')
+        expect(node.attributes('focusable'), name).toBe('false')
+      }
       wrapper.unmount()
     }
   })
@@ -155,7 +160,7 @@ describe('统一图标入口', () => {
     })
     expect(wrapper.attributes('aria-hidden')).toBe('true')
     expect(wrapper.attributes('focusable')).toBe('false')
-    expect(wrapper.attributes('tabindex')).toBeUndefined()
+    expect(wrapper.attributes('tabindex')).toBe('-1')
     expect(wrapper.attributes('stroke-width')).toBe('2')
     expect(wrapper.classes()).not.toContain('h-5')
     expect(wrapper.classes()).not.toContain('w-5')
@@ -172,6 +177,7 @@ describe('统一图标入口', () => {
     expect(wrapper.element).toBe(svg)
     expect(wrapper.attributes('data-animated-icon')).toBe('check')
     expect(wrapper.classes()).toContain('rotate-180')
+    expect(wrapper.find('path').attributes('tabindex')).toBe('-1')
     wrapper.unmount()
   })
 })

@@ -93,7 +93,7 @@
                 :class="enableBreakdown ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''"
                 @click="enableBreakdown && toggleBreakdown(item.endpoint)"
               >
-                <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300' : 'text-gray-900 dark:text-white'" :title="item.endpoint">
+                <td class="max-w-[180px] truncate py-1.5 font-medium" :class="enableBreakdown ? 'text-primary-600 hover:text-primary-800 dark:text-primary-500 dark:hover:text-primary-500' : 'text-gray-900 dark:text-white'" :title="item.endpoint">
                   <span class="inline-flex items-center gap-1">
                     <Icon
                       v-if="enableBreakdown"

@@ -286,7 +286,7 @@ onMounted(() => {
             <span class="ml-1 font-mono text-gray-900 dark:text-white">{{ alertSettings.silencing.global_until_rfc3339 }}</span>
           </div>
 
-          <Disclosure summary-class="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400" class="col-span-1 md:col-span-2">
+          <Disclosure summary-class="cursor-pointer text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-500" class="col-span-1 md:col-span-2">
             <template #summary>
               {{ t('admin.ops.runtime.showAdvancedDeveloperSettings') }}
             </template>
