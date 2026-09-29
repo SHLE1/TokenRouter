@@ -6704,7 +6704,7 @@
                   <div
                     class="hidden grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-xs font-medium text-gray-500 sm:grid dark:text-dark-300"
                   >
-                    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                    <div class="grid grid-cols-2 items-center gap-4">
                       <span>{{ t("admin.settings.features.creative.modelSettings.modelColumn") }}</span>
                       <span>{{ t("admin.settings.features.creative.modelSettings.operationsColumn") }}</span>
                     </div>
@@ -6712,7 +6712,7 @@
                   </div>
                 </template>
                 <template #row="{ item, index }">
-                  <div class="grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4">
+                  <div class="grid grid-cols-1 items-center gap-3 sm:grid-cols-2 sm:gap-4">
                     <div class="min-w-0">
                       <Select
                         :model-value="creativeModelSettingKey(item)"

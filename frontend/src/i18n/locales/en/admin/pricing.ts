@@ -552,6 +552,8 @@ riskControl: {
         noTiersYet: 'No tiers yet. Click add to configure per-request pricing.',
         noPricingRules: 'No pricing rules yet. Click "Add" to create one.',
         perRequestPrice: 'Price per Request',
+        imageUnitPrice: 'Price per image',
+        videoUnitPrice: 'Price per second',
         perRequestPriceRequired: 'Per-request price or billing tiers required for per-request/image billing mode',
         tierLabel: 'Tier',
         resolution: 'Resolution',
