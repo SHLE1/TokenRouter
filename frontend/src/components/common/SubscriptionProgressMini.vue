@@ -1,27 +1,33 @@
 <template>
-  <div v-if="shouldShow" ref="containerRef" class="relative">
+  <!-- 默认变体没有生效订阅时整体隐藏；状态变体始终渲染插槽内容，只在有订阅时显示状态点并可展开。 -->
+  <div v-if="variant === 'status' || hasActiveSubscriptions" ref="containerRef" class="relative">
     <button
       :class="triggerClass"
-      :title="hasActiveSubscriptions ? t('subscriptionProgress.viewDetails') : ''"
+      :title="hasActiveSubscriptions ? t('subscriptionProgress.viewDetails') : undefined"
       :disabled="!hasActiveSubscriptions"
       @click="toggleTooltip"
     >
-      <Icon
-        v-if="variant !== 'status'"
-        name="creditCard"
-        size="sm"
-        class="text-primary-600 dark:text-primary-400"
-      />
-      <div class="flex items-center gap-2">
+      <template v-if="variant === 'status'">
+        <slot />
+        <!-- 状态点取用量最高的订阅，颜色表示用量是否接近上限。 -->
+        <span
+          v-if="statusDotClass"
+          data-testid="subscription-status-dot"
+          class="ml-1 h-2 w-2 shrink-0 rounded-full"
+          :class="statusDotClass"
+        />
+      </template>
+      <div v-else class="flex items-center gap-2">
+        <Icon name="creditCard" size="sm" class="text-primary-600 dark:text-primary-400" />
         <div class="flex items-center gap-0.5">
           <div
             v-for="(dotClass, index) in displayDots"
             :key="index"
             class="rounded-full"
-            :class="[variant === 'status' ? 'h-2 w-2' : 'h-2 w-2', dotClass]"
+            :class="['h-2 w-2', dotClass]"
           />
         </div>
-        <span :class="variant === 'status' ? 'text-sm font-semibold text-primary-900 dark:text-dark-50' : 'text-xs font-medium text-primary-700 dark:text-primary-300'">
+        <span class="text-xs font-medium text-primary-700 dark:text-primary-300">
           {{ statusCount }}
         </span>
       </div>
@@ -132,11 +138,11 @@ const tooltipOpen = ref(false)
 const activeSubscriptions = computed(() => subscriptionStore.activeSubscriptions)
 const hasActiveSubscriptions = computed(() => subscriptionStore.hasActiveSubscriptions)
 const variant = computed(() => props.variant)
-const shouldShow = computed(() => variant.value === 'status' || hasActiveSubscriptions.value)
 const statusCount = computed(() => activeSubscriptions.value.length)
 const triggerClass = computed(() => {
   if (variant.value === 'status') {
-    return 'flex h-8 min-w-[50px] items-center justify-center gap-1.5 rounded-control border border-primary-200/70 bg-primary-100/80 px-2.5 shadow-sm transition-colors hover:bg-primary-100 disabled:cursor-default disabled:hover:bg-primary-100/80 dark:border-transparent dark:bg-dark-800/80 dark:shadow-none dark:hover:bg-dark-700 dark:disabled:hover:bg-dark-800/80'
+    // 状态变体与顶栏图标按钮同为无边框按钮，没有订阅时不响应悬停。
+    return 'flex h-9 items-center gap-1 rounded-control px-3 text-sm transition-colors hover:bg-primary-100 disabled:cursor-default disabled:hover:bg-transparent dark:hover:bg-dark-700 dark:disabled:hover:bg-transparent'
   }
   return 'flex cursor-pointer items-center gap-2 rounded-control bg-primary-50 px-3 py-1.5 transition-colors hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30'
 })
@@ -144,12 +150,10 @@ const triggerClass = computed(() => {
 const displaySubscriptions = computed(() =>
   [...activeSubscriptions.value].sort((a, b) => getMaxUsagePercentage(b) - getMaxUsagePercentage(a))
 )
-const displayDots = computed(() => {
-  if (displaySubscriptions.value.length > 0) {
-    return displaySubscriptions.value.slice(0, 3).map((subscription) => getProgressDotClass(subscription))
-  }
-  return ['bg-green-500']
-})
+const displayDots = computed(() =>
+  displaySubscriptions.value.slice(0, 3).map((subscription) => getProgressDotClass(subscription))
+)
+const statusDotClass = computed(() => displayDots.value[0] ?? '')
 
 function usageWindows(subscription: UserSubscription) {
   return [

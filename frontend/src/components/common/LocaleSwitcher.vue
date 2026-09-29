@@ -6,7 +6,9 @@
       :class="triggerClass"
       :title="currentLocale?.name"
     >
-      <span class="text-base leading-none">{{ currentLocale?.flag }}</span>
+      <!-- 顶栏状态变体用地球图标与相邻图标按钮对齐，也避开国旗 emoji 在 Windows 上无法渲染的问题。 -->
+      <Icon v-if="variant === 'status'" name="globe" size="md" />
+      <span v-else class="text-base leading-none">{{ currentLocale?.flag }}</span>
       <span v-if="variant !== 'status'" class="hidden sm:inline">{{ currentLocale?.code.toUpperCase() }}</span>
       <Icon
         v-if="variant !== 'status'"
@@ -73,7 +75,7 @@ const currentLocale = computed(() => availableLocales.find((l) => l.code === loc
 const variant = computed(() => props.variant)
 const triggerClass = computed(() => {
   if (variant.value === 'status') {
-    return 'flex h-9 items-center gap-2 rounded-control px-2.5 text-sm font-medium text-primary-900/75 transition-colors hover:bg-primary-100 hover:text-primary-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white'
+    return 'flex h-9 w-9 items-center justify-center rounded-control text-primary-900 transition-colors hover:bg-primary-100 disabled:cursor-not-allowed disabled:opacity-60 dark:text-dark-100 dark:hover:bg-dark-700 dark:hover:text-white'
   }
   return 'flex items-center gap-1.5 rounded-control px-2 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-300 dark:hover:bg-dark-700'
 })

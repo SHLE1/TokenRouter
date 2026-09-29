@@ -207,7 +207,7 @@ const unreadCount = computed(() => announcementStore.unreadCount)
 const displayedAnnouncements = computed(() => announcements.value.slice(0, 20))
 const triggerClass = computed(() => {
   if (props.variant === 'status') {
-    return 'relative flex h-9 w-9 items-center justify-center rounded-control text-primary-900/70 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white'
+    return 'relative flex h-9 w-9 items-center justify-center rounded-control text-primary-900 transition-colors hover:bg-primary-100 dark:text-dark-100 dark:hover:bg-dark-700 dark:hover:text-white'
   }
   return 'relative flex h-9 w-9 items-center justify-center rounded-control text-gray-600 transition hover:bg-gray-100 hover:scale-105 dark:text-gray-400 dark:hover:bg-dark-800'
 })

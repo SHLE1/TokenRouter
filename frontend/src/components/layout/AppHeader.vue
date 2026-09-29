@@ -32,7 +32,7 @@
         </div>
       </div>
 
-      <!-- 右侧状态项保持紧凑，作为全局提供商工具区。 -->
+      <!-- 右侧分为工具区和账户区：工具区是同尺寸图标按钮，账户区是余额按钮和头像。 -->
       <div class="header-status-actions">
         <div class="header-status-icon-group">
           <div v-if="user" class="hidden sm:block">
@@ -51,6 +51,8 @@
             <Icon name="book" size="md" />
           </a>
 
+          <LocaleSwitcher variant="status" />
+
           <!-- 主题切换在窄屏始终保留，公告和文档入口优先让出空间。 -->
           <button
             type="button"
@@ -60,38 +62,35 @@
             :title="isDark ? t('nav.lightMode') : t('nav.darkMode')"
             @click="toggleTheme"
           >
+            <!-- 太阳和月亮保留各自的颜色，让主题切换一眼可辨。 -->
             <Icon
               :name="isDark ? 'sun' : 'moon'"
               size="md"
-              :class="{ 'text-amber-500': isDark }"
+              :class="isDark ? 'text-amber-500' : 'text-blue-500'"
             />
           </button>
         </div>
 
-        <div class="header-status-divider hidden sm:block"></div>
-
-        <LocaleSwitcher variant="status" />
-
         <template v-if="user">
-          <SubscriptionProgressMini variant="status" />
+          <div class="header-status-divider hidden sm:block"></div>
 
-          <div class="header-status-balance hidden sm:flex">
-            <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">
-              {{ formatHeaderMoney(availableBalance) }}
+          <!-- 余额按钮右侧的状态点表示订阅用量，点击展开订阅详情；窄屏余额收进用户菜单。 -->
+          <SubscriptionProgressMini variant="status" class="hidden sm:block">
+            <span class="text-primary-900/60 dark:text-dark-400">{{ balanceUnitSymbol }}</span>
+            <span class="font-semibold tabular-nums text-primary-900 dark:text-dark-100">
+              {{ formatHeaderMoney(availableBalance, false) }}
             </span>
             <span
               v-if="frozenBalance > 0"
-              class="ml-2 text-xs font-medium text-amber-600 dark:text-amber-300"
+              class="ml-1 text-xs font-medium text-amber-600 dark:text-amber-300"
               :title="balanceFrozenLabel"
             >
               {{ balanceFrozenLabel }}
             </span>
-          </div>
-
-          <div class="header-status-divider hidden md:block"></div>
+          </SubscriptionProgressMini>
         </template>
 
-        <!-- 用户下拉菜单入口只保留头像和箭头，使状态栏节奏接近参考图。 -->
+        <!-- 用户下拉菜单入口只保留头像，尺寸与图标按钮等高。 -->
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
@@ -238,7 +237,7 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
-const { formatBalanceAmount } = useBalanceDisplay()
+const { formatBalanceAmount, balanceUnitSymbol } = useBalanceDisplay()
 const { isDark, toggleTheme } = useTheme()
 
 const user = computed(() => authStore.user)
@@ -339,8 +338,9 @@ function handleReplayGuide() {
   onboardingStore.replay()
 }
 
-function formatHeaderMoney(value: number) {
-  return formatBalanceAmount(Number.isFinite(value) ? value : 0, { fractionDigits: 2 })
+// withSymbol 为 false 时只返回数字，供顶栏余额按钮单独排版货币符号。
+function formatHeaderMoney(value: number, withSymbol = true) {
+  return formatBalanceAmount(Number.isFinite(value) ? value : 0, { fractionDigits: 2, withSymbol })
 }
 
 function handleClickOutside(event: MouseEvent) {
@@ -360,7 +360,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .header-status-actions {
-  @apply ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-3.5;
+  @apply ml-auto flex min-w-0 shrink-0 items-center gap-2 sm:gap-5;
 }
 
 .header-brand {
@@ -372,19 +372,14 @@ onBeforeUnmount(() => {
 }
 
 .header-status-divider {
-  @apply h-9 w-px shrink-0 bg-primary-900/10 dark:bg-white/8;
+  @apply h-5 w-px shrink-0 bg-primary-900/10 dark:bg-dark-600;
 }
 
 .header-status-icon-button {
-  @apply flex h-9 w-9 items-center justify-center rounded-control text-primary-900/90 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-300 dark:hover:bg-dark-700 dark:hover:text-white;
-}
-
-.header-status-balance {
-  @apply h-8 min-w-[104px] items-center justify-center rounded-control border border-primary-200/70 bg-primary-100/80 px-3 shadow-sm dark:border-dark-600 dark:bg-transparent dark:shadow-none;
+  @apply flex h-9 w-9 items-center justify-center rounded-control text-primary-900 transition-colors hover:bg-primary-100 dark:text-dark-100 dark:hover:bg-dark-700 dark:hover:text-white;
 }
 
 .header-status-user-button {
-  @apply flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-primary-100 dark:hover:bg-dark-700;
+  @apply flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-primary-200/70 transition-shadow hover:ring-primary-300 dark:ring-dark-600 dark:hover:ring-dark-400;
 }
-
 </style>
