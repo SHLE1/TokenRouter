@@ -70,48 +70,35 @@
         </div>
       </div>
 
-      <div v-if="form.provider_key === 'easypay'" class="space-y-3 rounded-control border border-gray-100 p-3 dark:border-dark-700">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <h5 class="text-sm font-medium text-gray-900 dark:text-white">
-              {{ t('admin.settings.payment.easypayCustomMethods') }}
-            </h5>
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ t('admin.settings.payment.easypayCustomMethodsHint') }}
-            </p>
-          </div>
-          <button type="button" class="btn btn-secondary btn-sm" @click="addEasyPayCustomMethod">
-            {{ t('admin.settings.payment.addCustomMethod') }}
-          </button>
-        </div>
-        <div v-if="easyPayCustomMethods.length" class="space-y-2">
-          <div
-            v-for="(method, index) in easyPayCustomMethods"
-            :key="index"
-            class="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2"
-          >
+      <RuleListEditor
+        v-if="form.provider_key === 'easypay'"
+        :items="easyPayCustomMethods"
+        :title="t('admin.settings.payment.easypayCustomMethods')"
+        :hint="t('admin.settings.payment.easypayCustomMethodsHint')"
+        :add-label="t('admin.settings.payment.addCustomMethod')"
+        variant="card"
+        :item-label="(index) => t('common.ruleIndex', { index: index + 1 })"
+        test-id="easypay-custom-methods"
+        @add="addEasyPayCustomMethod"
+        @remove="removeEasyPayCustomMethod"
+      >
+        <template #row="{ item: method }">
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div>
               <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.customMethodType') }}</label>
-              <input v-model="method.type" type="text" class="input mt-0.5" placeholder="credit_card" />
+              <input v-model="method.type" type="text" class="input mt-1" placeholder="credit_card" />
             </div>
             <div>
               <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.customMethodUpstreamType') }}</label>
-              <input v-model="method.upstreamType" type="text" class="input mt-0.5" placeholder="credit_card" />
+              <input v-model="method.upstreamType" type="text" class="input mt-1" placeholder="credit_card" />
             </div>
             <div>
               <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.customMethodDisplayName') }}</label>
-              <input v-model="method.displayName" type="text" class="input mt-0.5" :placeholder="t('admin.settings.payment.customMethodDisplayNamePlaceholder')" />
+              <input v-model="method.displayName" type="text" class="input mt-1" :placeholder="t('admin.settings.payment.customMethodDisplayNamePlaceholder')" />
             </div>
-            <button
-              type="button"
-              class="rounded-control border border-red-200 px-2.5 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-800/60 dark:text-red-300 dark:hover:bg-red-900/20"
-              @click="removeEasyPayCustomMethod(index)"
-            >
-              {{ t('common.delete') }}
-            </button>
           </div>
-        </div>
-      </div>
+        </template>
+      </RuleListEditor>
 
 
       <!-- Config fields -->
@@ -328,6 +315,7 @@ import { reactive, computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import Select from '@/components/common/Select.vue'
 import type { SelectOption } from '@/components/common/Select.vue'
 import ToggleSwitch from './ToggleSwitch.vue'

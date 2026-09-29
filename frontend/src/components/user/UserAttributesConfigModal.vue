@@ -140,36 +140,34 @@
       </div>
 
       <!-- Options (for select/multi_select) -->
-      <div v-if="form.type === 'select' || form.type === 'multi_select'" class="space-y-2">
-        <label class="input-label">{{ t('admin.users.attributes.options') }}</label>
-        <div v-for="(option, index) in form.options" :key="getOptionKey(option)" class="flex items-center gap-2">
-          <input
-            v-model="option.value"
-            type="text"
-            class="input flex-1 font-mono text-sm"
-            :placeholder="t('admin.users.attributes.optionValue')"
-            required
-          />
-          <input
-            v-model="option.label"
-            type="text"
-            class="input flex-1 text-sm"
-            :placeholder="t('admin.users.attributes.optionLabel')"
-            required
-          />
-          <button
-            type="button"
-            @click="removeOption(index)"
-            class="rounded-control p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
-          >
-            <Icon name="x" size="sm" :stroke-width="2" />
-          </button>
-        </div>
-        <button type="button" @click="addOption" class="btn btn-secondary btn-sm">
-          <Icon name="plus" size="sm" class="mr-1" :stroke-width="2" />
-          {{ t('admin.users.attributes.addOption') }}
-        </button>
-      </div>
+      <RuleListEditor
+        v-if="form.type === 'select' || form.type === 'multi_select'"
+        :items="form.options"
+        :title="t('admin.users.attributes.options')"
+        :add-label="t('admin.users.attributes.addOption')"
+        test-id="user-attribute-options"
+        @add="addOption"
+        @remove="removeOption"
+      >
+        <template #row="{ item: option }">
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input
+              v-model="option.value"
+              type="text"
+              class="input min-w-0 font-mono text-sm"
+              :placeholder="t('admin.users.attributes.optionValue')"
+              required
+            />
+            <input
+              v-model="option.label"
+              type="text"
+              class="input min-w-0 text-sm"
+              :placeholder="t('admin.users.attributes.optionLabel')"
+              required
+            />
+          </div>
+        </template>
+      </RuleListEditor>
 
       <!-- Description -->
       <div>
@@ -248,7 +246,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import Select from '@/components/common/Select.vue'
-import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -273,7 +271,6 @@ const showEditModal = ref(false)
 const showDeleteDialog = ref(false)
 const editingAttribute = ref<UserAttributeDefinition | null>(null)
 const deletingAttribute = ref<UserAttributeDefinition | null>(null)
-const getOptionKey = createStableObjectKeyResolver<UserAttributeOption>('user-attr-option')
 
 const form = reactive({
   key: '',

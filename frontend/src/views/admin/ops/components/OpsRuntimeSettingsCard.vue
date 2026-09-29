@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { opsAPI } from '@/api/admin/ops'
 import type { OpsAlertRuntimeSettings } from '../types'
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 
 const { t } = useI18n()
@@ -429,80 +430,61 @@ onMounted(() => {
             />
           </div>
 
-          <div class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <div class="text-xs font-bold text-gray-900 dark:text-white">{{ t('admin.ops.runtime.silencing.entries.title') }}</div>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.ops.runtime.silencing.entries.hint') }}</p>
-              </div>
-              <button class="btn btn-sm btn-secondary" type="button" @click="addSilenceEntry">
-                {{ t('admin.ops.runtime.silencing.entries.add') }}
-              </button>
-            </div>
-
-            <div v-if="!draftAlert.silencing.entries?.length" class="mt-3 rounded-control bg-gray-50 p-3 text-xs text-gray-500 dark:bg-dark-950 dark:text-gray-400">
-              {{ t('admin.ops.runtime.silencing.entries.empty') }}
-            </div>
-
-            <div v-else class="mt-4 space-y-4">
-              <div
-                v-for="(entry, idx) in draftAlert.silencing.entries"
-                :key="idx"
-                class="rounded-surface border border-gray-200 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-950"
-              >
-                <div class="mb-3 flex items-center justify-between">
-                  <div class="text-xs font-bold text-gray-900 dark:text-white">
-                    {{ t('admin.ops.runtime.silencing.entries.entryTitle', { n: idx + 1 }) }}
-                  </div>
-                  <button class="btn btn-sm btn-danger" type="button" @click="removeSilenceEntry(idx)">{{ t('common.delete') }}</button>
+          <RuleListEditor
+            :items="draftAlert.silencing.entries || []"
+            :title="t('admin.ops.runtime.silencing.entries.title')"
+            :hint="t('admin.ops.runtime.silencing.entries.hint')"
+            :add-label="t('admin.ops.runtime.silencing.entries.add')"
+            :empty-text="t('admin.ops.runtime.silencing.entries.empty')"
+            variant="card"
+            :item-label="(index) => t('admin.ops.runtime.silencing.entries.entryTitle', { n: index + 1 })"
+            test-id="ops-silence-entries"
+            @add="addSilenceEntry"
+            @remove="removeSilenceEntry"
+          >
+            <template #row="{ item: entry, index: idx }">
+              <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.silencing.entries.ruleId') }}</div>
+                  <input
+                    :value="typeof (entry as any).rule_id === 'number' ? String((entry as any).rule_id) : ''"
+                    type="text"
+                    class="input font-mono text-sm"
+                    :placeholder="t('admin.ops.runtime.silencing.entries.ruleIdPlaceholder')"
+                    @input="updateSilenceEntryRuleId(idx, ($event.target as HTMLInputElement).value)"
+                  />
                 </div>
-
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.silencing.entries.ruleId') }}</div>
-                    <input
-                      :value="typeof (entry as any).rule_id === 'number' ? String((entry as any).rule_id) : ''"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="t('admin.ops.runtime.silencing.entries.ruleIdPlaceholder')"
-                      @input="updateSilenceEntryRuleId(idx, ($event.target as HTMLInputElement).value)"
-                    />
-                  </div>
-
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.silencing.entries.severities') }}</div>
-                    <input
-                      :value="Array.isArray((entry as any).severities) ? (entry as any).severities.join(', ') : ''"
-                      type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="t('admin.ops.runtime.silencing.entries.severitiesPlaceholder')"
-                      @input="updateSilenceEntrySeverities(idx, ($event.target as HTMLInputElement).value)"
-                    />
-                  </div>
-
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.silencing.entries.until') }}</div>
-                    <input
-                      v-model="(entry as any).until_rfc3339"
-                      type="text"
-                      class="input font-mono text-sm"
-              placeholder="2026-01-05T00:00:00Z"
-                    />
-                  </div>
-
-                  <div>
-                    <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.silencing.entries.reason') }}</div>
-                    <input
-                      v-model="(entry as any).reason"
-                      type="text"
-                      class="input"
-                      :placeholder="t('admin.ops.runtime.silencing.reasonPlaceholder')"
-                    />
-                  </div>
+                <div>
+                  <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.silencing.entries.severities') }}</div>
+                  <input
+                    :value="Array.isArray((entry as any).severities) ? (entry as any).severities.join(', ') : ''"
+                    type="text"
+                    class="input font-mono text-sm"
+                    :placeholder="t('admin.ops.runtime.silencing.entries.severitiesPlaceholder')"
+                    @input="updateSilenceEntrySeverities(idx, ($event.target as HTMLInputElement).value)"
+                  />
+                </div>
+                <div>
+                  <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.silencing.entries.until') }}</div>
+                  <input
+                    v-model="(entry as any).until_rfc3339"
+                    type="text"
+                    class="input font-mono text-sm"
+                                    placeholder="2026-01-05T00:00:00Z"
+                  />
+                </div>
+                <div>
+                  <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.silencing.entries.reason') }}</div>
+                  <input
+                    v-model="(entry as any).reason"
+                    type="text"
+                    class="input"
+                    :placeholder="t('admin.ops.runtime.silencing.reasonPlaceholder')"
+                  />
                 </div>
               </div>
-            </div>
-          </div>
+            </template>
+          </RuleListEditor>
         </div>
       </div>
 
