@@ -352,7 +352,7 @@
     @apply border border-primary-900/10 dark:border-dark-600;
     @apply shadow-none hover:bg-gray-50 dark:hover:bg-dark-700;
     @apply hover:border-black/20 dark:hover:border-dark-500;
-    @apply focus:border-primary-900/10 focus:ring-black/10 dark:focus:border-dark-500 dark:focus:ring-white/10;
+    @apply focus:border-primary-900/10 focus:ring-black/10 dark:focus:border-dark-400 dark:focus:ring-white/6;
   }
 
   .btn-ghost {
@@ -445,7 +445,7 @@
     @apply text-gray-900 dark:text-dark-50;
     @apply placeholder:text-primary-900/45 dark:placeholder:text-dark-400;
     @apply transition-all duration-200;
-    @apply focus:border-primary-900/10 focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:border-dark-400 dark:focus:ring-white/10;
+    @apply focus:border-primary-900/10 focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:border-dark-400 dark:focus:ring-white/6;
     @apply disabled:cursor-not-allowed disabled:bg-primary-100 dark:disabled:bg-dark-950;
   }
 
@@ -978,15 +978,15 @@
     @apply text-sm font-medium;
     @apply text-primary-900 dark:text-dark-300;
     @apply transition-all duration-200;
-    @apply hover:bg-primary-100 dark:hover:bg-dark-700;
-    @apply hover:text-primary-700 dark:hover:text-dark-50;
+    @apply hover:bg-primary-100 dark:hover:bg-dark-800;
+    @apply hover:text-primary-700 dark:hover:text-primary-500;
   }
 
   .sidebar-link-active {
-    /* 深色选中态对齐 OpenRouter：中性灰填充加亮白文字，品牌色只留给主操作。 */
-    @apply bg-primary-100 dark:bg-dark-700;
-    @apply text-primary-700 dark:text-dark-50;
-    @apply hover:bg-primary-200 dark:hover:bg-dark-700;
+    /* 深色导航以淡品牌色底和品牌色文字标记当前位置，悬停保留选中底色。 */
+    @apply bg-primary-100 dark:bg-primary-500/8;
+    @apply text-primary-700 dark:text-primary-500;
+    @apply hover:bg-primary-200 dark:hover:bg-primary-500/8;
   }
 
   .sidebar-section {
@@ -1043,7 +1043,7 @@
 
   /* ============ 分隔线 ============ */
   .divider {
-    @apply my-4 h-px bg-primary-200 dark:bg-dark-600;
+    @apply my-4 h-px bg-primary-200 dark:bg-white/8;
   }
 
   /* ============ 标签页 ============ */
@@ -1060,9 +1060,9 @@
   }
 
   .tab-active {
-    @apply bg-white dark:bg-dark-700;
-    @apply text-primary-900 dark:text-white;
-    @apply shadow-none dark:ring-1 dark:ring-dark-600;
+    @apply bg-white dark:bg-primary-500/8;
+    @apply text-primary-900 dark:text-primary-500;
+    @apply shadow-none dark:ring-1 dark:ring-primary-500/15;
   }
 
   .dark .tab-active {

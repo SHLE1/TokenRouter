@@ -50,7 +50,7 @@
 
 .dark .driver-popover.theme-tour-popover {
   background-color: #0F0F10 !important;
-  border-color: #3D3D42 !important;
+  border-color: theme('borderColor.dark.600') !important;
   color: #DEE0E2 !important;
 }
 
@@ -125,7 +125,7 @@
 }
 .dark .theme-tour-popover .driver-popover-footer {
   background-color: #141416 !important;
-  border-top-color: #27272A !important;
+  border-top-color: theme('borderColor.dark.700') !important;
 }
 
 .theme-tour-popover .driver-popover-progress-text {
@@ -192,7 +192,7 @@
 .theme-tour-popover .driver-popover-prev-btn:hover { background-color: #F6FCFF !important; color: #2D4F68 !important; }
 .dark .theme-tour-popover .driver-popover-prev-btn {
   background-color: #0F0F10 !important;
-  border-color: #3D3D42 !important;
+  border-color: theme('borderColor.dark.600') !important;
   color: #DEE0E2 !important;
 }
 

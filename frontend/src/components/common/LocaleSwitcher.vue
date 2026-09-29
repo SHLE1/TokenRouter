@@ -29,7 +29,7 @@
           @click="selectLocale(locale.code)"
           class="dropdown-item-sm"
           :class="{
-            'bg-primary-50 text-primary-600 dark:bg-dark-700 dark:text-dark-50':
+            'bg-primary-50 text-primary-600 dark:bg-primary-500/8 dark:text-primary-500':
               locale.code === currentLocaleCode
           }"
         >

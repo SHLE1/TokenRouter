@@ -1,3 +1,17 @@
+// 边线透明度与 /70 等修饰符相乘，避免修饰符把低对比边框重新提亮。
+const darkEdgeColor = (opacity) => ({ opacityValue = '1' }) =>
+  `rgb(252 252 254 / calc(${opacity} * ${opacityValue}))`
+
+// 深色边线独立于文字和表面色阶，border、divide、ring 共用同一强度。
+const darkEdges = {
+  400: darkEdgeColor(0.3),
+  500: darkEdgeColor(0.125),
+  600: darkEdgeColor(0.078),
+  700: darkEdgeColor(0.04),
+  800: darkEdgeColor(0.031),
+  900: darkEdgeColor(0.02)
+}
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
@@ -15,6 +29,13 @@ export default {
       full: '9999px'
     },
     extend: {
+      borderColor: { dark: darkEdges },
+      divideColor: { dark: darkEdges },
+      ringColor: { dark: darkEdges },
+      opacity: {
+        6: '0.06',
+        8: '0.08'
+      },
       // 浮层层级语义档:数值唯一来源是 style.css :root 的 --z-* 变量,这里只做 var() 引用。
       // --z-tour(driver.js 外部约束)有意不暴露为工具类,防止业务代码依附第三方层级。
       zIndex: {
@@ -99,16 +120,16 @@ export default {
           950: '#09090B'
         },
         // @project-doc docs/architecture/frontend_ui_conventions.md#dark_colors
-        // 深色表面接近页面底色，以主边框分层；控件底略亮于卡片。
+        // 深色文字与表面色阶；边框强度由 darkEdges 单独定义。
         dark: {
           50: '#FAFAFA', // 标题与强调文字
           100: '#DEE0E2', // 正文文字
           200: '#D4D4D8', // 次强文字、占位文字底色
           300: '#A1A1AA', // 次要文字、导航默认文字
           400: '#8B8B94', // 辅助文字、表头文字
-          500: '#5F5F67', // 图标、禁用文字、边框 hover
-          600: '#3D3D42', // 主边框（卡片、输入框、弹层、分隔线）
-          700: '#27272A', // 中性填充：hover、选中、chip、内部分隔线
+          500: '#5F5F67', // 图标、禁用文字
+          600: '#3D3D42', // 较强中性填充
+          700: '#27272A', // 中性填充：chip、禁用控件
           800: '#17171A', // 弱填充：表格行 hover、嵌套面板
           900: '#0F0F10', // 卡片、侧栏、弹窗、下拉面板
           950: '#141416' // 控件底：输入框、次级按钮、Tab 轨道、行内代码

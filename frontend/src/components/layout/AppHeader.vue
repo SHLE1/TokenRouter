@@ -399,7 +399,7 @@ onBeforeUnmount(() => {
 }
 
 .header-status-divider {
-  @apply h-9 w-px shrink-0 bg-primary-900/10 dark:bg-dark-600;
+  @apply h-9 w-px shrink-0 bg-primary-900/10 dark:bg-white/8;
 }
 
 .header-status-icon-button {

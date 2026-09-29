@@ -39,7 +39,7 @@
             <tr
               v-for="(item, index) in sortedItems"
               :key="distributionKey(item, index)"
-              class="border-t border-gray-100 dark:border-gray-700"
+              class="border-t border-gray-100 dark:border-dark-600"
             >
               <td class="py-2">
                 <div class="flex min-w-0 items-center gap-2">

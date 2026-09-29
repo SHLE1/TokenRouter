@@ -237,7 +237,7 @@
                     :key="group.id"
                     class="inline-flex max-w-full cursor-pointer items-center gap-2 rounded-control p-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-dark-700"
                     :class="[
-                      section.group_ids.includes(group.id) ? 'bg-primary-50 dark:bg-dark-700 dark:text-dark-50' : '',
+                      section.group_ids.includes(group.id) ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500' : '',
                       isGroupInOtherPricingConfig(group.id) ? 'cursor-not-allowed opacity-40' : ''
                     ]"
                   >
@@ -348,7 +348,7 @@
                       :key="gid"
                       class="inline-flex cursor-pointer items-center gap-1 rounded-compact border px-2 py-1 text-xs transition-colors"
                       :class="rule.group_ids.includes(gid)
-                        ? 'border-primary-300 bg-primary-50 dark:border-primary-700 dark:bg-dark-700 dark:text-dark-50'
+                        ? 'border-primary-300 bg-primary-50 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                         : 'border-gray-200 hover:bg-gray-50 dark:border-dark-600 dark:hover:bg-dark-700'"
                     >
                       <input type="checkbox" :checked="rule.group_ids.includes(gid)" class="h-3 w-3 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" @change="rule.group_ids.includes(gid) ? rule.group_ids.splice(rule.group_ids.indexOf(gid), 1) : rule.group_ids.push(gid)" />

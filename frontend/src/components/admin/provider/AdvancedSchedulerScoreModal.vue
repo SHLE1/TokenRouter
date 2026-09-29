@@ -69,7 +69,7 @@
                 :class="[
                   'flex min-h-12 flex-col justify-center rounded-control border px-3 text-left transition-colors',
                   activeGroupID === group.id
-                    ? 'border-primary-500 bg-primary-50 text-primary-800 dark:border-primary-500 dark:bg-dark-700 dark:text-dark-50'
+                    ? 'border-primary-500 bg-primary-50 text-primary-800 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-dark-600 dark:bg-dark-800 dark:text-dark-300 dark:hover:border-dark-500'
                 ]"
                 @click="selectGroup(group.id)"

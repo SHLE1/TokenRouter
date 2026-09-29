@@ -16,7 +16,7 @@
 
     <div
       v-if="open"
-      class="absolute right-0 top-full z-50 mt-2 w-48 rounded-control border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-800"
+      class="absolute right-0 top-full z-50 mt-2 w-48 rounded-control border border-gray-200 bg-white p-2 shadow-xl dark:border-dark-600 dark:bg-gray-800"
       role="menu"
       data-test="scope-dropdown-menu"
     >

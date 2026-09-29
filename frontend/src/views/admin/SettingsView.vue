@@ -7449,7 +7449,7 @@
                           class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
                           :class="[
                             item.operations.includes(operation)
-                              ? 'border-primary-500/60 bg-primary-50 text-primary-700 dark:border-primary-500/50 dark:bg-dark-700 dark:text-dark-50'
+                              ? 'border-primary-500/60 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                               : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-dark-600 dark:text-dark-300 dark:hover:border-dark-400 dark:hover:text-dark-100',
                             creativeOperationCheckboxDisabled(index, operation) && 'cursor-not-allowed opacity-50',
                           ]"
@@ -13175,7 +13175,7 @@ watch(
 }
 
 .settings-tab-active {
-  @apply border-primary-200/80 bg-white text-primary-700 shadow-sm dark:border-primary-400/30 dark:bg-dark-700/95 dark:text-primary-200;
+  @apply border-primary-200/80 bg-white text-primary-700 shadow-sm dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500;
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.92) inset;
 }
 
@@ -13204,7 +13204,7 @@ watch(
 }
 
 .settings-tab-active .settings-tab-icon {
-  @apply bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-300;
+  @apply bg-primary-50 text-primary-600 dark:bg-primary-500/8 dark:text-primary-500;
 }
 
 .settings-tab-label {
@@ -13272,7 +13272,7 @@ watch(
 <style>
 /* 暗色模式 Tab 覆盖必须放在非 scoped 样式块，避免生产构建丢弃后导致未激活 Tab 不可读。 */
 .dark .settings-tabs-shell {
-  border-color: rgb(61 61 66 / 0.65);
+  border-color: theme('borderColor.dark.600');
   background: rgb(15 15 16 / 0.86);
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset;
 }

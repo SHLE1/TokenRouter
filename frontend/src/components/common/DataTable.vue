@@ -968,7 +968,7 @@ defineExpose({
 }
 
 .dark .table-wrapper {
-  --sticky-boundary-line-color: rgb(61 61 66);
+  --sticky-boundary-line-color: theme('borderColor.dark.600');
 }
 
 /* 表头容器，确保在滚动时覆盖表体内容 */

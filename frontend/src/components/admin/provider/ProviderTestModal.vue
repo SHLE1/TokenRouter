@@ -99,7 +99,7 @@
       <div class="group relative">
         <div
           ref="terminalRef"
-          class="max-h-menu-sm min-h-[120px] overflow-y-auto rounded-surface border border-gray-700 bg-gray-900 p-4 font-mono text-sm dark:border-gray-800 dark:bg-black"
+          class="max-h-menu-sm min-h-[120px] overflow-y-auto rounded-surface border border-gray-700 bg-gray-900 p-4 font-mono text-sm dark:border-dark-700 dark:bg-black"
         >
           <!-- Status Line -->
           <div v-if="status === 'idle'" class="flex items-center gap-2 text-gray-500">

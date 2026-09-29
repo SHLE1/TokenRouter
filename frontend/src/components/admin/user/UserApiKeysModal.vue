@@ -82,7 +82,7 @@
           :class="[
             'flex w-full items-center rounded-control px-3 py-2 text-sm transition-colors',
             !selectedKeyForGroup?.group_id
-              ? 'bg-primary-50 dark:bg-dark-700 dark:text-dark-50'
+              ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
               : 'hover:bg-gray-100 dark:hover:bg-dark-700'
           ]"
         >
@@ -101,7 +101,7 @@
           :class="[
             'flex w-full items-center justify-between rounded-control px-3 py-2 text-sm transition-colors',
             selectedKeyForGroup?.group_id === group.id
-              ? 'bg-primary-50 dark:bg-dark-700 dark:text-dark-50'
+              ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
               : 'hover:bg-gray-100 dark:hover:bg-dark-700'
           ]"
         >

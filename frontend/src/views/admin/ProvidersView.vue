@@ -32,7 +32,7 @@
                 </button>
                 <div
                   v-if="showAutoRefreshDropdown"
-                  class="fixed z-50 w-56 origin-top-left overflow-hidden rounded-control border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                  class="fixed z-50 w-56 origin-top-left overflow-hidden rounded-control border border-gray-200 bg-white shadow-lg dark:border-dark-600 dark:bg-gray-800"
                   :style="autoRefreshDropdownStyle"
                 >
                   <div class="p-2">
@@ -43,7 +43,7 @@
                       <span>{{ t('admin.providers.enableAutoRefresh') }}</span>
                       <Icon v-if="autoRefreshEnabled" name="check" size="sm" class="text-primary-500" />
                     </button>
-                    <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
+                    <div class="my-1 border-t border-gray-100 dark:border-dark-600"></div>
                     <button
                       v-for="sec in autoRefreshIntervals"
                       :key="sec"
@@ -73,7 +73,7 @@
                 <Teleport to="body">
                   <div
                     v-if="showProviderToolsDropdown"
-                    class="fixed z-teleport-tooltip origin-top-right overflow-hidden rounded-control border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                    class="fixed z-teleport-tooltip origin-top-right overflow-hidden rounded-control border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-gray-800"
                     :style="providerToolsDropdownStyle"
                     @click.stop
                   >
@@ -110,7 +110,7 @@
                       </span>
                     </button>
 
-                    <div class="my-2 border-t border-gray-100 dark:border-gray-700"></div>
+                    <div class="my-2 border-t border-gray-100 dark:border-dark-600"></div>
                     <div class="px-2 py-2">
                       <div class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
                         {{ t('admin.providers.toolActions') }}
@@ -135,7 +135,7 @@
                       <span class="flex-1 text-left">{{ t('admin.tlsFingerprintRouters.title') }}</span>
                     </button>
 
-                    <div class="my-2 border-t border-gray-100 dark:border-gray-700"></div>
+                    <div class="my-2 border-t border-gray-100 dark:border-dark-600"></div>
                     <div class="px-2 py-2">
                       <div class="flex items-center justify-between gap-3">
                         <span class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
@@ -239,7 +239,7 @@
                     :href="providerHomepageUrl(row)"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="border-b border-dotted border-gray-300 font-medium text-gray-900 dark:border-gray-600 dark:text-white"
+                    class="border-b border-dotted border-gray-300 font-medium text-gray-900 dark:border-dark-500 dark:text-white"
                   >
                     {{ value }}
                   </a>
@@ -348,7 +348,7 @@
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded-compact text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" :title="t('admin.providers.fallbackActiveTip', { origin: row.proxy_fallback_origin_name })">
                   {{ t('admin.providers.fallbackActive') }}
                 </span>
-                <button class="text-xs px-1.5 py-0.5 rounded-compact border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" @click="onRevertFallback(row)">{{ t('admin.providers.revertProxy') }}</button>
+                <button class="text-xs px-1.5 py-0.5 rounded-compact border border-gray-300 dark:border-dark-500 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" @click="onRevertFallback(row)">{{ t('admin.providers.revertProxy') }}</button>
               </div>
             </div>
           </template>

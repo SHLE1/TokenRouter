@@ -480,7 +480,7 @@
               'flex items-center gap-3 rounded-control border-2 p-3 text-left transition-all',
               providerMode === 'payg'
                 ? cnAccentActiveClass
-                : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-gray-600'
+                : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-dark-500'
             ]"
           >
             <div
@@ -507,7 +507,7 @@
               'flex items-center gap-3 rounded-control border-2 p-3 text-left transition-all',
               providerMode === 'coding'
                 ? cnAccentActiveClass
-                : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-gray-600'
+                : 'border-gray-200 hover:border-gray-400 dark:border-dark-600 dark:hover:border-dark-500'
             ]"
           >
             <div
@@ -1045,7 +1045,7 @@
             :class="[
               'rounded-control border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
               qoderSite === 'global'
-                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-dark-700 dark:text-dark-50'
+                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                 : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-300'
             ]"
           >
@@ -1060,7 +1060,7 @@
             :class="[
               'rounded-control border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
               qoderSite === 'cn'
-                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-dark-700 dark:text-dark-50'
+                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
                 : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-300'
             ]"
           >
@@ -1220,7 +1220,7 @@
             :class="[
               'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
               modelRestrictionMode === 'whitelist'
-                ? 'bg-primary-100 text-primary-700 dark:bg-dark-700 dark:text-dark-50'
+                ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
             ]"
           >
@@ -1644,7 +1644,7 @@
                 :class="[
                   'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
                   modelRestrictionMode === 'whitelist'
-                    ? 'bg-primary-100 text-primary-700 dark:bg-dark-700 dark:text-dark-50'
+                    ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                 ]"
               >
@@ -2079,7 +2079,7 @@
               :class="[
                 'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
                 modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-dark-700 dark:text-dark-50'
+                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
               ]"
             >
@@ -2380,7 +2380,7 @@
               :class="[
                 'flex-1 rounded-control px-4 py-2 text-sm font-medium transition-all',
                 modelRestrictionMode === 'whitelist'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-dark-700 dark:text-dark-50'
+                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
               ]"
             >
@@ -2783,7 +2783,7 @@
                   :class="[
                     'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
                     rpmStrategy === 'tiered'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-dark-700 dark:text-dark-50'
+                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                   ]"
                 >
@@ -2798,7 +2798,7 @@
                   :class="[
                     'flex-1 rounded-control px-3 py-2 text-sm font-medium transition-all',
                     rpmStrategy === 'sticky_exempt'
-                      ? 'bg-primary-100 text-primary-700 dark:bg-dark-700 dark:text-dark-50'
+                      ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/8 dark:text-primary-500'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-600 dark:text-gray-400 dark:hover:bg-dark-500'
                   ]"
                 >
