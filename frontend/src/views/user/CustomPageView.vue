@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <AppLayout fit-viewport="all">
     <div class="custom-page-layout">
       <div class="card flex-1 min-h-0 overflow-hidden">
         <div v-if="loading" class="flex h-full items-center justify-center py-12">
@@ -376,7 +376,7 @@ onUnmounted(() => {
 
 <style scoped>
 .custom-page-layout {
-  /* 高度由 AppLayout 的 flex 链分配,不再手写视口差值(旧 calc 里的 64px 顶栏已过时)。 */
+  /* AppLayout 锁定视口高度后，flex 链把页头下方的剩余空间分配给 iframe 或 Markdown 滚动区。 */
   @apply flex min-h-0 flex-1 flex-col;
 }
 

@@ -29,13 +29,16 @@
 
 唯一例外：边长 ≤16px 的微型装饰元素（如用量热力图的 12px 格子），全局最小档 compact（6px）已达边长一半、视觉上近似椭圆，允许用组件级局部变量保持更小半径（如 `.heatmap-cell` 的 `--radius-cell: 4px`），不新增全局档位。
 
+<a id="layout_spacing"></a>
 ## 间距约定
 
 - 全部间距落在 Tailwind 4px 网格上，禁止 `mt-[2px]`、`padding-left: 17px` 这类任意值。
 - 卡片 padding 只有两档：独立卡片 `p-6`，嵌套面板、网格卡和统计卡 `p-4`。不再使用 `p-5`。
 - 布局水平 padding 链在 header 与 main 之间完全一致：`px-4 md:px-6 lg:px-8`，保证两侧边缘在所有断点对齐。
 - 布局尺寸 token 只在 `style.css` 的 `:root` 定义一份：`--header-h`（3.5rem，顶栏高度）、`--sidebar-w`（14rem，侧栏展开宽）、`--sidebar-w-collapsed`（4.5rem，侧栏折叠宽）。顶栏高度、主区 `padding-top`、侧栏遮罩 `top`、侧栏宽度与主区 `lg:ml-*` 偏移一律引用变量（如 `h-[var(--header-h)]`），不写 `h-14`、`top-14`、`w-56` 这类平行字面量。吸顶偏移与锚点 `scroll-margin-top` 同样以 `calc(var(--header-h) + 余量)` 组合（参考 SettingsView 的 tabs 吸顶），余量写构成注释。
-- 垂直空间由 AppLayout 的 flex 链统一分配：wrapper（`flex-col`，普通模式 `min-h-screen` / 全屏模式 `h-full`）→ `.app-main`（`flex-1 flex-col`）→ 页头（自然高度）+ 页面内容。需要撑满剩余高度的页面容器（如 `TablePageLayout`、`CustomPageView` 根元素）自取 `flex-1 min-h-0`，禁止手写 `calc(100vh - …)` 视口差值、禁止负 margin 抵消父级内边距；`--main-pad-*`、`--page-heading-space` 这类镜像变量已删除，不得重新引入。全屏工作区（`full-viewport`）模式下 `.app-main` 无内边距，页面天然满幅。宽屏锁定（`fit-viewport`）模式只在 `lg` 及以上把外壳锁定为视口高度，保留页头和标准内边距链，页面根容器以 `lg:flex-1 lg:min-h-0` 承接剩余高度，由卡片内部区域滚动（参考兑换页的历史列表与分页器）；窄屏仍随内容自然滚动。
+- 垂直空间由 AppLayout 的 flex 链统一分配：wrapper（`flex-col`，普通模式 `min-h-screen` / 锁定模式 `h-full min-h-0`）→ `.app-main`（`flex-1 flex-col`）→ 页头（自然高度）+ 页面内容。需要撑满剩余高度的页面容器（如 `TablePageLayout`、`CustomPageView` 根元素）自取 `flex-1 min-h-0`，禁止手写 `calc(100vh - …)` 视口差值、禁止负 margin 抵消父级内边距；不引入 `--main-pad-*`、`--page-heading-space` 这类与布局重复的尺寸变量。
+- 全屏工作区（`full-viewport`）模式下 `.app-main` 无内边距，页面天然满幅。宽屏锁定（`fit-viewport`）模式只在 `lg` 及以上把外壳锁定为视口高度，保留页头和标准内边距链，页面根容器以 `lg:flex-1 lg:min-h-0` 承接剩余高度，由卡片内部区域滚动（参考兑换页的历史列表与分页器）；窄屏仍随内容自然滚动。
+- 自定义页面使用 `fit-viewport="all"`，在所有屏幕尺寸下按动态视口分配高度，保留页头和标准内边距。iframe 与 Markdown 正文在卡片内滚动。只设 `min-h-screen` 不能为后代的 `height: 100%` 提供明确高度，会使 iframe 回落到默认的 150px；需要百分比高度的页面必须接入完整的高度链。
 - 表单内 `space-y-2/3/4/6` 按上下文自选，不归一。
 
 ## 控件尺寸
