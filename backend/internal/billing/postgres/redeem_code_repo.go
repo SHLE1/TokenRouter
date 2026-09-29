@@ -522,27 +522,6 @@ func redeemCodeListOrder(params pagination.PaginationParams) []func(*entsql.Sele
 	return []func(*entsql.Selector){dbent.Desc(field), dbent.Desc(redeemcode.FieldID)}
 }
 
-func (r *RedeemStore) ListByUser(ctx context.Context, userID int64, limit int) ([]billing.RedeemCode, error) {
-	if limit <= 0 {
-		limit = 10
-	}
-
-	client := clientFromContext(ctx, r.client)
-	usages, err := client.RedeemCodeUsage.Query().
-		Where(redeemcodeusage.UserIDEQ(userID)).
-		WithRedeemCode(func(q *dbent.RedeemCodeQuery) {
-			q.WithPlan()
-		}).
-		Order(dbent.Desc(redeemcodeusage.FieldUsedAt), dbent.Desc(redeemcodeusage.FieldID)).
-		Limit(limit).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return redeemCodeHistoryFromUsageEntities(usages), nil
-}
-
 func (r *RedeemStore) ListByUserPaginated(ctx context.Context, userID int64, params pagination.PaginationParams, codeType string) ([]billing.RedeemCode, *pagination.PaginationResult, error) {
 	client := clientFromContext(ctx, r.client)
 	preds := []dbpredicate.RedeemCodeUsage{

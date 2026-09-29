@@ -465,13 +465,14 @@ func (s *RedeemService) validateRedeemCodeForUser(ctx context.Context, redeemCod
 	return nil
 }
 
-// GetUserHistory 获取用户的兑换历史
-func (s *RedeemService) GetUserHistory(ctx context.Context, userID int64, limit int) ([]RedeemCode, error) {
-	codes, err := s.redeemRepo.ListByUser(ctx, userID, limit)
+// GetUserHistory 按使用时间倒序分页获取用户的兑换历史，并返回记录总数。
+func (s *RedeemService) GetUserHistory(ctx context.Context, userID int64, page, pageSize int) ([]RedeemCode, int64, error) {
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+	codes, result, err := s.redeemRepo.ListByUserPaginated(ctx, userID, params, "")
 	if err != nil {
-		return nil, fmt.Errorf("get user redeem history: %w", err)
+		return nil, 0, fmt.Errorf("get user redeem history: %w", err)
 	}
-	return codes, nil
+	return codes, result.Total, nil
 }
 
 // 不支持负向原子权益的兼容仓储保留原错误文本。

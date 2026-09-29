@@ -192,7 +192,6 @@ func TestResolveRedeemCodeExpiresAt_RejectsConflictingInputs(t *testing.T) {
 }
 
 func TestGenerate_AcceptsInvitationExpiry(t *testing.T) {
-
 	adminSvc := newRedeemAdminFixture()
 	h := NewAdminRedeemHandler(adminSvc, nil)
 	futureUnix := time.Now().UTC().Add(time.Hour).Unix()
@@ -218,7 +217,6 @@ func TestGenerate_AcceptsInvitationExpiry(t *testing.T) {
 }
 
 func TestRedeemBatchUpdate_NullExpiresAtClearsExpiry(t *testing.T) {
-
 	status := billing.StatusDisabled
 	notes := "批量维护"
 	repo := &batchUpdateRedeemRepoStub{}
@@ -310,10 +308,6 @@ func (s *batchUpdateRedeemRepoStub) List(ctx context.Context, params pagination.
 
 func (s *batchUpdateRedeemRepoStub) ListWithFilters(ctx context.Context, params pagination.PaginationParams, codeType, status, search string) ([]billing.RedeemCode, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
-}
-
-func (s *batchUpdateRedeemRepoStub) ListByUser(ctx context.Context, userID int64, limit int) ([]billing.RedeemCode, error) {
-	return nil, errors.New("not implemented")
 }
 
 func (s *batchUpdateRedeemRepoStub) ListByUserPaginated(ctx context.Context, userID int64, params pagination.PaginationParams, codeType string) ([]billing.RedeemCode, *pagination.PaginationResult, error) {

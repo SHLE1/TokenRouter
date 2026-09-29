@@ -543,22 +543,28 @@ func TestAPIContracts(t *testing.T) {
 			wantJSON: `{
 				"code": 0,
 				"message": "success",
-				"data": [
-					{
-						"id": 900,
-						"code": "CODE-123",
-						"type": "balance",
-						"value": 1.25,
-						"max_uses": 0,
-						"used_count": 0,
-						"status": "used",
-						"used_by": 1,
-						"used_at": "2025-01-02T03:04:05Z",
-						"created_at": "2025-01-02T03:04:05Z",
-						"expires_at": null,
-						"plan_id": null
-					}
-				]
+				"data": {
+					"items": [
+						{
+							"id": 900,
+							"code": "CODE-123",
+							"type": "balance",
+							"value": 1.25,
+							"max_uses": 0,
+							"used_count": 0,
+							"status": "used",
+							"used_by": 1,
+							"used_at": "2025-01-02T03:04:05Z",
+							"created_at": "2025-01-02T03:04:05Z",
+							"expires_at": null,
+							"plan_id": null
+						}
+					],
+					"total": 1,
+					"page": 1,
+					"page_size": 20,
+					"pages": 1
+				}
 			}`,
 		},
 		{
@@ -2454,19 +2460,13 @@ func (stubRedeemCodeRepo) ListWithFilters(ctx context.Context, params pagination
 	return nil, nil, errors.New("not implemented")
 }
 
-func (r *stubRedeemCodeRepo) ListByUser(ctx context.Context, userID int64, limit int) ([]billing.RedeemCode, error) {
-	if r.byUser == nil {
-		return nil, nil
-	}
+func (r *stubRedeemCodeRepo) ListByUserPaginated(ctx context.Context, userID int64, params pagination.PaginationParams, codeType string) ([]billing.RedeemCode, *pagination.PaginationResult, error) {
 	codes := r.byUser[userID]
-	if limit > 0 && len(codes) > limit {
-		codes = codes[:limit]
-	}
-	return append([]billing.RedeemCode(nil), codes...), nil
-}
-
-func (stubRedeemCodeRepo) ListByUserPaginated(ctx context.Context, userID int64, params pagination.PaginationParams, codeType string) ([]billing.RedeemCode, *pagination.PaginationResult, error) {
-	return nil, nil, errors.New("not implemented")
+	total := len(codes)
+	start := min(params.Offset(), total)
+	end := min(start+params.Limit(), total)
+	page := append([]billing.RedeemCode(nil), codes[start:end]...)
+	return page, &pagination.PaginationResult{Total: int64(total), Page: params.Page, PageSize: params.Limit()}, nil
 }
 
 func (stubRedeemCodeRepo) SumPositiveBalanceByUser(ctx context.Context, userID int64) (float64, error) {

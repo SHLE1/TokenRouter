@@ -47,56 +47,11 @@
           </p>
         </div>
 
-        <div class="max-h-64 overflow-y-auto">
-          <div
-            v-for="subscription in displaySubscriptions"
-            :key="subscription.id"
-            class="border-b border-gray-50 p-3 last:border-b-0 dark:border-dark-700/50"
-          >
-            <div class="mb-2 flex items-center justify-between gap-2">
-              <span class="min-w-0 truncate text-sm font-medium text-gray-900 dark:text-white">
-                {{ subscription.plan?.name || `Plan #${subscription.plan_id}` }}
-              </span>
-              <span class="shrink-0 whitespace-nowrap text-xs" :class="getDaysRemainingClass(subscription.expires_at)">
-                {{ formatExpiration(subscription.expires_at) }}
-              </span>
-            </div>
-
-            <div class="space-y-1.5">
-              <div
-                v-if="isUnlimited(subscription)"
-                class="flex items-center gap-2 rounded-control bg-gradient-to-r from-emerald-50 to-teal-50 px-2.5 py-1.5 dark:from-emerald-900/20 dark:to-teal-900/20"
-              >
-                <span class="text-lg text-emerald-600 dark:text-emerald-400">∞</span>
-                <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                  {{ t('subscriptionProgress.unlimited') }}
-                </span>
-              </div>
-
-              <template v-else>
-                <div
-                  v-for="window in usageWindows(subscription)"
-                  :key="window.key"
-                  class="flex items-center gap-2"
-                >
-                  <span class="w-8 flex-shrink-0 text-xs text-gray-500">
-                    {{ window.label }}
-                  </span>
-                  <div class="h-1.5 min-w-0 flex-1 rounded-full bg-gray-200 dark:bg-dark-600">
-                    <div
-                      class="h-1.5 rounded-full transition-[width,background-color]"
-                      :class="getProgressBarClass(window.used, window.limit)"
-                      :style="{ width: getProgressWidth(window.used, window.limit) }"
-                    />
-                  </div>
-                  <span class="w-24 flex-shrink-0 text-right text-xs text-gray-500">
-                    {{ formatUsage(window.used, window.limit) }}
-                  </span>
-                </div>
-              </template>
-            </div>
-          </div>
-        </div>
+        <SubscriptionUsageList
+          class="max-h-64 overflow-y-auto"
+          :subscriptions="activeSubscriptions"
+          item-class="border-b border-gray-50 p-3 last:border-b-0 dark:border-dark-700/50"
+        />
 
         <div class="border-t border-gray-100 p-2 dark:border-dark-700">
           <router-link
@@ -117,10 +72,9 @@ import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
-import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
+import SubscriptionUsageList from '@/components/common/SubscriptionUsageList.vue'
+import { useSubscriptionUsage } from '@/composables/useSubscriptionUsage'
 import { useSubscriptionStore } from '@/stores'
-import type { UserSubscription } from '@/types'
-import { formatDateTimeToMinute } from '@/utils/format'
 
 const props = withDefaults(defineProps<{
   variant?: 'default' | 'status'
@@ -130,7 +84,7 @@ const props = withDefaults(defineProps<{
 
 const { t } = useI18n()
 const subscriptionStore = useSubscriptionStore()
-const { formatBalanceAmount } = useBalanceDisplay()
+const { sortByUsage, getProgressDotClass } = useSubscriptionUsage()
 
 const containerRef = ref<HTMLElement | null>(null)
 const tooltipOpen = ref(false)
@@ -147,85 +101,12 @@ const triggerClass = computed(() => {
   return 'flex cursor-pointer items-center gap-2 rounded-control bg-primary-50 px-3 py-1.5 transition-colors hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/30'
 })
 
-const displaySubscriptions = computed(() =>
-  [...activeSubscriptions.value].sort((a, b) => getMaxUsagePercentage(b) - getMaxUsagePercentage(a))
-)
 const displayDots = computed(() =>
-  displaySubscriptions.value.slice(0, 3).map((subscription) => getProgressDotClass(subscription))
+  sortByUsage(activeSubscriptions.value)
+    .slice(0, 3)
+    .map((subscription) => getProgressDotClass(subscription))
 )
 const statusDotClass = computed(() => displayDots.value[0] ?? '')
-
-function usageWindows(subscription: UserSubscription) {
-  return [
-    {
-      key: 'daily',
-      label: t('subscriptionProgress.daily'),
-      used: subscription.daily_usage_usd || 0,
-      limit: subscription.daily_limit_usd
-    },
-    {
-      key: 'weekly',
-      label: t('subscriptionProgress.weekly'),
-      used: subscription.weekly_usage_usd || 0,
-      limit: subscription.weekly_limit_usd
-    },
-    {
-      key: 'monthly',
-      label: t('subscriptionProgress.monthly'),
-      used: subscription.monthly_usage_usd || 0,
-      limit: subscription.monthly_limit_usd
-    }
-  ].filter((window) => window.limit != null && window.limit > 0)
-}
-
-function getMaxUsagePercentage(subscription: UserSubscription): number {
-  const windows = usageWindows(subscription)
-  if (windows.length === 0) return 0
-  return Math.max(...windows.map((window) => ((window.used || 0) / (window.limit || 1)) * 100))
-}
-
-function isUnlimited(subscription: UserSubscription): boolean {
-  return usageWindows(subscription).length === 0
-}
-
-function getProgressDotClass(subscription: UserSubscription): string {
-  if (isUnlimited(subscription)) return 'bg-emerald-500'
-  const percentage = getMaxUsagePercentage(subscription)
-  if (percentage >= 90) return 'bg-red-500'
-  if (percentage >= 70) return 'bg-orange-500'
-  return 'bg-green-500'
-}
-
-function getProgressBarClass(used: number, limit: number | null): string {
-  if (!limit || limit === 0) return 'bg-gray-400'
-  const percentage = (used / limit) * 100
-  if (percentage >= 90) return 'bg-red-500'
-  if (percentage >= 70) return 'bg-orange-500'
-  return 'bg-green-500'
-}
-
-function getProgressWidth(used: number, limit: number | null): string {
-  if (!limit || limit === 0) return '0%'
-  return `${Math.min((used / limit) * 100, 100)}%`
-}
-
-function formatUsage(used: number, limit: number | null): string {
-  const usedValue = formatBalanceAmount(used, { fractionDigits: 2 })
-  const limitValue = limit == null ? '∞' : formatBalanceAmount(limit, { fractionDigits: 2 })
-  return `${usedValue}/${limitValue}`
-}
-
-function formatExpiration(expiresAt: string): string {
-  const time = formatDateTimeToMinute(expiresAt)
-  return time ? t('subscriptionProgress.expiresAt', { time }) : ''
-}
-
-function getDaysRemainingClass(expiresAt: string): string {
-  const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-  if (days <= 3) return 'text-red-600 dark:text-red-400'
-  if (days <= 7) return 'text-orange-600 dark:text-orange-400'
-  return 'text-gray-500 dark:text-dark-400'
-}
 
 function toggleTooltip() {
   if (!hasActiveSubscriptions.value) return

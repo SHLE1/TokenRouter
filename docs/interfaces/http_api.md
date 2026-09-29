@@ -63,7 +63,7 @@ RequestLogger
 
 提供商管理展示值与脱敏映射位于 `provider/httpapi/dto`，代理展示值位于 `egress/httpapi/dto`；DTO 由实际 HTTP 模块提供。敏感字段、省略/空集合及代理管理员字段边界保持原契约，非敏感的嵌套 map、slice 和时间指针使用独立副本，不能通过修改展示结果污染提供商配置。提供商备份、即时/计划测试和 API Key 上游用量查询已直接使用 provider/httpapi；提供商 CRUD、列表、复制/恢复、批量管理、凭据字段更新、刷新/重授权、隐私、调度开关、额度重置及健康恢复已直接绑定 `provider/httpapi.ManagementHandler`；模型目录、实时模型同步、tier 和详细统计也使用新入口；高级调度诊断直接绑定 `scheduler/httpapi.DiagnosticsHandler`。综合设置由 `settings/httpapi` 直接组合各领域端点；SMTP、预聚合和创作状态分别调用其原生处理器。备份导出继续要求原 step-up，导入继续使用同一管理员幂等 helper。
 
-订阅、兑换和套餐的用户/管理员 handler 与 DTO 位于 `billing/httpapi`，原路由汇总直接绑定这些实例。URL、认证/幂等中间件顺序、reason、CSV 和分页排序保持原契约；管理员套餐保留原 Ent 的字段省略及 `edges` 形状，公开套餐使用独立投影。
+订阅、兑换和套餐的用户/管理员 handler 与 DTO 位于 `billing/httpapi`，原路由汇总直接绑定这些实例。URL、认证/幂等中间件顺序、reason、CSV 和分页排序保持原契约；用户兑换历史 `GET /api/v1/redeem/history` 按 `page`、`page_size` 返回标准分页结构，按使用时间倒序排列，普通用户视图不含 `notes`；管理员套餐保留原 Ent 的字段省略及 `edges` 形状，公开套餐使用独立投影。
 
 管理员分组与兑换码不提供统计占位接口。已通过管理员认证的 `GET /api/v1/admin/groups/:id/stats` 返回 404；`GET /api/v1/admin/redeem-codes/stats` 按兑换码 ID 路由处理，返回非法 ID 的 400。分组页面使用 `/admin/groups/usage-summary` 和 `/capacity-summary` 获取真实汇总；兑换码页面使用列表中的条目及分页总数。
 

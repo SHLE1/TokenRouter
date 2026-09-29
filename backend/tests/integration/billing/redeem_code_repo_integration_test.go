@@ -357,7 +357,14 @@ func (s *RedeemCodeRepoSuite) TestUse_ExpiredInvitationRejected() {
 	s.Require().ErrorIs(err, billing.ErrRedeemCodeUsed)
 }
 
-// --- ListByUser ---
+// --- ListByUserPaginated ---
+
+// listUserHistory 读取用户兑换历史的第一页，页容量足够覆盖单个用例创建的记录。
+func (s *RedeemCodeRepoSuite) listUserHistory(userID int64) []billing.RedeemCode {
+	codes, _, err := s.repo.ListByUserPaginated(s.ctx, userID, pagination.PaginationParams{Page: 1, PageSize: 10}, "")
+	s.Require().NoError(err, "ListByUserPaginated")
+	return codes
+}
 
 func (s *RedeemCodeRepoSuite) TestListByUser() {
 	user := s.createUser(uniqueTestValue(s.T(), "listby") + "@example.com")
@@ -366,8 +373,7 @@ func (s *RedeemCodeRepoSuite) TestListByUser() {
 	s.createUsedCode(billing.RedeemTypeBalance, "USER-1", user.ID, base, nil)
 	s.createUsedCode(billing.RedeemTypeBalance, "USER-2", user.ID, base.Add(1*time.Hour), nil)
 
-	codes, err := s.repo.ListByUser(s.ctx, user.ID, 10)
-	s.Require().NoError(err, "ListByUser")
+	codes := s.listUserHistory(user.ID)
 	s.Require().Len(codes, 2)
 	// Ordered by used_at DESC, so USER-2 first
 	s.Require().Equal("USER-2", codes[0].Code)
@@ -379,21 +385,25 @@ func (s *RedeemCodeRepoSuite) TestListByUser_WithPlanPreload() {
 	plan := s.createPlan(uniqueTestValue(s.T(), "plan-listby"))
 	s.createUsedCode(billing.RedeemTypeSubscription, "WITH-GRP", user.ID, time.Now(), &plan.ID)
 
-	codes, err := s.repo.ListByUser(s.ctx, user.ID, 10)
-	s.Require().NoError(err)
+	codes := s.listUserHistory(user.ID)
 	s.Require().Len(codes, 1)
 	s.Require().NotNil(codes[0].Plan)
 	s.Require().Equal(plan.ID, codes[0].Plan.ID)
 }
 
-func (s *RedeemCodeRepoSuite) TestListByUser_DefaultLimit() {
-	user := s.createUser(uniqueTestValue(s.T(), "deflimit") + "@example.com")
-	s.createUsedCode(billing.RedeemTypeBalance, "DEF-LIM", user.ID, time.Now(), nil)
+func (s *RedeemCodeRepoSuite) TestListByUser_Pages() {
+	user := s.createUser(uniqueTestValue(s.T(), "pages") + "@example.com")
+	base := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	s.createUsedCode(billing.RedeemTypeBalance, "PAGE-1", user.ID, base, nil)
+	s.createUsedCode(billing.RedeemTypeBalance, "PAGE-2", user.ID, base.Add(time.Hour), nil)
+	s.createUsedCode(billing.RedeemTypeBalance, "PAGE-3", user.ID, base.Add(2*time.Hour), nil)
 
-	// limit <= 0 should default to 10
-	codes, err := s.repo.ListByUser(s.ctx, user.ID, 0)
+	// 第二页只剩最早的一条，总数仍按全部记录计算。
+	codes, result, err := s.repo.ListByUserPaginated(s.ctx, user.ID, pagination.PaginationParams{Page: 2, PageSize: 2}, "")
 	s.Require().NoError(err)
 	s.Require().Len(codes, 1)
+	s.Require().Equal("PAGE-1", codes[0].Code)
+	s.Require().Equal(int64(3), result.Total)
 }
 
 // --- Combined original test ---
@@ -455,8 +465,7 @@ func (s *RedeemCodeRepoSuite) TestCreateBatch_Filters_Use_Idempotency_ListByUser
 		Save(s.ctx)
 	s.Require().NoError(err)
 
-	used, err := s.repo.ListByUser(s.ctx, user.ID, 10)
-	s.Require().NoError(err, "ListByUser")
+	used := s.listUserHistory(user.ID)
 	s.Require().Len(used, 2, "expected 2 used codes")
 	s.Require().Equal("CODEA", used[0].Code, "expected newest used code first")
 }

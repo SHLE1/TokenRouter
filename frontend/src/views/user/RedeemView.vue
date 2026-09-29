@@ -1,297 +1,215 @@
 <template>
-  <AppLayout>
+  <AppLayout fit-viewport>
+    <!-- 不加 mx-auto：app-main 是 flex 列容器，auto 边距会让内容收缩到内容宽度并与页头错位。
+         窄屏按兑换、历史、订阅顺序堆叠；宽屏锁定视口高度，左栏上下放兑换与订阅，右栏历史跨两行并在卡内滚动。 -->
     <div
-      class="mx-auto grid max-w-6xl gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)] xl:items-start"
+      class="grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[22.5rem_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]"
     >
-      <!-- 桌面端将主要操作集中在左栏，窄屏时仍按原顺序纵向排列。 -->
-      <div data-testid="redeem-primary-column" class="min-w-0 space-y-6">
-        <!-- Current Balance Card -->
-        <div class="card overflow-hidden">
-          <div class="px-6 py-8 text-center">
-            <div
-              class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-surface bg-primary-100 dark:bg-primary-500/15"
+      <section data-testid="redeem-panel" class="card p-4 sm:p-6">
+        <div class="flex flex-col gap-4">
+          <dl class="grid grid-cols-2 gap-4">
+            <div>
+              <dt class="text-xs font-medium text-gray-500 dark:text-dark-400">
+                {{ t('redeem.currentBalance') }}
+              </dt>
+              <dd class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
+                {{ formatBalanceAmount(user?.balance, { fractionDigits: 2 }) }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs font-medium text-gray-500 dark:text-dark-400">
+                {{ t('redeem.concurrency') }}
+              </dt>
+              <dd class="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">
+                {{ user?.concurrency || 0 }}
+                <span class="text-sm font-normal text-gray-500 dark:text-dark-400">{{ t('redeem.requests') }}</span>
+              </dd>
+            </div>
+          </dl>
+
+          <!-- 中等宽度下输入框与按钮同排，宽屏左栏较窄时恢复纵向排列。 -->
+          <form
+            class="flex flex-col gap-3 border-t border-gray-100 pt-4 dark:border-dark-700 sm:flex-row lg:flex-col"
+            @submit.prevent="handleRedeem"
+          >
+            <label for="code" class="sr-only">{{ t('redeem.redeemCodeLabel') }}</label>
+            <div class="input-icon-wrap min-w-0 flex-1">
+              <div class="input-icon">
+                <Icon name="gift" size="md" class="text-gray-400 dark:text-dark-500" />
+              </div>
+              <input
+                id="code"
+                v-model="redeemCode"
+                type="text"
+                required
+                autocomplete="off"
+                spellcheck="false"
+                :placeholder="t('redeem.redeemCodePlaceholder')"
+                :disabled="submitting"
+                class="input input-has-icon"
+              />
+            </div>
+            <button
+              type="submit"
+              :disabled="!redeemCode || submitting"
+              class="btn btn-primary w-full sm:w-auto sm:px-6 lg:w-full"
             >
-              <BalanceIcon size="xl" class="text-primary-600 dark:text-primary-400" />
-            </div>
-            <p class="text-sm font-medium text-primary-900/65 dark:text-dark-300">{{ t('redeem.currentBalance') }}</p>
-            <p class="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
-              {{ formatBalanceAmount(user?.balance, { fractionDigits: 2 }) }}
-            </p>
-            <p class="mt-2 text-sm text-primary-900/65 dark:text-dark-300">
-              {{ t('redeem.concurrency') }}: {{ user?.concurrency || 0 }} {{ t('redeem.requests') }}
-            </p>
-          </div>
+              <Icon
+                v-if="submitting"
+                name="loader"
+                size="sm"
+                :animate-on-hover="false"
+                class="animate-spin"
+              />
+              {{ submitting ? t('redeem.redeeming') : t('redeem.redeemButton') }}
+            </button>
+          </form>
         </div>
+      </section>
 
-        <!-- Redeem Form -->
-        <div class="card">
-          <div class="p-6">
-            <form @submit.prevent="handleRedeem" class="space-y-5">
-              <div>
-                <label for="code" class="input-label">
-                  {{ t('redeem.redeemCodeLabel') }}
-                </label>
-                <div class="relative mt-1">
-                  <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                    <Icon name="gift" size="md" class="text-gray-400 dark:text-dark-500" />
-                  </div>
-                  <input
-                    id="code"
-                    v-model="redeemCode"
-                    type="text"
-                    required
-                    :placeholder="t('redeem.redeemCodePlaceholder')"
-                    :disabled="submitting"
-                    class="input py-0 pl-12 text-lg"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                :disabled="!redeemCode || submitting"
-                class="btn btn-primary w-full py-1.5"
-              >
-                <Icon
-                  name="loader"
-                  size="md"
-                  :animate-on-hover="false"
-                  v-if="submitting"
-                  class="-ml-1 mr-2 h-5 w-5 animate-spin"
-                />
-                <Icon v-else name="checkCircle" size="md" class="mr-2" :animate-on-hover="false" />
-                {{ submitting ? t('redeem.redeeming') : t('redeem.redeemButton') }}
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <!-- Success Message -->
-        <MotionTransition name="fade-slow">
-          <div
-            v-if="redeemResult"
-            class="card border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-900/20"
-          >
-            <div class="p-6">
-              <div class="flex items-start gap-4">
-                <div
-                  class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-surface bg-emerald-100 dark:bg-emerald-900/30"
-                >
-                  <Icon
-                    name="checkCircle"
-                    size="md"
-                    class="text-emerald-600 dark:text-emerald-400"
-                    :animate-on-hover="false"
-                  />
-                </div>
-                <div class="flex-1">
-                  <h3 class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                    {{ t('redeem.redeemSuccess') }}
-                  </h3>
-                  <div class="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
-                    <div class="mt-3 space-y-1">
-                      <p v-if="redeemResult.type === 'balance' || redeemResult.type === 'affiliate_balance'" class="font-medium">
-                        {{ t('redeem.added') }}: {{ formatSignedBalanceAmount(redeemResult.value, 2) }}
-                      </p>
-                      <p
-                        v-else-if="
-                          redeemResult.type === 'concurrency' ||
-                          redeemResult.type === 'admin_concurrency'
-                        "
-                        class="font-medium"
-                      >
-                        {{ t('redeem.added') }}: {{ redeemResult.value }}
-                        {{ t('redeem.concurrentRequests') }}
-                      </p>
-                      <p v-else-if="redeemResult.type === 'subscription'" class="font-medium">
-                        {{ t('redeem.subscriptionAssigned') }}
-                        <span v-if="redeemResult.plan?.name || redeemResult.plan_id">
-                          - {{ redeemResult.plan?.name || `Plan #${redeemResult.plan_id}` }}
-                        </span>
-                      </p>
-                      <p v-if="user">
-                        {{ t('redeem.newBalance') }}:
-                        <span class="font-semibold">{{ formatBalanceAmount(user.balance, { fractionDigits: 2 }) }}</span>
-                      </p>
-                      <p v-if="user">
-                        {{ t('redeem.newConcurrency') }}:
-                        <span class="font-semibold">{{ user.concurrency }} {{ t('redeem.requests') }}</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </MotionTransition>
-
-        <!-- Error Message -->
-        <MotionTransition name="fade-slow">
-          <div
-            v-if="errorMessage"
-            class="card border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20"
-          >
-            <div class="p-6">
-              <div class="flex items-start gap-4">
-                <div
-                  class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-surface bg-red-100 dark:bg-red-900/30"
-                >
-                  <Icon
-                    name="exclamationCircle"
-                    size="md"
-                    class="text-red-600 dark:text-red-400"
-                  />
-                </div>
-                <div class="flex-1">
-                  <h3 class="text-sm font-semibold text-red-800 dark:text-red-300">
-                    {{ t('redeem.redeemFailed') }}
-                  </h3>
-                  <p class="mt-2 text-sm text-red-700 dark:text-red-400">
-                    {{ errorMessage }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </MotionTransition>
-
-      </div>
-
-      <!-- Recent Activity -->
-      <div data-testid="redeem-activity-column" class="card min-w-0">
-        <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+      <!-- 最近活动：分隔线列表，行内不再嵌套卡片，避免窄屏内边距层层叠加。 -->
+      <section
+        data-testid="redeem-history"
+        class="card flex min-w-0 flex-col overflow-hidden lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:min-h-0"
+      >
+        <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700 sm:px-6 sm:py-4">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">
             {{ t('redeem.recentActivity') }}
           </h2>
         </div>
-        <div class="p-6">
-          <!-- Loading State -->
-          <div v-if="loadingHistory" class="flex items-center justify-center py-8">
+
+        <div class="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+          <!-- 首次加载显示转圈；翻页时保留当前列表并降低透明度，避免内容闪烁。 -->
+          <div v-if="loadingHistory && history.length === 0" class="flex items-center justify-center py-12">
             <Icon
               name="loader"
               size="lg"
               :animate-on-hover="false"
-              class="h-6 w-6 animate-spin text-primary-500"
+              class="animate-spin text-primary-500"
             />
           </div>
 
-          <!-- History List -->
-          <div v-else-if="history.length > 0" class="space-y-3">
-            <div
+          <ul
+            v-else-if="history.length > 0"
+            :class="[
+              'divide-y divide-gray-100 transition-opacity dark:divide-dark-700',
+              loadingHistory ? 'opacity-60' : ''
+            ]"
+          >
+            <li
               v-for="item in history"
               :key="item.id"
-              class="flex items-center justify-between rounded-surface bg-gray-50 p-4 dark:bg-dark-800"
+              class="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6"
             >
-              <div class="flex items-center gap-4">
-                <div
-                  :class="[
-                    'flex h-10 w-10 items-center justify-center rounded-surface',
-                    isBalanceType(item.type)
-                      ? item.value >= 0
-                        ? 'bg-emerald-100 dark:bg-emerald-900/30'
-                        : 'bg-red-100 dark:bg-red-900/30'
-                      : isSubscriptionType(item.type)
-                        ? 'bg-purple-100 dark:bg-purple-900/30'
-                        : item.value >= 0
-                          ? 'bg-blue-100 dark:bg-blue-900/30'
-                          : 'bg-orange-100 dark:bg-orange-900/30'
-                  ]"
-                >
-                  <!-- 余额类型图标 -->
-                  <BalanceIcon
-                    v-if="isBalanceType(item.type)"
-                    size="md"
-                    :class="
-                      item.value >= 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-red-600 dark:text-red-400'
-                    "
-                  />
-                  <!-- 订阅类型图标 -->
-                  <Icon
-                    v-else-if="isSubscriptionType(item.type)"
-                    name="badge"
-                    size="md"
-                    class="text-purple-600 dark:text-purple-400"
-                  />
-                  <!-- 并发类型图标 -->
-                  <Icon
-                    v-else
-                    name="bolt"
-                    size="md"
-                    :class="
-                      item.value >= 0
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-orange-600 dark:text-orange-400'
-                    "
-                  />
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-gray-900 dark:text-white">
-                    {{ getHistoryItemTitle(item) }}
-                  </p>
-                  <p class="text-xs text-gray-500 dark:text-dark-400">
-                    {{ formatDateTime(item.used_at) }}
-                  </p>
-                </div>
+              <div
+                :class="[
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-compact',
+                  getHistoryTone(item).bg
+                ]"
+              >
+                <BalanceIcon
+                  v-if="isBalanceType(item.type)"
+                  size="sm"
+                  :class="getHistoryTone(item).text"
+                />
+                <Icon
+                  v-else-if="isSubscriptionType(item.type)"
+                  name="badge"
+                  size="sm"
+                  :class="getHistoryTone(item).text"
+                />
+                <Icon v-else name="bolt" size="sm" :class="getHistoryTone(item).text" />
               </div>
-              <div class="text-right">
-                <p
-                  :class="[
-                    'text-sm font-semibold',
-                    isBalanceType(item.type)
-                      ? item.value >= 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-red-600 dark:text-red-400'
-                      : isSubscriptionType(item.type)
-                        ? 'text-purple-600 dark:text-purple-400'
-                        : item.value >= 0
-                          ? 'text-blue-600 dark:text-blue-400'
-                          : 'text-orange-600 dark:text-orange-400'
-                  ]"
-                >
-                  {{ formatHistoryValue(item) }}
-                </p>
-                <p
-                  v-if="!isAdminAdjustment(item.type)"
-                  class="font-mono text-xs text-gray-400 dark:text-dark-500"
-                >
-                  {{ item.code.slice(0, 8) }}...
-                </p>
-                <p v-else class="text-xs text-gray-400 dark:text-dark-500">
-                  {{ t('redeem.adminAdjustment') }}
-                </p>
-                <!-- Display notes for admin adjustments -->
-                <p
-                  v-if="item.notes"
-                  class="mt-1 text-xs text-gray-500 dark:text-dark-400 italic max-w-[200px] truncate"
-                  :title="item.notes"
-                >
-                  {{ item.notes }}
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <!-- Empty State -->
-          <div v-else class="empty-state py-8">
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-gray-900 dark:text-white">
+                  {{ getHistoryItemTitle(item) }}
+                </p>
+                <p class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-500 dark:text-dark-400">
+                  <span v-if="item.used_at" class="shrink-0">{{ formatDateTime(item.used_at) }}</span>
+                  <template v-if="getHistoryItemMeta(item)">
+                    <span v-if="item.used_at" aria-hidden="true">·</span>
+                    <span
+                      :class="['truncate', isAdminAdjustment(item.type) ? '' : 'font-mono']"
+                      :title="getHistoryItemMeta(item)"
+                    >
+                      {{ getHistoryItemMeta(item) }}
+                    </span>
+                  </template>
+                </p>
+              </div>
+
+              <p
+                :class="[
+                  'max-w-40 shrink-0 truncate text-right text-sm font-semibold tabular-nums',
+                  getHistoryTone(item).text
+                ]"
+              >
+                {{ formatHistoryValue(item) }}
+              </p>
+            </li>
+          </ul>
+
+          <div v-else class="empty-state lg:h-full">
             <div
-              class="mb-4 flex h-16 w-16 items-center justify-center rounded-surface bg-gray-100 dark:bg-dark-800"
+              class="mb-4 flex h-12 w-12 items-center justify-center rounded-surface bg-gray-100 dark:bg-dark-800"
             >
-              <Icon name="clock" size="xl" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="clock" size="lg" class="text-gray-400 dark:text-dark-500" />
             </div>
             <p class="text-sm text-gray-500 dark:text-dark-400">
               {{ t('redeem.historyWillAppear') }}
             </p>
           </div>
         </div>
-      </div>
+
+        <Pagination
+          v-if="historyTotal > HISTORY_PAGE_SIZE"
+          class="shrink-0"
+          :total="historyTotal"
+          :page="historyPage"
+          :page-size="HISTORY_PAGE_SIZE"
+          :show-page-size-selector="false"
+          @update:page="fetchHistory"
+        />
+      </section>
+
+      <!-- 我的订阅：宽屏位于兑换卡下方并撑满左栏剩余高度，窄屏排在历史之后。 -->
+      <section
+        data-testid="redeem-subscriptions"
+        class="card flex min-w-0 flex-col overflow-hidden lg:col-start-1 lg:row-start-2 lg:min-h-0"
+      >
+        <div
+          class="flex items-center justify-between gap-4 border-b border-gray-100 px-4 py-3 dark:border-dark-700 sm:px-6 sm:py-4"
+        >
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+            {{ t('subscriptionProgress.title') }}
+          </h2>
+          <router-link
+            to="/subscriptions"
+            class="shrink-0 text-sm text-primary-600 hover:underline dark:text-primary-400"
+          >
+            {{ t('subscriptionProgress.viewAll') }}
+          </router-link>
+        </div>
+
+        <SubscriptionUsageList
+          v-if="activeSubscriptions.length > 0"
+          class="lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+          :subscriptions="activeSubscriptions"
+          item-class="border-b border-gray-100 px-4 py-3 last:border-b-0 dark:border-dark-700 sm:px-6"
+        />
+        <p
+          v-else
+          class="flex items-center justify-center px-4 py-8 text-sm text-gray-500 dark:text-dark-400 lg:flex-1"
+        >
+          {{ t('subscriptionProgress.noSubscriptions') }}
+        </p>
+      </section>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -301,6 +219,8 @@ import { redeemAPI, type RedeemHistoryItem } from '@/api'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BalanceIcon from '@/components/common/BalanceIcon.vue'
+import Pagination from '@/components/common/Pagination.vue'
+import SubscriptionUsageList from '@/components/common/SubscriptionUsageList.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { formatDateTime } from '@/utils/format'
@@ -315,12 +235,17 @@ const user = computed(() => authStore.user)
 
 const redeemCode = ref('')
 const submitting = ref(false)
-const redeemResult = ref<RedeemHistoryItem | null>(null)
-const errorMessage = ref('')
 
-// History data
+// 兑换历史按固定页容量分页，宽屏下列表在卡内滚动，页面本身不再增高。
+const HISTORY_PAGE_SIZE = 10
 const history = ref<RedeemHistoryItem[]>([])
+const historyPage = ref(1)
+const historyTotal = ref(0)
 const loadingHistory = ref(false)
+// 快速连续翻页时只采纳最后一次请求的结果。
+let historyRequestId = 0
+
+const activeSubscriptions = computed(() => subscriptionStore.activeSubscriptions)
 const redeemErrorMap = computed<Record<string, string>>(() => ({
   REDEEM_CODE_EXPIRED: t('redeem.codeExpired'),
   REDEEM_CODE_MAX_USED: t('redeem.codeMaxUsed'),
@@ -341,6 +266,21 @@ const isAdminAdjustment = (type: string) => {
   return type === 'admin_balance' || type === 'admin_concurrency'
 }
 
+// getHistoryTone 按记录类型和增减方向返回图标底色与文字色，列表各处共用同一套配色。
+const getHistoryTone = (item: RedeemHistoryItem) => {
+  if (isBalanceType(item.type)) {
+    return item.value >= 0
+      ? { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-600 dark:text-emerald-400' }
+      : { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600 dark:text-red-400' }
+  }
+  if (isSubscriptionType(item.type)) {
+    return { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400' }
+  }
+  return item.value >= 0
+    ? { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400' }
+    : { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-600 dark:text-orange-400' }
+}
+
 const getHistoryItemTitle = (item: RedeemHistoryItem) => {
   if (item.type === 'balance') {
     return t('redeem.balanceAddedRedeem')
@@ -356,6 +296,14 @@ const getHistoryItemTitle = (item: RedeemHistoryItem) => {
     return t('redeem.affiliateBalance')
   }
   return t('common.unknown')
+}
+
+// getHistoryItemMeta 返回时间后的补充信息：管理员调整显示备注，兑换记录显示兑换码。
+const getHistoryItemMeta = (item: RedeemHistoryItem) => {
+  if (isAdminAdjustment(item.type)) {
+    return item.notes || ''
+  }
+  return item.code
 }
 
 const formatHistoryValue = (item: RedeemHistoryItem) => {
@@ -374,14 +322,21 @@ const formatSignedBalanceAmount = (value: number, fractionDigits: number) => {
   return `${sign}${formatBalanceAmount(Math.abs(value), { fractionDigits })}`
 }
 
-const fetchHistory = async () => {
+const fetchHistory = async (page = historyPage.value) => {
+  const requestId = ++historyRequestId
   loadingHistory.value = true
   try {
-    history.value = await redeemAPI.getHistory()
+    const result = await redeemAPI.getHistory(page, HISTORY_PAGE_SIZE)
+    if (requestId !== historyRequestId) return
+    history.value = result.items
+    historyTotal.value = result.total
+    historyPage.value = page
   } catch (error) {
     console.error('Failed to fetch history:', error)
   } finally {
-    loadingHistory.value = false
+    if (requestId === historyRequestId) {
+      loadingHistory.value = false
+    }
   }
 }
 
@@ -392,13 +347,9 @@ const handleRedeem = async () => {
   }
 
   submitting.value = true
-  errorMessage.value = ''
-  redeemResult.value = null
 
   try {
     const result = await redeemAPI.redeem(redeemCode.value.trim())
-
-    redeemResult.value = result
 
     // Refresh user data to get updated balance/concurrency
     await authStore.refreshUser()
@@ -416,18 +367,14 @@ const handleRedeem = async () => {
     // Clear the input
     redeemCode.value = ''
 
-    // Refresh history
-    await fetchHistory()
+    // 新记录排在最前，兑换成功后回到第一页。
+    await fetchHistory(1)
 
     // Show success toast
     appStore.showSuccess(t('redeem.codeRedeemSuccess'))
   } catch (error: any) {
-    errorMessage.value = extractApiErrorMessage(
-      error,
-      t('redeem.failedToRedeem'),
-      redeemErrorMap.value
-    )
-    appStore.showError(errorMessage.value)
+    // 兑换结果只通过 Toast 反馈，余额和历史列表会同步刷新。
+    appStore.showError(extractApiErrorMessage(error, t('redeem.failedToRedeem'), redeemErrorMap.value))
   } finally {
     submitting.value = false
   }
@@ -435,8 +382,8 @@ const handleRedeem = async () => {
 
 onMounted(() => {
   fetchHistory()
+  subscriptionStore.fetchActiveSubscriptions().catch((error) => {
+    console.error('Failed to load subscriptions on redeem page:', error)
+  })
 })
 </script>
-
-<style scoped>
-</style>

@@ -48,8 +48,8 @@ func (h *RedeemHandler) Redeem(c *gin.Context) {
 	response.Success(c, RedeemCodeFromService(result))
 }
 
-// GetHistory returns the user's redemption history
-// GET /api/v1/redeem/history
+// GetHistory 分页返回当前用户的兑换历史。
+// GET /api/v1/redeem/history?page=1&page_size=20
 func (h *RedeemHandler) GetHistory(c *gin.Context) {
 	subject, ok := authctx.GetAuthSubjectFromContext(c)
 	if !ok {
@@ -57,10 +57,8 @@ func (h *RedeemHandler) GetHistory(c *gin.Context) {
 		return
 	}
 
-	// Default limit is 25
-	limit := 25
-
-	codes, err := h.redeemService.GetUserHistory(c.Request.Context(), subject.UserID, limit)
+	page, pageSize := response.ParsePagination(c)
+	codes, total, err := h.redeemService.GetUserHistory(c.Request.Context(), subject.UserID, page, pageSize)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -70,5 +68,5 @@ func (h *RedeemHandler) GetHistory(c *gin.Context) {
 	for i := range codes {
 		out = append(out, *RedeemCodeFromService(&codes[i]))
 	}
-	response.Success(c, out)
+	response.Paginated(c, out, total, page, pageSize)
 }

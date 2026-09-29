@@ -119,10 +119,6 @@ func (s *redeemRepoStub) ListWithFilters(ctx context.Context, params pagination.
 	panic("unexpected ListWithFilters call")
 }
 
-func (s *redeemRepoStub) ListByUser(ctx context.Context, userID int64, limit int) ([]billing.RedeemCode, error) {
-	panic("unexpected ListByUser call")
-}
-
 func (s *redeemRepoStub) ListByUserPaginated(ctx context.Context, userID int64, params pagination.PaginationParams, codeType string) ([]billing.RedeemCode, *pagination.PaginationResult, error) {
 	panic("unexpected ListByUserPaginated call")
 }
