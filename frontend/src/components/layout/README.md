@@ -70,9 +70,13 @@ Top header with user info and actions.
 
 - Site branding and mobile menu toggle button
 - User balance display (desktop only)
+- Contact support icon (`HeaderContactSupport.vue`), shown only when contact info is configured: links open in a new tab, plain values are copied on click
 - User dropdown menu with:
-  - Profile link
+  - Account card linking to the profile page
+  - Workspace links (profile, dashboard, usage, API keys, team) and billing links (top-up, subscriptions, orders, redeem, affiliate), filtered by the same feature flags as the sidebar
+  - Admin-only GitHub link and onboarding replay
   - Logout button
+  - Light / dark / system theme switcher (the header theme button is only shown to guests)
 - User avatar with initials
 - Click-outside handling for dropdown
 - Responsive design

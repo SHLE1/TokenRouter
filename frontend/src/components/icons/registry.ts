@@ -75,6 +75,7 @@ import MessageCircleIcon from './artwork/message-circle'
 import MessageSquareIcon from './artwork/message-square'
 import MinimizeIcon from './artwork/minimize'
 import MinusIcon from './artwork/minus'
+import MonitorIcon from './artwork/monitor'
 import MoonIcon from './artwork/moon'
 import MoveRightIcon from './artwork/move-right'
 import PaletteIcon from './artwork/palette'
@@ -190,6 +191,7 @@ export const icons = {
   server: ServerIcon,
   sun: SunIcon,
   moon: MoonIcon,
+  monitor: MonitorIcon,
   book: BookOpenIcon,
   power: PowerIcon,
   dollar: CircleDollarSignIcon,
