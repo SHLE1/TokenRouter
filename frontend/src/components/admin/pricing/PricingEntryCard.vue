@@ -86,6 +86,7 @@
 
       <!-- Remove button (always visible, stop propagation) -->
       <button
+        v-if="removable"
         type="button"
         @click.stop="emit('remove')"
         class="flex-shrink-0 rounded-compact p-1 text-gray-400 hover:text-red-500"
@@ -252,28 +253,26 @@
           </div>
 
           <!-- 分组和共享价格配置使用相同的上下文区间编辑器。 -->
-          <div v-if="!hideTokenIntervals" class="mt-3">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
-                {{ t('admin.pricing.form.intervals', '上下文区间定价（可选）') }}
-                <span class="ml-1 font-normal text-gray-400">(min, max]</span>
-              </label>
-              <button type="button" @click="addInterval" class="text-xs text-primary-600 hover:text-primary-700">
-                + {{ t('admin.pricing.form.addInterval', '添加区间') }}
-              </button>
-            </div>
-            <div v-if="entry.intervals && entry.intervals.length > 0" class="mt-2 space-y-2">
+          <RuleListEditor
+            class="mt-3"
+            :items="entry.intervals || []"
+            @remove="removeInterval"
+            test-id="pricing-token-intervals"
+            v-if="!hideTokenIntervals"
+            :title="t('admin.pricing.form.intervals')"
+            hint="(min, max]"
+            :add-label="t('admin.pricing.form.addInterval')"
+            @add="addInterval"
+          >
+            <template #row="{ item: iv, index: idx }">
               <IntervalRow
-                v-for="(iv, idx) in entry.intervals"
-                :key="idx"
                 :interval="iv"
                 :mode="entry.billing_mode"
                 :enable-multipliers="props.enableTierMultipliers"
                 @update="updateInterval(idx, $event)"
-                @remove="removeInterval(idx)"
               />
-            </div>
-          </div>
+            </template>
+          </RuleListEditor>
 
           <TimePricingSection
             v-if="enableTimePricing"
@@ -295,27 +294,24 @@
           </div>
 
           <!-- Tiers -->
-          <div class="mt-3 flex items-center justify-between">
-            <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
-              {{ t('admin.pricing.form.requestTiers', '按次计费层级') }}
-            </label>
-            <button type="button" @click="addInterval" class="text-xs text-primary-600 hover:text-primary-700">
-              + {{ t('admin.pricing.form.addTier', '添加层级') }}
-            </button>
-          </div>
-          <div v-if="entry.intervals && entry.intervals.length > 0" class="mt-2 space-y-2">
-            <IntervalRow
-              v-for="(iv, idx) in entry.intervals"
-              :key="idx"
-              :interval="iv"
-              :mode="entry.billing_mode"
-              @update="updateInterval(idx, $event)"
-              @remove="removeInterval(idx)"
-            />
-          </div>
-          <div v-else class="mt-2 rounded-compact border border-dashed border-gray-300 p-3 text-center text-xs text-gray-400 dark:border-dark-500">
-            {{ t('admin.pricing.form.noTiersYet', '暂无层级，点击添加配置按次计费价格') }}
-          </div>
+          <RuleListEditor
+            class="mt-3"
+            :items="entry.intervals || []"
+            @remove="removeInterval"
+            test-id="pricing-request-intervals"
+            :title="t('admin.pricing.form.requestTiers')"
+            :add-label="t('admin.pricing.form.addTier')"
+            :empty-text="t('admin.pricing.form.noTiersYet')"
+            @add="addInterval"
+          >
+            <template #row="{ item: iv, index: idx }">
+              <IntervalRow
+                :interval="iv"
+                :mode="entry.billing_mode"
+                @update="updateInterval(idx, $event)"
+              />
+            </template>
+          </RuleListEditor>
         </div>
 
         <!-- 图片或视频计费模式。 -->
@@ -333,26 +329,23 @@
           </div>
 
           <!-- Image tiers -->
-          <div class="mt-3 flex items-center justify-between">
-            <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
-              {{ entry.billing_mode === 'video'
-                ? t('admin.pricing.form.videoTiers', '视频计费层级')
-                : t('admin.pricing.form.imageTiers', '图片计费层级（按次）') }}
-            </label>
-            <button type="button" @click="addMediaTier" class="text-xs text-primary-600 hover:text-primary-700">
-              + {{ t('admin.pricing.form.addTier', '添加层级') }}
-            </button>
-          </div>
-          <div v-if="entry.intervals && entry.intervals.length > 0" class="mt-2 space-y-2">
-            <IntervalRow
-              v-for="(iv, idx) in entry.intervals"
-              :key="idx"
-              :interval="iv"
-              :mode="entry.billing_mode"
-              @update="updateInterval(idx, $event)"
-              @remove="removeInterval(idx)"
-            />
-          </div>
+          <RuleListEditor
+            class="mt-3"
+            :items="entry.intervals || []"
+            @remove="removeInterval"
+            test-id="pricing-media-intervals"
+            :title="entry.billing_mode === 'video' ? t('admin.pricing.form.videoTiers') : t('admin.pricing.form.imageTiers')"
+            :add-label="t('admin.pricing.form.addTier')"
+            @add="addMediaTier"
+          >
+            <template #row="{ item: iv, index: idx }">
+              <IntervalRow
+                :interval="iv"
+                :mode="entry.billing_mode"
+                @update="updateInterval(idx, $event)"
+              />
+            </template>
+          </RuleListEditor>
         </div>
       </div>
     </Collapse>
@@ -363,6 +356,7 @@
 import Collapse from '@/components/common/Collapse.vue'
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
 import IntervalRow from './IntervalRow.vue'
@@ -376,6 +370,7 @@ import pricingAPI from '@/api/admin/pricing'
 const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
+  removable?: boolean
   entry: PricingFormEntry
   platform?: string
   showFastModeMultiplier?: boolean
@@ -383,6 +378,7 @@ const props = withDefaults(defineProps<{
   enableTimePricing?: boolean
   enableTierMultipliers?: boolean
 }>(), {
+  removable: true,
   showFastModeMultiplier: false,
   hideTokenIntervals: false,
   enableTimePricing: false,
@@ -470,7 +466,8 @@ function addMediaTier() {
 
 function updateInterval(idx: number, updated: IntervalFormEntry) {
   const intervals = [...(props.entry.intervals || [])]
-  intervals[idx] = updated
+  // 编辑字段时保留行身份，避免重新挂载输入框。
+  Object.assign(intervals[idx], updated)
   emit('update', { ...props.entry, intervals })
 }
 
@@ -514,10 +511,3 @@ async function onModelsUpdate(newModels: string[]) {
   }
 }
 </script>
-
-<style scoped>
-.pricing-default-grid {
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-}
-
-</style>

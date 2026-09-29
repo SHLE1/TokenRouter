@@ -265,176 +265,145 @@
             </div>
 
             <!-- Model Pricing -->
-            <div>
-              <div class="mb-1 flex items-center justify-between">
-                <label class="input-label text-xs mb-0">{{ t('admin.pricing.form.modelPricing', 'Model Pricing') }}</label>
-                <div class="flex items-center gap-2">
-                  <button
-                    type="button"
-                    @click="syncLatestModels(sIdx)"
-                    :disabled="syncingModels"
-                    class="text-xs text-gray-500 hover:text-primary-600 disabled:opacity-50"
-                  >
-                    {{ syncingModels ? t('admin.pricing.form.syncingModels') : t('admin.pricing.form.syncLatestModels') }}
-                  </button>
-                  <button type="button" @click="addPricingEntry(sIdx)" class="text-xs text-primary-600 hover:text-primary-700">
-                    + {{ t('common.add', 'Add') }}
-                  </button>
-                </div>
-              </div>
-              <div
-                v-if="section.model_pricing.length === 0"
-                class="rounded-compact border border-dashed border-gray-300 p-2 text-center text-xs text-gray-400 dark:border-dark-500"
-              >
-                {{ t('admin.pricing.form.noPricingRules', 'No pricing rules yet. Click "Add" to create one.') }}
-              </div>
-              <div v-else class="space-y-2">
+            <RuleListEditor
+              :items="section.model_pricing"
+              :title="t('admin.pricing.form.modelPricing')"
+              :empty-text="t('admin.pricing.form.noPricingRules')"
+              test-id="model-pricing-entries"
+              @add="addPricingEntry(sIdx)"
+              @remove="removePricingEntry(sIdx, $event)"
+            >
+              <template #header-actions>
+                <button
+                  type="button"
+                  @click="syncLatestModels(sIdx)"
+                  :disabled="syncingModels"
+                  class="btn btn-secondary"
+                >
+                  {{ syncingModels ? t('admin.pricing.form.syncingModels') : t('admin.pricing.form.syncLatestModels') }}
+                </button>
+              </template>
+              <template #row="{ item: entry, index: idx }">
                 <PricingEntryCard
-                  v-for="(entry, idx) in section.model_pricing"
-                  :key="idx"
                   :entry="entry"
-
+                :removable="false"
                   enable-time-pricing
                   enable-tier-multipliers
                   @update="updatePricingEntry(sIdx, idx, $event)"
-                  @remove="removePricingEntry(sIdx, idx)"
                 />
-              </div>
-            </div>
+              </template>
+            </RuleListEditor>
 
             <!-- 提供商成本规则 -->
-            <div class="mt-4 border-t border-gray-200 pt-4 dark:border-dark-700 space-y-3">
-              <div class="flex items-center justify-between">
-                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t('admin.pricing.form.providerStatsPricingRules') }}
-                </h4>
-                <button
-                  type="button"
-                  @click="addProviderStatsRule(sIdx)"
-                  class="rounded-control border border-primary-300 px-3 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:border-primary-600 dark:text-primary-400 dark:hover:bg-primary-900/20"
-                >
-                  + {{ t('admin.pricing.form.addRule') }}
-                </button>
-              </div>
-
-              <!-- 规则按指定分组和提供商匹配 -->
-              <p
-                v-if="section.provider_stats_pricing_rules.length === 0"
-                class="text-xs italic text-gray-400 dark:text-gray-500"
-              >
-                {{ t('admin.pricing.form.noRulesConfigured') }}
-              </p>
-
-              <div
-                v-for="(rule, ruleIndex) in section.provider_stats_pricing_rules"
-                :key="ruleIndex"
-                class="space-y-3 rounded-control border border-gray-200 p-4 dark:border-dark-600"
-              >
-                <div class="flex items-center justify-between">
-                  <input
-                    v-model="rule.name"
-                    :placeholder="t('admin.pricing.form.ruleName')"
-                    class="bg-transparent text-sm font-medium text-gray-700 placeholder-gray-400 outline-none dark:text-gray-300"
-                  />
-                  <button type="button" @click="removeProviderStatsRule(sIdx, ruleIndex)" class="text-xs text-red-500 hover:text-red-700">
-                    {{ t('common.delete') }}
-                  </button>
-                </div>
-
-                <div>
-                  <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.pricing.form.ruleGroups') }}</label>
-                  <div class="mt-1 flex flex-wrap gap-1">
-                    <label
-                      v-for="gid in section.group_ids"
-                      :key="gid"
-                      class="inline-flex cursor-pointer items-center gap-1 rounded-compact border px-2 py-1 text-xs transition-colors"
-                      :class="rule.group_ids.includes(gid)
-                        ? 'border-primary-300 bg-primary-50 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
-                        : 'border-gray-200 hover:bg-gray-50 dark:border-dark-600 dark:hover:bg-dark-700'"
-                    >
-                      <input type="checkbox" :checked="rule.group_ids.includes(gid)" class="h-3 w-3 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" @change="rule.group_ids.includes(gid) ? rule.group_ids.splice(rule.group_ids.indexOf(gid), 1) : rule.group_ids.push(gid)" />
-                      <span :class="['font-medium', 'text-gray-900 dark:text-gray-100']">{{ getGroupNameById(gid) }}</span>
-                    </label>
-                  </div>
-                  <p v-if="section.group_ids.length === 0" class="mt-1 text-xs text-gray-400">
-                    {{ t('admin.pricing.form.noGroupsInPricingConfig') }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.pricing.form.ruleProviders') }}</label>
-                  <!-- Selected provider chips -->
-                  <div class="mt-1 flex flex-wrap gap-1">
-                    <span
-                      v-for="providerId in rule.provider_ids"
-                      :key="providerId"
-                      class="inline-flex items-center gap-1 rounded-compact border border-primary-300 bg-primary-50 px-2 py-0.5 text-xs dark:border-primary-700 dark:bg-primary-900/20"
-                    >
-                      <span :class="['font-medium', 'text-gray-900 dark:text-gray-100']">{{ getRuleProviderLabel(providerId) }}</span>
-                      <button type="button" @click="removeRuleProvider(rule, providerId)" class="text-gray-400 hover:text-red-500">
-                        <Icon name="x" size="xs" />
-                      </button>
-                    </span>
-                  </div>
-                  <!-- Provider search input -->
-                  <div class="relative mt-1 rule-provider-search-container">
+            <RuleListEditor
+              class="mt-4 border-t border-gray-200 pt-4 dark:border-dark-700"
+              :items="section.provider_stats_pricing_rules"
+              :title="t('admin.pricing.form.providerStatsPricingRules')"
+              :add-label="t('admin.pricing.form.addRule')"
+              :empty-text="t('admin.pricing.form.noRulesConfigured')"
+              variant="card"
+              :item-label="(index) => t('common.ruleIndex', { index: index + 1 })"
+              test-id="provider-stats-rules"
+              @add="addProviderStatsRule(sIdx)"
+              @remove="removeProviderStatsRule(sIdx, $event)"
+            >
+              <template #row="{ item: rule, index: ruleIndex }">
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
                     <input
-                      v-model="ruleProviderSearchKeyword[`${'pricing'}-${ruleIndex}`]"
-                      type="text"
+                      v-model="rule.name"
+                      :placeholder="t('admin.pricing.form.ruleName')"
                       class="input text-sm"
-                      :placeholder="t('admin.pricing.form.searchProviderPlaceholder')"
-                      @input="onRuleProviderSearchInput('pricing', ruleIndex)"
-                      @focus="onRuleProviderSearchFocus('pricing', ruleIndex)"
                     />
-                    <!-- Search results dropdown -->
-                    <MotionTransition name="dropdown-fade">
-                      <div
-                        v-if="showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0" :inert="!(showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0) || undefined"
-                        class="dropdown z-50 mt-1 max-h-48 w-full overflow-auto py-0"
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.pricing.form.ruleGroups') }}</label>
+                    <div class="mt-1 flex flex-wrap gap-1">
+                      <label
+                        v-for="gid in section.group_ids"
+                        :key="gid"
+                        class="inline-flex cursor-pointer items-center gap-1 rounded-compact border px-2 py-1 text-xs transition-colors"
+                        :class="rule.group_ids.includes(gid)
+                          ? 'border-primary-300 bg-primary-50 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
+                          : 'border-gray-200 hover:bg-gray-50 dark:border-dark-600 dark:hover:bg-dark-700'"
                       >
-                        <button
-                          v-for="provider in ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]"
-                          :key="provider.id"
-                          type="button"
-                          @click="selectRuleProvider(rule, provider, 'pricing', ruleIndex)"
-                          class="dropdown-item-sm"
-                          :class="{ 'opacity-50': rule.provider_ids.includes(provider.id) }"
-                          :disabled="rule.provider_ids.includes(provider.id)"
-                        >
-                          <span :class="platformTextClass(provider.platform)">{{ provider.name }}</span>
-                          <span class="text-xs text-gray-400">#{{ provider.id }}</span>
+                        <input type="checkbox" :checked="rule.group_ids.includes(gid)" class="h-3 w-3 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" @change="rule.group_ids.includes(gid) ? rule.group_ids.splice(rule.group_ids.indexOf(gid), 1) : rule.group_ids.push(gid)" />
+                        <span :class="['font-medium', 'text-gray-900 dark:text-gray-100']">{{ getGroupNameById(gid) }}</span>
+                      </label>
+                    </div>
+                    <p v-if="section.group_ids.length === 0" class="mt-1 text-xs text-gray-400">
+                      {{ t('admin.pricing.form.noGroupsInPricingConfig') }}
+                    </p>
+                  </div>
+                  <div>
+                    <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.pricing.form.ruleProviders') }}</label>
+                    <!-- Selected provider chips -->
+                    <div class="mt-1 flex flex-wrap gap-1">
+                      <span
+                        v-for="providerId in rule.provider_ids"
+                        :key="providerId"
+                        class="inline-flex items-center gap-1 rounded-compact border border-primary-300 bg-primary-50 px-2 py-0.5 text-xs dark:border-primary-700 dark:bg-primary-900/20"
+                      >
+                        <span :class="['font-medium', 'text-gray-900 dark:text-gray-100']">{{ getRuleProviderLabel(providerId) }}</span>
+                        <button type="button" @click="removeRuleProvider(rule, providerId)" class="text-gray-400 hover:text-red-500">
+                          <Icon name="x" size="xs" />
                         </button>
-                      </div>
-                    </MotionTransition>
+                      </span>
+                    </div>
+                    <!-- Provider search input -->
+                    <div class="relative mt-1 rule-provider-search-container">
+                      <input
+                        v-model="ruleProviderSearchKeyword[`${'pricing'}-${ruleIndex}`]"
+                        type="text"
+                        class="input text-sm"
+                        :placeholder="t('admin.pricing.form.searchProviderPlaceholder')"
+                        @input="onRuleProviderSearchInput('pricing', ruleIndex)"
+                        @focus="onRuleProviderSearchFocus('pricing', ruleIndex)"
+                      />
+                      <!-- Search results dropdown -->
+                      <MotionTransition name="dropdown-fade">
+                        <div
+                          v-if="showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0" :inert="!(showRuleProviderDropdown[`${'pricing'}-${ruleIndex}`] && (ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]?.length ?? 0) > 0) || undefined"
+                          class="dropdown z-50 mt-1 max-h-48 w-full overflow-auto py-0"
+                        >
+                          <button
+                            v-for="provider in ruleProviderSearchResults[`${'pricing'}-${ruleIndex}`]"
+                            :key="provider.id"
+                            type="button"
+                            @click="selectRuleProvider(rule, provider, 'pricing', ruleIndex)"
+                            class="dropdown-item-sm"
+                            :class="{ 'opacity-50': rule.provider_ids.includes(provider.id) }"
+                            :disabled="rule.provider_ids.includes(provider.id)"
+                          >
+                            <span :class="platformTextClass(provider.platform)">{{ provider.name }}</span>
+                            <span class="text-xs text-gray-400">#{{ provider.id }}</span>
+                          </button>
+                        </div>
+                      </MotionTransition>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-400">
+                      {{ t('admin.pricing.form.ruleProvidersHint') }}
+                    </p>
                   </div>
-                  <p class="mt-1 text-xs text-gray-400">
-                    {{ t('admin.pricing.form.ruleProvidersHint') }}
-                  </p>
+                  <RuleListEditor
+                    :items="rule.pricing"
+                    :title="t('admin.pricing.form.ruleModelPricing')"
+                    :empty-text="t('admin.pricing.form.noPricingRules')"
+                    :test-id="`provider-rule-pricing-${ruleIndex}`"
+                    @add="addRulePricingEntry(sIdx, ruleIndex)"
+                    @remove="removeRulePricingEntry(sIdx, ruleIndex, $event)"
+                  >
+                    <template #row="{ item: entry }">
+                      <PricingEntryCard
+                        :entry="entry"
+                      :removable="false"
+                        @update="Object.assign(entry, $event)"
+                      />
+                    </template>
+                  </RuleListEditor>
                 </div>
-
-                <div>
-                  <div class="mb-1 flex items-center justify-between">
-                    <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.pricing.form.ruleModelPricing') }}</label>
-                    <button type="button" @click="addRulePricingEntry(sIdx, ruleIndex)" class="text-xs text-primary-600 hover:text-primary-700">
-                      + {{ t('common.add') }}
-                    </button>
-                  </div>
-                  <div v-if="rule.pricing.length === 0" class="rounded-compact border border-dashed border-gray-300 p-2 text-center text-xs text-gray-400 dark:border-dark-500">
-                    {{ t('admin.pricing.form.noPricingRules') }}
-                  </div>
-                  <div v-else class="space-y-2">
-                    <PricingEntryCard
-                      v-for="(entry, pIdx) in rule.pricing"
-                      :key="pIdx"
-                      :entry="entry"
-
-                      @update="rule.pricing.splice(pIdx, 1, $event)"
-                      @remove="removeRulePricingEntry(sIdx, ruleIndex, pIdx)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+              </template>
+            </RuleListEditor>
           </div>
         </form>
       </div>
@@ -476,6 +445,7 @@
 </template>
 
 <script setup lang="ts">
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import { vContentReveal } from '@/directives/contentReveal'
 
@@ -770,7 +740,8 @@ async function syncLatestModels(sectionIdx: number) {
 }
 
 function updatePricingEntry(sectionIdx: number, idx: number, updated: PricingFormEntry) {
-  form.sections[sectionIdx].model_pricing.splice(idx, 1, updated)
+  // 外层列表以对象身份作为 key，更新字段时保留定价卡片的折叠状态。
+  Object.assign(form.sections[sectionIdx].model_pricing[idx], updated)
 }
 
 function removePricingEntry(sectionIdx: number, idx: number) {
