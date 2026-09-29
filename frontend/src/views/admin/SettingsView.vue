@@ -827,57 +827,29 @@
                     </div>
 
                     <!-- Custom Patterns (only when apikey_signature_enabled) -->
-                    <div
+                    <RuleListEditor
                       v-if="rectifierForm.apikey_signature_enabled"
-                      class="ml-4 space-y-3 border-l-2 border-gray-200 pl-4 dark:border-dark-600"
+                      class="ml-4 border-l-2 border-gray-200 pl-4 dark:border-dark-600"
+                      :items="rectifierForm.apikey_signature_patterns"
+                      :title="t('admin.settings.rectifier.apikeyPatterns')"
+                      :hint="t('admin.settings.rectifier.apikeyPatternsHint')"
+                      :add-label="t('admin.settings.rectifier.addPattern')"
+                      :animated="false"
+                      test-id="rectifier-patterns"
+                      @add="rectifierForm.apikey_signature_patterns.push('')"
+                      @remove="rectifierForm.apikey_signature_patterns.splice($event, 1)"
                     >
-                      <div>
-                        <label
-                          class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >{{
-                            t("admin.settings.rectifier.apikeyPatterns")
-                          }}</label
-                        >
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.rectifier.apikeyPatternsHint") }}
-                        </p>
-                      </div>
-                      <div
-                        v-for="(
-                          _, index
-                        ) in rectifierForm.apikey_signature_patterns"
-                        :key="index"
-                        class="flex items-center gap-2"
-                      >
+                      <template #row="{ index }">
                         <input
                           v-model="rectifierForm.apikey_signature_patterns[index]"
                           type="text"
-                          class="input input-sm flex-1"
+                          class="input"
                           :placeholder="
                             t('admin.settings.rectifier.apikeyPatternPlaceholder')
                           "
                         />
-                        <button
-                          type="button"
-                          @click="
-                            rectifierForm.apikey_signature_patterns.splice(
-                              index,
-                              1,
-                            )
-                          "
-                          class="btn btn-ghost btn-xs text-red-500 hover:text-red-700"
-                        >
-                          <Icon name="x" size="sm" class="h-4 w-4" />
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        @click="rectifierForm.apikey_signature_patterns.push('')"
-                        class="btn btn-ghost btn-xs text-primary-600 dark:text-primary-400"
-                      >
-                        + {{ t("admin.settings.rectifier.addPattern") }}
-                      </button>
-                    </div>
+                      </template>
+                    </RuleListEditor>
                   </div>
                 </Collapse>
 
@@ -1026,67 +998,45 @@
                   </div>
 
                   <!-- Model Whitelist -->
-                  <div class="mt-3">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.betaPolicy.modelWhitelist") }}
-                    </label>
-                    <p class="mb-2 text-xs text-gray-400 dark:text-gray-500">
-                      {{ t("admin.settings.betaPolicy.modelWhitelistHint") }}
-                    </p>
-                    <!-- Existing patterns -->
-                    <div
-                      v-for="(_, index) in rule.model_whitelist || []"
-                      :key="index"
-                      class="mb-1.5 flex items-center gap-2"
-                    >
+                  <RuleListEditor
+                    class="mt-3"
+                    :items="rule.model_whitelist || []"
+                    :title="t('admin.settings.betaPolicy.modelWhitelist')"
+                    :hint="t('admin.settings.betaPolicy.modelWhitelistHint')"
+                    :add-label="t('admin.settings.betaPolicy.addModelPattern')"
+                    :animated="false"
+                    @add="if (!rule.model_whitelist) rule.model_whitelist = []; rule.model_whitelist.push('');"
+                    @remove="rule.model_whitelist!.splice($event, 1)"
+                  >
+                    <template #footer>
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-xs text-gray-400 dark:text-gray-500"
+                          >{{
+                            t("admin.settings.betaPolicy.commonPatterns")
+                          }}:</span
+                        >
+                        <button
+                          v-for="pattern in commonModelPatterns"
+                          :key="pattern"
+                          type="button"
+                          class="rounded-compact border border-gray-200 px-2 py-0.5 text-xs text-gray-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-300"
+                          @click="addQuickPattern(rule, pattern)"
+                        >
+                          {{ pattern }}
+                        </button>
+                      </div>
+                    </template>
+                    <template #row="{ index }">
                       <input
                         v-model="rule.model_whitelist![index]"
                         type="text"
-                        class="input input-sm flex-1"
+                        class="input"
                         :placeholder="
                           t('admin.settings.betaPolicy.modelPatternPlaceholder')
                         "
                       />
-                      <button
-                        type="button"
-                        @click="rule.model_whitelist!.splice(index, 1)"
-                        class="shrink-0 rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                      >
-                        <Icon name="x" size="sm" class="h-4 w-4" />
-                      </button>
-                    </div>
-                    <!-- Add pattern button -->
-                    <button
-                      type="button"
-                      @click="
-                        if (!rule.model_whitelist) rule.model_whitelist = [];
-                        rule.model_whitelist.push('');
-                      "
-                      class="mb-2 inline-flex items-center gap-1 text-xs text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                    >
-                      <Icon name="plus" size="xs" class="h-3.5 w-3.5" />
-                      {{ t("admin.settings.betaPolicy.addModelPattern") }}
-                    </button>
-                    <!-- Common pattern chips -->
-                    <div class="flex flex-wrap items-center gap-1.5">
-                      <span class="text-xs text-gray-400 dark:text-gray-500"
-                        >{{
-                          t("admin.settings.betaPolicy.commonPatterns")
-                        }}:</span
-                      >
-                      <button
-                        v-for="pattern in commonModelPatterns"
-                        :key="pattern"
-                        type="button"
-                        class="rounded-compact border border-gray-200 px-2 py-0.5 text-xs text-gray-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-300"
-                        @click="addQuickPattern(rule, pattern)"
-                      >
-                        {{ pattern }}
-                      </button>
-                    </div>
-                  </div>
+                    </template>
+                  </RuleListEditor>
 
                   <!-- Fallback Action (only when model_whitelist is non-empty) -->
                   <div
@@ -1169,293 +1119,239 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <!-- Empty state -->
-              <div
-                v-if="openaiFastPolicyForm.rules.length === 0"
-                class="rounded-control border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
+              <RuleListEditor
+                :items="openaiFastPolicyForm.rules"
+                variant="card"
+                :item-label="(index) => t('admin.settings.openaiFastPolicy.ruleHeader', { index: index + 1 })"
+                :add-label="t('admin.settings.openaiFastPolicy.addRule')"
+                :remove-label="t('admin.settings.openaiFastPolicy.removeRule')"
+                :empty-text="t('admin.settings.openaiFastPolicy.empty')"
+                add-placement="footer"
+                test-id="openai-fast-rules"
+                @add="addOpenAIFastPolicyRule"
+                @remove="removeOpenAIFastPolicyRule"
               >
-                {{ t("admin.settings.openaiFastPolicy.empty") }}
-              </div>
-
-              <!-- Rule Cards -->
-              <div
-                v-for="(rule, ruleIndex) in openaiFastPolicyForm.rules"
-                :key="ruleIndex"
-                class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
-              >
-                <div class="mb-3 flex items-center justify-between">
-                  <span
-                    class="text-sm font-medium text-gray-900 dark:text-white"
+                <template #row="{ item: rule, index: ruleIndex }">
+                  <div
+                    class="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
+                    :data-testid="`openai-fast-policy-summary-${ruleIndex}`"
                   >
-                    {{
-                      t("admin.settings.openaiFastPolicy.ruleHeader", {
-                        index: ruleIndex + 1,
-                      })
-                    }}
-                  </span>
-                  <button
-                    type="button"
-                    @click="removeOpenAIFastPolicyRule(ruleIndex)"
-                    class="rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                    :title="t('admin.settings.openaiFastPolicy.removeRule')"
-                  >
-                    <Icon name="x" size="sm" class="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div
-                  class="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
-                  :data-testid="`openai-fast-policy-summary-${ruleIndex}`"
-                >
-                  <span class="font-medium text-gray-700 dark:text-gray-300">
-                    {{
-                      t(
-                        hasOpenAIFastPolicyTargetModels(rule)
-                          ? "admin.settings.openaiFastPolicy.summaryTargetModels"
-                          : "admin.settings.openaiFastPolicy.summaryAllModels",
-                      )
-                    }}
-                  </span>
-                  <span aria-hidden="true">→</span>
-                  <span
-                    class="inline-flex items-center rounded-compact bg-primary-50 px-2 py-0.5 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-                  >
-                    {{ openaiFastPolicyActionSummary(rule.action) }}
-                  </span>
-                  <template v-if="hasOpenAIFastPolicyTargetModels(rule)">
-                    <span aria-hidden="true">·</span>
                     <span class="font-medium text-gray-700 dark:text-gray-300">
                       {{
                         t(
-                          "admin.settings.openaiFastPolicy.summaryOtherModels",
+                          hasOpenAIFastPolicyTargetModels(rule)
+                            ? "admin.settings.openaiFastPolicy.summaryTargetModels"
+                            : "admin.settings.openaiFastPolicy.summaryAllModels",
                         )
                       }}
                     </span>
                     <span aria-hidden="true">→</span>
                     <span
-                      class="inline-flex items-center rounded-compact bg-gray-100 px-2 py-0.5 font-medium text-gray-700 dark:bg-dark-600 dark:text-gray-300"
+                      class="inline-flex items-center rounded-compact bg-primary-50 px-2 py-0.5 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
                     >
-                      {{
-                        openaiFastPolicyActionSummary(
-                          rule.fallback_action || "pass",
-                        )
-                      }}
+                      {{ openaiFastPolicyActionSummary(rule.action) }}
                     </span>
-                  </template>
-                </div>
+                    <template v-if="hasOpenAIFastPolicyTargetModels(rule)">
+                      <span aria-hidden="true">·</span>
+                      <span class="font-medium text-gray-700 dark:text-gray-300">
+                        {{
+                          t(
+                            "admin.settings.openaiFastPolicy.summaryOtherModels",
+                          )
+                        }}
+                      </span>
+                      <span aria-hidden="true">→</span>
+                      <span
+                        class="inline-flex items-center rounded-compact bg-gray-100 px-2 py-0.5 font-medium text-gray-700 dark:bg-dark-600 dark:text-gray-300"
+                      >
+                        {{
+                          openaiFastPolicyActionSummary(
+                            rule.fallback_action || "pass",
+                          )
+                        }}
+                      </span>
+                    </template>
+                  </div>
+                  <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <!-- Service Tier -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.openaiFastPolicy.serviceTier") }}
+                      </label>
+                      <Select
+                        :modelValue="rule.service_tier"
+                        @update:modelValue="
+                          rule.service_tier = $event as
+                            | 'all'
+                            | 'priority'
+                            | 'flex'
+                        "
+                        :options="openaiFastPolicyTierOptions"
+                      />
+                    </div>
 
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <!-- Service Tier -->
-                  <div>
+                    <!-- Action -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.openaiFastPolicy.action") }}
+                      </label>
+                      <Select
+                        :modelValue="rule.action"
+                        @update:modelValue="
+                          rule.action = $event as
+                            | 'pass'
+                            | 'filter'
+                            | 'block'
+                            | 'force_priority'
+                            | 'force_ultrafast'
+                        "
+                        :options="openaiFastPolicyActionOptions"
+                      />
+                    </div>
+
+                    <!-- Scope -->
+                    <div>
+                      <label
+                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        {{ t("admin.settings.openaiFastPolicy.scope") }}
+                      </label>
+                      <Select
+                        :modelValue="rule.scope"
+                        @update:modelValue="
+                          rule.scope = $event as
+                            | 'all'
+                            | 'oauth'
+                            | 'apikey'
+                            | 'bedrock'
+                        "
+                        :options="openaiFastPolicyScopeOptions"
+                      />
+                    </div>
+                  </div>
+                  <div class="mt-3">
                     <label
                       class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
                     >
-                      {{ t("admin.settings.openaiFastPolicy.serviceTier") }}
+                      {{ t("admin.settings.openaiFastPolicy.userIds") }}
                     </label>
-                    <Select
-                      :modelValue="rule.service_tier"
-                      @update:modelValue="
-                        rule.service_tier = $event as
-                          | 'all'
-                          | 'priority'
-                          | 'flex'
-                      "
-                      :options="openaiFastPolicyTierOptions"
+                    <p class="mb-2 text-xs text-gray-400 dark:text-gray-500">
+                      {{ t("admin.settings.openaiFastPolicy.userIdsHint") }}
+                    </p>
+                    <OpenAIFastPolicyUserSelector
+                      :model-value="rule.user_ids || []"
+                      @update:model-value="rule.user_ids = $event"
                     />
                   </div>
-
-                  <!-- Action -->
-                  <div>
+                  <div v-if="rule.action === 'block'" class="mt-3">
                     <label
                       class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
                     >
-                      {{ t("admin.settings.openaiFastPolicy.action") }}
+                      {{ t("admin.settings.openaiFastPolicy.errorMessage") }}
                     </label>
-                    <Select
-                      :modelValue="rule.action"
-                      @update:modelValue="
-                        rule.action = $event as
-                          | 'pass'
-                          | 'filter'
-                          | 'block'
-                          | 'force_priority'
-                          | 'force_ultrafast'
-                      "
-                      :options="openaiFastPolicyActionOptions"
-                    />
-                  </div>
-
-                  <!-- Scope -->
-                  <div>
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.openaiFastPolicy.scope") }}
-                    </label>
-                    <Select
-                      :modelValue="rule.scope"
-                      @update:modelValue="
-                        rule.scope = $event as
-                          | 'all'
-                          | 'oauth'
-                          | 'apikey'
-                          | 'bedrock'
-                      "
-                      :options="openaiFastPolicyScopeOptions"
-                    />
-                  </div>
-                </div>
-
-                <!-- 用户范围 -->
-                <div class="mt-3">
-                  <label
-                    class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  >
-                    {{ t("admin.settings.openaiFastPolicy.userIds") }}
-                  </label>
-                  <p class="mb-2 text-xs text-gray-400 dark:text-gray-500">
-                    {{ t("admin.settings.openaiFastPolicy.userIdsHint") }}
-                  </p>
-                  <OpenAIFastPolicyUserSelector
-                    :model-value="rule.user_ids || []"
-                    @update:model-value="rule.user_ids = $event"
-                  />
-                </div>
-
-                <!-- Error Message (only when action=block) -->
-                <div v-if="rule.action === 'block'" class="mt-3">
-                  <label
-                    class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  >
-                    {{ t("admin.settings.openaiFastPolicy.errorMessage") }}
-                  </label>
-                  <input
-                    v-model="rule.error_message"
-                    type="text"
-                    class="input"
-                    :placeholder="
-                      t(
-                        'admin.settings.openaiFastPolicy.errorMessagePlaceholder',
-                      )
-                    "
-                  />
-                  <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    {{ t("admin.settings.openaiFastPolicy.errorMessageHint") }}
-                  </p>
-                </div>
-
-                <!-- 目标模型；列表为空时规则对全部模型生效。 -->
-                <div
-                  class="mt-3"
-                  role="group"
-                  :aria-labelledby="`openai-fast-policy-models-label-${ruleIndex}`"
-                  :aria-describedby="`openai-fast-policy-models-hint-${ruleIndex}`"
-                >
-                  <label
-                    :id="`openai-fast-policy-models-label-${ruleIndex}`"
-                    class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  >
-                    {{ t("admin.settings.openaiFastPolicy.modelWhitelist") }}
-                  </label>
-                  <p
-                    :id="`openai-fast-policy-models-hint-${ruleIndex}`"
-                    class="mb-2 text-xs text-gray-400 dark:text-gray-500"
-                  >
-                    {{
-                      t("admin.settings.openaiFastPolicy.modelWhitelistHint")
-                    }}
-                  </p>
-                  <div
-                    v-for="(_, patternIdx) in rule.model_whitelist || []"
-                    :key="patternIdx"
-                    class="mb-1.5 flex items-center gap-2"
-                  >
                     <input
-                      v-model="rule.model_whitelist![patternIdx]"
-                      type="text"
-                      class="input input-sm flex-1"
-                      :placeholder="
-                        t(
-                          'admin.settings.openaiFastPolicy.modelPatternPlaceholder',
-                        )
-                      "
-                    />
-                    <button
-                      type="button"
-                      @click="
-                        removeOpenAIFastPolicyModelPattern(rule, patternIdx)
-                      "
-                      class="shrink-0 rounded-compact p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
-                    >
-                      <Icon name="x" size="sm" class="h-4 w-4" />
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    @click="addOpenAIFastPolicyModelPattern(rule)"
-                    class="mb-2 inline-flex items-center gap-1 text-xs text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                  >
-                    <Icon name="plus" size="xs" class="h-3.5 w-3.5" />
-                    {{ t("admin.settings.openaiFastPolicy.addModelPattern") }}
-                  </button>
-                </div>
-
-                <!-- 其他模型处理方式；仅在目标模型列表非空时显示。 -->
-                <div
-                  v-if="hasOpenAIFastPolicyTargetModels(rule)"
-                  class="mt-3"
-                >
-                  <label
-                    class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                  >
-                    {{ t("admin.settings.openaiFastPolicy.fallbackAction") }}
-                  </label>
-                  <Select
-                    :modelValue="rule.fallback_action || 'pass'"
-                    @update:modelValue="
-                      rule.fallback_action = $event as
-                        | 'pass'
-                        | 'filter'
-                        | 'block'
-                        | 'force_priority'
-                          | 'force_ultrafast'
-                    "
-                    :options="openaiFastPolicyActionOptions"
-                  />
-                  <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    {{
-                      t("admin.settings.openaiFastPolicy.fallbackActionHint")
-                    }}
-                  </p>
-                  <div v-if="rule.fallback_action === 'block'" class="mt-2">
-                    <input
-                      v-model="rule.fallback_error_message"
+                      v-model="rule.error_message"
                       type="text"
                       class="input"
                       :placeholder="
                         t(
-                          'admin.settings.openaiFastPolicy.fallbackErrorMessagePlaceholder',
+                          'admin.settings.openaiFastPolicy.errorMessagePlaceholder',
                         )
                       "
                     />
+                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                      {{ t("admin.settings.openaiFastPolicy.errorMessageHint") }}
+                    </p>
                   </div>
-                </div>
-              </div>
-
-              <!-- Add Rule Button -->
-              <div>
-                <button
-                  type="button"
-                  @click="addOpenAIFastPolicyRule"
-                  class="btn btn-secondary btn-sm h-9 inline-flex items-center gap-1"
-                >
-                  <Icon name="plus" size="sm" class="h-4 w-4" />
-                  {{ t("admin.settings.openaiFastPolicy.addRule") }}
-                </button>
-                <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                  {{ t("admin.settings.openaiFastPolicy.saveHint") }}
-                </p>
-              </div>
+                  <div
+                    class="mt-3"
+                    role="group"
+                    :aria-labelledby="`openai-fast-policy-models-label-${ruleIndex}`"
+                    :aria-describedby="`openai-fast-policy-models-hint-${ruleIndex}`"
+                  >
+                    <label
+                      :id="`openai-fast-policy-models-label-${ruleIndex}`"
+                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                    >
+                      {{ t("admin.settings.openaiFastPolicy.modelWhitelist") }}
+                    </label>
+                    <p
+                      :id="`openai-fast-policy-models-hint-${ruleIndex}`"
+                      class="mb-2 text-xs text-gray-400 dark:text-gray-500"
+                    >
+                      {{
+                        t("admin.settings.openaiFastPolicy.modelWhitelistHint")
+                      }}
+                    </p>
+                    <RuleListEditor
+                      :items="rule.model_whitelist || []"
+                      :add-label="t('admin.settings.openaiFastPolicy.addModelPattern')"
+                      add-placement="footer"
+                      :animated="false"
+                      :test-id="`openai-fast-models-${ruleIndex}`"
+                      @add="addOpenAIFastPolicyModelPattern(rule)"
+                      @remove="removeOpenAIFastPolicyModelPattern(rule, $event)"
+                    >
+                      <template #row="{ index: patternIdx }">
+                        <input
+                          v-model="rule.model_whitelist![patternIdx]"
+                          type="text"
+                          class="input"
+                          :placeholder="
+                            t(
+                              'admin.settings.openaiFastPolicy.modelPatternPlaceholder',
+                            )
+                          "
+                        />
+                      </template>
+                    </RuleListEditor>
+                  </div>
+                  <div
+                    v-if="hasOpenAIFastPolicyTargetModels(rule)"
+                    class="mt-3"
+                  >
+                    <label
+                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                    >
+                      {{ t("admin.settings.openaiFastPolicy.fallbackAction") }}
+                    </label>
+                    <Select
+                      :modelValue="rule.fallback_action || 'pass'"
+                      @update:modelValue="
+                        rule.fallback_action = $event as
+                          | 'pass'
+                          | 'filter'
+                          | 'block'
+                          | 'force_priority'
+                            | 'force_ultrafast'
+                      "
+                      :options="openaiFastPolicyActionOptions"
+                    />
+                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                      {{
+                        t("admin.settings.openaiFastPolicy.fallbackActionHint")
+                      }}
+                    </p>
+                    <div v-if="rule.fallback_action === 'block'" class="mt-2">
+                      <input
+                        v-model="rule.fallback_error_message"
+                        type="text"
+                        class="input"
+                        :placeholder="
+                          t(
+                            'admin.settings.openaiFastPolicy.fallbackErrorMessagePlaceholder',
+                          )
+                        "
+                      />
+                    </div>
+                  </div>
+                </template>
+              </RuleListEditor>
+              <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('admin.settings.openaiFastPolicy.saveHint') }}</p>
             </div>
           </div>
         </div>
@@ -3982,68 +3878,29 @@
                 </div>
               </div>
 
-              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                <div class="mb-3 flex items-center justify-between">
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">
-                      {{ t("admin.settings.defaults.defaultSubscriptions") }}
-                    </label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{
-                        t("admin.settings.defaults.defaultSubscriptionsHint")
-                      }}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    class="btn btn-secondary btn-sm h-9"
-                    @click="addDefaultSubscription"
-                    :disabled="subscriptionPlans.length === 0"
-                  >
-                    {{ t("admin.settings.defaults.addDefaultSubscription") }}
-                  </button>
-                </div>
-
-                <div
-                  v-if="form.default_subscriptions.length === 0"
-                  class="rounded-compact border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
-                >
-                  {{ t("admin.settings.defaults.defaultSubscriptionsEmpty") }}
-                </div>
-
-                <div v-else class="space-y-3">
-                  <div
-                    v-for="(item, index) in form.default_subscriptions"
-                    :key="`default-sub-${index}`"
-                    class="grid grid-cols-1 gap-3 rounded-compact border border-gray-200 p-3 md:grid-cols-[1fr_auto] dark:border-dark-600"
-                  >
-                    <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{ t("admin.settings.defaults.subscriptionGroup") }}
-                      </label>
-                      <Select
-                        v-model="item.plan_id"
-
-                        :options="defaultSubscriptionPlanOptions"
-                        :placeholder="
-                          t('admin.settings.defaults.subscriptionGroup')
-                        "
-                      />
-                    </div>
-                    <div class="flex items-end">
-                      <button
-                        type="button"
-                        class="btn btn-secondary w-full text-red-600 hover:text-red-700 dark:text-red-400"
-                        @click="removeDefaultSubscription(index)"
-                      >
-                        {{ t("common.delete") }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <RuleListEditor
+                class="border-t border-gray-100 pt-4 dark:border-dark-700"
+                :items="form.default_subscriptions"
+                :title="t('admin.settings.defaults.defaultSubscriptions')"
+                :hint="t('admin.settings.defaults.defaultSubscriptionsHint')"
+                :add-label="t('admin.settings.defaults.addDefaultSubscription')"
+                :empty-text="t('admin.settings.defaults.defaultSubscriptionsEmpty')"
+                :add-disabled="subscriptionPlans.length === 0"
+                test-id="default-subscriptions"
+                @add="addDefaultSubscription"
+                @remove="removeDefaultSubscription"
+              >
+                <template #row="{ item }">
+                  <Select
+                    v-model="item.plan_id"
+                    :aria-label="t('admin.settings.defaults.subscriptionGroup')"
+                  :options="defaultSubscriptionPlanOptions"
+                    :placeholder="
+                      t('admin.settings.defaults.subscriptionGroup')
+                    "
+                  />
+                </template>
+              </RuleListEditor>
             </div>
           </div>
 
@@ -4164,80 +4021,28 @@
                       />
                     </div>
 
-                    <div class="mb-3 flex items-center justify-between">
-                      <div>
-                        <label
-                          class="font-medium text-gray-900 dark:text-white"
-                        >
-                          {{ t("admin.settings.authSourceDefaults.defaultSubscriptionsLabel") }}
-                        </label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.authSourceDefaults.defaultSubscriptionsHint") }}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-sm h-9"
-                        @click="
-                          addAuthSourceDefaultSubscription(authSource.source)
-                        "
-                        :disabled="subscriptionPlans.length === 0"
-                      >
-                        {{
-                          t("admin.settings.defaults.addDefaultSubscription")
-                        }}
-                      </button>
-                    </div>
-
-                    <div
-                      v-if="
-                        authSourceDefaults[authSource.source].subscriptions
-                          .length === 0
-                      "
-                      class="rounded-compact border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400"
+                    <RuleListEditor
+                      :items="authSourceDefaults[authSource.source].subscriptions"
+                      :title="t('admin.settings.authSourceDefaults.defaultSubscriptionsLabel')"
+                      :hint="t('admin.settings.authSourceDefaults.defaultSubscriptionsHint')"
+                      :add-label="t('admin.settings.defaults.addDefaultSubscription')"
+                      :empty-text="t('admin.settings.authSourceDefaults.noSourceSubscriptions')"
+                      :add-disabled="subscriptionPlans.length === 0"
+                      :test-id="`auth-source-${authSource.source}-subscriptions`"
+                      @add="addAuthSourceDefaultSubscription(authSource.source)"
+                      @remove="removeAuthSourceDefaultSubscription(authSource.source, $event)"
                     >
-                      {{ t("admin.settings.authSourceDefaults.noSourceSubscriptions") }}
-                    </div>
-
-                    <div v-else class="space-y-3">
-                      <div
-                        v-for="(item, index) in authSourceDefaults[
-                          authSource.source
-                        ].subscriptions"
-                        :key="`${authSource.source}-sub-${index}`"
-                        class="grid grid-cols-1 gap-3 rounded-compact border border-gray-200 p-3 md:grid-cols-[1fr_auto] dark:border-dark-600"
-                      >
-                        <div>
-                          <label
-                            class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                          >
-                            {{ t("admin.settings.defaults.subscriptionGroup") }}
-                          </label>
-                          <Select
-                            v-model="item.plan_id"
-
-                            :options="defaultSubscriptionPlanOptions"
-                            :placeholder="
-                              t('admin.settings.defaults.subscriptionGroup')
-                            "
-                          />
-                        </div>
-                        <div class="flex items-end">
-                          <button
-                            type="button"
-                            class="btn btn-secondary w-full text-red-600 hover:text-red-700 dark:text-red-400"
-                            @click="
-                              removeAuthSourceDefaultSubscription(
-                                authSource.source,
-                                index,
-                              )
-                            "
-                          >
-                            {{ t("common.delete") }}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      <template #row="{ item }">
+                        <Select
+                          v-model="item.plan_id"
+                          :aria-label="t('admin.settings.defaults.subscriptionGroup')"
+                        :options="defaultSubscriptionPlanOptions"
+                          :placeholder="
+                            t('admin.settings.defaults.subscriptionGroup')
+                          "
+                        />
+                      </template>
+                    </RuleListEditor>
                   </div>
                 </div>
               </div>
@@ -8481,6 +8286,7 @@ import BaseDialog from "@/components/common/BaseDialog.vue";
 import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
 import PaymentProviderList from "@/components/payment/PaymentProviderList.vue";
 import PaymentProviderDialog from "@/components/payment/PaymentProviderDialog.vue";
+import RuleListEditor from "@/components/common/RuleListEditor.vue";
 import Toggle from "@/components/common/Toggle.vue";
 import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
