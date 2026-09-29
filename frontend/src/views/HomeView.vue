@@ -18,68 +18,11 @@
   </div>
 
   <!-- 默认首页 -->
-  <div v-else class="ba-theme-shell relative flex min-h-screen flex-col overflow-hidden text-gray-950 dark:text-white">
+  <div v-else class="ba-theme-shell relative flex min-h-screen flex-col overflow-hidden pt-[var(--header-h)] text-gray-950 dark:text-white">
     <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-    <header class="site-header relative z-20 border-b border-primary-900/10 px-4 sm:px-6">
-      <nav class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4">
-        <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
-          <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">
-            <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
-          </span>
-          <span class="truncate text-base font-semibold text-gray-950 dark:text-white">{{ siteName }}</span>
-        </router-link>
-
-        <div class="flex items-center gap-2 sm:gap-3">
-          <div class="hidden items-center gap-5 text-sm font-medium text-gray-600 dark:text-dark-300 md:flex">
-            <router-link to="/models" class="transition hover:text-gray-950 dark:hover:text-white">
-              {{ t('home.nav.models') }}
-            </router-link>
-            <a
-              v-if="docUrl"
-              :href="docUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="transition hover:text-gray-950 dark:hover:text-white"
-            >
-              {{ t('home.docs') }}
-            </a>
-          </div>
-
-          <LocaleSwitcher />
-
-          <button
-            @click="toggleTheme"
-            class="flex rounded-control text-primary-900/90 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white btn-icon"
-            :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
-          >
-            <Icon v-if="isDark" name="sun" size="md" />
-            <Icon v-else name="moon" size="md" />
-          </button>
-
-          <router-link
-            v-if="isAuthenticated"
-            :to="dashboardPath"
-            class="inline-flex items-center gap-1.5 rounded-full bg-primary-600 py-1.5 pl-1.5 pr-3 text-xs font-semibold text-white shadow-none transition hover:bg-primary-700 dark:bg-primary-600 dark:text-white dark:hover:bg-primary-700"
-          >
-            <UserAvatar
-              :user-id="authStore.user?.id"
-              :avatar-url="authStore.user?.avatar_url || ''"
-              :alt="authStore.user?.username || authStore.user?.email || ''"
-              size-class="h-5 w-5"
-            />
-            {{ t('home.dashboard') }}
-          </router-link>
-          <router-link
-            v-else
-            to="/login"
-            class="inline-flex items-center rounded-full bg-gray-950 px-4 py-2 text-xs font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-dark-950 dark:hover:bg-dark-200"
-          >
-            {{ t('home.login') }}
-          </router-link>
-        </div>
-      </nav>
-    </header>
+    <!-- 首页与控制台共用顶栏，外壳为固定顶栏预留高度。 -->
+    <AppHeader public-page />
 
     <main v-content-reveal="motionRoute?.path" class="relative z-10 flex-1 px-4 pb-20 pt-16 sm:px-6 lg:px-8">
       <section class="mx-auto max-w-5xl text-center">
@@ -559,12 +502,10 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import GitHubMark from '@/components/auth/GitHubMark.vue'
 import GoogleOneTap from '@/components/auth/GoogleOneTap.vue'
-import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
-import UserAvatar from '@/components/common/UserAvatar.vue'
+import AppHeader from '@/components/layout/AppHeader.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { useTheme } from '@/composables/useTheme'
 import { getMarketplaceModels, getMarketplaceStats } from '@/api/marketplace'
 import type { MarketplaceGroup, MarketplaceModel, MarketplaceStats } from '@/types'
 import { sanitizeUrl } from '@/utils/url'
@@ -663,8 +604,6 @@ const isHomeContentUrl = computed(() => {
   const content = homeContent.value.trim()
   return content.startsWith('http://') || content.startsWith('https://')
 })
-
-const { isDark, toggleTheme } = useTheme()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)

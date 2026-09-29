@@ -38,6 +38,7 @@
 - 全部间距落在 Tailwind 4px 网格上，禁止 `mt-[2px]`、`padding-left: 17px` 这类任意值。
 - 卡片 padding 只有两档：独立卡片 `p-6`，嵌套面板、网格卡和统计卡 `p-4`。不再使用 `p-5`。
 - 布局水平 padding 链在 header 与 main 之间完全一致：`px-4 md:px-6 lg:px-8`，保证两侧边缘在所有断点对齐。
+- 默认首页和控制台共用 `AppHeader`，统一品牌、工具按钮、余额和用户菜单。首页通过 `public-page` 隐藏侧栏开关，保留模型广场与访客登录入口，并为固定顶栏预留高度；自定义 HTML 或 iframe 首页继续使用全页模式。操作台的返回仪表盘图标位于品牌右侧。
 - 布局尺寸 token 只在 `style.css` 的 `:root` 定义一份：`--header-h`（3.5rem，顶栏高度）、`--sidebar-w`（14rem，侧栏展开宽）、`--sidebar-w-collapsed`（4.5rem，侧栏折叠宽）。顶栏高度、主区 `padding-top`、侧栏遮罩 `top`、侧栏宽度与主区 `lg:ml-*` 偏移一律引用变量（如 `h-[var(--header-h)]`），不写 `h-14`、`top-14`、`w-56` 这类平行字面量。吸顶偏移与锚点 `scroll-margin-top` 同样以 `calc(var(--header-h) + 余量)` 组合（参考 SettingsView 的 tabs 吸顶），余量写构成注释。
 - 垂直空间由 AppLayout 的 flex 链统一分配：wrapper（`flex-col`，普通模式 `min-h-screen` / 锁定模式 `h-full min-h-0`）→ `.app-main`（`flex-1 flex-col`）→ 页头（自然高度）+ 页面内容。需要撑满剩余高度的页面容器（如 `TablePageLayout`、`CustomPageView` 根元素）自取 `flex-1 min-h-0`，禁止手写 `calc(100vh - …)` 视口差值、禁止负 margin 抵消父级内边距；不引入 `--main-pad-*`、`--page-heading-space` 这类与布局重复的尺寸变量。
 - 系统设置页的内容容器使用 `w-full min-w-0` 填满主区，各页签的卡片保持同宽；不设置居中外边距或最大宽度，避免在纵向 flex 布局中按内容收缩。

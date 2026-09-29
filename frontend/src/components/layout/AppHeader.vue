@@ -5,12 +5,13 @@
       <!-- 品牌固定在全局顶栏，避免与侧栏和页面标题争夺层级。 -->
       <div class="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
         <button
-          @click="handlePrimaryNavigation"
-          :class="['btn-ghost btn-icon', !isCreativeStudio && 'lg:hidden']"
-          :aria-label="isCreativeStudio ? t('creative.canvas.backToDashboard') : t('common.toggleMenu')"
-          :title="isCreativeStudio ? t('creative.canvas.backToDashboard') : t('common.toggleMenu')"
+          v-if="!publicPage && !isCreativeStudio"
+          @click="appStore.toggleMobileSidebar()"
+          class="btn-ghost btn-icon lg:hidden"
+          :aria-label="t('common.toggleMenu')"
+          :title="t('common.toggleMenu')"
         >
-          <Icon :name="isCreativeStudio ? 'home' : 'menu'" size="md" />
+          <Icon name="menu" size="md" />
         </button>
 
         <!-- 版本标签与首页链接分离，避免按钮嵌套在链接内触发错误跳转。 -->
@@ -30,11 +31,32 @@
             <VersionBadge :version="siteVersion" />
           </span>
         </div>
+
+        <!-- 操作台的返回入口紧邻品牌右侧，与首页链接分开。 -->
+        <router-link
+          v-if="isCreativeStudio"
+          to="/dashboard"
+          class="btn-ghost btn-icon shrink-0"
+          :aria-label="t('creative.canvas.backToDashboard')"
+          :title="t('creative.canvas.backToDashboard')"
+        >
+          <Icon name="home" size="md" />
+        </router-link>
       </div>
 
       <!-- 右侧分为工具区和账户区：工具区是同尺寸图标按钮，账户区是余额按钮和头像。 -->
       <div class="header-status-actions">
         <div class="header-status-icon-group">
+          <router-link
+            v-if="publicPage"
+            to="/models"
+            class="header-status-icon-button hidden sm:flex"
+            :aria-label="t('nav.modelMarketplace')"
+            :title="t('nav.modelMarketplace')"
+          >
+            <Icon name="modelMarketplace" size="md" />
+          </router-link>
+
           <div v-if="user" class="hidden sm:block">
             <AnnouncementBell variant="status" />
           </div>
@@ -213,6 +235,10 @@
             </div>
           </MotionTransition>
         </div>
+
+        <router-link v-else-if="publicPage" to="/login" class="btn btn-primary">
+          {{ t('home.login') }}
+        </router-link>
       </div>
     </div>
   </header>
@@ -235,6 +261,11 @@ import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { useTheme, type ThemeMode } from '@/composables/useTheme'
+
+// 公开页面复用品牌和账户区，只省略侧栏开关并补充访客入口。
+withDefaults(defineProps<{ publicPage?: boolean }>(), {
+  publicPage: false
+})
 
 const router = useRouter()
 const route = useRoute()
@@ -314,18 +345,6 @@ const displayName = computed(() => {
   if (!user.value) return ''
   return user.value.username || user.value.email?.split('@')[0] || ''
 })
-
-function toggleMobileSidebar() {
-  appStore.toggleMobileSidebar()
-}
-
-function handlePrimaryNavigation() {
-  if (isCreativeStudio.value) {
-    void router.push('/dashboard')
-    return
-  }
-  toggleMobileSidebar()
-}
 
 function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
