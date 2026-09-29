@@ -1,11 +1,11 @@
 <template>
   <article class="card flex flex-col p-6 transition-colors hover:border-black/20 dark:hover:border-dark-500">
-    <!-- 名称固定两行高度，保证同一行卡片的价格区对齐。 -->
+    <!-- 多列并排时名称固定两行高度，保证同一行卡片的价格区对齐；单列时按内容高度排列。 -->
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0 flex-1">
         <h3
           :title="plan.name"
-          class="h-12 min-w-0 break-words [overflow-wrap:anywhere] text-base font-semibold leading-6 text-gray-900 dark:text-white line-clamp-2"
+          class="min-w-0 break-words sm:h-12 [overflow-wrap:anywhere] text-base font-semibold leading-6 text-gray-900 dark:text-white line-clamp-2"
         >
           {{ plan.name }}
         </h3>

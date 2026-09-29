@@ -1119,6 +1119,7 @@ describe('PaymentView payment help text', () => {
       global: {
         stubs: {
           AppLayout: { template: '<main><slot /></main>' },
+          PaymentHelpNote: false,
           Teleport: true,
           Transition: false,
         },

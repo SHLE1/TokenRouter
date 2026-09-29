@@ -1,8 +1,27 @@
 <template>
   <AppLayout>
+    <!-- 页签与标题同行放在页头右侧；支付中和订阅确认时隐藏。 -->
+    <template v-if="!loading && tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" #page-heading-actions>
+      <div role="tablist" class="inline-flex gap-1 rounded-control bg-gray-100 p-1 dark:bg-dark-950">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          type="button"
+          role="tab"
+          :aria-selected="activeTab === tab.key"
+          class="flex h-8 items-center justify-center rounded-compact px-4 text-sm font-medium transition-colors"
+          :class="activeTab === tab.key
+            ? 'bg-white text-gray-900 shadow-sm dark:bg-primary-500/8 dark:text-primary-500 dark:shadow-none'
+            : 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-100'"
+          @click="activeTab = tab.key"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+    </template>
     <!-- 不加 mx-auto：app-main 是 flex 列容器，auto 边距会让内容收缩到内容宽度并与页头错位。 -->
     <div class="w-full space-y-6">
-      <!-- 首次取数：按页签与结算双栏的位置显示骨架。 -->
+      <!-- 首次取数：按结算双栏的位置显示骨架。 -->
       <div
         v-if="loading"
         role="status"
@@ -10,7 +29,6 @@
         :aria-label="t('common.loading')"
         class="space-y-6"
       >
-        <Skeleton width="12rem" height="2.75rem" />
         <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-start">
           <div class="card space-y-4 p-4 sm:p-6">
             <Skeleton width="6rem" height="1rem" />
@@ -35,28 +53,6 @@
         </div>
       </div>
       <template v-else>
-        <!-- 页签：支付中和订阅确认时隐藏。 -->
-        <div
-          v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan"
-          role="tablist"
-          class="inline-flex gap-1 rounded-control bg-gray-100 p-1 dark:bg-dark-950"
-        >
-          <button
-            v-for="tab in tabs"
-            :key="tab.key"
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === tab.key"
-            class="flex h-9 items-center justify-center rounded-control px-5 text-sm font-medium transition-colors"
-            :class="activeTab === tab.key
-              ? 'bg-white text-gray-900 shadow-sm dark:bg-primary-500/8 dark:text-primary-500 dark:shadow-none'
-              : 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-100'"
-            @click="activeTab = tab.key"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
-
         <!-- 支付中（充值与订阅共用） -->
         <PaymentStatusPanel
           v-if="paymentPhase === 'paying'"
@@ -78,6 +74,23 @@
 
         <!-- 订阅套餐列表 -->
         <template v-else-if="activeTab === 'subscription' && !selectedPlan">
+          <div v-if="checkout.plans.length === 0" class="card empty-state">
+            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-surface bg-gray-100 dark:bg-dark-800">
+              <Icon name="gift" size="lg" class="text-gray-400 dark:text-dark-500" />
+            </div>
+            <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('payment.noPlans') }}</p>
+          </div>
+          <!-- 主区在 lg 仍需让出侧栏宽度，三列放到 xl 才不拥挤。 -->
+          <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <SubscriptionPlanCard
+              v-for="plan in checkout.plans"
+              :key="plan.id"
+              :plan="plan"
+              :active-subscriptions="activeSubscriptions"
+              @select="selectPlan"
+            />
+          </div>
+
           <section
             v-if="activeSubscriptions.length > 0"
             data-testid="purchase-active-subscriptions"
@@ -111,39 +124,12 @@
             </ul>
           </section>
 
-          <div v-if="checkout.plans.length === 0" class="card empty-state">
-            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-surface bg-gray-100 dark:bg-dark-800">
-              <Icon name="gift" size="lg" class="text-gray-400 dark:text-dark-500" />
-            </div>
-            <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('payment.noPlans') }}</p>
-          </div>
-          <!-- 主区在 lg 仍需让出侧栏宽度，三列放到 xl 才不拥挤。 -->
-          <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <SubscriptionPlanCard
-              v-for="plan in checkout.plans"
-              :key="plan.id"
-              :plan="plan"
-              :active-subscriptions="activeSubscriptions"
-              @select="selectPlan"
-            />
-          </div>
-
-          <div v-if="hasHelpContent" class="card p-4 sm:p-6">
-            <div class="flex flex-col items-center gap-3">
-              <img
-                v-if="checkout.help_image_url"
-                :src="checkout.help_image_url"
-                alt=""
-                class="h-40 max-w-full cursor-pointer rounded-control object-contain transition-opacity hover:opacity-80"
-                @click="previewImage = checkout.help_image_url"
-              />
-              <div
-                v-if="renderedHelpText"
-                class="payment-help-markdown max-w-full text-sm text-gray-500 dark:text-dark-400"
-                v-html="renderedHelpText"
-              ></div>
-            </div>
-          </div>
+          <PaymentHelpNote
+            v-if="hasHelpContent"
+            :image-url="checkout.help_image_url"
+            :html="renderedHelpText"
+            @preview="previewImage = $event"
+          />
         </template>
 
         <!-- 充值未开放 -->
@@ -319,22 +305,12 @@
               </div>
             </section>
 
-            <div v-if="!isSubscriptionCheckout && hasHelpContent" class="card p-4">
-              <div class="flex flex-col items-center gap-3">
-                <img
-                  v-if="checkout.help_image_url"
-                  :src="checkout.help_image_url"
-                  alt=""
-                  class="h-40 max-w-full cursor-pointer rounded-control object-contain transition-opacity hover:opacity-80"
-                  @click="previewImage = checkout.help_image_url"
-                />
-                <div
-                  v-if="renderedHelpText"
-                  class="payment-help-markdown max-w-full text-sm text-gray-500 dark:text-dark-400"
-                  v-html="renderedHelpText"
-                ></div>
-              </div>
-            </div>
+            <PaymentHelpNote
+              v-if="!isSubscriptionCheckout && hasHelpContent"
+              :image-url="checkout.help_image_url"
+              :html="renderedHelpText"
+              @preview="previewImage = $event"
+            />
           </aside>
         </div>
       </template>
@@ -403,6 +379,7 @@ import {
   writePaymentRecoverySnapshot,
 } from '@/components/payment/paymentFlow'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
+import PaymentHelpNote from '@/components/payment/PaymentHelpNote.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -1472,36 +1449,3 @@ onMounted(async () => {
 })
 </script>
 
-<style scoped>
-.payment-help-markdown {
-  text-align: center;
-}
-
-.payment-help-markdown :deep(p) {
-  margin: 0.25rem 0;
-}
-
-.payment-help-markdown :deep(a) {
-  color: rgb(18 167 232);
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.payment-help-markdown :deep(ul),
-.payment-help-markdown :deep(ol) {
-  display: inline-block;
-  margin: 0.25rem auto;
-  padding-left: 1.25rem;
-  text-align: left;
-}
-
-.payment-help-markdown :deep(strong) {
-  color: rgb(17 24 39);
-  font-weight: 600;
-}
-
-.dark .payment-help-markdown :deep(strong) {
-  color: rgb(255 255 255);
-}
-</style>

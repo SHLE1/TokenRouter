@@ -149,7 +149,7 @@ marketplace: {
 // Recharge / Subscription Page
   purchase: {
     title: '充值/订阅',
-    description: '购买新的套餐',
+    description: '充值余额或订阅套餐',
     openInNewTab: '新窗口打开',
     notEnabledTitle: '该功能未开启',
     notEnabledDesc: '管理员暂未开启充值/订阅入口，请联系管理员。',

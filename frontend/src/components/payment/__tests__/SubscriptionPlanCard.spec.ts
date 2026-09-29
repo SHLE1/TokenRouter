@@ -89,7 +89,7 @@ describe('SubscriptionPlanCard', () => {
     expect(title.attributes('title')).toBe(name)
     expect(title.classes()).toEqual(expect.arrayContaining([
       'min-w-0',
-      'h-12',
+      'sm:h-12',
       'break-words',
       'line-clamp-2',
       '[overflow-wrap:anywhere]',
@@ -121,6 +121,6 @@ describe('SubscriptionPlanCard', () => {
 
     expect(title.text()).toBe('Pro')
     expect(title.attributes('title')).toBe('Pro')
-    expect(title.classes()).toEqual(expect.arrayContaining(['text-base', 'font-semibold', 'h-12']))
+    expect(title.classes()).toEqual(expect.arrayContaining(['text-base', 'font-semibold', 'sm:h-12']))
   })
 })

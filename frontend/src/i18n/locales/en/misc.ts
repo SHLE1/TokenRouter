@@ -150,7 +150,7 @@ marketplace: {
 // Recharge / Subscription Page
   purchase: {
     title: 'Recharge / Subscription',
-    description: 'Purchase a new plan',
+    description: 'Top up your balance or subscribe to a plan',
     openInNewTab: 'Open in new tab',
     notEnabledTitle: 'Feature not enabled',
     notEnabledDesc: 'The administrator has not enabled the recharge/subscription entry. Please contact admin.',
