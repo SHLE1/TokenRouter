@@ -129,7 +129,7 @@ func (s *PricingService) buildModelsCatalog(body []byte) (*modelcatalog.Catalog,
 	return catalog, prices, err
 }
 
-// mergeMediaSupplement 只填补已有记录的媒体单价；显式零值和已有来源标签均保留。
+// mergeMediaSupplement 填补媒体单价及生图模型缺失的文本输出价，保留目录已有单价。
 func mergeMediaSupplement(raw map[string]json.RawMessage, model string, entry json.RawMessage) error {
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(entry, &fields); err != nil {
@@ -162,6 +162,7 @@ func mergeMediaSupplement(raw map[string]json.RawMessage, model string, entry js
 		sources = map[string]string{}
 	}
 	for key, label := range map[string]string{
+		"output_cost_per_token":       "output",
 		"output_cost_per_image":       "image",
 		"output_cost_per_image_token": "image_output",
 		"input_cost_per_image_token":  "image_input",

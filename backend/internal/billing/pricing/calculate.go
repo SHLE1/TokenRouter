@@ -248,7 +248,7 @@ func ConfigTierOverridePrice(baseStandard, baseTier, configStandard float64) flo
 	return 0
 }
 
-// ApplyConfigTokenPriceOverrides 应用价卡 token 价格，同时保留模型内置层级比例。
+// ApplyConfigTokenPriceOverrides 应用普通与图片 token 价格，同时保留模型内置层级比例。
 func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, ConfigPricing *ModelPricingEntry) {
 	if pricing == nil || ConfigPricing == nil {
 		return
@@ -300,6 +300,7 @@ func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, ConfigPricing *ModelP
 		pricing.CacheReadPricePerToken = *ConfigPricing.CacheReadPrice
 		pricing.CacheReadPricePerTokenPriority = priority
 	}
+	applyConfigImagePriceOverrides(pricing, ConfigPricing)
 }
 
 // CalculateTokenCost 按 token 区间计费

@@ -49,9 +49,9 @@ type LiteLLMModelPricing struct {
 	SupportsAudioOutput       bool     `json:"supports_audio_output"`
 	SupportsVideoInput        bool     `json:"supports_video_input"`
 
-	// TokenPricingAbsent 表示源数据中 input/output token 价格均缺失（仅有图片价）。
-	// 此类条目只可用于图片计费，token 计费必须回退到 fallback 或 fail-closed，
-	// 否则 token 流量会被按 $0 计费。零值（false）表示条目具备 token 价格。
+	// TokenPricingAbsent 表示源数据缺少 token 定价；models.dev 要求输入和输出桶都存在。
+	// models.dev 缺价时直接返回未定价；旧格式的纯图片条目仍允许使用本地 token 回退价。
+	// 独立图片计费可继续读取此类条目的媒体价格。
 	TokenPricingAbsent bool `json:"-"`
 }
 

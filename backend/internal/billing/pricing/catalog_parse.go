@@ -74,6 +74,10 @@ func ParsePricingEntries(rawData map[string]json.RawMessage) (map[string]*LiteLL
 			SupportsVideoInput:          entry.SupportsVideoInput,
 			TokenPricingAbsent:          entry.InputCostPerToken == nil && entry.OutputCostPerToken == nil,
 		}
+		// models.dev 缺失任一文本价格桶时保持未定价，图片报价不能补成免费文本输出。
+		if entry.Source == "models.dev" && (entry.InputCostPerToken == nil || entry.OutputCostPerToken == nil) {
+			pricing.TokenPricingAbsent = true
+		}
 		// 保持原字段优先，兼容部分厂商使用的输入模态字段名。
 		if len(pricing.SupportedModalities) == 0 {
 			pricing.SupportedModalities = entry.SupportedInputModalities

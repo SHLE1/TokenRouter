@@ -9,7 +9,7 @@ import (
 func ResolveModelPricing(model string, catalogPrice *LiteLLMModelPricing, prices map[string]*ModelPricing, policy ModelPolicy) (*ModelPricing, bool, error) {
 	// 标准化模型名称（转小写）
 	model = strings.ToLower(model)
-	if catalogPrice != nil && catalogPrice.Source == "unpriced" {
+	if catalogPrice != nil && (catalogPrice.Source == "unpriced" || catalogPrice.Source == "models.dev" && catalogPrice.TokenPricingAbsent) {
 		return nil, false, fmt.Errorf("%w for model: %s", ErrModelPricingUnavailable, model)
 	}
 

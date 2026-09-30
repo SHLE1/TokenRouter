@@ -176,3 +176,92 @@ func TestModelsCatalogInvalidLocalReloadReportsError(t *testing.T) {
 	require.Contains(t, service.AttributesSnapshot().LastError, "input_cost_per_token")
 	require.Equal(t, before, service.Snapshot().Data)
 }
+
+// TestModelsCatalogGeminiImageTextPricing 同时验证内嵌目录、媒体补充和实际用量拆分。
+func TestModelsCatalogGeminiImageTextPricing(t *testing.T) {
+	service := NewPricingService(Options{
+		ModelsDev:    true,
+		DataDir:      t.TempDir(),
+		FallbackFile: "../../../resources/model-pricing/model_pricing_supplements.json",
+	}, nil)
+	require.NoError(t, service.Initialize())
+	for _, tc := range []struct {
+		model                 string
+		textPrice, imagePrice float64
+	}{
+		{"gemini-3-pro-image", 12e-6, 120e-6},
+		{"gemini-3-pro-image-preview", 12e-6, 120e-6},
+		{"gemini-2.5-flash-image", 2.5e-6, 30e-6},
+		{"gemini-3.1-flash-image", 3e-6, 60e-6},
+		{"gemini-3.1-flash-image-preview", 3e-6, 60e-6},
+		{"gemini-3.1-flash-lite-image", 2.5e-6, 30e-6},
+	} {
+		for _, model := range []string{tc.model, "google/" + tc.model} {
+			t.Run(model, func(t *testing.T) {
+				value := catalogPriceForTest(t, service, model)
+				cost := pricing.ComputeTokenBreakdown(value, pricing.UsageTokens{OutputTokens: 2000, ImageOutputTokens: 1000}, 1, "", true)
+				require.InDelta(t, 1000*tc.textPrice, cost.OutputCost, 1e-12)
+				require.InDelta(t, 1000*tc.imagePrice, cost.ImageOutputCost, 1e-12)
+				display := pricing.BuildTokenDisplayPricing(value, 1)
+				require.InDelta(t, tc.textPrice, display.OutputPricePerToken, 1e-12)
+				require.InDelta(t, tc.imagePrice, display.ImageOutputPricePerToken, 1e-12)
+				require.Equal(t, "local_supplement", service.GetModelPricing(model).PriceSources["output"])
+			})
+		}
+	}
+}
+
+func TestModelsCatalogGeminiImageSupplementPrecedence(t *testing.T) {
+	dir := t.TempDir()
+	supplement := filepath.Join(dir, "supplement.json")
+	patch := filepath.Join(dir, "override.json")
+	const fixture = `{"providers":{
+		"google":{"models":{"gemini-image-test":{"cost":{"input":2,"output":150},"modalities":{"output":["text","image"]}}}},
+		"openrouter":{"models":{"gemini-image-test":{"cost":{"input":1,"output":9},"modalities":{"output":["text","image"]}}}}
+	}}`
+	service := NewPricingService(Options{
+		ModelsDev:    true,
+		DataDir:      dir,
+		RemoteURL:    "https://models.dev/catalog.json",
+		FallbackFile: supplement,
+		OverrideFile: patch,
+	}, &catalogRemoteFixture{body: []byte(fixture)})
+	require.NoError(t, service.ForceUpdate())
+	// 缺少文本费率时保持未定价，不能把图片费率或缺失值当作文本价。
+	_, _, err := pricing.ResolveModelPricing("gemini-image-test", service.GetModelPricing("gemini-image-test"), nil, pricing.ModelPolicy{})
+	require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable)
+	require.InDelta(t, 150e-6, service.GetModelPricing("gemini-image-test").OutputCostPerImageToken, 1e-12)
+	require.NoError(t, os.WriteFile(supplement, []byte(`{"gemini-image-test":{"output_cost_per_token":0,"output_cost_per_image_token":0.00012}}`), 0o600))
+	require.NoError(t, service.ForceUpdate())
+	for _, model := range []string{"gemini-image-test", "google/gemini-image-test"} {
+		value := catalogPriceForTest(t, service, model)
+		require.Zero(t, value.OutputPricePerToken)
+		require.InDelta(t, 150e-6, value.ImageOutputPricePerToken, 1e-12)
+	}
+	// 原厂文本补充不跨到中继报价；管理员精确覆盖仍具有最高优先级。
+	require.InDelta(t, 9e-6, catalogPriceForTest(t, service, "openrouter/gemini-image-test").OutputPricePerToken, 1e-12)
+	require.NoError(t, os.WriteFile(patch, []byte(`{"google/gemini-image-test":{"output_cost_per_token":0.000007,"output_cost_per_image_token":0.00008}}`), 0o600))
+	require.NoError(t, service.ForceUpdate())
+	value := catalogPriceForTest(t, service, "google/gemini-image-test")
+	require.InDelta(t, 7e-6, value.OutputPricePerToken, 1e-12)
+	require.InDelta(t, 80e-6, value.ImageOutputPricePerToken, 1e-12)
+	require.Equal(t, "local_override", service.GetModelPricing("google/gemini-image-test").PriceSources["output"])
+}
+
+func TestModelsCatalogImagePriceOverrideAcrossContextTiers(t *testing.T) {
+	service := NewPricingService(Options{ModelsDev: true, DataDir: t.TempDir()}, nil)
+	require.NoError(t, service.Initialize())
+	base := catalogPriceForTest(t, service, "gpt-5.4")
+	require.NotEmpty(t, base.ContextPrices)
+	imagePrice := 1e-6
+	resolved := pricing.ResolvePriceCards(&pricing.ModelPricingEntry{ImageInputPrice: &imagePrice}, base, pricing.PricingSourceLiteLLM, true)
+	for _, input := range []int{10000, 272000, 272001, 300000} {
+		cost, err := pricing.CalculateTokenCost(resolved, pricing.CostInput{
+			Model:          "gpt-5.4",
+			Tokens:         pricing.UsageTokens{InputTokens: input, ImageInputTokens: 1000},
+			RateMultiplier: 1,
+		})
+		require.NoError(t, err)
+		require.InDelta(t, 0.001, cost.ImageInputCost, 1e-12, "input=%d", input)
+	}
+}

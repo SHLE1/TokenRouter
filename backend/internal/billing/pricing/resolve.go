@@ -173,27 +173,20 @@ func ApplyTokenOverrides(chPricing *ModelPricingEntry, resolved *ResolvedPricing
 	if resolved.SupportsCacheBreakdown {
 		resolved.BasePricing.SupportsCacheBreakdown = true
 	}
-	// 图片输出价格与 token 价格不同：nil 表示该价卡未启用图片 token 计费，
-	// 因此显式归零，避免意外回退到模型默认图片价格。
-	if chPricing.ImageOutputPrice != nil {
-		resolved.BasePricing.ImageOutputPricePerToken = *chPricing.ImageOutputPrice
-	} else {
-		resolved.BasePricing.ImageOutputPricePerToken = 0
-	}
-	resolved.BasePricing.ImageOutputPriceExplicit = true
-	ApplyConfigImageInputPrice(chPricing, resolved.BasePricing)
 	if chPricing.MaxReasoningEffortMultiplier != nil {
 		resolved.BasePricing.MaxReasoningEffortMultiplier = chPricing.MaxReasoningEffortMultiplier
 	}
 }
 
-// ApplyConfigImageInputPrice 应用价卡图片输入价：显式配置则用配置值；
-// 未配置时归零，使 ComputeTokenBreakdown 回退到文本输入价（向后兼容，
-// 避免 LiteLLM 图片输入价泄漏进价卡自定义定价）。
-// 与 image_output 不同，此处不设 Explicit 标志——图片输入未配置应回退文本价，
-// 而非硬置 0。
-func ApplyConfigImageInputPrice(chPricing *ModelPricingEntry, pricing *ModelPricing) {
-	if chPricing != nil && chPricing.ImageInputPrice != nil {
+// applyConfigImagePriceOverrides 在基础价和每个阶梯中应用同一份图片价卡语义。
+// 图片输出未配置或显式为零时不计费；图片输入未配置或为零时回退该档文本输入价。
+func applyConfigImagePriceOverrides(pricing *ModelPricing, chPricing *ModelPricingEntry) {
+	pricing.ImageOutputPricePerToken = 0
+	if chPricing.ImageOutputPrice != nil {
+		pricing.ImageOutputPricePerToken = *chPricing.ImageOutputPrice
+	}
+	pricing.ImageOutputPriceExplicit = true
+	if chPricing.ImageInputPrice != nil {
 		pricing.ImageInputPricePerToken = *chPricing.ImageInputPrice
 	} else {
 		pricing.ImageInputPricePerToken = 0
@@ -412,13 +405,7 @@ func IntervalToModelPricingWithBase(iv *PricingInterval, supportsCacheBreakdown 
 	}
 	// 价卡定价存在时显式覆盖图片输出价格；图片输入价格沿用价卡级配置，区间本身不携带该字段。
 	if chPricing != nil {
-		pricing.ImageOutputPriceExplicit = true
-		if chPricing.ImageOutputPrice != nil {
-			pricing.ImageOutputPricePerToken = *chPricing.ImageOutputPrice
-		} else {
-			pricing.ImageOutputPricePerToken = 0
-		}
-		ApplyConfigImageInputPrice(chPricing, pricing)
+		applyConfigImagePriceOverrides(pricing, chPricing)
 		ApplyConfigFastModeMultiplier(pricing, chPricing)
 		ApplyConfigFlexMultiplier(pricing, chPricing)
 	}
