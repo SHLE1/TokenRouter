@@ -109,6 +109,7 @@ func (s *PricingService) buildModelsCatalog(body []byte) (*modelcatalog.Catalog,
 			"cache_read_input_token_cost":               "cache_read",
 			"cache_creation_input_token_cost":           "cache_write",
 			"cache_creation_input_token_cost_above_1hr": "cache_write_1h",
+			"output_cost_per_image":                     "image",
 			"input_cost_per_image_token":                "image_input",
 			"output_cost_per_image_token":               "image_output",
 		} {
@@ -313,16 +314,13 @@ func (s *PricingService) recordCatalogError(err error) {
 
 // updateModelsCatalog 使用条件请求；网络或解析失败保留整个旧版本。
 func (s *PricingService) updateModelsCatalog(force bool) (err error) {
+	// 本地重载自己持有更新锁，并可回退到内存中的离线目录。
+	if strings.TrimSpace(s.options.RemoteURL) == "" {
+		return s.loadModelsCatalog()
+	}
 	s.updateMu.Lock()
 	defer s.updateMu.Unlock()
 	defer func() { s.recordCatalogError(err) }()
-	if strings.TrimSpace(s.options.RemoteURL) == "" {
-		body, readErr := os.ReadFile(s.GetPricingFilePath())
-		if readErr != nil {
-			return readErr
-		}
-		return s.publishModelsCatalog(body, time.Now(), false)
-	}
 	url, err := s.ValidatePricingURL(s.options.RemoteURL)
 	if err != nil {
 		return err

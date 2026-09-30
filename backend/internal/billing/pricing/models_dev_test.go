@@ -74,14 +74,15 @@ func TestModelsDevImageOutputScope(t *testing.T) {
 		"google":{"models":{
 			"gemini-image-test":{"cost":{"input":2,"output":120},"modalities":{"output":["text","image"]}},
 			"deep-research-test":{"cost":{"input":2,"output":12},"modalities":{"output":["text","image"]}},
-			"gemini-text-test":{"cost":{"input":2,"output":12},"modalities":{"output":["text"]}}
+			"gemini-text-test":{"cost":{"input":2,"output":12},"modalities":{"output":["text"]}},
+			"gemini-omni-test":{"cost":{"input":2,"output":12},"modalities":{"output":["text","image","video"]}}
 		}},
 		"openrouter":{"models":{"gemini-image-test":{"cost":{"input":1,"output":9},"modalities":{"output":["text","image"]}}}}
 	}}`))
 	require.NoError(t, err)
 	entries, _, err := ParsePricingEntries(ModelsDevPrices(catalog))
 	require.NoError(t, err)
-	for model, price := range map[string]float64{"deep-research-test": 12e-6, "gemini-text-test": 12e-6, "openrouter/gemini-image-test": 9e-6} {
+	for model, price := range map[string]float64{"deep-research-test": 12e-6, "gemini-text-test": 12e-6, "gemini-omni-test": 12e-6, "openrouter/gemini-image-test": 9e-6} {
 		value, _, err := ResolveModelPricing(model, entries[model], nil, ModelPolicy{})
 		require.NoError(t, err)
 		require.InDelta(t, price, value.OutputPricePerToken, 1e-12)

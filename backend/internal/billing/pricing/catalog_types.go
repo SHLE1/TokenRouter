@@ -16,9 +16,10 @@ type LiteLLMModelPricing struct {
 	Source                      string                `json:"source,omitempty"`
 	PriceSources                map[string]string     `json:"price_sources,omitempty"`
 	ContextPrices               []CatalogContextPrice `json:"context_prices,omitempty"`
-	// 保留缓存桶是否显式存在，供默认价格页区分免费与不适用。
+	// 保留价格桶是否显式存在，供默认价格页区分免费与不适用。
 	CacheCreationPricePresent           bool    `json:"-"`
 	CacheReadPricePresent               bool    `json:"-"`
+	ImagePricePresent                   bool    `json:"-"`
 	ImageInputPricePresent              bool    `json:"-"`
 	ImageOutputPricePresent             bool    `json:"-"`
 	InputCostPerToken                   float64 `json:"input_cost_per_token"`

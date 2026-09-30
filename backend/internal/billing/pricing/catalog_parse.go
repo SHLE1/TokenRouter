@@ -60,6 +60,7 @@ func ParsePricingEntries(rawData map[string]json.RawMessage) (map[string]*LiteLL
 			ContextPrices:               entry.ContextPrices,
 			CacheCreationPricePresent:   entry.CacheCreationInputTokenCost != nil,
 			CacheReadPricePresent:       entry.CacheReadInputTokenCost != nil,
+			ImagePricePresent:           entry.OutputCostPerImage != nil,
 			ImageInputPricePresent:      entry.InputCostPerImageToken != nil,
 			ImageOutputPricePresent:     entry.OutputCostPerImageToken != nil,
 			LiteLLMProvider:             entry.LiteLLMProvider,

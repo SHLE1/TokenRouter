@@ -1138,8 +1138,7 @@ func CalculateAudioCost(mode string, durationOrUnits float64, groupConfig *Audio
 // HasExplicitImageGenerationPricing 仅把明确标记为图片生成的按图价格视为图片计费。
 // 部分聊天模型也携带 output_cost_per_image 元数据，不能据此覆盖其 token 定价。
 func HasExplicitImageGenerationPricing(pricing *LiteLLMModelPricing) bool {
-	return pricing != nil &&
-		pricing.OutputCostPerImage > 0 &&
+	return HasImageUnitPrice(pricing) &&
 		strings.EqualFold(strings.TrimSpace(pricing.Mode), "image_generation")
 }
 

@@ -110,21 +110,18 @@ func CalculateVideoCost(perSecondPrice float64, videoCount, durationSeconds int,
 	}
 }
 
-// DefaultImagePrice 保留目录正价与历史尺寸倍率，不执行目录查询。
+// HasImageUnitPrice 识别目录明确提供的按张价格，显式零价也有效。
+func HasImageUnitPrice(catalogPrice *LiteLLMModelPricing) bool {
+	return catalogPrice != nil && (catalogPrice.OutputCostPerImage > 0 ||
+		catalogPrice.ImagePricePresent && catalogPrice.OutputCostPerImage == 0)
+}
+
+// DefaultImagePrice 保留目录显式价格与历史尺寸倍率，不执行目录查询。
 func DefaultImagePrice(catalogPrice *LiteLLMModelPricing, imageSize string) float64 {
-	basePrice := 0.0
-
-	// 从 PricingService 获取 output_cost_per_image
-	if catalogPrice != nil {
-		pricing := catalogPrice
-		if pricing != nil && pricing.OutputCostPerImage > 0 {
-			basePrice = pricing.OutputCostPerImage
-		}
-	}
-
-	// 如果没有找到价格，使用硬编码默认值（$0.134，来自 gemini-3-pro-image-preview）
-	if basePrice <= 0 {
-		basePrice = DefaultImageGenerationPrice
+	// 历史执行路径保留通用回退；默认目录展示须先确认存在对应模型的明确报价。
+	basePrice := DefaultImageGenerationPrice
+	if HasImageUnitPrice(catalogPrice) {
+		basePrice = catalogPrice.OutputCostPerImage
 	}
 
 	// 2K 尺寸 1.5 倍，4K 尺寸翻倍

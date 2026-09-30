@@ -240,12 +240,16 @@ func TestModelsCatalogGeminiImageSupplementPrecedence(t *testing.T) {
 	}
 	// 原厂文本补充不跨到中继报价；管理员精确覆盖仍具有最高优先级。
 	require.InDelta(t, 9e-6, catalogPriceForTest(t, service, "openrouter/gemini-image-test").OutputPricePerToken, 1e-12)
-	require.NoError(t, os.WriteFile(patch, []byte(`{"google/gemini-image-test":{"output_cost_per_token":0.000007,"output_cost_per_image_token":0.00008}}`), 0o600))
+	require.NoError(t, os.WriteFile(patch, []byte(`{"google/gemini-image-test":{"output_cost_per_token":0.000007,"output_cost_per_image_token":0.00008,"output_cost_per_image":0}}`), 0o600))
 	require.NoError(t, service.ForceUpdate())
 	value := catalogPriceForTest(t, service, "google/gemini-image-test")
 	require.InDelta(t, 7e-6, value.OutputPricePerToken, 1e-12)
 	require.InDelta(t, 80e-6, value.ImageOutputPricePerToken, 1e-12)
 	require.Equal(t, "local_override", service.GetModelPricing("google/gemini-image-test").PriceSources["output"])
+	raw := service.GetModelPricing("google/gemini-image-test")
+	require.True(t, raw.ImagePricePresent)
+	require.Zero(t, pricing.DefaultImagePrice(raw, pricing.ImageBillingSize1K))
+	require.Equal(t, "local_override", raw.PriceSources["image"])
 }
 
 func TestModelsCatalogImagePriceOverrideAcrossContextTiers(t *testing.T) {
@@ -342,4 +346,32 @@ func TestModelsCatalogMistralNativeAlias(t *testing.T) {
 	require.NotNil(t, service.ModelAttributes("devstral-latest").Context)
 	// 中继记录保持自己的价格与属性。
 	require.InDelta(t, 0.44e-6, catalogPriceForTest(t, service, "requesty/devstral-latest").InputPricePerToken, 1e-12)
+}
+
+// TestModelsCatalogOfflineManualUpdate 验证磁盘缓存不存在时，手动更新仍能使用已加载的内存目录。
+func TestModelsCatalogOfflineManualUpdate(t *testing.T) {
+	dir := t.TempDir()
+	cache := filepath.Join(dir, "cache")
+	patch := filepath.Join(dir, "override.json")
+	// 用不可作为目录的路径稳定模拟缓存不可写，测试不依赖进程的文件权限。
+	require.NoError(t, os.WriteFile(cache, []byte("unwritable cache"), 0o600))
+	require.NoError(t, os.WriteFile(patch, []byte(`{"gpt-5.4":{"input_cost_per_token":0.000007}}`), 0o600))
+	service := NewPricingService(Options{ModelsDev: true, DataDir: cache, OverrideFile: patch}, nil)
+	require.NoError(t, service.Initialize())
+	before := service.AttributesSnapshot()
+	require.NoError(t, os.WriteFile(patch, []byte(`{"gpt-5.4":{"input_cost_per_token":0.000009}}`), 0o600))
+	require.NoError(t, service.ForceUpdate())
+	require.InDelta(t, 9e-6, service.GetModelPricing("gpt-5.4").InputCostPerToken, 1e-12)
+	require.Equal(t, before.Version, service.AttributesSnapshot().Version)
+	require.Empty(t, service.AttributesSnapshot().LastError)
+	// 本地更新同样完整校验，失败时保留上一次成功价格和属性。
+	require.NoError(t, os.WriteFile(patch, []byte(`{"gpt-5.4":{"input_cost_per_token":"invalid"}}`), 0o600))
+	require.Error(t, service.ForceUpdate())
+	require.InDelta(t, 9e-6, service.GetModelPricing("gpt-5.4").InputCostPerToken, 1e-12)
+	require.Equal(t, before.Items, service.AttributesSnapshot().Items)
+	require.NotEmpty(t, service.AttributesSnapshot().LastError)
+	require.NoError(t, os.WriteFile(patch, []byte(`{"gpt-5.4":{"input_cost_per_token":0}}`), 0o600))
+	require.NoError(t, service.ForceUpdate())
+	require.Zero(t, service.GetModelPricing("gpt-5.4").InputCostPerToken)
+	require.Empty(t, service.AttributesSnapshot().LastError)
 }

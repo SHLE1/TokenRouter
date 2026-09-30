@@ -2,6 +2,7 @@ package pricing
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
@@ -57,18 +58,12 @@ func modelsDevPriceFields(entry modelcatalog.Entry, cost modelcatalog.Cost) map[
 	}
 	if entry.Attributes.OutputModalities != nil {
 		fields["supported_output_modalities"] = *entry.Attributes.OutputModalities
-		for _, modality := range *entry.Attributes.OutputModalities {
-			if modality == "image" {
-				fields["mode"] = "image"
-			}
-			if modality == "video" {
-				fields["mode"] = "video"
-			}
-		}
 	}
-	// 原厂 Gemini 生图目录的 output 是图片 token 费率，文本与思考价由本地补充提供。
-	// Deep Research 等非 Gemini 生图记录，以及中继报价，继续使用其普通输出价。
-	imageOutput := entry.FirstParty && entry.Provider == "google" && strings.HasPrefix(entry.Model, "gemini-") && fields["mode"] == "image"
+	// 原厂 Gemini Image 系列的 output 是图片 token 费率，文本与思考价由本地补充提供。
+	// Omni、Deep Research 和中继继续使用普通输出价，输出模态本身不决定价格单位。
+	imageOutput := entry.FirstParty && entry.Provider == "google" && strings.HasPrefix(entry.Model, "gemini-") &&
+		strings.Contains(entry.Model, "-image") && entry.Attributes.OutputModalities != nil &&
+		slices.Contains(*entry.Attributes.OutputModalities, "image")
 	put := func(key string, value *float64) {
 		if value != nil {
 			fields[key] = *value / 1e6
