@@ -397,8 +397,8 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	redactor := provideAuditRedactor()
 	auditLogService := provideAuditService(auditLogRepository, retentionSettings, redactor)
 	auditLogHandler := provideAuditHTTP(auditLogService, totpService)
-	routingPricingCatalog := providePricingCatalog(calculator, service)
-	pricingHandler := httpapi8.NewPricingHandler(pricingConfigService, routingPricingCatalog)
+	pricingCatalog := providePricingCatalog(calculator, service)
+	pricingHandler := httpapi8.NewPricingHandler(pricingConfigService, pricingCatalog)
 	modelAttributeHandler := httpapi8.NewModelAttributeHandler(modelAttributeService)
 	settingsRegistry, err := provideSettingsParticipants(paymentRuntime, grantSettings, adminDefaults, adminSettingsRules)
 	if err != nil {
@@ -531,7 +531,8 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	}
 	engine := server.ProvideRouter(options, routerRuntime)
 	httpServer := server.ProvideHTTPServer(options, engine)
-	appBootRuntimeReady := provideBootRuntime(service, manager, gatewayRuntimeSettings, forwardedSettings)
+	appModelCatalogRuntimeReady := provideModelCatalogRuntime(service, manager)
+	appSettingsRuntimeReady := provideSettingsRuntime(manager, gatewayRuntimeSettings, forwardedSettings)
 	appAuthRuntimeReady := provideAuthRuntime(apiKeyService, errorPassthroughService, claudeAuthorization, openAIAuthorization, geminiAuthorization, antigravityAuthorization, qoderAuthorization, qoderTokenProvider, grokAuthorization, tlsFingerprintProfileService, tlsFingerprintRouterService, manager)
 	expiryService := provideProviderExpiry(providerStore)
 	proxyExpiryService := provideProxyExpiry(proxyStore)
@@ -554,7 +555,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	orderExpiry := providePaymentExpiry(paymentRuntime, leaderLock, db)
 	appCoreRuntimeReady := provideCoreRuntime(runtimeBlockState, cfg, authCacheInvalidationWorker, snapshotService, modelList, appSchedulerSharedState, usageCleanupService, idempotencyCleanupService, orderExpiry, tlsFingerprintCollectorService, manager, wheel, digestSessionStore, usageLogRepository, tasks, transportClient, appGatewayRequestActivity, appGatewayBillingRates)
 	appIdempotencyHTTPReady := provideIdempotencyHTTP(idempotencyCoordinator, managementHandler, archiveHandler, codexImportHandler, apiKeyHandler, adminRedeemHandler, adminSubscriptionHandler, proxyHandler, adminUserHandler, groupHandler, systemHandler, adminUsageHandler)
-	appRuntimeReady := provideRuntime(appBootRuntimeReady, appAuthRuntimeReady, appMaintenanceRuntimeReady, appOpsRuntimeReady, appQueuesRuntimeReady, appJobsRuntimeReady, appCoreRuntimeReady, appIdempotencyHTTPReady, promptpolicyService)
+	appRuntimeReady := provideRuntime(appModelCatalogRuntimeReady, appSettingsRuntimeReady, appAuthRuntimeReady, appMaintenanceRuntimeReady, appOpsRuntimeReady, appQueuesRuntimeReady, appJobsRuntimeReady, appCoreRuntimeReady, appIdempotencyHTTPReady, promptpolicyService)
 	application := provideApplication(httpServer, manager, appRuntimeReady, opsService, errorLogQueue)
 	return application, nil
 }
