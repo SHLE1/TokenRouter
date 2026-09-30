@@ -12,6 +12,7 @@ import BanIcon from './artwork/ban'
 import BellIcon from './artwork/bell'
 import BookOpenIcon from './artwork/book-open'
 import BoxIcon from './artwork/box'
+import BracesIcon from './artwork/braces'
 import BrainIcon from './artwork/brain'
 import CalculatorIcon from './artwork/calculator'
 import CalendarIcon from './artwork/calendar'
@@ -79,6 +80,7 @@ import MonitorIcon from './artwork/monitor'
 import MoonIcon from './artwork/moon'
 import MoveRightIcon from './artwork/move-right'
 import PaletteIcon from './artwork/palette'
+import PaperclipIcon from './artwork/paperclip'
 import PlayIcon from './artwork/play'
 import PlusIcon from './artwork/plus'
 import PowerIcon from './artwork/power'
@@ -99,6 +101,7 @@ import TableIcon from './artwork/table'
 import TagIcon from './artwork/tag'
 import TagsIcon from './artwork/tags'
 import TerminalIcon from './artwork/terminal'
+import ThermometerIcon from './artwork/thermometer'
 import TicketIcon from './artwork/ticket'
 import TrashIcon from './artwork/trash'
 import TrendingDownIcon from './artwork/trending-down'
@@ -113,6 +116,7 @@ import UserPlusIcon from './artwork/user-plus'
 import UsersIcon from './artwork/users'
 import VideoIcon from './artwork/video'
 import WalletIcon from './artwork/wallet'
+import WrenchIcon from './artwork/wrench'
 import XIcon from './artwork/x'
 import ZapIcon from './artwork/zap'
 import type { IconDefinition } from './types'
@@ -235,7 +239,12 @@ export const icons = {
   square: SquareIcon,
   selection: SquareDashedIcon,
   modalityVideo: VideoIcon,
-  history: HistoryIcon
+  modalityPdf: FileTextIcon,
+  history: HistoryIcon,
+  toolCall: WrenchIcon,
+  structuredOutput: BracesIcon,
+  temperature: ThermometerIcon,
+  attachment: PaperclipIcon
 } as const satisfies Record<string, IconDefinition>
 
 export type IconName = keyof typeof icons

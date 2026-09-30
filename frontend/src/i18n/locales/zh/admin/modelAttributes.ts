@@ -45,6 +45,7 @@ export default {
       "output_limit": "输出上限",
       "input_modalities": "输入模态",
       "output_modalities": "输出模态",
+      "modalities": "模态",
       "reasoning": "推理",
       "tool_call": "工具调用",
       "structured_output": "结构化输出",

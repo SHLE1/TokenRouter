@@ -45,6 +45,7 @@ export default {
       "output_limit": "Output limit",
       "input_modalities": "Input modalities",
       "output_modalities": "Output modalities",
+      "modalities": "Modalities",
       "reasoning": "Reasoning",
       "tool_call": "Tool calling",
       "structured_output": "Structured output",
