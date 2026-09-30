@@ -51,7 +51,9 @@
 
 已知 Wei-Shaw、BerriAI 公共旧价格地址在内存中转换为 models.dev 地址，并补入新的下载域名；自定义地址保持不变，必须返回 models.dev 目录格式。配置文件不会被改写。`pricing.fallback_file` 默认指向 `resources/model-pricing/model_pricing_supplements.json`；旧的相对资源路径及 `/app/resources/` 打包路径仅在原文件不存在时迁移到新补充文件，已存在的自定义内容继续读取。旧目录缓存不再加载，也不会被删除。
 
-本地补充填补缺失模型、媒体单价和生图文本输出价；`pricing.override_file` 按字段浅合并覆盖目录和补充层，`null` 删除字段。两层都必须是 JSON 对象，顶层 `null`、非对象条目及非法价格字段会拒绝更新，保留已发布目录并记录错误；文件不存在表示空层。修改和删除在下一次周期检查或管理员更新时生效，包括远程返回 304 或远程地址为空的场景。首次启动遇到损坏的本地层时，仍可发布不带该层的离线目录并保留错误，等待修复。
+本地补充仅填补有明确来源的缺失模型价格、媒体单价、生图文本输出价及显式商业规则；`pricing.override_file` 按字段浅合并覆盖目录和补充层，`null` 删除字段。两层都必须是 JSON 对象，顶层 `null`、非对象条目及非法价格字段会拒绝更新，保留已发布目录并记录错误；文件不存在表示空层。修改和删除在下一次周期检查或管理员更新时生效，包括远程返回 304 或远程地址为空的场景。首次启动遇到损坏的本地层时，仍可发布不带该层的离线目录并保留错误，等待修复。
+
+补充和覆盖文件中的 `_billing_defaults` 是操作价格保留节点，可包含 `web_search_price_per_call`、`search_price_per_1k`、`audio_realtime_price_per_min`、`audio_tts_price_per_million_chars` 和 `audio_stt_price_per_hour`；字段单位与同名价格配置设置一致。显式管理员设置优先；文件覆盖支持零价与 `null` 删除。该节点不出现在模型、价格候选或属性列表中。
 
 本地 JSON 使用 `provider`，读取边界兼容 `litellm_provider`；同一条目同时提供时新字段优先，包括空值和 `null`。内部价格类型和来源分类使用目录中性名称，实际报价出处继续由 `source`、`price_sources` 区分。
 

@@ -8,7 +8,6 @@ import (
 const (
 	PricingSourceConfig   = "pricing_config"
 	PricingSourceCatalog  = "catalog"
-	PricingSourceFallback = "fallback"
 	PricingSourceUnpriced = "unpriced"
 )
 
@@ -164,7 +163,7 @@ func ApplyTokenOverrides(chPricing *ModelPricingEntry, resolved *ResolvedPricing
 	if resolved.BasePricing == nil {
 		resolved.BasePricing = &ModelPricing{}
 	} else {
-		// 防止修改 fallbackPrices 中的共享指针
+		// 防止修改 目录中的共享价格
 		cloned := *resolved.BasePricing
 		resolved.BasePricing = &cloned
 	}

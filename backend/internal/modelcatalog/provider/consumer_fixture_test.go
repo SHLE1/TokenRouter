@@ -52,12 +52,9 @@ func newBillingFixture(catalog *Service) *billing.Calculator {
 	if catalog != nil {
 		source = catalog
 	}
-	warnings := &billingprovider.PricingWarnings{}
 	return billing.NewCalculator(source, billing.CalculatorOptions{
-		ModelPolicy:     modelidentity.PricingPolicy,
-		Now:             time.Now,
-		LoadLocation:    billingprovider.LoadPricingLocation,
-		FallbackWarning: warnings.Fallback,
+		Now:          time.Now,
+		LoadLocation: billingprovider.LoadPricingLocation,
 	})
 }
 

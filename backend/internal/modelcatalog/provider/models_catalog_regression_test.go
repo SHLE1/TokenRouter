@@ -13,7 +13,7 @@ import (
 // catalogPriceForTest 通过生产价格转换验证目录查价结果，避免只断言原始 JSON。
 func catalogPriceForTest(t *testing.T, service *Service, model string) *pricing.ModelPricing {
 	t.Helper()
-	value, _, err := pricing.ResolveModelPricing(model, service.GetModelPricing(model), nil, pricing.ModelPolicy{})
+	value, err := pricing.ResolveModelPricing(model, service.GetModelPricing(model))
 	require.NoError(t, err)
 	return value
 }
@@ -189,11 +189,9 @@ func TestModelsCatalogGeminiImageTextPricing(t *testing.T) {
 		textPrice, imagePrice float64
 	}{
 		{"gemini-3-pro-image", 12e-6, 120e-6},
-		{"gemini-3-pro-image-preview", 12e-6, 120e-6},
 		{"gemini-2.5-flash-image", 2.5e-6, 30e-6},
 		{"gemini-3.1-flash-image", 3e-6, 60e-6},
-		{"gemini-3.1-flash-image-preview", 3e-6, 60e-6},
-		{"gemini-3.1-flash-lite-image", 2.5e-6, 30e-6},
+		{"gemini-3.1-flash-lite-image", 1.5e-6, 30e-6},
 	} {
 		for _, model := range []string{tc.model, "google/" + tc.model} {
 			t.Run(model, func(t *testing.T) {
@@ -226,7 +224,7 @@ func TestModelsCatalogGeminiImageSupplementPrecedence(t *testing.T) {
 	}, &catalogRemoteFixture{body: []byte(fixture)})
 	require.NoError(t, service.ForceUpdate())
 	// 缺少文本费率时保持未定价，不能把图片费率或缺失值当作文本价。
-	_, _, err := pricing.ResolveModelPricing("gemini-image-test", service.GetModelPricing("gemini-image-test"), nil, pricing.ModelPolicy{})
+	_, err := pricing.ResolveModelPricing("gemini-image-test", service.GetModelPricing("gemini-image-test"))
 	require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable)
 	require.InDelta(t, 150e-6, service.GetModelPricing("gemini-image-test").OutputCostPerImageToken, 1e-12)
 	require.NoError(t, os.WriteFile(supplement, []byte(`{"gemini-image-test":{"output_cost_per_token":0,"output_cost_per_image_token":0.00012}}`), 0o600))

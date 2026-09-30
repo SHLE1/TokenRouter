@@ -2,6 +2,8 @@ package pricing
 
 // ModelPricing 保存用于结算的每 token 单价及模型计费规则。
 type ModelPricing struct {
+	// TimePricing 是目录声明的分时规则，仅用于默认目录价。
+	TimePricing                        *TimePricingConfig
 	CatalogSource                      string
 	PriorityInputPresent               bool
 	PriorityOutputPresent              bool
@@ -16,7 +18,6 @@ type ModelPricing struct {
 	CacheCreationPricePerToken         float64  // 缓存创建每token价格 (USD)
 	CacheCreationPricePerTokenPriority float64  // priority service tier 下缓存创建每token价格 (USD)
 	CacheCreationPriceExplicit         bool     // 价卡、区间或目录显式零价不触发缓存费用回退
-	CacheCreationPriorityDerived       bool     `json:"-"` // priority 缓存写价是否由 Fast 兜底策略推导
 	CacheReadPricePerToken             float64  // 缓存读取每token价格 (USD)
 	CacheReadPricePerTokenPriority     float64  // priority service tier 下缓存读取每token价格 (USD)
 	CacheCreation5mPrice               float64  // 5分钟缓存创建每token价格 (USD)
@@ -90,9 +91,11 @@ type ModelDisplayPricing struct {
 	FastCacheReadPricePerToken    float64
 	FastImageOutputPricePerToken  float64
 	ContextIntervals              []ModelDisplayPricingInterval
-	ImagePrice1K                  float64
-	ImagePrice2K                  float64
-	ImagePrice4K                  float64
+	// ImagePriceSizes 标记确有报价的尺寸，区分显式零价与缺价。
+	ImagePriceSizes []string
+	ImagePrice1K    float64
+	ImagePrice2K    float64
+	ImagePrice4K    float64
 }
 
 // ModelDisplayPricingInterval 是按上下文 token 区间展示的模型价格。

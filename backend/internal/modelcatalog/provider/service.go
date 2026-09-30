@@ -28,6 +28,7 @@ type RemoteClient interface {
 // Service 维护价格与展示属性共享的模型目录，统一加载、同步和原子发布。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
 type Service struct {
+	billingDefaults  purepricing.OperationPrices
 	updateMu         sync.Mutex
 	modelCatalog     *modelcatalog.Catalog
 	catalogETag      string
@@ -397,6 +398,7 @@ func (s *Service) currentOptions() Options {
 
 // Snapshot 是可交给纯查询或测试消费者的独立目录快照。
 type Snapshot struct {
+	BillingDefaults            purepricing.OperationPrices
 	catalogIdentity            *modelcatalog.Catalog
 	Data                       map[string]*CatalogModelPricing
 	LastUpdated                time.Time
@@ -408,7 +410,7 @@ type Snapshot struct {
 func (s *Service) Snapshot() Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := Snapshot{catalogIdentity: s.modelCatalog, LastError: s.lastCatalogError, LastUpdated: s.lastUpdated, LocalHash: s.localHash, CustomFilesHash: s.customFilesHash}
+	out := Snapshot{BillingDefaults: s.billingDefaults.Clone(), catalogIdentity: s.modelCatalog, LastError: s.lastCatalogError, LastUpdated: s.lastUpdated, LocalHash: s.localHash, CustomFilesHash: s.customFilesHash}
 	if s.pricingData != nil {
 		out.Data = make(map[string]*CatalogModelPricing, len(s.pricingData))
 	}
@@ -426,6 +428,7 @@ func (s *Service) Snapshot() Snapshot {
 func NewServiceFromSnapshot(options Options, remote RemoteClient, snapshot Snapshot) *Service {
 	s := NewService(options, remote)
 	s.pricingData = snapshot.Data
+	s.billingDefaults = snapshot.BillingDefaults.Clone()
 	s.modelCatalog = snapshot.catalogIdentity
 	s.lastCatalogError = snapshot.LastError
 	s.lastUpdated = snapshot.LastUpdated

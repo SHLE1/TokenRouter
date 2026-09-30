@@ -1,13 +1,32 @@
 # 模型价格补充
 
-远程模型价格与展示属性来自 models.dev 的 `https://models.dev/catalog.json`。程序内嵌 `backend/internal/modelcatalog/catalog.json.gz` 离线快照；首次启动先加载磁盘缓存或离线快照，后台使用 ETag 条件请求同步。完整验证成功后才一起发布价格和属性，失败时保留现有版本。
+默认价格与展示属性来自 models.dev 的 `https://models.dev/catalog.json`。程序内嵌经过校验的离线快照，启动时加载磁盘缓存或离线目录；后台使用 ETag 同步，完整验证成功后才一起发布价格、操作价格和属性。更新失败保留最近有效版本。
 
-本目录中的 `model_pricing_supplements.json` 随发布包分发，用于补齐目录缺少的媒体单价及生图模型文本输出价。已存在的目录价格优先；独立补充模型仍可使用现有价格字段。补充文件不提供模型展示属性。
+`model_pricing_supplements.json` 随发布包分发，只填补当前计费需要且目录缺失的字段。每个模型条目记录 `source_url` 和 `verified_at`。目录已经有值的字段，包括零价，均优先于补充。不要重复登记普通 token 价格、复制展示属性、借用另一型号价格或保存未经核实的估算值。
 
-`pricing.fallback_file` 指定补充文件，`pricing.override_file` 指定优先级更高的本地覆盖文件。覆盖按模型键逐字段浅合并，`null` 删除字段。两种文件都必须是 JSON 对象。修改和删除会在下一次目录检查时生效，也可通过管理员“更新目录”立即重载；非法内容保留当前版本并报告错误。
+## 文件与覆盖
 
-新文件使用 `provider` 表示提供方，读取时兼容 `litellm_provider`。两者同时存在时以 `provider` 为准，包括空字符串和 `null`。旧文件中的价格字段、单位和覆盖规则保持兼容。
+- `pricing.fallback_file` 指定补充文件；缺失字段保持缺价。
+- `pricing.override_file` 指定管理员本地覆盖，逐字段浅合并；`null` 删除对应字段。
+- 保留旧 JSON 字段及 `litellm_provider` 的读取兼容；同时存在时 `provider` 优先，包括空值和 `null`。程序不改写部署者的文件。
+- 默认每 10 分钟检查；管理员更新目录可立即重载。远程返回 304 或远程地址为空时，本地文件修改和删除仍生效。非法单价、规则或非对象条目拒绝本次更新。
 
-默认每 10 分钟检查，配置键为 `pricing.check_interval_minutes`。不再下载独立 hash 文件，也不分发旧完整价格 JSON。远程地址为空时仍可读取离线目录，并监测本地补充及覆盖文件。
+同一原厂记录的裸名和供应商限定名共享补充，精确键优先；其他供应商、日期版本及档位后缀不会自动继承。保留 `source` 和 `price_sources` 作为实际字段来源，来源类别与 `source_url` 分开保存。
 
-离线快照及其 MIT 许可位于 `backend/internal/modelcatalog/`。更新快照时应验证目录解析和默认价格契约，保留许可文件；不要用补充文件替换完整目录缓存。
+## 计价维度
+
+价格统一使用美元。旧 token 字段单位为美元/token；`image_prices` 的 1K/2K/4K 键为美元/张，`video_prices` 的 480p/720p/1080p 键为美元/秒。不同单位不能替代；缺失尺寸不按固定倍率补价。旧 `output_cost_per_image` 表示不分尺寸的单张价，仍可读取。
+
+`fast_multiplier`、`flex_multiplier`、`max_reasoning_effort_multiplier` 描述明确倍率；`cache_write_multiplier` 和 `cache_write_1h_multiplier` 仅在对应缓存单价缺失时由输入价派生，显式零价优先。`time_pricing` 使用现有价格配置的时区、每日时段和倍率结构。未声明规则时不根据型号产生加价或折扣。
+
+`_billing_defaults` 是操作价格保留节点，不是模型。可用字段为 `web_search_price_per_call`、`search_price_per_1k`、`audio_realtime_price_per_min`、`audio_tts_price_per_million_chars`、`audio_stt_price_per_hour`。单位分别是美元/次、美元/千次、美元/分钟、美元/百万字符、美元/小时。管理员价格配置优先；`sources` 逐字段记录依据，`verified_at` 记录核验日期。
+
+当前分发数据保留 OpenAI Web Search、xAI TTS 和 REST STT 的操作价。统一搜索次数无法表达 X Search 按帖子和档案的收费方式，通用实时音频时长也不足以覆盖不同语音型号，因此这两类操作不提供统一默认金额。部署者可以明确配置自己的售价。
+
+Gemini 生图目录的 `cost.output` 是图片 token 价，补充只提供独立文本输出价及公布的尺寸单价。GPT Image 1/mini/1.5 补齐目录缺少的媒体价格桶。xAI 图片和视频只登记已核实的输出尺寸单价；`grok-imagine-image-2.0` 的自动质量随生成/编辑变化，现有计价输入没有质量维度，因此不分发该型号的统一默认单价。输入媒体、质量等尚未进入现有用量结构的维度不会伪装成输出价格。
+
+## 维护
+
+新增补充前，使用实际目录解析结果检查完整供应商身份和价格桶。确认数据源缺口后再登记官方依据；无法核实则保持缺价。目录补齐后删除重复字段。离线快照与 MIT 许可保存在 `backend/internal/modelcatalog/`，不能用补充文件替换完整缓存。
+
+价格清理不重算历史账单或任务资金快照，也不改变既有缺价处理及提供商协议规则。

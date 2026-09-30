@@ -21,7 +21,8 @@ func (s mediaPriceCards) GetEffectiveConfigModelPricing(context.Context, int64, 
 // TestMediaUnitPriceRejectsMissingPrice 验证缺少独立按张报价时不能生成通用单价。
 func TestMediaUnitPriceRejectsMissingPrice(t *testing.T) {
 	calculator := NewCalculator(defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{
-		"token-image": {InputCostPerToken: 1e-6, OutputCostPerToken: 2e-6},
+		"grok-imagine-video-1.5": {CatalogRules: pricing.CatalogRules{VideoPrices: map[string]float64{"480p": 0.08}}, TokenPricingAbsent: true},
+		"token-image":            {InputCostPerToken: 1e-6, OutputCostPerToken: 2e-6},
 	}}, CalculatorOptions{})
 	resolver := NewPriceResolver(nil, calculator, nil, nil)
 	for _, model := range []string{"gemini-3.8-flash-image-high", "grok-imagine", "token-image", "grok-imagine-video"} {
@@ -44,8 +45,9 @@ func TestMediaUnitPriceRejectsMissingPrice(t *testing.T) {
 // TestPublicQuotePreservesExactImagePrices 验证仅有按张报价的型号仍显示价格，零价不等于缺价。
 func TestPublicQuotePreservesExactImagePrices(t *testing.T) {
 	calculator := NewCalculator(defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{
-		"custom-image": {OutputCostPerImage: 0.1, ImagePricePresent: true, TokenPricingAbsent: true, Mode: "image_generation"},
-		"free-image":   {ImagePricePresent: true, TokenPricingAbsent: true, Mode: "image_generation"},
+		"grok-imagine-image-quality": {CatalogRules: pricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.05}}, TokenPricingAbsent: true},
+		"custom-image":               {OutputCostPerImage: 0.1, ImagePricePresent: true, TokenPricingAbsent: true, Mode: "image_generation"},
+		"free-image":                 {ImagePricePresent: true, TokenPricingAbsent: true, Mode: "image_generation"},
 	}}, CalculatorOptions{})
 	resolver := NewPriceResolver(nil, calculator, nil, nil)
 	for _, tc := range []struct {
