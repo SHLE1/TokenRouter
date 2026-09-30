@@ -668,8 +668,6 @@ affiliate: {
       notEnabledHint: '启用双因素认证可以增强账户安全性',
       enable: '启用',
       disable: '禁用',
-      featureDisabled: '功能未开放',
-      featureDisabledHint: '管理员尚未开放双因素认证功能',
       setupTitle: '设置双因素认证',
       setupStep1: '使用认证器应用扫描下方二维码',
       setupStep2: '输入应用显示的 6 位验证码',

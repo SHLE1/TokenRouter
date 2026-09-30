@@ -1,5 +1,6 @@
 <template>
-  <div class="card">
+  <!-- 状态加载完成且管理员已开放双因素认证时才显示卡片 -->
+  <div v-if="status?.feature_enabled" class="card">
     <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
       <h2 class="text-lg font-medium text-gray-900 dark:text-white">
         {{ t('profile.totp.title') }}
@@ -12,23 +13,8 @@
       <!-- Loading state -->
       <ContentSkeleton v-if="loading" variant="detail" :rows="2" class="py-4" />
 
-      <!-- Feature disabled globally -->
-      <div v-else-if="status && !status.feature_enabled" class="flex items-center gap-4 py-4">
-        <div class="flex-shrink-0 rounded-full bg-gray-100 p-3 dark:bg-dark-700">
-          <Icon name="exclamationTriangle" size="lg" class="h-6 w-6 text-gray-400" />
-        </div>
-        <div>
-          <p class="font-medium text-gray-700 dark:text-gray-300">
-            {{ t('profile.totp.featureDisabled') }}
-          </p>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            {{ t('profile.totp.featureDisabledHint') }}
-          </p>
-        </div>
-      </div>
-
       <!-- 2FA Enabled -->
-      <div v-else-if="status?.enabled" class="flex items-center justify-between">
+      <div v-else-if="status.enabled" class="flex items-center justify-between">
         <div class="flex items-center gap-4">
           <div class="flex-shrink-0 rounded-full bg-green-100 p-3 dark:bg-green-900/30">
             <Icon name="shield" size="lg" class="h-6 w-6 text-green-600 dark:text-green-400" />

@@ -663,8 +663,6 @@ affiliate: {
       notEnabledHint: 'Enable two-factor authentication to enhance account security',
       enable: 'Enable',
       disable: 'Disable',
-      featureDisabled: 'Feature Unavailable',
-      featureDisabledHint: 'Two-factor authentication has not been enabled by the administrator',
       setupTitle: 'Set Up Two-Factor Authentication',
       setupStep1: 'Scan the QR code below with your authenticator app',
       setupStep2: 'Enter the 6-digit code from your app',
