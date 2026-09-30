@@ -1,127 +1,68 @@
 <template>
   <AppLayout>
     <template #page-heading-actions>
-      <button
-        type="button"
-        class="btn btn-secondary shrink-0 btn-icon"
-        :disabled="loadingCharts || loading"
-        :title="t('common.refresh')"
-        @click="refreshAll"
-      >
-        <Icon name="refresh" size="md" :class="(loadingCharts || loading) ? 'animate-spin' : ''" />
-      </button>
+      <UserDashboardUsageToolbar :refreshing="refreshing" @refresh="refreshAll" />
     </template>
 
     <div class="space-y-4">
-      <DashboardSkeleton v-if="loading && !stats" />
-      <template v-else-if="stats">
-        <UserDashboardStats :stats="stats" :balance="user?.balance || 0" />
-        <UserDashboardCharts v-model:startDate="startDate" v-model:endDate="endDate" v-model:granularity="granularity" :loading="loadingCharts" :trend="trendData" :models="modelStats" @dateRangeChange="onDateRangeChange" @granularityChange="loadCharts" @refresh="refreshAll" />
-        <UserDashboardHeatmap ref="heatmapRef" />
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div class="lg:col-span-2"><UserDashboardAnnouncements /></div>
-          <div class="lg:col-span-1"><UserDashboardQuickActions /></div>
-        </div>
-      </template>
+      <UserDashboardUsageChart />
+      <UserDashboardHeatmap ref="heatmapRef" />
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div class="lg:col-span-2"><UserDashboardAnnouncements /></div>
+        <div class="lg:col-span-1"><UserDashboardQuickActions /></div>
+      </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useAnnouncementStore } from '@/stores/announcements'
-import { usageAPI, type UserDashboardStats as UserStatsType } from '@/api/usage'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import DashboardSkeleton from '@/components/common/DashboardSkeleton.vue'
-import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.vue'
-import UserDashboardCharts from '@/components/user/dashboard/UserDashboardCharts.vue'
+import UserDashboardUsageChart from '@/components/user/dashboard/UserDashboardUsageChart.vue'
+import UserDashboardUsageToolbar from '@/components/user/dashboard/UserDashboardUsageToolbar.vue'
+import { provideUsageChartState } from '@/components/user/dashboard/usageChartState'
 import UserDashboardHeatmap from '@/components/user/dashboard/UserDashboardHeatmap.vue'
 import UserDashboardAnnouncements from '@/components/user/dashboard/UserDashboardAnnouncements.vue'
 import UserDashboardQuickActions from '@/components/user/dashboard/UserDashboardQuickActions.vue'
-import Icon from '@/components/icons/Icon.vue'
-import type { ModelStat, TrendDataPoint } from '@/types'
-import { formatDateLocalInput } from '@/utils/format'
 
 const authStore = useAuthStore()
-const { t } = useI18n()
 const announcementStore = useAnnouncementStore()
-const user = computed(() => authStore.user)
-const stats = ref<UserStatsType | null>(null)
-const loading = ref(true)
-const loadingCharts = ref(false)
-const trendData = ref<TrendDataPoint[]>([])
-const modelStats = ref<ModelStat[]>([])
 
-const startDate = ref(formatDateLocalInput(new Date(Date.now() - 6 * 86400000)))
-const endDate = ref(formatDateLocalInput(new Date()))
-const granularity = ref('day')
+// 用量状态由页面提供，标题行的工具栏和正文的图表共用同一份。
+const usageState = provideUsageChartState()
+const heatmapRef = ref<InstanceType<typeof UserDashboardHeatmap> | null>(null)
+const refreshing = ref(false)
 
-// 短时间范围使用小时粒度，避免趋势图只剩一个数据点。
-const getGranularityForRange = (start: string, end: string): 'day' | 'hour' => {
-  const parsePoint = (value: string) => new Date(value.length === 10 ? `${value}T00:00:00` : value).getTime()
-  const startTime = parsePoint(start)
-  const endTime = parsePoint(end)
-  if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return 'day'
-  return Math.ceil((endTime - startTime) / 86400000) <= 1 ? 'hour' : 'day'
-}
-const onDateRangeChange = (range: { startDate: string; endDate: string }) => {
-  startDate.value = range.startDate
-  endDate.value = range.endDate
-  granularity.value = getGranularityForRange(range.startDate, range.endDate)
-  loadCharts()
-}
-
-const loadStats = async () => {
-  loading.value = true
+// refreshUser 刷新账户信息，顶栏余额随之更新。
+const refreshUser = async () => {
   try {
-    const [, nextStats] = await Promise.all([
-      authStore.refreshUser(),
-      usageAPI.getDashboardStats(),
-    ])
-    stats.value = nextStats
+    await authStore.refreshUser()
   } catch (error) {
-    console.error('Failed to load dashboard stats:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadCharts = async () => {
-  loadingCharts.value = true
-  try {
-    const res = await Promise.all([
-      usageAPI.getDashboardTrend({
-        start_date: startDate.value,
-        end_date: endDate.value,
-        granularity: granularity.value as any,
-      }),
-      usageAPI.getDashboardModels({
-        start_date: startDate.value,
-        end_date: endDate.value,
-      }),
-    ])
-    trendData.value = res[0].trend || []
-    modelStats.value = res[1].models || []
-  } catch (error) {
-    console.error('Failed to load charts:', error)
-  } finally {
-    loadingCharts.value = false
+    console.error('Failed to refresh user:', error)
   }
 }
 
 // App 负责首次预加载；用户主动刷新时同时绕过公告节流获取最新内容。
-const heatmapRef = ref<InstanceType<typeof UserDashboardHeatmap> | null>(null)
-const refreshAll = () => {
-  void loadStats()
-  void loadCharts()
-  void heatmapRef.value?.reload()
-  void announcementStore.fetchAnnouncements(true)
+const refreshAll = async () => {
+  refreshing.value = true
+  try {
+    // 各区块自行处理错误，这里只等全部结束再恢复刷新按钮。
+    await Promise.allSettled([
+      refreshUser(),
+      usageState.load(),
+      heatmapRef.value?.reload(),
+      announcementStore.fetchAnnouncements(true),
+    ])
+  } finally {
+    refreshing.value = false
+  }
 }
 
 onMounted(() => {
-  void loadStats()
-  void loadCharts()
+  void refreshUser()
+  void usageState.load()
+  void usageState.loadFilterOptions()
 })
 </script>

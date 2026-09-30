@@ -56,7 +56,7 @@
 - 图标按钮两档：`.btn-icon`（h-9 w-9）与 `.btn-icon-sm`（h-8 w-8），自带 `rounded-control` 与居中布局，站点只补 hover/颜色类；`.btn-sm` 用于表格行内等紧凑场景。
 - 下拉触发器（Select、DateRangePicker）模板组合 `input input-trigger` + 各自状态类，不复制基线配方。
 - 输入框图标/字符前后缀统一走 `input-icon-*` 机制（`style.css`）：容器 `input-icon-wrap`，图标位 `input-icon` / `input-icon-right`（可点击内容加 `input-icon-action`），输入框按侧加 `input-has-icon` / `input-has-icon-right`；文本留白由变量推导（`留白 = inset + slot`）。档位：默认（inset 0.75rem、留白 2.5rem）、`input-icon-lg`（auth 表单，inset 0.875rem、留白 2.75rem）、`input-icon-text`（`$` 等窄字符前缀，留白 2rem），紧凑搜索框内联 `--input-icon-slot:1.5rem`（留白 2.25rem）。
-- 价格管理和属性管理的搜索框使用同一图标布局，`sm` 及以上固定为 `w-64`，更窄时随工具栏剩余宽度伸缩，提示写明配置名称或模型名称。工具栏相邻控件统一使用 `gap-2`；配置页的状态筛选框使用 `w-32 shrink-0`，默认目录页的两个筛选条件收纳到 `FilterDropdown`，支持条件计数、重置、Esc 和点击外部关闭。两页的默认目录信息共用 `ModelCatalogInfo`，以辅助字号展示来源、短版本号和更新时间，窄屏自动换行。
+- 价格管理和属性管理的搜索框使用同一图标布局，`sm` 及以上固定为 `w-64`，更窄时随工具栏剩余宽度伸缩，提示写明配置名称或模型名称。工具栏相邻控件统一使用 `gap-2`；配置页的状态筛选框使用 `w-32 shrink-0`，默认目录页的两个筛选条件收纳到 `FilterDropdown`，支持条件计数、重置、Esc 和点击外部关闭。条件较多时传入 `wide`，面板加宽，默认向右展开，右侧放不下时改为向左展开；调用方在插槽内用两列网格排列字段（参考用户仪表盘的用量筛选）。两页的默认目录信息共用 `ModelCatalogInfo`，以辅助字号展示来源、短版本号和更新时间，窄屏自动换行。
 
 ## 开关
 
@@ -171,7 +171,7 @@
 
 未取得数据时，在内容将要出现的位置显示骨架，保留页头、筛选工具栏、卡片外框和表格列结构。不要在加载期间展示业务零值或“暂无数据”。通用骨架使用 `Skeleton.vue` / `.skeleton` 的中性色与轻微脉动，减少动画模式下关闭脉动；装饰块用 `aria-hidden`，区域用加载标签和 `aria-busy` 表明状态。
 
-当前入口包括用户与管理员仪表盘的 `DashboardSkeleton`、设置页的 `SettingsSkeleton`、模型广场的 `ModelMarketplaceSkeleton`、图表的 `ChartSkeleton`，以及 DataTable 的表格行和移动卡片。公告按时间线条目占位，热力图直接用日期格子占位。用户仪表盘已有统计值时刷新保留卡片，首次取数才使用整页骨架；加载成功或失败后退出占位状态，沿用页面原有的数据、错误或空状态分支。
+当前入口包括管理员仪表盘的 `DashboardSkeleton`、设置页的 `SettingsSkeleton`、模型广场的 `ModelMarketplaceSkeleton`、图表的 `ChartSkeleton`，以及 DataTable 的表格行和移动卡片。公告按时间线条目占位，热力图直接用日期格子占位。用户仪表盘的用量指标卡和趋势图只在首次取数时给数值和绘图区显示骨架，刷新或切换范围时保留已有数据；加载成功或失败后退出占位状态，沿用页面原有的数据、错误或空状态分支。
 
 页面、弹窗和局部数据区共用这套规则。列表、表单、字段详情和文档正文可使用 `ContentSkeleton`；统计页按实际卡片网格组合 `Skeleton` 与 `ChartSkeleton`。原生表格使用 `TableSkeletonBody`，保留真实表头并传入当前可见列数，条件列变化时同步调整占位列。加载更多只在列表末尾追加占位，已有内容保留。
 
