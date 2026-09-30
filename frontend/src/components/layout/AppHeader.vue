@@ -213,9 +213,9 @@
                 </button>
               </div>
 
-              <!-- 主题三段式切换放在菜单底部，复用标签页的轨道和选中样式。 -->
+              <!-- 主题三段式切换放在菜单底部，使用共用的分段样式，与顶部账户卡同一种灰底。 -->
               <div class="menu-section">
-                <div class="tabs grid grid-cols-3" role="radiogroup" :aria-label="t('nav.theme')">
+                <div class="segmented grid grid-cols-3 gap-1" role="radiogroup" :aria-label="t('nav.theme')">
                   <button
                     v-for="option in themeOptions"
                     :key="option.mode"
@@ -225,7 +225,7 @@
                     :aria-label="option.label"
                     :title="option.label"
                     :data-testid="`theme-mode-${option.mode}`"
-                    :class="['tab flex items-center justify-center px-0 py-1.5', themeMode === option.mode && 'tab-active']"
+                    :class="['segmented-item flex items-center justify-center py-1.5', themeMode === option.mode && 'segmented-item-active']"
                     @click="setThemeMode(option.mode)"
                   >
                     <Icon :name="option.icon" size="sm" />
@@ -417,8 +417,9 @@ onBeforeUnmount(() => {
   @apply overflow-y-auto;
 }
 
-/* 账户卡常驻浅底色，与下方普通菜单项区分层级。 */
+/* 账户卡常驻浅灰底，与下方普通菜单项区分层级，底色与底部主题切换的轨道一致。 */
 .user-menu-card {
-  @apply flex items-center gap-3 rounded-control bg-primary-50 px-2.5 py-2 transition-colors hover:bg-primary-100 dark:bg-dark-800 dark:hover:bg-dark-700;
+  @apply flex items-center gap-3 rounded-control bg-gray-50 px-2.5 py-2 transition-colors hover:bg-gray-100;
+  @apply dark:bg-dark-800 dark:hover:bg-dark-700;
 }
 </style>
