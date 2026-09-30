@@ -1019,8 +1019,6 @@ func UnknownDisplayPricing() ModelDisplayPricing {
 }
 
 const (
-	DefaultImageGenerationPrice = 0.134
-
 	DefaultGrokImagineImagePrice1K        = 0.02
 	DefaultGrokImagineImagePrice2K        = 0.02
 	DefaultGrokImagineImageQualityPrice1K = 0.05

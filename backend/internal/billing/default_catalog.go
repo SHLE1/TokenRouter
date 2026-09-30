@@ -35,7 +35,12 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 		}
 		result.BillingMode = "video"
 		for _, size := range []string{"480p", "720p", "1080p"} {
-			add(size, s.DefaultVideoPrice(model, size), "USD/s")
+			price, err := s.DefaultVideoPrice(model, size)
+			if err != nil {
+				result.Prices = nil
+				return result
+			}
+			add(size, price, "USD/s")
 			result.PriceSources[size] = "local_supplement"
 		}
 		result.PriceStatus = "priced"
@@ -64,7 +69,12 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 			imageSource = "local_supplement"
 		}
 		for _, size := range []string{"1K", "2K", "4K"} {
-			add(size, s.DefaultImagePrice(model, size), "USD/image")
+			price, err := s.DefaultImagePrice(model, size)
+			if err != nil {
+				result.Prices = nil
+				return result
+			}
+			add(size, price, "USD/image")
 			if imageSource != "" {
 				result.PriceSources[size] = imageSource
 			}

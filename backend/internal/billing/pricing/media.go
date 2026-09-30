@@ -116,21 +116,20 @@ func HasImageUnitPrice(catalogPrice *CatalogModelPricing) bool {
 		catalogPrice.ImagePricePresent && catalogPrice.OutputCostPerImage == 0)
 }
 
-// DefaultImagePrice 保留目录显式价格与历史尺寸倍率，不执行目录查询。
-func DefaultImagePrice(catalogPrice *CatalogModelPricing, imageSize string) float64 {
-	// 历史执行路径保留通用回退；默认目录展示须先确认存在对应模型的明确报价。
-	basePrice := DefaultImageGenerationPrice
-	if HasImageUnitPrice(catalogPrice) {
-		basePrice = catalogPrice.OutputCostPerImage
+// DefaultImagePrice 对明确的目录报价应用尺寸倍率，布尔值区分显式零价与缺价。
+func DefaultImagePrice(catalogPrice *CatalogModelPricing, imageSize string) (float64, bool) {
+	if !HasImageUnitPrice(catalogPrice) {
+		return 0, false
 	}
+	basePrice := catalogPrice.OutputCostPerImage
 
 	// 2K 尺寸 1.5 倍，4K 尺寸翻倍
 	if imageSize == "2K" {
-		return basePrice * 1.5
+		return basePrice * 1.5, true
 	}
 	if imageSize == "4K" {
-		return basePrice * 2
+		return basePrice * 2, true
 	}
 
-	return basePrice
+	return basePrice, true
 }

@@ -70,7 +70,8 @@ func IsOpenAIModelAtLeastVersion(model string, minMajor, minMinor int) bool {
 }
 
 func ParseOpenAIModelVersion(model string) (major int, minor int, ok bool) {
-	normalized := CanonicalizeOpenAIModelAliasSpelling(model)
+	// 能力只读模型尾段，供应商前缀仍保留在转发和查价使用的完整 ID 中。
+	normalized := strings.ToLower(LastOpenAIModelSegment(model))
 	if normalized == "" || !strings.HasPrefix(normalized, "gpt-") {
 		return 0, 0, false
 	}

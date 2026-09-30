@@ -821,20 +821,35 @@ func TestComputeTokenBreakdown_GptImage2ImageEditIssue4386(t *testing.T) {
 func TestCalculateImageCost(t *testing.T) {
 	svc := newTestCalculator()
 
-	cost := svc.CalculateImageCost("gpt-image-1", "1K", 3, 1.0)
+	cost, mediaErr := svc.CalculateImageCost("grok-imagine-image-quality", "1K", 3, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
 
-	require.InDelta(t, 0.134*3, cost.TotalCost, 1e-10)
-	require.InDelta(t, 0.134*3, cost.ActualCost, 1e-10)
+	require.InDelta(t, 0.05*3, cost.TotalCost, 1e-10)
+	require.InDelta(t, 0.05*3, cost.ActualCost, 1e-10)
 }
 
 func TestCalculateVideoCostBillsPerSecond(t *testing.T) {
 	svc := newTestCalculator()
 
-	oneSecond := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 1, 1.0)
-	fifteenSeconds := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 15, 1.0)
+	oneSecond, mediaErr := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
+	fifteenSeconds, mediaErr := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 15, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
 	// duration <=0 时按上游默认 8 秒计费，超出上限按 15 秒收敛。
-	defaultDuration := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 0, 1.0)
-	clampedDuration := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 999, 1.0)
+	defaultDuration, mediaErr := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 0, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
+	clampedDuration, mediaErr := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 999, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
 
 	require.InDelta(t, 0.07, oneSecond.TotalCost, 1e-10)
 	require.InDelta(t, 0.07*15, fifteenSeconds.TotalCost, 1e-10)
@@ -845,10 +860,22 @@ func TestCalculateVideoCostBillsPerSecond(t *testing.T) {
 func TestCalculateGrokImagineImageCostUsesDefaultRateCard(t *testing.T) {
 	svc := newTestCalculator()
 
-	standard1K := svc.CalculateImageCost("grok-imagine-image", "1K", 1, 1.0)
-	standard2K := svc.CalculateImageCost("grok-imagine-image", "2K", 1, 1.0)
-	quality1K := svc.CalculateImageCost("grok-imagine-image-quality", "1K", 1, 1.0)
-	quality2K := svc.CalculateImageCost("grok-imagine-image-quality", "2K", 1, 1.0)
+	standard1K, mediaErr := svc.CalculateImageCost("grok-imagine-image", "1K", 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
+	standard2K, mediaErr := svc.CalculateImageCost("grok-imagine-image", "2K", 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
+	quality1K, mediaErr := svc.CalculateImageCost("grok-imagine-image-quality", "1K", 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
+	quality2K, mediaErr := svc.CalculateImageCost("grok-imagine-image-quality", "2K", 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
 
 	require.InDelta(t, 0.02, standard1K.TotalCost, 1e-10)
 	require.InDelta(t, 0.02, standard2K.TotalCost, 1e-10)
@@ -860,11 +887,26 @@ func TestCalculateGrokImagineVideoCostUsesDefaultRateCard(t *testing.T) {
 	svc := newTestCalculator()
 
 	// 默认价目为 xAI 官方每秒价格，按 1 秒时长验证每秒单价。
-	standard480P := svc.CalculateVideoCost("grok-imagine-video", "480p", 1, 1, 1.0)
-	standard720P := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 1, 1.0)
-	video15_480P := svc.CalculateVideoCost("grok-imagine-video-1.5", "480p", 1, 1, 1.0)
-	video15_720P := svc.CalculateVideoCost("grok-imagine-video-1.5", "720p", 1, 1, 1.0)
-	video15_1080P := svc.CalculateVideoCost("grok-imagine-video-1.5", "1080p", 1, 1, 1.0)
+	standard480P, mediaErr := svc.CalculateVideoCost("grok-imagine-video", "480p", 1, 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
+	standard720P, mediaErr := svc.CalculateVideoCost("grok-imagine-video", "720p", 1, 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
+	video15_480P, mediaErr := svc.CalculateVideoCost("grok-imagine-video-1.5", "480p", 1, 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
+	video15_720P, mediaErr := svc.CalculateVideoCost("grok-imagine-video-1.5", "720p", 1, 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
+	video15_1080P, mediaErr := svc.CalculateVideoCost("grok-imagine-video-1.5", "1080p", 1, 1, 1.0)
+	if mediaErr != nil {
+		t.Fatal(mediaErr)
+	}
 
 	require.InDelta(t, 0.05, standard480P.TotalCost, 1e-10)
 	require.InDelta(t, 0.07, standard720P.TotalCost, 1e-10)

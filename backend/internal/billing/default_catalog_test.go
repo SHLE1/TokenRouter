@@ -89,7 +89,9 @@ func TestDefaultMediaPriceRequiresKnownUnits(t *testing.T) {
 			require.NotNil(t, price.Value)
 			require.Equal(t, "USD/image", price.Unit)
 			require.Equal(t, "local_override", row.PriceSources[price.Key])
-			require.Equal(t, calculator.DefaultImagePrice(model, price.Key), *price.Value)
+			unit, err := calculator.DefaultImagePrice(model, price.Key)
+			require.NoError(t, err)
+			require.Equal(t, unit, *price.Value)
 			if model == "free-image" {
 				require.Zero(t, *price.Value)
 			}

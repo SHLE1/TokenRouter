@@ -165,6 +165,14 @@ func TestForwardAsAnthropic_PreservesMaxForFinalGPT56ResponsesModel(t *testing.T
 		wantEffort    string
 	}{
 		{
+			name:       "供应商限定型号保留显式 max 和完整 ID",
+			provider:   rawGPT56ResponsesAPIKeyProvider("qualified", "openai/gpt-5.6-sol"),
+			model:      "qualified",
+			effort:     "max",
+			wantModel:  "openai/gpt-5.6-sol",
+			wantEffort: "max",
+		},
+		{
 			name:       "API Key mapping keeps Luna max",
 			provider:   rawGPT56ResponsesAPIKeyProvider("luna", "gpt-5.6-luna"),
 			model:      "luna",

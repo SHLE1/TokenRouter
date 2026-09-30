@@ -116,7 +116,7 @@ OpenAI 分组以 `openai_fast_policy` 选择 `follow_request`、`force_priority`
 
 该字段随 API Key 认证快照传递；当前 v40 的快照与失效规则见[提供商调度与缓存一致性](../architecture/provider_scheduling_and_cache.md)。
 
-Messages、Chat、Responses 和 WebSocket 均保留显式映射后的完整模型 ID，不执行 Codex 拼写纠正、旧型号迁移、日期剥离或 effort 后缀解析。显式 `output_config.effort` 仍按最终上游型号转换；GPT-5.6 支持原生 max 时不降为 xhigh。
+Messages、Chat、Responses 和 WebSocket 均保留显式映射后的完整模型 ID，不执行 Codex 拼写纠正、旧型号迁移、日期剥离或 effort 后缀解析。显式 `output_config.effort` 仍按最终上游型号转换；GPT-5.6 支持原生 max 时不降为 xhigh。能力判断可只读识别供应商限定名的型号尾段，例如 `openai/gpt-5.6-sol` 支持显式 max；该投影不用于改写转发 ID 或生成价格候选，Messages 桥接和 Responses 转换遵守同一边界。
 
 OpenAI 分组的 `max_reasoning_effort` 是显式推理强度上限，`max_reasoning_effort_over_limit` 取 `downgrade`（默认）或 `deny`。网关只对客户端真正发送的 `reasoning.effort`、`reasoning_effort` 和 Messages `output_config.effort` 执行策略，不会因为兼容桥为缺省 Messages 请求生成的默认 `medium` 而改变行为；模型范围映射先于上限比较。
 

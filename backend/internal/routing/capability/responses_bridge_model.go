@@ -61,7 +61,8 @@ func parseResponsesBridgeModelVersion(model string) (major int, minor int, ok bo
 }
 
 func normalizeResponsesBridgeModel(model string) string {
-	return strings.ToLower(strings.TrimSpace(model))
+	// 桥接只判断能力，不把这个投影写回请求模型。
+	return strings.ToLower(LastOpenAIModelSegment(model))
 }
 
 // ResponsesBridgeDropsSampling 判断模型是否为 Responses API 下不支持 temperature/top_p 的推理模型。

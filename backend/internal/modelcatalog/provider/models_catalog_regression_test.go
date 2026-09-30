@@ -246,7 +246,9 @@ func TestModelsCatalogGeminiImageSupplementPrecedence(t *testing.T) {
 	require.Equal(t, "local_override", service.GetModelPricing("google/gemini-image-test").PriceSources["output"])
 	raw := service.GetModelPricing("google/gemini-image-test")
 	require.True(t, raw.ImagePricePresent)
-	require.Zero(t, pricing.DefaultImagePrice(raw, pricing.ImageBillingSize1K))
+	unit, found := pricing.DefaultImagePrice(raw, pricing.ImageBillingSize1K)
+	require.True(t, found)
+	require.Zero(t, unit)
 	require.Equal(t, "local_override", raw.PriceSources["image"])
 }
 
