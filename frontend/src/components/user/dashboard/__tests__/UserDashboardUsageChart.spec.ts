@@ -6,6 +6,7 @@ import UserDashboardUsageChart from '../UserDashboardUsageChart.vue'
 import UserDashboardUsageToolbar from '../UserDashboardUsageToolbar.vue'
 import { provideUsageChartState } from '../usageChartState'
 import Select from '@/components/common/Select.vue'
+import { Line } from 'vue-chartjs'
 import { usageAPI } from '@/api/usage'
 import { formatDayKey } from '../usageChartData'
 
@@ -204,5 +205,30 @@ describe('UserDashboardUsageChart', () => {
     expect(wrapper.emitted('refresh')).toHaveLength(1)
     await wrapper.setProps({ refreshing: true })
     expect(button.attributes('disabled')).toBeDefined()
+  })
+
+  it('Token 堆叠以缓存读取垫底，未结束的末段画虚线，并挂上悬停竖线插件', async () => {
+    const today = formatDayKey(new Date())
+    vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(
+      trendOf([{ date: today, requests: 3, actual_cost: 1 }]) as any,
+    )
+    const wrapper = await mountChart()
+    const line = wrapper.findComponent(Line)
+
+    const datasets = line.props('data').datasets
+    expect(datasets.map((item: { label: string }) => item.label)).toEqual([
+      'dashboard.usageChart.series.cacheRead',
+      'dashboard.usageChart.series.cacheCreation',
+      'dashboard.usageChart.series.input',
+      'dashboard.usageChart.series.output',
+    ])
+    expect(datasets[0].cubicInterpolationMode).toBe('monotone')
+
+    // 默认 7 天范围包含今天，最后一段是虚线，之前的段是实线
+    const lastIndex = line.props('data').labels.length - 1
+    expect(datasets[0].segment.borderDash({ p1DataIndex: lastIndex })).toEqual([4, 4])
+    expect(datasets[0].segment.borderDash({ p1DataIndex: lastIndex - 1 })).toBeUndefined()
+
+    expect(line.props('plugins').map((plugin: { id: string }) => plugin.id)).toContain('usageCrosshair')
   })
 })

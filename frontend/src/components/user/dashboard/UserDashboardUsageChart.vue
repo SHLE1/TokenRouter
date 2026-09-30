@@ -82,7 +82,7 @@
         >
           {{ t('dashboard.usageChart.empty') }}
         </div>
-        <Line v-else :data="chartData" :options="chartOptions" />
+        <Line v-else :data="chartData" :options="chartOptions" :plugins="[crosshairPlugin]" />
       </div>
     </div>
   </div>
@@ -99,6 +99,9 @@ import {
   LineElement,
   Tooltip,
   Filler,
+  type Plugin,
+  type ScriptableContext,
+  type ScriptableLineSegmentContext,
   type TooltipItem,
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
@@ -120,6 +123,10 @@ type TokenSeriesKey = 'input_tokens' | 'output_tokens' | 'cache_creation_tokens'
 
 // 请求数和消费折线使用品牌色，浅色取 primary-600，深色取 primary-500。
 const BRAND_LINE_COLOR = { light: '#12A7E8', dark: '#00D2FF' }
+// Token 堆叠从下到上的顺序：占比最大的缓存读取垫底，输出等小量贴在曲线顶部更容易看清。
+const TOKEN_STACK_ORDER: TokenSeriesKey[] = ['cache_read_tokens', 'cache_creation_tokens', 'input_tokens', 'output_tokens']
+// 最后一个时段尚未结束时，末段折线使用的虚线样式。
+const OPEN_SEGMENT_DASH = [4, 4]
 
 const { t } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()
@@ -226,15 +233,44 @@ const axisLabels = computed(() => current.value.map((point) => (
 
 const brandColor = computed(() => (isDark.value ? BRAND_LINE_COLOR.dark : BRAND_LINE_COLOR.light))
 
-// lineDataset 生成统一样式的折线数据集。
-const lineDataset = (label: string, data: Array<number | null>, color: string, fill: boolean | string, fillAlpha = '1f') => ({
+// 窗口包含当前时刻时，最后一个时段（今天或当前小时）还没结束，数据不完整。
+const openBucketIndex = computed(() => (
+  activeRange.value.endAt.getTime() > Date.now() && current.value.length > 1 ? current.value.length - 1 : null
+))
+
+// 未结束的末段画成虚线，避免把还在累计的数据误读成下跌。
+const segmentStyle = {
+  borderDash: (context: ScriptableLineSegmentContext) => (
+    context.p1DataIndex === openBucketIndex.value ? OPEN_SEGMENT_DASH : undefined
+  ),
+}
+
+// gradientFill 生成从折线向下逐渐变淡的填充；图表尚未完成布局时先不填充。
+const gradientFill = (color: string) => (context: ScriptableContext<'line'>) => {
+  const { ctx, chartArea } = context.chart
+  if (!chartArea) return 'transparent'
+  const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+  gradient.addColorStop(0, `${color}40`)
+  gradient.addColorStop(1, `${color}00`)
+  return gradient
+}
+
+// lineDataset 生成统一样式的折线数据集；monotone 插值保证曲线不越过真实数据点。
+const lineDataset = (
+  label: string,
+  data: Array<number | null>,
+  color: string,
+  fill: boolean | string,
+  background: string | ((context: ScriptableContext<'line'>) => CanvasGradient | string),
+) => ({
   label,
   data,
   borderColor: color,
-  backgroundColor: `${color}${fillAlpha}`,
+  backgroundColor: background,
   borderWidth: 2,
   fill,
-  tension: 0.3,
+  cubicInterpolationMode: 'monotone' as const,
+  segment: segmentStyle,
   pointRadius: 0,
   pointHoverRadius: 4,
   pointHoverBorderWidth: 2,
@@ -247,11 +283,13 @@ const chartData = computed(() => {
   const points = current.value
   if (metric.value === 'tokens') {
     // 堆叠面积：第一层填到底，后续每层填到前一层，最上沿即可见分项之和。
-    const visible = tokenSeries.value.filter((series) => !hiddenTokenSeries.value.includes(series.key))
+    const visible = TOKEN_STACK_ORDER
+      .filter((key) => !hiddenTokenSeries.value.includes(key))
+      .map((key) => tokenSeries.value.find((series) => series.key === key)!)
     return {
       labels: axisLabels.value,
       datasets: visible.map((series, index) => ({
-        ...lineDataset(series.label, points.map((point) => point[series.key]), series.color, index === 0 ? 'origin' : '-1', '40'),
+        ...lineDataset(series.label, points.map((point) => point[series.key]), series.color, index === 0 ? 'origin' : '-1', `${series.color}40`),
         borderWidth: 1.5,
       })),
     }
@@ -264,6 +302,7 @@ const chartData = computed(() => {
         points.map((point) => cacheHitRateOf(point.input_tokens, point.cache_creation_tokens, point.cache_read_tokens)),
         CHART_SERIES_COLORS.cacheHitRate,
         'origin',
+        gradientFill(CHART_SERIES_COLORS.cacheHitRate),
       )],
     }
   }
@@ -275,6 +314,7 @@ const chartData = computed(() => {
       points.map((point) => (isCost ? point.actual_cost : point.requests)),
       brandColor.value,
       'origin',
+      gradientFill(brandColor.value),
     )],
   }
 })
@@ -333,11 +373,13 @@ const chartOptions = computed(() => ({
     y: {
       stacked: metric.value === 'tokens',
       beginAtZero: true,
-      ...(metric.value === 'cacheHitRate' ? { max: 100 } : {}),
-      grid: { color: themeColors.value.grid },
-      border: { display: false },
+      // 顶部留白，最高点不贴着图表上沿；命中率固定 0-100%。
+      ...(metric.value === 'cacheHitRate' ? { max: 100 } : { grace: '10%' }),
+      grid: { color: themeColors.value.grid, drawTicks: false },
+      border: { display: false, dash: [3, 3] },
       ticks: {
         color: themeColors.value.text,
+        padding: 8,
         maxTicksLimit: 5,
         font: { size: CHART_TICK_FONT_SIZE },
         callback: (value: string | number) => formatAxisValue(Number(value)),
@@ -345,6 +387,27 @@ const chartOptions = computed(() => ({
     },
   },
 }))
+
+// crosshairPlugin 在悬停的时间点画一条贯穿绘图区的竖线，画在折线下层。
+const crosshairPlugin: Plugin<'line'> = {
+  id: 'usageCrosshair',
+  beforeDatasetsDraw(chart) {
+    const active = chart.getActiveElements()
+    if (!active.length) return
+    const { ctx, chartArea } = chart
+    const x = active[0].element.x
+    ctx.save()
+    ctx.strokeStyle = themeColors.value.muted
+    ctx.globalAlpha = 0.5
+    ctx.lineWidth = 1
+    ctx.setLineDash([3, 3])
+    ctx.beginPath()
+    ctx.moveTo(x, chartArea.top)
+    ctx.lineTo(x, chartArea.bottom)
+    ctx.stroke()
+    ctx.restore()
+  },
+}
 
 const toggleTokenSeries = (key: TokenSeriesKey) => {
   hiddenTokenSeries.value = hiddenTokenSeries.value.includes(key)
