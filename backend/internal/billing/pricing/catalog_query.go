@@ -3,6 +3,7 @@ package pricing
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
@@ -20,15 +21,33 @@ func (s *CatalogQuery) GetModelPricing(modelName string) *LiteLLMModelPricing {
 	if pricing := s.LookupModelCatalogEntry(lookupCandidates); pricing != nil {
 		return pricing
 	}
+	if s.FallbackEntries != nil {
+		// 回退使用单独的来源集合，精确查询仍保留完整供应商目录。
+		fallback := *s
+		fallback.Entries = s.FallbackEntries
+		fallback.Diagnostics = nil
+		price := fallback.lookupFallbackPricing(modelLower, lookupCandidates)
+		s.Diagnostics = append(s.Diagnostics, fallback.Diagnostics...)
+		return price
+	}
+	return s.lookupFallbackPricing(modelLower, lookupCandidates)
+}
+
+func (s *CatalogQuery) lookupFallbackPricing(modelLower string, lookupCandidates []string) *LiteLLMModelPricing {
 	fallbackModel := NormalizeModelNameForPricing(LastSegment(modelLower))
 
 	// 2. 去除日期和部署版本段后，按基础名称模糊匹配。
 	// claude-opus-4-5-20251101 -> claude-opus-4-5
 	baseName := s.ExtractBaseName(fallbackModel)
-	for key, pricing := range s.Entries {
+	if baseName != fallbackModel {
+		if pricing := s.LookupModelCatalogEntry(s.modelLookupCandidates(baseName)); pricing != nil {
+			return pricing
+		}
+	}
+	for _, key := range s.orderedModelNames() {
 		keyBase := s.ExtractBaseName(strings.ToLower(key))
 		if keyBase == baseName {
-			return pricing
+			return s.Entries[key]
 		}
 	}
 
@@ -187,17 +206,21 @@ func (s *CatalogQuery) MatchByModelFamily(model string) *LiteLLMModelPricing {
 		return nil
 	}
 
-	// Phase 3: 在定价数据中查找该系列的价格
+	// 基础型号优先；只有基础条目缺失时才按名称顺序选择系列变体。
 	lookups := matched.pricing
 	if lookups == nil {
 		lookups = matched.match
 	}
+	names := s.orderedModelNames()
 	for _, pattern := range lookups {
-		for key, pricing := range s.Entries {
+		if pricing := s.LookupModelCatalogEntry(s.modelLookupCandidates(pattern)); pricing != nil {
+			return pricing
+		}
+		for _, key := range names {
 			keyLower := strings.ToLower(key)
 			if strings.Contains(keyLower, pattern) {
 				s.legacyf("[Pricing] Fuzzy matched %s -> %s", model, key)
-				return pricing
+				return s.Entries[key]
 			}
 		}
 	}
@@ -348,11 +371,25 @@ func (s *CatalogQuery) GenerateOpenAIModelVariants(model string, datePattern *re
 // CatalogQuery 只持有调用方提供的目录和能力快照，不加载数据或维护缓存。
 // 每次查询独立创建，诊断由 provider 在同一读锁范围内输出。
 type CatalogQuery struct {
-	Entries            map[string]*LiteLLMModelPricing
+	Entries map[string]*LiteLLMModelPricing
+	// FallbackEntries 非 nil 时限定日期、系列与跨型号回退来源；空集合禁止借用远程目录报价。
+	FallbackEntries    map[string]*LiteLLMModelPricing
 	Candidates         func(string) []string
 	IsImageModel       func(string) bool
 	DefaultOpenAIModel string
 	Diagnostics        []CatalogDiagnostic
+}
+
+// orderedModelNames 固定变体选择顺序，避免相同查询受 map 遍历顺序影响。
+func (s *CatalogQuery) orderedModelNames() []string {
+	names := make([]string, 0, len(s.Entries))
+	for name, price := range s.Entries {
+		if price != nil {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 // CatalogDiagnostic 保留原日志的结构化/兼容输出类别，不依赖日志库。

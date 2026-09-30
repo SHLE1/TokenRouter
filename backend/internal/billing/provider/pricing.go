@@ -31,17 +31,18 @@ type PricingRemoteClient interface {
 
 // PricingService 动态价格服务
 type PricingService struct {
-	updateMu         sync.Mutex
-	modelCatalog     *modelcatalog.Catalog
-	catalogETag      string
-	lastCatalogError string
-	catalogBody      []byte
-	options          *Options
-	remoteClient     PricingRemoteClient
-	mu               sync.RWMutex
-	pricingData      map[string]*LiteLLMModelPricing
-	lastUpdated      time.Time
-	localHash        string
+	updateMu            sync.Mutex
+	modelCatalog        *modelcatalog.Catalog
+	catalogETag         string
+	lastCatalogError    string
+	catalogBody         []byte
+	options             *Options
+	remoteClient        PricingRemoteClient
+	mu                  sync.RWMutex
+	pricingData         map[string]*LiteLLMModelPricing
+	fallbackPricingData map[string]*LiteLLMModelPricing
+	lastUpdated         time.Time
+	localHash           string
 	// fallback/override 文件在最近一次成功重建时的内容指纹，定时器据此判断是否
 	// 需要从本地目录缓存重建叠加层。
 	customFilesHash string
@@ -868,6 +869,7 @@ func NewPricingServiceFromSnapshot(options Options, remote PricingRemoteClient, 
 	s := NewPricingService(options, remote)
 	s.pricingData = snapshot.Data
 	s.modelCatalog = snapshot.catalogIdentity
+	s.fallbackPricingData = modelsCatalogFallbackPrices(s.modelCatalog, s.pricingData)
 	s.lastCatalogError = snapshot.LastError
 	s.lastUpdated = snapshot.LastUpdated
 	s.localHash = snapshot.LocalHash
@@ -889,6 +891,7 @@ func (s *PricingService) catalogQuery() *purepricing.CatalogQuery {
 	}
 	return &purepricing.CatalogQuery{
 		Entries:            s.pricingData,
+		FallbackEntries:    s.fallbackPricingData,
 		Candidates:         candidates,
 		IsImageModel:       options.IsImageModel,
 		DefaultOpenAIModel: options.DefaultOpenAIModel,
