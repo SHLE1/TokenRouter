@@ -17,8 +17,6 @@ import (
 
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 	routingadapter "github.com/TokenFlux/TokenRouter/internal/routing/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
 func providePricingConfigService(repo *routingpostgres.PricingConfigStore, groups *routingpostgres.GroupStore, invalidator apikey.APIKeyAuthCacheInvalidator) *routing.PricingConfigService {
@@ -35,7 +33,7 @@ func providePricingConfigService(repo *routingpostgres.PricingConfigStore, group
 }
 
 func providePricingCatalog(calculator *billing.Calculator, prices *pricingprovider.PricingService) *routing.PricingCatalog {
-	return &routing.PricingCatalog{Prices: calculator, Update: calculator.ForceUpdatePricing, NamesByProvider: prices.ListModelNamesByProvider, QoderModels: qoder.DefaultRequestModelIDs, Snapshot: func() routing.DefaultPricingSnapshot {
+	return &routing.PricingCatalog{Prices: calculator, Update: calculator.ForceUpdatePricing, Snapshot: func() routing.DefaultPricingSnapshot {
 		snapshot := prices.ReadOnlySnapshot()
 		data := snapshot.Snapshot()
 		frozen := calculator.WithPriceCatalog(snapshot)

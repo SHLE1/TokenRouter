@@ -19,7 +19,6 @@ vi.mock('@/api/admin', () => ({
       create: vi.fn(),
       update: vi.fn(),
       remove: vi.fn(),
-      syncPricingModels: vi.fn(),
       getModelDefaultPricing: vi.fn()
     },
     groups: {

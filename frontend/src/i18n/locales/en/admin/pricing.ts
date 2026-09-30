@@ -588,11 +588,6 @@ riskControl: {
         ruleModelPricing: 'Model Pricing',
          noGroupsInPricingConfig: 'No groups selected',
          unnamed: 'Unnamed',
-         syncLatestModels: 'Sync Latest Models',
-         syncingModels: 'Syncing...',
-         syncModelsSuccess: 'Synced {count} new model(s)',
-         syncModelsAlreadyUpToDate: 'Models already up to date',
-         syncModelsError: 'Failed to sync models'
        }
      },
 // 用户订阅

@@ -320,7 +320,7 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器显式绑定同一�
 
 `/api/v1/admin/pricing/configs` 及其 `/:id` 子路由提供共享价格配置 CRUD。请求只接受价格字段，模型映射、白名单和功能字段必须通过分组的 `routing_policy` 保存；共享价卡和提供商成本价卡都不包含 `platform`，模型规则统一校验重叠；未知价格配置字段返回 400。原 `/api/v1/admin/channels` 路由已移除并返回 404，管理脚本需要切换地址。
 
-默认价只读查询位于 `/api/v1/admin/pricing/defaults`、`/model` 和 `/models`，`/model` 和 `/models` 不再要求上游平台参数，默认目录列表可保留模型来源标签筛选。具体价格口径见[管理员默认价格查询](model_catalog_and_marketplace.md#gateway_default_pricing)。模型链字段使用 `group_mapped` 语义；历史用量中的共享价格关联字段为 `pricing_config_id`，数值沿用原 ID。
+默认价只读查询位于 `/api/v1/admin/pricing/defaults` 和 `/model`，`/model` 不要求上游平台参数，默认目录列表可保留模型来源标签筛选。价格配置通过手动添加模型规则维护；批量补入目录模型的功能及其 `/api/v1/admin/pricing/defaults/models` 接口已移除。具体价格口径见[管理员默认价格查询](model_catalog_and_marketplace.md#gateway_default_pricing)。模型链字段使用 `group_mapped` 语义；历史用量中的共享价格关联字段为 `pricing_config_id`，数值沿用原 ID。
 
 管理员手动更新价格目录使用 `POST /api/v1/admin/pricing/defaults/update`，不接收价格来源地址或文件路径，复用服务端已配置的目录来源。普通 GET 查询和列表刷新不触发更新。
 

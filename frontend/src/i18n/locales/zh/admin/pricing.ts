@@ -588,11 +588,6 @@ riskControl: {
         ruleModelPricing: '模型定价',
         noGroupsInPricingConfig: '上方平台标签页中未选择分组',
         unnamed: '未命名',
-        syncLatestModels: '同步最新模型',
-        syncingModels: '同步中...',
-        syncModelsSuccess: '已同步 {count} 个新模型',
-        syncModelsAlreadyUpToDate: '模型列表已是最新',
-        syncModelsError: '同步模型失败'
       }
     },
 // 用户订阅
