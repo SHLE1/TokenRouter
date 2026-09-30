@@ -61,33 +61,21 @@ func (s *PricingService) buildModelsCatalog(body []byte) (*modelcatalog.Catalog,
 		if err := json.Unmarshal(data, &supplement); err != nil {
 			return nil, nil, err
 		}
+		// 先应用精确键，再为同一原厂记录的其他查价键补齐空缺。
+		// 这样两种名称显式配置了不同补充价时，不受 map 遍历顺序影响。
 		for model, entry := range supplement {
-			var fields map[string]json.RawMessage
-			if err := json.Unmarshal(entry, &fields); err != nil || fields == nil {
-				continue
+			if err := mergeMediaSupplement(raw, model, entry); err != nil {
+				return nil, nil, err
 			}
-			fields["source"] = json.RawMessage(`"local_supplement"`)
-			if base, exists := raw[model]; exists {
-				var combined map[string]json.RawMessage
-				_ = json.Unmarshal(base, &combined)
-				for _, key := range []string{"output_cost_per_image", "output_cost_per_image_token", "input_cost_per_image_token"} {
-					if _, exists := combined[key]; !exists {
-						if value, ok := fields[key]; ok {
-							combined[key] = value
-							var sources map[string]string
-							_ = json.Unmarshal(combined["price_sources"], &sources)
-							if sources == nil {
-								sources = map[string]string{}
-							}
-							label := map[string]string{"output_cost_per_image": "image", "output_cost_per_image_token": "image_output", "input_cost_per_image_token": "image_input"}[key]
-							sources[label] = "local_supplement"
-							combined["price_sources"], _ = json.Marshal(sources)
-						}
-					}
+		}
+		for model, entry := range supplement {
+			for _, alias := range catalog.FirstPartyAliases(model) {
+				if alias == model {
+					continue
 				}
-				raw[model], _ = json.Marshal(combined)
-			} else {
-				raw[model], _ = json.Marshal(fields)
+				if err := mergeMediaSupplement(raw, alias, entry); err != nil {
+					return nil, nil, err
+				}
 			}
 		}
 	}
@@ -134,8 +122,65 @@ func (s *PricingService) buildModelsCatalog(body []byte) (*modelcatalog.Catalog,
 	if len(raw) == 0 {
 		return catalog, map[string]*LiteLLMModelPricing{}, nil
 	}
-	prices, _, err := pricing.ParsePricingEntries(raw)
+	prices, diagnostics, err := pricing.ParsePricingEntries(raw)
+	if validationErr := diagnostics.ValidationError(); validationErr != nil {
+		return nil, nil, validationErr
+	}
 	return catalog, prices, err
+}
+
+// mergeMediaSupplement 只填补已有记录的媒体单价；显式零值和已有来源标签均保留。
+func mergeMediaSupplement(raw map[string]json.RawMessage, model string, entry json.RawMessage) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(entry, &fields); err != nil {
+		return fmt.Errorf("invalid pricing supplement %s: %w", model, err)
+	}
+	if fields == nil {
+		return fmt.Errorf("invalid pricing supplement %s: expected an object", model)
+	}
+	fields["source"] = json.RawMessage(`"local_supplement"`)
+	base, exists := raw[model]
+	if !exists {
+		body, err := json.Marshal(fields)
+		if err != nil {
+			return err
+		}
+		raw[model] = body
+		return nil
+	}
+	var combined map[string]json.RawMessage
+	if err := json.Unmarshal(base, &combined); err != nil {
+		return err
+	}
+	var sources map[string]string
+	if value, exists := combined["price_sources"]; exists {
+		if err := json.Unmarshal(value, &sources); err != nil {
+			return fmt.Errorf("invalid price_sources for %s: %w", model, err)
+		}
+	}
+	if sources == nil {
+		sources = map[string]string{}
+	}
+	for key, label := range map[string]string{
+		"output_cost_per_image":       "image",
+		"output_cost_per_image_token": "image_output",
+		"input_cost_per_image_token":  "image_input",
+	} {
+		if _, exists := combined[key]; exists {
+			continue
+		}
+		if value, exists := fields[key]; exists {
+			combined[key] = value
+			sources[label] = "local_supplement"
+		}
+	}
+	combined["price_sources"], _ = json.Marshal(sources)
+	body, err := json.Marshal(combined)
+	if err != nil {
+		return err
+	}
+	raw[model] = body
+	return nil
 }
 
 // publishModelsCatalog 只有完整构建成功才替换价格和属性，调用期间由更新锁串行化。
@@ -191,9 +236,10 @@ func (s *PricingService) publishModelsCatalog(body []byte, updated time.Time, pe
 	return nil
 }
 
-func (s *PricingService) loadModelsCatalog() error {
+func (s *PricingService) loadModelsCatalog() (err error) {
 	s.updateMu.Lock()
 	defer s.updateMu.Unlock()
+	defer func() { s.recordCatalogError(err) }()
 	body, readErr := os.ReadFile(s.GetPricingFilePath())
 	updated := time.Now()
 	s.mu.RLock()
@@ -217,7 +263,7 @@ func (s *PricingService) loadModelsCatalog() error {
 		}
 	}
 	cachedBody := body
-	body, err := modelcatalog.Offline()
+	body, err = modelcatalog.Offline()
 	if err != nil {
 		return err
 	}
@@ -254,17 +300,21 @@ func (s *PricingService) loadModelsCatalog() error {
 	return candidateErr
 }
 
+// recordCatalogError 统一记录远程更新和本地重载失败，供管理页查询。
+func (s *PricingService) recordCatalogError(err error) {
+	if err == nil {
+		return
+	}
+	s.mu.Lock()
+	s.lastCatalogError = err.Error()
+	s.mu.Unlock()
+}
+
 // updateModelsCatalog 使用条件请求；网络或解析失败保留整个旧版本。
 func (s *PricingService) updateModelsCatalog(force bool) (err error) {
 	s.updateMu.Lock()
 	defer s.updateMu.Unlock()
-	defer func() {
-		if err != nil {
-			s.mu.Lock()
-			s.lastCatalogError = err.Error()
-			s.mu.Unlock()
-		}
-	}()
+	defer func() { s.recordCatalogError(err) }()
 	if strings.TrimSpace(s.options.RemoteURL) == "" {
 		body, readErr := os.ReadFile(s.GetPricingFilePath())
 		if readErr != nil {

@@ -126,7 +126,10 @@ func (c *CatalogContextPrice) UnmarshalJSON(body []byte) error {
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return err
 	}
-	entries, _, err := ParsePricingEntries(map[string]json.RawMessage{"tier": raw.Pricing})
+	entries, diagnostics, err := ParsePricingEntries(map[string]json.RawMessage{"tier": raw.Pricing})
+	if validationErr := diagnostics.ValidationError(); validationErr != nil {
+		return validationErr
+	}
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,178 @@
+package provider
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/stretchr/testify/require"
+)
+
+// catalogPriceForTest 通过生产价格转换验证目录查价结果，避免只断言原始 JSON。
+func catalogPriceForTest(t *testing.T, service *PricingService, model string) *pricing.ModelPricing {
+	t.Helper()
+	value, _, err := pricing.ResolveModelPricing(model, service.GetModelPricing(model), nil, pricing.ModelPolicy{})
+	require.NoError(t, err)
+	return value
+}
+
+func TestModelsCatalogEmbeddingDefaultPricing(t *testing.T) {
+	service := NewPricingService(Options{ModelsDev: true, DataDir: t.TempDir()}, nil)
+	require.NoError(t, service.Initialize())
+	for _, tc := range []struct {
+		model string
+		price float64
+	}{
+		{"text-embedding-3-small", 0.02},
+		{"text-embedding-3-large", 0.13},
+		{"text-embedding-ada-002", 0.1},
+	} {
+		t.Run(tc.model, func(t *testing.T) {
+			value := catalogPriceForTest(t, service, tc.model)
+			cost := pricing.ComputeTokenBreakdown(value, pricing.UsageTokens{InputTokens: 1000000}, 1, "", true)
+			require.InDelta(t, tc.price, cost.TotalCost, 1e-12)
+		})
+	}
+}
+
+func TestModelsCatalogExplicitLongContextOverrides(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		patch      string
+		inputPrice float64
+		intervals  int
+	}{
+		{"inherit", `{}`, 9, 3},
+		{"disable", `{"long_context_input_token_threshold":0,"long_context_input_cost_multiplier":1,"long_context_output_cost_multiplier":1}`, 3, 0},
+		{"replace", `{"long_context_input_token_threshold":150,"long_context_input_cost_multiplier":2,"long_context_output_cost_multiplier":1.5}`, 6, 2},
+		{"delete override", `{"long_context_input_token_threshold":null}`, 9, 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			patch := filepath.Join(dir, "override.json")
+			require.NoError(t, os.WriteFile(patch, []byte(`{"claude-test":`+tc.patch+`}`), 0o600))
+			service := NewPricingService(Options{ModelsDev: true, DataDir: dir, RemoteURL: "https://models.dev/catalog.json", OverrideFile: patch}, &catalogRemoteFixture{body: []byte(modelsCatalogFixture)})
+			require.NoError(t, service.ForceUpdate())
+			value := catalogPriceForTest(t, service, "claude-test")
+			cost := pricing.ComputeTokenBreakdown(value, pricing.UsageTokens{InputTokens: 201}, 1, "", true)
+			require.InDelta(t, 201*tc.inputPrice/1e6, cost.TotalCost, 1e-12)
+			intervals := pricing.LongContextDisplayPricingIntervals(value, 1)
+			require.Len(t, intervals, tc.intervals)
+			if tc.intervals > 0 {
+				require.InDelta(t, tc.inputPrice/1e6, intervals[len(intervals)-1].InputPricePerToken, 1e-12)
+			}
+		})
+	}
+}
+
+const mediaAliasFixture = `{
+	"models":{"openai/gpt-image-2":{"name":"Image"}},
+	"providers":{
+		"openai":{"models":{
+			"gpt-image-2":{"cost":{"input":5,"output":30}},
+			"gpt-image-2-snapshot":{"canonical_model_id":"openai/gpt-image-2","cost":{"input":4,"output":20}}
+		}},
+		"openrouter":{"models":{"gpt-image-2":{"canonical_model_id":"openai/gpt-image-2","cost":{"input":1,"output":2}}}}
+	}
+}`
+
+func TestModelsCatalogMediaSupplementAliases(t *testing.T) {
+	dir := t.TempDir()
+	supplement := filepath.Join(dir, "supplement.json")
+	patch := filepath.Join(dir, "override.json")
+	require.NoError(t, os.WriteFile(supplement, []byte(`{"gpt-image-2":{"input_cost_per_image_token":0.000008,"output_cost_per_image_token":0.00003}}`), 0o600))
+	service := NewPricingService(Options{ModelsDev: true, DataDir: dir, RemoteURL: "https://models.dev/catalog.json", FallbackFile: supplement, OverrideFile: patch}, &catalogRemoteFixture{body: []byte(mediaAliasFixture)})
+	require.NoError(t, service.ForceUpdate())
+	for _, model := range []string{"gpt-image-2", "openai/gpt-image-2"} {
+		value := catalogPriceForTest(t, service, model)
+		cost := pricing.ComputeTokenBreakdown(value, pricing.UsageTokens{InputTokens: 1000, ImageInputTokens: 1000}, 1, "", true)
+		require.InDelta(t, 0.008, cost.TotalCost, 1e-12, model)
+		require.Equal(t, "local_supplement", service.GetModelPricing(model).PriceSources["image_input"])
+	}
+	for _, model := range []string{"openrouter/gpt-image-2", "gpt-image-2-snapshot", "openai/gpt-image-2-snapshot"} {
+		require.Zero(t, service.GetModelPricing(model).InputCostPerImageToken, model)
+	}
+	// 精确名称上的本地价格覆盖仍高于共享的媒体补充。
+	require.NoError(t, os.WriteFile(patch, []byte(`{"openai/gpt-image-2":{"input_cost_per_image_token":0.000012}}`), 0o600))
+	require.NoError(t, service.ForceUpdate())
+	require.InDelta(t, 12e-6, service.GetModelPricing("openai/gpt-image-2").InputCostPerImageToken, 1e-12)
+	require.InDelta(t, 8e-6, service.GetModelPricing("gpt-image-2").InputCostPerImageToken, 1e-12)
+}
+
+func TestModelsCatalogExactMediaSupplementKeepsExplicitZero(t *testing.T) {
+	dir := t.TempDir()
+	supplement := filepath.Join(dir, "supplement.json")
+	require.NoError(t, os.WriteFile(supplement, []byte(`{
+		"gpt-image-2":{"input_cost_per_image_token":0.000008},
+		"openai/gpt-image-2":{"input_cost_per_image_token":0}
+	}`), 0o600))
+	service := NewPricingService(Options{ModelsDev: true, DataDir: dir, RemoteURL: "https://models.dev/catalog.json", FallbackFile: supplement}, &catalogRemoteFixture{body: []byte(mediaAliasFixture)})
+	require.NoError(t, service.ForceUpdate())
+	require.InDelta(t, 8e-6, service.GetModelPricing("gpt-image-2").InputCostPerImageToken, 1e-12)
+	qualified := service.GetModelPricing("openai/gpt-image-2")
+	require.True(t, qualified.ImageInputPricePresent)
+	require.Zero(t, qualified.InputCostPerImageToken)
+}
+
+func TestModelsCatalogInvalidPricePatchKeepsPublishedSnapshot(t *testing.T) {
+	dir := t.TempDir()
+	patch := filepath.Join(dir, "override.json")
+	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture)}
+	service := NewPricingService(Options{ModelsDev: true, DataDir: dir, RemoteURL: "https://models.dev/catalog.json", OverrideFile: patch}, remote)
+	require.NoError(t, service.ForceUpdate())
+	before := service.AttributesSnapshot()
+	beforePrices := service.Snapshot().Data
+	beforeFile, err := os.ReadFile(service.GetPricingFilePath())
+	require.NoError(t, err)
+	remote.body = []byte(strings.ReplaceAll(modelsCatalogFixture, `"name":"Claude"`, `"name":"Changed"`))
+	for _, tc := range []struct {
+		name  string
+		patch string
+		field string
+	}{
+		{"base price", `{"input_cost_per_token":"invalid"}`, "input_cost_per_token"},
+		{"tier price", `{"context_prices":[{"threshold":100,"pricing":{"input_cost_per_token":"invalid","output_cost_per_token":0.000015}}]}`, "input_cost_per_token"},
+		{"threshold", `{"long_context_input_token_threshold":"invalid"}`, "long_context_input_token_threshold"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.NoError(t, os.WriteFile(patch, []byte(`{"claude-test":`+tc.patch+`}`), 0o600))
+			err := service.ForceUpdate()
+			require.Error(t, err)
+			require.ErrorContains(t, err, "claude-test")
+			require.ErrorContains(t, err, tc.field)
+			after := service.AttributesSnapshot()
+			require.Equal(t, before.Version, after.Version)
+			require.Equal(t, before.LastUpdated, after.LastUpdated)
+			require.Equal(t, before.Items, after.Items)
+			require.Equal(t, beforePrices, service.Snapshot().Data)
+			require.Contains(t, after.LastError, tc.field)
+			afterFile, err := os.ReadFile(service.GetPricingFilePath())
+			require.NoError(t, err)
+			require.Equal(t, beforeFile, afterFile)
+		})
+	}
+	// 合法的零价可以正常发布，并清除之前的错误。
+	require.NoError(t, os.WriteFile(patch, []byte(`{"claude-test":{"input_cost_per_token":0}}`), 0o600))
+	require.NoError(t, service.ForceUpdate())
+	require.Zero(t, service.GetModelPricing("claude-test").InputCostPerToken)
+	require.Empty(t, service.AttributesSnapshot().LastError)
+	require.NotNil(t, service.ModelAttributes("attributes-only").DisplayName)
+}
+
+func TestModelsCatalogInvalidLocalReloadReportsError(t *testing.T) {
+	dir := t.TempDir()
+	patch := filepath.Join(dir, "override.json")
+	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture), etag: "v1"}
+	service := NewPricingService(Options{ModelsDev: true, DataDir: dir, RemoteURL: "https://models.dev/catalog.json", OverrideFile: patch}, remote)
+	require.NoError(t, service.ForceUpdate())
+	before := service.Snapshot().Data
+	require.NoError(t, os.WriteFile(patch, []byte(`{"claude-test":{"input_cost_per_token":"invalid"}}`), 0o600))
+	// 定时器先收到远程 304，随后仍须报告本地文件重载的校验错误。
+	remote.unchanged = true
+	require.NoError(t, service.SyncWithRemote())
+	service.ReloadIfCustomFilesChanged()
+	require.Contains(t, service.AttributesSnapshot().LastError, "input_cost_per_token")
+	require.Equal(t, before, service.Snapshot().Data)
+}
