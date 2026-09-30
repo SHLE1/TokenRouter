@@ -610,7 +610,7 @@ func TestModelMarketplaceDisplayPricing_SharedImageRateUsesGroupMultiplier(t *te
 }
 
 func TestModelMarketplaceModelModalitiesComeFromPricingMetadata(t *testing.T) {
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-image-2": {Mode: "image_generation", InputCostPerImageToken: 8e-6},
 		"gpt-5.5":     {Mode: "chat", SupportsVision: true},
 	}})
@@ -631,7 +631,7 @@ func TestModelMarketplaceModelModalitiesComeFromPricingMetadata(t *testing.T) {
 }
 
 func TestModelMarketplacePublicModelsIncludeModalities(t *testing.T) {
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-image-2": {Mode: "image_generation", InputCostPerImageToken: 8e-6},
 	}})
 	billingService := newMarketplaceCalculator(pricingSvc, nil)
@@ -660,7 +660,7 @@ func TestModelMarketplaceGeminiTierModalitiesPreservePublicIDs(t *testing.T) {
 		SupportedModalities:       []string{"text", "image", "audio", "video"},
 		SupportedOutputModalities: []string{"text"},
 	}
-	pricingSvc := newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
+	pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gemini-3.7-flash": pricing, "gemini-3.8-flash": pricing,
 	}})
 	svc := newMarketplaceFixture(nil, nil, newMarketplaceCalculator(pricingSvc, nil), nil)

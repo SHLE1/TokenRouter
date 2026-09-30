@@ -44,7 +44,7 @@ Claude Code、Codex、Gemini、Grok、OpenCode 与 CC Switch 配置按用户选�
 <a id="model_catalog_metadata_lookup"></a>
 ## 目录元数据查询
 
-`modelcatalog` 解析 models.dev 统一目录并拥有供应商身份索引、属性与内容版本。`billing/provider` 在原有生命周期中下载、缓存和原子发布统一目录及其价格投影；`billing/pricing` 将目录报价归一为 `CatalogModelPricing` 计费模型，并解释本地补充、覆盖及计费回退。价格与属性不会独立更新，候选目录失败时保留整个旧版本。代理失败策略及 URL 校验继续由现有出站边界执行。
+`modelcatalog` 解析 models.dev 统一目录并拥有供应商身份索引、属性与内容版本。`modelcatalog/provider.Service` 在应用生命周期中下载、缓存和原子发布统一目录及其价格投影；`billing/pricing` 将目录报价归一为 `CatalogModelPricing` 计费模型，并解释本地补充、覆盖及计费回退。app 的独立目录装配只创建一个运行实例，计费和属性消费者共享该实例。目录维护步骤封装在运行时内，对外提供生命周期、查询、快照和强制更新。价格与属性不会独立更新，候选目录失败时保留整个旧版本。代理失败策略及 URL 校验继续由现有出站边界执行。
 
 生产只使用 models.dev 加载流程，远程入口为 `https://models.dev/catalog.json`，按 `pricing.check_interval_minutes` 默认每 10 分钟检查，使用 ETag 条件请求和本地内容摘要；管理员可强制更新。程序内嵌经过解析验证的压缩离线快照，并附 models.dev 的 MIT 许可。首次启动和网络故障可以使用磁盘或离线目录，缓存文件为 `models_dev_catalog.json`，完整解析成功后通过临时文件替换。管理员接口返回版本、最近成功更新时间与最近更新错误。 本地文件在合并前将旧 `litellm_provider` 归一为 `provider`，显式新字段（含空值和 `null`）优先；内部来源分类为 `catalog`，不会覆盖实际数据出处。远程 304 不跳过本地层校验。
 

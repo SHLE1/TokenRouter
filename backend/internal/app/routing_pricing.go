@@ -8,13 +8,10 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 	routingadapter "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 )
@@ -32,7 +29,7 @@ func providePricingConfigService(repo *routingpostgres.PricingConfigStore, group
 	}})
 }
 
-func providePricingCatalog(calculator *billing.Calculator, prices *pricingprovider.PricingService) *routing.PricingCatalog {
+func providePricingCatalog(calculator *billing.Calculator, prices *catalogprovider.Service) *routing.PricingCatalog {
 	return &routing.PricingCatalog{Prices: calculator, Update: calculator.ForceUpdatePricing, Snapshot: func() routing.DefaultPricingSnapshot {
 		snapshot := prices.ReadOnlySnapshot()
 		data := snapshot.Snapshot()

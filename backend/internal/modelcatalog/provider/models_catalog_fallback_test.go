@@ -11,7 +11,7 @@ import (
 
 // TestModelsCatalogFallbackIsStable 使用实际目录验证相同用量始终按原厂完整价卡结算。
 func TestModelsCatalogFallbackIsStable(t *testing.T) {
-	service := NewPricingService(Options{DataDir: t.TempDir()}, nil)
+	service := NewService(Options{DataDir: t.TempDir()}, nil)
 	require.NoError(t, service.Initialize())
 	for _, model := range []string{"claude-opus-4-5", "claude-opus-4-6"} {
 		t.Run(model, func(t *testing.T) {
@@ -46,13 +46,13 @@ const fallbackOriginFixture = `{"providers":{
 func TestModelsCatalogFallbackOriginAndOverrides(t *testing.T) {
 	dir := t.TempDir()
 	patch := filepath.Join(dir, "override.json")
-	service := NewPricingService(Options{
+	service := NewService(Options{
 		DataDir:      dir,
 		RemoteURL:    "https://models.dev/catalog.json",
 		OverrideFile: patch,
 	}, &catalogRemoteFixture{body: []byte(fallbackOriginFixture)})
 	require.NoError(t, service.ForceUpdate())
-	check := func(reader *PricingService, input float64) {
+	check := func(reader *Service, input float64) {
 		for range 20 {
 			for _, model := range []string{"claude-opus-4-6-thinking", "claude-opus-4-6-20990101"} {
 				require.InDelta(t, input, reader.GetModelPricing(model).InputCostPerToken, 1e-12)
@@ -80,7 +80,7 @@ func TestModelsCatalogFallbackOriginAndOverrides(t *testing.T) {
 
 func TestModelsCatalogFallbackDoesNotBorrowRelayOnlyModel(t *testing.T) {
 	remote := &catalogRemoteFixture{body: []byte(`{"providers":{"relay":{"models":{"claude-opus-4-6":{"cost":{"input":1,"output":2}}}}}}`)}
-	service := NewPricingService(Options{DataDir: t.TempDir(), RemoteURL: "https://models.dev/catalog.json"}, remote)
+	service := NewService(Options{DataDir: t.TempDir(), RemoteURL: "https://models.dev/catalog.json"}, remote)
 	require.NoError(t, service.ForceUpdate())
 	// 唯一来源的显式名称仍可查询；未知变体不因此获得该中继的报价。
 	require.NotNil(t, service.GetModelPricing("claude-opus-4-6"))

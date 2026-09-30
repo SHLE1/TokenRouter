@@ -25,7 +25,7 @@ func TestCatalogQueryFreezesOneCandidateFactory(t *testing.T) {
 			return []string{model}
 		}
 	}}
-	service := NewPricingServiceFromSnapshot(options, nil, Snapshot{Data: map[string]*CatalogModelPricing{"priced-model": {InputCostPerToken: 0.001}}})
+	service := NewServiceFromSnapshot(options, nil, Snapshot{Data: map[string]*CatalogModelPricing{"priced-model": {InputCostPerToken: 0.001}}})
 	price := service.GetModelPricing("gpt-9.0-20260101")
 	require.NotNil(t, price)
 	require.Equal(t, 0.001, price.InputCostPerToken)
@@ -35,7 +35,7 @@ func TestCatalogQueryFreezesOneCandidateFactory(t *testing.T) {
 
 // TestCatalogSnapshotIsIndependent 验证快照不暴露可写缓存别名，并保留 nil 与显式空切片。
 func TestCatalogSnapshotIsIndependent(t *testing.T) {
-	service := NewPricingServiceFromSnapshot(Options{}, nil, Snapshot{Data: map[string]*CatalogModelPricing{"model": {InputCostPerToken: 1, SupportedModalities: []string{"text"}, SupportedOutputModalities: []string{}}}})
+	service := NewServiceFromSnapshot(Options{}, nil, Snapshot{Data: map[string]*CatalogModelPricing{"model": {InputCostPerToken: 1, SupportedModalities: []string{"text"}, SupportedOutputModalities: []string{}}}})
 	snapshot := service.Snapshot()
 	require.NotNil(t, snapshot.Data["model"].SupportedOutputModalities)
 	snapshot.Data["model"].InputCostPerToken = 2
@@ -44,7 +44,7 @@ func TestCatalogSnapshotIsIndependent(t *testing.T) {
 	stored := service.Snapshot().Data["model"]
 	require.Equal(t, 1.0, stored.InputCostPerToken)
 	require.Equal(t, []string{"text"}, stored.SupportedModalities)
-	empty := NewPricingServiceFromSnapshot(Options{}, nil, Snapshot{})
+	empty := NewServiceFromSnapshot(Options{}, nil, Snapshot{})
 	require.Nil(t, empty.Snapshot().Data)
 }
 
@@ -58,7 +58,7 @@ func (r *lifecyclePricingRemote) FetchCatalog(context.Context, string, string) (
 // TestPricingConstructionAndLifecycle 验证构造不加载数据；显式初始化后才启动唯一更新任务，重复停止等待同一任务退出。
 func TestPricingConstructionAndLifecycle(t *testing.T) {
 	remote := &lifecyclePricingRemote{}
-	service := NewPricingService(Options{DataDir: t.TempDir(), RemoteURL: "https://pricing.invalid/catalog"}, remote)
+	service := NewService(Options{DataDir: t.TempDir(), RemoteURL: "https://pricing.invalid/catalog"}, remote)
 	require.Zero(t, remote.calls.Load())
 	require.NoError(t, service.Initialize())
 	require.Zero(t, remote.calls.Load())
@@ -77,7 +77,7 @@ func TestPricingConcurrentReadAndReload(t *testing.T) {
 	second := filepath.Join(dir, "second.json")
 	require.NoError(t, os.WriteFile(first, []byte(`{"providers":{"openai":{"models":{"model":{"cost":{"input":1000000,"output":2000000}}}}}}`), 0o600))
 	require.NoError(t, os.WriteFile(second, []byte(`{"providers":{"openai":{"models":{"model":{"cost":{"input":3000000,"output":4000000}}}}}}`), 0o600))
-	service := NewPricingService(Options{DataDir: dir}, nil)
+	service := NewService(Options{DataDir: dir}, nil)
 	require.NoError(t, service.publishModelsCatalog(readCatalogTestFile(t, first), time.Now(), false))
 	var readers sync.WaitGroup
 	var inconsistent atomic.Bool

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newPricingServiceWithOverride 使用真实离线目录测试本地覆盖，不复制旧加载流程。
-func newPricingServiceWithOverride(t *testing.T, patch string) *PricingService {
+// newCatalogWithOverride 使用真实离线目录测试本地覆盖，不复制旧加载流程。
+func newCatalogWithOverride(t *testing.T, patch string) *Service {
 	t.Helper()
 	service := newOfflinePricingFixture(t)
 	service.options.OverrideFile = filepath.Join(t.TempDir(), "overrides.json")
@@ -27,7 +27,7 @@ func TestPricingOverride_FieldMerge(t *testing.T) {
 		{"legacy null", `"litellm_provider":null`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			service := newPricingServiceWithOverride(t, `{"gpt-5.5":{"input_cost_per_token":0,"cache_read_input_token_cost":null,`+tc.patch+`}}`)
+			service := newCatalogWithOverride(t, `{"gpt-5.5":{"input_cost_per_token":0,"cache_read_input_token_cost":null,`+tc.patch+`}}`)
 			before := service.GetModelPricing("gpt-5.5")
 			require.NoError(t, service.ForceUpdate())
 			after := service.GetModelPricing("gpt-5.5")
@@ -41,7 +41,7 @@ func TestPricingOverride_FieldMerge(t *testing.T) {
 
 // TestPricingOverride_LoadPipeline 验证覆盖层既能修改补充条目，也能添加独立模型。
 func TestPricingOverride_LoadPipeline(t *testing.T) {
-	service := newHotReloadPricingService(t,
+	service := newHotReloadCatalog(t,
 		`{"local-model":{"litellm_provider":"custom","input_cost_per_token":0.000004,"output_cost_per_token":0.000008}}`,
 		`{"local-model":{"input_cost_per_token":0.000009},"new-model":{"provider":"custom","input_cost_per_token":0.000005,"output_cost_per_token":0.00001}}`)
 	require.InDelta(t, 9e-6, service.GetModelPricing("local-model").InputCostPerToken, 1e-12)
@@ -54,7 +54,7 @@ func TestPricingOverride_LoadPipeline(t *testing.T) {
 func TestPricingOverride_IneffectiveEntryWarns(t *testing.T) {
 	sink, restore := captureStructuredLog(t)
 	defer restore()
-	service := newHotReloadPricingService(t, "", `{"typo-model":{"long_context_input_token_threshold":0}}`)
+	service := newHotReloadCatalog(t, "", `{"typo-model":{"long_context_input_token_threshold":0}}`)
 	require.NotContains(t, service.Snapshot().Data, "typo-model")
 	require.True(t, sink.ContainsMessageAtLevel("override had no effect for 1 model(s): typo-model", "warn"))
 }
@@ -64,10 +64,10 @@ func TestPricingOverride_InvalidLayerKeepsSnapshot(t *testing.T) {
 	for _, body := range []string{`null`, `[]`, `{invalid`, `{"remote-model":null}`, `{"remote-model":"oops"}`, `{"remote-model":{"input_cost_per_token":"bad"}}`} {
 		for _, layer := range []string{"override", "supplement"} {
 			t.Run(layer+body, func(t *testing.T) {
-				service := newHotReloadPricingService(t, `{}`, `{}`)
+				service := newHotReloadCatalog(t, `{}`, `{}`)
 				before := service.Snapshot()
 				attrs := service.AttributesSnapshot()
-				disk := readCatalogTestFile(t, service.GetPricingFilePath())
+				disk := readCatalogTestFile(t, service.catalogFilePath())
 				path := service.options.OverrideFile
 				if layer == "supplement" {
 					path = service.options.FallbackFile
@@ -78,7 +78,7 @@ func TestPricingOverride_InvalidLayerKeepsSnapshot(t *testing.T) {
 				require.Equal(t, attrs.Items, service.AttributesSnapshot().Items)
 				require.Equal(t, before.LastUpdated, service.Snapshot().LastUpdated)
 				require.Equal(t, before.LocalHash, service.Snapshot().LocalHash)
-				require.Equal(t, disk, readCatalogTestFile(t, service.GetPricingFilePath()))
+				require.Equal(t, disk, readCatalogTestFile(t, service.catalogFilePath()))
 				require.NotEmpty(t, service.AttributesSnapshot().LastError)
 				require.NoError(t, os.Remove(path))
 				require.NoError(t, service.ForceUpdate())
@@ -90,7 +90,7 @@ func TestPricingOverride_InvalidLayerKeepsSnapshot(t *testing.T) {
 
 // TestPricingOverride_DisablesGPT55LadderOnDefaultCatalog 验证显式零阈值关闭绝对阶梯，删除覆盖后恢复目录规则。
 func TestPricingOverride_DisablesGPT55LadderOnDefaultCatalog(t *testing.T) {
-	service := newPricingServiceWithOverride(t, `{"gpt-5.5":{"long_context_input_token_threshold":0}}`)
+	service := newCatalogWithOverride(t, `{"gpt-5.5":{"long_context_input_token_threshold":0}}`)
 	require.NotEmpty(t, service.GetModelPricing("gpt-5.5").ContextPrices)
 	require.NoError(t, service.ForceUpdate())
 	price, err := newBillingFixture(service).GetModelPricing("gpt-5.5")

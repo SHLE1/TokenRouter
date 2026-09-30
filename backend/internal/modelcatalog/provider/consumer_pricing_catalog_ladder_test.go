@@ -45,7 +45,7 @@ func TestParsePricingData_DerivesLongContextFromAboveTierFields(t *testing.T) {
 }
 
 func TestGetModelPricing_XAIThresholdInclusive(t *testing.T) {
-	service := newBillingFixture(newStubPricingServiceFromJSON(t, `{
+	service := newBillingFixture(newStubCatalogFromJSON(t, `{
 		"grok-4.5": {"provider": "xai", "mode": "chat",
 			"input_cost_per_token": 2e-06, "output_cost_per_token": 6e-06,
 			"input_cost_per_token_above_200k_tokens": 4e-06,
@@ -74,7 +74,7 @@ func TestParsePricingData_WarnsOrphanCacheTierFields(t *testing.T) {
 	logSink, restore := captureStructuredLog(t)
 	defer restore()
 
-	service := newHotReloadPricingService(t, `{
+	service := newHotReloadCatalog(t, `{
 		"gemini-orphan": {"provider": "vertex_ai-language-models", "mode": "chat",
 			"input_cost_per_token": 1.25e-06, "output_cost_per_token": 1e-05,
 			"input_cost_per_token_above_200k_tokens": 2.5e-06,
@@ -101,7 +101,7 @@ func TestParsePricingData_WarnsLopsidedLongContextLadder(t *testing.T) {
 	logSink, restore := captureStructuredLog(t)
 	defer restore()
 
-	service := newHotReloadPricingService(t, `{
+	service := newHotReloadCatalog(t, `{
 		"mixed-versions": {"provider": "openai", "mode": "chat",
 			"input_cost_per_token": 5e-06, "output_cost_per_token": 3e-05,
 			"input_cost_per_token_above_272k_tokens": 8e-06,
@@ -132,7 +132,7 @@ func TestCalculateCost_PartialLongContextMultiplierDefaultsToOne(t *testing.T) {
 	tokens := billingpricing.UsageTokens{InputTokens: 300000, OutputTokens: 1000, CacheReadTokens: 10000}
 
 	t.Run("only input multiplier", func(t *testing.T) {
-		service := newBillingFixture(newStubPricingServiceFromJSON(t, `{
+		service := newBillingFixture(newStubCatalogFromJSON(t, `{
 			"partial-in": {"provider": "openai", "mode": "chat",
 				"input_cost_per_token": 2e-06, "output_cost_per_token": 1e-05,
 				"cache_read_input_token_cost": 2e-07,
@@ -147,7 +147,7 @@ func TestCalculateCost_PartialLongContextMultiplierDefaultsToOne(t *testing.T) {
 	})
 
 	t.Run("only output multiplier", func(t *testing.T) {
-		service := newBillingFixture(newStubPricingServiceFromJSON(t, `{
+		service := newBillingFixture(newStubCatalogFromJSON(t, `{
 			"partial-out": {"provider": "openai", "mode": "chat",
 				"input_cost_per_token": 2e-06, "output_cost_per_token": 1e-05,
 				"cache_read_input_token_cost": 2e-07,
@@ -164,7 +164,7 @@ func TestCalculateCost_PartialLongContextMultiplierDefaultsToOne(t *testing.T) {
 
 // TestDisplayPricing_PartialLongContextMultiplierDefaultsToOne 验证模型广场展示必须与结算路径使用相同的缺省倍率，避免部分覆盖把一侧显示成免费。
 func TestDisplayPricing_PartialLongContextMultiplierDefaultsToOne(t *testing.T) {
-	service := newBillingFixture(newStubPricingServiceFromJSON(t, `{
+	service := newBillingFixture(newStubCatalogFromJSON(t, `{
 		"partial-display": {"provider": "openai", "mode": "chat",
 			"input_cost_per_token": 2e-06, "output_cost_per_token": 1e-05,
 			"long_context_input_token_threshold": 272000,
@@ -177,7 +177,7 @@ func TestDisplayPricing_PartialLongContextMultiplierDefaultsToOne(t *testing.T) 
 }
 
 func TestCalculateCost_ClaudeSonnetCatalogLadderIsDataDriven(t *testing.T) {
-	service := newBillingFixture(newStubPricingServiceFromJSON(t, `{
+	service := newBillingFixture(newStubCatalogFromJSON(t, `{
 		"claude-sonnet-4-5": {"provider": "anthropic", "mode": "chat",
 			"input_cost_per_token": 3e-06, "output_cost_per_token": 1.5e-05,
 			"cache_read_input_token_cost": 3e-07,

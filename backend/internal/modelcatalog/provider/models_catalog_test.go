@@ -30,7 +30,7 @@ func (r *catalogRemoteFixture) FetchCatalog(_ context.Context, _ string, validat
 
 func TestModelsCatalogAtomicUpdateAndUnpricedAttributes(t *testing.T) {
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture), etag: "v1"}
-	s := NewPricingService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: t.TempDir()}, remote)
+	s := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: t.TempDir()}, remote)
 	require.NoError(t, s.ForceUpdate())
 	require.Equal(t, "No price", *s.ModelAttributes("attributes-only").DisplayName)
 	require.False(t, *s.ModelAttributes("attributes-only").Temperature)
@@ -46,7 +46,7 @@ func TestModelsCatalogAtomicUpdateAndUnpricedAttributes(t *testing.T) {
 	require.NotEmpty(t, after.LastError)
 	require.Equal(t, price.InputCostPerToken, s.GetModelPricing("claude-test").InputCostPerToken)
 	remote.unchanged = true
-	require.NoError(t, s.SyncWithRemote())
+	require.NoError(t, s.syncWithRemote())
 	require.Equal(t, "v1", remote.validators[len(remote.validators)-1])
 	require.Empty(t, s.AttributesSnapshot().LastError)
 }
@@ -56,7 +56,7 @@ func TestModelsCatalogOverrideAndConcurrentReaders(t *testing.T) {
 	file := filepath.Join(dir, "override.json")
 	require.NoError(t, os.WriteFile(file, []byte(`{"claude-test":{"cache_creation_input_token_cost_above_1hr":0.000012}}`), 0o600))
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture)}
-	s := NewPricingService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, OverrideFile: file}, remote)
+	s := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, OverrideFile: file}, remote)
 	require.NoError(t, s.ForceUpdate())
 	require.InDelta(t, 12e-6, s.GetModelPricing("claude-test").CacheCreationInputTokenCostAbove1hr, 1e-12)
 	var wg sync.WaitGroup
@@ -78,23 +78,23 @@ func TestModelsCatalogOverrideAndConcurrentReaders(t *testing.T) {
 }
 
 func TestModelsCatalogOfflineFirstStart(t *testing.T) {
-	s := NewPricingService(Options{DataDir: t.TempDir()}, nil)
+	s := NewService(Options{DataDir: t.TempDir()}, nil)
 	require.NoError(t, s.Initialize())
 	require.NotNil(t, s.ModelAttributes("claude-sonnet-4-5").Context)
-	require.FileExists(t, s.GetPricingFilePath())
+	require.FileExists(t, s.catalogFilePath())
 }
 
 func TestModelsCatalogBrokenOverrideBootAndRecovery(t *testing.T) {
 	dir := t.TempDir()
 	patch := filepath.Join(dir, "override.json")
 	require.NoError(t, os.WriteFile(patch, []byte("broken"), 0o600))
-	s := NewPricingService(Options{DataDir: dir, OverrideFile: patch}, nil)
+	s := NewService(Options{DataDir: dir, OverrideFile: patch}, nil)
 	require.NoError(t, s.Initialize())
 	require.NotEmpty(t, s.AttributesSnapshot().LastError)
 	require.NotNil(t, s.ModelAttributes("claude-sonnet-4-5").Context)
 	require.Equal(t, s.GetModelPricing("anthropic/claude-opus-4-6"), s.GetModelPricing("claude-opus-4-6-thinking"))
 	require.NoError(t, os.WriteFile(patch, []byte(`{"claude-sonnet-4-5":{"input_cost_per_token":0.000007}}`), 0o600))
-	require.NoError(t, s.ReloadCustomPricingLayers())
+	require.NoError(t, s.reloadCustomPricingLayers())
 	require.Empty(t, s.AttributesSnapshot().LastError)
 	require.InDelta(t, 7e-6, s.GetModelPricing("claude-sonnet-4-5").InputCostPerToken, 1e-12)
 }
@@ -102,7 +102,7 @@ func TestModelsCatalogBrokenOverrideBootAndRecovery(t *testing.T) {
 func TestModelsCatalogReadOnlyCacheStillServesOfflineData(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "not-a-directory")
 	require.NoError(t, os.WriteFile(path, []byte("file"), 0o600))
-	s := NewPricingService(Options{DataDir: path}, nil)
+	s := NewService(Options{DataDir: path}, nil)
 	require.NoError(t, s.Initialize())
 	require.NotNil(t, s.ModelAttributes("claude-sonnet-4-5").Context)
 }
@@ -112,39 +112,39 @@ func TestModelsCatalogConditionalUpdate(t *testing.T) {
 	dir := t.TempDir()
 	patch := filepath.Join(dir, "override.json")
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture), etag: "v1"}
-	service := NewPricingService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, OverrideFile: patch}, remote)
+	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, OverrideFile: patch}, remote)
 	require.NoError(t, service.ForceUpdate())
-	require.NoError(t, service.SyncWithRemote())
+	require.NoError(t, service.syncWithRemote())
 	require.Equal(t, []string{"", "v1"}, remote.validators)
 	require.NoError(t, service.ForceUpdate())
 	require.Equal(t, "", remote.validators[2])
 	before := service.Snapshot()
 	remote.unchanged = true
 	require.NoError(t, os.WriteFile(patch, []byte(`{"claude-test":{"input_cost_per_token":0}}`), 0o600))
-	require.NoError(t, service.SyncWithRemote())
+	require.NoError(t, service.syncWithRemote())
 	require.Zero(t, service.GetModelPricing("claude-test").InputCostPerToken)
 	require.Equal(t, before.LocalHash, service.Snapshot().LocalHash)
 	require.Equal(t, before.LastUpdated, service.Snapshot().LastUpdated)
 	require.NoError(t, os.Remove(patch))
-	require.NoError(t, service.SyncWithRemote())
+	require.NoError(t, service.syncWithRemote())
 	require.InDelta(t, 3e-6, service.GetModelPricing("claude-test").InputCostPerToken, 1e-12)
 }
 
 // TestModelsCatalogRejectsLegacyRemote 验证自定义旧远程文件报迁移错误，内存和磁盘版本均保持不变。
 func TestModelsCatalogRejectsLegacyRemote(t *testing.T) {
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture)}
-	service := NewPricingService(Options{RemoteURL: "https://custom.example/prices.json", DataDir: t.TempDir()}, remote)
+	service := NewService(Options{RemoteURL: "https://custom.example/prices.json", DataDir: t.TempDir()}, remote)
 	require.NoError(t, service.ForceUpdate())
 	before := service.Snapshot()
 	attrs := service.AttributesSnapshot()
-	disk := readCatalogTestFile(t, service.GetPricingFilePath())
+	disk := readCatalogTestFile(t, service.catalogFilePath())
 	remote.body = []byte(`{"gpt-test":{"input_cost_per_token":1}}`)
 	require.ErrorContains(t, service.ForceUpdate(), "legacy pricing JSON")
 	require.Equal(t, before.Data, service.Snapshot().Data)
 	require.Equal(t, attrs.Items, service.AttributesSnapshot().Items)
 	require.Equal(t, before.LocalHash, service.Snapshot().LocalHash)
 	require.Equal(t, before.LastUpdated, service.Snapshot().LastUpdated)
-	require.Equal(t, disk, readCatalogTestFile(t, service.GetPricingFilePath()))
+	require.Equal(t, disk, readCatalogTestFile(t, service.catalogFilePath()))
 }
 
 // TestModelsCatalogDroppedAbsoluteTierWarns 验证绝对阶梯消失时沿用更新告警。
@@ -152,7 +152,7 @@ func TestModelsCatalogDroppedAbsoluteTierWarns(t *testing.T) {
 	sink, restore := captureStructuredLog(t)
 	defer restore()
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture)}
-	service := NewPricingService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: t.TempDir()}, remote)
+	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: t.TempDir()}, remote)
 	require.NoError(t, service.ForceUpdate())
 	remote.body = []byte(`{"providers":{"anthropic":{"models":{"claude-test":{"cost":{"input":3,"output":15}}}}}}`)
 	require.NoError(t, service.ForceUpdate())
@@ -165,7 +165,7 @@ func TestModelsCatalogAttributesOnlyWithUnknownPatch(t *testing.T) {
 	file := filepath.Join(dir, "override.json")
 	require.NoError(t, os.WriteFile(file, []byte(`{"typo":{"long_context_input_token_threshold":0}}`), 0o600))
 	remote := &catalogRemoteFixture{body: []byte(`{"providers":{"openai":{"models":{"attributes-only":{"name":"No prices"}}}}}`)}
-	service := NewPricingService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, OverrideFile: file}, remote)
+	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, OverrideFile: file}, remote)
 	require.NoError(t, service.ForceUpdate())
 	require.Empty(t, service.Snapshot().Data)
 	require.Equal(t, "No prices", *service.ModelAttributes("attributes-only").DisplayName)

@@ -11,7 +11,7 @@ import (
 )
 
 // catalogPriceForTest 通过生产价格转换验证目录查价结果，避免只断言原始 JSON。
-func catalogPriceForTest(t *testing.T, service *PricingService, model string) *pricing.ModelPricing {
+func catalogPriceForTest(t *testing.T, service *Service, model string) *pricing.ModelPricing {
 	t.Helper()
 	value, _, err := pricing.ResolveModelPricing(model, service.GetModelPricing(model), nil, pricing.ModelPolicy{})
 	require.NoError(t, err)
@@ -19,7 +19,7 @@ func catalogPriceForTest(t *testing.T, service *PricingService, model string) *p
 }
 
 func TestModelsCatalogEmbeddingDefaultPricing(t *testing.T) {
-	service := NewPricingService(Options{DataDir: t.TempDir()}, nil)
+	service := NewService(Options{DataDir: t.TempDir()}, nil)
 	require.NoError(t, service.Initialize())
 	for _, tc := range []struct {
 		model string
@@ -53,7 +53,7 @@ func TestModelsCatalogExplicitLongContextOverrides(t *testing.T) {
 			dir := t.TempDir()
 			patch := filepath.Join(dir, "override.json")
 			require.NoError(t, os.WriteFile(patch, []byte(`{"claude-test":`+tc.patch+`}`), 0o600))
-			service := NewPricingService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", OverrideFile: patch}, &catalogRemoteFixture{body: []byte(modelsCatalogFixture)})
+			service := NewService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", OverrideFile: patch}, &catalogRemoteFixture{body: []byte(modelsCatalogFixture)})
 			require.NoError(t, service.ForceUpdate())
 			value := catalogPriceForTest(t, service, "claude-test")
 			cost := pricing.ComputeTokenBreakdown(value, pricing.UsageTokens{InputTokens: 201}, 1, "", true)
@@ -83,7 +83,7 @@ func TestModelsCatalogMediaSupplementAliases(t *testing.T) {
 	supplement := filepath.Join(dir, "supplement.json")
 	patch := filepath.Join(dir, "override.json")
 	require.NoError(t, os.WriteFile(supplement, []byte(`{"gpt-image-2":{"input_cost_per_image_token":0.000008,"output_cost_per_image_token":0.00003}}`), 0o600))
-	service := NewPricingService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", FallbackFile: supplement, OverrideFile: patch}, &catalogRemoteFixture{body: []byte(mediaAliasFixture)})
+	service := NewService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", FallbackFile: supplement, OverrideFile: patch}, &catalogRemoteFixture{body: []byte(mediaAliasFixture)})
 	require.NoError(t, service.ForceUpdate())
 	for _, model := range []string{"gpt-image-2", "openai/gpt-image-2"} {
 		value := catalogPriceForTest(t, service, model)
@@ -108,7 +108,7 @@ func TestModelsCatalogExactMediaSupplementKeepsExplicitZero(t *testing.T) {
 		"gpt-image-2":{"input_cost_per_image_token":0.000008},
 		"openai/gpt-image-2":{"input_cost_per_image_token":0}
 	}`), 0o600))
-	service := NewPricingService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", FallbackFile: supplement}, &catalogRemoteFixture{body: []byte(mediaAliasFixture)})
+	service := NewService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", FallbackFile: supplement}, &catalogRemoteFixture{body: []byte(mediaAliasFixture)})
 	require.NoError(t, service.ForceUpdate())
 	require.InDelta(t, 8e-6, service.GetModelPricing("gpt-image-2").InputCostPerImageToken, 1e-12)
 	qualified := service.GetModelPricing("openai/gpt-image-2")
@@ -120,11 +120,11 @@ func TestModelsCatalogInvalidPricePatchKeepsPublishedSnapshot(t *testing.T) {
 	dir := t.TempDir()
 	patch := filepath.Join(dir, "override.json")
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture)}
-	service := NewPricingService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", OverrideFile: patch}, remote)
+	service := NewService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", OverrideFile: patch}, remote)
 	require.NoError(t, service.ForceUpdate())
 	before := service.AttributesSnapshot()
 	beforePrices := service.Snapshot().Data
-	beforeFile, err := os.ReadFile(service.GetPricingFilePath())
+	beforeFile, err := os.ReadFile(service.catalogFilePath())
 	require.NoError(t, err)
 	remote.body = []byte(strings.ReplaceAll(modelsCatalogFixture, `"name":"Claude"`, `"name":"Changed"`))
 	for _, tc := range []struct {
@@ -148,7 +148,7 @@ func TestModelsCatalogInvalidPricePatchKeepsPublishedSnapshot(t *testing.T) {
 			require.Equal(t, before.Items, after.Items)
 			require.Equal(t, beforePrices, service.Snapshot().Data)
 			require.Contains(t, after.LastError, tc.field)
-			afterFile, err := os.ReadFile(service.GetPricingFilePath())
+			afterFile, err := os.ReadFile(service.catalogFilePath())
 			require.NoError(t, err)
 			require.Equal(t, beforeFile, afterFile)
 		})
@@ -165,21 +165,21 @@ func TestModelsCatalogInvalidLocalReloadReportsError(t *testing.T) {
 	dir := t.TempDir()
 	patch := filepath.Join(dir, "override.json")
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture), etag: "v1"}
-	service := NewPricingService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", OverrideFile: patch}, remote)
+	service := NewService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", OverrideFile: patch}, remote)
 	require.NoError(t, service.ForceUpdate())
 	before := service.Snapshot().Data
 	require.NoError(t, os.WriteFile(patch, []byte(`{"claude-test":{"input_cost_per_token":"invalid"}}`), 0o600))
 	// 304 只确认远程未变，同步入口也必须报告本地覆盖的校验错误。
 	remote.unchanged = true
-	require.ErrorContains(t, service.SyncWithRemote(), "input_cost_per_token")
-	service.ReloadIfCustomFilesChanged()
+	require.ErrorContains(t, service.syncWithRemote(), "input_cost_per_token")
+	service.reloadIfCustomFilesChanged()
 	require.Contains(t, service.AttributesSnapshot().LastError, "input_cost_per_token")
 	require.Equal(t, before, service.Snapshot().Data)
 }
 
 // TestModelsCatalogGeminiImageTextPricing 同时验证内嵌目录、媒体补充和实际用量拆分。
 func TestModelsCatalogGeminiImageTextPricing(t *testing.T) {
-	service := NewPricingService(Options{
+	service := NewService(Options{
 		DataDir:      t.TempDir(),
 		FallbackFile: "../../../resources/model-pricing/model_pricing_supplements.json",
 	}, nil)
@@ -218,7 +218,7 @@ func TestModelsCatalogGeminiImageSupplementPrecedence(t *testing.T) {
 		"google":{"models":{"gemini-image-test":{"cost":{"input":2,"output":150},"modalities":{"output":["text","image"]}}}},
 		"openrouter":{"models":{"gemini-image-test":{"cost":{"input":1,"output":9},"modalities":{"output":["text","image"]}}}}
 	}}`
-	service := NewPricingService(Options{
+	service := NewService(Options{
 		DataDir:      dir,
 		RemoteURL:    "https://models.dev/catalog.json",
 		FallbackFile: supplement,
@@ -251,7 +251,7 @@ func TestModelsCatalogGeminiImageSupplementPrecedence(t *testing.T) {
 }
 
 func TestModelsCatalogImagePriceOverrideAcrossContextTiers(t *testing.T) {
-	service := NewPricingService(Options{DataDir: t.TempDir()}, nil)
+	service := NewService(Options{DataDir: t.TempDir()}, nil)
 	require.NoError(t, service.Initialize())
 	base := catalogPriceForTest(t, service, "gpt-5.4")
 	require.NotEmpty(t, base.ContextPrices)
@@ -270,7 +270,7 @@ func TestModelsCatalogImagePriceOverrideAcrossContextTiers(t *testing.T) {
 
 // TestModelsCatalogGrokInclusiveContextBoundary 覆盖实际目录的阈值前、阈值处及缓存混合输入。
 func TestModelsCatalogGrokInclusiveContextBoundary(t *testing.T) {
-	service := NewPricingService(Options{DataDir: t.TempDir()}, nil)
+	service := NewService(Options{DataDir: t.TempDir()}, nil)
 	require.NoError(t, service.Initialize())
 	for _, model := range []string{"grok-4.6", "xai/grok-4.6"} {
 		t.Run(model, func(t *testing.T) {
@@ -305,7 +305,7 @@ func TestModelsCatalogExplicitZeroImageOutput(t *testing.T) {
 	patch := filepath.Join(dir, "override.json")
 	require.NoError(t, os.WriteFile(supplement, []byte(`{"gemini-image-test":{"output_cost_per_token":0.000012}}`), 0o600))
 	remote := &catalogRemoteFixture{body: []byte(`{"providers":{"google":{"models":{"gemini-image-test":{"cost":{"input":2,"output":0},"modalities":{"output":["text","image"]}}}}}}`)}
-	service := NewPricingService(Options{
+	service := NewService(Options{
 		DataDir:      dir,
 		RemoteURL:    "https://models.dev/catalog.json",
 		FallbackFile: supplement,
@@ -333,7 +333,7 @@ func TestModelsCatalogExplicitZeroImageOutput(t *testing.T) {
 }
 
 func TestModelsCatalogMistralNativeAlias(t *testing.T) {
-	service := NewPricingService(Options{DataDir: t.TempDir()}, nil)
+	service := NewService(Options{DataDir: t.TempDir()}, nil)
 	require.NoError(t, service.Initialize())
 	plain := catalogPriceForTest(t, service, "devstral-latest")
 	qualified := catalogPriceForTest(t, service, "mistral/devstral-latest")
@@ -353,7 +353,7 @@ func TestModelsCatalogOfflineManualUpdate(t *testing.T) {
 	// 用不可作为目录的路径稳定模拟缓存不可写，测试不依赖进程的文件权限。
 	require.NoError(t, os.WriteFile(cache, []byte("unwritable cache"), 0o600))
 	require.NoError(t, os.WriteFile(patch, []byte(`{"gpt-5.4":{"input_cost_per_token":0.000007}}`), 0o600))
-	service := NewPricingService(Options{DataDir: cache, OverrideFile: patch}, nil)
+	service := NewService(Options{DataDir: cache, OverrideFile: patch}, nil)
 	require.NoError(t, service.Initialize())
 	before := service.AttributesSnapshot()
 	require.NoError(t, os.WriteFile(patch, []byte(`{"gpt-5.4":{"input_cost_per_token":0.000009}}`), 0o600))

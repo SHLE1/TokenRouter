@@ -172,8 +172,8 @@ func (s *Calculator) GetEstimatedCost(model string, estimatedInputTokens, estima
 	return breakdown.ActualCost, nil
 }
 
-// GetPricingServiceStatus 获取价格服务状态
-func (s *Calculator) GetPricingServiceStatus() map[string]any {
+// GetCatalogStatus 获取统一模型目录的加载和更新状态。
+func (s *Calculator) GetCatalogStatus() map[string]any {
 	if s.catalog != nil {
 		return s.catalog.GetStatus()
 	}

@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
@@ -41,7 +41,7 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 				}}}
 				repository := &routingtestkit.ConfigRows{Values: []routingtestkit.Configuration{configPricing}, Platforms: map[int64]string{groupID: tc.platform}}
 				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: billingadapter.LoadPricingLocation})
-				var catalog *billingadapter.PricingService
+				var catalog *catalogprovider.Service
 				if hasCatalog {
 					catalog = newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
 						tc.base: {Mode: "chat", InputCostPerToken: 1e-6, OutputCostPerToken: 2e-6},

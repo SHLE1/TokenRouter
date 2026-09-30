@@ -20,7 +20,7 @@ func ResolveModelPricing(model string, catalogPrice *CatalogModelPricing, prices
 		// token 计费：直接返回会把 token 流量按 $0 计费。跳过后走 fallback，
 		// 无 fallback 则 fail-closed（ErrModelPricingUnavailable）。
 		// 图片计费路径（getDefaultImagePrice / getImageUnitPrice）直接读
-		// PricingService，不受影响。
+		// 目录读取接口，不受影响。
 		if catalogPricing != nil && catalogPricing.TokenPricingAbsent {
 			catalogPricing = nil
 		}

@@ -22,20 +22,21 @@ import (
 	"go.uber.org/zap"
 )
 
-// PricingRemoteClient 远程价格数据获取接口
-type PricingRemoteClient interface {
+// RemoteClient 获取带 ETag 条件的统一模型目录。
+type RemoteClient interface {
 	FetchCatalog(ctx context.Context, url, etag string) ([]byte, string, bool, error)
 }
 
-// PricingService 动态价格服务
-type PricingService struct {
+// Service 维护价格与展示属性共享的模型目录，统一加载、同步和原子发布。
+// @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
+type Service struct {
 	updateMu            sync.Mutex
 	modelCatalog        *modelcatalog.Catalog
 	catalogETag         string
 	lastCatalogError    string
 	catalogBody         []byte
 	options             *Options
-	remoteClient        PricingRemoteClient
+	remoteClient        RemoteClient
 	mu                  sync.RWMutex
 	pricingData         map[string]*CatalogModelPricing
 	fallbackPricingData map[string]*CatalogModelPricing
@@ -52,9 +53,9 @@ type PricingService struct {
 	stopOnce  sync.Once
 }
 
-// NewPricingService 创建价格服务
-func NewPricingService(options Options, remoteClient PricingRemoteClient) *PricingService {
-	s := &PricingService{
+// NewService 构造目录运行时；初始化及后台同步由应用生命周期显式启动。
+func NewService(options Options, remoteClient RemoteClient) *Service {
+	s := &Service{
 		options:      &options,
 		remoteClient: remoteClient,
 		pricingData:  make(map[string]*CatalogModelPricing),
@@ -64,38 +65,38 @@ func NewPricingService(options Options, remoteClient PricingRemoteClient) *Prici
 }
 
 // Initialize 初始化价格服务
-func (s *PricingService) Initialize() error {
+func (s *Service) Initialize() error {
 	// 确保数据目录存在
 	if err := os.MkdirAll(s.currentOptions().DataDir, 0o755); err != nil {
-		logging.LegacyPrintf("service.pricing", "[Pricing] Failed to create data directory: %v", err)
+		logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Failed to create data directory: %v", err)
 	}
 
 	// 首次加载价格数据
-	if err := s.CheckAndUpdatePricing(); err != nil {
+	if err := s.loadInitialCatalog(); err != nil {
 		return fmt.Errorf("failed to load model catalog: %w", err)
 	}
 
-	logging.LegacyPrintf("service.pricing", "[Pricing] Service initialized with %d models", len(s.pricingData))
+	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Service initialized with %d models", len(s.pricingData))
 	return nil
 }
 
 // Stop 停止价格服务
-func (s *PricingService) Stop() {
+func (s *Service) Stop() {
 	s.stopOnce.Do(func() { close(s.stopCh) })
 	s.Wait()
-	logging.LegacyPrintf("service.pricing", "%s", "[Pricing] Service stopped")
+	logging.LegacyPrintf("service.modelcatalog", "%s", "[ModelCatalog] Service stopped")
 }
 
-// StartUpdateScheduler 启动定时调度器：每个周期先做远程目录条件同步（配置了 remote_url 时），
+// startUpdateScheduler 启动定时调度器：每个周期先做远程目录条件同步（配置了 remote_url 时），
 // 再比对 fallback/override 文件指纹做本地热重载（配置了任一文件时）。两者都未配置则不启动。
-func (s *PricingService) StartUpdateScheduler() {
+func (s *Service) startUpdateScheduler() {
 	if s == nil || s.options == nil {
 		return
 	}
 	remoteEnabled := strings.TrimSpace(s.currentOptions().RemoteURL) != ""
-	watchCustom := s.HasCustomPricingFiles()
+	watchCustom := s.hasCustomPricingFiles()
 	if !remoteEnabled {
-		logging.LegacyPrintf("service.pricing", "%s", "[Pricing] Remote sync disabled: pricing remote URL is empty")
+		logging.LegacyPrintf("service.modelcatalog", "%s", "[ModelCatalog] Remote sync disabled: pricing remote URL is empty")
 	}
 	if !remoteEnabled && !watchCustom {
 		return
@@ -110,7 +111,7 @@ func (s *PricingService) StartUpdateScheduler() {
 	go func() {
 		defer s.wg.Done()
 		if remoteEnabled {
-			_ = s.SyncWithRemote()
+			_ = s.syncWithRemote()
 		}
 		ticker := time.NewTicker(checkInterval)
 		defer ticker.Stop()
@@ -119,12 +120,12 @@ func (s *PricingService) StartUpdateScheduler() {
 			select {
 			case <-ticker.C:
 				if remoteEnabled {
-					if err := s.SyncWithRemote(); err != nil {
-						logging.LegacyPrintf("service.pricing", "[Pricing] Sync failed: %v", err)
+					if err := s.syncWithRemote(); err != nil {
+						logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Sync failed: %v", err)
 					}
 				}
 				if watchCustom {
-					s.ReloadIfCustomFilesChanged()
+					s.reloadIfCustomFilesChanged()
 				}
 			case <-s.stopCh:
 				return
@@ -132,31 +133,31 @@ func (s *PricingService) StartUpdateScheduler() {
 		}
 	}()
 
-	logging.LegacyPrintf("service.pricing", "[Pricing] Update scheduler started (check every %v, remote sync=%t, custom file watch=%t)", checkInterval, remoteEnabled, watchCustom)
+	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Update scheduler started (check every %v, remote sync=%t, custom file watch=%t)", checkInterval, remoteEnabled, watchCustom)
 }
 
-// CheckAndUpdatePricing 从缓存或内嵌快照加载统一目录，后台启动后再同步远程。
-func (s *PricingService) CheckAndUpdatePricing() error {
+// loadInitialCatalog 从缓存或内嵌快照加载统一目录，后台启动后再同步远程。
+func (s *Service) loadInitialCatalog() error {
 	return s.loadModelsCatalog()
 }
 
-// SyncWithRemote 使用条件请求同步模型目录。
-func (s *PricingService) SyncWithRemote() error {
+// syncWithRemote 使用条件请求同步模型目录。
+func (s *Service) syncWithRemote() error {
 	return s.updateModelsCatalog(false)
 }
 
-// HasCustomPricingFiles 报告是否配置了 fallback/override 任一文件路径（不要求文件存在）。
-func (s *PricingService) HasCustomPricingFiles() bool {
+// hasCustomPricingFiles 报告是否配置了 fallback/override 任一文件路径（不要求文件存在）。
+func (s *Service) hasCustomPricingFiles() bool {
 	if s == nil || s.options == nil {
 		return false
 	}
 	return strings.TrimSpace(s.currentOptions().FallbackFile) != "" || strings.TrimSpace(s.currentOptions().OverrideFile) != ""
 }
 
-// CustomPricingFilesFingerprint 返回 fallback、override 两个文件当前内容的联合 sha256。
+// customPricingFilesFingerprint 返回 fallback、override 两个文件当前内容的联合 sha256。
 // 每个文件以"长度前缀 + 正文"参与计算，不可读的文件按空正文处理；未配置任何文件返回空串。
-func (s *PricingService) CustomPricingFilesFingerprint() string {
-	if !s.HasCustomPricingFiles() {
+func (s *Service) customPricingFilesFingerprint() string {
+	if !s.hasCustomPricingFiles() {
 		return ""
 	}
 	h := sha256.New()
@@ -198,25 +199,25 @@ func loadLocalPricingEntries(path string) (map[string]json.RawMessage, error) {
 	return entries, nil
 }
 
-// ReloadIfCustomFilesChanged 比对 fallback/override 文件指纹，与最近一次重建时不同则从
+// reloadIfCustomFilesChanged 比对 fallback/override 文件指纹，与最近一次重建时不同则从
 // 本地目录缓存重建内存数据。文件被删除视为该层清空，照常重建；文件存在但不可读或不是
 // JSON 对象时保留当前数据且不更新指纹，下一轮会再次尝试并重复告警。目录正文与远程同步
 // 锚点(localHash)不受本路径影响。
-func (s *PricingService) ReloadIfCustomFilesChanged() {
-	fingerprint := s.CustomPricingFilesFingerprint()
+func (s *Service) reloadIfCustomFilesChanged() {
+	fingerprint := s.customPricingFilesFingerprint()
 	s.mu.RLock()
 	unchanged := fingerprint == s.customFilesHash
 	s.mu.RUnlock()
 	if unchanged {
 		return
 	}
-	if err := s.ReloadCustomPricingLayers(); err != nil {
-		logging.LegacyPrintf("service.pricing", "[Pricing] Custom pricing file changed but reload failed: %v", err)
+	if err := s.reloadCustomPricingLayers(); err != nil {
+		logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Custom pricing file changed but reload failed: %v", err)
 	}
 }
 
-// ReloadCustomPricingLayers 从缓存或内存目录重建本地补充及覆盖层。
-func (s *PricingService) ReloadCustomPricingLayers() error {
+// reloadCustomPricingLayers 从缓存或内存目录重建本地补充及覆盖层。
+func (s *Service) reloadCustomPricingLayers() error {
 	return s.loadModelsCatalog()
 }
 
@@ -230,7 +231,7 @@ func warnLopsidedLongContextLadders(entries []string) {
 	if total > 20 {
 		entries = append(entries[:20], "...")
 	}
-	logging.LegacyPrintf("service.pricing", "[Pricing] Warning: %d model(s) derive a one-sided long-context ladder (surcharge on only input or only output); base prices and above-tier prices likely come from different price versions: %s", total, strings.Join(entries, ", "))
+	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: %d model(s) derive a one-sided long-context ladder (surcharge on only input or only output); base prices and above-tier prices likely come from different price versions: %s", total, strings.Join(entries, ", "))
 }
 
 // warnOrphanCacheTierFields 报告没有基础价的 cache above 字段，避免静默按零计费。
@@ -243,7 +244,7 @@ func warnOrphanCacheTierFields(entries []string) {
 	if total > 20 {
 		entries = append(entries[:20], "...")
 	}
-	logging.LegacyPrintf("service.pricing", "[Pricing] Warning: %d model(s) carry cache above-tier prices without a base cache price; that cache item bills at $0 until the catalog/override supplies the base: %s", total, strings.Join(entries, ", "))
+	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: %d model(s) carry cache above-tier prices without a base cache price; that cache item bills at $0 until the catalog/override supplies the base: %s", total, strings.Join(entries, ", "))
 }
 
 // warnDroppedLongContextLadders 在价格目录热更新时检测原有阶梯是否意外消失。
@@ -269,10 +270,10 @@ func warnDroppedLongContextLadders(old, next map[string]*CatalogModelPricing) {
 	if total > 20 {
 		dropped = append(dropped[:20], "...")
 	}
-	logging.LegacyPrintf("service.pricing", "[Pricing] Warning: Long-context ladder dropped for %d model(s) after reload: %s (verify catalog/override data if unintended)", total, strings.Join(dropped, ", "))
+	logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: Long-context ladder dropped for %d model(s) after reload: %s (verify catalog/override data if unintended)", total, strings.Join(dropped, ", "))
 }
 
-func (s *PricingService) ValidatePricingURL(raw string) (string, error) {
+func (s *Service) validateCatalogURL(raw string) (string, error) {
 	if (s.options != nil) && !s.currentOptions().URLAllowlistEnabled {
 		normalized, err := egress.ValidateURLFormat(raw, s.currentOptions().AllowInsecureHTTP)
 		if err != nil {
@@ -292,7 +293,7 @@ func (s *PricingService) ValidatePricingURL(raw string) (string, error) {
 }
 
 // GetModelPricing 在原有锁边界内调用纯目录查询。
-func (s *PricingService) GetModelPricing(modelName string) *CatalogModelPricing {
+func (s *Service) GetModelPricing(modelName string) *CatalogModelPricing {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	query := s.catalogQuery()
@@ -315,7 +316,7 @@ func (s *PricingService) GetModelPricing(modelName string) *CatalogModelPricing 
 }
 
 // GetModelModalities 在原有锁边界内调用纯目录查询。
-func (s *PricingService) GetModelModalities(modelName string) ([]string, []string) {
+func (s *Service) GetModelModalities(modelName string) ([]string, []string) {
 	if s == nil {
 		return nil, nil
 	}
@@ -327,7 +328,7 @@ func (s *PricingService) GetModelModalities(modelName string) ([]string, []strin
 }
 
 // GetStatus 获取服务状态
-func (s *PricingService) GetStatus() map[string]any {
+func (s *Service) GetStatus() map[string]any {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -341,18 +342,18 @@ func (s *PricingService) GetStatus() map[string]any {
 }
 
 // ForceUpdate 强制下载模型目录；远程地址为空时重载本地补充及覆盖。
-func (s *PricingService) ForceUpdate() error {
+func (s *Service) ForceUpdate() error {
 	return s.updateModelsCatalog(true)
 }
 
-// GetPricingFilePath 返回统一目录缓存路径，不读取旧价格缓存。
-func (s *PricingService) GetPricingFilePath() string {
+// catalogFilePath 返回统一目录缓存路径，不读取旧价格缓存。
+func (s *Service) catalogFilePath() string {
 	return filepath.Join(s.currentOptions().DataDir, "models_dev_catalog.json")
 }
 
 // ListModelNamesByProvider 返回指定 provider 在定价目录中的全部模型名
 // provider 匹配不区分大小写，返回结果按字母序排序。
-func (s *PricingService) ListModelNamesByProvider(provider string) []string {
+func (s *Service) ListModelNamesByProvider(provider string) []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -368,8 +369,8 @@ func (s *PricingService) ListModelNamesByProvider(provider string) []string {
 }
 
 // Start 在初始化和所有绑定完成后启动更新调度。
-func (s *PricingService) Start() {
-	s.startOnce.Do(s.StartUpdateScheduler)
+func (s *Service) Start() {
+	s.startOnce.Do(s.startUpdateScheduler)
 }
 
 // 目录值属于纯定价包，provider 只持有一个可替换的缓存实例。
@@ -394,7 +395,7 @@ type Options struct {
 	ModelLookupCandidates func() func(string) []string
 }
 
-func (s *PricingService) currentOptions() Options {
+func (s *Service) currentOptions() Options {
 	if s.options == nil {
 		return Options{}
 	}
@@ -411,7 +412,7 @@ type Snapshot struct {
 }
 
 // Snapshot 返回独立的 map、条目与切片，调用者不能改写运行目录。
-func (s *PricingService) Snapshot() Snapshot {
+func (s *Service) Snapshot() Snapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	out := Snapshot{catalogIdentity: s.modelCatalog, LastError: s.lastCatalogError, LastUpdated: s.lastUpdated, LocalHash: s.localHash, CustomFilesHash: s.customFilesHash}
@@ -428,9 +429,9 @@ func (s *PricingService) Snapshot() Snapshot {
 	return out
 }
 
-// NewPricingServiceFromSnapshot 支持以已经解析的数据初始化，无后台启动或加载 I/O。
-func NewPricingServiceFromSnapshot(options Options, remote PricingRemoteClient, snapshot Snapshot) *PricingService {
-	s := NewPricingService(options, remote)
+// NewServiceFromSnapshot 支持以已经解析的数据初始化，无后台启动或加载 I/O。
+func NewServiceFromSnapshot(options Options, remote RemoteClient, snapshot Snapshot) *Service {
+	s := NewService(options, remote)
 	s.pricingData = snapshot.Data
 	s.modelCatalog = snapshot.catalogIdentity
 	s.fallbackPricingData = modelsCatalogFallbackPrices(s.modelCatalog, s.pricingData)
@@ -442,12 +443,12 @@ func NewPricingServiceFromSnapshot(options Options, remote PricingRemoteClient, 
 }
 
 // Wait 只等待已有更新任务退出，不发出停止信号；Stop 使用相同等待路径。
-func (s *PricingService) Wait() {
+func (s *Service) Wait() {
 	s.wg.Wait()
 }
 
 // catalogQuery 冻结一次候选生成器，日期回退不会再次读取 Grok 运行时默认值。
-func (s *PricingService) catalogQuery() *purepricing.CatalogQuery {
+func (s *Service) catalogQuery() *purepricing.CatalogQuery {
 	options := s.currentOptions()
 	var candidates func(string) []string
 	if options.ModelLookupCandidates != nil {
@@ -462,17 +463,17 @@ func (s *PricingService) catalogQuery() *purepricing.CatalogQuery {
 	}
 }
 
-func (s *PricingService) emitCatalogDiagnostics(query *purepricing.CatalogQuery) {
+func (s *Service) emitCatalogDiagnostics(query *purepricing.CatalogQuery) {
 	for _, diagnostic := range query.Diagnostics {
 		if diagnostic.Structured {
-			logging.With(zap.String("component", "service.pricing")).Info(diagnostic.Message)
+			logging.With(zap.String("component", "service.modelcatalog")).Info(diagnostic.Message)
 		} else {
-			logging.LegacyPrintf("service.pricing", "%s", diagnostic.Message)
+			logging.LegacyPrintf("service.modelcatalog", "%s", diagnostic.Message)
 		}
 	}
 }
 
 // ReadOnlySnapshot 返回固定目录供一次管理查询使用，不加载文件、不访问网络。
-func (s *PricingService) ReadOnlySnapshot() *PricingService {
-	return NewPricingServiceFromSnapshot(s.currentOptions(), nil, s.Snapshot())
+func (s *Service) ReadOnlySnapshot() *Service {
+	return NewServiceFromSnapshot(s.currentOptions(), nil, s.Snapshot())
 }

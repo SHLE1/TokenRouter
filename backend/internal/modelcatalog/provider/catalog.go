@@ -27,7 +27,7 @@ type AttributeSnapshot struct {
 }
 
 // AttributesSnapshot 返回当前目录的独立属性快照，不触发网络请求。
-func (s *PricingService) AttributesSnapshot() AttributeSnapshot {
+func (s *Service) AttributesSnapshot() AttributeSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	result := AttributeSnapshot{Items: s.modelCatalog.Rows(), LastUpdated: s.lastUpdated, LastError: s.lastCatalogError}
@@ -38,7 +38,7 @@ func (s *PricingService) AttributesSnapshot() AttributeSnapshot {
 }
 
 // ModelAttributes 仅解析明确的模型身份，不借用跨型号的计费回退。
-func (s *PricingService) ModelAttributes(model string) modelcatalog.Attributes {
+func (s *Service) ModelAttributes(model string) modelcatalog.Attributes {
 	candidates := []string{model}
 	if s.options.ModelLookupCandidates != nil {
 		candidates = append(candidates, s.options.ModelLookupCandidates()(model)...)
@@ -49,7 +49,7 @@ func (s *PricingService) ModelAttributes(model string) modelcatalog.Attributes {
 	return entry.Attributes
 }
 
-func (s *PricingService) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[string]*CatalogModelPricing, error) {
+func (s *Service) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[string]*CatalogModelPricing, error) {
 	catalog, err := modelcatalog.Parse(body)
 	if err != nil {
 		return nil, nil, err
@@ -145,7 +145,7 @@ func (s *PricingService) buildModelsCatalog(body []byte) (*modelcatalog.Catalog,
 	}
 	if len(missing) > 0 {
 		sort.Strings(missing)
-		logging.LegacyPrintf("service.pricing", "[Pricing] Warning: override had no effect for %d model(s): %s (unknown model name, or patch-only entry without price fields)", len(missing), strings.Join(missing, ", "))
+		logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: override had no effect for %d model(s): %s (unknown model name, or patch-only entry without price fields)", len(missing), strings.Join(missing, ", "))
 	}
 	return catalog, prices, nil
 }
@@ -226,19 +226,19 @@ func modelsCatalogFallbackPrices(catalog *modelcatalog.Catalog, prices map[strin
 }
 
 // publishModelsCatalog 只有完整构建成功才替换价格和属性，调用期间由更新锁串行化。
-func (s *PricingService) publishModelsCatalog(body []byte, updated time.Time, persist bool) error {
+func (s *Service) publishModelsCatalog(body []byte, updated time.Time, persist bool) error {
 	var catalog *modelcatalog.Catalog
 	var prices map[string]*CatalogModelPricing
 	var fingerprint string
 	// 文件编辑可能与目录同步重叠，只发布来自同一组本地文件内容的价格投影。
 	for attempt := 0; attempt < 3; attempt++ {
-		before := s.CustomPricingFilesFingerprint()
+		before := s.customPricingFilesFingerprint()
 		var err error
 		catalog, prices, err = s.buildModelsCatalog(body)
 		if err != nil {
 			return err
 		}
-		fingerprint = s.CustomPricingFilesFingerprint()
+		fingerprint = s.customPricingFilesFingerprint()
 		if before == fingerprint {
 			break
 		}
@@ -247,7 +247,7 @@ func (s *PricingService) publishModelsCatalog(body []byte, updated time.Time, pe
 		}
 	}
 	if persist {
-		path := s.GetPricingFilePath()
+		path := s.catalogFilePath()
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return err
 		}
@@ -281,11 +281,11 @@ func (s *PricingService) publishModelsCatalog(body []byte, updated time.Time, pe
 	return nil
 }
 
-func (s *PricingService) loadModelsCatalog() (err error) {
+func (s *Service) loadModelsCatalog() (err error) {
 	s.updateMu.Lock()
 	defer s.updateMu.Unlock()
 	defer func() { s.recordCatalogError(err) }()
-	body, readErr := os.ReadFile(s.GetPricingFilePath())
+	body, readErr := os.ReadFile(s.catalogFilePath())
 	updated := time.Now()
 	s.mu.RLock()
 	hasCurrent := s.modelCatalog != nil
@@ -294,7 +294,7 @@ func (s *PricingService) loadModelsCatalog() (err error) {
 		readErr = nil
 	}
 	s.mu.RUnlock()
-	if info, err := os.Stat(s.GetPricingFilePath()); err == nil {
+	if info, err := os.Stat(s.catalogFilePath()); err == nil {
 		updated = info.ModTime()
 	}
 	var candidateErr error
@@ -324,7 +324,7 @@ func (s *PricingService) loadModelsCatalog() (err error) {
 		return candidateErr
 	}
 	// 首次启动时损坏的本地补充不能使整个目录消失；保留错误并等待修复后热重载。
-	bootstrap := NewPricingService(Options{DataDir: s.options.DataDir}, nil)
+	bootstrap := NewService(Options{DataDir: s.options.DataDir}, nil)
 	for _, candidate := range [][]byte{cachedBody, body} {
 		if len(candidate) == 0 {
 			continue
@@ -347,7 +347,7 @@ func (s *PricingService) loadModelsCatalog() (err error) {
 }
 
 // recordCatalogError 统一记录远程更新和本地重载失败，供管理页查询。
-func (s *PricingService) recordCatalogError(err error) {
+func (s *Service) recordCatalogError(err error) {
 	if err == nil {
 		return
 	}
@@ -357,7 +357,7 @@ func (s *PricingService) recordCatalogError(err error) {
 }
 
 // updateModelsCatalog 使用条件请求；网络或解析失败保留整个旧版本。
-func (s *PricingService) updateModelsCatalog(force bool) (err error) {
+func (s *Service) updateModelsCatalog(force bool) (err error) {
 	// 本地重载自己持有更新锁，并可回退到内存中的离线目录。
 	if strings.TrimSpace(s.options.RemoteURL) == "" {
 		return s.loadModelsCatalog()
@@ -365,7 +365,7 @@ func (s *PricingService) updateModelsCatalog(force bool) (err error) {
 	s.updateMu.Lock()
 	defer s.updateMu.Unlock()
 	defer func() { s.recordCatalogError(err) }()
-	url, err := s.ValidatePricingURL(s.options.RemoteURL)
+	url, err := s.validateCatalogURL(s.options.RemoteURL)
 	if err != nil {
 		return err
 	}
@@ -391,7 +391,7 @@ func (s *PricingService) updateModelsCatalog(force bool) (err error) {
 		if len(current) == 0 {
 			return fmt.Errorf("catalog returned 304 without a local snapshot")
 		}
-		if s.CustomPricingFilesFingerprint() != fingerprint {
+		if s.customPricingFilesFingerprint() != fingerprint {
 			if err := s.publishModelsCatalog(current, updated, false); err != nil {
 				return err
 			}
@@ -403,7 +403,7 @@ func (s *PricingService) updateModelsCatalog(force bool) (err error) {
 	}
 	hash := sha256.Sum256(body)
 	s.mu.RLock()
-	same := s.localHash == hex.EncodeToString(hash[:]) && s.customFilesHash == s.CustomPricingFilesFingerprint()
+	same := s.localHash == hex.EncodeToString(hash[:]) && s.customFilesHash == s.customPricingFilesFingerprint()
 	s.mu.RUnlock()
 	if same && !force {
 		s.catalogETag = etag

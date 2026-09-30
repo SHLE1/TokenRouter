@@ -4,8 +4,7 @@ import (
 	"testing"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-
-	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,14 +23,14 @@ const openAILadderCatalogJSON = `{
 		"output_cost_per_token_above_272k_tokens": 2.7e-04}
 }`
 
-// newStubPricingServiceFromJSON 通过与生产相同的解析路径创建价格目录 stub。
-func newStubPricingServiceFromJSON(t *testing.T, body string) *billingadapter.PricingService {
+// newStubCatalogFromJSON 通过与生产相同的解析路径创建价格目录 stub。
+func newStubCatalogFromJSON(t *testing.T, body string) *provider.Service {
 	t.Helper()
 	raw, err := pricing.DecodeCatalogEntries([]byte(body))
 	require.NoError(t, err)
 	data, diagnostics, err := pricing.ParsePricingEntries(raw)
 	require.NoError(t, diagnostics.ValidationError())
 	require.NoError(t, err)
-	service := newPricingServiceFixture(pricingServiceFixture{pricingData: data})
+	service := newModelCatalogFixture(modelCatalogFixture{pricingData: data})
 	return service
 }

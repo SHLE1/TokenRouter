@@ -88,7 +88,7 @@ func TestCalculateImageCost_ZeroRateMultiplier(t *testing.T) {
 	require.InDelta(t, 0.0, cost.ActualCost, 1e-10)
 }
 
-// TestGetDefaultImagePrice_FallbackHardcoded 测试 PricingService 无数据时使用硬编码默认值
+// TestGetDefaultImagePrice_FallbackHardcoded 验证目录无报价时使用内置回退价
 func TestGetDefaultImagePrice_FallbackHardcoded(t *testing.T) {
 	svc := billingtestkit.Calculator(0, nil, map[string]*pricing.ModelPricing{}) // pricingService 为 nil
 

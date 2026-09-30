@@ -31,7 +31,7 @@ func TestFetchCatalogHTTP(t *testing.T) {
 				_, _ = w.Write([]byte(tc.body))
 			}))
 			defer server.Close()
-			client := &pricingRemoteClient{httpClient: server.Client()}
+			client := &remoteClient{httpClient: server.Client()}
 			body, etag, unchanged, err := client.FetchCatalog(context.Background(), server.URL, `"v1"`)
 			if tc.wantError {
 				require.Error(t, err)
@@ -58,7 +58,7 @@ func TestFetchCatalogCancellation(t *testing.T) {
 		<-r.Context().Done()
 	}))
 	defer server.Close()
-	client := &pricingRemoteClient{httpClient: server.Client()}
+	client := &remoteClient{httpClient: server.Client()}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan error, 1)
@@ -73,15 +73,15 @@ func TestFetchCatalogCancellation(t *testing.T) {
 	require.Error(t, err)
 }
 
-// TestNewPricingRemoteClient_InvalidProxy_NoFallback 验证代理错误不会触发未授权直连。
-func TestNewPricingRemoteClient_InvalidProxy_NoFallback(t *testing.T) {
-	client := NewPricingRemoteClient("://bad", false)
-	require.IsType(t, &pricingRemoteClientError{}, client)
+// TestNewRemoteClient_InvalidProxy_NoFallback 验证代理错误不会触发未授权直连。
+func TestNewRemoteClient_InvalidProxy_NoFallback(t *testing.T) {
+	client := NewRemoteClient("://bad", false)
+	require.IsType(t, &remoteClientError{}, client)
 	_, _, _, err := client.FetchCatalog(context.Background(), "https://example.com", "")
 	require.ErrorContains(t, err, "proxy client init failed")
 }
 
-// TestNewPricingRemoteClient_InvalidProxy_WithFallback 验证显式允许的直连回退。
-func TestNewPricingRemoteClient_InvalidProxy_WithFallback(t *testing.T) {
-	require.IsType(t, &pricingRemoteClient{}, NewPricingRemoteClient("://bad", true))
+// TestNewRemoteClient_InvalidProxy_WithFallback 验证显式允许的直连回退。
+func TestNewRemoteClient_InvalidProxy_WithFallback(t *testing.T) {
+	require.IsType(t, &remoteClient{}, NewRemoteClient("://bad", true))
 }

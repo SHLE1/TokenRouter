@@ -10,13 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
 	"github.com/stretchr/testify/require"
@@ -43,7 +41,7 @@ func newTestCalculator() *billing.Calculator {
 
 func newLadderCalculator(t *testing.T) *billing.Calculator {
 	t.Helper()
-	return newCalculator(&config.Config{}, newStubPricingServiceFromJSON(t, openAILadderCatalogJSON))
+	return newCalculator(&config.Config{}, newStubCatalogFromJSON(t, openAILadderCatalogJSON))
 }
 
 func TestCalculateCost_BasicComputation(t *testing.T) {
@@ -329,7 +327,7 @@ func TestCalculateCost_OpenAILongContextBoundaryIncludesCacheTokens(t *testing.T
 }
 
 func TestCalculateCost_GPT56SolMarketplaceIntervalsMatchSettlement(t *testing.T) {
-	svc := newCalculator(&config.Config{}, newStubPricingServiceFromJSON(t, gpt56LadderCatalogJSON))
+	svc := newCalculator(&config.Config{}, newStubCatalogFromJSON(t, gpt56LadderCatalogJSON))
 	const groupRate = 3.0
 
 	display := svc.DisplayPricing("gpt-5.6-sol", groupRate)
@@ -953,10 +951,10 @@ func TestListSupportedModels(t *testing.T) {
 	require.GreaterOrEqual(t, len(models), 6)
 }
 
-func TestGetPricingServiceStatus_NilService(t *testing.T) {
+func TestGetCatalogStatus_NilService(t *testing.T) {
 	svc := newTestCalculator()
 
-	status := svc.GetPricingServiceStatus()
+	status := svc.GetCatalogStatus()
 	require.NotNil(t, status)
 	require.Equal(t, "using fallback", status["last_updated"])
 }

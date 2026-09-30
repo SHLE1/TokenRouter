@@ -5,13 +5,13 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/stretchr/testify/require"
 )
 
 // TestModelsCatalogMediaQuotes 使用实际离线目录和管理页装配，区分输出能力与计费单位。
 func TestModelsCatalogMediaQuotes(t *testing.T) {
-	service := provider.NewPricingService(provider.Options{
+	service := provider.NewService(provider.Options{
 		DataDir:      t.TempDir(),
 		FallbackFile: "../../resources/model-pricing/model_pricing_supplements.json",
 	}, nil)

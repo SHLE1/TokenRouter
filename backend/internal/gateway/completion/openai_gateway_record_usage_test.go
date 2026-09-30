@@ -7,28 +7,23 @@ import (
 	"testing"
 	"time"
 
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
+	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	completiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
-
-	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
-
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
-
 	usagecore "github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/stretchr/testify/require"
 )
@@ -843,7 +838,7 @@ func TestOpenAIGatewayServiceRecordUsage_GPT56SeparatesCacheWriteForBillingAndSt
 	userRepo := &completiontestkit.UserStore{}
 	subRepo := &completiontestkit.SubscriptionStore{}
 	svc := newOpenAIRecordUsageServiceForTest(usageRepo, userRepo, subRepo, nil)
-	svc.Dependencies.Calculator = billingtestkit.Calculator(svc.Options.DefaultMultiplier, newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*pricing.CatalogModelPricing{
+	svc.Dependencies.Calculator = billingtestkit.Calculator(svc.Options.DefaultMultiplier, newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
 		"gpt-5.6-sol": {
 			InputCostPerToken:       5e-6,
 			OutputCostPerToken:      30e-6,
@@ -959,7 +954,7 @@ func swapInOpenAILadderCatalog(t *testing.T, svc *completiontestkit.Recording) {
 	t.Helper()
 	cfg := &config.Config{}
 	cfg.Default.RateMultiplier = 1.1
-	svc.Dependencies.Calculator = NewBillingService(cfg, newStubPricingServiceFromJSON(t, openAILadderCatalogJSON))
+	svc.Dependencies.Calculator = NewBillingService(cfg, newStubCatalogFromJSON(t, openAILadderCatalogJSON))
 }
 
 func TestOpenAIGatewayServiceRecordUsage_GroupControlsLongContextBilling(t *testing.T) {
