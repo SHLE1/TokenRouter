@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	DataType    = "sub2api-data"
-	DataVersion = 2
+	DataType = "tokenrouter-data"
+	// LegacyDataType 仅用于读取改名前导出的同版本文件。
+	LegacyDataType = "sub2api-data"
+	DataVersion    = 2
 )
 
 type (
@@ -90,8 +92,10 @@ type DataImportResult struct {
 	Errors          []DataImportError `json:"errors,omitempty"`
 }
 
+// ValidateHeader 校验导入格式；品牌别名不放宽版本和字段边界。
+// @project-doc docs/interfaces/http_api.md#product_name_compatibility
 func ValidateHeader(payload DataPayload) error {
-	if payload.Type != DataType {
+	if payload.Type != DataType && payload.Type != LegacyDataType {
 		return fmt.Errorf("unsupported data type: %s", payload.Type)
 	}
 	if payload.Version != DataVersion {

@@ -2,6 +2,16 @@
 
 本文面向部署和日常运维；工程生命周期与迁移约束以 [Project Doc：部署与数据库迁移](../../operations/deployment_and_migrations.md) 为准。其他手册见 [指南目录](../index.md)。
 
+## 从旧名称部署升级
+
+以下安装命令面向新部署。已有 `sub2api` 安装继续使用原目录、服务名、数据库和数据卷；安装脚本会自动识别。存在新旧两套资源时脚本停止，请先明确保留哪套部署。
+
+Compose 用户保留现有 YAML 和 `.env`，使用原服务名升级镜像。不要直接覆盖模板后启动，以免创建空数据卷。确需换成新模板时，先备份并记录 `docker volume ls` 中实际使用的卷名，在 `.env` 设置 `TOKENROUTER_DATA_VOLUME`、`TOKENROUTER_POSTGRES_VOLUME`、`TOKENROUTER_REDIS_VOLUME`，保留原 `POSTGRES_USER`、`POSTGRES_DB`、密码和安全密钥，再停止旧栈并启动新模板。使用本地目录挂载的部署继续使用原目录；独立容器保留原 `DATABASE_USER` 和 `DATABASE_DBNAME`。
+
+直接启动二进制且配置中省略数据库名的旧部署，应先补充 `DATABASE_DBNAME=sub2api` 或对应 YAML 键。新版也读取 `/etc/sub2api/config.yaml`，新系统目录 `/etc/tokenrouter` 优先；显式 `CONFIG_FILE` 的规则不变。
+
+发布归档保留旧安装器所需的兼容文件。历史版本回退继续读取旧归档。品牌设置仅在精确匹配旧默认名时更新；自定义品牌、已有登录和 TOTP 密钥不重置。更多约束见[产品名称与升级兼容](../../operations/deployment_and_migrations.md#product_name_compatibility)。
+
 ## 部署方式
 
 ### 方式一：脚本安装（推荐）
@@ -24,7 +34,7 @@ curl -sSL https://raw.githubusercontent.com/TokenFlux/TokenRouter/main/deploy/in
 脚本会自动：
 1. 检测系统架构
 2. 下载最新版本
-3. 安装二进制文件到 `/opt/sub2api`
+3. 安装二进制文件到 `/opt/tokenrouter`
 4. 创建 systemd 服务
 5. 配置系统用户和权限
 
@@ -32,10 +42,10 @@ curl -sSL https://raw.githubusercontent.com/TokenFlux/TokenRouter/main/deploy/in
 
 ```bash
 # 1. 启动服务
-sudo systemctl start sub2api
+sudo systemctl start tokenrouter
 
 # 2. 设置开机自启
-sudo systemctl enable sub2api
+sudo systemctl enable tokenrouter
 
 # 3. 在浏览器中打开设置向导
 # http://你的服务器IP:8080
@@ -64,13 +74,13 @@ sudo systemctl enable sub2api
 
 ```bash
 # 查看状态
-sudo systemctl status sub2api
+sudo systemctl status tokenrouter
 
 # 查看日志
-sudo journalctl -u sub2api -f
+sudo journalctl -u tokenrouter -f
 
 # 重启服务
-sudo systemctl restart sub2api
+sudo systemctl restart tokenrouter
 
 # 卸载
 curl -sSL https://raw.githubusercontent.com/TokenFlux/TokenRouter/main/deploy/install.sh | sudo bash -s -- uninstall -y
@@ -95,7 +105,7 @@ curl -sSL https://raw.githubusercontent.com/TokenFlux/TokenRouter/main/deploy/in
 
 ```bash
 # 创建部署目录
-mkdir -p sub2api-deploy && cd sub2api-deploy
+mkdir -p tokenrouter-deploy && cd tokenrouter-deploy
 
 # 下载并运行部署准备脚本
 curl -sSL https://raw.githubusercontent.com/TokenFlux/TokenRouter/main/deploy/docker-deploy.sh | bash
@@ -104,7 +114,7 @@ curl -sSL https://raw.githubusercontent.com/TokenFlux/TokenRouter/main/deploy/do
 docker compose up -d
 
 # 查看日志
-docker compose logs -f sub2api
+docker compose logs -f tokenrouter
 ```
 
 **脚本功能：**
@@ -177,7 +187,7 @@ docker compose up -d
 docker compose -f docker-compose.local.yml ps
 
 # 7. 查看日志
-docker compose -f docker-compose.local.yml logs -f sub2api
+docker compose -f docker-compose.local.yml logs -f tokenrouter
 ```
 
 #### 旧部署升级
@@ -195,17 +205,9 @@ docker compose -f docker-compose.local.yml logs -f sub2api
 
 **推荐：** 使用 `docker-compose.local.yml`（脚本部署）以便更轻松地管理数据。
 
-#### 启用“数据管理”功能（datamanagementd）
+#### 历史数据管理守护进程
 
-如需启用管理后台“数据管理”，需要额外部署宿主机数据管理进程 `datamanagementd`。
-
-关键点：
-
-- 主进程固定探测：`/tmp/sub2api-datamanagement.sock`
-- 只有该 Socket 可连通时，数据管理功能才会开启
-- Docker 场景需将宿主机 Socket 挂载到容器同路径
-
-当前仓库不包含该进程的源码或二进制，启用前请先阅读 [datamanagementd 部署说明](datamanagementd.md)。
+当前 TokenRouter 已停用 `datamanagementd` 接口，不再探测或连接其 Unix Socket。新部署使用内置 backup 模块进行备份与恢复，无需安装宿主机守护进程。仓库保留的 [datamanagementd 部署说明](datamanagementd.md) 和安装脚本仅用于核对旧部署。
 
 #### 访问
 
@@ -213,7 +215,7 @@ docker compose -f docker-compose.local.yml logs -f sub2api
 
 如果管理员密码是自动生成的，在日志中查找：
 ```bash
-docker compose -f docker-compose.local.yml logs sub2api | grep "admin password"
+docker compose -f docker-compose.local.yml logs tokenrouter | grep "admin password"
 ```
 
 #### 升级
@@ -232,14 +234,14 @@ docker compose -f docker-compose.local.yml up -d
 # 源服务器
 docker compose -f docker-compose.local.yml down
 cd ..
-tar czf sub2api-complete.tar.gz sub2api-deploy/
+tar czf tokenrouter-complete.tar.gz tokenrouter-deploy/
 
 # 传输到新服务器
-scp sub2api-complete.tar.gz user@new-server:/path/
+scp tokenrouter-complete.tar.gz user@new-server:/path/
 
 # 新服务器
-tar xzf sub2api-complete.tar.gz
-cd sub2api-deploy/
+tar xzf tokenrouter-complete.tar.gz
+cd tokenrouter-deploy/
 docker compose -f docker-compose.local.yml up -d
 ```
 
@@ -291,7 +293,7 @@ pnpm run build
 
 # 4. 编译后端（嵌入前端）
 cd ../backend
-go build -tags embed -o sub2api ./cmd/server
+go build -tags embed -o tokenrouter ./cmd/server
 
 # 5. 创建配置文件
 cp ../deploy/config.example.yaml ./config.yaml
@@ -315,7 +317,7 @@ database:
   port: 5432
   user: "postgres"
   password: "your_password"
-  dbname: "sub2api"
+  dbname: "tokenrouter"
 
 redis:
   host: "localhost"
@@ -474,20 +476,20 @@ Invalid base URL: invalid url scheme: http
 
 创建管理员的两种方式：
 
-1. 推荐让向导自动生成 `config.yaml`：跳过上面的第 5 步（不要执行 `cp`）。直接运行 `./sub2api`，访问 `http://localhost:8080`，向导会引导你完成数据库、Redis 和管理员账号配置，并自动写出 `config.yaml`。
+1. 推荐让向导自动生成 `config.yaml`：跳过上面的第 5 步（不要执行 `cp`）。直接运行 `./tokenrouter`，访问 `http://localhost:8080`，向导会引导你完成数据库、Redis 和管理员账号配置，并自动写出 `config.yaml`。
 
 2. 如果你已经创建了 `config.yaml`：首次启动前先把它临时移走以触发向导，完成后再恢复：
    ```bash
    mv config.yaml config.yaml.bak
-   ./sub2api        # 向导在 http://localhost:8080 启动，并生成新的 config.yaml
+   ./tokenrouter        # 向导在 http://localhost:8080 启动，并生成新的 config.yaml
    # 向导完成后 Ctrl+C 停服，再恢复你的配置：
    mv config.yaml.bak config.yaml
-   ./sub2api        # 重启进入正常模式，用刚创建的管理员登录
+   ./tokenrouter        # 重启进入正常模式，用刚创建的管理员登录
    ```
 
 ```bash
 # 6. 运行应用
-./sub2api
+./tokenrouter
 ```
 
 #### HTTP/2 (h2c) 与 HTTP/1.1 回退
@@ -510,5 +512,5 @@ curl --http2-prior-knowledge -I http://localhost:8080/health
 # HTTP/1.1 回退
 curl --http1.1 -I http://localhost:8080/health
 # WebSocket 回退验证（需管理员 token）
-websocat -H="Sec-WebSocket-Protocol: sub2api-admin, jwt.<ADMIN_TOKEN>" ws://localhost:8080/api/v1/admin/ops/ws/qps
+websocat -H="Sec-WebSocket-Protocol: tokenrouter-admin, jwt.<ADMIN_TOKEN>" ws://localhost:8080/api/v1/admin/ops/ws/qps
 ```

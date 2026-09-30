@@ -93,7 +93,7 @@ const (
 	totpLoginTTL = 5 * time.Minute
 
 	maxTotpAttempts = 5
-	totpIssuer      = "Sub2API"
+	totpIssuer      = "TokenRouter"
 )
 
 // TotpService handles TOTP operations

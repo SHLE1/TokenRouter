@@ -374,7 +374,7 @@ func BuildAuthorizationURL(state, codeChallenge, redirectURI, nonce string) (str
 	params.Set("code_challenge", codeChallenge)
 	params.Set("code_challenge_method", "S256")
 	params.Set("plan", "generic")
-	params.Set("referrer", "sub2api")
+	params.Set("referrer", "tokenrouter")
 
 	return fmt.Sprintf("%s?%s", authorizeURL, params.Encode()), nil
 }

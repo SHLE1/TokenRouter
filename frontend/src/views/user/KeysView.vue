@@ -2563,7 +2563,7 @@ const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
   const baseUrl = publicSettings.value?.api_base_url || window.location.origin
 
   const usageScript = buildCcSwitchUsageScript(baseUrl, balanceUnitName.value)
-  const providerName = (publicSettings.value?.site_name || 'sub2api').trim() || 'sub2api'
+  const providerName = (publicSettings.value?.site_name || 'tokenrouter').trim() || 'tokenrouter'
   const deeplink = buildCcSwitchImportDeeplink({
     baseUrl,
     model: ccModel.value,

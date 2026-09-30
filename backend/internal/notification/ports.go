@@ -27,7 +27,7 @@ type (
 )
 
 const (
-	defaultSiteName       = "Sub2API"
+	defaultSiteName       = "TokenRouter"
 	SettingKeySiteName    = "site_name"
 	SettingKeyAPIBaseURL  = "api_base_url"
 	SettingKeyFrontendURL = "frontend_url"

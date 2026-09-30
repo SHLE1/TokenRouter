@@ -44,7 +44,7 @@ func (s *AuthService) SendPendingOAuthVerifyCode(ctx context.Context, email stri
 		return nil, err
 	}
 
-	siteName := "Sub2API"
+	siteName := "TokenRouter"
 	if s.Settings != nil {
 		siteName = s.Settings.GetSiteName(ctx)
 	}

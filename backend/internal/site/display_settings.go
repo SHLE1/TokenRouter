@@ -12,14 +12,15 @@ type DisplaySettings struct {
 
 func NewDisplaySettings(store interface {
 	GetValue(context.Context, string) (string, error)
-}, frontend func() string) *DisplaySettings {
+}, frontend func() string,
+) *DisplaySettings {
 	return &DisplaySettings{store: store, frontend: frontend}
 }
 
 func (s *DisplaySettings) GetSiteName(ctx context.Context) string {
 	value, err := s.store.GetValue(ctx, SettingKeySiteName)
 	if err != nil || value == "" {
-		return "Sub2API"
+		return "TokenRouter"
 	}
 	return value
 }

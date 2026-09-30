@@ -5,6 +5,7 @@
 ## 章节导航
 
 - [构建与运行形态](#构建与运行形态)：修改产物或部署拓扑时读取。
+- [产品名称与升级兼容](#product_name_compatibility)：从旧命名部署升级时读取。
 - [初始化与启动](#初始化与启动)：修改 setup、配置或健康检查时读取。
 - [迁移执行](#migration_execution)：修改 runner 或迁移格式时读取。
 - [新增与同步迁移](#新增与同步迁移)：创建本 fork 迁移或同步上游时读取。
@@ -30,6 +31,19 @@
 逐步操作见 [中文部署指南](../guides/deployment/index.md)、[Docker 镜像说明](../../deploy/DOCKER.md) 和 [Apple Container 指南](../guides/deployment/apple_container.md)。这些是部署者手册，不替代本文的工程约束。
 
 旧 data management 接口已下线：`backup` 的兼容入口固定返回 `DATA_MANAGEMENT_DEPRECATED`，不会连接 Unix Socket 或启动 gRPC 调用。仓库中的旧安装脚本与 [datamanagementd 指南](../guides/deployment/datamanagementd.md) 是历史部署资料，不代表当前服务仍启用守护进程。当前备份与恢复使用独立的 backup 模块。
+
+<a id="product_name_compatibility"></a>
+## 产品名称与升级兼容
+
+新产物、安装目录、systemd 服务、容器用户和 Compose 服务使用 `tokenrouter`。镜像保留 `/app/sub2api` 兼容链接，容器 UID/GID 仍为 1000。安装器识别 `/opt/sub2api`、旧配置和旧 unit 后继续使用原目录、可执行路径、服务及用户；同时发现新旧安装则停止，避免覆盖另一套部署。
+
+标准发布的主归档命名为 `tokenrouter_<版本>_<系统>_<架构>`，另有 `sub2api_` 兼容归档。每个归档包含新旧两个普通二进制文件，旧更新器可以继续提取 `sub2api`。CI 的两个 GoReleaser build ID 复用同一 matrix 二进制，全部归档进入 `checksums.txt`。新版更新器优先新归档并兼容旧归档，替换位置仍是当前实际可执行路径；下载、校验和、备份与失败恢复规则不变。
+
+已有 Compose 部署保留原编排和 `.env`，只升级镜像即可。更换新模板时先记录实际应用、PostgreSQL 和 Redis 卷名，分别设置 `TOKENROUTER_DATA_VOLUME`、`TOKENROUTER_POSTGRES_VOLUME`、`TOKENROUTER_REDIS_VOLUME`；同时保留数据库名称、用户及密钥，停止旧栈后再启动新模板，不使用 `down -v`。新变量为空时沿用 Compose 项目前缀生成新卷名。
+
+Apple container 新栈使用 `org.tokenrouter.stack` 标签；已有 `sub2api-apple*` 资源继续按 `org.sub2api.stack` 标签核对所有权并原位复用。两种资源同时出现或归属不符时停止。脚本继续共享旧互斥锁，避免新旧脚本并发修改同一栈。`TOKENROUTER_ENV_FILE` 和 `APPLE_CONTAINER_TOKENROUTER_IMAGE` 分别兼容对应旧变量。
+
+迁移 283 仅修改精确命中旧品牌的展示设置。历史 SQL 文件及校验和不变，数据库、数据卷和安装锁不重命名。升级前仍按本页要求备份；回退二进制不会自动把站点名称改回旧品牌。
 
 ## 初始化与启动
 
@@ -310,6 +324,6 @@ SQL 事务的锁等待上限为 10 秒，执行上限为 120 秒，失败后全�
 
 新实例在开放流量和装配后台任务之前，分批迁移 Redis 并发、会话、限流、临时停调和窗口费用键，保留数据类型及剩余 TTL。目标键冲突时停止启动并保留双方；解决冲突后，使用 `migration:provider-names:v1` 中的批次进度继续。该标记不是允许新旧实例混跑的机制，升级期间必须保持旧实例停机。调度快照使用 `sched:v4`，API Key 认证快照版本为 46，仪表盘统计缓存使用 v2；旧快照不参与新版本查询。
 
-JSON 导出格式标识仍为 `sub2api-data`，版本为 2，集合名为 `providers`。导入拒绝缺失版本、旧版本、旧格式标识及 `accounts` 集合；CRS、Codex 等外部格式由专用入口按对方协议读取。新版 JSON 导出仍不包含分组关联与 Spark 影子的独立配置。
+JSON 导出格式标识仍为 `tokenrouter-data`，版本为 2，集合名为 `providers`。导入拒绝缺失版本、旧版本、旧格式标识及 `accounts` 集合；CRS、Codex 等外部格式由专用入口按对方协议读取。新版 JSON 导出仍不包含分组关联与 Spark 影子的独立配置。
 
 先启动一个新实例完成迁移与抽样验证，再恢复其它实例。回退需要停止全部新实例并恢复升级前数据库、Redis 和配置，不能只替换二进制。隔离 PostgreSQL 18 测试中，100 万条用量记录连同索引约 470 MB，元数据迁移耗时约 0.08 秒，表及 26 个索引的物理文件标识不变；生产停机窗口仍需按实际配置量、Redis 键数量和锁等待演练；更早未执行的历史迁移耗时另计。

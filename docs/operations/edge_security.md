@@ -60,9 +60,9 @@ server:
 在 `http` 块中定义共享区域。限速值必须根据实际合法流量调整；下面的值只是保守起点，不是通用容量目标。
 
 ```nginx
-limit_conn_zone $binary_remote_addr zone=sub2api_conn:20m;
-limit_req_zone  $binary_remote_addr zone=sub2api_auth:20m rate=5r/s;
-limit_req_zone  $binary_remote_addr zone=sub2api_api:40m rate=30r/s;
+limit_conn_zone $binary_remote_addr zone=tokenrouter_conn:20m;
+limit_req_zone  $binary_remote_addr zone=tokenrouter_auth:20m rate=5r/s;
+limit_req_zone  $binary_remote_addr zone=tokenrouter_api:40m rate=30r/s;
 map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;
@@ -75,21 +75,21 @@ server {
     client_header_timeout 10s;
     client_max_body_size 256m;
     large_client_header_buffers 4 16k;
-    limit_conn sub2api_conn 40;
+    limit_conn tokenrouter_conn 40;
 
     location ~ ^/(auth|api/auth|api/v1/auth)/ {
-        limit_req zone=sub2api_auth burst=10 nodelay;
+        limit_req zone=tokenrouter_auth burst=10 nodelay;
         proxy_pass http://127.0.0.1:8080;
     }
 
     location ~ ^/(v1/)?(embeddings|alpha/search)$ {
         client_max_body_size 32m;
-        limit_req zone=sub2api_api burst=60 nodelay;
+        limit_req zone=tokenrouter_api burst=60 nodelay;
         proxy_pass http://127.0.0.1:8080;
     }
 
     location / {
-        limit_req zone=sub2api_api burst=60 nodelay;
+        limit_req zone=tokenrouter_api burst=60 nodelay;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

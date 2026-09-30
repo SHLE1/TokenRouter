@@ -28,10 +28,10 @@ func TestDisplaySettingsPreserveNameAndMenuValues(t *testing.T) {
 		wantName string
 		wantMenu string
 	}{
-		{name: "empty", wantName: "Sub2API"},
+		{name: "empty", wantName: "TokenRouter"},
 		{name: "whitespace", value: "  ", wantName: "  ", wantMenu: "  "},
 		{name: "stored", value: "display", wantName: "display", wantMenu: "display"},
-		{name: "read failure", value: "ignored", err: errors.New("read failed"), wantName: "Sub2API", wantMenu: "[]"},
+		{name: "read failure", value: "ignored", err: errors.New("read failed"), wantName: "TokenRouter", wantMenu: "[]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := &displayValues{values: map[string]string{SettingKeySiteName: tc.value, SettingKeyCustomMenuItems: tc.value}, err: tc.err}

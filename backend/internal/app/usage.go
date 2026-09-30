@@ -109,7 +109,7 @@ func provideUsageDashboard(store *usagepg.Store, agg usage.DashboardAggregationR
 
 // provideUsageDashboardCache 只投影原前缀，复用唯一 Redis 客户端。
 func provideUsageDashboardCache(r *redis.Client, cfg *config.Config) usage.DashboardStatsCache {
-	prefix := "sub2api:"
+	prefix := "tokenrouter:"
 	if cfg != nil {
 		prefix = cfg.Dashboard.KeyPrefix
 	}

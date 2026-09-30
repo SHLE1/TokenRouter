@@ -307,7 +307,7 @@
       <div v-else class="text-xs text-gray-400">-</div>
     </template>
 
-    <!-- Grok OAuth 提供商：被动 xAI 额度 header + 本地 Sub2API 用量 -->
+    <!-- Grok OAuth 提供商：被动 xAI 额度 header + 本地 TokenRouter 用量 -->
     <template v-else-if="provider.platform === 'grok' && provider.type === 'oauth'">
       <div v-if="loading" class="space-y-1.5">
         <div class="flex items-center gap-1">

@@ -18,7 +18,6 @@ import (
 )
 
 func TestClientRequestID_GeneratesWhenMissing(t *testing.T) {
-
 	r := gin.New()
 	r.Use(ClientRequestID())
 	r.GET("/t", func(c *gin.Context) {
@@ -29,20 +28,22 @@ func TestClientRequestID_GeneratesWhenMissing(t *testing.T) {
 		require.NotEmpty(t, id)
 		require.Empty(t, c.Request.Header.Get(clientRequestIDHeader))
 		require.Empty(t, c.Request.Header.Get(internalRequestIDHeader))
+		require.Empty(t, c.Request.Header.Get(legacyInternalRequestIDHeader))
 		c.Status(http.StatusOK)
 	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/t", nil)
 	req.Header.Set(internalRequestIDHeader, "spoofed-internal-request-id")
+	req.Header.Set(legacyInternalRequestIDHeader, "spoofed-legacy-id")
 	r.ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.NotEmpty(t, w.Header().Get("X-Client-Request-Id"))
 	require.NotEqual(t, "spoofed-internal-request-id", w.Header().Get(internalRequestIDHeader))
+	require.Equal(t, w.Header().Get(internalRequestIDHeader), w.Header().Get(legacyInternalRequestIDHeader))
 }
 
 func TestClientRequestIDSeparatesInternalAndParentIDs(t *testing.T) {
-
 	var internalID string
 	r := gin.New()
 	r.Use(ClientRequestID())
@@ -58,6 +59,7 @@ func TestClientRequestIDSeparatesInternalAndParentIDs(t *testing.T) {
 		require.Equal(t, parentID, c.Request.Header.Get(clientRequestIDHeader))
 		require.Equal(t, parentID, c.Writer.Header().Get(clientRequestIDHeader))
 		require.Empty(t, c.Request.Header.Get(internalRequestIDHeader))
+		require.Empty(t, c.Request.Header.Get(legacyInternalRequestIDHeader))
 		require.Equal(t, id, c.Writer.Header().Get(internalRequestIDHeader))
 		c.Status(http.StatusOK)
 	})
@@ -72,7 +74,6 @@ func TestClientRequestIDSeparatesInternalAndParentIDs(t *testing.T) {
 }
 
 func TestClientRequestIDRejectsUnsafeIncomingHeader(t *testing.T) {
-
 	r := gin.New()
 	r.Use(ClientRequestID())
 	r.GET("/t", func(c *gin.Context) {
@@ -94,7 +95,6 @@ func TestClientRequestIDRejectsUnsafeIncomingHeader(t *testing.T) {
 }
 
 func TestClientRequestID_PreservesExisting(t *testing.T) {
-
 	r := gin.New()
 	r.Use(ClientRequestID())
 	r.GET("/t", func(c *gin.Context) {
@@ -113,7 +113,6 @@ func TestClientRequestID_PreservesExisting(t *testing.T) {
 }
 
 func TestClientRequestID_ReplacesOversizedExistingID(t *testing.T) {
-
 	r := gin.New()
 	r.Use(ClientRequestID())
 	r.GET("/t", func(c *gin.Context) {
@@ -132,7 +131,6 @@ func TestClientRequestID_ReplacesOversizedExistingID(t *testing.T) {
 }
 
 func TestRequestBodyLimit_LimitsBody(t *testing.T) {
-
 	r := gin.New()
 	r.Use(RequestBodyLimit(4))
 	r.POST("/t", func(c *gin.Context) {

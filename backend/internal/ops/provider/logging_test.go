@@ -121,7 +121,7 @@ func TestUpdateRuntimeLogConfig_InvalidConfigShouldNotApply(t *testing.T) {
 	if err := logging.Init(logging.InitOptions{
 		Level:       "info",
 		Format:      "json",
-		ServiceName: "sub2api",
+		ServiceName: "tokenrouter",
 		Environment: "test",
 		Output: logging.OutputOptions{
 			ToStdout: true,
@@ -192,7 +192,7 @@ func TestResetRuntimeLogConfig_ShouldFallbackToBaseline(t *testing.T) {
 	if err := logging.Init(logging.InitOptions{
 		Level:       "debug",
 		Format:      "json",
-		ServiceName: "sub2api",
+		ServiceName: "tokenrouter",
 		Environment: "test",
 		Output: logging.OutputOptions{
 			ToStdout: true,
@@ -302,7 +302,7 @@ func TestUpdateRuntimeLogConfig_PersistFailureRollback(t *testing.T) {
 	if err := logging.Init(logging.InitOptions{
 		Level:       "info",
 		Format:      "json",
-		ServiceName: "sub2api",
+		ServiceName: "tokenrouter",
 		Environment: "test",
 		Output: logging.OutputOptions{
 			ToStdout: true,
@@ -354,7 +354,7 @@ func TestApplyRuntimeLogConfigOnStartup(t *testing.T) {
 	if err := logging.Init(logging.InitOptions{
 		Level:       "info",
 		Format:      "json",
-		ServiceName: "sub2api",
+		ServiceName: "tokenrouter",
 		Environment: "test",
 		Output: logging.OutputOptions{
 			ToStdout: true,
@@ -446,7 +446,7 @@ func TestUpdateRuntimeLogConfig_Success(t *testing.T) {
 	if err := logging.Init(logging.InitOptions{
 		Level:       "info",
 		Format:      "json",
-		ServiceName: "sub2api",
+		ServiceName: "tokenrouter",
 		Environment: "test",
 		Output: logging.OutputOptions{
 			ToStdout: true,
@@ -508,9 +508,11 @@ func TestApplyRuntimeLogConfigHelpers(t *testing.T) {
 	nilSvc.ApplyRuntimeLogConfigOnStartup(context.Background())
 }
 
-type OpsService = ops.OpsService
-type OpsRuntimeLogConfig = ops.OpsRuntimeLogConfig
-type Setting = settings.Setting
+type (
+	OpsService          = ops.OpsService
+	OpsRuntimeLogConfig = ops.OpsRuntimeLogConfig
+	Setting             = settings.Setting
+)
 
 var ErrSettingNotFound = settings.ErrSettingNotFound
 

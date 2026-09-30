@@ -1,10 +1,11 @@
+import { readStorageWithLegacyKey } from '@/utils/storage'
 import { createI18n } from 'vue-i18n'
 
 type LocaleCode = 'en' | 'zh'
 
 type LocaleMessages = Record<string, any>
 
-const LOCALE_KEY = 'sub2api_locale'
+const LOCALE_KEY = 'tokenrouter_locale'
 const DEFAULT_LOCALE: LocaleCode = 'en'
 
 const localeLoaders: Record<LocaleCode, () => Promise<{ default: LocaleMessages }>> = {
@@ -26,7 +27,7 @@ function getLocaleStorage(): Storage | null {
 }
 
 function getDefaultLocale(): LocaleCode {
-  const saved = getLocaleStorage()?.getItem(LOCALE_KEY)
+  const saved = readStorageWithLegacyKey(getLocaleStorage(), LOCALE_KEY, 'sub2api_locale')
   if (saved && isLocaleCode(saved)) {
     return saved
   }

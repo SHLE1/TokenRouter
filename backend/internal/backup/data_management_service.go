@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	DefaultDataManagementAgentSocketPath = "/tmp/sub2api-datamanagement.sock"
+	DefaultDataManagementAgentSocketPath = "/tmp/tokenrouter-datamanagement.sock"
 	DataManagementDeprecatedReason       = "DATA_MANAGEMENT_DEPRECATED"
 	DataManagementAgentUnavailableReason = "DATA_MANAGEMENT_AGENT_UNAVAILABLE"
 )

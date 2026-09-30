@@ -382,9 +382,9 @@ func VertexBatchDisplayName(input core.BatchImageInput) string {
 		return v
 	}
 	if v := strings.TrimSpace(input.BatchID); v != "" {
-		return "sub2api-" + v
+		return "tokenrouter-" + v
 	}
-	return "sub2api-image-batch"
+	return "tokenrouter-image-batch"
 }
 
 func MapVertexBatchState(job *VertexBatchPredictionJob) *core.BatchProviderStatus {

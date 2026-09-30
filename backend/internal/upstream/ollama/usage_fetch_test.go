@@ -43,7 +43,7 @@ func TestFetchUsageLocalTLSContract(t *testing.T) {
 				calls.Add(1)
 				assert.Equal(t, "/settings", r.URL.Path)
 				assert.Equal(t, "wos-session=cookie-secret", r.Header.Get("Cookie"))
-				assert.Equal(t, "sub2api-ollama-usage/1", r.UserAgent())
+				assert.Equal(t, "tokenrouter-ollama-usage/1", r.UserAgent())
 				w.Header().Set("Retry-After", "30")
 				w.WriteHeader(tt.status)
 				_, _ = io.WriteString(w, tt.body)

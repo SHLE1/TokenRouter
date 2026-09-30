@@ -172,7 +172,7 @@ func (s *AuthService) SendVerifyCode(ctx context.Context, email string, locale .
 	}
 
 	// 获取网站名称
-	siteName := "Sub2API"
+	siteName := "TokenRouter"
 	if s.Settings != nil {
 		siteName = s.Settings.GetSiteName(ctx)
 	}
@@ -214,7 +214,7 @@ func (s *AuthService) SendVerifyCodeAsync(ctx context.Context, email string, loc
 	}
 
 	// 获取网站名称
-	siteName := "Sub2API"
+	siteName := "TokenRouter"
 	if s.Settings != nil {
 		siteName = s.Settings.GetSiteName(ctx)
 	}
@@ -864,7 +864,7 @@ func (s *AuthService) AuthPreparePasswordReset(ctx context.Context, email, front
 	}
 
 	// Get site name
-	siteName := "Sub2API"
+	siteName := "TokenRouter"
 	if s.Settings != nil {
 		siteName = s.Settings.GetSiteName(ctx)
 	}

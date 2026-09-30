@@ -577,7 +577,7 @@ func TestGrokFreeClientToolCacheRequestOptInOverridesProviderOptOut(t *testing.T
 	provider.Record.Credentials["subscription_tier"] = "free"
 	provider.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": false}
 	c := newGrokCacheTestContext(9014)
-	c.Request.Header.Set("X-Sub2API-Grok-Client-Tool-Cache", "prefer-cache")
+	c.Request.Header.Set("X-TokenRouter-Grok-Client-Tool-Cache", "prefer-cache")
 	intentBody := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
 
 	body, err := xai.ApplyGrokResponsesCacheIdentity(intentBody, intentBody, "isolated-id", true)
@@ -747,7 +747,7 @@ func TestGrokFreeClientToolCacheExplicitRequestOptOut(t *testing.T) {
 		t.Run(value, func(t *testing.T) {
 			c := newGrokCacheTestContext(90144)
 			c.Request.URL.Path = "/v1/chat/completions"
-			c.Request.Header.Set("X-Sub2API-Grok-Client-Tool-Cache", value)
+			c.Request.Header.Set("X-TokenRouter-Grok-Client-Tool-Cache", value)
 
 			patched, err := ApplyGrokFreeRequestToolCacheRoute(c, body, body, provider, "isolated-id")
 
@@ -1185,4 +1185,28 @@ func TestResolveGrokCacheIdentityConcurrentDeterminism(t *testing.T) {
 		require.Equal(t, first, identity)
 	}
 	require.NotEmpty(t, first)
+}
+
+// TestGrokCacheHeaderBrandCompatibility 验证旧头可用，新头显式关闭优先。
+func TestGrokCacheHeaderBrandCompatibility(t *testing.T) {
+	for _, value := range []string{"", "0", "false"} {
+		provider := gatewaytestkit.HealthyGrokOAuthProvider(9014, "access-token")
+		provider.Record.Credentials["subscription_tier"] = "free"
+		provider.Record.Extra = map[string]any{"grok_client_tool_cache_enabled": false}
+		c := newGrokCacheTestContext(9014)
+		c.Request.Header.Set("X-Sub2API-Grok-Client-Tool-Cache", "prefer-cache")
+		if value != "" {
+			c.Request.Header.Set("X-TokenRouter-Grok-Client-Tool-Cache", value)
+		}
+		intent := []byte(`{"model":"grok","tools":[{"type":"function","name":"view_image","parameters":{"type":"object"}}],"tool_choice":"auto"}`)
+		body, err := xai.ApplyGrokResponsesCacheIdentity(intent, intent, "isolated-id", true)
+		require.NoError(t, err)
+		body, err = ApplyGrokFreeRequestToolCacheRoute(c, body, intent, provider, "isolated-id")
+		require.NoError(t, err)
+		want := 1
+		if value == "" {
+			want = 3
+		}
+		require.Len(t, gjson.GetBytes(body, "tools").Array(), want)
+	}
 }

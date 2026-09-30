@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"net/http"
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
@@ -11,7 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const grokClientToolCacheOptInHeader = "X-Sub2API-Grok-Client-Tool-Cache"
+const (
+	grokClientToolCacheOptInHeader       = "X-TokenRouter-Grok-Client-Tool-Cache"
+	legacyGrokClientToolCacheOptInHeader = "X-Sub2API-Grok-Client-Tool-Cache"
+)
 
 // ExtractClaudeCodeSessionID 从请求头或 Anthropic/OpenAI 兼容载荷元数据中提取
 // Claude Code 会话标识。
@@ -34,7 +38,12 @@ func ApplyGrokFreeRequestToolCacheRoute(c *gin.Context, body, intentSourceBody [
 	allowPureClientTools, providerPolicyExplicit := gatewayprovider.GrokClientToolCacheProviderPolicy(provider)
 	requestOptOut := false
 	if c != nil {
-		switch strings.ToLower(strings.TrimSpace(c.GetHeader(grokClientToolCacheOptInHeader))) {
+		// 新头显式关闭时也必须优先，只有缺失新头才读取旧头。
+		value := c.GetHeader(grokClientToolCacheOptInHeader)
+		if _, present := c.Request.Header[http.CanonicalHeaderKey(grokClientToolCacheOptInHeader)]; !present {
+			value = c.GetHeader(legacyGrokClientToolCacheOptInHeader)
+		}
+		switch strings.ToLower(strings.TrimSpace(value)) {
 		case "1", "true", "yes", "on", "prefer-cache":
 			allowPureClientTools = true
 		case "0", "false", "no", "off":

@@ -248,8 +248,8 @@ batchImageGuide: {
   },
 // Setup Wizard
   setup: {
-    title: 'Sub2API 安装向导',
-    description: '配置您的 Sub2API 实例',
+    title: 'TokenRouter 安装向导',
+    description: '配置您的 TokenRouter 实例',
     database: {
       title: '数据库配置',
       description: '连接到您的 PostgreSQL 数据库',

@@ -36,7 +36,7 @@ func NewBalanceNotifyService(sender AlertSender, settings NotifySettings, provid
 	return &BalanceNotifyService{emailService: sender, settingRepo: settings, providerRepo: providers, background: background}
 }
 
-const defaultSiteName = "Sub2API"
+const defaultSiteName = "TokenRouter"
 
 // CheckBalanceAfterDeduction checks if balance crossed below threshold after deduction.
 // Notification is sent only on first crossing: oldBalance >= threshold && newBalance < threshold.

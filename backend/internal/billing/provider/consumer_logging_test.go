@@ -65,7 +65,7 @@ func captureStructuredLog(t *testing.T) (*inMemoryLogSink, func()) {
 	err := logging.Init(logging.InitOptions{
 		Level:       "debug",
 		Format:      "json",
-		ServiceName: "sub2api",
+		ServiceName: "tokenrouter",
 		Environment: "test",
 		Output: logging.OutputOptions{
 			ToStdout: true,

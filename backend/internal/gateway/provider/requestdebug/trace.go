@@ -217,8 +217,8 @@ func (s *Trace) open(path string) {
 //
 // 启用方式（环境变量）：
 //
-//	SUB2API_DEBUG_GATEWAY_BODY=1                          # 写入 gateway_debug.log
-//	SUB2API_DEBUG_GATEWAY_BODY=/tmp/gateway_debug.log     # 写入指定路径
+//	TOKENROUTER_DEBUG_GATEWAY_BODY=1                          # 写入 gateway_debug.log
+//	TOKENROUTER_DEBUG_GATEWAY_BODY=/tmp/gateway_debug.log     # 写入指定路径
 //
 // tag: "CLIENT_ORIGINAL" 或 "UPSTREAM_FORWARD"
 func (s *Trace) Snapshot(tag string, headers http.Header, body []byte, extra map[string]string) {

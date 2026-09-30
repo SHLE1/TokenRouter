@@ -22,10 +22,8 @@ func AdminAuth(
 	auditService AuthObserver,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// WebSocket upgrade requests cannot set Authorization headers in browsers.
-		// For admin WebSocket endpoints (e.g. Ops realtime), allow passing the JWT via
-		// Sec-WebSocket-Protocol (subprotocol list) using a prefixed token item:
-		//   Sec-WebSocket-Protocol: sub2api-admin, jwt.<token>
+		// 浏览器 WebSocket 无法设置 Authorization，管理员 JWT 通过独立协议项传递。
+		// 例如 Sec-WebSocket-Protocol: tokenrouter-admin, jwt.<token>；旧基础协议同样可用。
 		if IsWebSocketUpgradeRequest(c) {
 			if token := ExtractJWTFromWebSocketSubprotocol(c); token != "" {
 				if !ValidateJWTForAdmin(c, token, authService, userService, settingService, auditService) {

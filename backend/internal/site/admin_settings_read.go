@@ -51,7 +51,7 @@ func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
 	result.LoginAgreementMode = NormalizeLoginAgreementMode(settings[SettingKeyLoginAgreementMode])
 	result.LoginAgreementUpdatedAt = loginAgreementUpdatedAt
 	result.LoginAgreementDocuments = loginAgreementDocuments
-	result.SiteName = settingvalues.StringOrDefault(settings, SettingKeySiteName, "Sub2API")
+	result.SiteName = settingvalues.StringOrDefault(settings, SettingKeySiteName, "TokenRouter")
 	result.SiteLogo = settings[SettingKeySiteLogo]
 	result.SiteSubtitle = settingvalues.StringOrDefault(settings, SettingKeySiteSubtitle, "Subscription to API Conversion Platform")
 	result.SiteNameZh = settings[SettingKeySiteNameZh]

@@ -24,7 +24,7 @@ type OpsSystemLog struct {
 }
 
 // OpsRequestTiming 是从 http.access 系统日志提取的单请求阶段耗时。
-// 所有数值均为相对于 Sub2API 入口的毫秒数；缺失阶段保持 nil。
+// 所有数值均为相对于 TokenRouter 入口的毫秒数；缺失阶段保持 nil。
 type OpsRequestTiming struct {
 	RequestContentLength           *int64 `json:"request_content_length,omitempty"`
 	ProviderSlotAcquiredMs         *int64 `json:"provider_slot_acquired_ms,omitempty"`

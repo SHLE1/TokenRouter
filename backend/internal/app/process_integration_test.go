@@ -154,7 +154,7 @@ func TestProcessModes(t *testing.T) {
 	t.Run("version", func(t *testing.T) {
 		p := startTestProcess(t, binary, t.TempDir(), nil, "-version")
 		require.NoError(t, p.wait(t, 30*time.Second))
-		require.Contains(t, p.output.text(), "Sub2API test-contract (commit: test-head, built: test-date)")
+		require.Contains(t, p.output.text(), "TokenRouter test-contract (commit: test-head, built: test-date)")
 		require.NotContains(t, p.output.text(), "[Lifecycle] started")
 	})
 	fixture := newDatabaseFixture(t)

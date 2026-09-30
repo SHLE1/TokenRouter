@@ -65,7 +65,7 @@ func (c *OAuthClient) ExchangeCode(ctx context.Context, code, codeVerifier, redi
 	var tokenResp TokenResponse
 	resp, err := client.R().
 		SetContext(ctx).
-		SetHeader("User-Agent", "sub2api-grok-oauth/1.0").
+		SetHeader("User-Agent", "tokenrouter-grok-oauth/1.0").
 		SetFormDataFromValues(formData).
 		SetSuccessResult(&tokenResp).
 		Post(c.tokenURL)
@@ -97,7 +97,7 @@ func (c *OAuthClient) RefreshToken(ctx context.Context, refreshToken, proxyURL, 
 	var tokenResp TokenResponse
 	resp, err := client.R().
 		SetContext(ctx).
-		SetHeader("User-Agent", "sub2api-grok-oauth/1.0").
+		SetHeader("User-Agent", "tokenrouter-grok-oauth/1.0").
 		SetFormDataFromValues(formData).
 		SetSuccessResult(&tokenResp).
 		Post(c.tokenURL)

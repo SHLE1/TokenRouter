@@ -414,7 +414,7 @@ func (s *Checkout) BuildPaymentSubject(plan *SubscriptionPlan, limitAmount float
 	if plan != nil {
 		productName := plan.ProductName
 		if productName == "" {
-			productName = "Sub2API Subscription " + plan.Name
+			productName = "TokenRouter Subscription " + plan.Name
 		}
 		return ApplyPaymentProductNameAffix(productName, cfg)
 	}
@@ -426,7 +426,7 @@ func (s *Checkout) BuildPaymentSubject(plan *SubscriptionPlan, limitAmount float
 	if HasPaymentProductNameAffix(cfg) {
 		return ApplyPaymentProductNameAffix(amountStr, cfg)
 	}
-	return "Sub2API " + amountStr + " " + currency
+	return "TokenRouter " + amountStr + " " + currency
 }
 
 func HasPaymentProductNameAffix(cfg *PaymentConfig) bool {

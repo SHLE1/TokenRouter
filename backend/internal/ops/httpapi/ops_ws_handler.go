@@ -44,10 +44,8 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return isAllowedOpsWSOrigin(r)
 	},
-	// Subprotocol negotiation:
-	// - The frontend passes ["sub2api-admin", "jwt.<token>"].
-	// - We always select "sub2api-admin" so the token is never echoed back in the handshake response.
-	Subprotocols: []string{"sub2api-admin"},
+	// 优先新协议，同时兼容旧前端；JWT 只用于认证，不能被选为响应协议。
+	Subprotocols: []string{"tokenrouter-admin", "sub2api-admin"},
 }
 
 const (

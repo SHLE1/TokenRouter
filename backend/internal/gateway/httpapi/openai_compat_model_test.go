@@ -602,7 +602,7 @@ func TestForwardAsAnthropic_TrimsFullReplayOnlyForCodexCompatModels(t *testing.T
 	codexBody := run(t, "gpt-5.3-codex")
 	require.Equal(t, int64(12+1), gjson.GetBytes(codexBody, "input.#").Int())
 	require.Equal(t, "developer", gjson.GetBytes(codexBody, "input.0.role").String())
-	require.Contains(t, gjson.GetBytes(codexBody, "input.0.content.0.text").String(), "<sub2api-claude-code-todo-guard>")
+	require.Contains(t, gjson.GetBytes(codexBody, "input.0.content.0.text").String(), "<tokenrouter-claude-code-todo-guard>")
 	require.Equal(t, "message-03", gjson.GetBytes(codexBody, "input.1.content.0.text").String())
 	require.Equal(t, "message-14", gjson.GetBytes(codexBody, "input.12.content.0.text").String())
 
@@ -646,7 +646,7 @@ func TestForwardAsAnthropic_OAuthCompatKeepsFullReplayForCacheGrowth(t *testing.
 	require.NotNil(t, result)
 	require.Equal(t, int64(12+4), gjson.GetBytes(upstream.lastBody, "input.#").Int())
 	require.Equal(t, "developer", gjson.GetBytes(upstream.lastBody, "input.0.role").String())
-	require.Contains(t, gjson.GetBytes(upstream.lastBody, "input.0.content.0.text").String(), "<sub2api-claude-code-todo-guard>")
+	require.Contains(t, gjson.GetBytes(upstream.lastBody, "input.0.content.0.text").String(), "<tokenrouter-claude-code-todo-guard>")
 	require.Equal(t, "message-00", gjson.GetBytes(upstream.lastBody, "input.1.content.0.text").String())
 	require.Equal(t, "message-14", gjson.GetBytes(upstream.lastBody, "input.15.content.0.text").String())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "prompt_cache_key").Exists())
@@ -699,7 +699,7 @@ func TestForwardAsAnthropic_AttachesPreviousResponseIDForCompatContinuation(t *t
 	require.Equal(t, "resp_first", gjson.GetBytes(upstream.lastBody, "previous_response_id").String())
 	require.Equal(t, int64(2), gjson.GetBytes(upstream.lastBody, "input.#").Int())
 	require.Equal(t, "developer", gjson.GetBytes(upstream.lastBody, "input.0.role").String())
-	require.Contains(t, gjson.GetBytes(upstream.lastBody, "input.0.content.0.text").String(), "<sub2api-claude-code-todo-guard>")
+	require.Contains(t, gjson.GetBytes(upstream.lastBody, "input.0.content.0.text").String(), "<tokenrouter-claude-code-todo-guard>")
 	require.Equal(t, "second", gjson.GetBytes(upstream.lastBody, "input.1.content.0.text").String())
 }
 
@@ -711,13 +711,13 @@ func TestForwardAsAnthropic_DoesNotAttachPreviousResponseIDWhenCapabilityDisable
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 1,
-			Name:        "nested-sub2api",
+			Name:        "nested-tokenrouter",
 			Platform:    capability.PlatformOpenAI,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
 			Credentials: map[string]any{
 				"api_key":  "sk-test",
-				"base_url": "https://inner-sub2api.example/v1",
+				"base_url": "https://inner-tokenrouter.example/v1",
 			},
 		},
 	}
@@ -743,13 +743,13 @@ func TestForwardAsAnthropic_ReplaysWithoutContinuationWhenNestedOAuthRejectsHTTP
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 1,
-			Name:        "nested-sub2api",
+			Name:        "nested-tokenrouter",
 			Platform:    capability.PlatformOpenAI,
 			Type:        capability.ProviderTypeAPIKey,
 			Concurrency: 1,
 			Credentials: map[string]any{
 				"api_key":  "sk-test",
-				"base_url": "https://inner-sub2api.example/v1",
+				"base_url": "https://inner-tokenrouter.example/v1",
 			},
 			Extra: map[string]any{providercore.ExtraKeyResponsesContinuationSupported: true},
 		},
@@ -881,7 +881,7 @@ func TestForwardAsAnthropic_ReplaysFullToolHistoryWhenPreviousResponseUnavailabl
 	require.False(t, gjson.GetBytes(upstream.bodies[1], "previous_response_id").Exists())
 	require.Equal(t, int64(5), gjson.GetBytes(upstream.bodies[1], "input.#").Int())
 	require.Equal(t, "developer", gjson.GetBytes(upstream.bodies[1], "input.0.role").String())
-	require.Contains(t, gjson.GetBytes(upstream.bodies[1], "input.0.content.0.text").String(), "<sub2api-claude-code-todo-guard>")
+	require.Contains(t, gjson.GetBytes(upstream.bodies[1], "input.0.content.0.text").String(), "<tokenrouter-claude-code-todo-guard>")
 	require.Equal(t, "first", gjson.GetBytes(upstream.bodies[1], "input.1.content.0.text").String())
 	require.Equal(t, "function_call", gjson.GetBytes(upstream.bodies[1], "input.2.type").String())
 	require.Equal(t, "call_1", gjson.GetBytes(upstream.bodies[1], "input.2.call_id").String())
@@ -1051,7 +1051,7 @@ func TestForwardAsAnthropic_APIKeyMetadataSessionSurvivesChangingCacheControlAnc
 	require.False(t, gjson.GetBytes(upstream.bodies[1], "previous_response_id").Exists())
 	require.Equal(t, int64(12+5), gjson.GetBytes(upstream.bodies[1], "input.#").Int())
 	require.Equal(t, "developer", gjson.GetBytes(upstream.bodies[1], "input.0.role").String())
-	require.Contains(t, gjson.GetBytes(upstream.bodies[1], "input.0.content.0.text").String(), "<sub2api-claude-code-todo-guard>")
+	require.Contains(t, gjson.GetBytes(upstream.bodies[1], "input.0.content.0.text").String(), "<tokenrouter-claude-code-todo-guard>")
 	require.Equal(t, "rewritten context", gjson.GetBytes(upstream.bodies[1], "input.1.content.0.text").String())
 	require.Equal(t, "message-15", gjson.GetBytes(upstream.bodies[1], "input.16.content.0.text").String())
 }
@@ -1434,7 +1434,7 @@ func TestForwardAsAnthropic_OAuthAddsClaudeCodeTodoGuardForCompatModel(t *testin
 	require.Equal(t, "developer", gjson.GetBytes(upstream.lastBody, "input.0.role").String())
 	require.Equal(t, "project instructions", gjson.GetBytes(upstream.lastBody, "input.0.content.0.text").String())
 	require.Equal(t, "developer", gjson.GetBytes(upstream.lastBody, "input.1.role").String())
-	require.Contains(t, gjson.GetBytes(upstream.lastBody, "input.1.content.0.text").String(), "<sub2api-claude-code-todo-guard>")
+	require.Contains(t, gjson.GetBytes(upstream.lastBody, "input.1.content.0.text").String(), "<tokenrouter-claude-code-todo-guard>")
 	require.Equal(t, "user", gjson.GetBytes(upstream.lastBody, "input.2.role").String())
 }
 

@@ -71,3 +71,16 @@ func TestCLIVersionDefaultsToBuiltinPin(t *testing.T) {
 		t.Fatalf("CLIVersion() = %q, want built-in pin %q (测试进程未设置 %s)", got, CLICurrentVersion, CLIVersionEnv)
 	}
 }
+
+// TestCLIVersionEnvironmentCompatibility 验证新旧运维变量的优先级。
+func TestCLIVersionEnvironmentCompatibility(t *testing.T) {
+	t.Setenv(CLIVersionEnv, "")
+	t.Setenv("SUB2API_CLAUDE_CLI_VERSION", "2.2.0")
+	if got := cliVersionOverride(); got != "2.2.0" {
+		t.Fatalf("legacy override = %q", got)
+	}
+	t.Setenv(CLIVersionEnv, "3.0.0")
+	if got := cliVersionOverride(); got != "3.0.0" {
+		t.Fatalf("new override = %q", got)
+	}
+}

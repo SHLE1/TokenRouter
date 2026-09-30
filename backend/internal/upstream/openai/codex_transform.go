@@ -125,6 +125,7 @@ func NormalizeCodexCallIDForItemType(itemType, id string) string {
 
 func CompactCodexCallIDForItemType(itemType, id string) string {
 	prefix := protocolopenai.OpenAIResponsesToolCallIDPrefix(itemType) + "_"
+	// 哈希种子保留旧值，确保升级后已有设备、会话及调用身份不变。
 	digest := sha256.Sum256([]byte("sub2api:codex-call-id:v1:" + id))
 	encoded := hex.EncodeToString(digest[:])
 	return prefix + encoded[:CodexCallIDMaxLength-len(prefix)]
@@ -142,10 +143,10 @@ func TrimOpenAIResponsesKnownCallIDPrefix(id string) string {
 const CodexImageGenerationFunctionToolName = "image_gen.imagegen"
 
 const (
-	CodexImageGenerationBridgeMarker = "<sub2api-codex-image-generation>"
-	CodexImageGenerationBridgeText   = CodexImageGenerationBridgeMarker + "\nWhen the user asks for raster image generation or editing, use the OpenAI Responses native `image_generation` tool attached to this request. The local Codex client may not expose an `image_gen` namespace, but that does not mean image generation is unavailable. Do not ask the user to switch to CLI fallback solely because `image_gen` is absent.\n</sub2api-codex-image-generation>"
-	CodexSparkImageUnsupportedMarker = "<sub2api-codex-spark-image-unsupported>"
-	CodexSparkImageUnsupportedText   = CodexSparkImageUnsupportedMarker + "\nThe current model is gpt-5.3-codex-spark, which does not support image generation, image editing, image input, the `image_generation` tool, or Codex `image_gen`/`$imagegen` workflows. If the user asks for image generation or image editing, clearly explain this model limitation and ask them to switch to a non-Spark Codex model such as gpt-5.3-codex or gpt-5.4. Do not claim that the local environment merely lacks image_gen tooling, and do not suggest CLI fallback as the primary fix while the model remains Spark.\n</sub2api-codex-spark-image-unsupported>"
+	CodexImageGenerationBridgeMarker = "<tokenrouter-codex-image-generation>"
+	CodexImageGenerationBridgeText   = CodexImageGenerationBridgeMarker + "\nWhen the user asks for raster image generation or editing, use the OpenAI Responses native `image_generation` tool attached to this request. The local Codex client may not expose an `image_gen` namespace, but that does not mean image generation is unavailable. Do not ask the user to switch to CLI fallback solely because `image_gen` is absent.\n</tokenrouter-codex-image-generation>"
+	CodexSparkImageUnsupportedMarker = "<tokenrouter-codex-spark-image-unsupported>"
+	CodexSparkImageUnsupportedText   = CodexSparkImageUnsupportedMarker + "\nThe current model is gpt-5.3-codex-spark, which does not support image generation, image editing, image input, the `image_generation` tool, or Codex `image_gen`/`$imagegen` workflows. If the user asks for image generation or image editing, clearly explain this model limitation and ask them to switch to a non-Spark Codex model such as gpt-5.3-codex or gpt-5.4. Do not claim that the local environment merely lacks image_gen tooling, and do not suggest CLI fallback as the primary fix while the model remains Spark.\n</tokenrouter-codex-spark-image-unsupported>"
 )
 
 var OpenAIChatGPTInternalUnsupportedFields = []string{
@@ -1146,7 +1147,7 @@ func ApplyCodexImageGenerationBridgeInstructions(reqBody map[string]any, spark b
 	}
 
 	existing, _ := reqBody["instructions"].(string)
-	if strings.Contains(existing, CodexImageGenerationBridgeMarker) {
+	if strings.Contains(existing, CodexImageGenerationBridgeMarker) || strings.Contains(existing, "<sub2api-codex-image-generation>") {
 		return false
 	}
 
@@ -1165,7 +1166,7 @@ func ApplyCodexSparkImageUnsupportedInstructions(reqBody map[string]any) bool {
 		return false
 	}
 	existing, _ := reqBody["instructions"].(string)
-	if strings.Contains(existing, CodexSparkImageUnsupportedMarker) {
+	if strings.Contains(existing, CodexSparkImageUnsupportedMarker) || strings.Contains(existing, "<sub2api-codex-spark-image-unsupported>") {
 		return false
 	}
 	existing = strings.TrimRight(existing, " \t\r\n")

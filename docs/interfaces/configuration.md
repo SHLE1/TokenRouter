@@ -38,7 +38,7 @@
 配置文件选择规则为：
 
 1. `CONFIG_FILE` 非空时只使用该显式文件路径。
-2. 否则按顺序搜索 `DATA_DIR`（若设置）、`/app/data`、当前目录、`./config`、`/etc/sub2api` 中的 `config.yaml`。
+2. 否则按顺序搜索 `DATA_DIR`（若设置）、`/app/data`、当前目录、`./config`、`/etc/tokenrouter`、`/etc/sub2api` 中的 `config.yaml`。
 3. 文件不存在允许继续使用默认值和环境变量；文件存在但 YAML 无法读取/解析则启动失败。
 
 `subscription_maintenance.worker_count`、`subscription_maintenance.queue_size` 及对应环境变量已退役。加载器忽略这些旧键，不启动订阅维护队列；其余已知配置仍按现有规则校验。
@@ -70,6 +70,14 @@
 加载完成后会做字符串规范化、枚举回退、派生默认、文件读取和完整 `Validate`。无效安全 header、URL、数值范围、模式组合或必要 secret 会让启动失败；不应等到某个请求首次使用时才发现。自动生成的 TOTP key 只适合开发，`EncryptionKeyConfigured=false` 会阻止后台把 TOTP 当成生产可用配置。
 
 环境变量优先于 YAML，因此排查“文件修改不生效”时先检查容器环境。不得在日志、错误或管理响应中输出数据库密码、JWT/TOTP secret、OAuth secret、对象存储 secret 或提供商凭据。
+
+### 产品名称兼容
+
+新安装默认使用 `tokenrouter` 数据库、日志服务名、日志文件及仪表盘缓存前缀。显式数据库连接、日志路径与缓存前缀原样保留，升级不会重命名数据库或搬迁数据。仅依赖旧数据库默认名的部署应在升级前显式设置 `DATABASE_DBNAME=sub2api`，Compose 还应保留原 `POSTGRES_USER` 和 `POSTGRES_DB`。
+
+`TOKENROUTER_DEBUG_MODEL_ROUTING`、`TOKENROUTER_DEBUG_GATEWAY_BODY`、`TOKENROUTER_DEBUG_CLAUDE_MIMIC` 和 `TOKENROUTER_CLAUDE_CLI_VERSION` 分别兼容同后缀的 `SUB2API_` 变量。非空新变量优先，包括 `0` 和 `false`；新变量为空时回退旧变量。CLI 指纹版本仍只在进程初始化时解析一次。
+
+迁移 283 只把值去除首尾空白后恰好等于旧产品名的站点名称、站点标题、发件人名称和支付商品前缀更新为 TokenRouter。自定义值、历史订单、邮件记录和已绑定 TOTP 密钥不变。新 TOTP 绑定显示 TokenRouter，旧绑定继续使用原密钥验证。
 
 ## 首次初始化
 

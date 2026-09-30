@@ -23,7 +23,7 @@ ghcr.io/tokenflux/tokenrouter:latest
 
 ## 独立容器
 
-直接使用 `docker run` 时，必须提供与 `docker-compose.standalone.yml` 中 `sub2api` 服务相同的设置。至少需要配置：
+直接使用 `docker run` 时，必须提供与 `docker-compose.standalone.yml` 中 `tokenrouter` 服务相同的设置。至少需要配置：
 
 | 变量 | 用途 |
 | --- | --- |

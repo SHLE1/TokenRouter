@@ -38,7 +38,7 @@ func FetchUsage(ctx context.Context, input FetchInput, options FetchOptions) (*u
 	}
 	req.Header.Set("Accept", "text/html,application/xhtml+xml")
 	req.Header.Set("Cookie", cookie)
-	req.Header.Set("User-Agent", "sub2api-ollama-usage/1")
+	req.Header.Set("User-Agent", "tokenrouter-ollama-usage/1")
 	resp, err := options.Do(req)
 	if err != nil {
 		return &usageview.OllamaUsageObservation{HTTPStatus: 0, Failure: "request_failed", RetryAfter: 0, Unauthorized: false}, nil

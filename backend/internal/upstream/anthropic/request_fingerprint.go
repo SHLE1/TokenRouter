@@ -31,7 +31,7 @@ const (
 	ClaudeCLIUserAgentProduct = "claude-cli"
 	// 限制持久化 User-Agent 长度，避免异常客户端把超长值写入提供商缓存。
 	MaxFingerprintUserAgentLength = 256
-	// MaxClaudeCLIMajorVersionSkew 是 claude-cli 主版本号相对 sub2api 自身伪装
+	// MaxClaudeCLIMajorVersionSkew 是 claude-cli 主版本号相对 tokenrouter 自身伪装
 	// 版本（CLIVersion()）允许的最大超前量。给足两个大版本的升级
 	// 窗口，同时挡掉 999 这类哨兵版本号。
 	MaxClaudeCLIMajorVersionSkew = 2

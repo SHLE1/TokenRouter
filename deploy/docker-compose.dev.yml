@@ -1,5 +1,5 @@
 # =============================================================================
-# Sub2API Docker Compose - Local Development Build
+# TokenRouter Docker Compose - Local Development Build
 # =============================================================================
 # Build from local source code for testing changes.
 #
@@ -9,13 +9,13 @@
 # =============================================================================
 
 services:
-  sub2api:
+  tokenrouter:
     build:
       context: ..
       dockerfile: Dockerfile
       args:
         NPM_CONFIG_REGISTRY: ${NPM_CONFIG_REGISTRY:-https://registry.npmmirror.com}
-    container_name: sub2api-dev
+    container_name: tokenrouter-dev
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -49,9 +49,9 @@ services:
       - ALIPAY_MOBILE_PRECREATE_DEEP_LINK=${ALIPAY_MOBILE_PRECREATE_DEEP_LINK:-}
       - DATABASE_HOST=postgres
       - DATABASE_PORT=5432
-      - DATABASE_USER=${POSTGRES_USER:-sub2api}
+      - DATABASE_USER=${POSTGRES_USER:-tokenrouter}
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      - DATABASE_DBNAME=${POSTGRES_DB:-sub2api}
+      - DATABASE_DBNAME=${POSTGRES_DB:-tokenrouter}
       - DATABASE_SSLMODE=disable
       - DATABASE_MAX_OPEN_CONNS=${DATABASE_MAX_OPEN_CONNS:-50}
       - DATABASE_MAX_IDLE_CONNS=${DATABASE_MAX_IDLE_CONNS:-10}
@@ -65,7 +65,7 @@ services:
       - REDIS_POOL_SIZE=${REDIS_POOL_SIZE:-1024}
       - REDIS_MIN_IDLE_CONNS=${REDIS_MIN_IDLE_CONNS:-10}
       - REDIS_ENABLE_TLS=${REDIS_ENABLE_TLS:-false}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@sub2api.local}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@tokenrouter.local}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       - JWT_SECRET=${JWT_SECRET:-}
       - JWT_EXPIRE_HOUR=${JWT_EXPIRE_HOUR:-24}
@@ -88,12 +88,12 @@ services:
       - UPDATE_PROXY_URL=${UPDATE_PROXY_URL:-}
       # Local mainland-China development proxy. Containers cannot use
       # 127.0.0.1 for the host proxy, so default to Docker Desktop's host name.
-      - HTTP_PROXY=${SUB2API_DEV_HTTP_PROXY:-http://host.docker.internal:7897}
-      - HTTPS_PROXY=${SUB2API_DEV_HTTPS_PROXY:-http://host.docker.internal:7897}
-      - ALL_PROXY=${SUB2API_DEV_ALL_PROXY:-socks5://host.docker.internal:7897}
-      - NO_PROXY=${SUB2API_DEV_NO_PROXY:-127.0.0.1,localhost,::1,postgres,redis,sub2api,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,.local}
+      - HTTP_PROXY=${TOKENROUTER_DEV_HTTP_PROXY:-${SUB2API_DEV_HTTP_PROXY:-http://host.docker.internal:7897}}
+      - HTTPS_PROXY=${TOKENROUTER_DEV_HTTPS_PROXY:-${SUB2API_DEV_HTTPS_PROXY:-http://host.docker.internal:7897}}
+      - ALL_PROXY=${TOKENROUTER_DEV_ALL_PROXY:-${SUB2API_DEV_ALL_PROXY:-socks5://host.docker.internal:7897}}
+      - NO_PROXY=${TOKENROUTER_DEV_NO_PROXY:-${SUB2API_DEV_NO_PROXY:-127.0.0.1,localhost,::1,postgres,redis,tokenrouter,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,.local}}
       # Gateway 配置值来自 Compose .env 或当前 Shell。
-      # 未配置时回退到 Sub2API 后端默认值，保持省略配置时的行为。
+      # 未配置时回退到 TokenRouter 后端默认值，保持省略配置时的行为。
       - GATEWAY_FORCE_CODEX_CLI=${GATEWAY_FORCE_CODEX_CLI:-false}
       - GATEWAY_OPENAI_COMPACT_MODEL=${GATEWAY_OPENAI_COMPACT_MODEL:-gpt-5.4}
       - GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT=${GATEWAY_OPENAI_RESPONSE_HEADER_TIMEOUT:-0}
@@ -148,7 +148,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - sub2api-network
+      - tokenrouter-network
     healthcheck:
       test: ["CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://localhost:8080/health"]
       interval: 30s
@@ -158,7 +158,7 @@ services:
 
   postgres:
     image: postgres:18-alpine
-    container_name: sub2api-postgres-dev
+    container_name: tokenrouter-postgres-dev
     restart: unless-stopped
     # 限制 PostgreSQL 进程及其所属文件页缓存，避免数据库工作集占满虚机。
     mem_limit: 24g
@@ -184,15 +184,15 @@ services:
     volumes:
       - ./postgres_data:/var/lib/postgresql/data:Z
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-sub2api}
+      - POSTGRES_USER=${POSTGRES_USER:-tokenrouter}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      - POSTGRES_DB=${POSTGRES_DB:-sub2api}
+      - POSTGRES_DB=${POSTGRES_DB:-tokenrouter}
       - PGDATA=/var/lib/postgresql/data
       - TZ=${TZ:-Asia/Shanghai}
     networks:
-      - sub2api-network
+      - tokenrouter-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sub2api} -d ${POSTGRES_DB:-sub2api}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tokenrouter} -d ${POSTGRES_DB:-tokenrouter}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -200,7 +200,7 @@ services:
 
   redis:
     image: redis:8-alpine
-    container_name: sub2api-redis-dev
+    container_name: tokenrouter-redis-dev
     restart: unless-stopped
     # Redis 当前工作集较小，2 GiB 上限为异常增长保留余量。
     mem_limit: 2g
@@ -231,7 +231,7 @@ services:
       - TZ=${TZ:-Asia/Shanghai}
       - REDISCLI_AUTH=${REDIS_PASSWORD:-}
     networks:
-      - sub2api-network
+      - tokenrouter-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -240,5 +240,5 @@ services:
       start_period: 5s
 
 networks:
-  sub2api-network:
+  tokenrouter-network:
     driver: bridge

@@ -119,7 +119,7 @@ func (s *SMTPServer) Settings() map[string]string {
 		"smtp_username":  "user",
 		"smtp_password":  "password",
 		"smtp_from":      "noreply@example.com",
-		"smtp_from_name": "Sub2API",
+		"smtp_from_name": "TokenRouter",
 		"smtp_use_tls":   "false",
 	}
 }

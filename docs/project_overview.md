@@ -25,7 +25,7 @@ TokenRouter 是基于上游 Sub2API 持续演进的 AI API 网关与管理平台
 
 上游供应商自身的可用性、服务条款、模型真实性和外部支付机构的最终结算不由本系统保证。`docs/legal/` 是运行时展示的法律材料，部署与产品使用手册也可以位于 `docs/`；除非被目录规范列出，它们都不是 Project Doc 的当前状态权威来源。
 
-仓库仍保留若干 `sub2api` 名称，包括二进制、服务名、环境变量、数据路径和 Go 包内兼容标识。它们是现有部署及上游兼容契约，不应仅为品牌统一而机械替换。
+产品展示名为 TokenRouter，新安装和新发布的技术标识使用 `tokenrouter`。旧 `sub2api` 配置、导入格式、客户端协议和部署资源保留兼容入口；Codex 稳定身份的哈希种子不变。上游 Sub2API 的致谢、用量适配协议和历史 SQL 迁移保留真实名称。升级边界见[部署与数据库迁移](operations/deployment_and_migrations.md#product_name_compatibility)。
 
 ## 运行时组成
 

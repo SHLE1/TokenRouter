@@ -1737,13 +1737,13 @@ func TestOpenAIBuildUpstreamRequestOpenAIPassthroughDoesNotPropagateInternalRequ
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader([]byte(`{"model":"gpt-5"}`)))
-	c.Request.Header.Set("X-Sub2API-Request-ID", "internal-request-123")
+	c.Request.Header.Set("X-TokenRouter-Request-ID", "internal-request-123")
 
 	svc := newResponsesFixture(responsesFixtureInputs{})
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}
 	req, err := svc.Requests.BuildPassthrough(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token")
 	require.NoError(t, err)
-	require.Empty(t, req.Header.Get("X-Sub2API-Request-ID"))
+	require.Empty(t, req.Header.Get("X-TokenRouter-Request-ID"))
 }
 
 func TestOpenAIBuildUpstreamRequestCompactForcesJSONAcceptForOAuth(t *testing.T) {
@@ -1772,7 +1772,7 @@ func TestOpenAIBuildUpstreamRequestCompactForcesJSONAcceptForOAuth(t *testing.T)
 func TestOpenAIBuildUpstreamRequestOAuthMessagesBridgeUsesSessionOnly(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
-	body := []byte(`{"model":"gpt-5.5","prompt_cache_key":"anthropic-metadata-session-1","input":[{"type":"message","role":"developer","content":[{"type":"input_text","text":"<sub2api-claude-code-todo-guard>"}]},{"type":"message","role":"user","content":"hello"}]}`)
+	body := []byte(`{"model":"gpt-5.5","prompt_cache_key":"anthropic-metadata-session-1","input":[{"type":"message","role":"developer","content":[{"type":"input_text","text":"<tokenrouter-claude-code-todo-guard>"}]},{"type":"message","role":"user","content":"hello"}]}`)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
 	c.Request.Header.Set("OpenAI-Beta", "responses=experimental")
 	c.Request.Header.Set("originator", "codex_cli_rs")

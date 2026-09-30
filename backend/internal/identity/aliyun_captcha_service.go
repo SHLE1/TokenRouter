@@ -73,7 +73,7 @@ func NormalizeAliyunCaptchaRegion(value string) string {
 }
 
 // AliyunCredentialValidationParam 用于后台保存时探测凭证有效性的假验证参数
-const AliyunCredentialValidationParam = "sub2api-credential-validation"
+const AliyunCredentialValidationParam = "tokenrouter-credential-validation"
 
 // AliyunInvalidCredentialCodes 表示 AK/SK 本身无效的阿里云错误码；
 // 其余错误码（如 param 无效）说明签名已通过、凭证可用。

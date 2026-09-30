@@ -64,7 +64,7 @@ func IsOpenAICompatMessagesBridgeBody(body []byte) bool {
 	if len(body) == 0 {
 		return false
 	}
-	if bytes.Contains(body, []byte(OpenAICompatClaudeCodeTodoGuardMarker)) {
+	if bytes.Contains(body, []byte(OpenAICompatClaudeCodeTodoGuardMarker)) || bytes.Contains(body, []byte(legacyClaudeCodeTodoGuardMarker)) {
 		return true
 	}
 	return IsOpenAICompatMessagesBridgePromptCacheKey(gjson.GetBytes(body, "prompt_cache_key").String())
@@ -74,7 +74,7 @@ func IsOpenAICompatMessagesBridgeRequestBody(reqBody map[string]any) bool {
 	if reqBody == nil {
 		return false
 	}
-	if input, ok := reqBody["input"].([]any); ok && InputContainsText(input, OpenAICompatClaudeCodeTodoGuardMarker) {
+	if input, ok := reqBody["input"].([]any); ok && (InputContainsText(input, OpenAICompatClaudeCodeTodoGuardMarker) || InputContainsText(input, legacyClaudeCodeTodoGuardMarker)) {
 		return true
 	}
 	return IsOpenAICompatMessagesBridgePromptCacheKey(openai.FirstNonEmptyString(reqBody["prompt_cache_key"]))
@@ -87,9 +87,12 @@ func IsOpenAICompatMessagesBridgePromptCacheKey(key string) bool {
 		strings.HasPrefix(key, "anthropic-digest-")
 }
 
+// 旧标记仍用于识别历史请求，避免重复注入并维持桥接判断。
+const legacyClaudeCodeTodoGuardMarker = "<sub2api-claude-code-todo-guard>"
+
 const (
-	OpenAICompatClaudeCodeTodoGuardMarker = "<sub2api-claude-code-todo-guard>"
-	OpenAICompatClaudeCodeTodoGuardText   = OpenAICompatClaudeCodeTodoGuardMarker + "\nWhen using Claude Code todo or task tracking tools, keep the visible task list consistent. Do not send final or summary text while any item remains in_progress. Before finishing, asking the user to choose, or reporting a blocker, update the todo list so completed work is completed and deferred work is pending/open; leave an item in_progress only when active work will continue in the same turn.\n</sub2api-claude-code-todo-guard>"
+	OpenAICompatClaudeCodeTodoGuardMarker = "<tokenrouter-claude-code-todo-guard>"
+	OpenAICompatClaudeCodeTodoGuardText   = OpenAICompatClaudeCodeTodoGuardMarker + "\nWhen using Claude Code todo or task tracking tools, keep the visible task list consistent. Do not send final or summary text while any item remains in_progress. Before finishing, asking the user to choose, or reporting a blocker, update the todo list so completed work is completed and deferred work is pending/open; leave an item in_progress only when active work will continue in the same turn.\n</tokenrouter-claude-code-todo-guard>"
 )
 
 func AppendOpenAICompatClaudeCodeTodoGuard(req *protocolopenai.ResponsesRequest) bool {
@@ -101,7 +104,7 @@ func AppendOpenAICompatClaudeCodeTodoGuard(req *protocolopenai.ResponsesRequest)
 	if err := json.Unmarshal(req.Input, &items); err != nil {
 		return false
 	}
-	if len(items) == 0 || ResponsesInputItemsContainText(items, OpenAICompatClaudeCodeTodoGuardMarker) {
+	if len(items) == 0 || (ResponsesInputItemsContainText(items, OpenAICompatClaudeCodeTodoGuardMarker) || ResponsesInputItemsContainText(items, legacyClaudeCodeTodoGuardMarker)) {
 		return false
 	}
 
@@ -142,7 +145,7 @@ func AppendOpenAICompatClaudeCodeTodoGuardToRequestBody(reqBody map[string]any) 
 	}
 
 	input, ok := reqBody["input"].([]any)
-	if !ok || len(input) == 0 || InputContainsText(input, OpenAICompatClaudeCodeTodoGuardMarker) {
+	if !ok || len(input) == 0 || (InputContainsText(input, OpenAICompatClaudeCodeTodoGuardMarker) || InputContainsText(input, legacyClaudeCodeTodoGuardMarker)) {
 		return false
 	}
 

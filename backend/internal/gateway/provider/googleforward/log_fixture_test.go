@@ -49,12 +49,11 @@ func captureStructuredLog(t *testing.T) (*inMemoryLogSink, func()) {
 	structuredLogCaptureMu.Lock()
 
 	err := logging.Init(logging.InitOptions{
-
 		Level: "debug",
 
 		Format: "json",
 
-		ServiceName: "sub2api",
+		ServiceName: "tokenrouter",
 
 		Environment: "test",
 

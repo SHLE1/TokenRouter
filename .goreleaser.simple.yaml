@@ -1,17 +1,17 @@
 # 简化版 GoReleaser 配置 - 仅发布 x86_64 GHCR 镜像
 version: 2
 
-project_name: sub2api
+project_name: tokenrouter
 
 before:
   hooks:
     - go mod tidy -C backend
 
 builds:
-  - id: sub2api
+  - id: tokenrouter
     dir: backend
     main: ./cmd/server
-    binary: sub2api
+    binary: tokenrouter
     flags:
       - -tags=embed
     env:

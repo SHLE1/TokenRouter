@@ -22,7 +22,7 @@ type authSettingsFixture struct {
 	oauth *identity.OAuthSettings
 }
 
-func (s authSettingsFixture) GetSiteName(context.Context) string { return "Sub2API" }
+func (s authSettingsFixture) GetSiteName(context.Context) string { return "TokenRouter" }
 
 func (s authSettingsFixture) GetDingTalkConnectOAuthConfig(ctx context.Context) (identity.DingTalkRegistrationPolicy, error) {
 	value, err := s.oauth.GetDingTalkConnectOAuthConfig(ctx)

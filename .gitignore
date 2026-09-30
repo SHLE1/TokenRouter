@@ -11,6 +11,8 @@ docs/claude-relay-service/
 *.dylib
 backend/bin/
 backend/server
+backend/tokenrouter
+# 旧版本本地构建产物继续忽略。
 backend/sub2api
 backend/main
 

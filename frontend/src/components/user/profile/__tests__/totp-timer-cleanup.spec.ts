@@ -64,7 +64,7 @@ describe('TOTP 弹窗定时器清理', () => {
     mocks.getVerificationMethod.mockResolvedValue({ method: 'email' })
     mocks.sendVerifyCode.mockResolvedValue({ success: true })
     mocks.initiateSetup.mockResolvedValue({
-      qr_code_url: 'otpauth://totp/Sub2API:test?secret=ABC123',
+      qr_code_url: 'otpauth://totp/TokenRouter:test?secret=ABC123',
       secret: 'ABC123',
       setup_token: 'setup-token'
     })

@@ -1049,8 +1049,8 @@ func TestLoadDefaultDashboardCacheConfig(t *testing.T) {
 	if !cfg.Dashboard.Enabled {
 		t.Fatalf("Dashboard.Enabled = false, want true")
 	}
-	if cfg.Dashboard.KeyPrefix != "sub2api:" {
-		t.Fatalf("Dashboard.KeyPrefix = %q, want %q", cfg.Dashboard.KeyPrefix, "sub2api:")
+	if cfg.Dashboard.KeyPrefix != "tokenrouter:" {
+		t.Fatalf("Dashboard.KeyPrefix = %q, want %q", cfg.Dashboard.KeyPrefix, "tokenrouter:")
 	}
 	if cfg.Dashboard.StatsFreshTTLSeconds != 15 {
 		t.Fatalf("Dashboard.StatsFreshTTLSeconds = %d, want 15", cfg.Dashboard.StatsFreshTTLSeconds)
@@ -1254,7 +1254,7 @@ func TestConfigAddressHelpers(t *testing.T) {
 		Port:     5432,
 		User:     "postgres",
 		Password: "",
-		DBName:   "sub2api",
+		DBName:   "tokenrouter",
 		SSLMode:  "disable",
 	}
 	if !strings.Contains(dbCfg.DSN(), "password=") {
@@ -2710,5 +2710,23 @@ func TestLoadIgnoresRetiredOpenAIWSFallbackCooldown(t *testing.T) {
 			cfg.Gateway.OpenAIWS.RetryBackoffInitialMS = -1
 			require.ErrorContains(t, cfg.Validate(), "gateway.openai_ws.retry_backoff_initial_ms")
 		})
+	}
+}
+
+// TestProductConfigDirectories 验证显式路径不回退，默认搜索同时兼容新旧系统目录。
+func TestProductConfigDirectories(t *testing.T) {
+	t.Setenv("CONFIG_FILE", "")
+	t.Setenv("DATA_DIR", "/fixture/data")
+	var paths []string
+	configureConfigSource(func(string) { t.Fatal("unexpected explicit config") }, func(path string) { paths = append(paths, path) })
+	want := []string{"/fixture/data", "/app/data", ".", "./config", "/etc/tokenrouter", "/etc/sub2api"}
+	if strings.Join(paths, ":") != strings.Join(want, ":") {
+		t.Fatalf("paths = %v, want %v", paths, want)
+	}
+	t.Setenv("CONFIG_FILE", "/fixture/custom.yaml")
+	var explicit string
+	configureConfigSource(func(path string) { explicit = path }, func(string) { t.Fatal("explicit config must not fall back") })
+	if explicit != "/fixture/custom.yaml" {
+		t.Fatalf("explicit = %q", explicit)
 	}
 }

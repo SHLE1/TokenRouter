@@ -176,11 +176,11 @@ func contentModerationCyberEmailVariables(warning *contract.RiskWarning, cfg *co
 
 func (s *RiskDelivery) siteName(ctx context.Context) string {
 	if s == nil || s.settingRepo == nil {
-		return "Sub2API"
+		return "TokenRouter"
 	}
 	name, err := s.settingRepo.GetValue(ctx, SettingKeySiteName)
 	if err != nil || strings.TrimSpace(name) == "" {
-		return "Sub2API"
+		return "TokenRouter"
 	}
 	return strings.TrimSpace(name)
 }

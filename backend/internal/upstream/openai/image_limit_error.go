@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// IsImageCapabilityLossError 判断上游是否拒绝了 sub2api 自己写入请求体的 image_generation 工具选择。
+// IsImageCapabilityLossError 判断上游是否拒绝了 tokenrouter 自己写入请求体的 image_generation 工具选择。
 // 该判定仅对自构造图片请求有意义，因为这类请求始终包含匹配的 image_generation 项；
 // 上游仍称其不存在即表示提供商失去该能力。
 func IsImageCapabilityLossError(statusCode int, body []byte) bool {

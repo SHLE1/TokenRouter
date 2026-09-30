@@ -34,6 +34,7 @@ func (s *testSettingRepo) Get(ctx context.Context, key string) (*settingscore.Se
 	}
 	return &settingscore.Setting{Key: key, Value: v}, nil
 }
+
 func (s *testSettingRepo) GetValue(ctx context.Context, key string) (string, error) {
 	v, ok := s.values[key]
 	if !ok {
@@ -41,10 +42,12 @@ func (s *testSettingRepo) GetValue(ctx context.Context, key string) (string, err
 	}
 	return v, nil
 }
+
 func (s *testSettingRepo) Set(ctx context.Context, key, value string) error {
 	s.values[key] = value
 	return nil
 }
+
 func (s *testSettingRepo) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
 	out := make(map[string]string, len(keys))
 	for _, k := range keys {
@@ -54,12 +57,14 @@ func (s *testSettingRepo) GetMultiple(ctx context.Context, keys []string) (map[s
 	}
 	return out, nil
 }
+
 func (s *testSettingRepo) SetMultiple(ctx context.Context, settings map[string]string) error {
 	for k, v := range settings {
 		s.values[k] = v
 	}
 	return nil
 }
+
 func (s *testSettingRepo) GetAll(ctx context.Context) (map[string]string, error) {
 	out := make(map[string]string, len(s.values))
 	for k, v := range s.values {
@@ -67,13 +72,13 @@ func (s *testSettingRepo) GetAll(ctx context.Context) (map[string]string, error)
 	}
 	return out, nil
 }
+
 func (s *testSettingRepo) Delete(ctx context.Context, key string) error {
 	delete(s.values, key)
 	return nil
 }
 
 func newOpsRuntimeRouter(handler *OpsHandler, withUser bool) *gin.Engine {
-
 	r := gin.New()
 	if withUser {
 		r.Use(func(c *gin.Context) {
@@ -92,7 +97,7 @@ func newRuntimeOpsService(t *testing.T) *ops.OpsService {
 	if err := logging.Init(logging.InitOptions{
 		Level:       "info",
 		Format:      "json",
-		ServiceName: "sub2api",
+		ServiceName: "tokenrouter",
 		Environment: "test",
 		Output: logging.OutputOptions{
 			ToStdout: false,

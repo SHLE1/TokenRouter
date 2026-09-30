@@ -45,6 +45,7 @@ func ResolveConvergedSessionID(seed string) string {
 	if seed == "" {
 		return ""
 	}
+	// 哈希种子保留旧值，确保升级后已有设备、会话及调用身份不变。
 	return DeriveStableUUIDv4("sub2api:codex-session-id:v2:" + seed)
 }
 
@@ -55,6 +56,7 @@ func ResolveConvergedThreadID(seed, clientSessionID string) string {
 	if seed == "" || clientSessionID == "" {
 		return ""
 	}
+	// 哈希种子保留旧值，确保升级后已有设备、会话及调用身份不变。
 	return DeriveStableUUIDv4("sub2api:codex-thread-id:v2:" + seed + ":" + clientSessionID)
 }
 

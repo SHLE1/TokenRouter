@@ -248,8 +248,8 @@ batchImageGuide: {
   },
 // Setup Wizard
   setup: {
-    title: 'Sub2API Setup',
-    description: 'Configure your Sub2API instance',
+    title: 'TokenRouter Setup',
+    description: 'Configure your TokenRouter instance',
     database: {
       title: 'Database Configuration',
       description: 'Connect to your PostgreSQL database',

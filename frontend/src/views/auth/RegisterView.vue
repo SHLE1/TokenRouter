@@ -360,6 +360,7 @@ import {
   validateInvitationCode
 } from '@/api/auth'
 import { buildAuthErrorMessage } from '@/utils/authError'
+import { LOGIN_AGREEMENT_STORAGE_KEY, hasAcceptedLoginAgreement } from '@/utils/loginAgreement'
 import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
 import {
   formatRegistrationEmailSuffixWhitelistForMessage,
@@ -374,7 +375,6 @@ import {
 import type { LoginAgreementDocument, PublicSettings } from '@/types'
 
 const { t, locale } = useI18n()
-const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
 
 // ==================== Router & Stores ====================
 
@@ -592,7 +592,7 @@ function resolveLocalizedSiteName(settings: PublicSettings | null): string {
   const isZh = String(locale.value).toLowerCase().startsWith('zh')
   const primary = isZh ? settings?.site_name_zh : settings?.site_name_en
   const secondary = isZh ? settings?.site_name_en : settings?.site_name_zh
-  return firstConfiguredText(primary, secondary, settings?.site_name, 'Sub2API')
+  return firstConfiguredText(primary, secondary, settings?.site_name, 'TokenRouter')
 }
 
 function firstConfiguredText(...values: Array<string | undefined>): string {
@@ -630,22 +630,6 @@ function applyLoginAgreementSettings(settings: {
     loginAgreementEnabled.value && !agreementAccepted.value && loginAgreementMode.value !== 'checkbox'
 }
 
-function hasAcceptedLoginAgreement(revision: string): boolean {
-  if (!revision) {
-    return false
-  }
-  try {
-    const raw = localStorage.getItem(LOGIN_AGREEMENT_STORAGE_KEY)
-    if (!raw) {
-      return false
-    }
-    const parsed = JSON.parse(raw) as { revision?: string }
-    return parsed.revision === revision
-  } catch {
-    return false
-  }
-}
-
 function acceptLoginAgreement(): void {
   if (loginAgreementRevision.value) {
     localStorage.setItem(
@@ -662,7 +646,8 @@ function acceptLoginAgreement(): void {
 }
 
 function rejectLoginAgreement(): void {
-  localStorage.removeItem(LOGIN_AGREEMENT_STORAGE_KEY)
+  // 撤回时留下新键的否定记录，避免再次读取旧确认。
+  localStorage.setItem(LOGIN_AGREEMENT_STORAGE_KEY, '{}')
   agreementAccepted.value = false
   showAgreementModal.value = false
   showAgreementHint.value = false

@@ -527,7 +527,7 @@ const baseSettingsResponse = {
   default_concurrency: 1,
   default_user_api_key_limit: 100,
   default_subscriptions: [],
-  site_name: "Sub2API",
+  site_name: "TokenRouter",
   site_logo: "",
   site_subtitle: "",
   site_name_zh: "",

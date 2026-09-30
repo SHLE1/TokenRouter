@@ -1169,7 +1169,7 @@ func NewUserService(users UserRepository, settings ProfileSettings, auth UserAut
 }
 
 func (s *UserService) SendNotifyVerifyEmail(ctx context.Context, sender NotifyVerificationSender, userID int64, email, code, locale string) error {
-	siteName := "Sub2API"
+	siteName := "TokenRouter"
 	if s.settingRepo != nil {
 		if name, err := s.settingRepo.GetValue(ctx, SettingKeySiteName); err == nil && name != "" {
 			siteName = name

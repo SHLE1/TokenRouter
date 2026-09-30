@@ -1,5 +1,5 @@
 /**
- * Core Type Definitions for Sub2API Frontend
+ * Core Type Definitions for TokenRouter Frontend
  */
 
 import type { SubscriptionPlan } from './payment'

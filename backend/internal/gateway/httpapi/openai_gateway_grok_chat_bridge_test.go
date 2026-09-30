@@ -203,7 +203,7 @@ func TestForwardGrokChatViaResponsesTraeToolHistoryKeepsCacheRoute(t *testing.T)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, grok.GrokChatRawEndpoint, bytes.NewReader(body))
-	c.Request.Header.Set("X-Sub2API-Grok-Client-Tool-Cache", "prefer-cache")
+	c.Request.Header.Set("X-TokenRouter-Grok-Client-Tool-Cache", "prefer-cache")
 	c.Set("api_key", &apikey.APIKey{ID: 7151})
 
 	provider := grokChatBridgeTestProvider(715)

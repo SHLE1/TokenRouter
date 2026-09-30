@@ -23,6 +23,7 @@
 - [响应与错误](#响应与错误)：保持面板与协议兼容形状。
 - [请求关联](#请求关联)：正确透传 request ID。
 - [变更规则](#变更规则)：新增接口时检查。
+- [产品名称兼容](#product_name_compatibility)：修改新旧导入标识、请求头和浏览器状态时读取。
 
 新增创作台路由时读取[创作台](../domains/creative_studio.md)领域文档核对生命周期、幂等与留存边界。
 
@@ -40,7 +41,7 @@ RequestLogger
   -> embedded frontend and API routes
 ```
 
-`X-Request-ID` 是服务端请求关联 ID：长度和字符合法时沿用客户端值，否则生成 UUID，并写回响应和 request context。网关路由另外安装 `ClientRequestID`，始终为本服务生成内部请求 ID；合法的 `X-Client-Request-ID` 只作为调用方关联 ID 保存和回显，不参与权限或结算幂等。缺失或不安全时，响应中的 `X-Client-Request-ID` 回退为内部 ID；内部 ID 另通过 `X-Sub2API-Request-ID` 返回。服务生成的关联 ID 不主动加入上游请求，避免把网关内部头发送给供应商。
+`X-Request-ID` 是服务端请求关联 ID：长度和字符合法时沿用客户端值，否则生成 UUID，并写回响应和 request context。网关路由另外安装 `ClientRequestID`，始终为本服务生成内部请求 ID；合法的 `X-Client-Request-ID` 只作为调用方关联 ID 保存和回显，不参与权限或结算幂等。缺失或不安全时，响应中的 `X-Client-Request-ID` 回退为内部 ID；内部 ID 另通过 `X-TokenRouter-Request-ID` 返回。服务生成的关联 ID 不主动加入上游请求，避免把网关内部头发送给供应商。
 
 入口体积限制和错误采集按路由族叠加。网关在读取 JSON/multipart 之前应用通用或文本 body limit、client request ID、Ops error logger、endpoint 归一化和 API Key auth。面板接口使用全局/重查询限流和审计；高风险公开认证接口使用独立 Redis 限流并在依赖故障时 fail-close。
 
@@ -243,7 +244,7 @@ Group 不再返回 `platform` 或 `is_default`；使用 `allowed_protocols`、`p
 - `POST /api/v1/admin/providers/:id/upstream-usage/query`
 - `POST /api/v1/admin/providers/upstream-usage/query/batch`，请求体 `provider_ids` 最多 100 个正整数。
 
-接口只接受 `type=apikey`（Bedrock 除外），使用管理员认证和既有审计中间件；内置适配器为 `sub2api`、`new_api` 和 `zivv`，由提供商配置严格选择。成功结果在顶层包含 `adapter`、`provider`、UTC `observed_at` 以及余额/限额/订阅字段；批量接口将每个提供商的成功结果和结构化错误分开返回。错误 reason 使用 `UPSTREAM_USAGE_*` 命名空间，覆盖提供商无效/禁用、协议不支持、认证失败、钱包不可用/钱包认证失败、限流、超时、响应格式、网络和身份变更。
+接口只接受 `type=apikey`（Bedrock 除外），使用管理员认证和既有审计中间件；内置适配器为 `tokenrouter`、`new_api` 和 `zivv`，由提供商配置严格选择。成功结果在顶层包含 `adapter`、`provider`、UTC `observed_at` 以及余额/限额/订阅字段；批量接口将每个提供商的成功结果和结构化错误分开返回。错误 reason 使用 `UPSTREAM_USAGE_*` 命名空间，覆盖提供商无效/禁用、协议不支持、认证失败、钱包不可用/钱包认证失败、限流、超时、响应格式、网络和身份变更。
 
 查询不会写提供商、Extra、调度快照或计费记录，也不会把 API Key 放入响应或审计 body。前端只在行内按钮或批量操作触发请求，成功结果在管理员隔离的 `sessionStorage` 中缓存五分钟。
 
@@ -282,7 +283,7 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器显式绑定同一�
 
 唯一错误实体位于 `pkg/apperror`，HTTP 映射和面板 envelope 位于 `server/httpx`。消费者直接使用具名类别，保留原 code 数值、字段、`errors.Is/As`、cause 和 metadata 复制语义；自定义状态码仍按原值映射。
 
-管理员 `GET /api/v1/admin/usage` 的每条记录可包含 `detailed_timing`。该对象由同一内部请求 ID 关联 `http.access` 日志得到，字段是相对于 Sub2API 入口的毫秒时间点，包括提供商槽位、上游连接/写入、首字节、首个 SSE、首个可见输出和首次下游 Flush；历史记录或观测日志缺失时省略该对象。
+管理员 `GET /api/v1/admin/usage` 的每条记录可包含 `detailed_timing`。该对象由同一内部请求 ID 关联 `http.access` 日志得到，字段是相对于 TokenRouter 入口的毫秒时间点，包括提供商槽位、上游连接/写入、首字节、首个 SSE、首个可见输出和首次下游 Flush；历史记录或观测日志缺失时省略该对象。
 
 网关错误必须保持调用协议形状：OpenAI 入口使用 `error` 对象，Anthropic 使用 `type: error` 与嵌套错误，Google 使用 HTTP code/message/status。认证、未分组、复合 Key 和本地能力拒绝都选择当前协议 writer；不能为了复用面板 helper 把一个 Google/Anthropic 客户端错误改成面板 envelope。
 
@@ -294,7 +295,7 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器显式绑定同一�
 
 - `X-Request-ID` 用于一次 HTTP 调用的日志和审计关联，最长持久化长度受限。
 - `X-Client-Request-ID` 是调用方提供的跨服务关联 ID；服务会限制为安全的 ASCII 标识并保留在日志链路中，但不作为内部结算幂等 ID。缺失或不安全时，响应中的该头回退为服务生成的内部 ID。
-- `X-Sub2API-Request-ID` 是服务生成的内部请求 ID，用于本服务日志、结算幂等和下游诊断；它只写入响应，不加入上游请求。
+- `X-TokenRouter-Request-ID` 是服务生成的内部请求 ID，用于本服务日志、结算幂等和下游诊断；它只写入响应，不加入上游请求。
 - 上游 request ID 属于供应商观测字段，需单独保存，不能替换本地 ID。
 - 后台 worker 从请求派生所需 metadata 后使用受超时约束的新 Context；不得继续持有已取消请求的 body 或 Gin context。
 
@@ -326,3 +327,14 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器显式绑定同一�
 价格配置创建、更新和响应包含 `peak_rate_enabled`、`peak_start`、`peak_end`、`peak_rate_multiplier`、`long_context_pricing_enabled`、`free_openai_fast`、`batch_image_discount_multiplier`、`batch_image_hold_multiplier`，以及 `web_search_price_per_call`、`search_price_per_1k`、`audio_realtime_price_per_min`、`audio_tts_price_per_million_chars`、`audio_stt_price_per_hour`。更新时省略设置表示不改动；五项可空单价传 `null` 清除覆盖、传 `0` 表示免费。预扣倍率不得低于折扣倍率，高峰只接受同日有效窗口。
 
 分组接口移除上述价格字段及 `model_pricing`；`rate_multiplier` 仍属于分组。控制台将基础倍率放在分组“基本”页，其余设置统一在价格配置的“计费设置”页编辑。旧分组值不复制到价格配置。
+
+<a id="product_name_compatibility"></a>
+## 产品名称兼容
+
+提供商与代理导出使用 `type=tokenrouter-data`、`version=2`。导入同样接受 `type=sub2api-data` 的版本 2 文件，仍拒绝版本 1、缺失版本和不支持的字段，不能借名称兼容重新启用旧账号集合。
+
+网关响应同时提供 `X-TokenRouter-Request-ID` 和等值的 `X-Sub2API-Request-ID`。这两个内部关联头在入口都会从请求删除，不接受调用方指定内部身份，也不向上游透传。`X-Client-Request-ID` 的父请求语义不变。
+
+Grok 请求缓存开关使用 `X-TokenRouter-Grok-Client-Tool-Cache`，缺失新头时才读取旧 `X-Sub2API-Grok-Client-Tool-Cache`；显式新头关闭优先，两种头都只在本地消费。Ops WebSocket 优先协商 `tokenrouter-admin`，兼容 `sub2api-admin`，JWT 继续通过独立的 `jwt.<token>` 项提供且不能回显。
+
+浏览器语言和登录协议确认使用 `tokenrouter_` 存储键，新键缺失时复制旧键，协议仍按 revision 判断。新键已有值或撤回记录时不回退旧确认；可重建缓存使用新名称，旧缓存不主动清除。

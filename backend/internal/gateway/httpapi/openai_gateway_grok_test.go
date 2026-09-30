@@ -64,7 +64,7 @@ func TestForwardGrokResponsesCodexAdditionalToolsUsesMixedCacheIntent(t *testing
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", bytes.NewReader(body))
-	c.Request.Header.Set("X-Sub2API-Grok-Client-Tool-Cache", "prefer-cache")
+	c.Request.Header.Set("X-TokenRouter-Grok-Client-Tool-Cache", "prefer-cache")
 	c.Set("api_key", &apikey.APIKey{ID: 4501})
 
 	provider := gatewaytestkit.HealthyGrokOAuthProvider(4501, "access-token")
@@ -104,7 +104,7 @@ func TestForwardGrokResponsesCodexAdditionalToolsUsesMixedCacheIntent(t *testing
 	identity := gjson.GetBytes(upstream.lastBody, "prompt_cache_key").String()
 	require.NotEmpty(t, identity)
 	require.Equal(t, identity, upstream.lastReq.Header.Get(GrokConversationIDHeader))
-	require.Empty(t, upstream.lastReq.Header.Get("X-Sub2API-Grok-Client-Tool-Cache"))
+	require.Empty(t, upstream.lastReq.Header.Get("X-TokenRouter-Grok-Client-Tool-Cache"))
 }
 
 func TestForwardGrokResponsesClaudeDesktopClientToolsUseCacheRoute(t *testing.T) {
