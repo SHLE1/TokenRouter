@@ -117,9 +117,13 @@
         </template>
 
         <template #cell-group="{ row }">
-          <span v-if="row.group" class="inline-flex items-center rounded-compact px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-            {{ row.group.name }}
-          </span>
+          <!-- 两侧使用记录共用 API Key 的分组徽章，倍率由费用列展示。 -->
+          <GroupBadge
+            v-if="row.group"
+            :name="row.group.name"
+            :display-brand="row.group.display_brand"
+            :show-rate="false"
+          />
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
         </template>
 
@@ -704,6 +708,7 @@ function providerBilled(row: { total_cost?: number | null; provider_stats_cost?:
 
 import DataTable from '@/components/common/DataTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import GroupBadge from '@/components/common/GroupBadge.vue'
 import IpGeoCell from '@/components/common/IpGeoCell.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { fetchBatch, getEntry } from '@/utils/ipGeoLookup'
