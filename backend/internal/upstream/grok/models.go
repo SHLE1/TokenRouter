@@ -142,14 +142,20 @@ func NormalizeModelID(model string) string {
 	return model
 }
 
-// StripGrokProviderPrefix 保留供应商限定身份，只清理首尾空白。
-func StripGrokProviderPrefix(model string) string {
-	return strings.TrimSpace(model)
+// grokReasoningModelID 只读识别推理能力，结果不得用于转发、查价或额度键。
+func grokReasoningModelID(model string) string {
+	model = strings.ToLower(strings.TrimSpace(model))
+	for _, prefix := range []string{"xai/", "x-ai/", "grok/"} {
+		if native, found := strings.CutPrefix(model, prefix); found {
+			return strings.TrimSpace(native)
+		}
+	}
+	return model
 }
 
 // IsGrokModelID 判断模型是否为 Grok/xAI 原生 ID 或别名；Claude/OpenAI 模型返回 false。
 func IsGrokModelID(model string) bool {
-	normalized := strings.ToLower(StripGrokProviderPrefix(model))
+	normalized := strings.ToLower(strings.TrimSpace(model))
 	if normalized == "" {
 		return false
 	}
@@ -165,7 +171,7 @@ func IsGrokModelID(model string) bool {
 // IsGrokTextResponsesModelID 判断模型是否为 Responses API 已知的 Grok 文本模型；
 // Imagine 媒体模型和未知自定义 ID 返回 false。
 func IsGrokTextResponsesModelID(model string) bool {
-	normalized := strings.ToLower(StripGrokProviderPrefix(model))
+	normalized := strings.ToLower(strings.TrimSpace(model))
 	_, ok := grokTextResponsesModelAliases[normalized]
 	return ok
 }
