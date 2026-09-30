@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="mb-2 flex gap-2 border-b border-gray-200 dark:border-dark-700" role="tablist" :aria-label="t('admin.pricing.title')">
+    <div class="mb-4 flex gap-2 border-b border-gray-200 dark:border-dark-700" role="tablist" :aria-label="t('admin.pricing.title')">
       <button v-for="tab in ['configs', 'defaults'] as const" :key="tab" class="px-4 py-3 text-sm font-medium border-b-2" :class="pageTab === tab ? 'border-primary-500 text-primary-700 dark:text-primary-300' : 'border-transparent text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'" role="tab" :aria-selected="pageTab === tab" @click="pageTab = tab">{{ t(`admin.pricing.tabs.${tab}`) }}</button>
     </div>
     <DefaultPricingPanel v-if="pageTab === 'defaults'" />

@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div role="tablist" :aria-label="t('admin.modelAttributes.title')" class="mb-2 flex border-b border-gray-200 dark:border-dark-700">
+    <div role="tablist" :aria-label="t('admin.modelAttributes.title')" class="mb-4 flex border-b border-gray-200 dark:border-dark-700">
       <button v-for="tab in ['configs', 'defaults'] as const" :key="tab" type="button" role="tab" :aria-selected="activeTab === tab" class="border-b-2 px-4 py-3 text-sm font-medium" :class="activeTab === tab ? 'border-primary-500 text-primary-700 dark:text-primary-300' : 'border-transparent text-gray-500 dark:text-dark-400'" @click="activeTab = tab">{{ t(`admin.modelAttributes.tabs.${tab}`) }}</button>
     </div>
     <TablePageLayout>
