@@ -1,12 +1,12 @@
 <template>
   <AppLayout>
     <!-- 设置内容填满主区，切换页签时卡片宽度保持一致。 -->
-    <div class="w-full min-w-0 space-y-6">
+    <div class="w-full min-w-0 space-y-4">
       <!-- 设置尚未返回时，先保留页签和表单控件的位置。 -->
       <SettingsSkeleton v-if="loading" />
 
       <!-- Settings Form -->
-      <form v-else @submit.prevent="saveSettings" class="space-y-6" novalidate>
+      <form v-else @submit.prevent="saveSettings" class="space-y-4" novalidate>
         <!-- Tab Navigation -->
         <div
           :class="[
@@ -89,7 +89,7 @@
         </div>
 
         <!-- Tab: Security — Admin API Key -->
-        <div v-show="activeTab === 'security'" v-content-reveal="activeTab === 'security'" class="space-y-6">
+        <div v-show="activeTab === 'security'" v-content-reveal="activeTab === 'security'" class="space-y-4">
           <!-- Admin API Key Settings -->
           <div class="card">
             <div
@@ -228,7 +228,7 @@
         <div
           v-show="activeTab === 'gateway'" v-content-reveal="activeTab === 'gateway'"
           ref="gatewayContentStartRef"
-          class="gateway-settings-content space-y-6"
+          class="gateway-settings-content space-y-4"
         >
           <!-- Overload Cooldown (529) Settings -->
           <div
@@ -1306,7 +1306,7 @@
         <!-- /Tab: Gateway -->
 
         <!-- Tab: Security — Registration, Turnstile, LinuxDo -->
-        <div v-show="activeTab === 'security'" v-content-reveal="activeTab === 'security'" class="space-y-6">
+        <div v-show="activeTab === 'security'" v-content-reveal="activeTab === 'security'" class="space-y-4">
           <!-- Registration Settings -->
           <div class="card">
             <div
@@ -3728,7 +3728,7 @@
         <!-- /Tab: Security — Registration, Turnstile, LinuxDo, OIDC -->
 
         <!-- Tab: Users -->
-        <div v-show="activeTab === 'users'" v-content-reveal="activeTab === 'users'" class="space-y-6">
+        <div v-show="activeTab === 'users'" v-content-reveal="activeTab === 'users'" class="space-y-4">
           <!-- Default Settings -->
           <div class="card">
             <div
@@ -3992,7 +3992,7 @@
         <!-- /Tab: Users -->
 
         <!-- Tab: Gateway — Claude Code, Scheduling -->
-        <div v-show="activeTab === 'gateway'" v-content-reveal="activeTab === 'gateway'" class="space-y-6">
+        <div v-show="activeTab === 'gateway'" v-content-reveal="activeTab === 'gateway'" class="space-y-4">
           <!-- Claude Code Settings -->
           <div
             v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
@@ -5465,7 +5465,7 @@
         <!-- /Tab: Gateway — Claude Code, Scheduling -->
 
         <!-- Tab: General -->
-        <div v-show="activeTab === 'general'" v-content-reveal="activeTab === 'general'" class="space-y-6">
+        <div v-show="activeTab === 'general'" v-content-reveal="activeTab === 'general'" class="space-y-4">
           <PreAggregationSettings />
 
           <div class="card">
@@ -6362,7 +6362,7 @@
         <!-- /分页：通用设置 -->
 
         <!-- 分页：登录条款 -->
-        <div v-show="activeTab === 'agreement'" v-content-reveal="activeTab === 'agreement'" class="space-y-6">
+        <div v-show="activeTab === 'agreement'" v-content-reveal="activeTab === 'agreement'" class="space-y-4">
           <div class="card">
             <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
               <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -6533,7 +6533,7 @@
         <!-- /分页：登录条款 -->
 
         <!-- 分页：功能特性 -->
-        <div v-show="activeTab === 'features'" v-content-reveal="activeTab === 'features'" class="space-y-6">
+        <div v-show="activeTab === 'features'" v-content-reveal="activeTab === 'features'" class="space-y-4">
           <div class="card">
             <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
               <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -6882,7 +6882,7 @@
 
         <!-- Tab: Email -->
         <!-- Tab: Payment -->
-        <div v-show="activeTab === 'payment'" v-content-reveal="activeTab === 'payment'" class="space-y-6">
+        <div v-show="activeTab === 'payment'" v-content-reveal="activeTab === 'payment'" class="space-y-4">
           <!-- Payment System Settings -->
           <div class="card">
             <div
@@ -7459,7 +7459,7 @@
           />
         </div>
 
-        <div v-show="activeTab === 'email'" v-content-reveal="activeTab === 'email'" class="space-y-6">
+        <div v-show="activeTab === 'email'" v-content-reveal="activeTab === 'email'" class="space-y-4">
           <!-- Email disabled hint - show when email_verify_enabled is off -->
           <div v-if="!form.email_verify_enabled" class="card">
             <div class="p-6">

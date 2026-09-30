@@ -1,6 +1,6 @@
 <template>
-  <div class="space-y-6">
-    <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+  <div class="space-y-4">
+    <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" aria-hidden="true">
         <div v-for="card in 4" :key="card" class="card min-w-0 space-y-3 p-4">
           <Skeleton width="55%" :height="12" />
@@ -34,7 +34,7 @@
       </div>
 
       <div v-if="isOwner" class="card p-6">
-        <div class="flex flex-wrap items-end gap-4">
+        <div class="flex flex-wrap items-end gap-2">
           <div class="w-full sm:w-56">
             <label class="input-label">{{ t('team.keyOwner') }}</label>
             <Select v-model="memberID" :options="memberOptions" @change="reload" />
@@ -43,7 +43,7 @@
             <label class="input-label">{{ t('team.keys') }}</label>
             <Select v-model="keyID" :options="keyOptions" @change="reload" />
           </div>
-          <div class="ml-auto flex gap-3">
+          <div class="ml-auto flex gap-2">
             <button type="button" class="btn btn-secondary" :disabled="logsLoading" @click="loadUsage">{{ t('common.refresh') }}</button>
             <button type="button" class="btn btn-secondary" @click="resetFilters">{{ t('common.reset') }}</button>
           </div>

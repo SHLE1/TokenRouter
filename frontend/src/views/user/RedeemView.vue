@@ -3,7 +3,7 @@
     <!-- 不加 mx-auto：app-main 是 flex 列容器，auto 边距会让内容收缩到内容宽度并与页头错位。
          窄屏按兑换、历史、订阅顺序堆叠；宽屏锁定视口高度，左栏上下放兑换与订阅，右栏历史跨两行并在卡内滚动。 -->
     <div
-      class="grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[22.5rem_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]"
+      class="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[22.5rem_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]"
     >
       <section data-testid="redeem-panel" class="card p-4 sm:p-6">
         <div class="flex flex-col gap-4">

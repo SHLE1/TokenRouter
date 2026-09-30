@@ -1,6 +1,6 @@
 <template>
   <AppLayout :hide-page-heading="!!teamContext">
-    <div class="space-y-6">
+    <div class="space-y-2">
       <div v-if="transferToken" class="border-b border-gray-200 pb-6 dark:border-dark-700">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
           {{ t('team.transferActionTitle') }}
@@ -20,7 +20,7 @@
         </div>
       </div>
 
-      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
         <div class="space-y-3" aria-hidden="true">
           <Skeleton :width="192" :height="28" />
           <Skeleton :width="256" :height="16" />
@@ -96,7 +96,7 @@
           </button>
         </nav>
 
-        <section v-if="activeTab === 'overview'" v-content-reveal class="space-y-6">
+        <section v-if="activeTab === 'overview'" v-content-reveal class="space-y-4">
           <div v-if="!isOwner" class="card p-6" data-tour="team-limit-progress">
             <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.limitProgress') }}</h2>
             <div class="mt-5 grid gap-5 md:grid-cols-3">
@@ -148,7 +148,7 @@
             </div>
           </section>
 
-          <section v-if="isOwner" class="space-y-5" data-tour="team-invitations">
+          <section v-if="isOwner" class="space-y-2" data-tour="team-invitations">
             <div class="flex items-center justify-between gap-4">
               <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.invitations') }}</h2>
               <span class="text-sm text-gray-500 dark:text-gray-400">{{ invitations.length }}</span>
@@ -167,7 +167,7 @@
           </section>
         </section>
 
-        <section v-else-if="activeTab === 'keys'" class="space-y-6">
+        <section v-else-if="activeTab === 'keys'" class="space-y-4">
           <div class="card overflow-hidden">
             <div class="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-4 dark:border-dark-700">
               <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.keys') }}</h2>
@@ -202,7 +202,7 @@
           </div>
         </section>
 
-        <section v-else class="space-y-6">
+        <section v-else class="space-y-4">
           <div v-if="isOwner" class="card p-6">
             <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('team.name') }}</h2>
             <form class="mt-4 flex flex-col gap-3 sm:flex-row" @submit.prevent="renameTeam"><input v-model.trim="renameName" class="input flex-1" required maxlength="100" /><button class="btn btn-primary" :disabled="submitting">{{ t('team.rename') }}</button></form>

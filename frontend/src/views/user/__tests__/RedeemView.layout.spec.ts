@@ -12,7 +12,7 @@ describe('RedeemView responsive layout', () => {
     // 宽屏锁定视口高度，历史在卡内滚动并分页，页面本身不再滚动。
     expect(viewSource).toContain('<AppLayout fit-viewport>')
     expect(viewSource).toContain(
-      'grid gap-6 lg:min-h-0 lg:flex-1 lg:grid-cols-[22.5rem_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]'
+      'grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[22.5rem_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]'
     )
     expect(viewSource).toContain('lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:min-h-0')
     expect(viewSource).toContain('<div class="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">')

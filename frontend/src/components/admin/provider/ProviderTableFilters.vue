@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-w-0 flex-nowrap items-center gap-3">
+  <div class="flex min-w-0 flex-nowrap items-center gap-2">
     <SearchInput
       :model-value="searchQuery"
       :placeholder="t('admin.providers.searchProviders')"

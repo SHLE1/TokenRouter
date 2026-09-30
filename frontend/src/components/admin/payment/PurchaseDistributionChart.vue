@@ -9,7 +9,7 @@
     >
       {{ t('payment.admin.noData') }}
     </div>
-    <div v-else class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(260px,0.9fr)]">
+    <div v-else class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(260px,0.9fr)]">
       <div class="min-w-0">
         <p class="mb-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
           {{ t('payment.admin.amountShare') }}

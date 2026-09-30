@@ -2,9 +2,9 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <!-- Left: Search + Filters -->
-          <div class="flex min-w-0 flex-1 items-center gap-3">
+          <div class="flex min-w-0 flex-1 items-center gap-2">
             <div class="min-w-0 flex-1 sm:flex-none sm:w-64">
             <input
               v-model="searchQuery"

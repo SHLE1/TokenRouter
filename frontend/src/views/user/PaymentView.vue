@@ -20,17 +20,17 @@
       </div>
     </template>
     <!-- 不加 mx-auto：app-main 是 flex 列容器，auto 边距会让内容收缩到内容宽度并与页头错位。 -->
-    <div class="w-full space-y-6">
+    <div class="w-full space-y-4">
       <!-- 首次取数：按结算双栏的位置显示骨架。 -->
       <div
         v-if="loading"
         role="status"
         aria-busy="true"
         :aria-label="t('common.loading')"
-        class="space-y-6"
+        class="space-y-4"
       >
-        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-start">
-          <div class="space-y-6">
+        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-start">
+          <div class="space-y-4">
             <div class="card space-y-4 p-4 sm:p-6">
               <Skeleton width="6rem" height="1rem" />
               <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -135,9 +135,9 @@
         </div>
 
         <!-- 结算：充值与订阅确认共用。xl 以下按选择、摘要顺序堆叠（lg 主区还要让出侧栏，双栏会挤压支付方式），xl 起右栏摘要吸顶。 -->
-        <div v-else class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-start">
+        <div v-else class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-start">
           <!-- 金额（或套餐）、支付方式、账单信息各占一张卡片，分组更清楚。 -->
-          <div class="min-w-0 space-y-6">
+          <div class="min-w-0 space-y-4">
             <!-- 订阅确认：套餐摘要 -->
             <section v-if="isSubscriptionCheckout && selectedPlan" class="card p-4 sm:p-6">
               <p class="text-xs font-medium text-gray-500 dark:text-dark-400">{{ t('payment.confirmSubscription') }}</p>

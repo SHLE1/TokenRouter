@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
-      <div v-if="loading" class="grid gap-6 lg:grid-cols-2" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+    <div class="space-y-4">
+      <div v-if="loading" class="grid gap-4 lg:grid-cols-2" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
         <div v-for="card in 2" :key="card" class="card space-y-6 p-6" aria-hidden="true">
           <Skeleton width="50%" :height="24" />
           <Skeleton width="70%" :height="16" />
@@ -24,7 +24,7 @@
         </p>
       </div>
 
-      <div v-else class="grid gap-6 lg:grid-cols-2">
+      <div v-else class="grid gap-4 lg:grid-cols-2">
         <!-- 卡片分三段：头部放名称、状态与操作，中间一条信息栏展示周期和分组，底部展示各周期用量。 -->
         <article
           v-for="chain in planChains"

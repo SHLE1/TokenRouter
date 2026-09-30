@@ -3,7 +3,7 @@
     <TablePageLayout>
       <!-- 筛选工具栏与其他列表页保持一致，不使用额外的卡片外框。 -->
       <template #filters>
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
           <Select v-model="currentFilter" :options="statusFilters" class="w-36" @change="fetchOrders" />
           <div class="flex flex-1 items-center justify-end gap-2">
             <button @click="fetchOrders" :disabled="loading" class="btn btn-secondary shrink-0 btn-icon" :title="t('common.refresh')">

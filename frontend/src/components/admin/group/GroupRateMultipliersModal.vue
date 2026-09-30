@@ -69,7 +69,7 @@
         </div>
 
         <!-- 批量调整 + 全部清空 -->
-        <div v-if="localEntries.length > 0" class="mt-3 flex items-center gap-3 border-t border-gray-100 pt-3 dark:border-dark-600">
+        <div v-if="localEntries.length > 0" class="mt-3 flex items-center gap-2 border-t border-gray-100 pt-3 dark:border-dark-600">
           <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.batchAdjust') }}</span>
           <div class="flex items-center gap-1.5">
             <span class="text-xs text-gray-400">×</span>

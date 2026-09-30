@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
           <!-- Left: Search + Filters -->
           <div class="min-w-0 flex-1 sm:max-w-64">
             <input

@@ -3,7 +3,7 @@
     <TablePageLayout>
       <!-- 筛选条件 -->
       <template #filters>
-        <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center justify-between gap-2">
             <div ref="filterPanelRef" class="relative shrink-0">
               <button
                 type="button"

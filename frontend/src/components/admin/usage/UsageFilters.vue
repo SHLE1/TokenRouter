@@ -1,7 +1,7 @@
 <template>
   <div :class="flat ? 'p-4' : 'card p-6'">
     <div class="space-y-4">
-      <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center justify-between gap-2">
         <div ref="filterPanelRef" class="relative shrink-0">
           <button
             type="button"

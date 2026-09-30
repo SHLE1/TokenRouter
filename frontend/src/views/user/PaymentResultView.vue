@@ -2,7 +2,7 @@
   <div class="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-dark-900">
     <div v-content-reveal="route.path" class="w-full max-w-md space-y-6">
       <!-- Loading -->
-      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
         <div class="space-y-4 text-center" aria-hidden="true">
           <Skeleton variant="circle" :width="80" :height="80" class="mx-auto" />
           <Skeleton width="50%" :height="28" class="mx-auto" />

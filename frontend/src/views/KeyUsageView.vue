@@ -49,7 +49,7 @@
 
       <!-- Input Section -->
       <div class="max-w-xl mx-auto mb-14">
-        <div class="flex gap-3">
+        <div class="flex gap-2">
           <div class="flex-1 relative">
             <div class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-500">
               <Icon name="lock" size="md" class="w-5 h-5" />
@@ -126,8 +126,8 @@
       <!-- Results Container -->
       <div v-if="showResults">
         <!-- Loading Skeleton -->
-        <div v-if="showLoading" class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div v-if="showLoading" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="rounded-surface border border-gray-200 bg-white p-8 dark:border-dark-700 dark:bg-dark-900">
               <div class="skeleton h-5 w-24 mb-6"></div>
               <div class="flex justify-center"><div class="skeleton w-44 h-44 rounded-full"></div></div>
@@ -149,7 +149,7 @@
         </div>
 
         <!-- Result Content -->
-        <div v-else-if="resultData" class="space-y-6">
+        <div v-else-if="resultData" class="space-y-4">
           <!-- Status Badge -->
           <div v-if="statusInfo" class="fade-up flex items-center justify-center mb-2">
             <div class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-200 bg-white/90 shadow-sm backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/90">

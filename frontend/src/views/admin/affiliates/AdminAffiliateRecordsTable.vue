@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div class="input-icon-wrap min-w-0 w-full flex-1 sm:w-64 sm:flex-none sm:max-w-none">
             <Icon name="search" size="md" class="input-icon text-gray-400" />
             <input v-model="filters.search" type="text" class="input input-has-icon" :placeholder="t('admin.affiliates.records.searchPlaceholder')" @input="debounceLoad" />

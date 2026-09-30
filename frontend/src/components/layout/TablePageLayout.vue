@@ -47,7 +47,8 @@ onUnmounted(() => {
 /* 桌面端：Flexbox 布局。高度由 AppLayout 的 flex 链分配(flex-1 占满主区剩余空间),
    不再自行计算视口高度;移动端恢复自然高度。 */
 .table-page-layout {
-  @apply flex flex-1 flex-col gap-4 min-h-0;
+  /* 工具栏、操作区和表格卡片之间统一为 8px。 */
+  @apply flex flex-1 flex-col gap-2 min-h-0;
 }
 
 .layout-section-fixed {
@@ -130,7 +131,7 @@ onUnmounted(() => {
 }
 
 .table-page-layout.mobile-mode .table-pagination-footer {
-  @apply mt-4;
+  @apply mt-2;
 }
 
 .table-page-layout.mobile-mode .table-scroll-container :deep(table) {

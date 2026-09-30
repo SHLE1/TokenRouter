@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <div class="space-y-4">
       <UsageStatsCards :stats="usageStats" :show-provider-cost="false" :show-standard-cost="false" />
 
       <div class="space-y-4">
@@ -23,7 +23,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ModelDistributionChart
             v-model:metric="modelDistributionMetric"
             :model-stats="requestedModelStats"
@@ -50,7 +50,7 @@
           />
         </div>
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <EndpointDistributionChart
             v-model:source="endpointDistributionSource"
             v-model:metric="endpointDistributionMetric"
@@ -79,7 +79,7 @@
       </div>
 
       <div class="card p-4">
-        <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center justify-between gap-2">
           <div ref="filterPanelRef" class="relative shrink-0">
             <button
               type="button"

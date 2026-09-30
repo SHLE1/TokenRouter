@@ -1,5 +1,5 @@
 <template>
-  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <div class="card p-4">
       <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
         {{ t('usage.teamMemberTrend') }}

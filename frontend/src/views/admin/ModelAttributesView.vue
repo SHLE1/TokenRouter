@@ -1,29 +1,31 @@
 <template>
   <AppLayout>
-    <div role="tablist" :aria-label="t('admin.modelAttributes.title')" class="mb-4 flex border-b border-gray-200 dark:border-dark-700">
+    <div role="tablist" :aria-label="t('admin.modelAttributes.title')" class="mb-2 flex border-b border-gray-200 dark:border-dark-700">
       <button v-for="tab in ['configs', 'defaults'] as const" :key="tab" type="button" role="tab" :aria-selected="activeTab === tab" class="border-b-2 px-4 py-3 text-sm font-medium" :class="activeTab === tab ? 'border-primary-500 text-primary-700 dark:text-primary-300' : 'border-transparent text-gray-500 dark:text-dark-400'" @click="activeTab = tab">{{ t(`admin.modelAttributes.tabs.${tab}`) }}</button>
     </div>
     <TablePageLayout>
       <template #filters>
-        <div class="space-y-3">
-          <div class="flex flex-wrap items-center gap-3">
-            <!-- 搜索框与价格管理共用尺寸和图标布局，提示随页签对应实际搜索对象。 -->
-            <div class="input-icon-wrap min-w-0 flex-1 sm:w-64 sm:flex-none">
-              <Icon name="search" size="md" class="input-icon text-gray-400 dark:text-gray-500" />
-              <input
-                v-model="search"
-                type="text"
-                class="input input-has-icon"
-                :placeholder="searchPlaceholder"
-                :aria-label="searchPlaceholder"
-              />
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
+              <!-- 搜索框与价格管理共用尺寸和图标布局，提示随页签对应实际搜索对象。 -->
+              <div class="input-icon-wrap min-w-0 flex-1 sm:w-64 sm:flex-none">
+                <Icon name="search" size="md" class="input-icon text-gray-400 dark:text-gray-500" />
+                <input
+                  v-model="search"
+                  type="text"
+                  class="input input-has-icon"
+                  :placeholder="searchPlaceholder"
+                  :aria-label="searchPlaceholder"
+                />
+              </div>
+              <Select v-if="activeTab === 'configs'" v-model="status" :options="statusOptions" class="w-32 shrink-0" />
+              <FilterDropdown v-else :active-count="activeFilterCount" @reset="provider = ''; capability = ''">
+                <Select v-model="provider" :options="providerOptions" :aria-label="t('admin.modelAttributes.allProviders')" />
+                <Select v-model="capability" :options="capabilityOptions" :aria-label="t('admin.modelAttributes.allCapabilities')" />
+              </FilterDropdown>
             </div>
-            <Select v-if="activeTab === 'configs'" v-model="status" :options="statusOptions" class="w-40" />
-            <template v-else>
-              <Select v-model="provider" :options="providerOptions" class="w-48" />
-              <Select v-model="capability" :options="capabilityOptions" class="w-48" />
-            </template>
-            <div class="ml-auto flex gap-2">
+            <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
               <button class="btn btn-secondary btn-icon" :disabled="loading || updating" :aria-label="t('common.refresh')" @click="load"><Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" /></button>
               <button v-if="activeTab === 'configs'" class="btn btn-primary" @click="edit()"><Icon name="plus" size="md" class="mr-2" />{{ t('admin.modelAttributes.create') }}</button>
               <button v-else class="btn btn-primary" :disabled="updating" @click="updateCatalog">{{ t(updating ? 'admin.pricing.defaults.updating' : 'admin.pricing.defaults.update') }}</button>
@@ -49,7 +51,18 @@
           <template #cell-name="{ row }">{{ row.attributes.display_name ?? t('admin.modelAttributes.unknown') }}</template>
           <template #cell-context="{ row }">{{ row.attributes.context?.toLocaleString() ?? t('admin.modelAttributes.unknown') }}</template>
           <template #cell-output="{ row }">{{ row.attributes.output_limit?.toLocaleString() ?? t('admin.modelAttributes.unknown') }}</template>
-          <template #cell-actions="{ row }"><button class="btn btn-secondary" @click="detail = row">{{ t('admin.modelAttributes.details') }}</button></template>
+          <template #cell-actions="{ row }">
+            <button
+              type="button"
+              class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+              :title="t('admin.modelAttributes.details')"
+              :aria-label="t('admin.modelAttributes.details')"
+              @click="detail = row"
+            >
+              <Icon name="eye" size="sm" />
+              <span class="text-xs">{{ t('admin.modelAttributes.details') }}</span>
+            </button>
+          </template>
         </DataTable>
       </template>
       <template #pagination>
@@ -58,32 +71,50 @@
     </TablePageLayout>
 
     <BaseDialog :show="showEditor" :title="t(form.id ? 'admin.modelAttributes.edit' : 'admin.modelAttributes.create')" width="extra-wide" @close="showEditor = false">
-      <form id="attribute-form" class="space-y-5" @submit.prevent="save">
+      <form id="attribute-form" class="space-y-4" @submit.prevent="save">
         <p v-if="formError" role="alert" class="text-sm text-red-600">{{ formError }}</p>
         <div class="grid gap-4 sm:grid-cols-2">
           <label><span class="input-label">{{ t('common.name') }}</span><input v-model="form.name" required maxlength="100" class="input" /></label>
           <div><label class="input-label">{{ t('common.status') }}</label><Select v-model="form.status" :options="editStatusOptions" /></div>
           <label class="sm:col-span-2"><span class="input-label">{{ t('admin.modelAttributes.configDescription') }}</span><textarea v-model="form.description" class="input" rows="2" /></label>
         </div>
-        <fieldset class="rounded-control border border-gray-200 p-3 dark:border-dark-600">
-          <legend class="px-1 text-sm font-medium">{{ t('admin.modelAttributes.groups') }}</legend>
-          <p v-if="groupsLoading" class="text-sm">{{ t('common.loading') }}</p>
-          <div class="flex max-h-40 flex-wrap gap-3 overflow-auto">
-            <label v-for="group in groups" :key="group.id" class="flex items-center gap-2 text-sm">
-              <input v-model="form.group_ids" type="checkbox" class="rounded-compact" :value="group.id" />{{ group.name }}
-            </label>
+        <div>
+          <label class="input-label text-xs">
+            {{ t('admin.modelAttributes.groups') }}
+            <span v-if="form.group_ids.length" class="ml-1 font-normal text-gray-400">
+              ({{ t('admin.pricing.form.selectedCount', { count: form.group_ids.length }) }})
+            </span>
+          </label>
+          <!-- 分组选择沿用价格配置的徽章和选中底色，保留属性配置自身的关联关系。 -->
+          <div class="max-h-40 overflow-auto rounded-control border border-gray-200 p-3 dark:border-dark-600">
+            <p v-if="groupsLoading" class="py-2 text-center text-xs text-gray-500">{{ t('common.loading') }}</p>
+            <p v-else-if="!groups.length" class="py-2 text-center text-xs text-gray-500">{{ t('admin.pricing.form.noGroupsAvailable') }}</p>
+            <div v-else class="flex flex-wrap gap-2">
+              <label
+                v-for="group in groups"
+                :key="group.id"
+                class="inline-flex max-w-full cursor-pointer items-center gap-2 rounded-control p-1.5 transition-colors hover:bg-gray-50 dark:hover:bg-dark-700"
+                :class="form.group_ids.includes(group.id) ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500' : ''"
+              >
+                <input v-model="form.group_ids" type="checkbox" :value="group.id" class="h-4 w-4 shrink-0 rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500" />
+                <GroupBadge :name="group.name" :display-brand="group.display_brand" :rate-multiplier="group.rate_multiplier" class="min-w-0" />
+              </label>
+            </div>
           </div>
-        </fieldset>
+        </div>
         <RuleListEditor :items="form.rules" :title="t('admin.modelAttributes.rules')" :empty-text="t('admin.modelAttributes.emptyRules')" variant="card" @add="form.rules.push({ models: [], attributes: {} })" @remove="form.rules.splice($event, 1)" @move="moveRule">
-          <template #row="{ item, index }">
+          <template #row="{ item }">
             <div class="space-y-4">
-              <label class="block"><span class="input-label">{{ t('admin.modelAttributes.models') }}</span><input class="input" required :value="item.models.join(', ')" :placeholder="t('admin.modelAttributes.modelHint')" @change="form.rules[index]!.models = ($event.target as HTMLInputElement).value.split(',').map(value => value.trim()).filter(Boolean)" /></label>
+              <div>
+                <label class="input-label">{{ t('admin.modelAttributes.models') }}</label>
+                <ModelTagInput v-model:models="item.models" :aria-label="t('admin.modelAttributes.models')" :placeholder="t('admin.modelAttributes.modelHint')" />
+              </div>
               <ModelAttributesFields v-model="item.attributes" />
             </div>
           </template>
         </RuleListEditor>
       </form>
-      <template #footer><div class="flex justify-end gap-3"><button class="btn btn-secondary" @click="showEditor = false">{{ t('common.cancel') }}</button><button form="attribute-form" type="submit" class="btn btn-primary" :disabled="saving || groupsLoading">{{ t('common.save') }}</button></div></template>
+      <template #footer><div class="flex justify-end gap-2"><button class="btn btn-secondary" @click="showEditor = false">{{ t('common.cancel') }}</button><button form="attribute-form" type="submit" class="btn btn-primary" :disabled="saving || groupsLoading">{{ t('common.save') }}</button></div></template>
     </BaseDialog>
 
     <BaseDialog :show="!!detail" :title="detail?.model ?? ''" @close="detail = null">
@@ -108,10 +139,13 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import GroupBadge from '@/components/common/GroupBadge.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ModelAttributesFields from '@/components/admin/ModelAttributesFields.vue'
 import ModelCatalogInfo from '@/components/admin/ModelCatalogInfo.vue'
+import ModelTagInput from '@/components/admin/pricing/ModelTagInput.vue'
 import ModelAttributesSummary from '@/components/common/ModelAttributesSummary.vue'
 import { modelAttributesAPI, type AttributeConfig, type DefaultAttributes } from '@/api/admin/modelAttributes'
 import { adminAPI } from '@/api/admin'
@@ -126,6 +160,7 @@ const searchPlaceholder = computed(() => t(activeTab.value === 'configs'
   ? 'admin.modelAttributes.searchConfigs'
   : 'admin.modelAttributes.searchModels'))
 const search = ref(''), status = ref(''), provider = ref(''), capability = ref('')
+const activeFilterCount = computed(() => Number(!!provider.value) + Number(!!capability.value))
 const page = ref(1), pageSize = ref(20), total = ref(0)
 const loading = ref(false), updating = ref(false), saving = ref(false), showEditor = ref(false), groupsLoading = ref(false)
 const error = ref(''), formError = ref(''), catalogError = ref(''), version = ref(''), updatedAt = ref('')
@@ -185,8 +220,13 @@ function moveRule(from: number, to: number) {
 }
 async function save() {
   if (saving.value) return
-  saving.value = true
   formError.value = ''
+  // 标签输入不依赖原生 required，提交前仍需阻止没有模型的规则。
+  if (form.value.rules.some(rule => rule.models.length === 0)) {
+    formError.value = t('admin.modelAttributes.modelsRequired')
+    return
+  }
+  saving.value = true
   try { await modelAttributesAPI.save(form.value); showEditor.value = false; await load() }
   catch (cause) { formError.value = extractApiErrorMessage(cause, t('common.error')) }
   finally { saving.value = false }

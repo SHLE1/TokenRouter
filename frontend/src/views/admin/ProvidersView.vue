@@ -2,7 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col-reverse gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex flex-col-reverse gap-2 lg:flex-row lg:items-start lg:justify-between">
           <div class="min-w-0 flex-1">
             <ProviderTableFilters
               v-model:searchQuery="params.search"

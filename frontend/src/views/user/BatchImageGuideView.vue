@@ -2,9 +2,9 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3">
-          <div class="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
-            <div class="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[260px_160px_144px_152px] 2xl:w-auto">
+        <div class="flex flex-col gap-2">
+          <div class="flex flex-col gap-2 2xl:flex-row 2xl:items-center 2xl:justify-between">
+            <div class="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[260px_160px_144px_152px] 2xl:w-auto">
               <div class="min-w-0">
                 <SearchInput
                   v-model="filters.taskName"
@@ -37,7 +37,7 @@
 
           <div
             v-if="selectedJobIds.size"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-control border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-dark-700 dark:bg-dark-800"
+            class="flex flex-wrap items-center justify-between gap-2 rounded-control border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-dark-700 dark:bg-dark-800"
           >
             <i18n-t
               keypath="batchImage.list.selectedJobs"

@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <div class="space-y-4">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 class="page-title">{{ t('admin.riskControl.title') }}</h1>
@@ -17,7 +17,7 @@
         </div>
       </div>
 
-      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" aria-hidden="true">
           <div v-for="card in 4" :key="card" class="card min-w-0 space-y-3 p-4">
             <Skeleton width="55%" :height="12" />
@@ -25,14 +25,14 @@
             <Skeleton width="65%" :height="12" />
           </div>
         </div>
-        <div class="grid gap-6 xl:grid-cols-2">
+        <div class="grid gap-4 xl:grid-cols-2">
           <ContentSkeleton variant="form" :rows="4" class="card p-6" />
           <ContentSkeleton variant="list" :rows="5" class="card p-6" />
         </div>
       </div>
 
       <template v-else>
-        <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div
             v-for="item in overviewItems"
             :key="item.key"
@@ -65,7 +65,7 @@
         <div
           v-if="showPreBlockRuntimeCard"
           data-test="pre-block-runtime-cards"
-          class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]"
+          class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]"
         >
           <div data-test="pre-block-sync-card" class="card">
             <div class="flex flex-col gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700 lg:flex-row lg:items-center lg:justify-between">
@@ -285,7 +285,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+            <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-6">
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.result" :options="resultOptions" @change="reloadLogsFromFirstPage" />
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.group_id" :options="groupFilterOptions" @change="reloadLogsFromFirstPage" />
               <Select v-if="activeRecordTab === 'moderation'" v-model="filters.endpoint" :options="endpointOptions" @change="reloadLogsFromFirstPage" />

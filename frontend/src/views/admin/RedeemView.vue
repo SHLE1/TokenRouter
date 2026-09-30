@@ -2,9 +2,9 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
+        <div class="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
           <!-- 左侧：搜索和筛选 -->
-          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-3">
+          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
             <input
               v-model="searchQuery"
               type="text"
@@ -224,7 +224,7 @@
         <!-- 批量操作 -->
         <div
           v-if="selectedCount > 0"
-          class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-control bg-primary-50 p-3 dark:bg-primary-900/20"
+          class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-control bg-primary-50 p-3 dark:bg-primary-900/20"
         >
           <span class="text-sm font-medium text-primary-900 dark:text-primary-100">
             {{ t('admin.redeem.selectedCount', { count: selectedCount }) }}

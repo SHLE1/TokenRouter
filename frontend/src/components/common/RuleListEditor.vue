@@ -1,6 +1,6 @@
 <template>
-  <div class="space-y-3" :data-testid="testId || undefined">
-    <div v-if="hasHeader" class="flex items-start justify-between gap-3">
+  <div class="space-y-2" :data-testid="testId || undefined">
+    <div v-if="hasHeader" class="flex items-start justify-between gap-2">
       <div class="min-w-0">
         <h4
           v-if="title && titleStyle === 'section'"
@@ -44,7 +44,8 @@
       :name="animated ? 'motion-list' : 'rule-list-static'"
       :css="animated"
       tag="div"
-      class="relative space-y-3"
+      class="relative"
+      :class="variant === 'card' ? 'space-y-4' : 'space-y-2'"
       @before-leave="onBeforeLeave"
       @after-leave="onLeaveDone"
       @leave-cancelled="onLeaveDone"

@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="space-y-6">
+    <div class="space-y-4">
       <!-- 标题与筛选工具共用一行，保持和 OpenRouter 页面工具栏一致。 -->
       <section class="flex flex-row items-start justify-between gap-3">
         <div class="min-w-0">
@@ -27,7 +27,7 @@
         </div>
       </section>
 
-      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4" aria-hidden="true">
           <div v-for="card in 3" :key="card" class="card min-w-0 space-y-3 p-4">
             <Skeleton width="55%" :height="12" />

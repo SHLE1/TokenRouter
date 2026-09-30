@@ -2,9 +2,9 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
-        <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div class="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
           <!-- Left: Search + Filters -->
-          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-3">
+          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
             <div class="input-icon-wrap min-w-0 flex-1 sm:flex-none sm:w-64">
             <Icon
               name="search"

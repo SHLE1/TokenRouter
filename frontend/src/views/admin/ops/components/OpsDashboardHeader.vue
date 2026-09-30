@@ -881,9 +881,9 @@ function handleToolbarRefresh() {
 </script>
 
 <template>
-  <div :class="['flex flex-col gap-4 rounded-surface bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700', props.fullscreen ? 'p-8' : 'p-6']">
+  <div :class="['flex flex-col gap-2 rounded-surface bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700', props.fullscreen ? 'p-8' : 'p-6']">
     <!-- Top Toolbar -->
-    <div class="flex flex-wrap items-center gap-4 border-b border-gray-100 pb-4 dark:border-dark-700">
+    <div class="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-4 dark:border-dark-700">
       <div v-if="props.fullscreen">
         <h1 class="flex items-center gap-2 page-title">
           <Icon name="chart" size="lg" class="h-6 w-6 text-blue-500" />
@@ -908,7 +908,7 @@ function handleToolbarRefresh() {
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-wrap items-center gap-2">
         <template v-if="!props.fullscreen">
           <div ref="filterDropdownRef" class="relative">
             <button
@@ -946,7 +946,7 @@ function handleToolbarRefresh() {
           </div>
         </template>
 
-        <div v-if="!props.fullscreen" class="ml-auto flex flex-wrap items-center gap-3">
+        <div v-if="!props.fullscreen" class="ml-auto flex flex-wrap items-center gap-2">
           <button
           v-if="!props.fullscreen"
           type="button"
@@ -1004,10 +1004,10 @@ function handleToolbarRefresh() {
       </div>
     </div>
 
-    <div v-if="overview" class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+    <div v-if="overview" class="grid grid-cols-1 gap-4 lg:grid-cols-12">
       <!-- Left: Health + Realtime -->
       <div :class="['rounded-surface bg-gray-50 dark:bg-dark-950 lg:col-span-5', props.fullscreen ? 'p-6' : 'p-4']">
-        <div class="grid h-full grid-cols-1 gap-6 md:grid-cols-[200px_1fr] md:items-center">
+        <div class="grid h-full grid-cols-1 gap-4 md:grid-cols-[200px_1fr] md:items-center">
           <!-- 1) Health Score -->
           <div
             class="group relative flex cursor-pointer flex-col items-center justify-center rounded-surface py-2 transition hover:bg-white/60 dark:hover:bg-dark-800/60 md:border-r md:border-gray-200 md:pr-6 dark:md:border-dark-700"
@@ -1439,7 +1439,7 @@ function handleToolbarRefresh() {
 
     <!-- Integrated: System health (cards) -->
     <div v-if="overview" class="mt-2 border-t border-gray-100 pt-4 dark:border-dark-700">
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
         <!-- CPU -->
         <div class="rounded-surface bg-gray-50 p-3 dark:bg-dark-950">
           <div class="flex items-center gap-1">

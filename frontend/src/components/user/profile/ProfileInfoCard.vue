@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <section
       data-testid="profile-overview-hero"
       class="card overflow-hidden border border-primary-100/80 bg-gradient-to-br from-primary-50 via-white to-amber-50/70 dark:border-primary-900/40 dark:from-primary-950/40 dark:via-dark-900 dark:to-dark-950"
@@ -85,8 +85,8 @@
     </section>
 
     <!-- 宽屏下分为左右两列：左列为账户资料，右列承接页面传入的安全与通知设置 -->
-    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
-      <div data-testid="profile-main-column" class="min-w-0 space-y-6">
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2 xl:items-start">
+      <div data-testid="profile-main-column" class="min-w-0 space-y-4">
         <section
           data-testid="profile-basics-panel"
           class="card"
@@ -152,7 +152,7 @@
         </section>
       </div>
 
-      <div data-testid="profile-side-column" class="min-w-0 space-y-6">
+      <div data-testid="profile-side-column" class="min-w-0 space-y-4">
         <slot name="side" />
       </div>
     </div>

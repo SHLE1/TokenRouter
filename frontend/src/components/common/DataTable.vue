@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!isDesktopViewport" class="space-y-3" :aria-busy="loading">
+  <div v-if="!isDesktopViewport" class="space-y-4" :aria-busy="loading">
     <template v-if="loading">
       <div v-for="i in 5" :key="i" class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900">
         <div class="space-y-3">

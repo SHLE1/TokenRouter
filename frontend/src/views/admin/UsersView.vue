@@ -3,9 +3,9 @@
     <TablePageLayout>
       <!-- Single Row: Search, Filters, and Actions -->
       <template #filters>
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
           <!-- Left: Search + Active Filters -->
-          <div class="flex min-w-0 w-full flex-1 flex-wrap items-center gap-3 sm:w-auto">
+          <div class="flex min-w-0 w-full flex-1 flex-wrap items-center gap-2 sm:w-auto">
             <!-- Search Box -->
             <div class="input-icon-wrap min-w-0 flex-1 sm:flex-none sm:w-64">
               <Icon

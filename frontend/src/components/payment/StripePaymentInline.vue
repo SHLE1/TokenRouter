@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+    <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
       <div class="card space-y-3 p-6" aria-hidden="true">
         <Skeleton width="35%" :height="16" class="mx-auto" />
         <Skeleton width="55%" :height="36" class="mx-auto" />

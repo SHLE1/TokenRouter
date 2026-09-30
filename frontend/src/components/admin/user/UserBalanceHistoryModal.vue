@@ -44,7 +44,7 @@
       </div>
 
       <!-- Type filter + Action buttons -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <Select
           v-model="typeFilter"
           :options="typeOptions"

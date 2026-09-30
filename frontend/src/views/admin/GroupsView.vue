@@ -3,10 +3,10 @@
     <TablePageLayout>
       <template #filters>
         <div
-          class="flex flex-col justify-between gap-4 lg:flex-row lg:items-start"
+          class="flex flex-col justify-between gap-2 lg:flex-row lg:items-start"
         >
           <!-- 左侧：模糊搜索和筛选项，可自动换行。 -->
-          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-3">
+          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
             <div class="input-icon-wrap min-w-0 flex-1 sm:flex-none sm:w-64">
               <Icon
                 name="search"
@@ -50,7 +50,7 @@
 
           <!-- 右侧：刷新、排序和创建等操作。 -->
           <div
-            class="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-3 lg:w-auto"
+            class="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-2 lg:w-auto"
           >
             <button
               @click="loadGroups"

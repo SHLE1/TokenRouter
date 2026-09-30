@@ -3,9 +3,9 @@
     <TablePageLayout>
       <template #filters>
         <!-- Top Toolbar: Left (search + filters) / Right (actions) -->
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <!-- Left: Fuzzy user search + filters (wrap to multiple lines) -->
-          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-3">
+          <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-2">
             <!-- User Search -->
             <div
               class="input-icon-wrap min-w-0 flex-1 sm:flex-none sm:w-64"
@@ -124,7 +124,7 @@
           </div>
 
           <!-- Right: Actions -->
-          <div class="flex shrink-0 flex-wrap items-center justify-end gap-3">
+          <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
             <button
               @click="loadSubscriptions"
               :disabled="loading"

@@ -268,7 +268,7 @@
               </div>
             </div>
 
-            <div class="grid min-w-0 grid-cols-1 items-start gap-3 p-4 md:grid-cols-2 lg:grid-cols-3 md:p-5">
+            <div class="grid min-w-0 grid-cols-1 items-start gap-4 p-4 md:grid-cols-2 lg:grid-cols-3 md:p-5">
               <!-- 显式单列和可收缩卡片阻止长定价内容撑大网格；大屏保持三列。 -->
               <article
                 v-for="model in group.models"

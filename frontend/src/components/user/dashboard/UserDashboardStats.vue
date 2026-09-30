@@ -4,7 +4,7 @@
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
     <!-- Balance -->
     <div class="card p-4">
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div class="shrink-0 self-start rounded-control bg-emerald-100 p-2 dark:bg-emerald-900/30">
           <BalanceIcon size="md" class="text-emerald-600 dark:text-emerald-400" />
         </div>
@@ -18,7 +18,7 @@
 
     <!-- API Keys -->
     <div class="card p-4">
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div class="shrink-0 self-start rounded-control bg-blue-100 p-2 dark:bg-blue-900/30">
           <Icon name="key" size="md" class="text-blue-600 dark:text-blue-400" :stroke-width="2" />
         </div>
@@ -32,7 +32,7 @@
 
     <!-- Today Requests -->
     <div class="card p-4">
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div class="shrink-0 self-start rounded-control bg-green-100 p-2 dark:bg-green-900/30">
           <Icon name="chart" size="md" class="text-green-600 dark:text-green-400" :stroke-width="2" />
         </div>
@@ -46,7 +46,7 @@
 
     <!-- Today Cost -->
     <div class="card p-4" data-testid="user-dashboard-cost">
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div class="shrink-0 self-start rounded-control bg-purple-100 p-2 dark:bg-purple-900/30">
           <BalanceIcon size="md" class="text-purple-600 dark:text-purple-400" />
         </div>
@@ -68,7 +68,7 @@
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
     <!-- Today Tokens -->
     <div class="card p-4">
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div class="shrink-0 self-start rounded-control bg-amber-100 p-2 dark:bg-amber-900/30">
           <Icon name="cube" size="md" class="text-amber-600 dark:text-amber-400" :stroke-width="2" />
         </div>
@@ -87,7 +87,7 @@
 
     <!-- Total Tokens -->
     <div class="card p-4">
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div class="shrink-0 self-start rounded-control bg-indigo-100 p-2 dark:bg-indigo-900/30">
           <Icon name="database" size="md" class="text-indigo-600 dark:text-indigo-400" :stroke-width="2" />
         </div>
@@ -106,7 +106,7 @@
 
     <!-- Performance (RPM/TPM) -->
     <div class="card p-4">
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div class="shrink-0 self-start rounded-control bg-violet-100 p-2 dark:bg-violet-900/30">
           <Icon name="bolt" size="md" class="text-violet-600 dark:text-violet-400" :stroke-width="2" />
         </div>
@@ -126,7 +126,7 @@
 
     <!-- Avg Response Time -->
     <div class="card p-4">
-      <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+      <div class="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div class="shrink-0 self-start rounded-control bg-rose-100 p-2 dark:bg-rose-900/30">
           <Icon name="clock" size="md" class="text-rose-600 dark:text-rose-400" :stroke-width="2" />
         </div>

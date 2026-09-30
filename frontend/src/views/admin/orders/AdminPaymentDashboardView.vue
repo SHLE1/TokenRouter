@@ -12,9 +12,9 @@
         </button>
       </div>
     </template>
-    <div class="space-y-6">
+    <div class="space-y-4">
       <!-- Dashboard Content -->
-      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4" aria-hidden="true">
           <div v-for="card in 5" :key="card" class="card min-w-0 space-y-3 p-4">
             <Skeleton width="55%" :height="12" />
@@ -25,13 +25,13 @@
         <DailyRevenueChart :data="[]" :loading="true" />
         <div class="card p-4">
           <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.purchaseDistribution') }}</h3>
-          <div class="grid gap-6 xl:grid-cols-3">
+          <div class="grid gap-4 xl:grid-cols-3">
             <ChartSkeleton variant="distribution" height="208px" />
             <ChartSkeleton variant="distribution" height="208px" />
             <ContentSkeleton :rows="3" />
           </div>
         </div>
-        <div class="grid gap-6 lg:grid-cols-2">
+        <div class="grid gap-4 lg:grid-cols-2">
           <div class="card p-4">
             <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.paymentDistribution') }}</h3>
             <ContentSkeleton :rows="3" />
@@ -46,7 +46,7 @@
         <OrderStatsCards :stats="stats" />
         <DailyRevenueChart :data="stats.daily_series || []" :loading="loading" />
         <PurchaseDistributionChart :items="stats.purchase_distribution || []" />
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div class="card p-4">
             <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.admin.paymentDistribution') }}</h3>
             <div v-if="!stats.payment_methods?.length" class="flex h-32 items-center justify-center text-sm text-gray-500 dark:text-gray-400">{{ t('payment.admin.noData') }}</div>

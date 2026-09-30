@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
-    <div class="mx-auto max-w-lg space-y-6 py-8">
-      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+    <div class="mx-auto max-w-lg space-y-4 py-8">
+      <div v-if="loading" class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
         <div class="card space-y-3 p-6" aria-hidden="true">
           <Skeleton width="35%" :height="16" class="mx-auto" />
           <Skeleton width="55%" :height="36" class="mx-auto" />

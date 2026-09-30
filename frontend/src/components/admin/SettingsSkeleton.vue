@@ -6,7 +6,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-testid="settings-skeleton">
+  <div class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-testid="settings-skeleton">
     <!-- 页签和表单分别占位，窄屏沿用单列排布。 -->
     <div class="card flex gap-3 overflow-hidden p-3" aria-hidden="true">
       <Skeleton v-for="tab in 7" :key="tab" :width="96" :height="36" class="shrink-0" />

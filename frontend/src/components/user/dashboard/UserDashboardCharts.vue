@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4">
     <!-- Date Range Filter -->
     <div class="card p-4">
       <div class="time-controls flex flex-wrap items-center justify-between gap-2">
@@ -17,13 +17,13 @@
     </div>
 
     <!-- Charts Grid -->
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <!-- Model Distribution Chart -->
       <div class="card relative overflow-hidden p-4">
         <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.modelDistribution') }}</h3>
         <!-- 桌面端顶部对齐，避免数据较少时表格被圆环图垂直居中。 -->
         <ChartSkeleton v-if="loading" variant="distribution" />
-        <div v-else-if="modelData" class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6" data-testid="model-distribution-content">
+        <div v-else-if="modelData" class="flex flex-col items-center gap-4 sm:flex-row sm:items-start" data-testid="model-distribution-content">
           <div class="h-48 w-48 shrink-0">
             <Doughnut :data="modelData" :options="doughnutOptions" />
           </div>

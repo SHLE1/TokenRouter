@@ -1,5 +1,5 @@
 <template>
-    <div class="space-y-6">
+    <div class="space-y-4">
       <!-- 备份存储配置 -->
       <div class="card p-6">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
