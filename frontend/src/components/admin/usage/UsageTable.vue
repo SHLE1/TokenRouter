@@ -345,7 +345,7 @@
           top: tokenTooltipPosition.y + 'px'
         }"
       >
-        <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal rounded-control border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-dark-500 dark:bg-gray-800 md:whitespace-nowrap">
+        <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal tooltip-panel rounded-control px-3 py-2.5 text-xs shadow-xl md:whitespace-nowrap">
           <div class="space-y-1.5">
             <div>
               <div class="text-xs font-semibold text-gray-300 mb-1">{{ t('usage.tokenDetails') }}</div>
@@ -409,19 +409,19 @@
                 <span class="font-medium text-white">{{ tokenTooltipData.cache_read_tokens.toLocaleString() }}</span>
               </div>
             </div>
-            <div class="flex items-center justify-between gap-6 border-t border-gray-700 pt-1.5">
+            <div class="flex items-center justify-between gap-6 border-t border-gray-700 pt-1.5 dark:border-dark-600">
               <span class="text-gray-400">{{ t('usage.totalTokens') }}</span>
               <span class="font-semibold text-blue-400">{{ ((tokenTooltipData?.input_tokens || 0) + (tokenTooltipData?.output_tokens || 0) + (tokenTooltipData?.cache_creation_tokens || 0) + (tokenTooltipData?.cache_read_tokens || 0)).toLocaleString() }}</span>
             </div>
           </div>
           <div
             v-if="tokenTooltipPosition.placement === 'right'"
-            class="absolute right-full h-0 w-0 -translate-y-1/2 border-b-[6px] border-r-[6px] border-t-[6px] border-b-transparent border-r-gray-900 border-t-transparent dark:border-r-gray-800"
+            class="tooltip-caret -left-1 -translate-y-1/2 border-b border-l"
             :style="{ top: tokenTooltipPosition.arrowY + 'px' }"
           ></div>
           <div
             v-else-if="tokenTooltipPosition.placement === 'left'"
-            class="absolute left-full h-0 w-0 -translate-y-1/2 border-b-[6px] border-l-[6px] border-t-[6px] border-b-transparent border-l-gray-900 border-t-transparent dark:border-l-gray-800"
+            class="tooltip-caret -right-1 -translate-y-1/2 border-r border-t"
             :style="{ top: tokenTooltipPosition.arrowY + 'px' }"
           ></div>
         </div>
@@ -443,7 +443,7 @@
           top: timingTooltipPosition.y + 'px'
         }"
       >
-        <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal rounded-control border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-dark-500 dark:bg-gray-800 md:whitespace-nowrap">
+        <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal tooltip-panel rounded-control px-3 py-2.5 text-xs shadow-xl md:whitespace-nowrap">
           <div class="text-xs font-semibold text-gray-300 mb-1.5">{{ t('usage.detailedTiming') }}</div>
           <div v-if="timingTooltipData" class="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs leading-4 md:grid-cols-[max-content_minmax(0,1fr)_max-content_minmax(0,1fr)]">
             <span class="text-gray-400">{{ t('usage.timingRequestSize') }}</span>
@@ -473,12 +473,12 @@
           </div>
           <div
             v-if="timingTooltipPosition.placement === 'right'"
-            class="absolute right-full h-0 w-0 -translate-y-1/2 border-b-[6px] border-r-[6px] border-t-[6px] border-b-transparent border-r-gray-900 border-t-transparent dark:border-r-gray-800"
+            class="tooltip-caret -left-1 -translate-y-1/2 border-b border-l"
             :style="{ top: timingTooltipPosition.arrowY + 'px' }"
           ></div>
           <div
             v-else-if="timingTooltipPosition.placement === 'left'"
-            class="absolute left-full h-0 w-0 -translate-y-1/2 border-b-[6px] border-l-[6px] border-t-[6px] border-b-transparent border-l-gray-900 border-t-transparent dark:border-l-gray-800"
+            class="tooltip-caret -right-1 -translate-y-1/2 border-r border-t"
             :style="{ top: timingTooltipPosition.arrowY + 'px' }"
           ></div>
         </div>
@@ -500,10 +500,10 @@
           top: tooltipPosition.y + 'px'
         }"
       >
-        <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal rounded-control border border-gray-700 bg-gray-900 px-3 py-2.5 text-xs text-white shadow-xl dark:border-dark-500 dark:bg-gray-800 md:whitespace-nowrap">
+        <div class="w-max max-w-[calc(100vw-1.5rem)] break-words whitespace-normal tooltip-panel rounded-control px-3 py-2.5 text-xs shadow-xl md:whitespace-nowrap">
           <div class="space-y-1.5">
             <!-- Cost Breakdown -->
-            <div class="mb-2 border-b border-gray-700 pb-1.5">
+            <div class="mb-2 border-b border-gray-700 pb-1.5 dark:border-dark-600">
               <div class="text-xs font-semibold text-gray-300 mb-1">{{ t('usage.costDetails') }}</div>
               <div v-if="tooltipData && tooltipData.input_cost > 0" class="flex items-center justify-between gap-4">
                 <span class="text-gray-400">{{ t('admin.usage.inputCost') }}</span>
@@ -620,7 +620,7 @@
             </div>
             <!-- Provider billing (separated from user billing) -->
             <template v-if="showProviderBilling">
-              <div class="flex items-center justify-between gap-6 border-t border-gray-700 pt-1.5">
+              <div class="flex items-center justify-between gap-6 border-t border-gray-700 pt-1.5 dark:border-dark-600">
                 <span class="text-gray-400">{{ t('usage.providerMultiplier') }}</span>
                 <span class="font-semibold text-blue-400">{{ formatMultiplier(tooltipData?.provider_rate_multiplier ?? 1) }}x</span>
               </div>
@@ -638,12 +638,12 @@
           </div>
           <div
             v-if="tooltipPosition.placement === 'right'"
-            class="absolute right-full h-0 w-0 -translate-y-1/2 border-b-[6px] border-r-[6px] border-t-[6px] border-b-transparent border-r-gray-900 border-t-transparent dark:border-r-gray-800"
+            class="tooltip-caret -left-1 -translate-y-1/2 border-b border-l"
             :style="{ top: tooltipPosition.arrowY + 'px' }"
           ></div>
           <div
             v-else-if="tooltipPosition.placement === 'left'"
-            class="absolute left-full h-0 w-0 -translate-y-1/2 border-b-[6px] border-l-[6px] border-t-[6px] border-b-transparent border-l-gray-900 border-t-transparent dark:border-l-gray-800"
+            class="tooltip-caret -right-1 -translate-y-1/2 border-r border-t"
             :style="{ top: tooltipPosition.arrowY + 'px' }"
           ></div>
         </div>

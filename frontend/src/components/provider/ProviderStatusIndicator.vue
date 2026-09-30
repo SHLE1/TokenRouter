@@ -41,14 +41,14 @@
       />
       <!-- Tooltip - 向下显示 -->
       <div
-        class="invisible absolute left-0 top-full z-tooltip mt-1.5 min-w-[200px] max-w-[300px] rounded-control bg-gray-800 px-3 py-2 text-xs text-white opacity-0 shadow-xl transition duration-normal group-hover/error:visible group-hover/error:opacity-100 dark:bg-gray-900"
+        class="invisible absolute left-0 top-full z-tooltip mt-1.5 min-w-[200px] max-w-[300px] tooltip-panel rounded-control px-3 py-2 text-xs opacity-0 shadow-xl transition duration-normal group-hover/error:visible group-hover/error:opacity-100"
       >
         <div class="whitespace-pre-wrap break-words leading-relaxed text-gray-300">
           {{ provider.error_message }}
         </div>
         <!-- 上方小三角 -->
         <div
-          class="absolute bottom-full left-3 border-[6px] border-transparent border-b-gray-800 dark:border-b-gray-900"
+          class="tooltip-caret -top-1 left-3 border-l border-t"
         ></div>
       </div>
     </div>
@@ -63,11 +63,11 @@
       </span>
       <!-- Tooltip -->
       <div
-        class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 whitespace-normal rounded-compact bg-gray-900 px-3 py-2 text-center text-xs leading-relaxed text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+        class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 whitespace-normal tooltip-panel rounded-compact px-3 py-2 text-center text-xs leading-relaxed opacity-0 transition-opacity group-hover:opacity-100"
       >
         {{ t('admin.providers.status.rateLimitedUntil', { time: formatDateTime(provider.rate_limit_reset_at) }) }}
         <div
-          class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"
+          class="tooltip-caret -bottom-1 left-1/2 -translate-x-1/2 border-b border-r"
         ></div>
       </div>
     </div>
@@ -113,7 +113,7 @@
         </span>
         <!-- Tooltip -->
         <div
-          class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[320px] -translate-x-1/2 whitespace-nowrap rounded-compact bg-gray-900 px-3 py-2 text-center text-xs leading-relaxed text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+          class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[320px] -translate-x-1/2 whitespace-nowrap tooltip-panel rounded-compact px-3 py-2 text-center text-xs leading-relaxed opacity-0 transition-opacity group-hover:opacity-100"
         >
           {{
             item.kind === 'credits_exhausted'
@@ -123,7 +123,7 @@
                 : t('admin.providers.status.modelRateLimitedUntil', { model: formatScopeName(item.model), time: formatDateTimeToMinute(item.reset_at) })
           }}
           <div
-            class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"
+            class="tooltip-caret -bottom-1 left-1/2 -translate-x-1/2 border-b border-r"
           ></div>
         </div>
       </div>
@@ -139,11 +139,11 @@
       </span>
       <!-- Tooltip -->
       <div
-        class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 whitespace-normal rounded-compact bg-gray-900 px-3 py-2 text-center text-xs leading-relaxed text-white opacity-0 transition-opacity group-hover:opacity-100 dark:bg-gray-700"
+        class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 whitespace-normal tooltip-panel rounded-compact px-3 py-2 text-center text-xs leading-relaxed opacity-0 transition-opacity group-hover:opacity-100"
       >
         {{ t('admin.providers.status.overloadedUntil', { time: formatTime(provider.overload_until) }) }}
         <div
-          class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"
+          class="tooltip-caret -bottom-1 left-1/2 -translate-x-1/2 border-b border-r"
         ></div>
       </div>
     </div>

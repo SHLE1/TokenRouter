@@ -721,6 +721,19 @@
     @apply py-1;
   }
 
+  /* ============ 信息提示 ============ */
+  /* 深底提示面板:浅色为深底白字,深色与卡片同层并描 dark-600 边;定位、尺寸、留白和阴影由调用点叠加。 */
+  .tooltip-panel {
+    @apply bg-gray-900 text-white ring-1 ring-white/10;
+    @apply dark:bg-dark-900 dark:text-dark-100 dark:ring-dark-600;
+  }
+
+  /* 提示箭头:与面板同色的旋转方块,半嵌入面板边缘;调用点补定位和朝外的两条边,如向下为 border-b border-r。 */
+  .tooltip-caret {
+    @apply absolute h-2 w-2 rotate-45 border-transparent bg-gray-900;
+    @apply dark:border-dark-600 dark:bg-dark-900;
+  }
+
   /* 菜单项两档密度:常规 px-4 / 紧凑 px-3,其余配方一致,基色是全站行动菜单的中性灰。 */
   .dropdown-item,
   .dropdown-item-sm {

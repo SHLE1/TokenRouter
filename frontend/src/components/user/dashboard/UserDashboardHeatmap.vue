@@ -80,7 +80,7 @@
     <div
       ref="tooltipRef"
       data-testid="heatmap-tooltip"
-      class="pointer-events-none absolute z-20 whitespace-nowrap rounded-control bg-gray-900 px-2 py-1 text-xs text-white shadow-lg dark:bg-dark-600"
+      class="pointer-events-none absolute z-20 whitespace-nowrap tooltip-panel rounded-control px-2 py-1 text-xs shadow-lg"
       :style="tooltipStyle"
       :aria-hidden="hoveredDay ? 'false' : 'true'"
     >

@@ -276,15 +276,33 @@
                 class="group min-w-0 max-w-full rounded-surface border border-gray-100 bg-gray-50/80 p-4 transition hover:-translate-y-0.5 hover:border-black/20 hover:shadow-sm dark:border-dark-700 dark:bg-dark-950/80 dark:hover:border-primary-500/50"
               >
                 <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
-                  <h3 class="min-w-0 flex-1 basis-32 truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
+                  <div class="flex min-w-0 flex-1 basis-32 items-center">
+                    <h3 class="min-w-0 truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
+                    <!-- 模型属性收进标题旁的信息图标，悬停或点击后以浮层展示，不占用卡片高度。 -->
+                    <HelpTooltip
+                      v-if="model.attributes"
+                      trigger="both"
+                      width-class="w-72"
+                      :closable="false"
+                      class="shrink-0"
+                    >
+                      <template #trigger>
+                        <button
+                          type="button"
+                          data-testid="model-attributes-trigger"
+                          class="inline-flex h-5 w-5 items-center justify-center rounded-full text-gray-400 transition-colors hover:text-gray-700 dark:text-dark-500 dark:hover:text-dark-200"
+                          :aria-label="t('admin.modelAttributes.details')"
+                        >
+                          <Icon name="infoCircle" size="sm" class="h-4 w-4" />
+                        </button>
+                      </template>
+                      <ModelAttributesSummary :attributes="model.attributes" variant="tooltip" />
+                    </HelpTooltip>
+                  </div>
                   <ModelCapabilityTags :model="model" />
                 </div>
                 <!-- ID 独占整行，避免跟随标题列被右侧能力图标挤窄。 -->
                 <ModelIdLabel :model-id="model.id" class="mt-1" />
-                <details v-if="model.attributes" class="mt-3 text-sm">
-                  <summary class="cursor-pointer text-gray-600 dark:text-dark-300">{{ t('admin.modelAttributes.details') }}</summary>
-                  <ModelAttributesSummary :attributes="model.attributes" class="mt-3" />
-                </details>
 
                 <!-- 价格预览改为无边框列表，避免卡片里再嵌套一层卡片。 -->
                 <div class="mt-4">

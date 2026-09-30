@@ -210,7 +210,7 @@ onBeforeUnmount(() => {
           v-show="show" :inert="!(show) || undefined"
           role="tooltip"
           :class="[
-            'fixed z-help-tooltip max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-control bg-gray-900 text-white shadow-xl ring-1 ring-white/10 dark:bg-gray-800',
+            'fixed z-help-tooltip max-w-[calc(100vw-1.5rem)] -translate-x-1/2 tooltip-panel rounded-control shadow-xl',
             resolvedPlacement === 'top' ? '-translate-y-full' : 'translate-y-0',
             props.widthClass,
           ]"
@@ -235,10 +235,11 @@ onBeforeUnmount(() => {
             </button>
             <slot>{{ content }}</slot>
           </div>
+          <!-- 深色模式下箭头只描朝外的两条边，与面板边框连成一体。 -->
           <div
-            class="absolute h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900 dark:bg-gray-800"
+            class="tooltip-caret -translate-x-1/2"
             :style="{ left: caretLeft }"
-            :class="resolvedPlacement === 'top' ? '-bottom-1' : '-top-1'"
+            :class="resolvedPlacement === 'top' ? '-bottom-1 border-b border-r' : '-top-1 border-l border-t'"
           ></div>
         </div>
       </MotionTransition>

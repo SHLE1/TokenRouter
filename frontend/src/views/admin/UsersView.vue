@@ -346,9 +346,9 @@
                 <!-- Hover tooltip（操作菜单未打开时显示） -->
                 <div
                   v-if="expandedGroupUserId !== row.id"
-                  class="pointer-events-none absolute left-0 top-full z-50 mt-1.5 rounded-compact bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-fast group-hover/ex:opacity-100 dark:bg-dark-600"
+                  class="pointer-events-none absolute left-0 top-full z-50 mt-1.5 tooltip-panel rounded-compact px-2.5 py-1.5 text-xs opacity-0 shadow-lg transition-opacity duration-fast group-hover/ex:opacity-100"
                 >
-                  <div class="absolute left-4 bottom-full border-4 border-transparent border-b-gray-900 dark:border-b-dark-600"></div>
+                  <div class="tooltip-caret -top-1 left-4 border-l border-t"></div>
                   <div class="flex flex-col gap-0.5 whitespace-nowrap">
                     <span v-for="g in getUserGroups(row).exclusive" :key="g.id">{{ g.name }}</span>
                   </div>
@@ -381,8 +381,8 @@
                 <span class="font-medium text-gray-600 dark:text-dark-300">{{ getUserGroups(row).publicGroups.length }}</span>
                 <span class="text-gray-400 dark:text-dark-500">{{ t('admin.users.publicLabel') }}</span>
                 <!-- Tooltip: 向下弹出 -->
-                <div class="pointer-events-none absolute left-0 top-full z-50 mt-1.5 rounded-compact bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 shadow-lg transition-opacity duration-fast group-hover/pub:opacity-100 dark:bg-dark-600">
-                  <div class="absolute left-4 bottom-full border-4 border-transparent border-b-gray-900 dark:border-b-dark-600"></div>
+                <div class="pointer-events-none absolute left-0 top-full z-50 mt-1.5 tooltip-panel rounded-compact px-2.5 py-1.5 text-xs opacity-0 shadow-lg transition-opacity duration-fast group-hover/pub:opacity-100">
+                  <div class="tooltip-caret -top-1 left-4 border-l border-t"></div>
                   <div class="flex flex-col gap-0.5 whitespace-nowrap">
                     <span v-for="g in getUserGroups(row).publicGroups" :key="g.id">{{ g.name }}</span>
                   </div>
@@ -429,9 +429,9 @@
                   {{ formatBalanceAmount(value) }}
                 </button>
                 <!-- Instant tooltip -->
-                <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-compact bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-fast group-hover:opacity-100 dark:bg-dark-600">
+                <div class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 -translate-x-1/2 whitespace-nowrap tooltip-panel rounded-compact px-2 py-1 text-xs opacity-0 shadow-lg transition-opacity duration-fast group-hover:opacity-100">
                   {{ t('admin.users.balanceHistoryTip') }}
-                  <div class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-dark-600"></div>
+                  <div class="tooltip-caret -bottom-1 left-1/2 -translate-x-1/2 border-b border-r"></div>
                 </div>
               </div>
               <button
