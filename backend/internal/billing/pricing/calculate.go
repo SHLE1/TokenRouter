@@ -312,8 +312,8 @@ func CalculateTokenCost(resolved *ResolvedPricing, input CostInput) (*CostBreakd
 		return nil, fmt.Errorf("no pricing available for model: %s: %w", input.Model, ErrModelPricingUnavailable)
 	}
 
-	pricing = ApplyModelSpecificPricingPolicyEx(input.Model, pricing, resolved.Source == PricingSourceLiteLLM || resolved.Source == PricingSourceFallback, input.ModelPolicy)
-	if resolved.Source == PricingSourceLiteLLM || resolved.Source == PricingSourceFallback {
+	pricing = ApplyModelSpecificPricingPolicyEx(input.Model, pricing, resolved.Source == PricingSourceCatalog || resolved.Source == PricingSourceFallback, input.ModelPolicy)
+	if resolved.Source == PricingSourceCatalog || resolved.Source == PricingSourceFallback {
 		pricing = ApplyDeepSeekPeakPricing(input.Model, pricing, input.ModelPricingAt)
 	}
 
@@ -606,7 +606,7 @@ func OpenAIModelFastPricingRatio(normalized string) float64 {
 }
 
 // EnforceOpenAIFastPricingRatio 把 priority 档价格改写为「标准价 × ratio」。
-// 本地/远程 LiteLLM 目录可能只带官方旧口径（如 gpt-5.5 priority 仍标 2x），
+// 本地或远程模型目录可能只带官方旧口径（如 gpt-5.5 priority 仍标 2x），
 // 直接采用会导致 Fast 模式少计费；这里按业务倍率兜底修正，且对已正确的
 // fallback 条目（2x/2.5x）是幂等的。ComputeTokenBreakdown 在 priority 价格
 // 存在时走显式档位价、不再叠加通用 tier 倍率，因此不会重复乘价。
@@ -1137,7 +1137,7 @@ func CalculateAudioCost(mode string, durationOrUnits float64, groupConfig *Audio
 
 // HasExplicitImageGenerationPricing 仅把明确标记为图片生成的按图价格视为图片计费。
 // 部分聊天模型也携带 output_cost_per_image 元数据，不能据此覆盖其 token 定价。
-func HasExplicitImageGenerationPricing(pricing *LiteLLMModelPricing) bool {
+func HasExplicitImageGenerationPricing(pricing *CatalogModelPricing) bool {
 	return HasImageUnitPrice(pricing) &&
 		strings.EqualFold(strings.TrimSpace(pricing.Mode), "image_generation")
 }

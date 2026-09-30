@@ -8,11 +8,11 @@ import (
 
 // TestCatalogFallbackOrdering 约束基础型号优先与无基础型号时的稳定变体顺序。
 func TestCatalogFallbackOrdering(t *testing.T) {
-	base := &LiteLLMModelPricing{InputCostPerToken: 5e-6}
-	first := &LiteLLMModelPricing{InputCostPerToken: 6e-6}
-	second := &LiteLLMModelPricing{InputCostPerToken: 7e-6}
+	base := &CatalogModelPricing{InputCostPerToken: 5e-6}
+	first := &CatalogModelPricing{InputCostPerToken: 6e-6}
+	second := &CatalogModelPricing{InputCostPerToken: 7e-6}
 	for _, withBase := range []bool{false, true} {
-		query := &CatalogQuery{Entries: map[string]*LiteLLMModelPricing{
+		query := &CatalogQuery{Entries: map[string]*CatalogModelPricing{
 			"claude-opus-4-6-20260101": first,
 			"claude-opus-4-6-20260201": second,
 		}}

@@ -107,7 +107,7 @@ func Parse(body []byte) (*Catalog, error) {
 		return nil, err
 	}
 	if len(source.Providers) == 0 {
-		return nil, fmt.Errorf("models.dev catalog has no providers")
+		return nil, fmt.Errorf("expected models.dev catalog with providers; legacy pricing JSON is only supported as a local supplement or override")
 	}
 	hash := sha256.Sum256(body)
 	catalog := &Catalog{Version: hex.EncodeToString(hash[:]), Entries: map[string]Entry{}, Providers: map[string]bool{}, Ambiguous: map[string]bool{}}

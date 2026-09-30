@@ -56,7 +56,7 @@ func fastModeTestContext(policy, model string) context.Context {
 }
 
 func fastModeTestResolver() *billingcore.PriceResolver {
-	pricing := billingprovider.NewPricingServiceFromSnapshot(billingprovider.Options{DefaultOpenAIModel: openai.DefaultTestModel, IsImageModel: media.IsImageGenerationModel, ModelLookupCandidates: modelidentity.CandidatesFactory}, nil, billingprovider.Snapshot{Data: map[string]*billingpricing.LiteLLMModelPricing{
+	pricing := billingprovider.NewPricingServiceFromSnapshot(billingprovider.Options{DefaultOpenAIModel: openai.DefaultTestModel, IsImageModel: media.IsImageGenerationModel, ModelLookupCandidates: modelidentity.CandidatesFactory}, nil, billingprovider.Snapshot{Data: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-5.5": {
 			InputCostPerToken:     5e-6,
 			OutputCostPerToken:    30e-6,

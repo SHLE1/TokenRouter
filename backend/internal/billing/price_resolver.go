@@ -8,7 +8,7 @@ import (
 	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
-const PricingSourceLiteLLM = purepricing.PricingSourceLiteLLM
+const PricingSourceCatalog = purepricing.PricingSourceCatalog
 
 const PricingSourceFallback = purepricing.PricingSourceFallback
 
@@ -39,14 +39,14 @@ func (r *PriceResolver) Resolve(ctx context.Context, input PricingInput) *Resolv
 	return purepricing.ResolvePriceCards(configPricing, base, source, settings.LongContextPricingEnabled)
 }
 
-// ResolveBasePricing 从 LiteLLM 或 Fallback 获取基础定价
+// ResolveBasePricing 从模型目录及既有回退规则获取基础定价。
 func (r *PriceResolver) ResolveBasePricing(model string) (*ModelPricing, string) {
 	pricing, err := r.calculator.GetModelPricing(model)
 	if err != nil {
 		r.observe(model, err)
 		return nil, PricingSourceFallback
 	}
-	return pricing, PricingSourceLiteLLM
+	return pricing, PricingSourceCatalog
 }
 
 // LookupConfigPricingNormalized 优先匹配原始请求，再复用目录的明确身份候选。

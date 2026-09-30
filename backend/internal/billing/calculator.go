@@ -31,7 +31,7 @@ func maxReasoningEffortBillingMultiplier(model, effort string, pricing *ModelPri
 // GetModelPricing 获取模型价格配置
 func (s *Calculator) GetModelPricing(model string) (*ModelPricing, error) {
 	model = strings.ToLower(model)
-	var raw *LiteLLMModelPricing
+	var raw *CatalogModelPricing
 	if s.catalog != nil {
 		raw = s.catalog.GetModelPricing(model)
 	}
@@ -292,14 +292,14 @@ func (s *Calculator) DefaultImagePrice(model, imageSize string) float64 {
 	if price, ok := purepricing.GetDefaultGrokImagineImagePrice(model, imageSize); ok {
 		return price
 	}
-	var raw *LiteLLMModelPricing
+	var raw *CatalogModelPricing
 	if s.catalog != nil {
 		raw = s.catalog.GetModelPricing(model)
 	}
 	return purepricing.DefaultImagePrice(raw, imageSize)
 }
 
-func (s *Calculator) RawModelPricing(model string) *LiteLLMModelPricing {
+func (s *Calculator) RawModelPricing(model string) *CatalogModelPricing {
 	if s == nil || s.catalog == nil {
 		return nil
 	}
@@ -307,7 +307,7 @@ func (s *Calculator) RawModelPricing(model string) *LiteLLMModelPricing {
 }
 
 // hasExplicitImageGenerationPricing 委托纯定价实现，旧查询与配置投影保留在适配层。
-func hasExplicitImageGenerationPricing(pricing *LiteLLMModelPricing) bool {
+func hasExplicitImageGenerationPricing(pricing *CatalogModelPricing) bool {
 	return purepricing.HasExplicitImageGenerationPricing(pricing)
 }
 
@@ -324,7 +324,7 @@ func (s *Calculator) DefaultVideoPrice(model string, resolution string) float64 
 		return price
 	}
 
-	// 内置 LiteLLM 数据没有视频输出价格，暂用历史模型默认价作为每秒单价兜底；
+	// 模型目录未提供视频按秒价格，暂用历史模型默认价作为每秒单价兜底；
 	// 分组视频价格仍可独立覆盖图片价格。
 	return s.DefaultImagePrice(model, purepricing.ImageBillingSize2K)
 }
@@ -336,7 +336,7 @@ func getDefaultGrokImagineVideoPrice(model string, resolution string) (float64, 
 
 // PriceCatalog 暴露目录读取及既有维护操作，不向核心暴露文件或网络客户端。
 type PriceCatalog interface {
-	GetModelPricing(string) *purepricing.LiteLLMModelPricing
+	GetModelPricing(string) *purepricing.CatalogModelPricing
 	GetStatus() map[string]any
 	ForceUpdate() error
 }
@@ -391,7 +391,7 @@ func (s *Calculator) ProjectCostInput(input CostInput, resolved *ResolvedPricing
 }
 
 type (
-	LiteLLMModelPricing = purepricing.LiteLLMModelPricing
+	CatalogModelPricing = purepricing.CatalogModelPricing
 	ModelPricingEntry   = purepricing.ModelPricingEntry
 )
 

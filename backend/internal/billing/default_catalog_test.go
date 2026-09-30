@@ -9,10 +9,10 @@ import (
 )
 
 type defaultCatalogStub struct {
-	entries map[string]*pricing.LiteLLMModelPricing
+	entries map[string]*pricing.CatalogModelPricing
 }
 
-func (s defaultCatalogStub) GetModelPricing(model string) *pricing.LiteLLMModelPricing {
+func (s defaultCatalogStub) GetModelPricing(model string) *pricing.CatalogModelPricing {
 	return s.entries[model]
 }
 func (s defaultCatalogStub) GetStatus() map[string]any { return nil }
@@ -21,7 +21,7 @@ func (s defaultCatalogStub) ForceUpdate() error {
 }
 
 func TestDefaultPriceUsesCatalogAndPreservesZero(t *testing.T) {
-	catalog := defaultCatalogStub{entries: map[string]*pricing.LiteLLMModelPricing{
+	catalog := defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{
 		"custom": {InputCostPerToken: 0, OutputCostPerToken: 0.000004, SupportsServiceTier: true, InputCostPerTokenPriority: 0, OutputCostPerTokenPriority: 0.000008, LongContextInputTokenThreshold: 100000, LongContextInputCostMultiplier: 2, LongContextOutputCostMultiplier: 1.5},
 	}}
 	calculator := NewCalculator(catalog, CalculatorOptions{})
@@ -51,14 +51,14 @@ func TestDefaultPriceUsesCatalogAndPreservesZero(t *testing.T) {
 }
 
 func TestDefaultPriceContextIntervalsUseInclusiveBoundary(t *testing.T) {
-	catalog := defaultCatalogStub{entries: map[string]*pricing.LiteLLMModelPricing{
+	catalog := defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{
 		"grok-test": {
 			Source:             "models.dev",
-			LiteLLMProvider:    "xai",
+			Provider:           "xai",
 			InputCostPerToken:  2e-6,
 			OutputCostPerToken: 6e-6,
 			ContextPrices: []pricing.CatalogContextPrice{
-				{Threshold: 200000, Pricing: &pricing.LiteLLMModelPricing{InputCostPerToken: 4e-6, OutputCostPerToken: 12e-6}},
+				{Threshold: 200000, Pricing: &pricing.CatalogModelPricing{InputCostPerToken: 4e-6, OutputCostPerToken: 12e-6}},
 			},
 		},
 	}}

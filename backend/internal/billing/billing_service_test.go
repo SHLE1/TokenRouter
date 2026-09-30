@@ -1447,7 +1447,7 @@ func TestCalculateCostWithServiceTier_ClaudeOpus48FastUsesDoublePricing(t *testi
 
 func TestBillingServiceGetModelPricing_UsesDynamicPriorityFields(t *testing.T) {
 	pricingSvc := newCatalogFixture(catalogFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"gpt-5.4": {
 				InputCostPerToken:               2.5e-6,
 				InputCostPerTokenPriority:       5e-6,
@@ -1496,7 +1496,7 @@ func TestBillingServiceGetModelPricing_OpenAIFallbackGpt52Variants(t *testing.T)
 
 func TestCalculateCostWithServiceTier_PriorityFallsBackToTierMultiplierWhenExplicitPriceMissing(t *testing.T) {
 	svc := newCalculator(&config.Config{}, newCatalogFixture(catalogFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"custom-no-priority": {
 				InputCostPerToken:           1e-6,
 				OutputCostPerToken:          2e-6,
@@ -1540,7 +1540,7 @@ func TestGetModelPricing_OpenAIGpt52FallbacksExposePriorityPrices(t *testing.T) 
 
 func TestGetModelPricing_MapsDynamicPriorityFieldsIntoBillingPricing(t *testing.T) {
 	svc := newCalculator(&config.Config{}, newCatalogFixture(catalogFixture{
-		pricingData: map[string]*billingpricing.LiteLLMModelPricing{
+		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"dynamic-tier-model": {
 				InputCostPerToken:                   1e-6,
 				InputCostPerTokenPriority:           2e-6,

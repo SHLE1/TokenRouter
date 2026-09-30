@@ -5,13 +5,16 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 )
 
@@ -46,40 +49,38 @@ func (s *PricingService) ModelAttributes(model string) modelcatalog.Attributes {
 	return entry.Attributes
 }
 
-func (s *PricingService) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[string]*LiteLLMModelPricing, error) {
-	if err := s.ValidateCustomPricingFiles(); err != nil {
-		return nil, nil, err
-	}
+func (s *PricingService) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[string]*CatalogModelPricing, error) {
 	catalog, err := modelcatalog.Parse(body)
 	if err != nil {
 		return nil, nil, err
 	}
 	raw := pricing.ModelsDevPrices(catalog)
 	// 本地补充仅填补模型或媒体维度缺口，不覆盖远程已有的普通 token 报价。
-	if data, readErr := os.ReadFile(s.options.FallbackFile); readErr == nil {
-		var supplement map[string]json.RawMessage
-		if err := json.Unmarshal(data, &supplement); err != nil {
+	supplement, err := loadLocalPricingEntries(s.options.FallbackFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	// 先应用精确键，再为同一原厂记录的其他查价键补齐空缺。
+	// 这样两种名称显式配置了不同补充价时，不受 map 遍历顺序影响。
+	for model, entry := range supplement {
+		if err := mergeMediaSupplement(raw, model, entry); err != nil {
 			return nil, nil, err
 		}
-		// 先应用精确键，再为同一原厂记录的其他查价键补齐空缺。
-		// 这样两种名称显式配置了不同补充价时，不受 map 遍历顺序影响。
-		for model, entry := range supplement {
-			if err := mergeMediaSupplement(raw, model, entry); err != nil {
+	}
+	for model, entry := range supplement {
+		for _, alias := range catalog.FirstPartyAliases(model) {
+			if alias == model {
+				continue
+			}
+			if err := mergeMediaSupplement(raw, alias, entry); err != nil {
 				return nil, nil, err
 			}
 		}
-		for model, entry := range supplement {
-			for _, alias := range catalog.FirstPartyAliases(model) {
-				if alias == model {
-					continue
-				}
-				if err := mergeMediaSupplement(raw, alias, entry); err != nil {
-					return nil, nil, err
-				}
-			}
-		}
 	}
-	overrides := s.LoadPricingOverrideEntries()
+	overrides, err := loadLocalPricingEntries(s.options.OverrideFile)
+	if err != nil {
+		return nil, nil, err
+	}
 	for model, patch := range overrides {
 		base, exists := raw[model]
 		if !exists {
@@ -121,13 +122,32 @@ func (s *PricingService) buildModelsCatalog(body []byte) (*modelcatalog.Catalog,
 		raw[model], _ = json.Marshal(fields)
 	}
 	if len(raw) == 0 {
-		return catalog, map[string]*LiteLLMModelPricing{}, nil
+		return catalog, map[string]*CatalogModelPricing{}, nil
 	}
 	prices, diagnostics, err := pricing.ParsePricingEntries(raw)
 	if validationErr := diagnostics.ValidationError(); validationErr != nil {
 		return nil, nil, validationErr
 	}
-	return catalog, prices, err
+	// 合法的仅属性目录和无价格补丁可以发布空价格集合。
+	if err != nil && !errors.Is(err, pricing.ErrNoPricingEntries) {
+		return nil, nil, err
+	}
+	if prices == nil {
+		prices = map[string]*CatalogModelPricing{}
+	}
+	warnOrphanCacheTierFields(diagnostics.OrphanCacheTiers)
+	warnLopsidedLongContextLadders(diagnostics.LopsidedLadders)
+	var missing []string
+	for name := range overrides {
+		if _, exists := prices[name]; !exists {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		logging.LegacyPrintf("service.pricing", "[Pricing] Warning: override had no effect for %d model(s): %s (unknown model name, or patch-only entry without price fields)", len(missing), strings.Join(missing, ", "))
+	}
+	return catalog, prices, nil
 }
 
 // mergeMediaSupplement 填补媒体单价及生图模型缺失的文本输出价，保留目录已有单价。
@@ -188,11 +208,11 @@ func mergeMediaSupplement(raw map[string]json.RawMessage, model string, entry js
 // modelsCatalogFallbackPrices 只将原厂裸名及明确的本地价格交给既有回退策略。
 // 中继和供应商限定名称保留精确查价，不能参与其他模型的日期或系列回退。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
-func modelsCatalogFallbackPrices(catalog *modelcatalog.Catalog, prices map[string]*LiteLLMModelPricing) map[string]*LiteLLMModelPricing {
+func modelsCatalogFallbackPrices(catalog *modelcatalog.Catalog, prices map[string]*CatalogModelPricing) map[string]*CatalogModelPricing {
 	if catalog == nil {
 		return nil
 	}
-	result := make(map[string]*LiteLLMModelPricing)
+	result := make(map[string]*CatalogModelPricing)
 	for name, price := range prices {
 		if price == nil || strings.Contains(name, "/") {
 			continue
@@ -208,7 +228,7 @@ func modelsCatalogFallbackPrices(catalog *modelcatalog.Catalog, prices map[strin
 // publishModelsCatalog 只有完整构建成功才替换价格和属性，调用期间由更新锁串行化。
 func (s *PricingService) publishModelsCatalog(body []byte, updated time.Time, persist bool) error {
 	var catalog *modelcatalog.Catalog
-	var prices map[string]*LiteLLMModelPricing
+	var prices map[string]*CatalogModelPricing
 	var fingerprint string
 	// 文件编辑可能与目录同步重叠，只发布来自同一组本地文件内容的价格投影。
 	for attempt := 0; attempt < 3; attempt++ {
@@ -251,6 +271,7 @@ func (s *PricingService) publishModelsCatalog(body []byte, updated time.Time, pe
 	}
 	fallbackPrices := modelsCatalogFallbackPrices(catalog, prices)
 	s.mu.Lock()
+	warnDroppedLongContextLadders(s.pricingData, prices)
 	s.modelCatalog, s.pricingData = catalog, prices
 	s.fallbackPricingData = fallbackPrices
 	s.catalogBody = append([]byte(nil), body...)
@@ -303,7 +324,7 @@ func (s *PricingService) loadModelsCatalog() (err error) {
 		return candidateErr
 	}
 	// 首次启动时损坏的本地补充不能使整个目录消失；保留错误并等待修复后热重载。
-	bootstrap := NewPricingService(Options{ModelsDev: true, DataDir: s.options.DataDir}, nil)
+	bootstrap := NewPricingService(Options{DataDir: s.options.DataDir}, nil)
 	for _, candidate := range [][]byte{cachedBody, body} {
 		if len(candidate) == 0 {
 			continue
@@ -350,31 +371,35 @@ func (s *PricingService) updateModelsCatalog(force bool) (err error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	var body []byte
-	var etag string
-	if remote, ok := s.remoteClient.(interface {
-		FetchCatalog(context.Context, string, string) ([]byte, string, bool, error)
-	}); ok {
-		validator := s.catalogETag
-		if force {
-			validator = ""
-		}
-		var unchanged bool
-		body, etag, unchanged, err = remote.FetchCatalog(ctx, url, validator)
-		if err != nil {
-			return err
-		}
-		if unchanged {
-			s.mu.Lock()
-			s.lastCatalogError = ""
-			s.mu.Unlock()
-			return nil
-		}
-	} else {
-		body, err = s.remoteClient.FetchPricingJSON(ctx, url)
+	if s.remoteClient == nil {
+		return fmt.Errorf("model catalog remote client is not configured")
 	}
+	validator := s.catalogETag
+	if force {
+		validator = ""
+	}
+	body, etag, unchanged, err := s.remoteClient.FetchCatalog(ctx, url, validator)
 	if err != nil {
 		return err
+	}
+	if unchanged {
+		// 304 只代表远程未变；仍须验证本地层，不能清除尚未修复的覆盖错误。
+		s.mu.RLock()
+		current := append([]byte(nil), s.catalogBody...)
+		updated, fingerprint := s.lastUpdated, s.customFilesHash
+		s.mu.RUnlock()
+		if len(current) == 0 {
+			return fmt.Errorf("catalog returned 304 without a local snapshot")
+		}
+		if s.CustomPricingFilesFingerprint() != fingerprint {
+			if err := s.publishModelsCatalog(current, updated, false); err != nil {
+				return err
+			}
+		}
+		s.mu.Lock()
+		s.lastCatalogError = ""
+		s.mu.Unlock()
+		return nil
 	}
 	hash := sha256.Sum256(body)
 	s.mu.RLock()

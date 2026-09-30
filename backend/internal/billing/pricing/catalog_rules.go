@@ -28,19 +28,19 @@ var (
 	// CacheTierPricePattern 匹配 cache 侧长上下文绝对价字段，用于数据契约告警。
 	// 组 1 为缓存基础价字段，组 2 为 1 小时缓存时长段，组 3 为服务档后缀。
 	CacheTierPricePattern       = regexp.MustCompile(`^(cache_(?:creation|read)_input_token_cost)(_above_1hr)?_above_\d+k_tokens((?:_[a-z]+)?)$`)
-	ClaudeOpus48FallbackPricing = &LiteLLMModelPricing{
+	ClaudeOpus48FallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:                   5e-06,  // 每百万 token $5
 		OutputCostPerToken:                  25e-06, // 每百万 token $25
 		CacheCreationInputTokenCost:         6.25e-06,
 		CacheCreationInputTokenCostAbove1hr: 10e-06,
 		CacheReadInputTokenCost:             0.5e-06,
-		LiteLLMProvider:                     "anthropic",
+		Provider:                            "anthropic",
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 		// Claude Opus 4.8 Fast mode 官方价格是常规定价的 2 倍，复用通用 service_tier 倍率即可。
 		SupportsServiceTier: true,
 	}
-	OpenAIGPT55FallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT55FallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:               5e-06,    // $5 per MTok
 		InputCostPerTokenPriority:       12.5e-06, // $12.5 per MTok
 		OutputCostPerToken:              3e-05,    // $30 per MTok
@@ -49,22 +49,22 @@ var (
 		CacheReadInputTokenCost:         5e-07,    // $0.5 per MTok
 		CacheReadInputTokenCostPriority: 1.25e-06, // $1.25 per MTok
 		SupportsServiceTier:             true,
-		LiteLLMProvider:                 "openai",
+		Provider:                        "openai",
 		Mode:                            "chat",
 		SupportsPromptCaching:           true,
 	}
 	// GPT-6 Astra 静态回退只固化官方标准价，避免目录缺失时误落到旧型号。
-	OpenAIGPT6AstraPricing = &LiteLLMModelPricing{
+	OpenAIGPT6AstraPricing = &CatalogModelPricing{
 		InputCostPerToken:           10e-6,   // 每百万 token $10
 		OutputCostPerToken:          50e-6,   // 每百万 token $50
 		CacheCreationInputTokenCost: 12.5e-6, // 每百万 token $12.50
 		CacheReadInputTokenCost:     1e-6,    // 每百万 token $1
 		SupportsServiceTier:         true,
-		LiteLLMProvider:             "openai",
+		Provider:                    "openai",
 		Mode:                        "chat",
 		SupportsPromptCaching:       true,
 	}
-	OpenAIGPT56SolPricing = &LiteLLMModelPricing{
+	OpenAIGPT56SolPricing = &CatalogModelPricing{
 		InputCostPerToken:                   5e-06,   // $5 per MTok
 		InputCostPerTokenPriority:           1e-05,   // $10 per MTok
 		OutputCostPerToken:                  3e-05,   // $30 per MTok
@@ -74,11 +74,11 @@ var (
 		CacheReadInputTokenCost:             5e-07,   // $0.50 per MTok
 		CacheReadInputTokenCostPriority:     1e-06,   // $1 per MTok
 		SupportsServiceTier:                 true,
-		LiteLLMProvider:                     "openai",
+		Provider:                            "openai",
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 	}
-	OpenAIGPT56TerraPricing = &LiteLLMModelPricing{
+	OpenAIGPT56TerraPricing = &CatalogModelPricing{
 		InputCostPerToken:                   2e-06,   // 每百万 token $2
 		InputCostPerTokenPriority:           4e-06,   // 每百万 token $4
 		OutputCostPerToken:                  1.2e-05, // 每百万 token $12
@@ -88,11 +88,11 @@ var (
 		CacheReadInputTokenCost:             2e-07,   // 每百万 token $0.20
 		CacheReadInputTokenCostPriority:     4e-07,   // 每百万 token $0.40
 		SupportsServiceTier:                 true,
-		LiteLLMProvider:                     "openai",
+		Provider:                            "openai",
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 	}
-	OpenAIGPT56LunaPricing = &LiteLLMModelPricing{
+	OpenAIGPT56LunaPricing = &CatalogModelPricing{
 		InputCostPerToken:                   2e-07,   // 每百万 token $0.20
 		InputCostPerTokenPriority:           4e-07,   // 每百万 token $0.40
 		OutputCostPerToken:                  1.2e-06, // 每百万 token $1.20
@@ -102,11 +102,11 @@ var (
 		CacheReadInputTokenCost:             2e-08,   // 每百万 token $0.02
 		CacheReadInputTokenCostPriority:     4e-08,   // 每百万 token $0.04
 		SupportsServiceTier:                 true,
-		LiteLLMProvider:                     "openai",
+		Provider:                            "openai",
 		Mode:                                "chat",
 		SupportsPromptCaching:               true,
 	}
-	OpenAIGPT55ProFallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT55ProFallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:               3e-05,   // $30 per MTok
 		InputCostPerTokenPriority:       7.5e-05, // $75 per MTok
 		OutputCostPerToken:              1.8e-04, // $180 per MTok
@@ -115,31 +115,31 @@ var (
 		CacheReadInputTokenCost:         3e-06,   // $3 per MTok
 		CacheReadInputTokenCostPriority: 7.5e-06, // $7.5 per MTok
 		SupportsServiceTier:             true,
-		LiteLLMProvider:                 "openai",
+		Provider:                        "openai",
 		Mode:                            "responses",
 		SupportsPromptCaching:           true,
 	}
-	OpenAIGPT54FallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT54FallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:       2.5e-06, // $2.5 per MTok
 		OutputCostPerToken:      1.5e-05, // $15 per MTok
 		CacheReadInputTokenCost: 2.5e-07, // $0.25 per MTok
-		LiteLLMProvider:         "openai",
+		Provider:                "openai",
 		Mode:                    "chat",
 		SupportsPromptCaching:   true,
 	}
-	OpenAIGPT54MiniFallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT54MiniFallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:       7.5e-07,
 		OutputCostPerToken:      4.5e-06,
 		CacheReadInputTokenCost: 7.5e-08,
-		LiteLLMProvider:         "openai",
+		Provider:                "openai",
 		Mode:                    "chat",
 		SupportsPromptCaching:   true,
 	}
-	OpenAIGPT54NanoFallbackPricing = &LiteLLMModelPricing{
+	OpenAIGPT54NanoFallbackPricing = &CatalogModelPricing{
 		InputCostPerToken:       2e-07,
 		OutputCostPerToken:      1.25e-06,
 		CacheReadInputTokenCost: 2e-08,
-		LiteLLMProvider:         "openai",
+		Provider:                "openai",
 		Mode:                    "chat",
 		SupportsPromptCaching:   true,
 	}
@@ -148,7 +148,7 @@ var (
 // DeriveLongContextFromAboveTierFields 将目录中的 above_XXXk 绝对价折算为本 fork
 // 计费模型使用的阈值和倍率。多个阈值同时存在时取最小阈值；cache 侧 above 价由
 // 计费核心按输入倍率统一处理，不在此处单独写入结构体。
-func DeriveLongContextFromAboveTierFields(rawEntry json.RawMessage, pricing *LiteLLMModelPricing) {
+func DeriveLongContextFromAboveTierFields(rawEntry json.RawMessage, pricing *CatalogModelPricing) {
 	if pricing == nil ||
 		pricing.LongContextInputTokenThreshold > 0 ||
 		pricing.LongContextInputCostMultiplier > 0 ||
@@ -216,7 +216,7 @@ func DeriveLongContextFromAboveTierFields(rawEntry json.RawMessage, pricing *Lit
 }
 
 // IsLopsidedLongContextLadder 判断折算后的阶梯是否只有输入或输出一侧有附加费。
-func IsLopsidedLongContextLadder(pricing *LiteLLMModelPricing) bool {
+func IsLopsidedLongContextLadder(pricing *CatalogModelPricing) bool {
 	if pricing == nil || pricing.LongContextInputTokenThreshold <= 0 {
 		return false
 	}
@@ -301,7 +301,7 @@ func SanitizeModalities(values []string) []string {
 
 // DeriveModalities 从定价条目合成输入/输出模态：supported_modalities 缺失的一侧
 // 用 mode 兜底，再用 supports_* 标记和图片输入价补充（图片编辑体现为图片输入价）。
-func DeriveModalities(p *LiteLLMModelPricing) ([]string, []string) {
+func DeriveModalities(p *CatalogModelPricing) ([]string, []string) {
 	if p == nil {
 		return nil, nil
 	}
@@ -342,7 +342,7 @@ func DeriveModalities(p *LiteLLMModelPricing) ([]string, []string) {
 	return in, out
 }
 
-// ModalitiesFromMode 按 LiteLLM mode 推断基础模态；未知 mode 一律按文字模型处理。
+// ModalitiesFromMode 按 模型目录 mode 推断基础模态；未知 mode 一律按文字模型处理。
 func ModalitiesFromMode(mode string) ([]string, []string) {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
 	case "image_generation":

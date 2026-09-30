@@ -5,9 +5,8 @@ import (
 	"slices"
 )
 
-// LiteLLMModelPricing LiteLLM价格数据结构
-// 只保留我们需要的字段，使用指针来处理可能缺失的值
-type LiteLLMModelPricing struct {
+// CatalogModelPricing 保存每 token 单价及目录元数据，存在性标记区分缺价和显式零价。
+type CatalogModelPricing struct {
 	CacheCreation1hPricePresent bool                  `json:"-"`
 	PriorityInputPresent        bool                  `json:"-"`
 	PriorityOutputPresent       bool                  `json:"-"`
@@ -35,7 +34,7 @@ type LiteLLMModelPricing struct {
 	LongContextInputCostMultiplier      float64 `json:"long_context_input_cost_multiplier,omitempty"`
 	LongContextOutputCostMultiplier     float64 `json:"long_context_output_cost_multiplier,omitempty"`
 	SupportsServiceTier                 bool    `json:"supports_service_tier"`
-	LiteLLMProvider                     string  `json:"litellm_provider"`
+	Provider                            string  `json:"provider"`
 	Mode                                string  `json:"mode"`
 	SupportsPromptCaching               bool    `json:"supports_prompt_caching"`
 	OutputCostPerImage                  float64 `json:"output_cost_per_image"`       // 图片生成模型每张图片价格
@@ -56,8 +55,8 @@ type LiteLLMModelPricing struct {
 	TokenPricingAbsent bool `json:"-"`
 }
 
-// LiteLLMRawEntry 用于解析原始JSON数据
-type LiteLLMRawEntry struct {
+// CatalogRawEntry 使用指针保留原始价格字段的缺失与显式零值。
+type CatalogRawEntry struct {
 	Source                              string                `json:"source,omitempty"`
 	PriceSources                        map[string]string     `json:"price_sources,omitempty"`
 	ContextPrices                       []CatalogContextPrice `json:"context_prices,omitempty"`
@@ -74,7 +73,7 @@ type LiteLLMRawEntry struct {
 	LongContextInputCostMultiplier      *float64              `json:"long_context_input_cost_multiplier"`
 	LongContextOutputCostMultiplier     *float64              `json:"long_context_output_cost_multiplier"`
 	SupportsServiceTier                 bool                  `json:"supports_service_tier"`
-	LiteLLMProvider                     string                `json:"litellm_provider"`
+	Provider                            string                `json:"provider"`
 	Mode                                string                `json:"mode"`
 	SupportsPromptCaching               bool                  `json:"supports_prompt_caching"`
 	OutputCostPerImage                  *float64              `json:"output_cost_per_image"`
@@ -92,11 +91,11 @@ type LiteLLMRawEntry struct {
 // CatalogContextPrice 保存目录给出的绝对阶梯价，适用于超过 Threshold 的整次用量。
 type CatalogContextPrice struct {
 	Threshold int                  `json:"threshold"`
-	Pricing   *LiteLLMModelPricing `json:"pricing"`
+	Pricing   *CatalogModelPricing `json:"pricing"`
 }
 
 // CloneCatalogPrice 递归复制阶梯与来源标签，避免只读快照丢失零价存在性。
-func CloneCatalogPrice(value *LiteLLMModelPricing) *LiteLLMModelPricing {
+func CloneCatalogPrice(value *CatalogModelPricing) *CatalogModelPricing {
 	if value == nil {
 		return nil
 	}

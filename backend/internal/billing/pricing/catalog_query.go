@@ -10,7 +10,7 @@ import (
 )
 
 // GetModelPricing 按目录、日期变体和厂商回退策略查询模型价格。
-func (s *CatalogQuery) GetModelPricing(modelName string) *LiteLLMModelPricing {
+func (s *CatalogQuery) GetModelPricing(modelName string) *CatalogModelPricing {
 	modelLower := strings.ToLower(strings.TrimSpace(modelName))
 	if modelLower == "" {
 		return nil
@@ -33,7 +33,7 @@ func (s *CatalogQuery) GetModelPricing(modelName string) *LiteLLMModelPricing {
 	return s.lookupFallbackPricing(modelLower, lookupCandidates)
 }
 
-func (s *CatalogQuery) lookupFallbackPricing(modelLower string, lookupCandidates []string) *LiteLLMModelPricing {
+func (s *CatalogQuery) lookupFallbackPricing(modelLower string, lookupCandidates []string) *CatalogModelPricing {
 	fallbackModel := NormalizeModelNameForPricing(LastSegment(modelLower))
 
 	// 2. 去除日期和部署版本段后，按基础名称模糊匹配。
@@ -90,7 +90,7 @@ func (s *CatalogQuery) GetModelModalities(modelName string) ([]string, []string)
 }
 
 // LookupModelCatalogEntry 按候选顺序查询显式目录；调用期间目录保持只读。
-func (s *CatalogQuery) LookupModelCatalogEntry(candidates []string) *LiteLLMModelPricing {
+func (s *CatalogQuery) LookupModelCatalogEntry(candidates []string) *CatalogModelPricing {
 	for _, candidate := range candidates {
 		if pricing := s.Entries[candidate]; pricing != nil {
 			return pricing
@@ -119,7 +119,7 @@ func (s *CatalogQuery) ExtractBaseName(model string) string {
 }
 
 // MatchByModelFamily 基于模型系列匹配
-func (s *CatalogQuery) MatchByModelFamily(model string) *LiteLLMModelPricing {
+func (s *CatalogQuery) MatchByModelFamily(model string) *CatalogModelPricing {
 	// modelFamily 定义一个模型系列的匹配和定价查找规则。
 	type modelFamily struct {
 		name    string   // 系列名称
@@ -234,7 +234,7 @@ func (s *CatalogQuery) MatchByModelFamily(model string) *LiteLLMModelPricing {
 // 2. 同产品日期变体及已有专属静态价格；未注册的裸 GPT-5.6 不借用其它型号
 // 3. 通用变体及既有跨型号回退
 // 4. 最终回退到 DefaultTestModel (gpt-5.1-codex)
-func (s *CatalogQuery) MatchOpenAIModel(model string) *LiteLLMModelPricing {
+func (s *CatalogQuery) MatchOpenAIModel(model string) *CatalogModelPricing {
 	if strings.HasPrefix(model, "gpt-5.3-codex-spark") {
 		if pricing, ok := s.Entries["gpt-5.1-codex"]; ok {
 			s.legacyf("[Pricing][SparkBilling] %s -> %s billing", model, "gpt-5.1-codex")
@@ -270,7 +270,7 @@ func (s *CatalogQuery) MatchOpenAIModel(model string) *LiteLLMModelPricing {
 
 	// 保留专属产品的识别顺序，先查该产品动态价，再用它自己的静态价。
 	var product string
-	var fallback *LiteLLMModelPricing
+	var fallback *CatalogModelPricing
 	switch {
 	case strings.HasPrefix(model, "gpt-5.5-pro"):
 		product, fallback = "gpt-5.5-pro", OpenAIGPT55ProFallbackPricing
@@ -371,9 +371,9 @@ func (s *CatalogQuery) GenerateOpenAIModelVariants(model string, datePattern *re
 // CatalogQuery 只持有调用方提供的目录和能力快照，不加载数据或维护缓存。
 // 每次查询独立创建，诊断由 provider 在同一读锁范围内输出。
 type CatalogQuery struct {
-	Entries map[string]*LiteLLMModelPricing
+	Entries map[string]*CatalogModelPricing
 	// FallbackEntries 非 nil 时限定日期、系列与跨型号回退来源；空集合禁止借用远程目录报价。
-	FallbackEntries    map[string]*LiteLLMModelPricing
+	FallbackEntries    map[string]*CatalogModelPricing
 	Candidates         func(string) []string
 	IsImageModel       func(string) bool
 	DefaultOpenAIModel string

@@ -1,6 +1,6 @@
 package pricing
 
-// ModelPricing 模型价格配置（per-token价格，与LiteLLM格式一致）
+// ModelPricing 保存用于结算的每 token 单价及模型计费规则。
 type ModelPricing struct {
 	CatalogSource                      string
 	PriorityInputPresent               bool

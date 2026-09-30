@@ -843,7 +843,7 @@ func TestOpenAIGatewayServiceRecordUsage_GPT56SeparatesCacheWriteForBillingAndSt
 	userRepo := &completiontestkit.UserStore{}
 	subRepo := &completiontestkit.SubscriptionStore{}
 	svc := newOpenAIRecordUsageServiceForTest(usageRepo, userRepo, subRepo, nil)
-	svc.Dependencies.Calculator = billingtestkit.Calculator(svc.Options.DefaultMultiplier, newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*pricing.LiteLLMModelPricing{
+	svc.Dependencies.Calculator = billingtestkit.Calculator(svc.Options.DefaultMultiplier, newPricingServiceFixture(pricingServiceFixture{pricingData: map[string]*pricing.CatalogModelPricing{
 		"gpt-5.6-sol": {
 			InputCostPerToken:       5e-6,
 			OutputCostPerToken:      30e-6,

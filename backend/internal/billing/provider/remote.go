@@ -22,12 +22,8 @@ type pricingRemoteClientError struct {
 	err error
 }
 
-func (c *pricingRemoteClientError) FetchPricingJSON(_ context.Context, _ string) ([]byte, error) {
-	return nil, c.err
-}
-
-func (c *pricingRemoteClientError) FetchHashText(_ context.Context, _ string) (string, error) {
-	return "", c.err
+func (c *pricingRemoteClientError) FetchCatalog(_ context.Context, _, _ string) ([]byte, string, bool, error) {
+	return nil, "", false, c.err
 }
 
 // NewPricingRemoteClient 创建定价数据远程客户端
@@ -52,55 +48,6 @@ func NewPricingRemoteClient(proxyURL string, allowDirectOnProxyError bool) Prici
 	return &pricingRemoteClient{
 		httpClient: sharedClient,
 	}
-}
-
-func (c *pricingRemoteClient) FetchPricingJSON(ctx context.Context, url string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-
-	return io.ReadAll(resp.Body)
-}
-
-func (c *pricingRemoteClient) FetchHashText(ctx context.Context, url string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	// 哈希文件格式：hash  filename 或者纯 hash
-	hash := strings.TrimSpace(string(body))
-	parts := strings.Fields(hash)
-	if len(parts) > 0 {
-		return parts[0], nil
-	}
-	return hash, nil
 }
 
 // FetchCatalog 使用 ETag 节省目录下载，304 不发布新快照。

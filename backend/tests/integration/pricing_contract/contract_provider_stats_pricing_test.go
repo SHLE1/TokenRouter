@@ -341,7 +341,7 @@ func TestResolveProviderStatsCost_NoCalculatorReturnsNil(t *testing.T) {
 	require.Nil(t, result)
 }
 
-func TestResolveProviderStatsCost_FallsBackToLiteLLM(t *testing.T) {
+func TestResolveProviderStatsCost_FallsBackTo模型目录(t *testing.T) {
 	pricingConfig := &routingtestkit.Configuration{
 		ID:     1,
 		Status: billing.StatusActive,
@@ -684,7 +684,7 @@ func TestResolveProviderStatsCost_AllMiss_ReturnsNil(t *testing.T) {
 	require.Nil(t, result)
 }
 
-func TestResolveProviderStatsCost_NilBillingService_SkipsLiteLLM(t *testing.T) {
+func TestResolveProviderStatsCost_NilBillingService_Skips模型目录(t *testing.T) {
 	pricingConfig := &routingtestkit.Configuration{
 		ID:     1,
 		Status: billing.StatusActive,

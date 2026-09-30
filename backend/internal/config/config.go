@@ -8,6 +8,8 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -529,18 +531,14 @@ type TokenRefreshConfig struct {
 type PricingConfig struct {
 	// 模型价格与属性统一目录地址（models.dev 格式）
 	RemoteURL string `mapstructure:"remote_url"`
-	// 哈希校验文件URL
-	HashURL string `mapstructure:"hash_url"`
 	// 本地数据目录
 	DataDir string `mapstructure:"data_dir"`
-	// 回退文件路径
+	// 本地价格补充文件路径
 	FallbackFile string `mapstructure:"fallback_file"`
 	// 覆盖补丁文件路径（可选）：按字段浅合并覆盖目录和回退数据
 	OverrideFile string `mapstructure:"override_file"`
-	// 更新间隔（小时）
-	UpdateIntervalHours int `mapstructure:"update_interval_hours"`
-	// 哈希校验间隔（分钟）
-	HashCheckIntervalMinutes int `mapstructure:"hash_check_interval_minutes"`
+	// 目录与本地文件检查间隔（分钟）
+	CheckIntervalMinutes int `mapstructure:"check_interval_minutes"`
 }
 
 type ServerConfig struct {
@@ -2045,12 +2043,10 @@ func setDefaults() {
 
 	// Pricing 从 models.dev 同步统一目录，本地文件补充专用计费维度。
 	viper.SetDefault("pricing.remote_url", "https://models.dev/catalog.json")
-	viper.SetDefault("pricing.hash_url", "")
 	viper.SetDefault("pricing.data_dir", "./data")
 	viper.SetDefault("pricing.fallback_file", "./resources/model-pricing/model_pricing_supplements.json")
 	viper.SetDefault("pricing.override_file", "")
-	viper.SetDefault("pricing.update_interval_hours", 24)
-	viper.SetDefault("pricing.hash_check_interval_minutes", 10)
+	viper.SetDefault("pricing.check_interval_minutes", 10)
 
 	// Timezone (default to Asia/Shanghai for Chinese users)
 	viper.SetDefault("timezone", "Asia/Shanghai")
@@ -3597,17 +3593,24 @@ func warnIfInsecureURL(field, raw string) {
 	}
 }
 
+// normalizePricingCatalogSource 迁移已知公共旧源及缺失的旧打包资源，不改写部署文件。
 func (c *Config) normalizePricingCatalogSource() {
-	// 兼容已部署的官方旧地址，不改写管理员的配置文件。
 	source, err := url.Parse(c.Pricing.RemoteURL)
-	if err == nil && strings.EqualFold(source.Hostname(), "raw.githubusercontent.com") && strings.HasPrefix(strings.ToLower(source.Path), "/wei-shaw/model-price-repo/") && strings.HasSuffix(source.Path, "/model_prices_and_context_window.json") {
-		c.Pricing.RemoteURL = "https://models.dev/catalog.json"
-		c.Pricing.HashURL = ""
-		if !slices.Contains(c.Security.URLAllowlist.PricingHosts, "models.dev") {
-			c.Security.URLAllowlist.PricingHosts = append(c.Security.URLAllowlist.PricingHosts, "models.dev")
+	if err == nil && strings.EqualFold(source.Host, "raw.githubusercontent.com") && source.User == nil && (source.Scheme == "https" || source.Scheme == "http") {
+		sourcePath := strings.ToLower(path.Clean(source.Path))
+		knownRepository := strings.HasPrefix(sourcePath, "/wei-shaw/model-price-repo/") || strings.HasPrefix(sourcePath, "/berriai/litellm/")
+		if knownRepository && strings.HasSuffix(sourcePath, "/model_prices_and_context_window.json") {
+			c.Pricing.RemoteURL = "https://models.dev/catalog.json"
+			if !slices.Contains(c.Security.URLAllowlist.PricingHosts, "models.dev") {
+				c.Security.URLAllowlist.PricingHosts = append(c.Security.URLAllowlist.PricingHosts, "models.dev")
+			}
 		}
 	}
-	if c.Pricing.RemoteURL == "https://models.dev/catalog.json" {
-		c.Pricing.HashURL = ""
+	fallback := filepath.Clean(c.Pricing.FallbackFile)
+	if fallback != "resources/model-pricing/model_prices_and_context_window.json" && fallback != "/app/resources/model-pricing/model_prices_and_context_window.json" {
+		return
+	}
+	if _, err := os.Stat(fallback); os.IsNotExist(err) {
+		c.Pricing.FallbackFile = filepath.Join(filepath.Dir(fallback), "model_pricing_supplements.json")
 	}
 }

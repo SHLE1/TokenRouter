@@ -32,6 +32,6 @@ func NewModelPricingResolver(pricingConfigs *routing.PricingConfigService, calcu
 		source = pricingConfigs
 	}
 	return billing.NewPriceResolver(source, calculator, modelidentity.Identity, func(model string, err error) {
-		slog.Debug("failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
+		slog.Debug("failed to get model pricing from model catalog, using fallback", "model", model, "error", err)
 	})
 }

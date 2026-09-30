@@ -8,169 +8,97 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// gpt55OverrideCatalogJSON 模拟真实目录中用 above_272k 绝对价表达阶梯的条目。
-const gpt55OverrideCatalogJSON = `{
-	"gpt-5.5": {"litellm_provider": "openai", "mode": "chat",
-		"input_cost_per_token": 5e-06, "input_cost_per_token_priority": 1.25e-05,
-		"output_cost_per_token": 3e-05, "output_cost_per_token_priority": 7.5e-05,
-		"cache_read_input_token_cost": 5e-07,
-		"input_cost_per_token_above_272k_tokens": 1e-05,
-		"output_cost_per_token_above_272k_tokens": 4.5e-05,
-		"cache_read_input_token_cost_above_272k_tokens": 1e-06},
-	"gpt-5.4": {"litellm_provider": "openai", "mode": "chat",
-		"input_cost_per_token": 2.5e-06, "output_cost_per_token": 1.5e-05,
-		"cache_read_input_token_cost": 2.5e-07,
-		"input_cost_per_token_above_272k_tokens": 5e-06,
-		"output_cost_per_token_above_272k_tokens": 2.25e-05}
-}`
-
-func newPricingServiceWithOverride(t *testing.T, overrideJSON string) *PricingService {
+// newPricingServiceWithOverride 使用真实离线目录测试本地覆盖，不复制旧加载流程。
+func newPricingServiceWithOverride(t *testing.T, patch string) *PricingService {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "overrides.json")
-	require.NoError(t, os.WriteFile(path, []byte(overrideJSON), 0644))
-	service := newPricingServiceFixture(pricingServiceFixture{options: Options{}})
-	service.options.OverrideFile = path
+	service := newOfflinePricingFixture(t)
+	service.options.OverrideFile = filepath.Join(t.TempDir(), "overrides.json")
+	require.NoError(t, os.WriteFile(service.options.OverrideFile, []byte(patch), 0o600))
 	return service
 }
 
-func TestPricingOverride_ExplicitZeroThresholdDisablesCatalogLadder(t *testing.T) {
-	service := newPricingServiceWithOverride(t, `{"gpt-5.5": {"long_context_input_token_threshold": 0}}`)
-	data, err := service.ParsePricingData([]byte(gpt55OverrideCatalogJSON))
-	require.NoError(t, err)
-
-	patched := data["gpt-5.5"]
-	require.NotNil(t, patched)
-	require.Zero(t, patched.LongContextInputTokenThreshold)
-	require.Zero(t, patched.LongContextInputCostMultiplier)
-	require.InDelta(t, 5e-6, patched.InputCostPerToken, 1e-12)
-	require.Equal(t, 272000, data["gpt-5.4"].LongContextInputTokenThreshold)
-}
-
-func TestPricingOverride_FieldLevelMergeKeepsOtherFields(t *testing.T) {
-	service := newPricingServiceWithOverride(t, `{"gpt-5.4": {"input_cost_per_token": 3e-06}}`)
-	data, err := service.ParsePricingData([]byte(gpt55OverrideCatalogJSON))
-	require.NoError(t, err)
-
-	patched := data["gpt-5.4"]
-	require.InDelta(t, 3e-6, patched.InputCostPerToken, 1e-12)
-	require.InDelta(t, 1.5e-5, patched.OutputCostPerToken, 1e-12)
-	require.Equal(t, "openai", patched.LiteLLMProvider)
-	require.Equal(t, 272000, patched.LongContextInputTokenThreshold)
-	require.InDelta(t, 5.0/3.0, patched.LongContextInputCostMultiplier, 1e-9)
-}
-
-func TestPricingOverride_NullFieldValueRemovesField(t *testing.T) {
-	service := newPricingServiceWithOverride(t, `{"gpt-5.5": {
-		"input_cost_per_token_above_272k_tokens": null,
-		"output_cost_per_token_above_272k_tokens": null,
-		"cache_read_input_token_cost_above_272k_tokens": null}}`)
-	data, err := service.ParsePricingData([]byte(gpt55OverrideCatalogJSON))
-	require.NoError(t, err)
-	require.Zero(t, data["gpt-5.5"].LongContextInputTokenThreshold)
-}
-
-func TestPricingOverride_LoadPipelineAddsNewModelAndPatchesFallbackOnly(t *testing.T) {
-	dir := t.TempDir()
-	catalogPath := filepath.Join(dir, "catalog.json")
-	require.NoError(t, os.WriteFile(catalogPath, []byte(`{
-		"remote-model": {"litellm_provider": "test", "mode": "chat",
-			"input_cost_per_token": 1e-06, "output_cost_per_token": 2e-06}
-	}`), 0644))
-	fallbackPath := filepath.Join(dir, "fallback.json")
-	require.NoError(t, os.WriteFile(fallbackPath, []byte(`{
-		"fallback-only-model": {"litellm_provider": "test", "mode": "chat",
-			"input_cost_per_token": 4e-06, "output_cost_per_token": 8e-06,
-			"cache_read_input_token_cost": 4e-07}
-	}`), 0644))
-	overridePath := filepath.Join(dir, "overrides.json")
-	require.NoError(t, os.WriteFile(overridePath, []byte(`{
-		"fallback-only-model": {"input_cost_per_token": 9e-06},
-		"override-new-model": {"litellm_provider": "test", "mode": "chat",
-			"input_cost_per_token": 5e-06, "output_cost_per_token": 1e-05}
-	}`), 0644))
-
-	service := newPricingServiceFixture(pricingServiceFixture{options: Options{}})
-	service.options.FallbackFile = fallbackPath
-	service.options.OverrideFile = overridePath
-	require.NoError(t, service.LoadPricingData(catalogPath))
-
-	patched := service.Snapshot().Data["fallback-only-model"]
-	require.NotNil(t, patched)
-	require.InDelta(t, 9e-6, patched.InputCostPerToken, 1e-12)
-	require.InDelta(t, 8e-6, patched.OutputCostPerToken, 1e-12)
-	require.InDelta(t, 4e-7, patched.CacheReadInputTokenCost, 1e-12)
-	added := service.Snapshot().Data["override-new-model"]
-	require.NotNil(t, added)
-	require.InDelta(t, 5e-6, added.InputCostPerToken, 1e-12)
-	require.InDelta(t, 1e-5, added.OutputCostPerToken, 1e-12)
-	require.InDelta(t, 1e-6, service.Snapshot().Data["remote-model"].InputCostPerToken, 1e-12)
-}
-
-func TestPricingOverride_IneffectiveEntryWarns(t *testing.T) {
-	logSink, restore := captureStructuredLog(t)
-	defer restore()
-
-	dir := t.TempDir()
-	catalogPath := filepath.Join(dir, "catalog.json")
-	require.NoError(t, os.WriteFile(catalogPath, []byte(`{
-		"remote-model": {"litellm_provider": "test", "mode": "chat", "input_cost_per_token": 1e-06}
-	}`), 0644))
-	overridePath := filepath.Join(dir, "overrides.json")
-	require.NoError(t, os.WriteFile(overridePath, []byte(`{
-		"typo-model": {"long_context_input_token_threshold": 0}
-	}`), 0644))
-
-	service := newPricingServiceFixture(pricingServiceFixture{options: Options{}})
-	service.options.OverrideFile = overridePath
-	require.NoError(t, service.LoadPricingData(catalogPath))
-	require.NotContains(t, service.Snapshot().Data, "typo-model")
-	require.True(t, logSink.ContainsMessageAtLevel("override had no effect for 1 model(s): typo-model", "warn"))
-}
-
-func TestPricingOverride_NonObjectEntryKeepsCatalogEntry(t *testing.T) {
-	service := newPricingServiceWithOverride(t, `{"gpt-5.5": "oops"}`)
-	data, err := service.ParsePricingData([]byte(gpt55OverrideCatalogJSON))
-	require.NoError(t, err)
-	require.Equal(t, 272000, data["gpt-5.5"].LongContextInputTokenThreshold)
-}
-
-func TestPricingOverride_MissingOrInvalidFileIsIgnored(t *testing.T) {
-	t.Run("missing file", func(t *testing.T) {
-		service := newPricingServiceFixture(pricingServiceFixture{options: Options{}})
-		service.options.OverrideFile = filepath.Join(t.TempDir(), "absent.json")
-		data, err := service.ParsePricingData([]byte(gpt55OverrideCatalogJSON))
-		require.NoError(t, err)
-		require.Equal(t, 272000, data["gpt-5.5"].LongContextInputTokenThreshold)
-	})
-
-	t.Run("invalid json", func(t *testing.T) {
-		service := newPricingServiceWithOverride(t, `{invalid`)
-		data, err := service.ParsePricingData([]byte(gpt55OverrideCatalogJSON))
-		require.NoError(t, err)
-		require.Equal(t, 272000, data["gpt-5.5"].LongContextInputTokenThreshold)
-	})
-}
-
-func TestPricingOverride_DisablesGPT55LadderOnDefaultCatalog(t *testing.T) {
-	body, err := os.ReadFile(filepath.Join("..", "..", "..", "resources", "model-pricing", "model_prices_and_context_window.json"))
-	require.NoError(t, err)
-
-	service := newPricingServiceWithOverride(t, `{
-		"gpt-5.5": {"long_context_input_token_threshold": 0},
-		"gpt-5.5-2026-04-23": {"long_context_input_token_threshold": 0}
-	}`)
-	data, err := service.ParsePricingData(body)
-	require.NoError(t, err)
-	setPricingFixtureData(service, data)
-	billing := newBillingFixture(service)
-
-	for _, model := range []string{"gpt-5.5", "gpt-5.5-2026-04-23"} {
-		pricing, err := billing.GetModelPricing(model)
-		require.NoError(t, err)
-		require.Zero(t, pricing.LongContextInputThreshold, model)
-		require.InDelta(t, 5e-6, pricing.InputPricePerToken, 1e-12, model)
+// TestPricingOverride_FieldMerge 验证字段覆盖、删除和提供方旧字段的归一化优先级。
+func TestPricingOverride_FieldMerge(t *testing.T) {
+	for _, tc := range []struct{ name, patch, provider string }{
+		{"legacy", `"litellm_provider":"custom"`, "custom"},
+		{"new wins", `"litellm_provider":"legacy","provider":"custom"`, "custom"},
+		{"empty wins", `"litellm_provider":"legacy","provider":""`, ""},
+		{"null wins", `"litellm_provider":"legacy","provider":null`, ""},
+		{"legacy null", `"litellm_provider":null`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			service := newPricingServiceWithOverride(t, `{"gpt-5.5":{"input_cost_per_token":0,"cache_read_input_token_cost":null,`+tc.patch+`}}`)
+			before := service.GetModelPricing("gpt-5.5")
+			require.NoError(t, service.ForceUpdate())
+			after := service.GetModelPricing("gpt-5.5")
+			require.Zero(t, after.InputCostPerToken)
+			require.False(t, after.CacheReadPricePresent)
+			require.Equal(t, before.OutputCostPerToken, after.OutputCostPerToken)
+			require.Equal(t, tc.provider, after.Provider)
+		})
 	}
-	pricing, err := billing.GetModelPricing("gpt-5.4")
+}
+
+// TestPricingOverride_LoadPipeline 验证覆盖层既能修改补充条目，也能添加独立模型。
+func TestPricingOverride_LoadPipeline(t *testing.T) {
+	service := newHotReloadPricingService(t,
+		`{"local-model":{"litellm_provider":"custom","input_cost_per_token":0.000004,"output_cost_per_token":0.000008}}`,
+		`{"local-model":{"input_cost_per_token":0.000009},"new-model":{"provider":"custom","input_cost_per_token":0.000005,"output_cost_per_token":0.00001}}`)
+	require.InDelta(t, 9e-6, service.GetModelPricing("local-model").InputCostPerToken, 1e-12)
+	require.InDelta(t, 8e-6, service.GetModelPricing("local-model").OutputCostPerToken, 1e-12)
+	require.InDelta(t, 5e-6, service.GetModelPricing("new-model").InputCostPerToken, 1e-12)
+	require.Equal(t, "custom", service.GetModelPricing("local-model").Provider)
+}
+
+// TestPricingOverride_IneffectiveEntryWarns 验证拼错的模型补丁不会静默成功。
+func TestPricingOverride_IneffectiveEntryWarns(t *testing.T) {
+	sink, restore := captureStructuredLog(t)
+	defer restore()
+	service := newHotReloadPricingService(t, "", `{"typo-model":{"long_context_input_token_threshold":0}}`)
+	require.NotContains(t, service.Snapshot().Data, "typo-model")
+	require.True(t, sink.ContainsMessageAtLevel("override had no effect for 1 model(s): typo-model", "warn"))
+}
+
+// TestPricingOverride_InvalidLayerKeepsSnapshot 验证顶层 null、非对象条目和非法字段均保留整个发布版本。
+func TestPricingOverride_InvalidLayerKeepsSnapshot(t *testing.T) {
+	for _, body := range []string{`null`, `[]`, `{invalid`, `{"remote-model":null}`, `{"remote-model":"oops"}`, `{"remote-model":{"input_cost_per_token":"bad"}}`} {
+		for _, layer := range []string{"override", "supplement"} {
+			t.Run(layer+body, func(t *testing.T) {
+				service := newHotReloadPricingService(t, `{}`, `{}`)
+				before := service.Snapshot()
+				attrs := service.AttributesSnapshot()
+				disk := readCatalogTestFile(t, service.GetPricingFilePath())
+				path := service.options.OverrideFile
+				if layer == "supplement" {
+					path = service.options.FallbackFile
+				}
+				require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
+				require.Error(t, service.ForceUpdate())
+				require.Equal(t, before.Data, service.Snapshot().Data)
+				require.Equal(t, attrs.Items, service.AttributesSnapshot().Items)
+				require.Equal(t, before.LastUpdated, service.Snapshot().LastUpdated)
+				require.Equal(t, before.LocalHash, service.Snapshot().LocalHash)
+				require.Equal(t, disk, readCatalogTestFile(t, service.GetPricingFilePath()))
+				require.NotEmpty(t, service.AttributesSnapshot().LastError)
+				require.NoError(t, os.Remove(path))
+				require.NoError(t, service.ForceUpdate())
+				require.Empty(t, service.AttributesSnapshot().LastError)
+			})
+		}
+	}
+}
+
+// TestPricingOverride_DisablesGPT55LadderOnDefaultCatalog 验证显式零阈值关闭绝对阶梯，删除覆盖后恢复目录规则。
+func TestPricingOverride_DisablesGPT55LadderOnDefaultCatalog(t *testing.T) {
+	service := newPricingServiceWithOverride(t, `{"gpt-5.5":{"long_context_input_token_threshold":0}}`)
+	require.NotEmpty(t, service.GetModelPricing("gpt-5.5").ContextPrices)
+	require.NoError(t, service.ForceUpdate())
+	price, err := newBillingFixture(service).GetModelPricing("gpt-5.5")
 	require.NoError(t, err)
-	require.Equal(t, 272000, pricing.LongContextInputThreshold)
+	require.Empty(t, price.ContextPrices)
+	require.Zero(t, price.LongContextInputThreshold)
+	require.InDelta(t, 5e-6, price.InputPricePerToken, 1e-12)
+	require.NoError(t, os.WriteFile(service.options.OverrideFile, []byte(`{"gpt-5.5":{"long_context_input_token_threshold":null}}`), 0o600))
+	require.NoError(t, service.ForceUpdate())
+	require.NotEmpty(t, service.GetModelPricing("gpt-5.5").ContextPrices)
 }

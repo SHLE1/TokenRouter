@@ -43,7 +43,7 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: billingadapter.LoadPricingLocation})
 				var catalog *billingadapter.PricingService
 				if hasCatalog {
-					catalog = newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.LiteLLMModelPricing{
+					catalog = newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
 						tc.base: {Mode: "chat", InputCostPerToken: 1e-6, OutputCostPerToken: 2e-6},
 					}})
 				}
@@ -85,7 +85,7 @@ func TestResolveCatalogAliasesUseUnifiedPricingConfig(t *testing.T) {
 			{Models: []string{"gemini-3.7-flash"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
 		},
 	}}, map[int64]string{groupID: capability.PlatformGemini}))
-	catalog := newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.LiteLLMModelPricing{
+	catalog := newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
 		"gemini-3.8-flash": {Mode: "chat", InputCostPerToken: 1e-6},
 	}})
 	resolver := billingtestkit.PriceResolver(pricingConfigs, newCalculator(&config.Config{}, catalog))

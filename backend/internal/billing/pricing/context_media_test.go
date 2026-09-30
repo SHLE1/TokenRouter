@@ -47,7 +47,7 @@ func TestContextTierImageOverrides(t *testing.T) {
 		{"omitted", ModelPricingEntry{InputPrice: &input}, 0, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			resolved := ResolvePriceCards(&tc.config, base, PricingSourceLiteLLM, true)
+			resolved := ResolvePriceCards(&tc.config, base, PricingSourceCatalog, true)
 			for _, tokens := range []int{100, 101, 200, 201} {
 				cost, err := CalculateTokenCost(resolved, CostInput{
 					Model: "test",

@@ -111,13 +111,13 @@ func CalculateVideoCost(perSecondPrice float64, videoCount, durationSeconds int,
 }
 
 // HasImageUnitPrice 识别目录明确提供的按张价格，显式零价也有效。
-func HasImageUnitPrice(catalogPrice *LiteLLMModelPricing) bool {
+func HasImageUnitPrice(catalogPrice *CatalogModelPricing) bool {
 	return catalogPrice != nil && (catalogPrice.OutputCostPerImage > 0 ||
 		catalogPrice.ImagePricePresent && catalogPrice.OutputCostPerImage == 0)
 }
 
 // DefaultImagePrice 保留目录显式价格与历史尺寸倍率，不执行目录查询。
-func DefaultImagePrice(catalogPrice *LiteLLMModelPricing, imageSize string) float64 {
+func DefaultImagePrice(catalogPrice *CatalogModelPricing, imageSize string) float64 {
 	// 历史执行路径保留通用回退；默认目录展示须先确认存在对应模型的明确报价。
 	basePrice := DefaultImageGenerationPrice
 	if HasImageUnitPrice(catalogPrice) {

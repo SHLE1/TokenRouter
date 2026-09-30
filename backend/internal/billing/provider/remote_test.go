@@ -3,159 +3,85 @@ package provider
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 )
 
-type PricingServiceSuite struct {
-	suite.Suite
-	ctx    context.Context
-	srv    *httptest.Server
-	client *pricingRemoteClient
-}
-
-func (s *PricingServiceSuite) SetupTest() {
-	s.ctx = context.Background()
-	client, ok := NewPricingRemoteClient("", false).(*pricingRemoteClient)
-	require.True(s.T(), ok, "type assertion failed")
-	s.client = client
-}
-
-func (s *PricingServiceSuite) TearDownTest() {
-	if s.srv != nil {
-		s.srv.Close()
-		s.srv = nil
+// TestFetchCatalogHTTP 验证真实 HTTP 客户端的条件请求、状态码和下载上限。
+func TestFetchCatalogHTTP(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		status    int
+		body      string
+		unchanged bool
+		wantError bool
+	}{
+		{"success", http.StatusOK, `{"providers":{}}`, false, false},
+		{"unchanged", http.StatusNotModified, "", true, false},
+		{"server error", http.StatusInternalServerError, "", false, true},
+		{"too large", http.StatusOK, strings.Repeat("x", 32*1024*1024+1), false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := newLocalTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, `"v1"`, r.Header.Get("If-None-Match"))
+				w.Header().Set("ETag", `"v2"`)
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer server.Close()
+			client := &pricingRemoteClient{httpClient: server.Client()}
+			body, etag, unchanged, err := client.FetchCatalog(context.Background(), server.URL, `"v1"`)
+			if tc.wantError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.unchanged, unchanged)
+			if unchanged {
+				require.Empty(t, body)
+				require.Equal(t, `"v1"`, etag)
+			} else {
+				require.Equal(t, tc.body, string(body))
+				require.Equal(t, `"v2"`, etag)
+			}
+		})
 	}
 }
 
-func (s *PricingServiceSuite) setupServer(handler http.HandlerFunc) {
-	s.srv = newLocalTestServer(s.T(), handler)
-}
-
-func (s *PricingServiceSuite) TestFetchPricingJSON_Success() {
-	s.setupServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/ok" {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"ok":true}`))
-			return
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-
-	body, err := s.client.FetchPricingJSON(s.ctx, s.srv.URL+"/ok")
-	require.NoError(s.T(), err, "FetchPricingJSON")
-	require.Equal(s.T(), `{"ok":true}`, string(body), "body mismatch")
-}
-
-func (s *PricingServiceSuite) TestFetchPricingJSON_NonOKStatus() {
-	s.setupServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-
-	_, err := s.client.FetchPricingJSON(s.ctx, s.srv.URL+"/err")
-	require.Error(s.T(), err, "expected error for non-200 status")
-}
-
-func (s *PricingServiceSuite) TestFetchHashText_ParsesFields() {
-	s.setupServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/hashfile":
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("abc123  model_prices.json\n"))
-		case "/hashonly":
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("def456\n"))
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-
-	hash, err := s.client.FetchHashText(s.ctx, s.srv.URL+"/hashfile")
-	require.NoError(s.T(), err, "FetchHashText")
-	require.Equal(s.T(), "abc123", hash, "hash mismatch")
-
-	hash2, err := s.client.FetchHashText(s.ctx, s.srv.URL+"/hashonly")
-	require.NoError(s.T(), err, "FetchHashText")
-	require.Equal(s.T(), "def456", hash2, "hash mismatch")
-}
-
-func (s *PricingServiceSuite) TestFetchHashText_NonOKStatus() {
-	s.setupServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-	}))
-
-	_, err := s.client.FetchHashText(s.ctx, s.srv.URL+"/nope")
-	require.Error(s.T(), err, "expected error for non-200 status")
-}
-
-func (s *PricingServiceSuite) TestFetchPricingJSON_InvalidURL() {
-	_, err := s.client.FetchPricingJSON(s.ctx, "://invalid-url")
-	require.Error(s.T(), err, "expected error for invalid URL")
-}
-
-func (s *PricingServiceSuite) TestFetchHashText_EmptyBody() {
-	s.setupServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		// empty body
-	}))
-
-	hash, err := s.client.FetchHashText(s.ctx, s.srv.URL+"/empty")
-	require.NoError(s.T(), err, "FetchHashText empty body should not error")
-	require.Equal(s.T(), "", hash, "expected empty hash")
-}
-
-func (s *PricingServiceSuite) TestFetchHashText_WhitespaceOnly() {
-	s.setupServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("   \n"))
-	}))
-
-	hash, err := s.client.FetchHashText(s.ctx, s.srv.URL+"/ws")
-	require.NoError(s.T(), err, "FetchHashText whitespace body should not error")
-	require.Equal(s.T(), "", hash, "expected empty hash after trimming")
-}
-
-func (s *PricingServiceSuite) TestFetchPricingJSON_ContextCancel() {
+// TestFetchCatalogCancellation 验证取消传播到真实请求，并检查非法地址。
+func TestFetchCatalogCancellation(t *testing.T) {
 	started := make(chan struct{})
-	s.setupServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := newLocalTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		close(started)
 		<-r.Context().Done()
 	}))
-
-	ctx, cancel := context.WithCancel(s.ctx)
-
+	defer server.Close()
+	client := &pricingRemoteClient{httpClient: server.Client()}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		_, err := s.client.FetchPricingJSON(ctx, s.srv.URL+"/block")
+		_, _, _, err := client.FetchCatalog(ctx, server.URL, "")
 		done <- err
 	}()
-
 	<-started
 	cancel()
-
-	err := <-done
-	require.Error(s.T(), err)
+	require.Error(t, <-done)
+	_, _, _, err := client.FetchCatalog(context.Background(), "://invalid-url", "")
+	require.Error(t, err)
 }
 
+// TestNewPricingRemoteClient_InvalidProxy_NoFallback 验证代理错误不会触发未授权直连。
 func TestNewPricingRemoteClient_InvalidProxy_NoFallback(t *testing.T) {
 	client := NewPricingRemoteClient("://bad", false)
-	_, ok := client.(*pricingRemoteClientError)
-	require.True(t, ok, "should return error client when proxy is invalid and fallback disabled")
-
-	_, err := client.FetchPricingJSON(context.Background(), "http://example.com")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "proxy client init failed")
+	require.IsType(t, &pricingRemoteClientError{}, client)
+	_, _, _, err := client.FetchCatalog(context.Background(), "https://example.com", "")
+	require.ErrorContains(t, err, "proxy client init failed")
 }
 
+// TestNewPricingRemoteClient_InvalidProxy_WithFallback 验证显式允许的直连回退。
 func TestNewPricingRemoteClient_InvalidProxy_WithFallback(t *testing.T) {
-	client := NewPricingRemoteClient("://bad", true)
-	_, ok := client.(*pricingRemoteClient)
-	require.True(t, ok, "should fallback to direct client when allowed")
-}
-
-func TestPricingServiceSuite(t *testing.T) {
-	suite.Run(t, new(PricingServiceSuite))
+	require.IsType(t, &pricingRemoteClient{}, NewPricingRemoteClient("://bad", true))
 }

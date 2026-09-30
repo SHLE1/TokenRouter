@@ -24,7 +24,7 @@ type pricingCatalog struct {
 	source *billingadapter.PricingService
 }
 
-func (c pricingCatalog) GetModelPricing(model string) *billing.LiteLLMModelPricing {
+func (c pricingCatalog) GetModelPricing(model string) *billing.CatalogModelPricing {
 	return c.source.GetModelPricing(model)
 }
 
@@ -38,21 +38,18 @@ func (c pricingCatalog) GetModelModalities(model string) ([]string, []string) {
 // 初始化、周期更新和停止继续由既有 PricingInitialization/PricingService hook 唯一管理。
 func providePricingService(cfg *config.Config, remote billingadapter.PricingRemoteClient) (*billingadapter.PricingService, error) {
 	options := billingadapter.Options{
-		ModelsDev:                true,
-		DataDir:                  cfg.Pricing.DataDir,
-		RemoteURL:                cfg.Pricing.RemoteURL,
-		HashURL:                  cfg.Pricing.HashURL,
-		FallbackFile:             cfg.Pricing.FallbackFile,
-		OverrideFile:             cfg.Pricing.OverrideFile,
-		HashCheckIntervalMinutes: cfg.Pricing.HashCheckIntervalMinutes,
-		UpdateIntervalHours:      cfg.Pricing.UpdateIntervalHours,
-		URLAllowlistEnabled:      cfg.Security.URLAllowlist.Enabled,
-		AllowInsecureHTTP:        cfg.Security.URLAllowlist.AllowInsecureHTTP,
-		AllowPrivateHosts:        cfg.Security.URLAllowlist.AllowPrivateHosts,
-		PricingHosts:             slices.Clone(cfg.Security.URLAllowlist.PricingHosts),
-		DefaultOpenAIModel:       openai.DefaultTestModel,
-		ModelLookupCandidates:    modelidentity.CandidatesFactory,
-		IsImageModel:             media.IsImageGenerationModel,
+		DataDir:               cfg.Pricing.DataDir,
+		RemoteURL:             cfg.Pricing.RemoteURL,
+		FallbackFile:          cfg.Pricing.FallbackFile,
+		OverrideFile:          cfg.Pricing.OverrideFile,
+		CheckIntervalMinutes:  cfg.Pricing.CheckIntervalMinutes,
+		URLAllowlistEnabled:   cfg.Security.URLAllowlist.Enabled,
+		AllowInsecureHTTP:     cfg.Security.URLAllowlist.AllowInsecureHTTP,
+		AllowPrivateHosts:     cfg.Security.URLAllowlist.AllowPrivateHosts,
+		PricingHosts:          slices.Clone(cfg.Security.URLAllowlist.PricingHosts),
+		DefaultOpenAIModel:    openai.DefaultTestModel,
+		ModelLookupCandidates: modelidentity.CandidatesFactory,
+		IsImageModel:          media.IsImageGenerationModel,
 	}
 	return billingadapter.NewPricingService(options, remote), nil
 }
@@ -65,6 +62,6 @@ func provideBillingCalculator(cfg *config.Config, catalog *billingadapter.Pricin
 
 func provideBillingPriceResolver(modelConfigs *routing.PricingConfigService, calculator *billing.Calculator) *billing.PriceResolver {
 	return billing.NewPriceResolver(modelConfigs, calculator, modelidentity.Identity, func(model string, err error) {
-		slog.DebugContext(context.Background(), "failed to get model pricing from LiteLLM, using fallback", "model", model, "error", err)
+		slog.DebugContext(context.Background(), "failed to get model pricing from model catalog, using fallback", "model", model, "error", err)
 	}, gatewayprovider.ProviderStatsSource{Service: modelConfigs})
 }

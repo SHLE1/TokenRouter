@@ -13,13 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const hotReloadCatalogJSON = `{
-	"remote-model": {"litellm_provider": "test", "mode": "chat",
-		"input_cost_per_token": 1e-06, "output_cost_per_token": 2e-06}
-}`
+const hotReloadCatalogJSON = `{"providers":{"openai":{"models":{"remote-model":{"cost":{"input":1,"output":2}}}}}}`
 
 func hotReloadModelJSON(name string, input, output float64) string {
-	return `"` + name + `": {"litellm_provider": "test", "mode": "chat",
+	return `"` + name + `": {"provider": "test", "mode": "chat",
 		"input_cost_per_token": ` + formatFloat(input) + `, "output_cost_per_token": ` + formatFloat(output) + `}`
 }
 
@@ -43,7 +40,7 @@ func newHotReloadPricingService(t *testing.T, fallbackJSON, overrideJSON string)
 		svc.options.OverrideFile = filepath.Join(dir, "overrides.json")
 		require.NoError(t, os.WriteFile(svc.options.OverrideFile, []byte(overrideJSON), 0o644))
 	}
-	require.NoError(t, svc.LoadPricingData(svc.GetPricingFilePath()))
+	require.NoError(t, svc.Initialize())
 	return svc
 }
 
@@ -105,8 +102,8 @@ func TestPricingHotReload_UnchangedFilesSkipRebuild(t *testing.T) {
 	svc := newHotReloadPricingService(t,
 		`{`+hotReloadModelJSON("custom-a", 4e-6, 8e-6)+`}`,
 		`{"remote-model": {"input_cost_per_token": 7e-06}}`)
-	mutatePricingFixture(svc, func(data map[string]*pricing.LiteLLMModelPricing) {
-		data["sentinel"] = &pricing.LiteLLMModelPricing{}
+	mutatePricingFixture(svc, func(data map[string]*pricing.CatalogModelPricing) {
+		data["sentinel"] = &pricing.CatalogModelPricing{}
 	})
 
 	svc.ReloadIfCustomFilesChanged()
@@ -169,8 +166,8 @@ func TestPricingHotReload_DeletedFileDropsItsLayer(t *testing.T) {
 	require.Nil(t, svc.Snapshot().Data["custom-a"], "删除 fallback 后其独有模型消失")
 	require.InDelta(t, 1e-6, svc.Snapshot().Data["remote-model"].InputCostPerToken, 1e-12, "目录条目不受影响")
 
-	mutatePricingFixture(svc, func(data map[string]*pricing.LiteLLMModelPricing) {
-		data["sentinel"] = &pricing.LiteLLMModelPricing{}
+	mutatePricingFixture(svc, func(data map[string]*pricing.CatalogModelPricing) {
+		data["sentinel"] = &pricing.CatalogModelPricing{}
 	})
 	svc.ReloadIfCustomFilesChanged()
 	require.Contains(t, svc.Snapshot().Data, "sentinel", "缺失状态已记录，不得每轮重建")
@@ -182,12 +179,8 @@ func TestPricingHotReload_DeletedFileDropsItsLayer(t *testing.T) {
 
 type stubPricingRemoteClient struct{ body string }
 
-func (c stubPricingRemoteClient) FetchPricingJSON(context.Context, string) ([]byte, error) {
-	return []byte(c.body), nil
-}
-
-func (c stubPricingRemoteClient) FetchHashText(context.Context, string) (string, error) {
-	return "", nil
+func (c stubPricingRemoteClient) FetchCatalog(context.Context, string, string) ([]byte, string, bool, error) {
+	return []byte(c.body), "", false, nil
 }
 
 // TestPricingHotReload_DownloadRefreshesFingerprint 验证远程下载重建后指纹必须同步到当前文件内容，否则下一轮定时比对会多做一次无意义重载。
@@ -197,14 +190,14 @@ func TestPricingHotReload_DownloadRefreshesFingerprint(t *testing.T) {
 	setPricingFixtureRemote(svc, stubPricingRemoteClient{body: hotReloadCatalogJSON})
 	require.NoError(t, os.WriteFile(svc.options.FallbackFile, []byte(`{`+hotReloadModelJSON("custom-b", 1e-6, 3e-6)+`}`), 0o644))
 
-	require.NoError(t, svc.DownloadPricingData())
+	require.NoError(t, svc.ForceUpdate())
 
 	require.NotNil(t, svc.Snapshot().Data["custom-b"])
 	require.Nil(t, svc.Snapshot().Data["custom-a"])
 	require.Equal(t, svc.CustomPricingFilesFingerprint(), svc.Snapshot().CustomFilesHash)
 
-	mutatePricingFixture(svc, func(data map[string]*pricing.LiteLLMModelPricing) {
-		data["sentinel"] = &pricing.LiteLLMModelPricing{}
+	mutatePricingFixture(svc, func(data map[string]*pricing.CatalogModelPricing) {
+		data["sentinel"] = &pricing.CatalogModelPricing{}
 	})
 	svc.ReloadIfCustomFilesChanged()
 	require.Contains(t, svc.Snapshot().Data, "sentinel", "下载已消化文件变化，不得再次重建")

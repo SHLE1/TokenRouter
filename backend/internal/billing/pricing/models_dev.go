@@ -52,7 +52,7 @@ func modelsDevPriceFields(entry modelcatalog.Entry, cost modelcatalog.Cost) map[
 	case "zai", "zhipuai":
 		provider = "zhipu"
 	}
-	fields := map[string]any{"source": "models.dev", "litellm_provider": provider, "mode": "chat"}
+	fields := map[string]any{"source": "models.dev", "provider": provider, "mode": "chat"}
 	if entry.Attributes.InputModalities != nil {
 		fields["supported_modalities"] = *entry.Attributes.InputModalities
 	}

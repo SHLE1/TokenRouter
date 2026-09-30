@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +25,7 @@ func TestCatalogQueryFreezesOneCandidateFactory(t *testing.T) {
 			return []string{model}
 		}
 	}}
-	service := NewPricingServiceFromSnapshot(options, nil, Snapshot{Data: map[string]*LiteLLMModelPricing{"priced-model": {InputCostPerToken: 0.001}}})
+	service := NewPricingServiceFromSnapshot(options, nil, Snapshot{Data: map[string]*CatalogModelPricing{"priced-model": {InputCostPerToken: 0.001}}})
 	price := service.GetModelPricing("gpt-9.0-20260101")
 	require.NotNil(t, price)
 	require.Equal(t, 0.001, price.InputCostPerToken)
@@ -34,7 +35,7 @@ func TestCatalogQueryFreezesOneCandidateFactory(t *testing.T) {
 
 // TestCatalogSnapshotIsIndependent 验证快照不暴露可写缓存别名，并保留 nil 与显式空切片。
 func TestCatalogSnapshotIsIndependent(t *testing.T) {
-	service := NewPricingServiceFromSnapshot(Options{}, nil, Snapshot{Data: map[string]*LiteLLMModelPricing{"model": {InputCostPerToken: 1, SupportedModalities: []string{"text"}, SupportedOutputModalities: []string{}}}})
+	service := NewPricingServiceFromSnapshot(Options{}, nil, Snapshot{Data: map[string]*CatalogModelPricing{"model": {InputCostPerToken: 1, SupportedModalities: []string{"text"}, SupportedOutputModalities: []string{}}}})
 	snapshot := service.Snapshot()
 	require.NotNil(t, snapshot.Data["model"].SupportedOutputModalities)
 	snapshot.Data["model"].InputCostPerToken = 2
@@ -49,13 +50,9 @@ func TestCatalogSnapshotIsIndependent(t *testing.T) {
 
 type lifecyclePricingRemote struct{ calls atomic.Int64 }
 
-func (r *lifecyclePricingRemote) FetchPricingJSON(context.Context, string) ([]byte, error) {
+func (r *lifecyclePricingRemote) FetchCatalog(context.Context, string, string) ([]byte, string, bool, error) {
 	r.calls.Add(1)
-	return []byte(`{"model":{"input_cost_per_token":0.001,"output_cost_per_token":0.002}}`), nil
-}
-
-func (r *lifecyclePricingRemote) FetchHashText(context.Context, string) (string, error) {
-	return "", nil
+	return []byte(hotReloadCatalogJSON), "", false, nil
 }
 
 // TestPricingConstructionAndLifecycle 验证构造不加载数据；显式初始化后才启动唯一更新任务，重复停止等待同一任务退出。
@@ -64,13 +61,13 @@ func TestPricingConstructionAndLifecycle(t *testing.T) {
 	service := NewPricingService(Options{DataDir: t.TempDir(), RemoteURL: "https://pricing.invalid/catalog"}, remote)
 	require.Zero(t, remote.calls.Load())
 	require.NoError(t, service.Initialize())
-	require.Equal(t, int64(1), remote.calls.Load())
+	require.Zero(t, remote.calls.Load())
 	service.Start()
 	service.Start()
 	service.Stop()
 	service.Stop()
 	require.Equal(t, int64(1), remote.calls.Load())
-	require.NotNil(t, service.GetModelPricing("model"))
+	require.NotNil(t, service.GetModelPricing("remote-model"))
 }
 
 // TestPricingConcurrentReadAndReload 验证更新线程整体替换目录时，并发读者只看见一份完整价格，停止后目录仍可读取。
@@ -78,10 +75,10 @@ func TestPricingConcurrentReadAndReload(t *testing.T) {
 	dir := t.TempDir()
 	first := filepath.Join(dir, "first.json")
 	second := filepath.Join(dir, "second.json")
-	require.NoError(t, os.WriteFile(first, []byte(`{"model":{"input_cost_per_token":1,"output_cost_per_token":2}}`), 0o600))
-	require.NoError(t, os.WriteFile(second, []byte(`{"model":{"input_cost_per_token":3,"output_cost_per_token":4}}`), 0o600))
+	require.NoError(t, os.WriteFile(first, []byte(`{"providers":{"openai":{"models":{"model":{"cost":{"input":1000000,"output":2000000}}}}}}`), 0o600))
+	require.NoError(t, os.WriteFile(second, []byte(`{"providers":{"openai":{"models":{"model":{"cost":{"input":3000000,"output":4000000}}}}}}`), 0o600))
 	service := NewPricingService(Options{DataDir: dir}, nil)
-	require.NoError(t, service.LoadPricingData(first))
+	require.NoError(t, service.publishModelsCatalog(readCatalogTestFile(t, first), time.Now(), false))
 	var readers sync.WaitGroup
 	var inconsistent atomic.Bool
 	for range 4 {
@@ -101,10 +98,18 @@ func TestPricingConcurrentReadAndReload(t *testing.T) {
 		if i%2 == 0 {
 			file = second
 		}
-		require.NoError(t, service.LoadPricingData(file))
+		require.NoError(t, service.publishModelsCatalog(readCatalogTestFile(t, file), time.Now(), false))
 	}
 	readers.Wait()
 	require.False(t, inconsistent.Load())
 	service.Stop()
 	require.NotNil(t, service.GetModelPricing("model"))
+}
+
+// readCatalogTestFile 读取并发发布测试准备的目录正文。
+func readCatalogTestFile(t *testing.T, path string) []byte {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	require.NoError(t, err)
+	return body
 }

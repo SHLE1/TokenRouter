@@ -43,7 +43,7 @@ func providePricingCatalog(calculator *billing.Calculator, prices *pricingprovid
 			if value == nil {
 				continue
 			}
-			platform := value.LiteLLMProvider
+			platform := value.Provider
 			switch platform {
 			case "xai":
 				platform = "grok"

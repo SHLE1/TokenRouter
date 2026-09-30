@@ -7,7 +7,7 @@ import (
 // PricingSource 定价来源标识
 const (
 	PricingSourceConfig   = "pricing_config"
-	PricingSourceLiteLLM  = "litellm"
+	PricingSourceCatalog  = "catalog"
 	PricingSourceFallback = "fallback"
 	PricingSourceUnpriced = "unpriced"
 )
@@ -17,7 +17,7 @@ type ResolvedPricing struct {
 	// Mode 计费模式
 	Mode BillingMode
 
-	// Token 模式：基础定价（来自 LiteLLM 或 fallback）
+	// Token 模式：模型目录或回退规则提供的基础定价。
 	BasePricing *ModelPricing
 
 	// Token 模式：区间定价列表（如有，覆盖 BasePricing 中的对应字段）
@@ -30,7 +30,7 @@ type ResolvedPricing struct {
 	DefaultPerRequestPrice float64
 
 	// 来源标识
-	Source string // "configPricing", "litellm", "fallback", "unpriced"
+	Source string // "pricing_config", "catalog", "fallback", "unpriced"
 
 	// 是否支持缓存细分
 	SupportsCacheBreakdown bool
