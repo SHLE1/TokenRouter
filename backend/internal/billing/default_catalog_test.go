@@ -48,3 +48,25 @@ func TestDefaultPriceUsesCatalogAndPreservesZero(t *testing.T) {
 	require.Equal(t, "unpriced", calculator.DefaultModelPrice("unknown-model", "openai", "token").PriceStatus)
 	require.Equal(t, "priced", calculator.DefaultModelPrice("claude-sonnet-4", "anthropic", "token").PriceStatus)
 }
+
+func TestDefaultPriceContextIntervalsUseInclusiveBoundary(t *testing.T) {
+	catalog := defaultCatalogStub{entries: map[string]*pricing.LiteLLMModelPricing{
+		"grok-test": {
+			Source:             "models.dev",
+			LiteLLMProvider:    "xai",
+			InputCostPerToken:  2e-6,
+			OutputCostPerToken: 6e-6,
+			ContextPrices: []pricing.CatalogContextPrice{
+				{Threshold: 200000, Pricing: &pricing.LiteLLMModelPricing{InputCostPerToken: 4e-6, OutputCostPerToken: 12e-6}},
+			},
+		},
+	}}
+	calculator := NewCalculator(catalog, CalculatorOptions{})
+	row := calculator.DefaultModelPrice("grok-test", "xai", "token")
+	require.Len(t, row.ContextIntervals, 2)
+	require.Equal(t, 199999, *row.ContextIntervals[0].MaxTokens)
+	require.Equal(t, 199999, row.ContextIntervals[1].MinTokens)
+	// 转换不修改目录原有阈值，后续查询不能再次减一。
+	require.Equal(t, 200000, catalog.entries["grok-test"].ContextPrices[0].Threshold)
+	require.Equal(t, row, calculator.DefaultModelPrice("grok-test", "xai", "token"))
+}

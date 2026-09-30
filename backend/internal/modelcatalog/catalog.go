@@ -191,7 +191,7 @@ func Parse(body []byte) (*Catalog, error) {
 // 聚合供应商不进入此表；其他来源仍须由明确的模型资料确认归属。
 func firstPartyProviderLab(provider string) (string, bool) {
 	switch provider {
-	case "openai", "anthropic", "google", "xai", "deepseek", "moonshotai":
+	case "openai", "anthropic", "google", "xai", "deepseek", "moonshotai", "mistral":
 		return provider, true
 	case "moonshotai-cn":
 		return "moonshotai", true

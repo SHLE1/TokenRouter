@@ -265,3 +265,81 @@ func TestModelsCatalogImagePriceOverrideAcrossContextTiers(t *testing.T) {
 		require.InDelta(t, 0.001, cost.ImageInputCost, 1e-12, "input=%d", input)
 	}
 }
+
+// TestModelsCatalogGrokInclusiveContextBoundary 覆盖实际目录的阈值前、阈值处及缓存混合输入。
+func TestModelsCatalogGrokInclusiveContextBoundary(t *testing.T) {
+	service := NewPricingService(Options{ModelsDev: true, DataDir: t.TempDir()}, nil)
+	require.NoError(t, service.Initialize())
+	for _, model := range []string{"grok-4.6", "xai/grok-4.6"} {
+		t.Run(model, func(t *testing.T) {
+			base := catalogPriceForTest(t, service, model)
+			for _, tc := range []struct {
+				tokens pricing.UsageTokens
+				want   float64
+				long   bool
+			}{
+				{pricing.UsageTokens{InputTokens: 199999, OutputTokens: 1000}, 0.405998, false},
+				{pricing.UsageTokens{InputTokens: 200000, OutputTokens: 1000}, 0.812, true},
+				{pricing.UsageTokens{InputTokens: 200001, OutputTokens: 1000}, 0.812004, true},
+				{pricing.UsageTokens{InputTokens: 100000, CacheReadTokens: 100000, OutputTokens: 1000}, 0.512, true},
+			} {
+				cost := pricing.ComputeTokenBreakdown(base, tc.tokens, 1, "", true)
+				require.InDelta(t, tc.want, cost.TotalCost, 1e-12)
+				require.Equal(t, tc.long, cost.LongContextBillingApplied)
+			}
+			intervals := pricing.LongContextDisplayPricingIntervals(base, 1)
+			require.Len(t, intervals, 2)
+			require.Equal(t, 199999, *intervals[0].MaxTokens)
+			require.Equal(t, 199999, intervals[1].MinTokens)
+			cost := pricing.ComputeTokenBreakdown(base, pricing.UsageTokens{InputTokens: 200000, OutputTokens: 1000}, 1, "", false)
+			require.InDelta(t, 0.406, cost.TotalCost, 1e-12)
+		})
+	}
+}
+
+func TestModelsCatalogExplicitZeroImageOutput(t *testing.T) {
+	dir := t.TempDir()
+	supplement := filepath.Join(dir, "supplement.json")
+	patch := filepath.Join(dir, "override.json")
+	require.NoError(t, os.WriteFile(supplement, []byte(`{"gemini-image-test":{"output_cost_per_token":0.000012}}`), 0o600))
+	remote := &catalogRemoteFixture{body: []byte(`{"providers":{"google":{"models":{"gemini-image-test":{"cost":{"input":2,"output":0},"modalities":{"output":["text","image"]}}}}}}`)}
+	service := NewPricingService(Options{
+		ModelsDev:    true,
+		DataDir:      dir,
+		RemoteURL:    "https://models.dev/catalog.json",
+		FallbackFile: supplement,
+		OverrideFile: patch,
+	}, remote)
+	for _, fromOverride := range []bool{false, true} {
+		if fromOverride {
+			remote.body = []byte(strings.ReplaceAll(string(remote.body), `"output":0`, `"output":120`))
+			require.NoError(t, os.WriteFile(patch, []byte(`{"gemini-image-test":{"output_cost_per_image_token":0}}`), 0o600))
+		}
+		require.NoError(t, service.ForceUpdate())
+		base := catalogPriceForTest(t, service, "gemini-image-test")
+		cost := pricing.ComputeTokenBreakdown(base, pricing.UsageTokens{OutputTokens: 2000, ImageOutputTokens: 1000}, 1, "", true)
+		require.InDelta(t, 0.012, cost.OutputCost, 1e-12)
+		require.Zero(t, cost.ImageOutputCost)
+		require.True(t, base.ImageOutputPriceExplicit)
+	}
+	// 删除价格桶后恢复缺价回退，不能把缺失误当成显式免费。
+	require.NoError(t, os.WriteFile(patch, []byte(`{"gemini-image-test":{"output_cost_per_image_token":null}}`), 0o600))
+	require.NoError(t, service.ForceUpdate())
+	base := catalogPriceForTest(t, service, "gemini-image-test")
+	require.False(t, base.ImageOutputPriceExplicit)
+	cost := pricing.ComputeTokenBreakdown(base, pricing.UsageTokens{OutputTokens: 1000, ImageOutputTokens: 1000}, 1, "", true)
+	require.InDelta(t, 0.012, cost.ImageOutputCost, 1e-12)
+}
+
+func TestModelsCatalogMistralNativeAlias(t *testing.T) {
+	service := NewPricingService(Options{ModelsDev: true, DataDir: t.TempDir()}, nil)
+	require.NoError(t, service.Initialize())
+	plain := catalogPriceForTest(t, service, "devstral-latest")
+	qualified := catalogPriceForTest(t, service, "mistral/devstral-latest")
+	require.InDelta(t, 0.4e-6, plain.InputPricePerToken, 1e-12)
+	require.Equal(t, qualified, plain)
+	require.Equal(t, service.ModelAttributes("mistral/devstral-latest"), service.ModelAttributes("devstral-latest"))
+	require.NotNil(t, service.ModelAttributes("devstral-latest").Context)
+	// 中继记录保持自己的价格与属性。
+	require.InDelta(t, 0.44e-6, catalogPriceForTest(t, service, "requesty/devstral-latest").InputPricePerToken, 1e-12)
+}

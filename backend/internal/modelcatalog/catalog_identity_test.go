@@ -52,3 +52,24 @@ func TestKnownOriginWithoutCanonicalAndExplicitForeignOrigin(t *testing.T) {
 	require.Equal(t, "author", entry.Provider)
 	require.True(t, catalog.Ambiguous["unknown"])
 }
+
+func TestMistralOriginRespectsForeignCanonical(t *testing.T) {
+	catalog, err := Parse([]byte(`{"providers":{
+		"mistral":{"models":{
+			"devstral-latest":{"cost":{"input":0.4,"output":2}},
+			"glm-test":{"canonical_model_id":"zhipuai/glm-test","cost":{"input":9,"output":9}}
+		}},
+		"requesty":{"models":{"devstral-latest":{"cost":{"input":0.44,"output":2.2}}}},
+		"zai":{"models":{"glm-test":{"canonical_model_id":"zhipuai/glm-test","cost":{"input":1,"output":2}}}}
+	}}`))
+	require.NoError(t, err)
+	entry, found := catalog.Lookup([]string{"devstral-latest"})
+	require.True(t, found)
+	require.Equal(t, "mistral", entry.Provider)
+	entry, found = catalog.Lookup([]string{"glm-test"})
+	require.True(t, found)
+	require.Equal(t, "zai", entry.Provider)
+	entry, found = catalog.Lookup([]string{"mistral/glm-test"})
+	require.True(t, found)
+	require.False(t, entry.FirstParty)
+}

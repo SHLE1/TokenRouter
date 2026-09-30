@@ -25,6 +25,7 @@ func ResolveModelPricing(model string, catalogPrice *LiteLLMModelPricing, prices
 			litellmPricing = nil
 		}
 		if litellmPricing != nil {
+			inclusiveThreshold := strings.EqualFold(litellmPricing.LiteLLMProvider, "xai")
 			var contextPrices []ContextModelPrice
 			for _, tier := range litellmPricing.ContextPrices {
 				if tier.Pricing == nil {
@@ -32,7 +33,12 @@ func ResolveModelPricing(model string, catalogPrice *LiteLLMModelPricing, prices
 				}
 				price, _, err := ResolveModelPricing(model, tier.Pricing, nil, policy)
 				if err == nil {
-					contextPrices = append(contextPrices, ContextModelPrice{Threshold: tier.Threshold, Pricing: price})
+					threshold := tier.Threshold
+					// 内部阶梯统一使用 (min,max]；xAI 达到阈值即切档，先转换成前一档的最大 token 数。
+					if inclusiveThreshold && threshold > 0 {
+						threshold--
+					}
+					contextPrices = append(contextPrices, ContextModelPrice{Threshold: threshold, Pricing: price})
 				}
 			}
 			// models.dev 明确给出 1h 单价时按 TTL 拆分，显式零价也有效。
@@ -61,12 +67,13 @@ func ResolveModelPricing(model string, catalogPrice *LiteLLMModelPricing, prices
 				SupportsCacheBreakdown:             enableBreakdown,
 				SupportsServiceTier:                litellmPricing.SupportsServiceTier,
 				// xAI 的目录语义是达到阈值即进入高档，其他提供商保持严格大于。
-				LongContextThresholdInclusive: strings.EqualFold(litellmPricing.LiteLLMProvider, "xai"),
+				LongContextThresholdInclusive: inclusiveThreshold,
 				LongContextInputThreshold:     litellmPricing.LongContextInputTokenThreshold,
 				LongContextInputMultiplier:    litellmPricing.LongContextInputCostMultiplier,
 				LongContextOutputMultiplier:   litellmPricing.LongContextOutputCostMultiplier,
 				ImageInputPricePerToken:       litellmPricing.InputCostPerImageToken,
 				ImageOutputPricePerToken:      litellmPricing.OutputCostPerImageToken,
+				ImageOutputPriceExplicit:      litellmPricing.ImageOutputPricePresent,
 				MaxReasoningEffortMultiplier:  DefaultMaxReasoningEffortMultiplier(model),
 			}, policy), false, nil
 		}
