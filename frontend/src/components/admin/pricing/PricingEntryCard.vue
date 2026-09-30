@@ -268,7 +268,6 @@
               <IntervalRow
                 :interval="iv"
                 :mode="entry.billing_mode"
-                :enable-multipliers="props.enableTierMultipliers"
                 @update="updateInterval(idx, $event)"
               />
             </template>
