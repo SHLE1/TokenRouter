@@ -1,3 +1,4 @@
+import modelAttributes from './modelAttributes'
 import overview from './overview'
 import pricing from './pricing'
 import providers from './providers'
@@ -39,6 +40,7 @@ export default {
       groupTitle: '协议控制',
       groupHint: '先尝试提供商原生协议，再按允许的转换目标顺序尝试。自动模式使用服务端支持的转换路线。',
     },
+  ...modelAttributes,
   ...overview,
   ...pricing,
   ...providers,

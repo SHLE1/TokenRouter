@@ -1,3 +1,4 @@
+import type { ModelAttributes } from './modelAttributes'
 /**
  * Core Type Definitions for TokenRouter Frontend
  */
@@ -647,9 +648,10 @@ export interface MarketplaceModelPricing {
 }
 
 // 模型能力模态：模型广场接口从定价元数据下发，缺省时前端按模型 ID 规则兜底。
-export type ModelModality = 'text' | 'image' | 'audio' | 'video'
+export type ModelModality = 'text' | 'image' | 'audio' | 'video' | 'pdf'
 
 export interface MarketplaceModel {
+  attributes?: ModelAttributes
   id: string
   display_name: string
   pricing: MarketplaceModelPricing
@@ -728,6 +730,7 @@ export interface ReasoningEffortMapping {
 export interface Group {
   // 后端按组内提供商能力解析的可请求模型。
   models?: string[]
+  model_attributes?: Record<string, ModelAttributes>
   model_protocols?: Record<string, ProtocolID[]>
   id: number
   name: string

@@ -281,6 +281,10 @@
                 </div>
                 <!-- ID 独占整行，避免跟随标题列被右侧能力图标挤窄。 -->
                 <ModelIdLabel :model-id="model.id" class="mt-1" />
+                <details v-if="model.attributes" class="mt-3 text-sm">
+                  <summary class="cursor-pointer text-gray-600 dark:text-dark-300">{{ t('admin.modelAttributes.details') }}</summary>
+                  <ModelAttributesSummary :attributes="model.attributes" class="mt-3" />
+                </details>
 
                 <!-- 价格预览改为无边框列表，避免卡片里再嵌套一层卡片。 -->
                 <div class="mt-4">
@@ -326,6 +330,7 @@ import ModelMarketplaceSkeleton from '@/components/marketplace/ModelMarketplaceS
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import GroupAvailabilityBar from '@/components/marketplace/GroupAvailabilityBar.vue'
 import ModelCapabilityTags from '@/components/marketplace/ModelCapabilityTags.vue'
+import ModelAttributesSummary from '@/components/common/ModelAttributesSummary.vue'
 import ModelPricingPanel from '@/components/marketplace/ModelPricingPanel.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'

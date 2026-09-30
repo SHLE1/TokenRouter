@@ -47,7 +47,7 @@
 
 网关的静态体积、等待、切换上限和完成执行器参数由 app/构造适配投影为独立 Options，核心不接收完整 Config。HTTP 请求、原生尝试和完成队列复用同一应用图。用户提示替换及错误规则仍按原设置来源和生效时机读取，分别由 gateway/promptpolicy 与 gateway/errorpolicy 持有唯一运行状态。错误规则的管理写入、回源与发布在单服务进程内协调，不能据此推断新增跨实例一致性保证。
 
-环境变量把点分键转成大写下划线，例如 `database.host` 对应 `DATABASE_HOST`，`gateway.max_body_size` 对应 `GATEWAY_MAX_BODY_SIZE`。`setDefaults` 还负责把所有 struct 键注册进 Viper，使纯环境变量部署能被 `Unmarshal` 看到；新增字段不能只加 `mapstructure` tag 而不注册默认/可达键。定价进程配置中的 `pricing.override_file` 是可选本地 JSON 补丁，按字段浅合并覆盖远程目录和回退文件，修改后在重启或下一次目录下载时生效；文件缺失/非法只记录告警并保留原目录。
+环境变量把点分键转成大写下划线，例如 `database.host` 对应 `DATABASE_HOST`，`gateway.max_body_size` 对应 `GATEWAY_MAX_BODY_SIZE`。`setDefaults` 还负责把所有 struct 键注册进 Viper，使纯环境变量部署能被 `Unmarshal` 看到；新增字段不能只加 `mapstructure` tag 而不注册默认/可达键。模型目录使用 `pricing.remote_url`（默认 `https://models.dev/catalog.json`）与 `pricing.hash_check_interval_minutes`（默认 10 分钟），自动同步价格和展示属性。已知 Wei-Shaw 官方 URL 在内存中转换为 models.dev 地址并清空旧 hash URL；此兼容转换同时补入新的下载域名。`pricing.hash_url` 不参与 models.dev 同步，`pricing.update_interval_hours` 仅保留旧价格服务兼容语义。默认 `pricing.fallback_file` 为媒体补充文件 `resources/model-pricing/model_pricing_supplements.json`，旧显式本地文件仍可作为补充使用。定价进程配置中的 `pricing.override_file` 是可选本地 JSON 补丁，按字段浅合并覆盖远程目录和回退文件，修改后在重启或下一次目录下载时生效；文件缺失/非法只记录告警并保留原目录。
 
 少量变量有显式绑定或专用解析：`ENABLE_SERVER_TIMING`，逗号分隔的 `SERVER_TRUSTED_PROXIES` 和 `SECURITY_FORWARDED_CLIENT_IP_HEADERS`，以及受兼容条件约束的旧 WeChat 变量。
 

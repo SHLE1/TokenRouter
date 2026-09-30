@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -526,7 +527,7 @@ type TokenRefreshConfig struct {
 }
 
 type PricingConfig struct {
-	// 价格数据远程URL（默认使用LiteLLM镜像）
+	// 模型价格与属性统一目录地址（models.dev 格式）
 	RemoteURL string `mapstructure:"remote_url"`
 	// 哈希校验文件URL
 	HashURL string `mapstructure:"hash_url"`
@@ -1805,6 +1806,7 @@ func setDefaults() {
 		"*.openai.azure.com",
 	})
 	viper.SetDefault("security.url_allowlist.pricing_hosts", []string{
+		"models.dev",
 		"raw.githubusercontent.com",
 	})
 	viper.SetDefault("security.url_allowlist.crs_hosts", []string{})
@@ -2041,11 +2043,11 @@ func setDefaults() {
 	viper.SetDefault("rate_limit.overload_cooldown_minutes", 10)
 	viper.SetDefault("rate_limit.oauth_401_cooldown_minutes", 10)
 
-	// Pricing - 从 model-price-repo main 分支同步模型定价和上下文窗口数据
-	viper.SetDefault("pricing.remote_url", "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.json")
-	viper.SetDefault("pricing.hash_url", "https://raw.githubusercontent.com/Wei-Shaw/model-price-repo/main/model_prices_and_context_window.sha256")
+	// Pricing 从 models.dev 同步统一目录，本地文件补充专用计费维度。
+	viper.SetDefault("pricing.remote_url", "https://models.dev/catalog.json")
+	viper.SetDefault("pricing.hash_url", "")
 	viper.SetDefault("pricing.data_dir", "./data")
-	viper.SetDefault("pricing.fallback_file", "./resources/model-pricing/model_prices_and_context_window.json")
+	viper.SetDefault("pricing.fallback_file", "./resources/model-pricing/model_pricing_supplements.json")
 	viper.SetDefault("pricing.override_file", "")
 	viper.SetDefault("pricing.update_interval_hours", 24)
 	viper.SetDefault("pricing.hash_check_interval_minutes", 10)
@@ -2381,6 +2383,8 @@ func setEnvReachableDefaults() {
 }
 
 func (c *Config) Validate() error {
+	c.normalizePricingCatalogSource()
+
 	forwardedClientIPHeaders, err := NormalizeForwardedClientIPHeaders(c.Security.ForwardedClientIPHeaders)
 	if err != nil {
 		return fmt.Errorf("security.forwarded_client_ip_headers: %w", err)
@@ -3590,5 +3594,20 @@ func warnIfInsecureURL(field, raw string) {
 	}
 	if strings.EqualFold(u.Scheme, "http") {
 		slog.Warn("url uses http scheme; use https in production to avoid token leakage", "field", field)
+	}
+}
+
+func (c *Config) normalizePricingCatalogSource() {
+	// 兼容已部署的官方旧地址，不改写管理员的配置文件。
+	source, err := url.Parse(c.Pricing.RemoteURL)
+	if err == nil && strings.EqualFold(source.Hostname(), "raw.githubusercontent.com") && strings.HasPrefix(strings.ToLower(source.Path), "/wei-shaw/model-price-repo/") && strings.HasSuffix(source.Path, "/model_prices_and_context_window.json") {
+		c.Pricing.RemoteURL = "https://models.dev/catalog.json"
+		c.Pricing.HashURL = ""
+		if !slices.Contains(c.Security.URLAllowlist.PricingHosts, "models.dev") {
+			c.Security.URLAllowlist.PricingHosts = append(c.Security.URLAllowlist.PricingHosts, "models.dev")
+		}
+	}
+	if c.Pricing.RemoteURL == "https://models.dev/catalog.json" {
+		c.Pricing.HashURL = ""
 	}
 }

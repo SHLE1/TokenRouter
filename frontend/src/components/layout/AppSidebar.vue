@@ -327,7 +327,13 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/users', label: t('nav.users'), icon: 'users' as const },
     { path: '/admin/teams', label: t('nav.teams'), icon: 'users' as const, featureFlag: flagTeamAccess },
     { path: '/admin/groups', label: t('nav.groups'), icon: 'folder' as const },
-    { path: '/admin/pricing', label: t('nav.pricing', '价格管理'), icon: 'pricing' as const },
+    {
+      path: '/admin/model-management', label: t('nav.modelManagement'), icon: 'pricing' as const,
+      children: [
+        { path: '/admin/pricing', label: t('nav.pricing'), icon: 'pricing' as const },
+        { path: '/admin/model-attributes', label: t('nav.modelAttributes'), icon: 'cog' as const },
+      ],
+    },
     {
       path: '/admin/subscriptions',
       label: t('nav.subscriptions'),

@@ -128,6 +128,8 @@ export default {
     profile: 'Profile',
     users: 'Users',
     groups: 'Groups',
+    modelManagement: 'Model Management',
+    modelAttributes: 'Model Attributes',
     pricing: 'Price Management',
     subscriptions: 'Subscriptions',
     userSubscriptions: 'User Subscriptions',

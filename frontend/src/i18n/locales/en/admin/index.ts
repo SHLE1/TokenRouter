@@ -1,3 +1,4 @@
+import modelAttributes from './modelAttributes'
 import overview from './overview'
 import pricing from './pricing'
 import providers from './providers'
@@ -39,6 +40,7 @@ export default {
       groupTitle: 'Protocol controls',
       groupHint: 'Try each provider’s native protocol first, then the allowed conversion targets in order. Automatic mode uses the routes supported by the server.',
     },
+  ...modelAttributes,
   ...overview,
   ...pricing,
   ...providers,

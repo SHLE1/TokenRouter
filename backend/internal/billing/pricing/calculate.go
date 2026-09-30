@@ -26,7 +26,7 @@ func UsePriorityServiceTierPricing(serviceTier string, pricing *ModelPricing) bo
 	if pricing.FastModeMultiplier != nil || pricing.FastMultiplier != nil {
 		return false
 	}
-	return pricing.InputPricePerTokenPriority > 0 || pricing.OutputPricePerTokenPriority > 0 ||
+	return pricing.PriorityInputPresent || pricing.PriorityOutputPresent || pricing.PriorityCacheReadPresent || pricing.PriorityCacheWritePresent || pricing.InputPricePerTokenPriority > 0 || pricing.OutputPricePerTokenPriority > 0 ||
 		pricing.CacheCreationPricePerTokenPriority > 0 || pricing.CacheReadPricePerTokenPriority > 0
 }
 
@@ -253,6 +253,16 @@ func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, ConfigPricing *ModelP
 	if pricing == nil || ConfigPricing == nil {
 		return
 	}
+	// 显式价卡覆盖同时应用到每个目录阶梯，保留未覆盖的独立单价。
+	if len(pricing.ContextPrices) > 0 {
+		tiers := make([]ContextModelPrice, len(pricing.ContextPrices))
+		for i, tier := range pricing.ContextPrices {
+			value := *tier.Pricing
+			ApplyConfigTokenPriceOverrides(&value, ConfigPricing)
+			tiers[i] = ContextModelPrice{Threshold: tier.Threshold, Pricing: &value}
+		}
+		pricing.ContextPrices = tiers
+	}
 	if ConfigPricing.InputPrice != nil {
 		priority := ConfigTierOverridePrice(pricing.InputPricePerToken, pricing.InputPricePerTokenPriority, *ConfigPricing.InputPrice)
 		pricing.InputPricePerToken = *ConfigPricing.InputPrice
@@ -322,6 +332,25 @@ func ComputeTokenBreakdown(
 	rateMultiplier float64, serviceTier string,
 	applyLongCtx bool,
 ) *CostBreakdown {
+	if applyLongCtx && len(pricing.ContextPrices) > 0 {
+		input := tokens.InputTokens + tokens.CacheReadTokens + tokens.CacheCreationTokens
+		selected := pricing
+		for _, tier := range pricing.ContextPrices {
+			if input > tier.Threshold {
+				selected = tier.Pricing
+			}
+		}
+		if selected != pricing {
+			value := *selected
+			value.FastModeMultiplier = pricing.FastModeMultiplier
+			value.FastMultiplier = pricing.FastMultiplier
+			value.FlexMultiplier = pricing.FlexMultiplier
+			value.MaxReasoningEffortMultiplier = pricing.MaxReasoningEffortMultiplier
+			cost := ComputeTokenBreakdown(&value, tokens, rateMultiplier, serviceTier, false)
+			cost.LongContextBillingApplied = cost.ActualCost > ComputeTokenBreakdown(pricing, tokens, rateMultiplier, serviceTier, false).ActualCost
+			return cost
+		}
+	}
 	// 保存时强制 > 0；若仍有负数泄漏，按 0 处理避免按 1x 误扣。
 	if rateMultiplier < 0 {
 		rateMultiplier = 0
@@ -340,16 +369,16 @@ func ComputeTokenBreakdown(
 			// 价卡显式倍率以普通模式最终价为基准，避免和模型内置 priority 价重复叠乘。
 			tierMultiplier = fastMultiplier
 		} else if UsePriorityServiceTierPricing(serviceTier, pricing) {
-			if pricing.InputPricePerTokenPriority > 0 {
+			if pricing.InputPricePerTokenPriority > 0 || pricing.PriorityInputPresent {
 				inputPrice = pricing.InputPricePerTokenPriority
 			}
-			if pricing.OutputPricePerTokenPriority > 0 {
+			if pricing.OutputPricePerTokenPriority > 0 || pricing.PriorityOutputPresent {
 				outputPrice = pricing.OutputPricePerTokenPriority
 			}
-			if pricing.CacheReadPricePerTokenPriority > 0 {
+			if pricing.CacheReadPricePerTokenPriority > 0 || pricing.PriorityCacheReadPresent {
 				cacheReadPrice = pricing.CacheReadPricePerTokenPriority
 			}
-			if pricing.CacheCreationPricePerTokenPriority > 0 {
+			if pricing.CacheCreationPricePerTokenPriority > 0 || pricing.PriorityCacheWritePresent {
 				cacheCreationPrice = pricing.CacheCreationPricePerTokenPriority
 			}
 		} else {
@@ -413,6 +442,10 @@ func ComputeTokenBreakdown(
 		bd.ImageOutputCost = float64(tokens.ImageOutputTokens) * imgPrice
 	}
 
+	// models.dev 的 Fast 缓存写入价同时适用于 5m/1h TTL 的原厂倍率。
+	if pricing.CatalogSource == "models.dev" && UsePriorityServiceTierPricing(serviceTier, pricing) && pricing.SupportsCacheBreakdown && pricing.CacheCreationPricePerToken > 0 && pricing.PriorityCacheWritePresent {
+		cacheCreationMultiplier *= cacheCreationPrice / pricing.CacheCreationPricePerToken
+	}
 	// 缓存创建费用
 	bd.CacheCreationCost = ComputeCacheCreationCost(pricing, tokens, cacheCreationPrice, cacheCreationMultiplier)
 
@@ -523,7 +556,7 @@ func ApplyModelSpecificPricingPolicyEx(model string, pricing *ModelPricing, forc
 	if pricing == nil {
 		return nil
 	}
-	if forceDeepSeekRates && IsDeepSeekModel(model) {
+	if forceDeepSeekRates && pricing.CatalogSource != "models.dev" && pricing.CatalogSource != "local_override" && IsDeepSeekModel(model) {
 		return ApplyDeepSeekOfficialPricing(model, pricing)
 	}
 	normalized := policy.NormalizedOpenAIModel
@@ -543,7 +576,7 @@ func ApplyModelSpecificPricingPolicyEx(model string, pricing *ModelPricing, forc
 			cloned.CacheCreationPricePerTokenPriority = cloned.InputPricePerTokenPriority * 1.25
 		}
 	}
-	if fastRatio > 0 {
+	if fastRatio > 0 && !pricing.PriorityInputPresent && !pricing.PriorityOutputPresent {
 		EnforceOpenAIFastPricingRatio(&cloned, fastRatio)
 	}
 	return &cloned
@@ -656,6 +689,7 @@ func WithoutLongContextDisplayPricing(pricing *ModelPricing) *ModelPricing {
 	}
 	cloned := *pricing
 	cloned.LongContextInputThreshold = 0
+	cloned.ContextPrices = nil
 	cloned.LongContextInputMultiplier = 0
 	cloned.LongContextOutputMultiplier = 0
 	return &cloned
@@ -799,6 +833,22 @@ func CacheCreationDisplayPrices(pricing *ModelPricing) (float64, float64) {
 
 // LongContextDisplayPricingIntervals 将内置长上下文倍率转换成模型广场可展示的两段价格。
 func LongContextDisplayPricingIntervals(pricing *ModelPricing, rateMultiplier float64) []ModelDisplayPricingInterval {
+	if pricing != nil && len(pricing.ContextPrices) > 0 {
+		var intervals []ModelDisplayPricingInterval
+		start := 0
+		current := pricing
+		for _, tier := range pricing.ContextPrices {
+			end := tier.Threshold
+			intervals = append(intervals, ModelPricingDisplayInterval(start, &end, current, rateMultiplier))
+			next := *tier.Pricing
+			next.FastModeMultiplier = pricing.FastModeMultiplier
+			next.FastMultiplier = pricing.FastMultiplier
+			next.FlexMultiplier = pricing.FlexMultiplier
+			next.MaxReasoningEffortMultiplier = pricing.MaxReasoningEffortMultiplier
+			start, current = end, &next
+		}
+		return append(intervals, ModelPricingDisplayInterval(start, nil, current, rateMultiplier))
+	}
 	if !HasLongContextDisplayPricing(pricing) {
 		return nil
 	}
@@ -879,16 +929,21 @@ func FastModeDisplayPricing(pricing *ModelPricing) (*ModelPricing, bool) {
 
 	fastPricing := *pricing
 	if UsePriorityServiceTierPricing(OpenAIFastTierPriority, pricing) {
-		if pricing.InputPricePerTokenPriority > 0 {
+		if pricing.InputPricePerTokenPriority > 0 || pricing.PriorityInputPresent {
 			fastPricing.InputPricePerToken = pricing.InputPricePerTokenPriority
 		}
-		if pricing.OutputPricePerTokenPriority > 0 {
+		if pricing.OutputPricePerTokenPriority > 0 || pricing.PriorityOutputPresent {
 			fastPricing.OutputPricePerToken = pricing.OutputPricePerTokenPriority
 		}
-		if pricing.CacheCreationPricePerTokenPriority > 0 {
+		if pricing.CacheCreationPricePerTokenPriority > 0 || pricing.PriorityCacheWritePresent {
 			fastPricing.CacheCreationPricePerToken = pricing.CacheCreationPricePerTokenPriority
+			if pricing.CatalogSource == "models.dev" && pricing.SupportsCacheBreakdown && pricing.CacheCreationPricePerToken > 0 {
+				ratio := pricing.CacheCreationPricePerTokenPriority / pricing.CacheCreationPricePerToken
+				fastPricing.CacheCreation5mPrice *= ratio
+				fastPricing.CacheCreation1hPrice *= ratio
+			}
 		}
-		if pricing.CacheReadPricePerTokenPriority > 0 {
+		if pricing.CacheReadPricePerTokenPriority > 0 || pricing.PriorityCacheReadPresent {
 			fastPricing.CacheReadPricePerToken = pricing.CacheReadPricePerTokenPriority
 		}
 		return &fastPricing, true
@@ -1091,7 +1146,7 @@ func HasAnyDisplayTokenPricing(pricing *ModelPricing) bool {
 	if pricing == nil {
 		return false
 	}
-	return pricing.InputPricePerToken > 0 ||
+	return pricing.CatalogSource == "models.dev" || pricing.InputPricePerToken > 0 ||
 		pricing.ImageInputPricePerToken > 0 ||
 		pricing.OutputPricePerToken > 0 ||
 		pricing.CacheCreationPricePerToken > 0 ||
