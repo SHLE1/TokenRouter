@@ -2,7 +2,6 @@
   <TablePageLayout>
     <template #filters>
       <div class="space-y-3">
-        <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('admin.pricing.defaults.description') }}</p>
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="flex min-w-0 flex-1 flex-nowrap items-center gap-3">
             <div class="input-icon-wrap min-w-0 flex-1 sm:flex-none sm:w-64">
@@ -38,9 +37,8 @@
             </button>
           </div>
         </div>
-        <p v-if="updatedAt && !updatedAt.startsWith('0001')" class="text-xs text-gray-500">{{ t('admin.pricing.defaults.updatedAt') }} {{ new Date(updatedAt).toLocaleString() }}</p>
+        <ModelCatalogInfo :version="catalogVersion" :updated-at="updatedAt" />
         <p v-if="notice" role="status" class="text-sm text-emerald-600 dark:text-emerald-400">{{ notice }}</p>
-        <p v-if="catalogVersion" class="text-xs text-gray-500">{{ catalogVersion.slice(0, 12) }}</p>
         <p v-if="error || catalogError" role="alert" class="text-sm text-red-600">{{ error || catalogError }}</p>
       </div>
     </template>
@@ -129,6 +127,7 @@ import Select from '@/components/common/Select.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import PlatformBadge from '@/components/common/PlatformBadge.vue'
 import BillingModeBadge from '@/components/common/BillingModeBadge.vue'
+import ModelCatalogInfo from '@/components/admin/ModelCatalogInfo.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatCompactTokenRange } from '@/utils/formatters'
 import { SEARCH_DEBOUNCE_MS } from '@/constants/ui'

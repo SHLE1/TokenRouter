@@ -21,45 +21,48 @@
         </button>
       </div>
 
-      <DataTable
-        column-order-storage-key="admin-announcement-read-status-column-order"
-        :columns="columns"
-        :data="items"
-        :loading="loading"
-        :server-side-sort="true"
-        default-sort-key="email"
-        default-sort-order="asc"
-        @sort="handleSort"
-      >
-        <template #cell-email="{ value }">
-          <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
-        </template>
+      <!-- 表格和分页共用圆角边框。 -->
+      <div class="card overflow-hidden">
+        <DataTable
+          column-order-storage-key="admin-announcement-read-status-column-order"
+          :columns="columns"
+          :data="items"
+          :loading="loading"
+          :server-side-sort="true"
+          default-sort-key="email"
+          default-sort-order="asc"
+          @sort="handleSort"
+        >
+          <template #cell-email="{ value }">
+            <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+          </template>
 
-        <template #cell-balance="{ value }">
-          <span class="font-medium text-gray-900 dark:text-white">{{ formatBalanceAmount(Number(value ?? 0), { fractionDigits: 2 }) }}</span>
-        </template>
+          <template #cell-balance="{ value }">
+            <span class="font-medium text-gray-900 dark:text-white">{{ formatBalanceAmount(Number(value ?? 0), { fractionDigits: 2 }) }}</span>
+          </template>
 
-        <template #cell-eligible="{ value }">
-          <span :class="['badge', value ? 'badge-success' : 'badge-gray']">
-            {{ value ? t('admin.announcements.eligible') : t('common.no') }}
-          </span>
-        </template>
+          <template #cell-eligible="{ value }">
+            <span :class="['badge', value ? 'badge-success' : 'badge-gray']">
+              {{ value ? t('admin.announcements.eligible') : t('common.no') }}
+            </span>
+          </template>
 
-        <template #cell-read_at="{ value }">
-          <span class="text-sm text-gray-500 dark:text-dark-400">
-            {{ value ? formatDateTime(value) : t('admin.announcements.unread') }}
-          </span>
-        </template>
-      </DataTable>
+          <template #cell-read_at="{ value }">
+            <span class="text-sm text-gray-500 dark:text-dark-400">
+              {{ value ? formatDateTime(value) : t('admin.announcements.unread') }}
+            </span>
+          </template>
+        </DataTable>
 
-      <Pagination
-        v-if="pagination.total > 0"
-        :page="pagination.page"
-        :total="pagination.total"
-        :page-size="pagination.page_size"
-        @update:page="handlePageChange"
-        @update:pageSize="handlePageSizeChange"
-      />
+        <Pagination
+          v-if="pagination.total > 0"
+          :page="pagination.page"
+          :total="pagination.total"
+          :page-size="pagination.page_size"
+          @update:page="handlePageChange"
+          @update:pageSize="handlePageSizeChange"
+        />
+      </div>
     </div>
 
     <template #footer>

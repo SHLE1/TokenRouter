@@ -2,6 +2,8 @@ export default {
   "modelAttributes": {
     "title": "属性管理",
     "description": "配置模型展示信息和客户端导出属性。属性配置不改变网关请求处理。",
+    "searchConfigs": "搜索属性配置名称",
+    "searchModels": "搜索模型名称",
     "tabs": {
       "configs": "属性配置",
       "defaults": "网关默认属性"

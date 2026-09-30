@@ -62,41 +62,40 @@
         </div>
       </div>
 
-      <template v-if="mode === 'usage'">
-        <div class="card overflow-hidden">
-          <DataTable column-order-storage-key="team-usage-column-order" :columns="usageColumns" :data="logs" :loading="logsLoading" row-key="id">
-            <template #cell-actor_email="{ value }">
-              <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
-            </template>
-            <template #cell-api_key_name="{ value }">
-              <span class="text-gray-700 dark:text-gray-300">{{ value }}</span>
-            </template>
-            <template #cell-model="{ value }">
-              <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
-            </template>
-            <template #cell-tokens="{ row }">
-              <div class="flex items-center gap-3 text-sm">
-                <span class="inline-flex items-center gap-1">
-                  <Icon name="arrowDown" size="sm" class="text-emerald-500" />
-                  <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.input_tokens || 0).toLocaleString() }}</span>
-                </span>
-                <span class="inline-flex items-center gap-1">
-                  <Icon name="arrowUp" size="sm" class="text-violet-500" />
-                  <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.output_tokens || 0).toLocaleString() }}</span>
-                </span>
-              </div>
-            </template>
-            <template #cell-actual_cost="{ value }">
-              <BalanceAmount :amount="value" :fraction-digits="4" class="font-medium text-green-600 dark:text-green-400" />
-            </template>
-            <template #cell-created_at="{ value }">
-              <span class="whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ formatDateTime(value) }}</span>
-            </template>
-            <template #empty>
-              <div class="py-6 text-sm text-gray-500 dark:text-gray-400">{{ t('team.noUsage') }}</div>
-            </template>
-          </DataTable>
-        </div>
+      <!-- 团队用量的表体和分页使用同一张卡片。 -->
+      <div v-if="mode === 'usage'" class="card overflow-hidden">
+        <DataTable column-order-storage-key="team-usage-column-order" :columns="usageColumns" :data="logs" :loading="logsLoading" row-key="id">
+          <template #cell-actor_email="{ value }">
+            <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+          </template>
+          <template #cell-api_key_name="{ value }">
+            <span class="text-gray-700 dark:text-gray-300">{{ value }}</span>
+          </template>
+          <template #cell-model="{ value }">
+            <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+          </template>
+          <template #cell-tokens="{ row }">
+            <div class="flex items-center gap-3 text-sm">
+              <span class="inline-flex items-center gap-1">
+                <Icon name="arrowDown" size="sm" class="text-emerald-500" />
+                <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.input_tokens || 0).toLocaleString() }}</span>
+              </span>
+              <span class="inline-flex items-center gap-1">
+                <Icon name="arrowUp" size="sm" class="text-violet-500" />
+                <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.output_tokens || 0).toLocaleString() }}</span>
+              </span>
+            </div>
+          </template>
+          <template #cell-actual_cost="{ value }">
+            <BalanceAmount :amount="value" :fraction-digits="4" class="font-medium text-green-600 dark:text-green-400" />
+          </template>
+          <template #cell-created_at="{ value }">
+            <span class="whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ formatDateTime(value) }}</span>
+          </template>
+          <template #empty>
+            <div class="py-6 text-sm text-gray-500 dark:text-gray-400">{{ t('team.noUsage') }}</div>
+          </template>
+        </DataTable>
         <Pagination
           v-if="total > 0"
           :page="page"
@@ -105,7 +104,7 @@
           @update:page="handlePageChange"
           @update:pageSize="handlePageSizeChange"
         />
-      </template>
+      </div>
     </template>
   </div>
 </template>

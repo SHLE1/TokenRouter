@@ -1,6 +1,6 @@
 <template>
   <div
-    class="pagination-root flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 dark:border-dark-700 dark:bg-dark-900 lg:px-6"
+    class="pagination-root flex shrink-0 items-center justify-between border-t border-gray-200 bg-white px-4 py-3 dark:border-dark-700 dark:bg-dark-900 lg:bg-gray-50/80 lg:px-6 lg:py-2"
   >
     <div class="pagination-mobile flex flex-1 items-center justify-between lg:hidden">
       <!-- Mobile pagination -->

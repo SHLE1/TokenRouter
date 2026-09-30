@@ -54,6 +54,7 @@
 - 图标按钮两档：`.btn-icon`（h-9 w-9）与 `.btn-icon-sm`（h-8 w-8），自带 `rounded-control` 与居中布局，站点只补 hover/颜色类；`.btn-sm` 用于表格行内等紧凑场景。
 - 下拉触发器（Select、DateRangePicker）模板组合 `input input-trigger` + 各自状态类，不复制基线配方。
 - 输入框图标/字符前后缀统一走 `input-icon-*` 机制（`style.css`）：容器 `input-icon-wrap`，图标位 `input-icon` / `input-icon-right`（可点击内容加 `input-icon-action`），输入框按侧加 `input-has-icon` / `input-has-icon-right`；文本留白由变量推导（`留白 = inset + slot`）。档位：默认（inset 0.75rem、留白 2.5rem）、`input-icon-lg`（auth 表单，inset 0.875rem、留白 2.75rem）、`input-icon-text`（`$` 等窄字符前缀，留白 2rem），紧凑搜索框内联 `--input-icon-slot:1.5rem`（留白 2.25rem）。
+- 价格管理和属性管理的搜索框使用同一图标布局，`sm` 及以上固定为 `w-64`，更窄时随工具栏剩余宽度伸缩，提示写明配置名称或模型名称。两页的默认目录信息共用 `ModelCatalogInfo`，以辅助字号展示来源、短版本号和更新时间，窄屏自动换行。
 
 ## 开关
 
@@ -233,6 +234,8 @@
 ## 表格密度
 
 全站只有一套密度：表头 `px-4 py-2 text-xs font-medium tracking-wider`，数据单元格 `px-4 py-3 text-sm`。`.table` 组件类、`TablePageLayout` 深度样式和 `DataTable` 必须保持一致。
+
+分页表格的表体和 `Pagination` 共用一个 `rounded-surface` 外框，外框使用 `overflow-hidden` 裁剪底部圆角。分页放在表体滚动区域之外，两者之间不加 `space-y-*` 或外边距；固定高度的表格以 flex 分配表体高度，分页不收缩。`TablePageLayout` 已包含该结构；独立卡片和弹窗也遵守同一约定，嵌入 `UsageTable` 时传入 `flat`，避免重复边框。桌面分页统一使用上下 8px 留白、浅色 `gray-50/80` 和深色 `dark-900` 底色，控件保持 36px；窄屏继续显示上一页、下一页和当前页数。
 
 两个合法例外：
 

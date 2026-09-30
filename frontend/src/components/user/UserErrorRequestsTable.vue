@@ -4,6 +4,7 @@
       <IpGeoBatchToolbar :ips="rows.map((r) => r.client_ip)" @failed="emit('ipGeoBatchFailed')" />
 
       <DataTable
+        class="min-h-0 flex-1 overflow-auto"
         column-order-storage-key="user-error-requests-column-order"
         :columns="columns"
         :data="rows"
@@ -104,9 +105,7 @@
 
         <template #empty><EmptyState :message="t('usage.errors.empty')" /></template>
       </DataTable>
-    </div>
-
-    <div class="flex-shrink-0">
+      <!-- 分页留在表格外框内，不随表体滚动。 -->
       <Pagination
         v-if="total > 0"
         :page="page"

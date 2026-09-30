@@ -2,6 +2,8 @@ export default {
   "modelAttributes": {
     "title": "Model Attributes",
     "description": "Manage model information and client export metadata. Attribute configurations do not change gateway request processing.",
+    "searchConfigs": "Search attribute configuration names",
+    "searchModels": "Search model names",
     "tabs": {
       "configs": "Attribute configurations",
       "defaults": "Gateway default attributes"

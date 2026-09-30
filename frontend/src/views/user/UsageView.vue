@@ -222,8 +222,10 @@
         </button>
       </div>
 
-      <div v-if="activeTab === 'usage'" v-content-reveal class="space-y-4" data-tour="team-usage-records">
+      <!-- 表格与分页共用外框，底部分隔线和圆角由卡片统一收口。 -->
+      <div v-if="activeTab === 'usage'" v-content-reveal class="card overflow-hidden" data-tour="team-usage-records">
         <UsageTable
+          flat
           column-order-storage-key="user-usage-column-order"
           :data="usageLogs"
           :loading="loading"

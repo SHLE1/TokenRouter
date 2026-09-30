@@ -239,7 +239,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card overflow-hidden">
           <div class="flex flex-col gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>

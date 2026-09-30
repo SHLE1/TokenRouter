@@ -113,74 +113,72 @@
           {{ t('admin.groups.noRateMultipliers') }}
         </div>
 
-        <div v-else>
-          <!-- 表格 -->
-          <div class="overflow-hidden rounded-control border border-gray-200 dark:border-dark-600">
-            <div class="max-h-panel overflow-auto">
-              <table :aria-busy="loading" class="w-full min-w-max text-sm">
-                <thead class="sticky top-0 z-[1]"> <!-- check-ui-allow: 弹窗内 sticky 表头局部层级 -->
-                  <tr class="border-b border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-700">
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userEmail') }}</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">ID</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userName') }}</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userNotes') }}</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userStatus') }}</th>
-                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.rateMultiplier') }}</th>
-                    <th v-if="showFinalRate" class="px-3 py-2 text-left text-xs font-medium text-primary-600 dark:text-primary-400">{{ t('admin.groups.finalRate') }}</th>
-                    <th class="w-10 px-2 py-2"></th>
-                  </tr>
-                </thead>
-                <TableSkeletonBody v-if="loading" :columns="showFinalRate ? 8 : 7" cell-class="px-3 py-2" />
-                <tbody v-else class="divide-y divide-gray-100 dark:divide-dark-600">
-                  <tr
-                    v-for="entry in paginatedLocalEntries"
-                    :key="entry.user_id"
-                    class="hover:bg-gray-50 dark:hover:bg-dark-700/50"
-                  >
-                    <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ entry.user_email }}</td>
-                    <td class="whitespace-nowrap px-3 py-2 text-gray-400 dark:text-gray-500">{{ entry.user_id }}</td>
-                    <td class="whitespace-nowrap px-3 py-2 text-gray-900 dark:text-white">{{ entry.user_name || '-' }}</td>
-                    <td class="max-w-[160px] truncate px-3 py-2 text-gray-500 dark:text-gray-400" :title="entry.user_notes">{{ entry.user_notes || '-' }}</td>
-                    <td class="whitespace-nowrap px-3 py-2">
-                      <span
-                        :class="[
-                          'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
-                          entry.user_status === 'active'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-gray-100 text-gray-600 dark:bg-dark-600 dark:text-gray-400'
-                        ]"
-                      >
-                        {{ entry.user_status }}
-                      </span>
-                    </td>
-                    <td class="whitespace-nowrap px-3 py-2">
-                      <input
-                        type="number"
-                        step="0.001"
-                        min="0.001"
-                        autocomplete="off"
-                        :value="entry.rate_multiplier ?? ''"
-                        :placeholder="String(props.group?.rate_multiplier ?? 1)"
-                        class="hide-spinner w-20 rounded-compact border border-primary-900/10 bg-white px-2 py-1 text-center text-sm font-medium transition-colors focus:border-primary-900/10 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-dark-500 dark:bg-dark-700 dark:focus:border-primary-500 dark:focus:ring-primary-500/20"
-                        @change="updateLocalRate(entry.user_id, ($event.target as HTMLInputElement).value)"
-                      />
-                    </td>
-                    <td v-if="showFinalRate" class="whitespace-nowrap px-3 py-2 font-medium text-primary-600 dark:text-primary-400">
-                      {{ computeFinalRate(entry.rate_multiplier) }}
-                    </td>
-                    <td class="px-2 py-2">
-                      <button
-                        type="button"
-                        class="rounded-compact p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-                        @click="removeLocal(entry.user_id)"
-                      >
-                        <Icon name="trash" size="sm" />
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+        <!-- 表体滚动与分页共用外框，分页保持可见。 -->
+        <div v-else class="overflow-hidden rounded-surface border border-gray-200 dark:border-dark-600">
+          <div class="max-h-panel overflow-auto">
+            <table :aria-busy="loading" class="w-full min-w-max text-sm">
+              <thead class="sticky top-0 z-[1]"> <!-- check-ui-allow: 弹窗内 sticky 表头局部层级 -->
+                <tr class="border-b border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-700">
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userEmail') }}</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">ID</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userName') }}</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userNotes') }}</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userStatus') }}</th>
+                  <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.rateMultiplier') }}</th>
+                  <th v-if="showFinalRate" class="px-3 py-2 text-left text-xs font-medium text-primary-600 dark:text-primary-400">{{ t('admin.groups.finalRate') }}</th>
+                  <th class="w-10 px-2 py-2"></th>
+                </tr>
+              </thead>
+              <TableSkeletonBody v-if="loading" :columns="showFinalRate ? 8 : 7" cell-class="px-3 py-2" />
+              <tbody v-else class="divide-y divide-gray-100 dark:divide-dark-600">
+                <tr
+                  v-for="entry in paginatedLocalEntries"
+                  :key="entry.user_id"
+                  class="hover:bg-gray-50 dark:hover:bg-dark-700/50"
+                >
+                  <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ entry.user_email }}</td>
+                  <td class="whitespace-nowrap px-3 py-2 text-gray-400 dark:text-gray-500">{{ entry.user_id }}</td>
+                  <td class="whitespace-nowrap px-3 py-2 text-gray-900 dark:text-white">{{ entry.user_name || '-' }}</td>
+                  <td class="max-w-[160px] truncate px-3 py-2 text-gray-500 dark:text-gray-400" :title="entry.user_notes">{{ entry.user_notes || '-' }}</td>
+                  <td class="whitespace-nowrap px-3 py-2">
+                    <span
+                      :class="[
+                        'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+                        entry.user_status === 'active'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-gray-100 text-gray-600 dark:bg-dark-600 dark:text-gray-400'
+                      ]"
+                    >
+                      {{ entry.user_status }}
+                    </span>
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-2">
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0.001"
+                      autocomplete="off"
+                      :value="entry.rate_multiplier ?? ''"
+                      :placeholder="String(props.group?.rate_multiplier ?? 1)"
+                      class="hide-spinner w-20 rounded-compact border border-primary-900/10 bg-white px-2 py-1 text-center text-sm font-medium transition-colors focus:border-primary-900/10 focus:outline-none focus:ring-2 focus:ring-black/10 dark:border-dark-500 dark:bg-dark-700 dark:focus:border-primary-500 dark:focus:ring-primary-500/20"
+                      @change="updateLocalRate(entry.user_id, ($event.target as HTMLInputElement).value)"
+                    />
+                  </td>
+                  <td v-if="showFinalRate" class="whitespace-nowrap px-3 py-2 font-medium text-primary-600 dark:text-primary-400">
+                    {{ computeFinalRate(entry.rate_multiplier) }}
+                  </td>
+                  <td class="px-2 py-2">
+                    <button
+                      type="button"
+                      class="rounded-compact p-1 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                      @click="removeLocal(entry.user_id)"
+                    >
+                      <Icon name="trash" size="sm" />
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <!-- 分页 -->

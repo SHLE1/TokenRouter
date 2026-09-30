@@ -132,8 +132,10 @@
         </UsageFilters>
       </div>
 
-      <div v-show="activeTab === 'usage'" v-content-reveal="activeTab === 'usage'" class="space-y-4" data-testid="admin-usage-table-section">
+      <!-- 表格与分页共用外框，底部分隔线和圆角由卡片统一收口。 -->
+      <div v-show="activeTab === 'usage'" v-content-reveal="activeTab === 'usage'" class="card overflow-hidden" data-testid="admin-usage-table-section">
         <UsageTable
+          flat
           column-order-storage-key="admin-usage-column-order"
           :data="usageLogs"
           :loading="loading"

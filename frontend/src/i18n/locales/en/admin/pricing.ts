@@ -369,7 +369,6 @@ riskControl: {
       emptyModelsInPricing: 'Select models for every pricing entry or remove empty entries',
 
       defaults: {
-        "description": "Effective gateway base prices, including catalog updates, local overrides and built-in fallbacks. Group, subscription and shared price overrides are excluded.",
         "search": "Search model names",
         "updatedAt": "Catalog updated:",
         "unpriced": "Unpriced",

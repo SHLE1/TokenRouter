@@ -6,9 +6,18 @@
     <TablePageLayout>
       <template #filters>
         <div class="space-y-3">
-          <p class="text-sm text-gray-600 dark:text-dark-300">{{ t('admin.modelAttributes.description') }}</p>
           <div class="flex flex-wrap items-center gap-3">
-            <input v-model="search" class="input min-w-0 flex-1 sm:max-w-xs" :placeholder="t('common.search')" :aria-label="t('common.search')" />
+            <!-- 搜索框与价格管理共用尺寸和图标布局，提示随页签对应实际搜索对象。 -->
+            <div class="input-icon-wrap min-w-0 flex-1 sm:w-64 sm:flex-none">
+              <Icon name="search" size="md" class="input-icon text-gray-400 dark:text-gray-500" />
+              <input
+                v-model="search"
+                type="text"
+                class="input input-has-icon"
+                :placeholder="searchPlaceholder"
+                :aria-label="searchPlaceholder"
+              />
+            </div>
             <Select v-if="activeTab === 'configs'" v-model="status" :options="statusOptions" class="w-40" />
             <template v-else>
               <Select v-model="provider" :options="providerOptions" class="w-48" />
@@ -20,7 +29,7 @@
               <button v-else class="btn btn-primary" :disabled="updating" @click="updateCatalog">{{ t(updating ? 'admin.pricing.defaults.updating' : 'admin.pricing.defaults.update') }}</button>
             </div>
           </div>
-          <p v-if="activeTab === 'defaults' && version" class="text-xs text-gray-500 dark:text-dark-400">models.dev · {{ version.slice(0, 12) }} · {{ updatedAt ? new Date(updatedAt).toLocaleString() : '' }}</p>
+          <ModelCatalogInfo v-if="activeTab === 'defaults'" :version="version" :updated-at="updatedAt" />
           <p v-if="error || (activeTab === 'defaults' && catalogError)" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ error || catalogError }}</p>
         </div>
       </template>
@@ -102,6 +111,7 @@ import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ModelAttributesFields from '@/components/admin/ModelAttributesFields.vue'
+import ModelCatalogInfo from '@/components/admin/ModelCatalogInfo.vue'
 import ModelAttributesSummary from '@/components/common/ModelAttributesSummary.vue'
 import { modelAttributesAPI, type AttributeConfig, type DefaultAttributes } from '@/api/admin/modelAttributes'
 import { adminAPI } from '@/api/admin'
@@ -112,6 +122,9 @@ import { SEARCH_DEBOUNCE_MS } from '@/constants/ui'
 
 const { t } = useI18n()
 const activeTab = ref<'configs' | 'defaults'>('configs')
+const searchPlaceholder = computed(() => t(activeTab.value === 'configs'
+  ? 'admin.modelAttributes.searchConfigs'
+  : 'admin.modelAttributes.searchModels'))
 const search = ref(''), status = ref(''), provider = ref(''), capability = ref('')
 const page = ref(1), pageSize = ref(20), total = ref(0)
 const loading = ref(false), updating = ref(false), saving = ref(false), showEditor = ref(false), groupsLoading = ref(false)

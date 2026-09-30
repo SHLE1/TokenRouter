@@ -369,7 +369,6 @@ riskControl: {
       emptyModelsInPricing: '请为所有价格条目选择模型，或删除空条目',
 
       defaults: {
-        "description": "当前网关生效的基础价格，包含目录更新、本地覆盖及内置兜底。未叠加分组、订阅或共享价格配置。",
         "search": "搜索模型名称",
         "updatedAt": "目录更新时间：",
         "unpriced": "未定价",
