@@ -2,7 +2,7 @@
   <AppLayout>
     <div class="space-y-4">
       <!-- 标题与筛选工具共用一行，保持和 OpenRouter 页面工具栏一致。 -->
-      <section class="flex flex-row items-start justify-between gap-3">
+      <section class="flex flex-row items-end justify-between gap-3">
         <div class="min-w-0">
           <h1 class="page-title">{{ t('usageRanking.title') }}</h1>
           <p class="page-description">{{ t('usageRanking.description') }}</p>

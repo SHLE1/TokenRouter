@@ -28,7 +28,8 @@
         class="app-main flex min-w-0 flex-1 flex-col"
         :class="mainClass"
       >
-        <div v-if="pageTitle && !hidePageHeading" class="page-heading mb-4 flex flex-shrink-0 flex-wrap items-start justify-between gap-3">
+        <!-- 操作区与标题说明块底部对齐；窄屏放不下时由 flex-wrap 换行。 -->
+        <div v-if="pageTitle && !hidePageHeading" class="page-heading mb-4 flex flex-shrink-0 flex-wrap items-end justify-between gap-3">
           <div>
             <h1 class="page-title">{{ pageTitle }}</h1>
             <p v-if="pageDescription" class="page-description">{{ pageDescription }}</p>

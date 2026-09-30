@@ -2,7 +2,7 @@
   <div class="card">
     <!-- Header -->
     <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700">
-      <div class="flex items-center justify-between">
+      <div class="flex items-end justify-between">
         <div>
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">
             {{ t('admin.settings.payment.providerManagement') }}

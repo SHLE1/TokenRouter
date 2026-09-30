@@ -181,7 +181,7 @@
 
       <!-- 备份操作 -->
       <div class="card p-6">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 class="text-base font-semibold text-gray-900 dark:text-white">
               {{ t('admin.backup.operations.title') }}

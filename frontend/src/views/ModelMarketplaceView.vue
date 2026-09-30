@@ -169,7 +169,7 @@
         <ModelMarketplaceSkeleton v-if="loading" />
 
         <div v-else-if="errorMessage" class="card border-red-200 p-6 dark:border-red-500/30">
-          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('common.error') }}</h2>
               <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">{{ errorMessage }}</p>

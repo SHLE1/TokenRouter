@@ -24,7 +24,7 @@
       </div>
 
       <template v-else-if="response">
-        <header class="flex flex-col gap-3 border-b border-gray-200 pb-4 dark:border-dark-600 sm:flex-row sm:items-start sm:justify-between">
+        <header class="flex flex-col gap-3 border-b border-gray-200 pb-4 dark:border-dark-600 sm:flex-row sm:items-end sm:justify-between">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h4 class="truncate text-base font-semibold text-gray-900 dark:text-gray-100">{{ response.provider.name }}</h4>

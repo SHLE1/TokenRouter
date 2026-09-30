@@ -19,7 +19,7 @@
 
       <!-- 收集器 -->
       <div class="rounded-surface border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800/60">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div class="flex items-center gap-2">
               <Icon name="beaker" size="sm" class="text-primary-600 dark:text-primary-400" />

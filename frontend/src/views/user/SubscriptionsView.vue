@@ -31,7 +31,7 @@
           :key="chain.plan_id"
           class="card flex flex-col overflow-hidden"
         >
-          <header class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+          <header class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-6">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <h3 class="truncate text-base font-semibold text-gray-900 dark:text-dark-50">

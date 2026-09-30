@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
         </div>
       </div>
 
-      <div class="mt-2 grid grid-cols-1 gap-4 lg:grid-cols-12">
+      <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
         <div class="rounded-surface bg-gray-50 p-4 dark:bg-dark-950/30 lg:col-span-5">
           <div class="grid h-full grid-cols-1 gap-4 md:grid-cols-[200px_1fr] md:items-center">
             <div class="h-28 animate-pulse rounded-surface bg-gray-100 dark:bg-dark-700/70"></div>
@@ -88,7 +88,7 @@ const props = withDefaults(defineProps<Props>(), {
         </div>
       </div>
 
-      <div class="mt-2 space-y-2">
+      <div class="mt-4 space-y-2">
         <div v-for="i in 6" :key="i" class="flex items-center justify-between gap-4 rounded-surface bg-gray-50 p-4 dark:bg-dark-950/30">
           <div class="flex-1 space-y-2">
             <div class="h-3 w-56 animate-pulse rounded-compact bg-gray-200 dark:bg-dark-700"></div>

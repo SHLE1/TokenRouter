@@ -4300,7 +4300,7 @@
                 class="mt-6 border-t border-gray-100 pt-6 dark:border-dark-700"
                 data-testid="gateway-scheduling-general-advanced"
               >
-                <div class="flex items-start justify-between gap-4">
+                <div class="flex items-end justify-between gap-4">
                   <div class="max-w-4xl">
                     <h3 class="text-base font-semibold text-gray-900 dark:text-white">
                       {{ t("admin.settings.scheduling.advancedTitle") }}
@@ -6208,7 +6208,7 @@
           <!-- Home Featured Models -->
           <div class="card">
             <div
-              class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+              class="flex items-end justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
             >
               <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -6268,7 +6268,7 @@
           <!-- Footer Settings -->
           <div class="card">
             <div
-              class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+              class="flex items-end justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
             >
               <div>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -7485,7 +7485,7 @@
           <Collapse :open="form.email_verify_enabled" unmount-on-hide>
             <div class="card">
               <div
-                class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+                class="flex items-end justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700"
               >
                 <div>
                   <h2 class="text-lg font-semibold text-gray-900 dark:text-white">

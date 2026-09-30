@@ -1,6 +1,6 @@
 <template>
-  <div class="space-y-2" :data-testid="testId || undefined">
-    <div v-if="hasHeader" class="flex items-start justify-between gap-2">
+  <div :class="variant === 'card' ? 'space-y-4' : 'space-y-2'" :data-testid="testId || undefined">
+    <div v-if="hasHeader" class="flex items-end justify-between gap-2">
       <div class="min-w-0">
         <h4
           v-if="title && titleStyle === 'section'"
