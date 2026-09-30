@@ -661,7 +661,7 @@ func TestModelMarketplaceGeminiTierModalitiesPreservePublicIDs(t *testing.T) {
 		SupportedOutputModalities: []string{"text"},
 	}
 	pricingSvc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
-		"gemini-3.7-flash": pricing, "gemini-3.8-flash": pricing,
+		"gemini-3.7-flash-tiered": pricing, "gemini-3.8-flash-tiered": pricing,
 	}})
 	svc := newMarketplaceFixture(nil, nil, newMarketplaceCalculator(pricingSvc, nil), nil)
 	defs := []routing.MarketplaceModelDef{

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCatalogQueryFreezesOneCandidateFactory 验证日期回退需要第二次产生候选，但不能重新取得运行时平台默认值。
+// TestCatalogQueryFreezesOneCandidateFactory 验证一次查询只生成一次完整身份候选，不再尝试日期回退。
 func TestCatalogQueryFreezesOneCandidateFactory(t *testing.T) {
 	factories, lookups := 0, 0
 	options := Options{ModelLookupCandidates: func() func(string) []string {
@@ -27,10 +27,9 @@ func TestCatalogQueryFreezesOneCandidateFactory(t *testing.T) {
 	}}
 	service := NewServiceFromSnapshot(options, nil, Snapshot{Data: map[string]*CatalogModelPricing{"priced-model": {InputCostPerToken: 0.001}}})
 	price := service.GetModelPricing("gpt-9.0-20260101")
-	require.NotNil(t, price)
-	require.Equal(t, 0.001, price.InputCostPerToken)
+	require.Nil(t, price)
 	require.Equal(t, 1, factories)
-	require.Equal(t, 2, lookups)
+	require.Equal(t, 1, lookups)
 }
 
 // TestCatalogSnapshotIsIndependent 验证快照不暴露可写缓存别名，并保留 nil 与显式空切片。

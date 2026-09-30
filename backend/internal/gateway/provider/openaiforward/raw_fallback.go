@@ -36,7 +36,6 @@ func MessagesViaRawChat(ctx context.Context, body []byte, defaultMappedModel str
 		p.Error(http.StatusBadRequest, "invalid_request_error", err.Error())
 		return nil, err
 	}
-	p.NormalizeModel(&anthropicReq)
 	clientStream := anthropicReq.Stream
 
 	// 2. 将 Anthropic 请求直接转换为 Chat Completions。

@@ -92,7 +92,7 @@ func TestModelsCatalogBrokenOverrideBootAndRecovery(t *testing.T) {
 	require.NoError(t, s.Initialize())
 	require.NotEmpty(t, s.AttributesSnapshot().LastError)
 	require.NotNil(t, s.ModelAttributes("claude-sonnet-4-5").Context)
-	require.Equal(t, s.GetModelPricing("anthropic/claude-opus-4-6"), s.GetModelPricing("claude-opus-4-6-thinking"))
+	require.Nil(t, s.GetModelPricing("claude-opus-4-6-thinking"))
 	require.NoError(t, os.WriteFile(patch, []byte(`{"claude-sonnet-4-5":{"input_cost_per_token":0.000007}}`), 0o600))
 	require.NoError(t, s.reloadCustomPricingLayers())
 	require.Empty(t, s.AttributesSnapshot().LastError)

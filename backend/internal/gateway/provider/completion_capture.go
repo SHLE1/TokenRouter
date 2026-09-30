@@ -132,7 +132,7 @@ func CaptureMessages(ctx context.Context, in *MessagesCapture) *completion.Input
 	}
 	if in.Result != nil {
 		out.RequestID = CompletionRequestID(ctx, in.Result.RequestID)
-		out.RequestedReasoningEffort = requeststate.CanonicalRequestedReasoningEffort(in.RequestBody, in.Result.Model)
+		out.RequestedReasoningEffort = requeststate.CanonicalRequestedReasoningEffort(in.RequestBody)
 	}
 	return completion.Snapshot(out)
 }
@@ -161,7 +161,7 @@ func CaptureOpenAI(ctx context.Context, in *OpenAICapture) *completion.Input {
 		NativeCompactionV2:       in.NativeCompactionV2,
 		PricingAt:                in.PricingAt,
 		PricingUsageFields:       in.PricingUsageFields,
-		RequestedReasoningEffort: requeststate.CanonicalRequestedReasoningEffort(in.RequestBody, in.OriginalModel, in.GroupMappedModel),
+		RequestedReasoningEffort: requeststate.CanonicalRequestedReasoningEffort(in.RequestBody),
 	}
 	if in.Result != nil {
 		out.RequestID = CompletionRequestID(ctx, in.Result.RequestID)

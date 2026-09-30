@@ -116,7 +116,7 @@ OpenAI 分组以 `openai_fast_policy` 选择 `follow_request`、`force_priority`
 
 该字段随 API Key 认证快照传递；当前 v40 的快照与失效规则见[提供商调度与缓存一致性](../architecture/provider_scheduling_and_cache.md)。
 
-Messages 兼容模型后缀与 Codex 模型规则的组合由 `gateway/provider` 拥有，纯 effort 资格由 `routing/capability` 判断。模型名中的旧 Codex max 与实际 reasoning 后缀继续区分；显式 output_config.effort 优先于模型后缀，最终 GPT-5.6 模型支持原生 max 时不降为 xhigh。调用时点仍在原请求改写和完成取值位置。
+Messages、Chat、Responses 和 WebSocket 均保留显式映射后的完整模型 ID，不执行 Codex 拼写纠正、旧型号迁移、日期剥离或 effort 后缀解析。显式 `output_config.effort` 仍按最终上游型号转换；GPT-5.6 支持原生 max 时不降为 xhigh。
 
 OpenAI 分组的 `max_reasoning_effort` 是显式推理强度上限，`max_reasoning_effort_over_limit` 取 `downgrade`（默认）或 `deny`。网关只对客户端真正发送的 `reasoning.effort`、`reasoning_effort` 和 Messages `output_config.effort` 执行策略，不会因为兼容桥为缺省 Messages 请求生成的默认 `medium` 而改变行为；模型范围映射先于上限比较。
 
@@ -202,15 +202,17 @@ OpenAI API Key 提供商以 `force_chat_completions` 承接 `/v1/messages` 时�
 
 空工具参数归一为 `{}`，call ID 保持原样，以便下一轮 `tool_result.tool_use_id` 配对。Anthropic `tool_choice.disable_parallel_tool_use=true` 映射为 Chat 顶层 `parallel_tool_calls=false`，字段缺失或为 `false` 时保持默认 `true`；`auto`、`any`、`none` 和具名工具的选择语义不变。
 
+Responses 生图保留明确的协议适配例外：请求图片模型进入 `image_generation` 工具，文本模型承载 Responses 请求；请求模型、承载模型与图片计费模型分别记录。此例外不开放普通文本模型的隐式别名。管理员显式配置的 Compact 回退继续生效，目标型号不再被二次纠正。
+
 ## 模型与能力
 
-客户端模型先经过 Key、分组和提供商层映射。OpenAI 内置别名、reasoning effort 归一化、旧版 Compact 端点支持、图像/embedding 能力和传输能力会影响候选提供商；模型列表只公开当前分组可请求的结果。
+客户端模型依次经过 Key、分组和提供商的显式映射。调度、模型列表、健康冷却、管理测试和请求转发使用同一完整身份；原生能力与传输资格继续限制提供商选择，不能通过相似模型名绕过。
 
 GPT-5.6 的内置产品仅为 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-5.6-luna`。裸 `gpt-5.6` 不作为预设型号或 Sol 别名，OAuth 归一化与用量计费候选也不再自动将它改为 Sol 或旧 GPT；未知名称沿用兼容上游的既有透传边界，不因此保证上游支持。管理员显式 Key、渠道和提供商映射仍然有效，历史配置和用量记录不回写。模型目录查询与能力来源见[模型目录与市场](model_catalog_and_marketplace.md#model_catalog_metadata_lookup)。
 
 `gpt-6-astra` 的最终上游请求只接受 `low` 至 `max` 推理档位。网关不为 Astra 硬编码推理档位改写；需要兼容遗留 `minimal` 或 `none` 的分组，应在“推理强度映射”中按请求模型配置目标值（例如分别映射到 `low`）。`none` 仅可用于映射，不能作为最大推理强度，因为它没有可比较的强度排名；未配置映射时，普通转发层不得自行把一个推理档位改成另一个档位，客户端显式值由上游或对应兼容层决定是否接受。GPT-5.6 仍支持 `none`。本地价格目录和代码回退均保留 Astra 的官方标准价，远端价卡尚未同步时也不得退回到其他 GPT 型号计费。
 
-Usage Log 将客户端显式档位和最终上游档位分别记录：`requested_reasoning_effort` 保留策略改写前的值（包括 `none`），`reasoning_effort` 以最终上游请求体为准；分组映射发生时，界面可据此展示改写箭头。协议转换或兼容策略未实际转发的字段不记录最终档位。请求未显式提供 effort 时，才允许从模型名后缀推导，并继续受模型能力门槛约束，避免把第三方模型名中的普通 `-max` 后缀误记为推理档位。
+Usage Log 的 `requested_reasoning_effort` 保存策略改写前的显式值（包括 none），`reasoning_effort` 记录最终上游请求实际发送的档位。协议默认值不冒充客户端输入，被转换删除的字段不补回。HTTP 与 WebSocket 都不从模型名称生成档位，WS 每轮重新提取并清空缺省值。
 
 最终为 `high`、`xhigh`、`max` 的请求在使用首输出超时策略的链路中均选择高 effort 档；协议桥仍可按真实上游能力调整实际转发值，例如 Anthropic 兼容转换可把不支持的 `max` 降为 `xhigh`。
 

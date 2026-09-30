@@ -241,15 +241,15 @@ describe('useModelWhitelist', () => {
     }
   })
 
-  it('xAI 模型列表包含 Grok 4.5 官方模型和别名', () => {
+  it('xAI 模型列表仅包含原生完整型号', () => {
     const models = getModelsByPlatform('grok')
 
     expect(models).toContain('grok-4.6')
-    expect(models).toContain('grok-4.6-latest')
+    expect(models).not.toContain('grok-4.6-latest')
     expect(models).toContain('grok-4.5')
-    expect(models).toContain('grok-4.5-latest')
-    expect(models).toContain('grok-build-latest')
-    expect(models).toContain('grok-imagine-edit')
+    expect(models).not.toContain('grok-4.5-latest')
+    expect(models).not.toContain('grok-build-latest')
+    expect(models).not.toContain('grok-imagine-edit')
     expect(models).toContain('grok-imagine-image-2.0')
     expect(models).toContain('grok-imagine-video-1.5')
   })
@@ -272,12 +272,12 @@ describe('useModelWhitelist', () => {
     })
   })
 
-  it('grok 模型列表包含 Composer 默认项和兼容别名', () => {
+  it('grok 模型列表包含 Composer 原生型号', () => {
     const models = getModelsByPlatform('grok')
 
     expect(models).toContain('grok-composer-2.5-fast')
     expect(models).not.toContain('grok-composer')
-    expect(models).toContain('composer-2.5')
+    expect(models).not.toContain('composer-2.5')
   })
 
   it('gemini 模型列表包含原生生图模型', () => {

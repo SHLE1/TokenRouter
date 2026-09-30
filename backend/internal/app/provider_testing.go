@@ -14,16 +14,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providerhttp "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
@@ -31,7 +27,7 @@ import (
 func provideProviderTests(store *providerpostgres.ProviderStore, geminiToken *provider.GeminiTokenSource, claudeToken *provider.ClaudeTokenSource, grokToken *provider.GrokTokenSource, ag *provideradapter.AntigravityProbe, transport httpclient.UpstreamTransport, cfg *config.Config, profiles *egressprovider.TLSProfiles, routers *egress.TLSFingerprintRouterService, settings *gateway.RuntimeSettings, tasks *provideradapter.ProbeTasks, manager *lifecycle.Manager) *provider.TestService {
 	urlPolicy := egress.OperatorURLPolicy{Enabled: cfg.Security.URLAllowlist.Enabled, AllowInsecureHTTP: cfg.Security.URLAllowlist.AllowInsecureHTTP, AllowPrivateHosts: cfg.Security.URLAllowlist.AllowPrivateHosts, UpstreamHosts: slices.Clone(cfg.Security.URLAllowlist.UpstreamHosts)}
 	probePolicy := &provideradapter.OpenAIProbePolicy{Available: true, ForceCLI: cfg.Gateway.ForceCodexCLI, Read: store.GetByID, AllowClaudeCode: settings.IsOpenAIAllowClaudeCodeCodexPluginEnabled, BrowserUserAgent: settings.GetOpenAICodexUserAgent, DefaultBrowserUserAgent: gateway.DefaultOpenAICodexUserAgent, Routers: routers, Profiles: profiles, ManualProfiles: profiles}
-	openaiTest := &provideradapter.OpenAIProviderTest{Store: store, Transport: transport, ValidateURL: urlPolicy.Validate, Prepare: probePolicy.Prepare, ApplyRouting: probePolicy.ApplyTestRouting, ResolveTLS: probePolicy.ResolveTestTLS, EnsureTask: tasks.Ensure, ModelRules: openai.CodexModelRules{ImageOnly: media.IsImageGenerationModel, LastSegment: capability.LastOpenAIModelSegment, CanonicalAlias: capability.CanonicalizeOpenAIModelAliasSpelling, KnownModel: modelidentity.NormalizeOpenAI, SupportsEffort: capability.OpenAIModelSupportsReasoningEffort}}
+	openaiTest := &provideradapter.OpenAIProviderTest{Store: store, Transport: transport, ValidateURL: urlPolicy.Validate, Prepare: probePolicy.Prepare, ApplyRouting: probePolicy.ApplyTestRouting, ResolveTLS: probePolicy.ResolveTestTLS, EnsureTask: tasks.Ensure}
 	geminiTest := &provideradapter.GeminiProviderTest{Tokens: geminiToken, Transport: transport, Profiles: profiles, ValidateURL: urlPolicy.Validate}
 	anthropicTest := &provideradapter.AnthropicProviderTest{Tokens: claudeToken, Transport: transport, Profiles: profiles, Store: store, ValidateURL: urlPolicy.Validate}
 	// 保留管理测试独立的会话作用域，并明确登记其停止拥有者。

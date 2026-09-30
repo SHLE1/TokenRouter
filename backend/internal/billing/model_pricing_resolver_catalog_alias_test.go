@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestResolveCatalogAliasesPreserveConfigPricing 验证新目录别名在有无内置价时均先采用共享价格配置价，不能以目录回退跳过运营者的显式配置。
+// TestResolveCatalogAliasesPreserveConfigPricing 验证旧别名缺价，完整型号的显式零价独立生效。
 func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 	previous := xai.RuntimeModelMappingOptions()
 	t.Cleanup(func() { xai.SetRuntimeModelMappingOptions(previous) })
@@ -50,9 +50,8 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 				resolver := billingtestkit.PriceResolver(pricingConfigs, newCalculator(&config.Config{}, catalog))
 				input := billing.PricingInput{Model: tc.alias, GroupID: &groupID}
 				resolved := resolver.Resolve(context.Background(), input)
-				require.Equal(t, pricing.PricingSourceConfig, resolved.Source, "catalog=%v", hasCatalog)
-				require.InDelta(t, pricingConfigPrice, resolved.BasePricing.InputPricePerToken, 1e-12)
-				// Claude 分隔符写法在共享价格配置层属于同一个定价键，不能重复配置独立价卡。
+				require.True(t, resolved.IsUnpriced(), "catalog=%v", hasCatalog)
+				// 完整型号可以分别配置独立价卡。
 				if pricing.NormalizePriceModelName(tc.base) == pricing.NormalizePriceModelName(tc.alias) {
 					continue
 				}
@@ -74,7 +73,7 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 	}
 }
 
-// TestResolveCatalogAliasesUseUnifiedPricingConfig 验证同一共享价表中的基础模型价可用于对应别名，提供商平台不形成额外价格边界。
+// TestResolveCatalogAliasesUseUnifiedPricingConfig 验证共享价表中的基名价格不会自动用于后缀型号。
 func TestResolveCatalogAliasesUseUnifiedPricingConfig(t *testing.T) {
 	groupID := int64(999)
 	price := 9e-6
@@ -90,11 +89,10 @@ func TestResolveCatalogAliasesUseUnifiedPricingConfig(t *testing.T) {
 	}})
 	resolver := billingtestkit.PriceResolver(pricingConfigs, newCalculator(&config.Config{}, catalog))
 	resolved := resolver.Resolve(context.Background(), billing.PricingInput{Model: "gemini-3.8-flash-tiered", GroupID: &groupID})
-	require.True(t, resolved.HasEffectivePricing())
-	require.InDelta(t, price, resolved.BasePricing.InputPricePerToken, 1e-12)
+	require.True(t, resolved.IsUnpriced())
 }
 
-// TestGroupAndPricingCatalogAliasPrecedence 验证两类价卡共用身份候选，空完整名条目不遮蔽基础价，完整名零价和通配价仍优先。
+// TestGroupAndPricingCatalogAliasPrecedence 验证完整名和通配价卡生效，空条目不会借用基名价格。
 func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 	for _, tc := range []struct{ platform, base, alias string }{
 		{capability.PlatformOpenAI, "gpt-5.6-luna", "gpt-5.6-luna-high"},
@@ -105,7 +103,7 @@ func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 		t.Run(tc.alias, func(t *testing.T) {
 			price, zero := 9e-6, 0.0
 			card := routing.ModelPricingEntry{Models: []string{tc.base}, InputPrice: &price}
-			for _, scope := range []string{pricing.PricingSourceConfig} {
+			for range []string{pricing.PricingSourceConfig} {
 				group := &routing.Group{ID: 990}
 
 				repository := &routingtestkit.ConfigRows{Platforms: map[int64]string{group.ID: tc.platform}}
@@ -119,13 +117,12 @@ func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 					return resolver.Resolve(context.Background(), billing.PricingInput{Model: tc.alias, GroupID: &group.ID})
 				}
 				base := resolve([]routing.ModelPricingEntry{card})
-				require.Equal(t, scope, base.Source)
-				require.Equal(t, price, base.BasePricing.InputPricePerToken)
+				require.True(t, base.IsUnpriced())
 				if pricing.NormalizePriceModelName(tc.base) == pricing.NormalizePriceModelName(tc.alias) {
 					continue
 				}
 				exact := routing.ModelPricingEntry{Models: []string{tc.alias}}
-				require.Equal(t, price, resolve([]routing.ModelPricingEntry{exact, card}).BasePricing.InputPricePerToken)
+				require.True(t, resolve([]routing.ModelPricingEntry{exact, card}).IsUnpriced())
 				exact.InputPrice = &zero
 				require.Zero(t, resolve([]routing.ModelPricingEntry{card, exact}).BasePricing.InputPricePerToken)
 				wildcard := routing.ModelPricingEntry{Models: []string{tc.alias + "*"}, InputPrice: &zero}

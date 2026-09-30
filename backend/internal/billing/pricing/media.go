@@ -19,7 +19,7 @@ func GetDefaultGrokImagineImagePrice(model string, imageSize string) (float64, b
 			DefaultGrokImagineImageQualityPrice1K,
 			DefaultGrokImagineImageQualityPrice2K,
 		), true
-	case "grok-imagine", "grok-imagine-image", "grok-imagine-edit":
+	case "grok-imagine-image":
 		return GetGrokImagineImageTierPrice(
 			imageSize,
 			DefaultGrokImagineImagePrice1K,
@@ -44,7 +44,7 @@ func GetGrokImagineImageTierPrice(imageSize string, price1K float64, price2K flo
 func GetDefaultGrokImagineVideoPrice(model string, resolution string) (float64, bool) {
 	model = strings.ToLower(strings.TrimSpace(model))
 	switch {
-	case strings.HasPrefix(model, "grok-imagine-video-1.5"):
+	case model == "grok-imagine-video-1.5":
 		switch NormalizeVideoBillingResolutionOrDefault(resolution) {
 		case VideoBillingResolution480P:
 			return DefaultGrokImagineVideo15Price480P, true
@@ -55,7 +55,7 @@ func GetDefaultGrokImagineVideoPrice(model string, resolution string) (float64, 
 		default:
 			return DefaultGrokImagineVideo15Price480P, true
 		}
-	case strings.HasPrefix(model, "grok-imagine-video"):
+	case model == "grok-imagine-video":
 		switch NormalizeVideoBillingResolutionOrDefault(resolution) {
 		case VideoBillingResolution480P:
 			return DefaultGrokImagineVideoPrice480P, true

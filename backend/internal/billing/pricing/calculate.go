@@ -174,9 +174,14 @@ const (
 	DeepseekProOffPeakCacheRead     = 2.2e-8
 )
 
-// IsDeepSeekModel 判断模型名是否属于 DeepSeek 系列，未知后缀也按 Flash 价卡处理。
+// IsDeepSeekModel 仅识别具有专属费率的完整型号，未知型号不套用 Flash 价格。
 func IsDeepSeekModel(model string) bool {
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(model)), "deepseek-")
+	switch strings.ToLower(strings.TrimSpace(model)) {
+	case "deepseek-v4-pro", "deepseek-v4-flash", "deepseek-v4-flash-vision-exp":
+		return true
+	default:
+		return false
+	}
 }
 
 // DeepseekPeakMultiplierAt 返回 DeepSeek 官方峰谷倍率。周末按北京时间判断，

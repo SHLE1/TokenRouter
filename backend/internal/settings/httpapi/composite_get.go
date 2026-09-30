@@ -224,7 +224,6 @@ func (h *Handler) GetSettings(c *gin.Context) {
 		FallbackModelGemini:                              settings.FallbackModelGemini,
 		FallbackModelAntigravity:                         settings.FallbackModelAntigravity,
 		GrokDefaultTextModel:                             settings.GrokDefaultTextModel,
-		GrokCrossClientModelMapEnabled:                   settings.GrokCrossClientModelMapEnabled,
 		GrokDefaultBaseURLMode:                           settings.GrokDefaultBaseURLMode,
 		EnableIdentityPatch:                              settings.EnableIdentityPatch,
 		IdentityPatchPrompt:                              settings.IdentityPatchPrompt,

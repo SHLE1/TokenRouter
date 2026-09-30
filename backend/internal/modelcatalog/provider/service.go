@@ -18,8 +18,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
-
-	"go.uber.org/zap"
 )
 
 // RemoteClient 获取带 ETag 条件的统一模型目录。
@@ -30,18 +28,17 @@ type RemoteClient interface {
 // Service 维护价格与展示属性共享的模型目录，统一加载、同步和原子发布。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
 type Service struct {
-	updateMu            sync.Mutex
-	modelCatalog        *modelcatalog.Catalog
-	catalogETag         string
-	lastCatalogError    string
-	catalogBody         []byte
-	options             *Options
-	remoteClient        RemoteClient
-	mu                  sync.RWMutex
-	pricingData         map[string]*CatalogModelPricing
-	fallbackPricingData map[string]*CatalogModelPricing
-	lastUpdated         time.Time
-	localHash           string
+	updateMu         sync.Mutex
+	modelCatalog     *modelcatalog.Catalog
+	catalogETag      string
+	lastCatalogError string
+	catalogBody      []byte
+	options          *Options
+	remoteClient     RemoteClient
+	mu               sync.RWMutex
+	pricingData      map[string]*CatalogModelPricing
+	lastUpdated      time.Time
+	localHash        string
 	// fallback/override 文件在最近一次成功重建时的内容指纹，定时器据此判断是否
 	// 需要从本地目录缓存重建叠加层。
 	customFilesHash string
@@ -311,7 +308,6 @@ func (s *Service) GetModelPricing(modelName string) *CatalogModelPricing {
 			return &CatalogModelPricing{Source: "unpriced", TokenPricingAbsent: true}
 		}
 	}
-	defer s.emitCatalogDiagnostics(query)
 	return query.GetModelPricing(modelName)
 }
 
@@ -323,7 +319,6 @@ func (s *Service) GetModelModalities(modelName string) ([]string, []string) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	query := s.catalogQuery()
-	defer s.emitCatalogDiagnostics(query)
 	return query.GetModelModalities(modelName)
 }
 
@@ -389,9 +384,7 @@ type Options struct {
 	AllowInsecureHTTP    bool
 	AllowPrivateHosts    bool
 	PricingHosts         []string
-	DefaultOpenAIModel   string
-	IsImageModel         func(string) bool
-	// 每次查询取得一次平台身份快照，价格回退中的多次候选展开复用它。
+	// 每次查询取得一次完整模型身份候选生成器。
 	ModelLookupCandidates func() func(string) []string
 }
 
@@ -434,7 +427,6 @@ func NewServiceFromSnapshot(options Options, remote RemoteClient, snapshot Snaps
 	s := NewService(options, remote)
 	s.pricingData = snapshot.Data
 	s.modelCatalog = snapshot.catalogIdentity
-	s.fallbackPricingData = modelsCatalogFallbackPrices(s.modelCatalog, s.pricingData)
 	s.lastCatalogError = snapshot.LastError
 	s.lastUpdated = snapshot.LastUpdated
 	s.localHash = snapshot.LocalHash
@@ -447,7 +439,7 @@ func (s *Service) Wait() {
 	s.wg.Wait()
 }
 
-// catalogQuery 冻结一次候选生成器，日期回退不会再次读取 Grok 运行时默认值。
+// catalogQuery 为本次查询取得一份完整模型身份候选。
 func (s *Service) catalogQuery() *purepricing.CatalogQuery {
 	options := s.currentOptions()
 	var candidates func(string) []string
@@ -455,21 +447,8 @@ func (s *Service) catalogQuery() *purepricing.CatalogQuery {
 		candidates = options.ModelLookupCandidates()
 	}
 	return &purepricing.CatalogQuery{
-		Entries:            s.pricingData,
-		FallbackEntries:    s.fallbackPricingData,
-		Candidates:         candidates,
-		IsImageModel:       options.IsImageModel,
-		DefaultOpenAIModel: options.DefaultOpenAIModel,
-	}
-}
-
-func (s *Service) emitCatalogDiagnostics(query *purepricing.CatalogQuery) {
-	for _, diagnostic := range query.Diagnostics {
-		if diagnostic.Structured {
-			logging.With(zap.String("component", "service.modelcatalog")).Info(diagnostic.Message)
-		} else {
-			logging.LegacyPrintf("service.modelcatalog", "%s", diagnostic.Message)
-		}
+		Entries:    s.pricingData,
+		Candidates: candidates,
 	}
 }
 

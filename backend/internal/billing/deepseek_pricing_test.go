@@ -56,12 +56,17 @@ func TestGetModelPricing_DeepseekUsesOfficialRatesForStaleEntries(t *testing.T) 
 		{model: "deepseek-v4-pro", input: billingpricing.DeepseekProOffPeakInputPrice, output: billingpricing.DeepseekProOffPeakOutputPrice, cached: billingpricing.DeepseekProOffPeakCacheRead},
 		{model: "deepseek-v4-flash", input: billingpricing.DeepseekFlashOffPeakInputPrice, output: billingpricing.DeepseekFlashOffPeakOutputPrice, cached: billingpricing.DeepseekFlashOffPeakCacheRead},
 		{model: "deepseek-v4-pro-0813", input: billingpricing.DeepseekProOffPeakInputPrice, output: billingpricing.DeepseekProOffPeakOutputPrice, cached: billingpricing.DeepseekProOffPeakCacheRead},
-		{model: "deepseek-v3-2-251201", input: billingpricing.DeepseekFlashOffPeakInputPrice, output: billingpricing.DeepseekFlashOffPeakOutputPrice, cached: billingpricing.DeepseekFlashOffPeakCacheRead},
+		{model: "deepseek-v3-2-251201", input: 0, output: 0, cached: 0},
 		{model: "deepseek-unknown", input: billingpricing.DeepseekFlashOffPeakInputPrice, output: billingpricing.DeepseekFlashOffPeakOutputPrice, cached: billingpricing.DeepseekFlashOffPeakCacheRead},
 	}
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
 			pricing, err := bs.GetModelPricing(tt.model)
+			if tt.model == "deepseek-v4-pro-0813" || tt.model == "deepseek-unknown" {
+				require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable)
+				require.Nil(t, pricing)
+				return
+			}
 			require.NoError(t, err)
 			require.InDelta(t, tt.input, pricing.InputPricePerToken, 1e-15)
 			require.InDelta(t, tt.output, pricing.OutputPricePerToken, 1e-15)

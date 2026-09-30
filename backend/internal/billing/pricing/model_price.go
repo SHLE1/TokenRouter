@@ -80,7 +80,7 @@ func ResolveModelPricing(model string, catalogPrice *CatalogModelPricing, prices
 	}
 
 	// 2. 使用硬编码回退价格
-	fallback := LookupFallbackPrice(prices, model, policy)
+	fallback := LookupFallbackPrice(prices, model)
 	if fallback != nil {
 
 		cloned := *fallback

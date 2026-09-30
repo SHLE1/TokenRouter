@@ -477,11 +477,7 @@ func HasExplicitPricingPrice(p ModelPricingEntry) bool {
 	return false
 }
 
-// NormalizePriceModelName 统一 Anthropic 模型名的点号与连字符写法。
+// NormalizePriceModelName 只处理查询大小写与首尾空白，保留完整型号。
 func NormalizePriceModelName(model string) string {
-	model = strings.ToLower(strings.TrimSpace(model))
-	if strings.HasPrefix(model, "claude-") {
-		model = strings.ReplaceAll(model, ".", "-")
-	}
-	return model
+	return strings.ToLower(strings.TrimSpace(model))
 }

@@ -7,21 +7,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 var (
-	OpenAIModelDatePattern = regexp.MustCompile(`-(?:\d{8}|\d{4}-\d{2}-\d{2})$`)
-	OpenAIModelBasePattern = regexp.MustCompile(`^(gpt-\d+(?:\.\d+)?)(?:-|$)`)
-	// 只移除已知档位，保留版本和产品名；Spark 的价格重定向仍由专用回退处理。
-	GeminiThinkingTierPattern = regexp.MustCompile(`^(gemini-\d+(?:\.\d+)?-(?:pro|flash))-(?:high|low|medium|tiered)$`)
-	OpenAIThinkingTierPattern = regexp.MustCompile(`^(gpt-\d+(?:\.\d+)?(?:-(?:mini|nano|pro|sol|terra|luna|astra|codex))?)-(none|minimal|low|medium|high|xhigh|max)$`)
-	// 次版本最多两位，避免把八位日期误认为版本号。
-	ClaudeVersionPatterns = []*regexp.Regexp{
-		regexp.MustCompile(`^(claude-(?:opus|sonnet|haiku|fable)-\d+)([.-])(\d{1,2})(-.*)?$`),
-		regexp.MustCompile(`^(claude-\d+)([.-])(\d{1,2})(-(?:opus|sonnet|haiku|fable)(?:-.*)?)$`),
-	}
 	// AboveTierPricePattern 匹配目录中的长上下文绝对价字段。
 	// 服务档后缀和 cache 侧字段不参与阈值及倍率折算。
 	AboveTierPricePattern = regexp.MustCompile(`^(input|output)_cost_per_token_above_(\d+)k_tokens$`)
@@ -359,88 +347,23 @@ func ModalitiesFromMode(mode string) ([]string, []string) {
 	}
 }
 
-func IsClaudeOpus48Model(model string) bool {
-	model = strings.ToLower(strings.TrimSpace(model))
-	if model == "" || !strings.Contains(model, "opus") {
-		return false
-	}
-	return strings.Contains(model, "4.8") || strings.Contains(model, "4-8")
-}
-
-// BuildModelLookupCandidates 为目录与价卡查价提供同一组明确身份候选，不依赖目录是否有价格。
+// BuildModelLookupCandidates 为价格和属性提供相同的完整模型身份。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
-func BuildModelLookupCandidates(model string, grokAlias func(string) (string, bool)) []string {
-	candidates := BuildModelIdentityCandidates(model)
-	seen := make(map[string]struct{}, len(candidates))
-	for _, candidate := range candidates {
-		seen[candidate] = struct{}{}
-	}
-	// 别名目标再次走名称规范化；已访问集合同时阻止默认模型形成自引用或循环。
-	for i := 0; i < len(candidates); i++ {
-		model := NormalizeModelNameForPricing(LastSegment(candidates[i]))
-		alias := NormalizeGeminiThinkingTierAlias(model)
-		if alias == model {
-			alias = NormalizeOpenAIThinkingTierAlias(model)
-		}
-		if grokAlias != nil {
-			if target, ok := grokAlias(model); ok {
-				alias = target
-			}
-		}
-		if alias == model {
-			continue
-		}
-		for _, target := range BuildModelIdentityCandidates(alias) {
-			if _, ok := seen[target]; ok {
-				continue
-			}
-			seen[target] = struct{}{}
-			candidates = append(candidates, target)
-		}
-	}
-	return candidates
+func BuildModelLookupCandidates(model string) []string {
+	return BuildModelIdentityCandidates(model)
 }
 
-// BuildModelIdentityCandidates 只生成完整 ID 的资源路径及等价写法，不展开模型别名。
+// BuildModelIdentityCandidates 仅解析已知 Google 资源路径，保留供应商限定名和版本。
 func BuildModelIdentityCandidates(model string) []string {
-	modelLower := strings.ToLower(strings.TrimSpace(model))
-	if modelLower == "" {
+	model = strings.ToLower(strings.TrimSpace(model))
+	if model == "" {
 		return nil
 	}
-	candidates := []string{
-		modelLower,
-		strings.TrimPrefix(modelLower, "models/"),
-		LastSegment(modelLower),
-		LastSegment(strings.TrimPrefix(modelLower, "models/")),
-		NormalizeModelNameForPricing(modelLower),
+	normalized := NormalizeModelNameForPricing(model)
+	if normalized == model {
+		return []string{model}
 	}
-	// 所有完整 ID 优先于等价版本写法，后者只改变版本分隔符。
-	for _, candidate := range candidates {
-		for _, pattern := range ClaudeVersionPatterns {
-			if parts := pattern.FindStringSubmatch(candidate); len(parts) > 0 {
-				separator := "."
-				if parts[2] == "." {
-					separator = "-"
-				}
-				candidates = append(candidates, parts[1]+separator+parts[3]+parts[4])
-			}
-		}
-	}
-
-	seen := make(map[string]struct{}, len(candidates))
-	out := make([]string, 0, len(candidates))
-	for _, c := range candidates {
-		c = strings.TrimSpace(c)
-		if c == "" {
-			continue
-		}
-		if _, ok := seen[c]; ok {
-			continue
-		}
-		seen[c] = struct{}{}
-		out = append(out, c)
-	}
-	return out
+	return []string{model, normalized}
 }
 
 func NormalizeModelNameForPricing(model string) string {
@@ -453,46 +376,7 @@ func NormalizeModelNameForPricing(model string) string {
 	if idx := strings.LastIndex(model, "/publishers/google/models/"); idx != -1 {
 		model = model[idx+len("/publishers/google/models/"):]
 	}
-	if idx := strings.LastIndex(model, "/models/"); idx != -1 {
-		model = model[idx+len("/models/"):]
-	}
 
 	model = strings.TrimLeft(model, "/")
-	if canonical := capability.CanonicalizeOpenAIModelAliasSpelling(model); canonical != "" {
-		return canonical
-	}
 	return model
-}
-
-// NormalizeGeminiThinkingTierAlias 生成同版本 Pro/Flash 基名，不接受重复或未知后缀。
-func NormalizeGeminiThinkingTierAlias(model string) string {
-	if parts := GeminiThinkingTierPattern.FindStringSubmatch(model); len(parts) > 0 {
-		return parts[1]
-	}
-	return model
-}
-
-// NormalizeOpenAIThinkingTierAlias 只剥离已知推理档位，保留产品名且不解析日期快照。
-func NormalizeOpenAIThinkingTierAlias(model string) string {
-	if parts := OpenAIThinkingTierPattern.FindStringSubmatch(model); len(parts) > 0 && parts[1] != "gpt-5.6" && capability.OpenAIModelSupportsReasoningEffort(parts[1], parts[2]) {
-		return parts[1]
-	}
-	return model
-}
-
-func LastSegment(model string) string {
-	if idx := strings.LastIndex(model, "/"); idx != -1 {
-		return model[idx+1:]
-	}
-	return model
-}
-
-// IsNumeric 检查字符串是否为纯数字
-func IsNumeric(s string) bool {
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return false
-		}
-	}
-	return true
 }

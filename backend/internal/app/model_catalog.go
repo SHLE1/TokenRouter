@@ -4,10 +4,8 @@ import (
 	"slices"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
 // provideModelCatalogService 从同一份 bootstrap 配置投影技术参数，构造期间不启动任务。
@@ -23,9 +21,7 @@ func provideModelCatalogService(cfg *config.Config, remote provider.RemoteClient
 		AllowInsecureHTTP:     cfg.Security.URLAllowlist.AllowInsecureHTTP,
 		AllowPrivateHosts:     cfg.Security.URLAllowlist.AllowPrivateHosts,
 		PricingHosts:          slices.Clone(cfg.Security.URLAllowlist.PricingHosts),
-		DefaultOpenAIModel:    openai.DefaultTestModel,
 		ModelLookupCandidates: modelidentity.CandidatesFactory,
-		IsImageModel:          media.IsImageGenerationModel,
 	}
 	return provider.NewService(options, remote), nil
 }

@@ -47,7 +47,7 @@ func (p *wsStreamAdapter) ResolvedTier(body []byte) *string {
 }
 
 func (p *wsStreamAdapter) Reasoning(body []byte, mapped, original string) *string {
-	return gatewayprovider.ApplyThinkingEnabledFallback(requeststate.ExtractOpenAIReasoningEffortFromBody(body, mapped, original), body, mapped)
+	return gatewayprovider.ApplyThinkingEnabledFallback(requeststate.ExtractOpenAIReasoningEffortFromBody(body), body, mapped)
 }
 
 func (p *wsStreamAdapter) ImageCounter() gatewayws.ImageCounter {

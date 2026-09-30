@@ -5,7 +5,7 @@ package pricing
 func DefaultFallbackPrices() map[string]*ModelPricing {
 	prices := make(map[string]*ModelPricing)
 	// Claude 4.5 Opus
-	prices["claude-opus-4.5"] = &ModelPricing{
+	prices["claude-opus-4-5"] = &ModelPricing{
 		InputPricePerToken:         5e-6,    // $5 per MTok
 		OutputPricePerToken:        25e-6,   // $25 per MTok
 		CacheCreationPricePerToken: 6.25e-6, // $6.25 per MTok
@@ -59,13 +59,13 @@ func DefaultFallbackPrices() map[string]*ModelPricing {
 	}
 
 	// Claude 4.6 Opus (与4.5同价)
-	prices["claude-opus-4.6"] = prices["claude-opus-4.5"]
+	prices["claude-opus-4-6"] = prices["claude-opus-4-5"]
 
 	// Claude 4.7 Opus (暂与4.6同价，待官方定价更新)
-	prices["claude-opus-4.7"] = prices["claude-opus-4.6"]
+	prices["claude-opus-4-7"] = prices["claude-opus-4-6"]
 
 	// Claude 4.8 Opus（官方常规定价 $5/$25 per MTok，Fast mode 为 2 倍）
-	prices["claude-opus-4.8"] = &ModelPricing{
+	prices["claude-opus-4-8"] = &ModelPricing{
 		InputPricePerToken:         5e-6,    // 每百万 token $5
 		OutputPricePerToken:        25e-6,   // 每百万 token $25
 		CacheCreationPricePerToken: 6.25e-6, // 默认按 5 分钟缓存写入价
@@ -75,7 +75,7 @@ func DefaultFallbackPrices() map[string]*ModelPricing {
 		SupportsCacheBreakdown:     true,
 		SupportsServiceTier:        true,
 	}
-	prices["claude-opus-5"] = prices["claude-opus-4.8"]
+	prices["claude-opus-5"] = prices["claude-opus-4-8"]
 
 	// Claude Fable 5.x 的输入/输出和缓存写入价格相同；5.1 的缓存读取价降为每百万 token 0.25 美元。
 	prices["claude-fable-5"] = &ModelPricing{
@@ -361,6 +361,19 @@ func DefaultFallbackPrices() map[string]*ModelPricing {
 		CacheReadPricePerToken: 0.30e-6,
 		SupportsCacheBreakdown: false,
 	}
+	// Kimi Code 两个原生 ID 分别登记静态价格。
+	prices["k3"] = &ModelPricing{
+		InputPricePerToken:     3e-6,
+		OutputPricePerToken:    15e-6,
+		CacheReadPricePerToken: 0.30e-6,
+		SupportsCacheBreakdown: false,
+	}
+	prices["k3-256k"] = &ModelPricing{
+		InputPricePerToken:     3e-6,
+		OutputPricePerToken:    15e-6,
+		CacheReadPricePerToken: 0.30e-6,
+		SupportsCacheBreakdown: false,
+	}
 	prices["kimi-k2.6"] = &ModelPricing{
 		InputPricePerToken:     0.95e-6,
 		OutputPricePerToken:    4e-6,
@@ -490,6 +503,37 @@ func DefaultFallbackPrices() map[string]*ModelPricing {
 		LongContextInputMultiplier:    2,
 		LongContextOutputMultiplier:   2,
 	}
+	// 各原生完整型号使用独立静态价项。
+	prices["grok-4.20-0309-reasoning"] = &ModelPricing{
+		InputPricePerToken:            1.25e-6,
+		OutputPricePerToken:           2.5e-6,
+		CacheReadPricePerToken:        0.2e-6,
+		SupportsCacheBreakdown:        false,
+		LongContextInputThreshold:     200000,
+		LongContextThresholdInclusive: true,
+		LongContextInputMultiplier:    2,
+		LongContextOutputMultiplier:   2,
+	}
+	prices["grok-4.20-0309-non-reasoning"] = &ModelPricing{
+		InputPricePerToken:            1.25e-6,
+		OutputPricePerToken:           2.5e-6,
+		CacheReadPricePerToken:        0.2e-6,
+		SupportsCacheBreakdown:        false,
+		LongContextInputThreshold:     200000,
+		LongContextThresholdInclusive: true,
+		LongContextInputMultiplier:    2,
+		LongContextOutputMultiplier:   2,
+	}
+	prices["grok-4.20-multi-agent-0309"] = &ModelPricing{
+		InputPricePerToken:            1.25e-6,
+		OutputPricePerToken:           2.5e-6,
+		CacheReadPricePerToken:        0.2e-6,
+		SupportsCacheBreakdown:        false,
+		LongContextInputThreshold:     200000,
+		LongContextThresholdInclusive: true,
+		LongContextInputMultiplier:    2,
+		LongContextOutputMultiplier:   2,
+	}
 
 	// Grok 3 Mini 保留独立历史价格，避免按 Grok 4.5 通用回退价计费。
 	prices["grok-3-mini"] = &ModelPricing{
@@ -508,6 +552,17 @@ func DefaultFallbackPrices() map[string]*ModelPricing {
 	// Composer 仅通过 Grok Build 提供且没有独立公开价格，因此其别名沿用该编程模型价格，
 	// 避免被静默按零费用结算。
 	prices["grok-build-0.1"] = &ModelPricing{
+		InputPricePerToken:            1e-6,
+		OutputPricePerToken:           2e-6,
+		CacheReadPricePerToken:        0.2e-6,
+		SupportsCacheBreakdown:        false,
+		LongContextInputThreshold:     200000,
+		LongContextThresholdInclusive: true,
+		LongContextInputMultiplier:    2,
+		LongContextOutputMultiplier:   2,
+	}
+	// 各原生完整型号使用独立静态价项。
+	prices["grok-composer-2.5-fast"] = &ModelPricing{
 		InputPricePerToken:            1e-6,
 		OutputPricePerToken:           2e-6,
 		CacheReadPricePerToken:        0.2e-6,

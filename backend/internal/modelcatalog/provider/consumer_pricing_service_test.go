@@ -242,7 +242,7 @@ func TestCatalogService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
 	}})
 
 	for i := 0; i < 100; i++ {
-		for _, alias := range []string{"gpt-5.6", "openai/gpt-5.6"} {
+		for _, alias := range []string{"gpt-5.6"} {
 			pricing := pricingSvc.GetModelPricing(alias)
 			require.NotNil(t, pricing)
 			require.InDelta(t, 4e-6, pricing.InputCostPerToken, 1e-12, "iteration=%d alias=%s", i, alias)
@@ -250,7 +250,7 @@ func TestCatalogService_ExplicitCatalogEntryDoesNotRedirectToSol(t *testing.T) {
 	}
 
 	billingSvc := newBillingFixture(pricingSvc)
-	for _, alias := range []string{"gpt-5.6", "openai/gpt-5.6"} {
+	for _, alias := range []string{"gpt-5.6"} {
 		pricing, err := billingSvc.GetModelPricing(alias)
 		require.NoError(t, err)
 		require.InDelta(t, 4e-6, pricing.InputPricePerToken, 1e-12)
@@ -326,7 +326,7 @@ func TestGPT56DedicatedFallbacksUseOfficialRates(t *testing.T) {
 				"gpt-5.1-codex": {InputCostPerToken: 1.25e-6},
 			}})
 			svc := newBillingFixture(pricingSvc)
-			pricing, err := svc.GetModelPricing(tt.model + "-preview")
+			pricing, err := svc.GetModelPricing(tt.model)
 			require.NoError(t, err)
 			assertGPT56FallbackPricing(t, pricing, tt.input, tt.cached, tt.cacheWrite, tt.output)
 		})
@@ -346,14 +346,14 @@ func TestGPT6AstraDedicatedFallbackUsesOfficialRates(t *testing.T) {
 			"gpt-5.1-codex": {InputCostPerToken: 1.25e-6},
 		}})
 		svc := newBillingFixture(pricingSvc)
-		pricing, err := svc.GetModelPricing("gpt-6-astra-preview")
+		pricing, err := svc.GetModelPricing("gpt-6-astra")
 		require.NoError(t, err)
 		assertGPT6AstraFallbackPricing(t, pricing)
 	})
 
 	t.Run("billing_service", func(t *testing.T) {
 		svc := newBillingFixture(nil)
-		pricing, err := svc.GetModelPricing("gpt-6-astra-preview")
+		pricing, err := svc.GetModelPricing("gpt-6-astra")
 		require.NoError(t, err)
 		assertGPT6AstraFallbackPricing(t, pricing)
 	})
@@ -481,7 +481,7 @@ func TestGetModelPricing_Gpt53CodexSparkUsesGpt51CodexPricing(t *testing.T) {
 	})
 
 	got := svc.GetModelPricing("gpt-5.3-codex-spark")
-	require.Same(t, sparkPricing, got)
+	require.Nil(t, got)
 }
 
 func TestGetModelPricing_Gpt53CodexFallbackStillUsesGpt52Codex(t *testing.T) {
@@ -494,7 +494,7 @@ func TestGetModelPricing_Gpt53CodexFallbackStillUsesGpt52Codex(t *testing.T) {
 	})
 
 	got := svc.GetModelPricing("gpt-5.3-codex")
-	require.Same(t, gpt52CodexPricing, got)
+	require.Nil(t, got)
 }
 
 func TestGetModelPricing_OpenAIFallbackMatchedLoggedAsInfo(t *testing.T) {
@@ -509,9 +509,9 @@ func TestGetModelPricing_OpenAIFallbackMatchedLoggedAsInfo(t *testing.T) {
 	})
 
 	got := svc.GetModelPricing("gpt-5.3-codex")
-	require.Same(t, gpt52CodexPricing, got)
+	require.Nil(t, got)
 
-	require.True(t, logSink.ContainsMessageAtLevel("[Pricing] OpenAI fallback matched gpt-5.3-codex -> gpt-5.2-codex", "info"))
+	require.False(t, logSink.ContainsMessageAtLevel("[Pricing] OpenAI fallback matched gpt-5.3-codex -> gpt-5.2-codex", "info"))
 	require.False(t, logSink.ContainsMessageAtLevel("[Pricing] OpenAI fallback matched gpt-5.3-codex -> gpt-5.2-codex", "warn"))
 }
 
@@ -539,9 +539,9 @@ func TestGetModelPricing_Gpt56UsesOfficialStaticFallback(t *testing.T) {
 		output    float64
 		cacheRead float64
 	}{
-		{model: "gpt-5.6-sol-max", input: 5e-6, output: 3e-5, cacheRead: 5e-7},
-		{model: "gpt-5.6-terra-max", input: 2e-6, output: 1.2e-5, cacheRead: 2e-7},
-		{model: "gpt-5.6-luna-high", input: 0.2e-6, output: 1.2e-6, cacheRead: 0.02e-6},
+		{model: "gpt-5.6-sol", input: 5e-6, output: 3e-5, cacheRead: 5e-7},
+		{model: "gpt-5.6-terra", input: 2e-6, output: 1.2e-5, cacheRead: 2e-7},
+		{model: "gpt-5.6-luna", input: 0.2e-6, output: 1.2e-6, cacheRead: 0.02e-6},
 	}
 
 	for _, tt := range tests {
@@ -556,17 +556,11 @@ func TestGetModelPricing_Gpt56UsesOfficialStaticFallback(t *testing.T) {
 	}
 }
 
-func TestGetModelPricing_OpenAICompactAliasUsesStaticFallback(t *testing.T) {
-	svc := newModelCatalogFixture(modelCatalogFixture{
-		pricingData: map[string]*billingpricing.CatalogModelPricing{
-			"gpt-5.1-codex": {InputCostPerToken: 1.25e-6},
-		},
-	})
-
-	got := svc.GetModelPricing("openai/gpt5.5")
-	require.NotNil(t, got)
-	require.InDelta(t, 5e-6, got.InputCostPerToken, 1e-12)
-	require.InDelta(t, 3e-5, got.OutputCostPerToken, 1e-12)
+func TestGetModelPricing_UnknownCompactAliasIsUnpriced(t *testing.T) {
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{}})
+	for _, model := range []string{"openai/gpt5.5", "gpt-5.5-openai-compact", "gpt-5.5-preview"} {
+		require.Nil(t, svc.GetModelPricing(model))
+	}
 }
 
 func TestGetModelPricing_ClaudeOpus48UsesStaticFallbackWhenRemoteMissing(t *testing.T) {
@@ -607,12 +601,16 @@ func TestCatalogService_Gemini36FlashThinkingTiersUseBasePricing(t *testing.T) {
 		"gemini-3.6-flash-tiered",
 	} {
 		t.Run(model, func(t *testing.T) {
-			require.Same(t, basePricing, svc.GetModelPricing(model))
+			if model == "gemini-3.6-flash" || model == "gemini-3.5-flash" {
+				require.Same(t, basePricing, svc.GetModelPricing(model))
+			} else {
+				require.Nil(t, svc.GetModelPricing(model))
+			}
 		})
 	}
 }
 
-// TestCatalogService_Gemini35FlashThinkingTiersUseBasePricing 验证 3.5 Flash 思考档位复用基础模型价格。
+// TestCatalogService_Gemini35FlashThinkingTiersUseBasePricing 验证后缀型号不会复用基础模型价格。
 func TestCatalogService_Gemini35FlashThinkingTiersUseBasePricing(t *testing.T) {
 	basePricing := &billingpricing.CatalogModelPricing{
 		InputCostPerToken:       1.5e-6,
@@ -631,7 +629,11 @@ func TestCatalogService_Gemini35FlashThinkingTiersUseBasePricing(t *testing.T) {
 		"gemini-3.5-flash-tiered",
 	} {
 		t.Run(model, func(t *testing.T) {
-			require.Same(t, basePricing, svc.GetModelPricing(model))
+			if model == "gemini-3.6-flash" || model == "gemini-3.5-flash" {
+				require.Same(t, basePricing, svc.GetModelPricing(model))
+			} else {
+				require.Nil(t, svc.GetModelPricing(model))
+			}
 		})
 	}
 }
@@ -660,78 +662,48 @@ func TestCatalogService_Gemini35FlashTierSpecificPricingTakesPrecedence(t *testi
 }
 
 // TestBillingService_Gemini35FlashThinkingTierFallbacksAreBillable 验证远程价格不可用时各档位仍能安全计费。
-func TestBillingService_Gemini35FlashThinkingTierFallbacksAreBillable(t *testing.T) {
+func TestBillingService_Gemini35FlashTiersRequireOwnPricing(t *testing.T) {
 	svc := newBillingFixture(nil)
-	tokens := billingpricing.UsageTokens{InputTokens: 1_000_000, OutputTokens: 1_000_000, CacheReadTokens: 1_000_000}
-
-	for _, model := range []string{
-		"gemini-3.5-flash",
-		"gemini-3.5-flash-high",
-		"gemini-3.5-flash-low",
-		"gemini-3.5-flash-medium",
-		"gemini-3.5-flash-tiered",
-	} {
-		t.Run(model, func(t *testing.T) {
-			cost, err := svc.CalculateCost(model, tokens, 1)
-			require.NoError(t, err)
-			require.InDelta(t, 1.5, cost.InputCost, 1e-12)
-			require.InDelta(t, 9.0, cost.OutputCost, 1e-12)
-			require.InDelta(t, 0.15, cost.CacheReadCost, 1e-12)
-			require.InDelta(t, 10.65, cost.TotalCost, 1e-12)
-		})
+	for _, model := range []string{"gemini-3.5-flash-high", "gemini-3.5-flash-low", "gemini-3.5-flash-medium", "gemini-3.5-flash-tiered"} {
+		price, err := svc.GetModelPricing(model)
+		require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable)
+		require.Nil(t, price)
 	}
 }
 
-func TestBillingService_Gemini36FlashThinkingTierFallbacksAreBillable(t *testing.T) {
+func TestBillingService_Gemini36FlashTiersRequireOwnPricing(t *testing.T) {
 	svc := newBillingFixture(nil)
-	tokens := billingpricing.UsageTokens{InputTokens: 1_000_000, OutputTokens: 1_000_000, CacheReadTokens: 1_000_000}
-
-	for _, model := range []string{
-		"gemini-3.6-flash",
-		"gemini-3.6-flash-high",
-		"gemini-3.6-flash-low",
-		"gemini-3.6-flash-medium",
-		"gemini-3.6-flash-tiered",
-	} {
-		t.Run(model, func(t *testing.T) {
-			cost, err := svc.CalculateCost(model, tokens, 1)
-			require.NoError(t, err)
-			require.InDelta(t, 1.5, cost.InputCost, 1e-12)
-			require.InDelta(t, 7.5, cost.OutputCost, 1e-12)
-			require.InDelta(t, 0.15, cost.CacheReadCost, 1e-12)
-			require.InDelta(t, 9.15, cost.TotalCost, 1e-12)
-		})
+	for _, model := range []string{"gemini-3.6-flash-high", "gemini-3.6-flash-low", "gemini-3.6-flash-medium", "gemini-3.6-flash-tiered"} {
+		price, err := svc.GetModelPricing(model)
+		require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable)
+		require.Nil(t, price)
 	}
 }
 
 func TestDefaultPricingIncludesGemini36FlashRates(t *testing.T) {
-	pricingSvc := newOfflinePricingFixture(t)
-	billingSvc := newBillingFixture(pricingSvc)
-
-	for _, model := range []string{"gemini-3.6-flash", "gemini-3.6-flash-low", "gemini-3.6-flash-high"} {
-		t.Run(model, func(t *testing.T) {
-			pricing, err := billingSvc.GetModelPricing(model)
-			require.NoError(t, err)
-			require.InDelta(t, 0.75e-6, pricing.InputPricePerToken, 1e-12)
-			require.InDelta(t, 3.75e-6, pricing.OutputPricePerToken, 1e-12)
-			require.InDelta(t, 0.075e-6, pricing.CacheReadPricePerToken, 1e-12)
-		})
+	svc := NewService(Options{DataDir: t.TempDir()}, nil)
+	require.NoError(t, svc.Initialize())
+	require.NotNil(t, svc.GetModelPricing("gemini-3.6-flash"))
+	// 后缀是否有价取决于目录是否存在完整 ID，不从基名生成。
+	for _, suffix := range []string{"high", "low", "medium", "tiered"} {
+		model := "gemini-3.6-flash-" + suffix
+		if _, exists := svc.pricingData[model]; !exists {
+			require.Nil(t, svc.GetModelPricing(model))
+		}
 	}
 }
 
-// TestDefaultPricingIncludesGemini35FlashRates 验证内置价格快照可覆盖 3.5 Flash 的思考档位别名。
+// TestDefaultPricingIncludesGemini35FlashRates 验证内置快照只为已登记的完整型号提供价格。
 func TestDefaultPricingIncludesGemini35FlashRates(t *testing.T) {
-	pricingSvc := newOfflinePricingFixture(t)
-	billingSvc := newBillingFixture(pricingSvc)
-
-	for _, model := range []string{"gemini-3.5-flash", "gemini-3.5-flash-low", "gemini-3.5-flash-high"} {
-		t.Run(model, func(t *testing.T) {
-			pricing, err := billingSvc.GetModelPricing(model)
-			require.NoError(t, err)
-			require.InDelta(t, 1.5e-6, pricing.InputPricePerToken, 1e-12)
-			require.InDelta(t, 9e-6, pricing.OutputPricePerToken, 1e-12)
-			require.InDelta(t, 0.15e-6, pricing.CacheReadPricePerToken, 1e-12)
-		})
+	svc := NewService(Options{DataDir: t.TempDir()}, nil)
+	require.NoError(t, svc.Initialize())
+	require.NotNil(t, svc.GetModelPricing("gemini-3.5-flash"))
+	// 后缀是否有价取决于目录是否存在完整 ID，不从基名生成。
+	for _, suffix := range []string{"high", "low", "medium", "tiered"} {
+		model := "gemini-3.5-flash-" + suffix
+		if _, exists := svc.pricingData[model]; !exists {
+			require.Nil(t, svc.GetModelPricing(model))
+		}
 	}
 }
 
@@ -784,7 +756,7 @@ func TestGetModelPricing_ImageModelDoesNotFallbackToTextModel(t *testing.T) {
 	})
 
 	got := svc.GetModelPricing("gpt-image-3")
-	require.Same(t, imagePricing, got)
+	require.Nil(t, got)
 }
 
 func TestParsePricingData_PreservesPriorityAndServiceTierFields(t *testing.T) {
@@ -997,13 +969,13 @@ func TestGetModelModalities(t *testing.T) {
 			wantOut: []string{"text"},
 		},
 		{
-			name:  "版本写法变体可命中",
+			name:  "版本写法不同不命中",
 			model: "claude-opus-4-5-20251101",
 			data: map[string]*billingpricing.CatalogModelPricing{
 				"claude-opus-4.5-20251101": {Mode: "chat", SupportsVision: true},
 			},
-			wantIn:  []string{"text", "image"},
-			wantOut: []string{"text"},
+			wantIn:  nil,
+			wantOut: nil,
 		},
 		{
 			name:  "查不到时返回 nil",

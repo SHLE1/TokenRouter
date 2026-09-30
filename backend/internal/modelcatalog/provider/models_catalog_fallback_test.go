@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,19 +13,9 @@ func TestModelsCatalogFallbackIsStable(t *testing.T) {
 	service := NewService(Options{DataDir: t.TempDir()}, nil)
 	require.NoError(t, service.Initialize())
 	for _, model := range []string{"claude-opus-4-5", "claude-opus-4-6"} {
-		t.Run(model, func(t *testing.T) {
-			native := service.GetModelPricing("anthropic/" + model)
-			require.NotNil(t, native)
-			for range 50 {
-				got := service.GetModelPricing(model + "-thinking")
-				require.Equal(t, native, got)
-				value := catalogPriceForTest(t, service, model+"-thinking")
-				cost := pricing.ComputeTokenBreakdown(value, pricing.UsageTokens{InputTokens: 1000000}, 1, "", false)
-				require.InDelta(t, 5, cost.TotalCost, 1e-12)
-			}
-			// 计费的系列回退不能给模型展示属性提供继承依据。
-			require.Nil(t, service.ModelAttributes(model+"-thinking").Context)
-		})
+		require.NotNil(t, service.GetModelPricing(model))
+		require.Nil(t, service.GetModelPricing(model+"-20990101"))
+		require.Nil(t, service.ModelAttributes(model+"-20990101").Context)
 	}
 }
 
@@ -53,15 +42,16 @@ func TestModelsCatalogFallbackOriginAndOverrides(t *testing.T) {
 	}, &catalogRemoteFixture{body: []byte(fallbackOriginFixture)})
 	require.NoError(t, service.ForceUpdate())
 	check := func(reader *Service, input float64) {
+		require.InDelta(t, input, reader.GetModelPricing("claude-opus-4-6").InputCostPerToken, 1e-12)
 		for range 20 {
 			for _, model := range []string{"claude-opus-4-6-thinking", "claude-opus-4-6-20990101"} {
-				require.InDelta(t, input, reader.GetModelPricing(model).InputCostPerToken, 1e-12)
+				require.Nil(t, reader.GetModelPricing(model))
 			}
 		}
 		require.InDelta(t, 1e-6, reader.GetModelPricing("relay/claude-opus-4-6").InputCostPerToken, 1e-12)
 		require.Equal(t, "unpriced", reader.GetModelPricing("relay/claude-opus-4-6-thinking").Source)
 		for _, model := range []string{"gpt-5.4-20990101", "gpt-5.4-openai-compact"} {
-			require.InDelta(t, 2.5e-6, reader.GetModelPricing(model).InputCostPerToken, 1e-12)
+			require.Nil(t, reader.GetModelPricing(model))
 		}
 		require.InDelta(t, 1e-6, reader.GetModelPricing("relay/gpt-5.4").InputCostPerToken, 1e-12)
 	}
@@ -75,7 +65,7 @@ func TestModelsCatalogFallbackOriginAndOverrides(t *testing.T) {
 	check(service, 0)
 	check(service.ReadOnlySnapshot(), 0)
 	// 本地新增的明确价格仍可供既有系列规则使用。
-	require.InDelta(t, 8e-6, service.GetModelPricing("claude-opus-4-7-thinking").InputCostPerToken, 1e-12)
+	require.InDelta(t, 8e-6, service.GetModelPricing("claude-opus-4-7").InputCostPerToken, 1e-12)
 }
 
 func TestModelsCatalogFallbackDoesNotBorrowRelayOnlyModel(t *testing.T) {

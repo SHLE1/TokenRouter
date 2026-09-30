@@ -69,8 +69,8 @@ func TestResolve_UnknownModel(t *testing.T) {
 
 	require.NotNil(t, resolved)
 	require.Nil(t, resolved.BasePricing)
-	// Unknown model: GetModelPricing returns error, source is "fallback"
-	require.Equal(t, "fallback", resolved.Source)
+	// 未知型号返回缺价状态，不借用默认型号价格。
+	require.Equal(t, "unpriced", resolved.Source)
 }
 
 func TestGetIntervalPricing_NoIntervals(t *testing.T) {
@@ -532,7 +532,7 @@ func TestResolve_QoderBlankRouteKeyPricingIsUnpricedButAliasManualPricingWorks(t
 		GroupID: &groupID,
 	})
 	require.NotNil(t, routeResolved)
-	require.Equal(t, billingpricing.PricingSourceFallback, routeResolved.Source)
+	require.Equal(t, billingpricing.PricingSourceUnpriced, routeResolved.Source)
 	require.Nil(t, routeResolved.BasePricing)
 	require.False(t, routeResolved.HasEffectivePricing())
 
@@ -618,7 +618,7 @@ func TestResolve_QoderPerRequestRouteKeyTokenOnlyIntervalIsUnpriced(t *testing.T
 		GroupID: &groupID,
 	})
 	require.NotNil(t, routeResolved)
-	require.Equal(t, billingpricing.PricingSourceFallback, routeResolved.Source)
+	require.Equal(t, billingpricing.PricingSourceUnpriced, routeResolved.Source)
 	require.Nil(t, routeResolved.BasePricing)
 	require.False(t, routeResolved.HasEffectivePricing())
 

@@ -4,10 +4,8 @@ import (
 	"testing"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,8 +16,6 @@ type catalogFixture struct {
 
 func newCatalogFixture(fixture catalogFixture) *provider.Service {
 	return provider.NewServiceFromSnapshot(provider.Options{
-		DefaultOpenAIModel:    openai.DefaultTestModel,
-		IsImageModel:          media.IsImageGenerationModel,
 		ModelLookupCandidates: modelidentity.CandidatesFactory,
 	}, nil, provider.Snapshot{Data: fixture.pricingData})
 }

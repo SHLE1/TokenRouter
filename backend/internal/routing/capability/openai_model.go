@@ -5,55 +5,18 @@ import (
 	"strings"
 )
 
+// LastOpenAIModelSegment 为能力分类读取路径尾段，不参与模型改写或价格候选。
 func LastOpenAIModelSegment(model string) string {
 	model = strings.TrimSpace(model)
-	if model == "" {
-		return ""
+	if index := strings.LastIndexByte(model, '/'); index >= 0 {
+		return strings.TrimSpace(model[index+1:])
 	}
-	if strings.Contains(model, "/") {
-		parts := strings.Split(model, "/")
-		model = parts[len(parts)-1]
-	}
-	return strings.TrimSpace(model)
+	return model
 }
 
+// CanonicalizeOpenAIModelAliasSpelling 只规范查询大小写，不修正模型拼写或删除供应商。
 func CanonicalizeOpenAIModelAliasSpelling(model string) string {
-	model = strings.ToLower(LastOpenAIModelSegment(model))
-	if model == "" {
-		return ""
-	}
-
-	normalized := strings.ReplaceAll(model, "_", "-")
-	normalized = strings.Join(strings.Fields(normalized), "-")
-	for strings.Contains(normalized, "--") {
-		normalized = strings.ReplaceAll(normalized, "--", "-")
-	}
-
-	if strings.HasPrefix(normalized, "gpt5") {
-		normalized = "gpt-5" + strings.TrimPrefix(normalized, "gpt5")
-	}
-	if !strings.HasPrefix(normalized, "gpt-") && !strings.Contains(normalized, "codex") {
-		return ""
-	}
-
-	replacements := []struct {
-		from string
-		to   string
-	}{
-		{"gpt-5.6sol", "gpt-5.6-sol"},
-		{"gpt-5.6terra", "gpt-5.6-terra"},
-		{"gpt-5.6luna", "gpt-5.6-luna"},
-		{"gpt-5.5pro", "gpt-5.5-pro"},
-		{"gpt-5.4mini", "gpt-5.4-mini"},
-		{"gpt-5.4nano", "gpt-5.4-nano"},
-		{"gpt-5.3-codexspark", "gpt-5.3-codex-spark"},
-		{"gpt-5.3codexspark", "gpt-5.3-codex-spark"},
-		{"gpt-5.3codex", "gpt-5.3-codex"},
-	}
-	for _, replacement := range replacements {
-		normalized = strings.ReplaceAll(normalized, replacement.from, replacement.to)
-	}
-	return normalized
+	return strings.ToLower(strings.TrimSpace(model))
 }
 
 func OpenAIModelSupportsReasoningEffort(model string, effort string) bool {

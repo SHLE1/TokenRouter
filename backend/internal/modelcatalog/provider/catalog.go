@@ -205,26 +205,6 @@ func mergeMediaSupplement(raw map[string]json.RawMessage, model string, entry js
 	return nil
 }
 
-// modelsCatalogFallbackPrices 只将原厂裸名及明确的本地价格交给既有回退策略。
-// 中继和供应商限定名称保留精确查价，不能参与其他模型的日期或系列回退。
-// @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
-func modelsCatalogFallbackPrices(catalog *modelcatalog.Catalog, prices map[string]*CatalogModelPricing) map[string]*CatalogModelPricing {
-	if catalog == nil {
-		return nil
-	}
-	result := make(map[string]*CatalogModelPricing)
-	for name, price := range prices {
-		if price == nil || strings.Contains(name, "/") {
-			continue
-		}
-		entry := catalog.Entries[strings.ToLower(strings.TrimSpace(name))]
-		if entry.FirstParty || price.Source == "local_override" || price.Source == "local_supplement" {
-			result[name] = price
-		}
-	}
-	return result
-}
-
 // publishModelsCatalog 只有完整构建成功才替换价格和属性，调用期间由更新锁串行化。
 func (s *Service) publishModelsCatalog(body []byte, updated time.Time, persist bool) error {
 	var catalog *modelcatalog.Catalog
@@ -269,11 +249,9 @@ func (s *Service) publishModelsCatalog(body []byte, updated time.Time, persist b
 			return err
 		}
 	}
-	fallbackPrices := modelsCatalogFallbackPrices(catalog, prices)
 	s.mu.Lock()
 	warnDroppedLongContextLadders(s.pricingData, prices)
 	s.modelCatalog, s.pricingData = catalog, prices
-	s.fallbackPricingData = fallbackPrices
 	s.catalogBody = append([]byte(nil), body...)
 	s.lastUpdated, s.localHash, s.lastCatalogError = updated, catalog.Version, ""
 	s.customFilesHash = fingerprint
@@ -336,7 +314,6 @@ func (s *Service) loadModelsCatalog() (err error) {
 		}
 		s.mu.Lock()
 		s.modelCatalog, s.pricingData = bootstrap.modelCatalog, bootstrap.pricingData
-		s.fallbackPricingData = bootstrap.fallbackPricingData
 		s.catalogBody = bootstrap.catalogBody
 		s.lastUpdated, s.localHash = bootstrap.lastUpdated, bootstrap.localHash
 		s.lastCatalogError = candidateErr.Error()

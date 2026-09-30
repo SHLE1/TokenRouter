@@ -38,7 +38,6 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 	}
 	anthropicDigestReq := p.CloneDigest(&anthropicReq)
 	originalModel := anthropicReq.Model
-	p.NormalizeModel(&anthropicReq)
 	normalizedModel := anthropicReq.Model
 	clientStream := anthropicReq.Stream // client's original stream preference
 

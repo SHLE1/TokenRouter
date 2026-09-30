@@ -33,6 +33,13 @@ func TestCatalogLookupGeminiThinkingTiers(t *testing.T) {
 			for _, suffix := range []string{"", "-high", "-low", "-medium", "-tiered"} {
 				for _, prefix := range []string{"", "models/", "publishers/google/models/", "projects/demo/locations/global/publishers/google/models/"} {
 					model := " " + strings.ToUpper(prefix+base+suffix) + " "
+					if suffix != "" {
+						require.Nil(t, svc.GetModelPricing(model), model)
+						input, output := svc.GetModelModalities(model)
+						require.Nil(t, input)
+						require.Nil(t, output)
+						continue
+					}
 					require.Same(t, pricing, svc.GetModelPricing(model), model)
 					input, output := svc.GetModelModalities(model)
 					require.Equal(t, []string{"text", "image", "audio", "video"}, input, model)
@@ -90,9 +97,9 @@ func TestCatalogLookupClaudeEquivalentVersions(t *testing.T) {
 			pricing := catalogLookupTestPricing(3e-6, "text", "image")
 			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{names[i]: pricing}})
 			model := "models/" + names[1-i]
-			require.Same(t, pricing, svc.GetModelPricing(model))
+			require.Nil(t, svc.GetModelPricing(model))
 			input, _ := svc.GetModelModalities(model)
-			require.Equal(t, []string{"text", "image"}, input)
+			require.Nil(t, input)
 			exact := catalogLookupTestPricing(9e-6, "text")
 			mutatePricingFixture(svc, func(data map[string]*purepricing.CatalogModelPricing) { data[names[1-i]] = exact })
 			require.Same(t, exact, svc.GetModelPricing(model))
@@ -130,12 +137,12 @@ func TestCatalogLookupOpenAIProductIdentity(t *testing.T) {
 					continue
 				}
 				alias := "openai/" + model + "-" + effort
-				require.Same(t, own, svc.GetModelPricing(alias), alias)
+				require.Nil(t, svc.GetModelPricing(alias), alias)
 				input, _ := svc.GetModelModalities(alias)
-				require.Equal(t, []string{"text", "image"}, input, alias)
+				require.Nil(t, input, alias)
 			}
 			for _, suffix := range []string{"-20260905", "-2026-09-05", "-openai-compact"} {
-				require.Same(t, own, svc.GetModelPricing(model+suffix), model+suffix)
+				require.Nil(t, svc.GetModelPricing(model+suffix), model+suffix)
 				input, output := svc.GetModelModalities(model + suffix)
 				require.Nil(t, input)
 				require.Nil(t, output)
@@ -158,7 +165,11 @@ func TestCatalogLookupOpenAIDedicatedFallbackBeforeGenericBase(t *testing.T) {
 		"gpt-6-astra": purepricing.OpenAIGPT6AstraPricing,
 	} {
 		for _, suffix := range []string{"", "-high", "-20260905", "-2026-09-05"} {
-			require.Same(t, want, svc.GetModelPricing(model+suffix), model+suffix)
+			if suffix == "" {
+				require.Same(t, want, svc.GetModelPricing(model+suffix))
+			} else {
+				require.Nil(t, svc.GetModelPricing(model+suffix))
+			}
 			input, output := svc.GetModelModalities(model + suffix)
 			require.Nil(t, input)
 			require.Nil(t, output)
@@ -166,13 +177,13 @@ func TestCatalogLookupOpenAIDedicatedFallbackBeforeGenericBase(t *testing.T) {
 	}
 }
 
-// TestCatalogLookupOpenAIPriceFallbackKeepsDynamicProduct 验证原有价格后缀兼容仍优先同产品目录；这些非明确身份别名不能生成能力。
+// TestCatalogLookupOpenAIPriceFallbackKeepsDynamicProduct 验证 preview 和 latest 后缀不会继承基础型号的价格或能力。
 func TestCatalogLookupOpenAIPriceFallbackKeepsDynamicProduct(t *testing.T) {
 	for _, model := range []string{"gpt-5.4", "gpt-5.5", "gpt-5.5-pro", "gpt-5.6-terra", "gpt-6-astra"} {
 		pricing := catalogLookupTestPricing(17e-6, "text", "image")
 		svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{model: pricing}})
 		for _, suffix := range []string{"-preview", "-chat-latest"} {
-			require.Same(t, pricing, svc.GetModelPricing(model+suffix), model+suffix)
+			require.Nil(t, svc.GetModelPricing(model+suffix), model+suffix)
 			input, output := svc.GetModelModalities(model + suffix)
 			require.Nil(t, input)
 			require.Nil(t, output)
@@ -206,7 +217,7 @@ func TestCatalogLookupSparkBillingPolicyDoesNotSupplyCapabilities(t *testing.T) 
 		"gpt-5.1-codex": legacy, "gpt-5.3-codex-spark": spark,
 	}})
 	require.Same(t, spark, svc.GetModelPricing("gpt-5.3-codex-spark"))
-	require.Same(t, legacy, svc.GetModelPricing("gpt-5.3-codex-spark-high"))
+	require.Nil(t, svc.GetModelPricing("gpt-5.3-codex-spark-high"))
 	input, output := svc.GetModelModalities("gpt-5.3-codex-spark-high")
 	require.Nil(t, input)
 	require.Nil(t, output)
@@ -220,21 +231,20 @@ func TestCatalogLookupGrokUsesKnownRuntimeAliases(t *testing.T) {
 	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{
 		"grok-4.5": text, "grok-4.6": vision, "grok-4.20-0309-reasoning": vision,
 	}})
-	xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{DefaultText: "grok-4.5", EnableCrossClientMap: true})
-	require.Same(t, text, svc.GetModelPricing("x-ai/grok-latest"))
+	require.Nil(t, svc.GetModelPricing("x-ai/grok-latest"))
 	xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{})
 	for _, alias := range []string{"grok", "xai/grok-latest", "grok-4.6-latest", "grok-4.20-reasoning"} {
-		require.Same(t, vision, svc.GetModelPricing(alias))
+		require.Nil(t, svc.GetModelPricing(alias))
 		input, _ := svc.GetModelModalities(alias)
-		require.Equal(t, []string{"text", "image"}, input)
+		require.Nil(t, input)
 	}
 	// 默认模型配置只去空白，返回的名称也要兼容前缀、大小写和已知固定别名。
 	for _, target := range []string{"GROK-4.6", "xai/grok-4.6", "X-AI/GROK-4.6", "grok-4.6-latest"} {
 		xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{DefaultText: target})
 		for _, alias := range []string{"grok", "grok-latest"} {
-			require.Same(t, vision, svc.GetModelPricing(alias), target)
+			require.Nil(t, svc.GetModelPricing(alias), target)
 			input, _ := svc.GetModelModalities(alias)
-			require.Equal(t, []string{"text", "image"}, input, target)
+			require.Nil(t, input, target)
 		}
 	}
 	// 完整别名条目仍可独立配价，未知模型和跨客户端名称不会继承 Grok 能力。

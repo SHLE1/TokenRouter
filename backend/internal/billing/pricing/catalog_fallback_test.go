@@ -6,25 +6,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCatalogFallbackOrdering 约束基础型号优先与无基础型号时的稳定变体顺序。
-func TestCatalogFallbackOrdering(t *testing.T) {
-	base := &CatalogModelPricing{InputCostPerToken: 5e-6}
-	first := &CatalogModelPricing{InputCostPerToken: 6e-6}
-	second := &CatalogModelPricing{InputCostPerToken: 7e-6}
-	for _, withBase := range []bool{false, true} {
-		query := &CatalogQuery{Entries: map[string]*CatalogModelPricing{
-			"claude-opus-4-6-20260101": first,
-			"claude-opus-4-6-20260201": second,
-		}}
-		want := first
-		if withBase {
-			query.Entries["claude-opus-4-6"] = base
-			want = base
-		}
-		for range 30 {
-			for _, model := range []string{"claude-opus-4-6-thinking", "claude-opus-4-6-20990101"} {
-				require.Same(t, want, query.GetModelPricing(model))
-			}
-		}
+// TestPricingUsesCompleteIdentity 验证目录、静态价和价卡均不借用近似型号价格。
+func TestPricingUsesCompleteIdentity(t *testing.T) {
+	price := &CatalogModelPricing{InputCostPerToken: 5e-6}
+	query := &CatalogQuery{Entries: map[string]*CatalogModelPricing{
+		"claude-opus-5-5": price, "gemini-3.8-flash": price, "gpt-5.6-sol": price,
+	}}
+	for _, model := range []string{"claude-opus-5.5", "claude-opus-5-5-20260101", "gemini-3.8-flash-high", "gpt-5.6-sol-max", "vendor/gpt-5.6-sol", "gpt5.6sol"} {
+		require.Nil(t, query.GetModelPricing(model), model)
+		_, _, err := ResolveModelPricing(model, nil, DefaultFallbackPrices(), ModelPolicy{})
+		require.ErrorIs(t, err, ErrModelPricingUnavailable, model)
 	}
+	require.Same(t, price, query.GetModelPricing("claude-opus-5-5"))
+	require.Same(t, price, query.GetModelPricing("models/gemini-3.8-flash"))
+	zero := 0.0
+	card := ModelPricingEntry{Models: []string{"gemini-3.8-flash-*"}, InputPrice: &zero}
+	require.NotNil(t, MatchPriceCard([]ModelPricingEntry{card}, "gemini-3.8-flash-high"))
+	query.Entries["gemini-3.8-flash-high"] = &CatalogModelPricing{InputCostPerToken: 7e-6}
+	require.Equal(t, 7e-6, query.GetModelPricing("gemini-3.8-flash-high").InputCostPerToken)
 }
