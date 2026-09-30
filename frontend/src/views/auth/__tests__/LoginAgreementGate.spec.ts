@@ -179,6 +179,27 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
     expect(acceptedView.get('form').attributes('novalidate')).toBeUndefined()
   })
 
+  it('撤回旧品牌同意记录后，重新进入页面仍需要同意', async () => {
+    localStorage.setItem('sub2api_login_agreement_consent', JSON.stringify({ revision: 'current-revision' }))
+    const view = await mountPage(page)
+    expect((view.get('#login-agreement-consent').element as HTMLInputElement).checked).toBe(true)
+
+    await view.get('#login-agreement-consent').setValue(false)
+    view.unmount()
+
+    const reopenedView = await mountPage(page)
+    expect((reopenedView.get('#login-agreement-consent').element as HTMLInputElement).checked).toBe(false)
+    await reopenedView.get('form').trigger('submit')
+    expect(hintVisible()).toBe(true)
+    expect(mocks.login).not.toHaveBeenCalled()
+    expect(mocks.register).not.toHaveBeenCalled()
+
+    await reopenedView.get('#login-agreement-consent').setValue(true)
+    reopenedView.unmount()
+    const acceptedView = await mountPage(page)
+    expect((acceptedView.get('#login-agreement-consent').element as HTMLInputElement).checked).toBe(true)
+  })
+
   it('条款弹窗模式仍在进入页面时显示并保持原有门禁', async () => {
     mocks.settings.mockResolvedValue({ ...baseSettings, login_agreement_mode: 'modal' })
     const view = await mountPage(page)

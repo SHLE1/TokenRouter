@@ -250,7 +250,8 @@ import { extractI18nErrorMessage } from '@/utils/apiError'
 import { clearAllAffiliateCodes } from '@/utils/oauthAffiliate'
 import {
   hasAcceptedLoginAgreement,
-  LOGIN_AGREEMENT_STORAGE_KEY
+  LOGIN_AGREEMENT_STORAGE_KEY,
+  revokeLoginAgreement
 } from '@/utils/loginAgreement'
 import { isGoogleOneTapEligible, isGoogleOneTapOriginSupported } from '@/utils/googleIdentity'
 
@@ -485,7 +486,7 @@ function acceptLoginAgreement(): void {
 }
 
 function rejectLoginAgreement(): void {
-  localStorage.removeItem(LOGIN_AGREEMENT_STORAGE_KEY)
+  revokeLoginAgreement()
   agreementAccepted.value = false
   showAgreementModal.value = false
   showAgreementHint.value = false

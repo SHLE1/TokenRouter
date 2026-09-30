@@ -360,7 +360,11 @@ import {
   validateInvitationCode
 } from '@/api/auth'
 import { buildAuthErrorMessage } from '@/utils/authError'
-import { LOGIN_AGREEMENT_STORAGE_KEY, hasAcceptedLoginAgreement } from '@/utils/loginAgreement'
+import {
+  LOGIN_AGREEMENT_STORAGE_KEY,
+  hasAcceptedLoginAgreement,
+  revokeLoginAgreement
+} from '@/utils/loginAgreement'
 import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
 import {
   formatRegistrationEmailSuffixWhitelistForMessage,
@@ -646,8 +650,7 @@ function acceptLoginAgreement(): void {
 }
 
 function rejectLoginAgreement(): void {
-  // 撤回时留下新键的否定记录，避免再次读取旧确认。
-  localStorage.setItem(LOGIN_AGREEMENT_STORAGE_KEY, '{}')
+  revokeLoginAgreement()
   agreementAccepted.value = false
   showAgreementModal.value = false
   showAgreementHint.value = false

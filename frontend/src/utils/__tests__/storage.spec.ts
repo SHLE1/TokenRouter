@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readStorageWithLegacyKey } from '../storage'
-import { hasAcceptedLoginAgreement, LOGIN_AGREEMENT_STORAGE_KEY } from '../loginAgreement'
+import { hasAcceptedLoginAgreement, revokeLoginAgreement } from '../loginAgreement'
 
 describe('品牌存储键兼容', () => {
   beforeEach(() => localStorage.clear())
@@ -18,7 +18,7 @@ describe('品牌存储键兼容', () => {
     localStorage.setItem('sub2api_login_agreement_consent', JSON.stringify({ revision: 'v1' }))
     expect(hasAcceptedLoginAgreement('v1')).toBe(true)
     expect(hasAcceptedLoginAgreement('v2')).toBe(false)
-    localStorage.setItem(LOGIN_AGREEMENT_STORAGE_KEY, '{}')
+    revokeLoginAgreement()
     expect(hasAcceptedLoginAgreement('v1')).toBe(false)
   })
 

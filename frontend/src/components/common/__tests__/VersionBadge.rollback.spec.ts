@@ -11,6 +11,6 @@ describe('VersionBadge 回退目标', () => {
     expect(source).toContain("const GITHUB_REPO = 'TokenFlux/TokenRouter'")
     expect(source).toContain("const DOCKER_IMAGE = 'ghcr.io/tokenflux/tokenrouter'")
     expect(source).not.toContain("const GITHUB_REPO = 'Wei-Shaw/sub2api'")
-    expect(source).not.toContain("const DOCKER_IMAGE = 'weishaw/tokenrouter'")
+    expect(source).not.toContain("const DOCKER_IMAGE = 'weishaw/sub2api'")
   })
 })

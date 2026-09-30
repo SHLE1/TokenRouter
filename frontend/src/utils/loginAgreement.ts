@@ -2,6 +2,12 @@ import { readStorageWithLegacyKey } from './storage'
 
 export const LOGIN_AGREEMENT_STORAGE_KEY = 'tokenrouter_login_agreement_consent'
 
+// 撤回时保留新键的否定记录，避免下次读取重新继承旧品牌的同意记录。
+export function revokeLoginAgreement(): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(LOGIN_AGREEMENT_STORAGE_KEY, '{}')
+}
+
 // 登录协议按 revision 记录，条款更新后旧确认不会继续放行快捷登录。
 export function hasAcceptedLoginAgreement(revision: string): boolean {
   if (!revision || typeof window === 'undefined') return false
