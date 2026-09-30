@@ -1,7 +1,11 @@
 <template>
   <div class="space-y-4">
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+    <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+      <div class="card space-y-3 p-6" aria-hidden="true">
+        <Skeleton width="35%" :height="16" class="mx-auto" />
+        <Skeleton width="55%" :height="36" class="mx-auto" />
+      </div>
+      <ContentSkeleton variant="form" :rows="3" class="card p-6" />
     </div>
     <div v-else-if="initError" class="card p-6 text-center">
       <p class="text-sm text-red-600 dark:text-red-400">{{ initError }}</p>
@@ -64,6 +68,8 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, onMounted, nextTick, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'

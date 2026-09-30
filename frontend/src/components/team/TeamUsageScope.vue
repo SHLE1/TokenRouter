@@ -1,6 +1,22 @@
 <template>
   <div class="space-y-6">
-    <div v-if="loading" class="flex justify-center py-16"><LoadingSpinner /></div>
+    <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" aria-hidden="true">
+        <div v-for="card in 4" :key="card" class="card min-w-0 space-y-3 p-4">
+          <Skeleton width="55%" :height="12" />
+          <Skeleton width="75%" :height="28" />
+          <Skeleton width="65%" :height="12" />
+        </div>
+      </div>
+      <ContentSkeleton variant="form" :rows="2" class="card p-6" />
+      <div v-if="mode === 'usage'" class="card overflow-hidden">
+        <DataTable :columns="usageColumns" :data="[]" :loading="true" row-key="id" />
+      </div>
+      <div v-else class="card p-6">
+        <h2 class="mb-5 text-base font-semibold text-gray-900 dark:text-white">{{ t('team.totalCost') }}</h2>
+        <ContentSkeleton :rows="5" />
+      </div>
+    </div>
     <div v-else-if="noTeam" class="card py-14 text-center">
       <Icon name="users" size="xl" class="mx-auto text-gray-400" />
       <p class="mt-4 font-medium text-gray-900 dark:text-white">{{ t('team.noTeam') }}</p>
@@ -95,9 +111,10 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'

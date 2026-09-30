@@ -169,6 +169,10 @@
 
 当前入口包括用户与管理员仪表盘的 `DashboardSkeleton`、设置页的 `SettingsSkeleton`、模型广场的 `ModelMarketplaceSkeleton`、图表的 `ChartSkeleton`，以及 DataTable 的表格行和移动卡片。公告按时间线条目占位，热力图直接用日期格子占位。用户仪表盘已有统计值时刷新保留卡片，首次取数才使用整页骨架；加载成功或失败后退出占位状态，沿用页面原有的数据、错误或空状态分支。
 
+页面、弹窗和局部数据区共用这套规则。列表、表单、字段详情和文档正文可使用 `ContentSkeleton`；统计页按实际卡片网格组合 `Skeleton` 与 `ChartSkeleton`。原生表格使用 `TableSkeletonBody`，保留真实表头并传入当前可见列数，条件列变化时同步调整占位列。加载更多只在列表末尾追加占位，已有内容保留。
+
+骨架表示内容尚未取得。提交、刷新按钮、授权跳转、连接测试、任务执行和支付处理中继续使用操作反馈。支付页面首次读取订单和初始化表单时显示骨架；渠道已受理或等待外部支付时保留状态提示。加载样式不得改变请求、轮询、支付 SDK 或 iframe 的挂载时机。
+
 ## 通用图标
 
 通用界面图标统一使用 `components/icons/Icon.vue`，名称与 `IconName` 类型由同目录的 `registry.ts` 管理。图形采用 Lucide 风格，官方逐元素动效移植自 Lucide Animated，以 `motion-v` 运行；缺少官方动画的图形使用一次 400ms 的轻微缩放。源码版本和许可见图标目录的 README 与 LICENSE 文件。

@@ -229,8 +229,9 @@
 
           <template #cell-usage="{ row }">
             <div class="text-sm">
-              <div v-if="usageLoading && !usageStats[row.id]" class="flex h-10 items-center text-gray-400">
-                <Icon name="refresh" size="sm" class="animate-spin" :animate-on-hover="false" />
+              <div v-if="usageLoading && !usageStats[row.id]" class="flex h-10 flex-col justify-center gap-2" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+                <Skeleton :width="96" :height="12" />
+                <Skeleton :width="112" :height="12" />
               </div>
               <div v-else class="space-y-0.5">
                 <div class="flex items-center gap-1.5">
@@ -1230,6 +1231,7 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 	import { watch, ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'

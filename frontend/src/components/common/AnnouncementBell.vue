@@ -83,13 +83,7 @@
 
             <!-- 列表区域独立滚动，避免较多公告撑出视口。 -->
             <div class="announcement-list-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-gray-100 dark:border-dark-700/70">
-              <div
-                v-if="loading"
-                data-testid="announcement-list-loading"
-                class="flex items-center justify-center py-14"
-              >
-                <LoadingSpinner size="md" color="secondary" />
-              </div>
+              <ContentSkeleton v-if="loading" data-testid="announcement-list-loading" variant="list" :rows="4" class="p-6" />
 
               <ul
                 v-else-if="displayedAnnouncements.length > 0"
@@ -178,6 +172,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -187,7 +182,6 @@ import { useAnnouncementStore } from '@/stores/announcements'
 import { formatRelativeTime } from '@/utils/format'
 import type { UserAnnouncement } from '@/types'
 import AnnouncementPopup from '@/components/common/AnnouncementPopup.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const props = withDefaults(defineProps<{

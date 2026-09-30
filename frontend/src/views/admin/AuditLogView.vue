@@ -181,12 +181,7 @@
       :close-on-click-outside="true"
       @close="detailVisible = false"
     >
-      <div v-if="detailLoading" class="flex items-center justify-center py-16">
-        <div class="flex flex-col items-center gap-3">
-          <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
-          <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('common.loading') }}</div>
-        </div>
-      </div>
+      <ContentSkeleton v-if="detailLoading" variant="detail" :rows="8" class="py-4" />
 
       <div v-else-if="detail" class="space-y-5 py-2">
         <!-- 操作与结果概览 -->
@@ -365,6 +360,7 @@
   </AppLayout>
 </template>
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

@@ -1,8 +1,12 @@
 <template>
   <component :is="isPopup ? 'div' : AppLayout" :class="isPopup ? 'min-h-screen bg-gray-50 dark:bg-dark-900' : ''">
     <div v-content-reveal="isPopup && route.path" class="mx-auto max-w-lg space-y-6 py-8" :class="isPopup ? 'px-4' : ''">
-      <div v-if="loading" class="flex items-center justify-center py-20">
-        <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="card space-y-3 p-6" aria-hidden="true">
+          <Skeleton width="35%" :height="16" class="mx-auto" />
+          <Skeleton width="55%" :height="36" class="mx-auto" />
+        </div>
+        <ContentSkeleton variant="form" :rows="3" class="card p-6" />
       </div>
       <div v-else-if="initError" class="card p-6 text-center">
         <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
@@ -105,6 +109,8 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { vContentReveal } from '@/directives/contentReveal'
 
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'

@@ -87,15 +87,8 @@
         </div>
 
         <div class="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-          <!-- 首次加载显示转圈；翻页时保留当前列表并降低透明度，避免内容闪烁。 -->
-          <div v-if="loadingHistory && history.length === 0" class="flex items-center justify-center py-12">
-            <Icon
-              name="loader"
-              size="lg"
-              :animate-on-hover="false"
-              class="animate-spin text-primary-500"
-            />
-          </div>
+          <!-- 首次加载显示骨架；翻页时保留当前列表并降低透明度，避免内容闪烁。 -->
+          <ContentSkeleton v-if="loadingHistory && history.length === 0" variant="list" :rows="4" class="p-6" />
 
           <ul
             v-else-if="history.length > 0"
@@ -218,6 +211,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'

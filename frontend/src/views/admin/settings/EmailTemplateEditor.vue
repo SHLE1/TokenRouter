@@ -40,15 +40,7 @@
     </div>
 
     <div class="space-y-6 p-6">
-      <div
-        v-if="loadingList"
-        class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
-      >
-        <span
-          class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-        ></span>
-        {{ t("common.loading") }}
-      </div>
+      <ContentSkeleton v-if="loadingList" variant="form" :rows="4" class="py-4" />
 
       <template v-else>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -214,6 +206,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";

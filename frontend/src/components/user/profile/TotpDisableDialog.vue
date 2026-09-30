@@ -14,9 +14,7 @@
         </div>
 
         <!-- Loading verification method -->
-        <div v-if="methodLoading" class="flex items-center justify-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-        </div>
+        <ContentSkeleton v-if="methodLoading" variant="form" :rows="2" class="py-4" />
 
         <form v-else @submit.prevent="handleDisable" class="space-y-4">
           <!-- Email verification -->
@@ -75,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
 import AuthCardDialog from '@/components/common/AuthCardDialog.vue'
 import { ref, onMounted, onUnmounted, computed } from 'vue'

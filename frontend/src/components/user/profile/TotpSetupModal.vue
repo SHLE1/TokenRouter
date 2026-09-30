@@ -13,9 +13,7 @@
         <!-- Step 0: Identity Verification -->
         <div v-if="step === 0" v-content-reveal class="space-y-6">
           <!-- Loading verification method -->
-          <div v-if="methodLoading" class="flex items-center justify-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-          </div>
+          <ContentSkeleton v-if="methodLoading" variant="form" :rows="2" class="py-4" />
 
           <template v-else>
             <!-- Email verification -->
@@ -163,6 +161,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { vContentReveal } from '@/directives/contentReveal'
 
 import Icon from '@/components/icons/Icon.vue'

@@ -38,9 +38,7 @@
     <!-- List -->
     <div class="p-4">
       <!-- Loading -->
-      <div v-if="loading && !providers.length" class="flex items-center justify-center py-6">
-        <div class="h-5 w-5 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
-      </div>
+      <ContentSkeleton v-if="loading && !providers.length" variant="list" :rows="3" class="py-4" />
 
       <!-- Provider cards (draggable) -->
       <VueDraggable
@@ -91,6 +89,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { VueDraggable } from 'vue-draggable-plus'

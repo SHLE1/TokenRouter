@@ -6,9 +6,7 @@
     @close="handleClose"
   >
     <div class="space-y-4">
-      <div v-if="loading" class="flex items-center justify-center py-8">
-        <Icon name="loader" size="lg" :animate-on-hover="false" class="h-6 w-6 animate-spin text-gray-400" />
-      </div>
+      <ContentSkeleton v-if="loading" variant="detail" :rows="4" class="py-4" />
 
       <div v-else-if="!isActive" class="rounded-control border border-gray-200 p-4 text-sm text-gray-500 dark:border-dark-600 dark:text-gray-400">
         {{ t('admin.providers.tempUnschedulable.notActive') }}
@@ -124,6 +122,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

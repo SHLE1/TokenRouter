@@ -2,8 +2,12 @@
   <div class="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-dark-900">
     <div v-content-reveal="route.path" class="w-full max-w-md space-y-6">
       <!-- Loading -->
-      <div v-if="loading" class="flex items-center justify-center py-20">
-        <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="space-y-4 text-center" aria-hidden="true">
+          <Skeleton variant="circle" :width="80" :height="80" class="mx-auto" />
+          <Skeleton width="50%" :height="28" class="mx-auto" />
+        </div>
+        <ContentSkeleton variant="detail" :rows="6" class="card p-6" />
       </div>
       <template v-else>
         <!-- Status Icon -->
@@ -100,6 +104,8 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { vContentReveal } from '@/directives/contentReveal'
 
 import Icon from '@/components/icons/Icon.vue'

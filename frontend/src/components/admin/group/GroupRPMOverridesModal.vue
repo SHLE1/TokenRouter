@@ -86,30 +86,20 @@
         </div>
       </div>
 
-      <!-- 加载状态 -->
-      <div v-if="loading" class="flex justify-center py-6">
-        <Icon
-          name="loader"
-          size="lg"
-          :animate-on-hover="false"
-          class="h-6 w-6 animate-spin text-primary-500"
-        />
-      </div>
-
       <!-- 列表 -->
-      <div v-else>
+      <div>
         <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-          {{ t('admin.groups.rpmOverrides') }} ({{ localEntries.length }})
+          {{ t('admin.groups.rpmOverrides') }} <span v-if="!loading">({{ localEntries.length }})</span>
         </h4>
 
-        <div v-if="localEntries.length === 0" class="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+        <div v-if="!loading && localEntries.length === 0" class="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
           {{ t('admin.groups.noRpmOverrides') }}
         </div>
 
         <div v-else>
           <div class="overflow-hidden rounded-control border border-gray-200 dark:border-dark-600">
             <div class="max-h-panel overflow-auto">
-              <table class="w-full min-w-max text-sm">
+              <table :aria-busy="loading" class="w-full min-w-max text-sm">
                 <thead class="sticky top-0 z-[1]"> <!-- check-ui-allow: 弹窗内 sticky 表头局部层级 -->
                   <tr class="border-b border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-700">
                     <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('admin.groups.columns.userEmail') }}</th>
@@ -121,7 +111,8 @@
                     <th class="w-10 px-2 py-2"></th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-dark-600">
+                <TableSkeletonBody v-if="loading" :columns="7" cell-class="px-3 py-2" />
+                <tbody v-else class="divide-y divide-gray-100 dark:divide-dark-600">
                   <tr
                     v-for="entry in paginatedLocalEntries"
                     :key="entry.user_id"
@@ -170,6 +161,7 @@
           </div>
 
           <Pagination
+            v-if="!loading"
             :total="localEntries.length"
             :page="currentPage"
             :page-size="pageSize"
@@ -218,6 +210,7 @@
 </template>
 
 <script setup lang="ts">
+import TableSkeletonBody from '@/components/common/TableSkeletonBody.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -257,7 +250,6 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 
 let searchTimeout: ReturnType<typeof setTimeout>
-
 
 const isDirty = computed(() => {
   if (localEntries.value.length !== serverEntries.value.length) return true

@@ -1,27 +1,37 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <div v-if="loading" class="flex items-center justify-center py-16">
-        <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 class="page-title">{{ t('admin.riskControl.title') }}</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.description') }}</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" class="btn btn-secondary shrink-0 btn-icon" :disabled="loading || statusLoading" :title="t('admin.riskControl.refreshStatus')" @click="loadStatus(false)">
+            <Icon name="refresh" size="sm" :class="statusLoading ? 'animate-spin' : ''" />
+          </button>
+          <button type="button" class="btn btn-primary inline-flex items-center gap-2" :disabled="loading" @click="openSettings">
+            <Icon name="cog" size="sm" />
+            {{ t('admin.riskControl.openSettings') }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" aria-hidden="true">
+          <div v-for="card in 4" :key="card" class="card min-w-0 space-y-3 p-4">
+            <Skeleton width="55%" :height="12" />
+            <Skeleton width="75%" :height="28" />
+            <Skeleton width="65%" :height="12" />
+          </div>
+        </div>
+        <div class="grid gap-6 xl:grid-cols-2">
+          <ContentSkeleton variant="form" :rows="4" class="card p-6" />
+          <ContentSkeleton variant="list" :rows="5" class="card p-6" />
+        </div>
       </div>
 
       <template v-else>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 class="page-title">{{ t('admin.riskControl.title') }}</h1>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.description') }}</p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" class="btn btn-secondary shrink-0 btn-icon" :disabled="statusLoading" :title="t('admin.riskControl.refreshStatus')" @click="loadStatus(false)">
-              <Icon name="refresh" size="sm" :class="statusLoading ? 'animate-spin' : ''" />
-            </button>
-            <button type="button" class="btn btn-primary inline-flex items-center gap-2" @click="openSettings">
-              <Icon name="cog" size="sm" />
-              {{ t('admin.riskControl.openSettings') }}
-            </button>
-          </div>
-        </div>
-
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div
             v-for="item in overviewItems"
@@ -1309,9 +1319,7 @@
             </div>
           </div>
 
-          <div v-if="inputDetailLoading" class="flex min-h-40 items-center justify-center text-gray-500 dark:text-gray-400">
-            <Icon name="refresh" size="md" class="animate-spin" :animate-on-hover="false" />
-          </div>
+          <ContentSkeleton v-if="inputDetailLoading" variant="article" :rows="2" class="py-4" />
 
           <div v-else class="space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -1402,9 +1410,7 @@
             </div>
           </div>
 
-          <div v-if="cyberDetailLoading" class="flex min-h-40 items-center justify-center text-gray-500 dark:text-gray-400">
-            <Icon name="refresh" size="md" class="animate-spin" :animate-on-hover="false" />
-          </div>
+          <ContentSkeleton v-if="cyberDetailLoading" variant="article" :rows="2" class="py-4" />
 
           <div v-else class="space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -1473,6 +1479,8 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'

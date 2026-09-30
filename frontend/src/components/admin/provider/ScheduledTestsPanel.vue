@@ -136,16 +136,7 @@
       </Collapse>
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-8">
-        <Icon
-          name="refresh"
-          size="md"
-          class="animate-spin text-gray-400"
-          :stroke-width="2"
-          :animate-on-hover="false"
-        />
-        <span class="ml-2 text-sm text-gray-500">{{ t('common.loading') }}...</span>
-      </div>
+      <ContentSkeleton v-if="loading" variant="list" :rows="3" class="py-4" />
 
       <!-- Empty State -->
       <div
@@ -370,16 +361,7 @@
               </div>
 
               <!-- Results Loading -->
-              <div v-if="loadingResults" class="flex items-center justify-center py-4">
-                <Icon
-                  name="refresh"
-                  size="sm"
-                  class="animate-spin text-gray-400"
-                  :stroke-width="2"
-                  :animate-on-hover="false"
-                />
-                <span class="ml-2 text-xs text-gray-500">{{ t('common.loading') }}...</span>
-              </div>
+              <ContentSkeleton v-if="loadingResults" variant="list" :rows="3" class="py-4" />
 
               <!-- No Results -->
               <div
@@ -500,6 +482,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import Collapse from '@/components/common/Collapse.vue'
 
 import { ref, reactive, watch } from 'vue'

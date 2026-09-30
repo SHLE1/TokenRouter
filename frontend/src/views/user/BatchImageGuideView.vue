@@ -403,8 +403,8 @@
           </button>
         </div>
 
-        <div v-if="items.length" class="overflow-x-auto rounded-control border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
-          <table class="w-full min-w-[860px] table-fixed divide-y divide-gray-200 text-sm dark:divide-dark-700">
+        <div v-if="items.length || loadingItems" class="overflow-x-auto rounded-control border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-900">
+          <table :aria-busy="loadingItems && !items.length" class="w-full min-w-[860px] table-fixed divide-y divide-gray-200 text-sm dark:divide-dark-700">
             <colgroup>
               <col class="w-[18%]" />
               <col class="w-[34%]" />
@@ -421,7 +421,8 @@
                 <th class="px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('batchImage.detail.result') }}</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
+            <TableSkeletonBody v-if="loadingItems && !items.length" :columns="5" cell-class="px-3 py-3" />
+            <tbody v-else class="divide-y divide-gray-100 dark:divide-dark-700">
               <tr
                 v-for="item in items"
                 :key="itemPreviewKey(item)"
@@ -511,12 +512,11 @@
             name="refresh"
             size="lg"
             class="mx-auto mb-3 text-gray-400"
-            :class="loadingItems ? 'animate-spin' : ''"
           />
           <p class="text-sm font-medium text-gray-700 dark:text-gray-200">
-            {{ loadingItems ? t('batchImage.detail.loadingItems') : t('batchImage.detail.noItems') }}
+            {{ t('batchImage.detail.noItems') }}
           </p>
-          <p v-if="!loadingItems" class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {{ t('batchImage.detail.noItemsHint') }}
           </p>
         </div>
@@ -794,6 +794,7 @@
 </template>
 
 <script setup lang="ts">
+import TableSkeletonBody from '@/components/common/TableSkeletonBody.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

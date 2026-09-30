@@ -1,8 +1,13 @@
 <template>
   <AppLayout>
     <div class="space-y-6">
-      <div v-if="loading" class="flex justify-center py-12">
-        <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
+      <div v-if="loading" class="grid gap-6 lg:grid-cols-2" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div v-for="card in 2" :key="card" class="card space-y-6 p-6" aria-hidden="true">
+          <Skeleton width="50%" :height="24" />
+          <Skeleton width="70%" :height="16" />
+          <ContentSkeleton variant="detail" :rows="6" />
+          <Skeleton :height="36" />
+        </div>
       </div>
 
       <div v-else-if="planChains.length === 0" class="card p-12 text-center">
@@ -214,6 +219,8 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'

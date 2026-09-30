@@ -309,9 +309,7 @@
       width="wide"
       @close="showUsagesDialog = false"
     >
-      <div v-if="usagesLoading" class="flex items-center justify-center py-8">
-        <Icon name="refresh" size="lg" class="animate-spin text-gray-400" :animate-on-hover="false" />
-      </div>
+      <ContentSkeleton v-if="usagesLoading" :rows="4" class="py-4" />
       <div v-else-if="usages.length === 0" class="py-8 text-center text-gray-500 dark:text-gray-400">
         {{ t('admin.promo.noUsages') }}
       </div>
@@ -375,6 +373,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

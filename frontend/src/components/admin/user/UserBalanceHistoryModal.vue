@@ -72,14 +72,7 @@
       </div>
 
       <!-- Loading -->
-      <div v-if="loading" class="flex justify-center py-8">
-        <Icon
-          name="loader"
-          size="xl"
-          :animate-on-hover="false"
-          class="h-8 w-8 animate-spin text-primary-500"
-        />
-      </div>
+      <ContentSkeleton v-if="loading" variant="list" :rows="3" class="py-4" />
 
       <!-- Empty state -->
       <div v-else-if="history.length === 0" class="py-8 text-center">
@@ -178,6 +171,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI, type BalanceHistoryItem } from '@/api/admin'

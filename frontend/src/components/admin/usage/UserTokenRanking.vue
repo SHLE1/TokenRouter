@@ -16,7 +16,7 @@
 
     <!-- 用户 Token 排行表 -->
     <div class="overflow-x-auto">
-      <table class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
+      <table :aria-busy="loading" class="w-full min-w-max divide-y divide-gray-200 dark:divide-dark-700">
         <thead class="bg-gray-50 dark:bg-dark-800">
           <tr>
             <th class="w-16 px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-400 sm:px-6">#</th>
@@ -35,13 +35,9 @@
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
-          <tr v-if="loading">
-            <td :colspan="sortableColumns.length + 2" class="py-12 text-center">
-              <LoadingSpinner />
-            </td>
-          </tr>
-          <tr v-else-if="items.length === 0">
+        <TableSkeletonBody v-if="loading" :columns="sortableColumns.length + 2" />
+        <tbody v-else class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
+          <tr v-if="items.length === 0">
             <td :colspan="sortableColumns.length + 2" class="py-12 text-center text-sm text-gray-400">
               {{ t('admin.dashboard.noDataAvailable') }}
             </td>
@@ -80,13 +76,13 @@
 </template>
 
 <script setup lang="ts">
+import TableSkeletonBody from '@/components/common/TableSkeletonBody.vue'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getUserBreakdown, type UserBreakdownParams } from '@/api/admin/dashboard'
 import { formatCompactNumber, formatCostFixed } from '@/utils/format'
 import type { UserBreakdownItem } from '@/types'
 import Select from '@/components/common/Select.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 
 const props = defineProps<{
   startDate: string

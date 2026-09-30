@@ -26,9 +26,7 @@
     </header>
 
     <main v-content-reveal="route.path" class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:py-10">
-      <div v-if="loading" class="flex min-h-[320px] items-center justify-center">
-        <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
-      </div>
+      <ContentSkeleton v-if="loading" variant="article" :rows="4" class="min-h-80 py-6" />
 
       <section
         v-else-if="loadError"
@@ -90,6 +88,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { vContentReveal } from '@/directives/contentReveal'
 
 import { computed, onMounted, ref } from 'vue'

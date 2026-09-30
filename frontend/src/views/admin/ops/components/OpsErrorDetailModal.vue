@@ -1,11 +1,6 @@
 <template>
   <BaseDialog :show="show" :title="title" width="full" :close-on-click-outside="true" @close="close">
-    <div v-if="loading" class="flex items-center justify-center py-16">
-      <div class="flex flex-col items-center gap-3">
-        <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
-        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ t('admin.ops.errorDetail.loading') }}</div>
-      </div>
-    </div>
+    <ContentSkeleton v-if="loading" variant="detail" :rows="8" class="p-6" />
 
     <div v-else-if="!detail" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
       {{ emptyText }}
@@ -229,6 +224,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import Collapse from '@/components/common/Collapse.vue'
 
 import { computed, ref, watch } from 'vue'

@@ -20,8 +20,15 @@
         </div>
       </div>
 
-      <div v-if="loading" class="flex justify-center py-16">
-        <LoadingSpinner />
+      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="space-y-3" aria-hidden="true">
+          <Skeleton :width="192" :height="28" />
+          <Skeleton :width="256" :height="16" />
+        </div>
+        <div class="flex gap-4 border-b border-gray-200 pb-3 dark:border-dark-700" aria-hidden="true">
+          <Skeleton v-for="tab in 3" :key="tab" :width="80" :height="36" />
+        </div>
+        <ContentSkeleton variant="list" :rows="4" class="card p-6" />
       </div>
 
       <div v-else-if="!teamContext" class="mx-auto max-w-xl py-10">
@@ -303,6 +310,8 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { vContentReveal } from '@/directives/contentReveal'
 
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -311,7 +320,6 @@ import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import TeamInvitationDialog from '@/components/team/TeamInvitationDialog.vue'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'

@@ -74,14 +74,7 @@
 
           <div class="p-4">
             <!-- Loading state -->
-            <div v-if="loading" class="flex items-center justify-center py-6">
-              <Icon
-                name="loader"
-                size="lg"
-                :animate-on-hover="false"
-                class="h-6 w-6 animate-spin text-primary-500"
-              />
-            </div>
+            <ContentSkeleton v-if="loading" variant="detail" :rows="4" class="py-4" />
 
             <!-- Content -->
             <template v-else>
@@ -366,17 +359,7 @@
                       </div>
 
                       <!-- 正在加载历史版本 -->
-                      <div
-                        v-else-if="rollbackVersionsLoading"
-                        class="flex items-center justify-center py-4"
-                      >
-                        <Icon
-                          name="loader"
-                          size="md"
-                          :animate-on-hover="false"
-                          class="h-5 w-5 animate-spin text-primary-500"
-                        />
-                      </div>
+                      <ContentSkeleton v-else-if="rollbackVersionsLoading" variant="list" :rows="3" class="py-4" />
 
                       <!-- 加载失败与重试 -->
                       <div v-else-if="rollbackVersionsError" class="space-y-2">
@@ -559,6 +542,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import Collapse from '@/components/common/Collapse.vue'
 
 import MotionTransition from '@/components/common/MotionTransition.vue'
@@ -846,7 +830,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-
 
 .line-clamp-3 {
   display: -webkit-box;

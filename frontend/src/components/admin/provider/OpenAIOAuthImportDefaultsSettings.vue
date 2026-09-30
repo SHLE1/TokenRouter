@@ -10,10 +10,7 @@
     </div>
 
     <div class="space-y-5 p-6">
-      <div v-if="loading" class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-        <div class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"></div>
-        {{ t('common.loading') }}
-      </div>
+      <ContentSkeleton v-if="loading" variant="form" :rows="5" class="py-4" />
 
       <template v-else>
         <section class="space-y-3">
@@ -240,6 +237,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappingEditor.vue'
 import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import { normalizeLegacyOpenAIExtra, normalizeOpenAICompactMode } from '@/utils/openaiLegacyConfiguration'

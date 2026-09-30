@@ -27,8 +27,15 @@
         </div>
       </section>
 
-      <div v-if="loading" class="flex items-center justify-center py-16">
-        <LoadingSpinner />
+      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" aria-hidden="true">
+          <div v-for="card in 3" :key="card" class="card min-w-0 space-y-3 p-4">
+            <Skeleton width="55%" :height="12" />
+            <Skeleton width="75%" :height="28" />
+            <Skeleton width="65%" :height="12" />
+          </div>
+        </div>
+        <ContentSkeleton variant="list" :rows="5" class="card p-6" />
       </div>
 
       <div v-else-if="errorMessage" class="rounded-control border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-200">
@@ -84,6 +91,8 @@
 </template>
 
 <script setup lang="ts">
+import Skeleton from '@/components/common/Skeleton.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, defineComponent, h, onMounted, ref, type PropType } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -93,7 +102,6 @@ import {
   type UsageRankingSortBy,
 } from '@/api/usage'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import UserAvatar from '@/components/common/UserAvatar.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import Icon from '@/components/icons/Icon.vue'

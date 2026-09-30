@@ -57,9 +57,7 @@
           </form>
         </Collapse>
 
-        <div v-if="loading" class="flex justify-center py-6">
-          <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-500"></div>
-        </div>
+        <ContentSkeleton v-if="loading" variant="list" :rows="3" class="py-4" />
 
         <div
           v-else-if="credentials.length === 0"
@@ -124,6 +122,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import Collapse from '@/components/common/Collapse.vue'
 
 import { ref, watch } from 'vue'

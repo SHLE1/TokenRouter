@@ -5,7 +5,7 @@
         <UserAvatar :avatar-url="user.avatar_url || ''" :user-id="user.id" :alt="user.email" size-class="h-10 w-10" />
         <div><p class="font-medium text-gray-900 dark:text-white">{{ user.email }}</p><p class="text-sm text-gray-500 dark:text-dark-400">{{ user.username }}</p></div>
       </div>
-      <div v-if="loading" class="flex justify-center py-8"><Icon name="loader" size="xl" :animate-on-hover="false" class="h-8 w-8 animate-spin text-primary-500" /></div>
+      <ContentSkeleton v-if="loading" variant="list" :rows="3" class="py-4" />
       <div v-else-if="apiKeys.length === 0" class="py-8 text-center"><p class="text-sm text-gray-500">{{ t('admin.users.noApiKeys') }}</p></div>
       <div v-else ref="scrollContainerRef" class="max-h-96 space-y-3 overflow-y-auto" @scroll="closeGroupSelector">
         <div v-for="key in apiKeys" :key="key.id" class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-600 dark:bg-dark-800">
@@ -129,6 +129,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { ref, computed, watch, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'

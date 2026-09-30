@@ -83,13 +83,11 @@
   </div>
 
   <!-- Loading State -->
-  <div v-else-if="loading" class="flex justify-center py-4">
-    <Icon name="loader" size="md" :animate-on-hover="false" class="h-5 w-5 animate-spin text-gray-400" />
-  </div>
+  <ContentSkeleton v-else-if="loading" variant="form" :rows="3" class="py-4" />
 </template>
 
 <script setup lang="ts">
-import Icon from '@/components/icons/Icon.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, watch, onMounted } from 'vue'
 import { adminAPI } from '@/api/admin'
 import type { UserAttributeDefinition, UserAttributeValuesMap } from '@/types'

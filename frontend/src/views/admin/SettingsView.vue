@@ -120,15 +120,7 @@
               </div>
 
               <!-- Loading State -->
-              <div
-                v-if="adminApiKeyLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="adminApiKeyLoading" variant="form" :rows="1" />
 
               <!-- No Key Configured -->
               <div
@@ -255,15 +247,7 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <div
-                v-if="overloadCooldownLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="overloadCooldownLoading" variant="form" :rows="3" />
 
               <template v-else>
                 <div class="flex items-center justify-between">
@@ -347,10 +331,7 @@
             </p>
           </div>
           <div class="space-y-5 p-6">
-            <div v-if="openAI403CooldownLoading" class="flex items-center gap-2 text-gray-500">
-              <div class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"></div>
-              {{ t('common.loading') }}
-            </div>
+            <ContentSkeleton v-if="openAI403CooldownLoading" variant="form" :rows="3" />
 
             <template v-else>
               <div class="flex items-center justify-between">
@@ -482,15 +463,7 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <div
-                v-if="rateLimit429CooldownLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="rateLimit429CooldownLoading" variant="form" :rows="3" />
 
               <template v-else>
                 <div class="flex items-center justify-between">
@@ -583,15 +556,7 @@
             </div>
             <div class="space-y-5 p-6">
               <!-- Loading State -->
-              <div
-                v-if="streamTimeoutLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="streamTimeoutLoading" variant="form" :rows="4" />
 
               <template v-else>
                 <!-- Enable Stream Timeout -->
@@ -745,15 +710,7 @@
             </div>
             <div class="space-y-5 p-6">
               <!-- Loading State -->
-              <div
-                v-if="rectifierLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="rectifierLoading" variant="form" :rows="4" />
 
               <template v-else>
                 <!-- Master Toggle -->
@@ -897,15 +854,7 @@
             </div>
             <div class="space-y-5 p-6">
               <!-- Loading State -->
-              <div
-                v-if="betaPolicyLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="betaPolicyLoading" variant="form" :rows="5" />
 
               <template v-else>
                 <!-- Rule Cards -->
@@ -1775,15 +1724,7 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <div
-                v-if="panelRateLimitLoading"
-                class="flex items-center gap-2 text-gray-500"
-              >
-                <div
-                  class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"
-                ></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="panelRateLimitLoading" variant="form" :rows="4" />
 
               <template v-else>
                 <!-- 计数维度说明：按用户 ID 计数，反代部署无误伤 -->
@@ -4123,10 +4064,7 @@
               </p>
             </div>
             <div class="space-y-5 p-6">
-              <div v-if="ollamaCloudUsageLoading" class="flex items-center gap-2 text-gray-500">
-                <div class="h-4 w-4 animate-spin rounded-full border-b-2 border-primary-600"></div>
-                {{ t("common.loading") }}
-              </div>
+              <ContentSkeleton v-if="ollamaCloudUsageLoading" variant="form" :rows="3" />
               <template v-else>
                 <div class="flex items-center justify-between gap-4">
                   <div>
@@ -4235,7 +4173,6 @@
                 v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
                 data-testid="gateway-scheduling-general"
               >
-
 
                 <div class="mt-5 border-t border-gray-100 pt-5 dark:border-dark-700">
                   <div class="mb-3">
@@ -5494,7 +5431,6 @@
           </button>
         </div>
           </BaseDialog>
-
 
         <!-- 用量记录设置 -->
         <div
@@ -7805,7 +7741,7 @@
                 <Toggle v-model="form.balance_low_notify_enabled" />
               </div>
               <Collapse :open="form.balance_low_notify_enabled" unmount-on-hide>
-                <div >
+                <div>
                   <label
                     class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
                     >{{ t("admin.settings.balanceNotify.threshold") }}</label
@@ -7963,6 +7899,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { vContentReveal } from '@/directives/contentReveal'
 import Collapse from '@/components/common/Collapse.vue'
 

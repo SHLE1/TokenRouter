@@ -10,9 +10,7 @@
     </div>
     <div class="px-6 py-6">
       <!-- Loading state -->
-      <div v-if="loading" class="flex items-center justify-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-      </div>
+      <ContentSkeleton v-if="loading" variant="detail" :rows="2" class="py-4" />
 
       <!-- Feature disabled globally -->
       <div v-else-if="status && !status.feature_enabled" class="flex items-center gap-4 py-4">
@@ -99,6 +97,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { useLeavingPresence } from '@/composables/useLeavingPresence'
 import Icon from '@/components/icons/Icon.vue'
 import { ref, onMounted } from 'vue'

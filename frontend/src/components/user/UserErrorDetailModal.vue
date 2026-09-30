@@ -1,14 +1,7 @@
 <template>
   <BaseDialog :show="show" :title="t('usage.errors.detail.title')" width="wide" @close="emit('update:show', false)">
     <!-- 加载中 -->
-    <div v-if="loading" class="flex justify-center py-10">
-      <Icon
-        name="loader"
-        size="md"
-        :animate-on-hover="false"
-        class="h-7 w-7 animate-spin text-primary-500"
-      />
-    </div>
+    <ContentSkeleton v-if="loading" variant="detail" :rows="8" class="p-6" />
 
     <!-- 加载失败 -->
     <div v-else-if="loadError" class="py-8 text-center text-sm text-red-500">
@@ -73,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import Icon from '@/components/icons/Icon.vue'
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'

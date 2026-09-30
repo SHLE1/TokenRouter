@@ -37,8 +37,25 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <LoadingSpinner />
+      <div v-if="loading" class="space-y-6" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4" aria-hidden="true">
+          <div v-for="card in 4" :key="card" class="card min-w-0 space-y-3 p-4">
+            <Skeleton width="55%" :height="12" />
+            <Skeleton width="75%" :height="28" />
+            <Skeleton width="65%" :height="12" />
+          </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" aria-hidden="true">
+          <div v-for="card in 6" :key="card" class="card min-w-0 space-y-3 p-4">
+            <Skeleton width="55%" :height="12" />
+            <Skeleton width="75%" :height="28" />
+            <Skeleton width="65%" :height="12" />
+          </div>
+        </div>
+        <div class="card space-y-4 p-4">
+          <Skeleton :width="128" :height="16" />
+          <ChartSkeleton height="256px" />
+        </div>
       </div>
 
       <template v-else-if="stats">
@@ -442,6 +459,8 @@
 </template>
 
 <script setup lang="ts">
+import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
+import Skeleton from '@/components/common/Skeleton.vue'
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -457,7 +476,6 @@ import {
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import ModelDistributionChart from '@/components/charts/ModelDistributionChart.vue'
 import EndpointDistributionChart from '@/components/charts/EndpointDistributionChart.vue'
 import BalanceIcon from '@/components/common/BalanceIcon.vue'

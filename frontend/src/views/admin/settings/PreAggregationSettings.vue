@@ -25,9 +25,7 @@
       </button>
     </div>
 
-    <div v-if="loading && !state" class="flex min-h-40 items-center justify-center text-gray-400">
-      <Icon name="refresh" size="lg" class="animate-spin" :animate-on-hover="false" />
-    </div>
+    <ContentSkeleton v-if="loading && !state" variant="form" :rows="4" class="py-4" />
 
     <div v-else-if="state" class="divide-y divide-gray-100 dark:divide-dark-700">
       <div class="grid gap-6 p-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
@@ -160,6 +158,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, defineComponent, h, onMounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";

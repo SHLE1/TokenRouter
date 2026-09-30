@@ -13,14 +13,7 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="flex justify-center py-12">
-        <Icon
-          name="loader"
-          size="xl"
-          :animate-on-hover="false"
-          class="h-8 w-8 animate-spin text-primary-500"
-        />
-      </div>
+      <ContentSkeleton v-if="loading" variant="list" :rows="3" class="py-4" />
 
       <!-- Empty State -->
       <div v-else-if="attributes.length === 0" class="py-12 text-center">
@@ -237,6 +230,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

@@ -11,14 +11,7 @@
       </div>
 
       <!-- 加载状态 -->
-      <div v-if="loading" class="flex justify-center py-12">
-        <Icon
-          name="loader"
-          size="md"
-          :animate-on-hover="false"
-          class="h-10 w-10 animate-spin text-primary-500"
-        />
-      </div>
+      <ContentSkeleton v-if="loading" variant="form" :rows="4" class="py-4" />
 
       <div v-else class="space-y-6">
         <!-- 专属分组区域 -->
@@ -201,6 +194,7 @@
 </template>
 
 <script setup lang="ts">
+import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
