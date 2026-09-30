@@ -15,7 +15,6 @@ jobs:
       - name: Check deployment scripts
         run: |
           /bin/bash -n deploy/apple-container.sh deploy/install.sh
-          /bin/bash deploy/tests/install-brand-test.sh
           /bin/bash deploy/tests/apple-container-test.sh
           /bin/sh deploy/tests/docker-compose-security-test.sh
           /bin/sh deploy/tests/docker-compose-postgres-test.sh
@@ -24,6 +23,14 @@ jobs:
           /bin/sh deploy/tests/docker-runtime-resources-test.sh
           /bin/sh deploy/test-caddyfile-cache.sh
           /bin/sh tools/goreleaser_prebuilt_test.sh
+
+  installer:
+    # Linux 安装器依赖 Bash 4+ 和 sha256sum；macOS 系统 Bash 仅支持 3.2。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check installer compatibility
+        run: bash deploy/tests/install-brand-test.sh
 
   test:
     runs-on: ubuntu-latest

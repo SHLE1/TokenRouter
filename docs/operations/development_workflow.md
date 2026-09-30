@@ -168,6 +168,8 @@ npx --yes pnpm@9 --dir frontend run build
 
 部署文件变更要运行 `.github/workflows/backend-ci.yml` 中对应的 shell/Compose 检查；依赖或安全边界变更还应运行 `make secret-scan`、`govulncheck` 或相应审计。最终至少执行 `git diff --check`，并确认没有意外生成物、环境文件或秘密。
 
+CI 的安装器兼容测试在 Linux 上运行，依赖 Bash 4+ 和 `sha256sum`。Apple container 测试及其余 shell/Compose 检查在 macOS 上运行，继续覆盖系统自带的 Bash 3.2。
+
 ## 提交与文档
 
 提交信息遵循 Conventional Commits，例如 `feat(gateway): ...`、`fix(billing): ...`、`docs(project): ...`。一次提交应围绕一个可验证目的，生成文件、迁移和契约测试与其源变更一起提交。
