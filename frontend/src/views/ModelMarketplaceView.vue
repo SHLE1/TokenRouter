@@ -233,9 +233,10 @@
                     :content="t('marketplace.rateMultiplierHint')"
                   >
                     <template #trigger>
+                      <!-- 倍率使用中性填充，深色底与卡片拉开层次。 -->
                       <span
                         data-testid="group-rate-multiplier-tag"
-                        class="rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200"
+                        class="rounded-full border border-gray-200/80 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-600 dark:border-dark-600 dark:bg-dark-700/60 dark:text-dark-200"
                       >
                         {{ formatRateMultiplierLabel(group.rate_multiplier) }}
                       </span>
