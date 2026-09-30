@@ -20,10 +20,11 @@
           <MotionTransition persisted name="dropdown-fade">
             <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute left-0 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
               <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
+              <!-- 未设置的条件可能是 undefined，统一按 null 显示，才能匹配各下拉框的“全部”选项 -->
               <div class="flex flex-wrap items-end gap-4">
           <div v-if="mode === 'usage'" class="w-full sm:w-auto sm:min-w-[200px]">
             <label class="input-label">{{ t('admin.usage.teamFilter') }}</label>
-            <Select v-model="filters.team_id" :options="teamOptions" searchable @change="emitChange" />
+            <Select :model-value="filters.team_id ?? null" @update:model-value="filters.team_id = $event" :options="teamOptions" searchable @change="emitChange" />
           </div>
 
           <!-- User Search -->
@@ -107,7 +108,7 @@
           <!-- Model Filter -->
           <div class="w-full sm:w-auto sm:min-w-[220px]">
             <label class="input-label">{{ t('usage.model') }}</label>
-            <Select v-model="filters.model" :options="modelOptions" searchable @change="emitChange" />
+            <Select :model-value="filters.model ?? null" @update:model-value="filters.model = $event" :options="modelOptions" searchable @change="emitChange" />
           </div>
 
           <!-- Provider Filter -->
@@ -152,49 +153,49 @@
           <!-- 请求类型筛选，仅用于用量列表。 -->
           <div v-if="mode !== 'errors'" class="w-full sm:w-auto sm:min-w-[180px]">
             <label class="input-label">{{ t('usage.type') }}</label>
-            <Select v-model="filters.request_type" :options="requestTypeOptions" @change="emitChange" />
+            <Select :model-value="filters.request_type ?? null" @update:model-value="filters.request_type = $event" :options="requestTypeOptions" @change="emitChange" />
           </div>
 
           <!-- 计费类型筛选，仅用于用量列表。 -->
           <div v-if="mode !== 'errors'" class="w-full sm:w-auto sm:min-w-[200px]">
             <label class="input-label">{{ t('admin.usage.billingType') }}</label>
-            <Select v-model="filters.billing_type" :options="billingTypeOptions" @change="emitChange" />
+            <Select :model-value="filters.billing_type ?? null" @update:model-value="filters.billing_type = $event" :options="billingTypeOptions" @change="emitChange" />
           </div>
 
           <!-- 计费模式筛选仅用于用量列表；用户排行接口不支持该维度。 -->
           <div v-if="mode === 'usage'" class="w-full sm:w-auto sm:min-w-[200px]">
             <label class="input-label">{{ t('admin.usage.billingMode') }}</label>
-            <Select v-model="filters.billing_mode" :options="billingModeOptions" @change="emitChange" />
+            <Select :model-value="filters.billing_mode ?? null" @update:model-value="filters.billing_mode = $event" :options="billingModeOptions" @change="emitChange" />
           </div>
 
           <!-- 原生 compaction 筛选仅适用于用量记录。 -->
           <div v-if="mode !== 'errors'" class="w-full sm:w-auto sm:min-w-[220px]">
             <label class="input-label">{{ t('usage.compactionFilter') }}</label>
-            <Select v-model="filters.native_compaction_v2" :options="compactionOptions" @change="emitChange" />
+            <Select :model-value="filters.native_compaction_v2 ?? null" @update:model-value="filters.native_compaction_v2 = $event" :options="compactionOptions" @change="emitChange" />
           </div>
 
           <!-- 错误阶段筛选，仅用于错误列表。 -->
           <div v-if="mode === 'errors'" class="w-full sm:w-auto sm:min-w-[180px]">
             <label class="input-label">{{ t('admin.ops.errorLog.type') }}</label>
-            <Select v-model="filters.error_phase" :options="errorPhaseOptions" @change="emitChange" />
+            <Select :model-value="filters.error_phase ?? null" @update:model-value="filters.error_phase = $event" :options="errorPhaseOptions" @change="emitChange" />
           </div>
 
           <!-- 错误分类筛选，仅用于错误列表。 -->
           <div v-if="mode === 'errors'" class="w-full sm:w-auto sm:min-w-[180px]">
             <label class="input-label">{{ t('usage.errors.category') }}</label>
-            <Select v-model="filters.error_category" :options="errorCategoryOptions" @change="emitChange" />
+            <Select :model-value="filters.error_category ?? null" @update:model-value="filters.error_category = $event" :options="errorCategoryOptions" @change="emitChange" />
           </div>
 
           <!-- 状态码筛选，仅用于错误列表。 -->
           <div v-if="mode === 'errors'" class="w-full sm:w-auto sm:min-w-[180px]">
             <label class="input-label">{{ t('admin.ops.errorLog.status') }}</label>
-            <Select v-model="filters.status_code" :options="statusCodeOptions" @change="emitChange" />
+            <Select :model-value="filters.status_code ?? null" @update:model-value="filters.status_code = $event" :options="statusCodeOptions" @change="emitChange" />
           </div>
 
           <!-- Group Filter -->
           <div class="w-full sm:w-auto sm:min-w-[200px]">
             <label class="input-label">{{ t('admin.usage.group') }}</label>
-            <Select v-model="filters.group_id" :options="groupOptions" searchable @change="emitChange" />
+            <Select :model-value="filters.group_id ?? null" @update:model-value="filters.group_id = $event" :options="groupOptions" searchable @change="emitChange" />
           </div>
               </div>
             </div>

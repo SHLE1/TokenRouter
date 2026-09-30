@@ -304,6 +304,7 @@ import type {
   TrendDataPoint,
   UsageLog,
   UsageQueryParams,
+  UsageRequestType,
   UsageStatsResponse,
   UserErrorRequest,
 } from '@/types'
@@ -424,10 +425,21 @@ const endpointDistributionSource = ref<EndpointSource>('inbound')
 const activeTab = ref<'usage' | 'errors'>('usage')
 const errorViewEnabled = computed(() => appStore.cachedPublicSettings?.allow_user_view_error_requests ?? false)
 
-const filters = ref<UsageQueryParams>({
+// 筛选框的“全部”选项值为 null，这几项必须初始化为 null 才能显示对应文案，发请求前再去掉。
+type UsageFilterState = Omit<UsageQueryParams, 'api_key_id' | 'group_id' | 'model' | 'request_type'> & {
+  api_key_id: number | null
+  group_id: number | null
+  model: string | null
+  request_type: UsageRequestType | null
+}
+
+const filters = ref<UsageFilterState>({
   start_date: startDate.value,
   end_date: endDate.value,
-  request_type: undefined,
+  api_key_id: null,
+  group_id: null,
+  model: null,
+  request_type: null,
   billing_type: null,
   billing_mode: null,
   native_compaction_v2: null,
@@ -497,6 +509,10 @@ const normalizedFilters = computed<UsageQueryParams>(() => {
   const legacyStream = requestType ? requestTypeToLegacyStream(requestType) : filters.value.stream
   return {
     ...filters.value,
+    api_key_id: filters.value.api_key_id ?? undefined,
+    group_id: filters.value.group_id ?? undefined,
+    model: filters.value.model || undefined,
+    request_type: requestType ?? undefined,
     start_date: startDate.value,
     end_date: endDate.value,
     stream: legacyStream === null ? undefined : legacyStream,
