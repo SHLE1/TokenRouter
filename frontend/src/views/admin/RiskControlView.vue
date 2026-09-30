@@ -252,13 +252,13 @@
               </button>
             </div>
 
-            <div class="inline-flex rounded-control bg-gray-100 p-1 dark:bg-dark-700">
+            <div class="segmented">
               <button
                 v-for="tab in recordTabs"
                 :key="tab.id"
                 type="button"
-                class="rounded-control px-3 py-1.5 text-sm font-medium transition-colors"
-                :class="activeRecordTab === tab.id ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-800 dark:text-white' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'"
+                class="segmented-item px-3 py-1.5 text-sm"
+                :class="{ 'segmented-item-active': activeRecordTab === tab.id }"
                 @click="switchRecordTab(tab.id)"
               >
                 {{ tab.label }}
@@ -881,19 +881,19 @@
                 <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('admin.riskControl.groupScope') }}</h3>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.groupScopeHint') }}</p>
               </div>
-              <div class="inline-flex rounded-control bg-gray-100 p-1 dark:bg-dark-700">
+              <div class="segmented">
                 <button
                   type="button"
-                  class="rounded-control px-3 py-1.5 text-sm font-medium transition-colors"
-                  :class="configForm.all_groups ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-800 dark:text-white' : 'text-gray-500 dark:text-gray-400'"
+                  class="segmented-item px-3 py-1.5 text-sm"
+                  :class="{ 'segmented-item-active': configForm.all_groups }"
                   @click="configForm.all_groups = true"
                 >
                   {{ t('admin.riskControl.allGroups') }}
                 </button>
                 <button
                   type="button"
-                  class="rounded-control px-3 py-1.5 text-sm font-medium transition-colors"
-                  :class="!configForm.all_groups ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-800 dark:text-white' : 'text-gray-500 dark:text-gray-400'"
+                  class="segmented-item px-3 py-1.5 text-sm"
+                  :class="{ 'segmented-item-active': !configForm.all_groups }"
                   @click="configForm.all_groups = false"
                 >
                   {{ t('admin.riskControl.selectedGroups') }}

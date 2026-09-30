@@ -63,25 +63,25 @@
       <template v-else>
         <!-- 上下文与模式是两个独立开关，与模型广场定价面板同款；价格行展示当前组合应用后的单价。 -->
         <div v-if="availableContexts.length > 1 || availableTiers.length > 1" class="flex flex-wrap items-center justify-end gap-2">
-          <div v-if="availableContexts.length > 1" class="inline-flex max-w-full flex-wrap rounded-compact bg-gray-100 p-0.5 dark:bg-dark-800" data-testid="pricing-context-switch">
+          <div v-if="availableContexts.length > 1" class="segmented max-w-full flex-wrap" data-testid="pricing-context-switch">
             <button
               v-for="context in availableContexts"
               :key="context"
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="context === activeContext ? segmentActiveClass : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': context === activeContext }"
               @click="selectedContext = context"
             >
               {{ contextRangeLabel(context) }}
             </button>
           </div>
-          <div v-if="availableTiers.length > 1" class="inline-flex max-w-full flex-wrap rounded-control bg-gray-100 p-0.5 dark:bg-dark-800" data-testid="pricing-tier-switch">
+          <div v-if="availableTiers.length > 1" class="segmented max-w-full flex-wrap" data-testid="pricing-tier-switch">
             <button
               v-for="tier in availableTiers"
               :key="tier"
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="tier === activeTier ? segmentActiveClass : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': tier === activeTier }"
               @click="selectedTier = tier"
             >
               {{ t(`admin.pricing.defaults.tiers.${tier}`) }}
@@ -153,8 +153,6 @@ function priceLabel(key: string): string {
 
 type PricingContext = 'standard' | 'long_context' | number
 type PricingTier = 'standard' | 'fast' | 'flex'
-const segmentActiveClass = 'bg-white text-gray-900 shadow-sm dark:bg-dark-950 dark:text-white'
-const segmentInactiveClass = 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200'
 const selectedContext = ref<PricingContext>('standard')
 const selectedTier = ref<PricingTier>('standard')
 function comboPrefix(context: PricingContext, tier: PricingTier): string {

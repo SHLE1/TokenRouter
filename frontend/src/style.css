@@ -1151,6 +1151,24 @@
     box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), 0 0 #0000;
   }
 
+  /* ============ 分段切换 ============ */
+  /* 中性底色的分段控件，只统一颜色和选中态，尺寸由调用方用工具类决定。
+     选中项白底加描边：浅色下轨道与白底接近，只靠阴影分不清边界。 */
+  .segmented {
+    @apply inline-flex rounded-control border border-gray-200 bg-gray-50 p-0.5;
+    @apply dark:border-dark-600 dark:bg-dark-800;
+  }
+
+  .segmented-item {
+    @apply rounded-control font-medium transition-colors duration-fast;
+    @apply text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200;
+  }
+
+  .segmented-item-active {
+    @apply bg-white text-gray-900 shadow-sm ring-1 ring-gray-300;
+    @apply hover:text-gray-900 dark:bg-dark-700 dark:text-white dark:ring-dark-600 dark:hover:text-white;
+  }
+
   /* ============ 进度条 ============ */
   .progress {
     @apply h-2 overflow-hidden rounded-full bg-primary-100 dark:bg-dark-700;

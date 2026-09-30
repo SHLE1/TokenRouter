@@ -55,6 +55,7 @@
 - 原生按钮、`role="button"` 和 `.btn` 禁止文字选取，按钮内图片禁止浏览器拖拽；正文、表格数据和输入内容仍可选取复制。
 - 图标按钮两档：`.btn-icon`（h-9 w-9）与 `.btn-icon-sm`（h-8 w-8），自带 `rounded-control` 与居中布局，站点只补 hover/颜色类；`.btn-sm` 用于表格行内等紧凑场景。
 - 下拉触发器（Select、DateRangePicker）模板组合 `input input-trigger` + 各自状态类，不复制基线配方。
+- 分段切换（两到五个互斥选项，如指标、时间范围、数据来源）统一用 `style.css` 的 `.segmented` 轨道、`.segmented-item` 选项和 `.segmented-item-active` 选中态，不再手写灰底白块。三个类只管颜色、圆角和选中描边，内边距、字号和高度由调用方补工具类；放进 36px 工具栏时给轨道加 `h-9 items-stretch`。选中项必须保留 1px 描边，浅色下只靠阴影和白底分不清边界。页面级大页签仍用 `.tabs`。
 - 输入框图标/字符前后缀统一走 `input-icon-*` 机制（`style.css`）：容器 `input-icon-wrap`，图标位 `input-icon` / `input-icon-right`（可点击内容加 `input-icon-action`），输入框按侧加 `input-has-icon` / `input-has-icon-right`；文本留白由变量推导（`留白 = inset + slot`）。档位：默认（inset 0.75rem、留白 2.5rem）、`input-icon-lg`（auth 表单，inset 0.875rem、留白 2.75rem）、`input-icon-text`（`$` 等窄字符前缀，留白 2rem），紧凑搜索框内联 `--input-icon-slot:1.5rem`（留白 2.25rem）。
 - 价格管理和属性管理的搜索框使用同一图标布局，`sm` 及以上固定为 `w-64`，更窄时随工具栏剩余宽度伸缩，提示写明配置名称或模型名称。工具栏相邻控件统一使用 `gap-2`；配置页的状态筛选框使用 `w-32 shrink-0`，默认目录页的两个筛选条件收纳到 `FilterDropdown`，支持条件计数、重置、Esc 和点击外部关闭。条件较多时传入 `wide`，面板加宽，默认向右展开，右侧放不下时改为向左展开；调用方在插槽内用两列网格排列字段（参考用户仪表盘的用量筛选）。两页的默认目录信息共用 `ModelCatalogInfo`，以辅助字号展示来源、短版本号和更新时间，窄屏自动换行。
 

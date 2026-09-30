@@ -2,17 +2,15 @@
   <AppLayout>
     <!-- 页签与标题同行放在页头右侧；支付中和订阅确认时隐藏。 -->
     <template v-if="!loading && tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" #page-heading-actions>
-      <div role="tablist" class="inline-flex gap-1 rounded-control bg-gray-100 p-1 dark:bg-dark-950">
+      <div role="tablist" class="segmented gap-1">
         <button
           v-for="tab in tabs"
           :key="tab.key"
           type="button"
           role="tab"
           :aria-selected="activeTab === tab.key"
-          class="flex h-8 items-center justify-center rounded-compact px-4 text-sm font-medium transition-colors"
-          :class="activeTab === tab.key
-            ? 'bg-white text-gray-900 shadow-sm dark:bg-primary-500/8 dark:text-primary-500 dark:shadow-none'
-            : 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-100'"
+          class="segmented-item flex h-8 items-center justify-center px-4 text-sm"
+          :class="{ 'segmented-item-active': activeTab === tab.key }"
           @click="activeTab = tab.key"
         >
           {{ tab.label }}

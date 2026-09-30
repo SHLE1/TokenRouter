@@ -25,15 +25,15 @@
         >
           <div
             v-if="selectableIntervals.length > 0"
-            class="inline-flex max-w-full flex-wrap rounded-compact bg-gray-100 p-0.5 dark:bg-dark-800"
+            class="segmented max-w-full flex-wrap"
             data-testid="pricing-interval-switch"
           >
             <button
               v-for="(item, index) in selectableIntervals"
               :key="item.key"
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="index === activeIntervalIndex ? segmentActiveClass : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': index === activeIntervalIndex }"
               @click="selectedIntervalIndex = index"
             >
               {{ formatCompactTokenRange(item.interval.min_tokens, item.interval.max_tokens) }}
@@ -41,21 +41,21 @@
           </div>
           <div
             v-if="hasFastPricing"
-            class="inline-flex max-w-full flex-wrap rounded-control bg-gray-100 p-0.5 dark:bg-dark-800"
+            class="segmented max-w-full flex-wrap"
             data-testid="pricing-fast-switch"
           >
             <button
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="!fastMode ? segmentActiveClass : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': !fastMode }"
               @click="fastMode = false"
             >
               {{ t('marketplace.pricingStandard') }}
             </button>
             <button
               type="button"
-              class="rounded-control px-2 py-0.5 text-xs font-semibold transition"
-              :class="fastMode ? segmentActiveClass : segmentInactiveClass"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': fastMode }"
               @click="fastMode = true"
             >
               {{ t('marketplace.pricingFast') }}
@@ -103,8 +103,6 @@ const expanded = ref(false)
 const fastMode = ref(false)
 const selectedIntervalIndex = ref(0)
 
-const segmentActiveClass = 'bg-white text-gray-900 shadow-sm dark:bg-dark-950 dark:text-white'
-const segmentInactiveClass = 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200'
 
 interface PricingRow {
   key: string

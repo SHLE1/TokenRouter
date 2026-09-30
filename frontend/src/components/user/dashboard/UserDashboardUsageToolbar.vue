@@ -49,13 +49,17 @@
       :end-date="pickerEnd"
       @change="selectCustomRange"
     />
-    <div class="tabs" role="group" :aria-label="t('dashboard.usageChart.rangeLabel')">
+    <div
+      class="segmented h-9 items-stretch"
+      role="group"
+      :aria-label="t('dashboard.usageChart.rangeLabel')"
+    >
       <button
         v-for="option in rangeOptions"
         :key="option.value"
         type="button"
-        class="tab px-3 py-1.5 text-xs"
-        :class="{ 'tab-active': rangePreset === option.value }"
+        class="segmented-item flex items-center px-3 text-xs"
+        :class="{ 'segmented-item-active': rangePreset === option.value }"
         :aria-pressed="rangePreset === option.value"
         :data-testid="`usage-range-${option.value}`"
         @click="selectPreset(option.value)"
