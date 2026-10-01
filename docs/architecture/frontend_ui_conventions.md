@@ -112,6 +112,7 @@
 ## 弹窗
 
 - 默认入口是 `BaseDialog`：宽度档位 narrow/normal/wide/extra-wide/full，Escape 关闭、点击外部关闭、焦点管理与背景滚动锁定全部内置，新弹窗不要再手写 `fixed inset-0` 外壳。
+- 标题需要说明或图标时，用 `subtitle` 在标题下加一行 `text-xs` 说明，用 `header-icon` 插槽在标题左侧放图标块，不要自己重写头部。提供商连接测试弹窗采用左侧参数、右侧状态与回复的双栏工作区布局，可作为参考。
 - 分页表单可设置 `BaseDialog` 的 `bodyScroll=false`，由表单内部管理滚动；标题、页签和底部操作区保持可见。默认仍由弹窗内容区滚动。分组创建/编辑（`GroupSettingsForm`）和提供商创建/编辑/批量编辑都按[设置表单](#settings_form)约定分页。
 - 安全凭证流程（TOTP 设置/禁用/登录验证/提权）走 `AuthCardDialog`：居中图标头、无右上角关闭按钮、整卡 p-6，是与 BaseDialog 并存的独立风格族。它不 teleport、保持内联渲染，嵌套层级由 `z-index` prop 决胜。
 - 分诊标准：结构同构（标题头 + 内容 + 按钮行）的手写弹窗迁 BaseDialog；有定制视觉结构的保留并登记在下面的例外清单。
@@ -287,7 +288,7 @@
 - `onboarding.css` 覆盖 driver.js 第三方样式时的 `!important`。
 - i18n 文案中内嵌的导览 HTML（`src/i18n/**`）属于内容字符串，其 inline style 不参与 token 校验。
 - 测试文件里的负断言（断言某类名不存在）会命中扫描，行尾加 `check-ui-allow` 豁免。
-- 弹窗分诊保留的手写外壳：BackupView R2Guide 与 SubscriptionsView 指南弹窗（max-w-2xl 无 BaseDialog 对应档位）、AnnouncementPopup 与 AnnouncementBell 弹窗（独立层级梯队 + 定制过渡）、两个 ProviderTestModal 的图片灯箱（媒体覆盖层，用强遮罩档）。新增弹窗默认走 BaseDialog，不复刻这些结构。
+- 弹窗分诊保留的手写外壳：BackupView R2Guide 与 SubscriptionsView 指南弹窗（max-w-2xl 无 BaseDialog 对应档位）、AnnouncementPopup 与 AnnouncementBell 弹窗（独立层级梯队 + 定制过渡）、ProviderTestModal 的图片灯箱（媒体覆盖层，用强遮罩档）。新增弹窗默认走 BaseDialog，不复刻这些结构。
 - RiskControlView 搜索框的 `pl-9` 图标留白（与 `input-icon-*` 档位值都不重合，局部保留）。
 - ProvidersView 的鼠标跟随操作菜单（定位语义独特，不走 `getFloatingPanelPosition`）。
 - textarea 内容驱动高度、GroupBadge 方角造型、OpsDashboard 的 250ms 路由同步防抖（语义不同于搜索防抖）、CreativeCanvas 工具条与 CreativeRunHistory 条目详情的结构性展开动画，均属局部语义，不强行入档。

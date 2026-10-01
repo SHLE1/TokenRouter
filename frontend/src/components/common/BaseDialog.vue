@@ -19,10 +19,18 @@
           @click.stop
         >
           <!-- 头部 -->
-          <div class="modal-header min-w-0 max-w-full">
-            <h3 :id="dialogId" class="modal-title min-w-0 break-words">
-              {{ title }}
-            </h3>
+          <div class="modal-header min-w-0 max-w-full gap-3">
+            <div class="flex min-w-0 flex-1 items-center gap-3">
+              <slot name="header-icon"></slot>
+              <div class="min-w-0">
+                <h3 :id="dialogId" class="modal-title min-w-0 break-words">
+                  {{ title }}
+                </h3>
+                <p v-if="subtitle" class="mt-0.5 truncate text-xs text-gray-500 dark:text-dark-400">
+                  {{ subtitle }}
+                </p>
+              </div>
+            </div>
             <button
               @click="emit('close')"
               class="-mr-2 rounded-control p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10 focus-visible:ring-offset-2 dark:text-dark-500 dark:hover:bg-dark-700 dark:hover:text-dark-300 dark:focus-visible:ring-primary-500/30 dark:focus-visible:ring-offset-dark-900"
@@ -74,6 +82,8 @@ type DialogWidth = 'narrow' | 'normal' | 'wide' | 'extra-wide' | 'full'
 interface Props {
   show: boolean
   title: string
+  /** 标题下方的一行说明，超出时截断。 */
+  subtitle?: string
   width?: DialogWidth
   bodyScroll?: boolean
   closeOnEscape?: boolean

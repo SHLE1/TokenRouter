@@ -76,7 +76,9 @@ function mountModal(provider: Record<string, unknown> = {
     global: {
       stubs: {
         BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' },
-        Select: { template: '<div class="select-stub"></div>' },
+        Select: { props: ['disabled'], template: '<div class="select-stub" :data-disabled="disabled ? \'true\' : \'false\'"></div>' },
+        HelpTooltip: true,
+        PlatformIcon: true,
         TextArea: {
           props: ['modelValue'],
           emits: ['update:modelValue'],
@@ -145,7 +147,7 @@ describe('ProviderTestModal', () => {
       test_type: 'image'
     })
 
-    const preview = wrapper.find('img[alt="test-image-1"]')
+    const preview = wrapper.find('img[alt="admin.providers.imagePreviewAlt"]')
     expect(preview.exists()).toBe(true)
     expect(preview.attributes('src')).toBe('data:image/png;base64,QUJD')
   })
@@ -201,8 +203,11 @@ describe('ProviderTestModal', () => {
     expect(JSON.parse(request.body).protocol).toBe('chat_completions')
     expect(request.headers[ADMIN_UI_REQUEST_HEADER]).toBe('1')
     expect(provider.extra.openai_text_route_mode).toBe('force_responses')
+    expect(wrapper.find('[data-testid="provider-test-protocol"]').attributes('data-disabled')).toBe('false')
     await wrapper.setProps({ provider: { ...provider, type: 'oauth' } } as any)
-    expect(wrapper.find('[data-testid="provider-test-protocol"]').exists()).toBe(false)
+    // OAuth 只有 Codex Responses，协议框保留展示但不可选。
+    expect(wrapper.find('[data-testid="provider-test-protocol"]').attributes('data-disabled')).toBe('true')
+    expect((wrapper.vm as any).testProtocol).toBe('responses')
     wrapper.unmount()
   })
 
@@ -295,5 +300,100 @@ describe('ProviderTestModal', () => {
       prompt: 'say hello in one sentence',
       test_type: 'text'
     })
+  })
+
+  it('国产平台可只测一个已启用协议，也可依次测试全部协议', async () => {
+    getAvailableModels.mockResolvedValue([{ id: 'glm-4.7', display_name: 'GLM 4.7' }])
+    global.fetch = vi.fn().mockImplementation(async () =>
+      createStreamResponse(['data: {"type":"test_complete","success":true}\n'])
+    ) as any
+
+    const wrapper = mountModal({
+      id: 7,
+      name: 'Zhipu',
+      platform: 'zhipu',
+      type: 'apikey',
+      status: 'active',
+      credentials: { upstream_protocols: ['anthropic_messages', 'openai_chat_completions'] }
+    })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+
+    expect((wrapper.vm as any).testProtocol).toBe('chat_completions')
+    expect((wrapper.vm as any).protocolOptions.map((item: { value: string }) => item.value)).toEqual(['chat_completions', 'anthropic', 'all'])
+
+    ;(wrapper.vm as any).testProtocol = 'anthropic'
+    await (wrapper.vm as any).startTest()
+    await flushPromises()
+    expect(JSON.parse((global.fetch as any).mock.calls[0][1].body).protocol).toBe('anthropic')
+
+    ;(wrapper.vm as any).testProtocol = 'all'
+    await (wrapper.vm as any).startTest()
+    await flushPromises()
+    expect(JSON.parse((global.fetch as any).mock.calls[1][1].body)).not.toHaveProperty('protocol')
+  })
+
+  it('只启用一个协议的国产平台不发送协议字段', async () => {
+    const wrapper = mountModal({
+      id: 8,
+      name: 'Kimi',
+      platform: 'kimi',
+      type: 'apikey',
+      status: 'active',
+      credentials: { upstream_protocols: ['openai_responses'] }
+    })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="provider-test-protocol"]').attributes('data-disabled')).toBe('true')
+    await (wrapper.vm as any).startTest()
+    await flushPromises()
+    expect(JSON.parse((global.fetch as any).mock.calls[0][1].body)).not.toHaveProperty('protocol')
+  })
+
+  it('展示回复、实际模型、状态和过程日志', async () => {
+    getAvailableModels.mockResolvedValue([{ id: 'gpt-5.4', display_name: 'GPT-5.4' }])
+    global.fetch = vi.fn().mockResolvedValue(
+      createStreamResponse([
+        'data: {"type":"test_start","model":"gpt-5.4-mapped"}\n',
+        'data: {"type":"status","text":"正在通过 /v1/chat/completions 测试连接"}\n',
+        'data: {"type":"content","text":"hello"}\n',
+        'data: {"type":"test_complete","success":true}\n'
+      ])
+    ) as any
+
+    const wrapper = mountModal({ id: 9, name: 'OpenAI', platform: 'openai', type: 'apikey', status: 'active' })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    await wrapper.find('[data-testid="provider-test-start"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="provider-test-status"]').text()).toContain('admin.providers.testDialog.statusSuccess')
+    expect(wrapper.find('[data-testid="provider-test-output"]').text()).toContain('hello')
+    expect(wrapper.text()).toContain('gpt-5.4-mapped')
+    expect((wrapper.vm as any).firstTokenMs).not.toBeNull()
+    expect((wrapper.vm as any).totalMs).not.toBeNull()
+
+    ;(wrapper.vm as any).outputView = 'log'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="provider-test-output"]').text()).toContain('/v1/chat/completions')
+  })
+
+  it('错误事件后补发的完成事件不会覆盖失败结果', async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      createStreamResponse([
+        'data: {"type":"error","error":"upstream 401"}\n',
+        'data: {"type":"test_complete","success":false,"error":"later"}\n'
+      ])
+    ) as any
+
+    const wrapper = mountModal()
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    await (wrapper.vm as any).startTest()
+    await flushPromises()
+
+    expect((wrapper.vm as any).status).toBe('error')
+    expect((wrapper.vm as any).errorMessage).toBe('upstream 401')
   })
 })
