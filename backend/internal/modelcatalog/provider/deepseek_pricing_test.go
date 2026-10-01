@@ -1,6 +1,6 @@
 //go:build unit
 
-package billing_test
+package provider
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 
 // TestDeepseekDefaultCatalogUsesNativeEntries 验证默认目录原厂报价；中继的历史型号仍可独立存在。
 func TestDeepseekDefaultCatalogUsesNativeEntries(t *testing.T) {
-	pricingService := newOfflineCatalogFixture(t)
+	pricingService := newOfflinePricingFixture(t)
 	pricingData := pricingService.Snapshot().Data
 
 	for _, tc := range []struct {

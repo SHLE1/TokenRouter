@@ -259,24 +259,6 @@ func TestDefaultPricingIncludesModelsDevGPT6AstraRates(t *testing.T) {
 	require.Equal(t, []string{"text"}, outputModalities)
 }
 
-func assertGPT6AstraFallbackPricing(t *testing.T, pricing *billingpricing.ModelPricing) {
-	t.Helper()
-	require.InDelta(t, 10e-6, pricing.InputPricePerToken, 1e-12)
-	require.InDelta(t, 1e-6, pricing.CacheReadPricePerToken, 1e-12)
-	require.InDelta(t, 12.5e-6, pricing.CacheCreationPricePerToken, 1e-12)
-	require.InDelta(t, 50e-6, pricing.OutputPricePerToken, 1e-12)
-	require.Zero(t, pricing.LongContextInputThreshold)
-}
-
-func assertGPT56FallbackPricing(t *testing.T, pricing *billingpricing.ModelPricing, input, cached, cacheWrite, output float64) {
-	t.Helper()
-	require.InDelta(t, input, pricing.InputPricePerToken, 1e-12)
-	require.InDelta(t, cached, pricing.CacheReadPricePerToken, 1e-12)
-	require.InDelta(t, cacheWrite, pricing.CacheCreationPricePerToken, 1e-12)
-	require.InDelta(t, output, pricing.OutputPricePerToken, 1e-12)
-	require.Zero(t, pricing.LongContextInputThreshold)
-}
-
 func TestParsePricingData_KeepsImageOnlyPricing(t *testing.T) {
 	body := []byte(`{
 		"image-only-model": {
