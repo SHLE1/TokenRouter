@@ -27,6 +27,8 @@
 
 管理端提供商测试模型目录由 `routing.AdminCatalog` 组合显式平台、提供商认证形态与懒解析的请求模型；默认目录通过 app 注入 `routing/provider.AdminCatalogOptions`，在调用时读取原平台快照。OpenAI 透传仍使用明确的模型范围；Gemini Google One/OAuth、Antigravity、Qoder 站点与 Spark 影子提供商保留各自的能力边界，Grok 动态目录按需读取。HTTP 分别保留 OpenAI、Grok 和 Claude/Gemini 类模型的零值字段、省略字段及空数组/null 形状；没有将管理测试目录等同于提供商可执行能力。
 
+分组编辑页的模型列表候选与探测模型选项复用 `RequestableResolver`，按已保存的分组映射、白名单检查阶段、协议和提供商能力返回请求模型名。自定义列表只在可请求候选中筛选并保留排序，历史保存的上游模型名不能重新进入探针选项。未保存的分组策略修改需保存后重新加载候选。
+
 用户可见分组目录提供 `models: string[]` 和 `model_protocols: Record<string, ProtocolID[]>`。后者列出每个模型当前可请求的客户端入口；两者仅用于控制台展示与配置生成，不替代请求时的权限和资格校验。Key 列表内嵌分组未带目录时，前端按分组 ID 复用可见分组列表，不逐行猜默认模型。
 
 Claude Code、Codex、Gemini、Grok、OpenCode 与 CC Switch 配置按用户选择的客户端协议和真实模型生成。存在 `model_protocols` 时按该投影过滤；目录为空时不生成虚构示例。Key 级精确/最长尾通配符映射按一跳目标投影可用模型和协议，复合 Key 示例加回已绑定前缀；导出不因为品牌或模型名称添加 `/antigravity` 等强制平台路径。tf CLI 回环协议保持原格式。
@@ -90,6 +92,8 @@ models.dev 的目录、属性和本地补充在同一版本发布，只读快照
 可用性窗口和 bucket 粒度来自运行设置，并有日数、分钟数和最大 bucket 数约束，防止公开接口返回过大序列。时间桶使用配置时区；它不参与实时调度和计费。
 
 每个 Group 的 `availability_probe_config` 还控制探测模型、提示词、间隔、单次尝试超时、User-Agent 和最大重试次数。`max_retries` 表示首次失败后允许追加的尝试次数：旧配置缺失该键时默认 3，显式设为 0 时只执行首次探测，允许范围为 0 到 10。每次尝试拥有独立超时；首次或任一次重试成功后，本轮观测即记为成功并停止继续尝试。一次调度周期只保存一个最终结果，中间失败不单独进入可用率样本。
+
+探测模型填写分组允许的请求模型名。选择器用该名称执行分组白名单校验，并将提供商 ID 与分组映射后的模型一起返回；测试服务再应用提供商映射。两个映射阶段各执行一次，探测历史仍记录配置中的请求模型名，便于与管理端选项对应。
 
 探测轮次、重试与最终结果编排由 `routing` 拥有，租约、原子保存和历史时间桶查询在 `routing/postgres`；`routing/provider` 提供原 cron 日历调度与平台目录投影。app 注入实例标识、时区和执行端口，提供商选择由 `gateway/provider/selection` 提供，探测执行复用 `provider.TestService`，通过 app 构造的 Probe 适配连接。构造不启动，重复 Start/Stop 不再注册新任务；停止会取消维护、领取与请求预算，并在生命周期的后台总预算内等待在途操作。超时返回失败，不能视作 drain 完成；尚未保存的领取继续按原 PostgreSQL 租约到期规则恢复。
 
