@@ -125,35 +125,6 @@ func OrphanCacheTierFields(rawEntry json.RawMessage) []string {
 	return orphans
 }
 
-// MergePricingOverrideEntry 在 JSON 字段层浅合并：patch 字段覆盖 base 同名字段，
-// 值为 null 的 patch 字段从结果中删除，base 为空时结果即 patch 本身。
-// patch 不是 JSON 对象时返回 ok=false。
-func MergePricingOverrideEntry(base, patch json.RawMessage) (json.RawMessage, bool) {
-	var patchFields map[string]any
-	if err := json.Unmarshal(patch, &patchFields); err != nil || patchFields == nil {
-		return nil, false
-	}
-	merged := make(map[string]any, len(patchFields))
-	if len(base) > 0 {
-		// base 非对象时忽略，仅以 patch 为准。
-		if err := json.Unmarshal(base, &merged); err != nil {
-			merged = make(map[string]any, len(patchFields))
-		}
-	}
-	for k, v := range patchFields {
-		if v == nil {
-			delete(merged, k)
-			continue
-		}
-		merged[k] = v
-	}
-	out, err := json.Marshal(merged)
-	if err != nil {
-		return nil, false
-	}
-	return out, true
-}
-
 // 模型广场可下发的模态取值白名单与固定输出顺序。
 var MarketplaceModalityOrder = []string{"text", "image", "audio", "video"}
 

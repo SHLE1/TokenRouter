@@ -376,7 +376,7 @@ riskControl: {
         "details": "Details",
         "update": "Update catalog",
         "updating": "Updating…",
-        "updateHint": "Update the catalog from the configured source and reapply local overrides.",
+        "updateHint": "Update the model catalog and supplements. Set custom prices in a pricing configuration and link it to the relevant groups.",
         "updateSuccess": "Pricing catalog updated.",
         "updateError": "Could not update the catalog. Check the pricing source configuration and try again.",
         "empty": "No matching models",

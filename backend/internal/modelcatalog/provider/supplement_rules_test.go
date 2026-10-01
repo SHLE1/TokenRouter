@@ -17,11 +17,10 @@ import (
 func TestSupplementRulesPublishAtomically(t *testing.T) {
 	dir := t.TempDir()
 	supplement := filepath.Join(dir, "supplement.json")
-	override := filepath.Join(dir, "override.json")
 	body := `{"claude-test":{"input_cost_per_token":99,"cache_write_1h_multiplier":2,"fast_multiplier":3,"flex_multiplier":0.25,"max_reasoning_effort_multiplier":4,"image_prices":{"1K":0,"2K":0.7},"video_prices":{"720p":0.2},"time_pricing":{"timezone":"UTC","periods":[{"start_time":"01:00","end_time":"03:00","multiplier":2}]}},"_billing_defaults":{"web_search_price_per_call":0.25,"audio_tts_price_per_million_chars":10}}`
 	require.NoError(t, os.WriteFile(supplement, []byte(body), 0o600))
 	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture), etag: "v1"}
-	service := NewService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", FallbackFile: supplement, OverrideFile: override}, remote)
+	service := NewService(Options{DataDir: dir, RemoteURL: "https://models.dev/catalog.json", FallbackFile: supplement}, remote)
 	require.NoError(t, service.ForceUpdate())
 	raw := service.GetModelPricing("claude-test")
 	require.InDelta(t, 3e-6, raw.InputCostPerToken, 1e-12)
@@ -60,16 +59,14 @@ func TestSupplementRulesPublishAtomically(t *testing.T) {
 	require.Equal(t, before.Data, service.Snapshot().Data)
 	require.Equal(t, before.BillingDefaults, service.BillingDefaults())
 	require.Equal(t, before.LastUpdated, service.Snapshot().LastUpdated)
-	// 304 时仍重读本地层，显式零价及 null 删除优先。
-	require.NoError(t, os.WriteFile(supplement, []byte(body), 0o600))
-	require.NoError(t, os.WriteFile(override, []byte(`{"claude-test":{"cache_creation_input_token_cost_above_1hr":0,"image_prices":{"1K":0}},"_billing_defaults":{"web_search_price_per_call":null,"audio_tts_price_per_million_chars":0}}`), 0o600))
+	// 304 时仍重读补充文件，显式零价和删除字段同时生效。
+	require.NoError(t, os.WriteFile(supplement, []byte(`{"claude-test":{"cache_creation_input_token_cost_above_1hr":0,"image_prices":{"1K":0}},"_billing_defaults":{"audio_tts_price_per_million_chars":0}}`), 0o600))
 	remote.unchanged = true
 	require.NoError(t, service.syncWithRemote())
 	require.Nil(t, service.BillingDefaults().WebSearchPricePerCall)
 	require.Zero(t, *service.BillingDefaults().AudioTTSPricePerMillionChars)
 	require.Zero(t, service.GetModelPricing("claude-test").CacheCreationInputTokenCostAbove1hr)
 	require.NoError(t, os.Remove(supplement))
-	require.NoError(t, os.Remove(override))
 	require.NoError(t, service.syncWithRemote())
 	require.Empty(t, service.GetModelPricing("claude-test").ImagePrices)
 	require.Nil(t, service.BillingDefaults().WebSearchPricePerCall)

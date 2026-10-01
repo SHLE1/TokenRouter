@@ -12,7 +12,8 @@ func ConfiguredImageUnitPrice(resolved *ResolvedPricing, size string) (float64, 
 	var found bool
 	if resolved != nil && (resolved.Mode == BillingModeImage || resolved.Mode == BillingModePerRequest) {
 		price, found = GetRequestTierPriceValue(resolved, strings.TrimSpace(size))
-		if !found && resolved.ConfigPricing != nil && resolved.ConfigPricing.PerRequestPrice != nil {
+		// 已解析的正单价也可独立传入；零价仍需显式存在性，不能由缺省值推断。
+		if !found && (resolved.DefaultPerRequestPrice > 0 || resolved.ConfigPricing != nil && resolved.ConfigPricing.PerRequestPrice != nil) {
 			price, found = resolved.DefaultPerRequestPrice, true
 		}
 	}
@@ -26,4 +27,16 @@ func ValidateImageUnitPrice(price float64) (float64, error) {
 		return 0, fmt.Errorf("invalid image unit price: %w", ErrModelPricingUnavailable)
 	}
 	return price, nil
+}
+
+// ResolveImageUnitPrice 对每个尺寸先查价卡，再查完整型号目录；缺价不返回免费。
+func ResolveImageUnitPrice(resolved *ResolvedPricing, catalog *CatalogModelPricing, size string) (float64, error) {
+	price, found := ConfiguredImageUnitPrice(resolved, size)
+	if !found {
+		price, found = DefaultImagePrice(catalog, size)
+	}
+	if !found {
+		return 0, ErrModelPricingUnavailable
+	}
+	return ValidateImageUnitPrice(price)
 }

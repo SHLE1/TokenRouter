@@ -86,6 +86,17 @@ func (s *Calculator) CalculateCostUnified(input CostInput) (*CostBreakdown, erro
 		})
 	}
 
+	// 图片结算与报价、预占使用同一尺寸单价，不让缺失档位落成零价。
+	if resolved.Mode == purepricing.BillingModeImage || resolved.Mode == purepricing.BillingModePerRequest && looksLikeImageModel(input.Model) {
+		price, err := s.resolvedImageUnitPrice(input.Model, input.SizeTier, resolved)
+		if err != nil {
+			return nil, err
+		}
+		copy := *resolved
+		copy.RequestTiers = nil
+		copy.DefaultPerRequestPrice = price
+		resolved = &copy
+	}
 	return purepricing.CalculateCost(resolved, s.ProjectCostInput(input, resolved))
 }
 
@@ -195,6 +206,12 @@ func (s *Calculator) DisplayPricingWithResolvedMultipliers(model string, rateMul
 	if rateMultiplier < 0 {
 		rateMultiplier = 0
 	}
+	if resolved != nil && (resolved.Mode == purepricing.BillingModeImage || resolved.Mode == purepricing.BillingModePerRequest && looksLikeImageModel(model)) {
+		if quote, ok := s.imageDisplayPricingWithResolved(model, rateMultiplier, resolved); ok {
+			return quote
+		}
+		return unknownDisplayPricing()
+	}
 	if resolved.IsUnpriced() {
 		// 未配置价卡时，token 缺价不代表完整型号的独立按张报价也缺失。
 		if resolved.ConfigPricing == nil {
@@ -217,17 +234,21 @@ func (s *Calculator) DisplayPricingWithResolvedMultipliers(model string, rateMul
 
 // imageDisplayPricing 只展示已知按张报价，不把聊天模型的图片元数据改成图片计费。
 func (s *Calculator) imageDisplayPricing(model string, rateMultiplier float64) (ModelDisplayPricing, bool) {
+	return s.imageDisplayPricingWithResolved(model, rateMultiplier, nil)
+}
+
+func (s *Calculator) imageDisplayPricingWithResolved(model string, rateMultiplier float64, resolved *ResolvedPricing) (ModelDisplayPricing, bool) {
 	raw := s.RawModelPricing(model)
 	knownImage := raw != nil && len(raw.ImagePrices) > 0
-	if !knownImage && !hasExplicitImageGenerationPricing(raw) && !looksLikeImageModel(model) && (raw == nil || !raw.TokenPricingAbsent) {
+	if resolved == nil && !knownImage && !hasExplicitImageGenerationPricing(raw) && !looksLikeImageModel(model) && (raw == nil || !raw.TokenPricingAbsent) {
 		return ModelDisplayPricing{}, false
 	}
 	prices := make([]float64, 3)
 	found := false
 	var sizes []string
 	for i, size := range []string{"1K", "2K", "4K"} {
-		price, ok := purepricing.DefaultImagePrice(raw, size)
-		if !ok {
+		price, err := purepricing.ResolveImageUnitPrice(resolved, raw, size)
+		if err != nil {
 			continue
 		}
 		found = true

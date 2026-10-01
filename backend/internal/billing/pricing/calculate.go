@@ -331,8 +331,8 @@ func ComputeTokenBreakdown(
 		bd.ImageOutputCost = float64(tokens.ImageOutputTokens) * imgPrice
 	}
 
-	// models.dev 的 Fast 缓存写入价同时适用于 5m/1h TTL 的原厂倍率。
-	if pricing.CatalogSource == "models.dev" && UsePriorityServiceTierPricing(serviceTier, pricing) && pricing.SupportsCacheBreakdown && pricing.CacheCreationPricePerToken > 0 && pricing.PriorityCacheWritePresent {
+	// 明确的 Fast 缓存写入价同样缩放 TTL 单价，来源标签不参与收费判断。
+	if UsePriorityServiceTierPricing(serviceTier, pricing) && pricing.SupportsCacheBreakdown && pricing.CacheCreationPricePerToken > 0 && pricing.PriorityCacheWritePresent {
 		cacheCreationMultiplier *= cacheCreationPrice / pricing.CacheCreationPricePerToken
 	}
 	// 缓存创建费用
@@ -484,15 +484,17 @@ func DisplayPricingFromResolved(model string, rateMultiplier float64, resolved *
 		if resolved.Mode == BillingModePerRequest && !LooksLikeImageModel(model) {
 			return ModelDisplayPricing{}, false
 		}
-		price1K, price2K, price4K := ResolvedImageTierPrices(resolved)
-		if price1K <= 0 && price2K <= 0 && price4K <= 0 && !resolved.HasEffectiveOverridePricing() {
-			return ModelDisplayPricing{}, false
+		result := ModelDisplayPricing{PricingMode: "image", PriceStatus: "priced"}
+		prices := []*float64{&result.ImagePrice1K, &result.ImagePrice2K, &result.ImagePrice4K}
+		for i, size := range []string{"1K", "2K", "4K"} {
+			value, found := ConfiguredImageUnitPrice(resolved, size)
+			if !found {
+				continue
+			}
+			*prices[i] = value * rateMultiplier
+			result.ImagePriceSizes = append(result.ImagePriceSizes, size)
 		}
-		return BuildImageDisplayPricing(
-			price1K*rateMultiplier,
-			price2K*rateMultiplier,
-			price4K*rateMultiplier,
-		), true
+		return result, len(result.ImagePriceSizes) > 0
 	default:
 		return ModelDisplayPricing{}, false
 	}
@@ -578,27 +580,6 @@ func SameDisplayTokenPricing(a *ModelPricing, b *ModelPricing) bool {
 	}
 	// 普通价和 Fast 价都相同才能合并，避免默认段与显式段的服务层级差异被隐藏。
 	return ModelPricingDisplayInterval(0, nil, a, 1) == ModelPricingDisplayInterval(0, nil, b, 1)
-}
-
-func ResolvedImageTierPrices(resolved *ResolvedPricing) (float64, float64, float64) {
-	if resolved == nil {
-		return 0, 0, 0
-	}
-
-	defaultPrice := resolved.DefaultPerRequestPrice
-	price1K := ResolvedRequestTierPrice(resolved.RequestTiers, "1K", defaultPrice)
-	price2K := ResolvedRequestTierPrice(resolved.RequestTiers, "2K", defaultPrice)
-	price4K := ResolvedRequestTierPrice(resolved.RequestTiers, "4K", defaultPrice)
-	return price1K, price2K, price4K
-}
-
-func ResolvedRequestTierPrice(tiers []PricingInterval, label string, defaultPrice float64) float64 {
-	for _, tier := range tiers {
-		if strings.EqualFold(tier.TierLabel, label) && tier.PerRequestPrice != nil {
-			return *tier.PerRequestPrice
-		}
-	}
-	return defaultPrice
 }
 
 func BuildTokenDisplayPricing(pricing *ModelPricing, rateMultiplier float64) ModelDisplayPricing {
@@ -753,7 +734,7 @@ func FastModeDisplayPricing(pricing *ModelPricing) (*ModelPricing, bool) {
 		}
 		if pricing.CacheCreationPricePerTokenPriority > 0 || pricing.PriorityCacheWritePresent {
 			fastPricing.CacheCreationPricePerToken = pricing.CacheCreationPricePerTokenPriority
-			if pricing.CatalogSource == "models.dev" && pricing.SupportsCacheBreakdown && pricing.CacheCreationPricePerToken > 0 {
+			if pricing.SupportsCacheBreakdown && pricing.CacheCreationPricePerToken > 0 {
 				ratio := pricing.CacheCreationPricePerTokenPriority / pricing.CacheCreationPricePerToken
 				fastPricing.CacheCreation5mPrice *= ratio
 				fastPricing.CacheCreation1hPrice *= ratio

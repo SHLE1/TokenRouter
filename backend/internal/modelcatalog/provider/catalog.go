@@ -9,12 +9,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 )
 
@@ -83,59 +81,15 @@ func (s *Service) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[st
 			}
 		}
 	}
-	overrides, err := loadLocalPricingEntries(s.options.OverrideFile)
-	if err != nil {
-		return nil, nil, pricing.OperationPrices{}, err
-	}
-	// 操作价格与模型价格一起构建，保留覆盖文件的 null 删除语义。
+	// 操作默认价只读取补充文件，运营者售价由价格管理独立提供。
 	var defaults pricing.OperationPrices
-	operationRaw := supplement[pricing.BillingDefaultsKey]
-	if patch, ok := overrides[pricing.BillingDefaultsKey]; ok {
-		var valid bool
-		operationRaw, valid = pricing.MergePricingOverrideEntry(operationRaw, patch)
-		if !valid {
-			return nil, nil, defaults, fmt.Errorf("invalid billing defaults override")
-		}
-	}
-	if len(operationRaw) > 0 {
-		if err := json.Unmarshal(operationRaw, &defaults); err != nil {
+	if body := supplement[pricing.BillingDefaultsKey]; len(body) > 0 {
+		if err := json.Unmarshal(body, &defaults); err != nil {
 			return nil, nil, defaults, err
 		}
 		if err := defaults.Validate(); err != nil {
 			return nil, nil, defaults, err
 		}
-	}
-	delete(overrides, pricing.BillingDefaultsKey)
-	for model, patch := range overrides {
-		base, exists := raw[model]
-		if !exists {
-			var fields map[string]json.RawMessage
-			if err := json.Unmarshal(patch, &fields); err != nil || fields == nil {
-				return nil, nil, pricing.OperationPrices{}, fmt.Errorf("invalid pricing override: %s", model)
-			}
-			fields["source"] = json.RawMessage(`"local_override"`)
-			raw[model], _ = json.Marshal(fields)
-			continue
-		}
-		merged, valid := pricing.MergePricingOverrideEntry(base, patch)
-		if !valid {
-			return nil, nil, pricing.OperationPrices{}, fmt.Errorf("invalid pricing override: %s", model)
-		}
-		var fields, patchFields map[string]json.RawMessage
-		_ = json.Unmarshal(merged, &fields)
-		_ = json.Unmarshal(patch, &patchFields)
-		var sources map[string]string
-		_ = json.Unmarshal(fields["price_sources"], &sources)
-		if sources == nil {
-			sources = map[string]string{}
-		}
-		for key, label := range supplementFields {
-			if _, exists := patchFields[key]; exists {
-				sources[label] = "local_override"
-			}
-		}
-		fields["price_sources"], _ = json.Marshal(sources)
-		raw[model], _ = json.Marshal(fields)
 	}
 	if len(raw) == 0 {
 		return catalog, map[string]*CatalogModelPricing{}, defaults, nil
@@ -153,16 +107,6 @@ func (s *Service) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[st
 	}
 	warnOrphanCacheTierFields(diagnostics.OrphanCacheTiers)
 	warnLopsidedLongContextLadders(diagnostics.LopsidedLadders)
-	var missing []string
-	for name := range overrides {
-		if _, exists := prices[name]; !exists {
-			missing = append(missing, name)
-		}
-	}
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		logging.LegacyPrintf("service.modelcatalog", "[ModelCatalog] Warning: override had no effect for %d model(s): %s (unknown model name, or patch-only entry without price fields)", len(missing), strings.Join(missing, ", "))
-	}
 	return catalog, prices, defaults, nil
 }
 
@@ -381,7 +325,7 @@ func (s *Service) updateModelsCatalog(force bool) (err error) {
 		return err
 	}
 	if unchanged {
-		// 304 只代表远程未变；仍须验证本地层，不能清除尚未修复的覆盖错误。
+		// 304 只代表远程未变；仍须验证本地层，不能清除尚未修复的补充文件错误。
 		s.mu.RLock()
 		current := append([]byte(nil), s.catalogBody...)
 		updated, fingerprint := s.lastUpdated, s.customFilesHash
