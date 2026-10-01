@@ -31,6 +31,7 @@
                 </p>
               </div>
             </div>
+            <slot name="header-actions"></slot>
             <button
               @click="emit('close')"
               class="-mr-2 rounded-control p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10 focus-visible:ring-offset-2 dark:text-dark-500 dark:hover:bg-dark-700 dark:hover:text-dark-300 dark:focus-visible:ring-primary-500/30 dark:focus-visible:ring-offset-dark-900"
@@ -44,7 +45,7 @@
           <div
             ref="modalBodyRef"
             class="modal-body min-h-0 min-w-0 max-w-full"
-            :class="{ 'modal-body-contained': !bodyScroll }"
+            :class="{ 'modal-body-contained': !bodyScroll, 'modal-body-flush': flush }"
           >
             <slot></slot>
           </div>
@@ -86,6 +87,8 @@ interface Props {
   subtitle?: string
   width?: DialogWidth
   bodyScroll?: boolean
+  /** 去掉内容区内边距，供需要贴边分栏的工作区弹窗使用。 */
+  flush?: boolean
   closeOnEscape?: boolean
   closeOnClickOutside?: boolean
   zIndex?: number
@@ -99,6 +102,7 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   width: 'normal',
   bodyScroll: true,
+  flush: false,
   closeOnEscape: true,
   closeOnClickOutside: false,
   zIndex: Z_INDEX.MODAL
@@ -164,5 +168,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* 贴边分栏由内容自行留白，外壳不再加内边距。 */
+.modal-body-flush {
+  padding: 0;
 }
 </style>

@@ -112,7 +112,8 @@
 ## 弹窗
 
 - 默认入口是 `BaseDialog`：宽度档位 narrow/normal/wide/extra-wide/full，Escape 关闭、点击外部关闭、焦点管理与背景滚动锁定全部内置，新弹窗不要再手写 `fixed inset-0` 外壳。
-- 标题需要说明或图标时，用 `subtitle` 在标题下加一行 `text-xs` 说明，用 `header-icon` 插槽在标题左侧放图标块，不要自己重写头部。提供商连接测试弹窗采用左侧参数、右侧状态与回复的双栏工作区布局，可作为参考。
+- 标题需要说明或图标时，用 `subtitle` 在标题下加一行 `text-xs` 说明，用 `header-icon` 插槽在标题左侧放图标块；标题右侧的模式切换等控件放进 `header-actions` 插槽，位于关闭按钮之前。不要自己重写头部。
+- 贴边分栏的工作区弹窗传 `flush` 去掉内容区内边距，再配合 `bodyScroll=false` 由各栏自行滚动。侧栏用浅底（浅色 `gray-50/70`、深色 `dark-950`）和单侧分隔线贴住弹窗边缘，不再包一层卡片；底部操作区放在内容里，使用同样的浅底和 `rounded-b-surface sm:rounded-b-dialog`，避免盖住弹窗圆角。提供商连接测试弹窗是这种布局的参考实现。
 - 分页表单可设置 `BaseDialog` 的 `bodyScroll=false`，由表单内部管理滚动；标题、页签和底部操作区保持可见。默认仍由弹窗内容区滚动。分组创建/编辑（`GroupSettingsForm`）和提供商创建/编辑/批量编辑都按[设置表单](#settings_form)约定分页。
 - 安全凭证流程（TOTP 设置/禁用/登录验证/提权）走 `AuthCardDialog`：居中图标头、无右上角关闭按钮、整卡 p-6，是与 BaseDialog 并存的独立风格族。它不 teleport、保持内联渲染，嵌套层级由 `z-index` prop 决胜。
 - 分诊标准：结构同构（标题头 + 内容 + 按钮行）的手写弹窗迁 BaseDialog；有定制视觉结构的保留并登记在下面的例外清单。

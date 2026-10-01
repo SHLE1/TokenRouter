@@ -75,7 +75,7 @@ function mountModal(provider: Record<string, unknown> = {
     } as any,
     global: {
       stubs: {
-        BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' },
+        BaseDialog: { template: '<div><slot name="header-actions" /><slot /></div>' },
         Select: { props: ['disabled'], template: '<div class="select-stub" :data-disabled="disabled ? \'true\' : \'false\'"></div>' },
         HelpTooltip: true,
         PlatformIcon: true,
@@ -131,11 +131,10 @@ describe('ProviderTestModal', () => {
     expect(promptInput.exists()).toBe(true)
     await promptInput.setValue('draw a tiny orange cat astronaut')
 
-    const buttons = wrapper.findAll('button')
-    const startButton = buttons.find((button) => button.text().includes('admin.providers.startTest'))
-    expect(startButton).toBeTruthy()
+    const startButton = wrapper.find('[data-testid="provider-test-start"]')
+    expect(startButton.exists()).toBe(true)
 
-    await startButton!.trigger('click')
+    await startButton.trigger('click')
     await flushPromises()
     await flushPromises()
 
@@ -175,11 +174,10 @@ describe('ProviderTestModal', () => {
     await wrapper.setProps({ show: true })
     await flushPromises()
 
-    const buttons = wrapper.findAll('button')
-    const startButton = buttons.find((button) => button.text().includes('admin.providers.startTest'))
-    expect(startButton).toBeTruthy()
+    const startButton = wrapper.find('[data-testid="provider-test-start"]')
+    expect(startButton.exists()).toBe(true)
 
-    await startButton!.trigger('click')
+    await startButton.trigger('click')
     await flushPromises()
 
     expect(global.fetch).toHaveBeenCalledTimes(1)
@@ -290,8 +288,7 @@ describe('ProviderTestModal', () => {
     await flushPromises()
     await wrapper.find('textarea.textarea-stub').setValue('say hello in one sentence')
 
-    const startButton = wrapper.findAll('button').find((button) => button.text().includes('admin.providers.startTest'))
-    await startButton!.trigger('click')
+    await wrapper.find('[data-testid="provider-test-start"]').trigger('click')
     await flushPromises()
 
     const [, request] = (global.fetch as any).mock.calls[0]
@@ -371,11 +368,11 @@ describe('ProviderTestModal', () => {
     expect(wrapper.find('[data-testid="provider-test-status"]').text()).toContain('admin.providers.testDialog.statusSuccess')
     expect(wrapper.find('[data-testid="provider-test-output"]').text()).toContain('hello')
     expect(wrapper.text()).toContain('gpt-5.4-mapped')
-    expect((wrapper.vm as any).firstTokenMs).not.toBeNull()
-    expect((wrapper.vm as any).totalMs).not.toBeNull()
+    expect((wrapper.vm as any).singleRun.firstTokenMs).not.toBeNull()
+    expect((wrapper.vm as any).singleRun.totalMs).not.toBeNull()
 
-    ;(wrapper.vm as any).outputView = 'log'
-    await wrapper.vm.$nextTick()
+    const logButton = wrapper.findAll('button').find((button) => button.text() === 'admin.providers.testDialog.viewLog')
+    await logButton!.trigger('click')
     expect(wrapper.find('[data-testid="provider-test-output"]').text()).toContain('/v1/chat/completions')
   })
 
@@ -393,7 +390,84 @@ describe('ProviderTestModal', () => {
     await (wrapper.vm as any).startTest()
     await flushPromises()
 
-    expect((wrapper.vm as any).status).toBe('error')
-    expect((wrapper.vm as any).errorMessage).toBe('upstream 401')
+    expect((wrapper.vm as any).singleRun.status).toBe('error')
+    expect((wrapper.vm as any).singleRun.errorMessage).toBe('upstream 401')
+  })
+
+  it('批量模型测试按所选模型逐个请求，并可重试失败的模型', async () => {
+    getAvailableModels.mockResolvedValue([
+      { id: 'model-a', display_name: 'A' },
+      { id: 'model-b', display_name: 'B' },
+      { id: 'model-c', display_name: 'C' }
+    ])
+    global.fetch = vi.fn().mockImplementation(async (_url: string, request: { body: string }) => {
+      const model = JSON.parse(request.body).model_id
+      return createStreamResponse(
+        model === 'model-b'
+          ? ['data: {"type":"error","error":"boom"}\n']
+          : [`data: {"type":"test_start","model":"${model}"}\n`, 'data: {"type":"content","text":"ok"}\n', 'data: {"type":"test_complete","success":true}\n']
+      )
+    }) as any
+
+    const wrapper = mountModal({ id: 21, name: 'OpenAI', platform: 'openai', type: 'apikey', status: 'active' })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+
+    ;(wrapper.vm as any).testScope = 'batch'
+    await wrapper.vm.$nextTick()
+    const batch = (wrapper.vm as any).batch
+    expect([...batch.selected]).toEqual(['model-a', 'model-b', 'model-c'])
+
+    batch.toggle('model-c', false)
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-testid="provider-batch-start"]').trigger('click')
+    await flushPromises()
+
+    const requested = (global.fetch as any).mock.calls.map((call: [string, { body: string }]) => JSON.parse(call[1].body))
+    expect(requested.map((body: { model_id: string }) => body.model_id).sort()).toEqual(['model-a', 'model-b'])
+    expect(requested.every((body: { test_type: string; prompt: string }) => body.test_type === 'text' && body.prompt === 'hi')).toBe(true)
+    expect(batch.rows['model-a'].state).toBe('success')
+    expect(batch.rows['model-b'].state).toBe('failed')
+    expect(batch.rows['model-c']).toBeUndefined()
+
+    await wrapper.find('[data-testid="provider-batch-retry"]').trigger('click')
+    await flushPromises()
+    expect((global.fetch as any).mock.calls).toHaveLength(3)
+    expect(JSON.parse((global.fetch as any).mock.calls[2][1].body).model_id).toBe('model-b')
+    expect(batch.rows['model-a'].state).toBe('success')
+  })
+
+  it('停止批量测试后未开始的模型标记为未执行', async () => {
+    getAvailableModels.mockResolvedValue([
+      { id: 'model-a', display_name: 'A' },
+      { id: 'model-b', display_name: 'B' },
+      { id: 'model-c', display_name: 'C' }
+    ])
+    let release: () => void = () => {}
+    global.fetch = vi.fn().mockImplementation(async () => {
+      await new Promise<void>((resolve) => { release = resolve })
+      return createStreamResponse(['data: {"type":"test_complete","success":true}\n'])
+    }) as any
+
+    const wrapper = mountModal({ id: 22, name: 'OpenAI', platform: 'openai', type: 'apikey', status: 'active' })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    ;(wrapper.vm as any).testScope = 'batch'
+    const batch = (wrapper.vm as any).batch
+    batch.concurrency = 1
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('[data-testid="provider-batch-start"]').trigger('click')
+    await flushPromises()
+    expect(batch.running).toBe(true)
+    await wrapper.find('[data-testid="provider-batch-stop"]').trigger('click')
+    release()
+    await flushPromises()
+
+    expect((global.fetch as any).mock.calls).toHaveLength(1)
+    expect(batch.rows['model-a'].state).toBe('success')
+    expect(batch.rows['model-b'].state).toBe('stopped')
+    expect(batch.rows['model-c'].state).toBe('stopped')
+    expect(batch.running).toBe(false)
   })
 })
