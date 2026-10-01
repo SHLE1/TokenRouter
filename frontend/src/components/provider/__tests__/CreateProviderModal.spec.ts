@@ -1,4 +1,5 @@
 import { useProtocolCatalogFixture } from '@/__tests__/helpers/protocolCatalog'
+import { setSwitch } from '@/__tests__/helpers/switches'
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -310,7 +311,7 @@ describe('CreateProviderModal OpenAI provider options', () => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'OpenAI')
     await selectButtonByText(wrapper, 'API Key')
-    for (const checkbox of wrapper.findAll('[data-native-protocol]')) await checkbox.setValue(false)
+    for (const toggle of wrapper.findAll('[data-native-protocol]')) await setSwitch(toggle, false)
     await wrapper.get('form#create-provider-form input[type="text"]').setValue('OpenAI provider')
     await wrapper.get('form#create-provider-form input[type="password"]').setValue('test-api-key')
     await wrapper.get('form#create-provider-form').trigger('submit.prevent')
@@ -376,7 +377,7 @@ describe('CreateProviderModal OpenAI provider options', () => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'Kimi')
     if (mode === 'coding') await selectButtonByText(wrapper, 'admin.providers.cnProviders.providerMode.coding')
-    for (const checkbox of wrapper.findAll('[data-native-protocol]')) { if (checkbox.attributes('data-native-protocol') !== 'openai_responses') await checkbox.setValue(false) }
+    for (const toggle of wrapper.findAll('[data-native-protocol]')) { if (toggle.attributes('data-native-protocol') !== 'openai_responses') await setSwitch(toggle, false) }
     await wrapper.get('form#create-provider-form input[type="text"]').setValue('Kimi Responses')
     await wrapper.get('form#create-provider-form input[type="password"]').setValue('sk-cn')
     await wrapper.get('form#create-provider-form').trigger('submit.prevent')
@@ -569,6 +570,33 @@ describe('CreateProviderModal OpenAI provider options', () => {
     expect(importCodexSessionMock.mock.calls[0]?.[0]?.extra?.codex_fingerprint_mode).toBe('session')
   })
 
+
+  it('按平台与类型隐藏没有内容的页签', async () => {
+    const tabKeys = (wrapper: ReturnType<typeof mountModal>) =>
+      wrapper.findAll('[data-settings-tab-button]').map(tab => tab.attributes('data-settings-tab-button'))
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    expect(tabKeys(wrapper)).toEqual(['basic', 'models', 'scheduling', 'request'])
+    await selectButtonByText(wrapper, 'API Key')
+    expect(tabKeys(wrapper)).toEqual(['basic', 'models', 'scheduling', 'quota', 'request'])
+    wrapper.unmount()
+  })
+
+  it('进入授权步骤前校验临时不可调度规则并切到所在页签', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    await wrapper.get('form#create-provider-form input[type="text"]').setValue('Codex')
+    await wrapper.get('[data-settings-tab-button="scheduling"]').trigger('click')
+    await wrapper.get('[data-testid="temp-unsched-toggle"]').trigger('click')
+    await wrapper.get('[data-settings-tab-button="request"]').trigger('click')
+
+    await wrapper.get('form#create-provider-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(wrapper.find('form#create-provider-form').exists()).toBe(true)
+    expect(wrapper.get('[data-settings-tab-button="scheduling"]').attributes('aria-selected')).toBe('true')
+    wrapper.unmount()
+  })
 })
 
 describe('CreateProviderModal Gemini API Key provider source', () => {

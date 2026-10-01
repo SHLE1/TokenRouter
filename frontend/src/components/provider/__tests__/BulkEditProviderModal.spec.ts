@@ -1,4 +1,5 @@
 import { useProtocolCatalogFixture } from '@/__tests__/helpers/protocolCatalog'
+import { setSwitch } from '@/__tests__/helpers/switches'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import BulkEditProviderModal from '../BulkEditProviderModal.vue'
@@ -488,8 +489,8 @@ describe('BulkEditProviderModal', () => {
     const wrapper = mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['apikey'] })
     await wrapper.get('#bulk-native-protocols-enabled').setValue(true)
     await flushPromises()
-    for (const checkbox of wrapper.findAll('[data-native-protocol]')) {
-      if (checkbox.attributes('data-native-protocol') !== 'openai_embeddings') await checkbox.setValue(false)
+    for (const toggle of wrapper.findAll('[data-native-protocol]')) {
+      if (toggle.attributes('data-native-protocol') !== 'openai_embeddings') await setSwitch(toggle, false)
     }
     await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
     await flushPromises()
@@ -521,7 +522,7 @@ describe('BulkEditProviderModal', () => {
     const wrapper = mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['apikey'] })
     await wrapper.get('#bulk-native-protocols-enabled').setValue(true)
     await flushPromises()
-    for (const checkbox of wrapper.findAll('[data-native-protocol]')) await checkbox.setValue(false)
+    for (const toggle of wrapper.findAll('[data-native-protocol]')) await setSwitch(toggle, false)
     await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
     await flushPromises()
     expect(adminAPI.providers.bulkUpdate).toHaveBeenCalledWith([1, 2], { credentials: { upstream_protocols: [] } })
@@ -567,7 +568,7 @@ describe('BulkEditProviderModal', () => {
     const applyCheckbox = wrapper.get<HTMLInputElement>('#bulk-edit-codex-image-tool-enabled')
     expect(applyCheckbox.element.checked).toBe(false)
     await applyCheckbox.setValue(true)
-    await wrapper.get(`[data-testid="bulk-edit-codex-image-tool-${mode}"]`).trigger('click')
+    await wrapper.get('[data-testid="bulk-edit-codex-image-tool-select"]').setValue(mode)
     await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -584,7 +585,7 @@ describe('BulkEditProviderModal', () => {
 
     expect(wrapper.find('#bulk-edit-codex-image-tool-enabled').exists()).toBe(true)
     await wrapper.get('#bulk-edit-codex-image-tool-enabled').setValue(true)
-    await wrapper.get('[data-testid="bulk-edit-codex-image-tool-enabled"]').trigger('click')
+    await wrapper.get('[data-testid="bulk-edit-codex-image-tool-select"]').setValue('enabled')
     await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -612,7 +613,7 @@ describe('BulkEditProviderModal', () => {
     })
 
     await wrapper.get('#bulk-edit-codex-image-tool-enabled').setValue(true)
-    await wrapper.get('[data-testid="bulk-edit-codex-image-tool-block"]').trigger('click')
+    await wrapper.get('[data-testid=\"bulk-edit-codex-image-tool-select\"]').setValue('block')
     await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
@@ -901,9 +902,9 @@ describe('BulkEditProviderModal', () => {
     })
 
     await wrapper.get('#bulk-edit-openai-native-compaction-v2-mode-enabled').setValue(true)
-    await wrapper.get('[data-testid="bulk-edit-openai-native-compaction-v2-mode-select"] input').setValue(true)
+    await setSwitch(wrapper.get('[data-testid="bulk-edit-openai-native-compaction-v2-mode-select"]'), true)
     await wrapper.get('#bulk-edit-openai-compact-mode-enabled').setValue(true)
-    await wrapper.get('[data-testid="bulk-edit-openai-compact-mode-select"] input').setValue(true)
+    await setSwitch(wrapper.get('[data-testid="bulk-edit-openai-compact-mode-select"]'), true)
     await wrapper.get('#bulk-edit-openai-compact-model-mapping-enabled').setValue(true)
     await wrapper.get('[data-testid="bulk-edit-openai-compact-model-mapping-add"]').trigger('click')
     await wrapper.get('[data-testid="bulk-edit-openai-compact-model-mapping-source-0"]').setValue('gpt-5.4')
@@ -1071,6 +1072,49 @@ describe('BulkEditProviderModal', () => {
       extra: Record<string, unknown>
     }
     expect(payload.extra).not.toHaveProperty('codex_fingerprint_mode')
+  })
+
+  it('Base URL 与预热拦截只对适用的账号类型显示', async () => {
+    const openaiOAuth = mountModal({ selectedPlatforms: ['openai'], selectedTypes: ['oauth'] })
+    expect(openaiOAuth.find('#bulk-edit-base-url-enabled').exists()).toBe(false)
+    expect(openaiOAuth.find('#bulk-edit-intercept-warmup-enabled').exists()).toBe(false)
+    openaiOAuth.unmount()
+
+    const anthropicKey = mountModal({ selectedPlatforms: ['anthropic'], selectedTypes: ['apikey'] })
+    expect(anthropicKey.find('#bulk-edit-base-url-enabled').exists()).toBe(true)
+    expect(anthropicKey.find('#bulk-edit-intercept-warmup-enabled').exists()).toBe(true)
+    anthropicKey.unmount()
+  })
+
+  it('未勾选 RPM 限制时不提交用户消息限速', async () => {
+    const wrapper = mountModal({ selectedPlatforms: ['anthropic'], selectedTypes: ['oauth'] })
+    await wrapper.get('[data-settings-tab-button="quota"]').trigger('click')
+    const throttle = wrapper.findAll('#bulk-edit-rpm-limit-body button[role="radio"]')[1]
+    await throttle.trigger('click')
+    await wrapper.get('#bulk-edit-status-enabled').setValue(true)
+    await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(adminAPI.providers.bulkUpdate).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(adminAPI.providers.bulkUpdate).mock.calls[0]?.[1]).not.toHaveProperty('extra')
+
+    vi.mocked(adminAPI.providers.bulkUpdate).mockClear()
+    await wrapper.get('#bulk-edit-rpm-limit-enabled').setValue(true)
+    await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(vi.mocked(adminAPI.providers.bulkUpdate).mock.calls[0]?.[1]?.extra).toMatchObject({
+      user_msg_queue_mode: 'throttle'
+    })
+    wrapper.unmount()
+  })
+
+  it('未勾选应用的设置项保持置灰且不可聚焦', async () => {
+    const wrapper = mountModal({ selectedPlatforms: ['anthropic'], selectedTypes: ['apikey'] })
+    const body = wrapper.get('#bulk-edit-proxy-body')
+    expect(body.attributes('inert')).toBeDefined()
+    await wrapper.get('#bulk-edit-proxy-enabled').setValue(true)
+    expect(body.attributes('inert')).toBeUndefined()
+    wrapper.unmount()
   })
 })
 

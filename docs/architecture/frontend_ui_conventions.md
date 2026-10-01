@@ -2,12 +2,13 @@
 
 > 上级目录：[架构文档目录](index.md)
 
-本文记录前端设计 token 与组件样式的强制约定：圆角层级、间距网格、控件尺寸、菜单与浮层、弹窗、层级、断点、加载反馈、图标与动画时长、行列表编辑器、表格密度、深色配色角色、图表主题和字号下限。覆盖 `frontend/tailwind.config.js`、`frontend/src/style.css` 与全部 Vue 组件；不覆盖浅色配色主题和业务组件的局部布局。修改前端组件、样式或这两个文件前先读本文。
+本文记录前端设计 token 与组件样式的强制约定：圆角层级、间距网格、控件尺寸、菜单与浮层、弹窗与设置表单、层级、断点、加载反馈、图标与动画时长、行列表编辑器、表格密度、深色配色角色、图表主题和字号下限。覆盖 `frontend/tailwind.config.js`、`frontend/src/style.css` 与全部 Vue 组件；不覆盖浅色配色主题和业务组件的局部布局。修改前端组件、样式或这两个文件前先读本文。
 
 ## 章节导航
 
 - [圆角层级](#圆角层级)、[间距约定](#间距约定)、[控件尺寸](#控件尺寸)、[开关](#开关)：调整基础组件时读取。
 - [菜单与浮层](#菜单与浮层)、[层级 z-index](#层级-z-index)、[弹窗](#弹窗)：调整浮层及遮罩时读取。
+- [设置表单](#settings_form)：新增或调整分页设置弹窗、设置项行和批量编辑项时读取。
 - [通用图标](#通用图标)：选择图标、调整悬停动画、迁移内联 SVG 时读取。
 - [断点](#断点)、[加载反馈](#loading_feedback)、[动画与时长](#动画与时长)、[表格密度](#表格密度)：调整响应式布局和交互时读取。
 - [行列表编辑器](#rule_list_editor)：新增或修改逐条添加的映射、规则列表时读取。
@@ -111,9 +112,21 @@
 ## 弹窗
 
 - 默认入口是 `BaseDialog`：宽度档位 narrow/normal/wide/extra-wide/full，Escape 关闭、点击外部关闭、焦点管理与背景滚动锁定全部内置，新弹窗不要再手写 `fixed inset-0` 外壳。
-- 分页表单可设置 `BaseDialog` 的 `bodyScroll=false`，由表单内部管理滚动；标题、页签和底部操作区保持可见。默认仍由弹窗内容区滚动。分组创建与编辑共用 `GroupSettingsForm`，分类和控件布局在共享表单内维护。
+- 分页表单可设置 `BaseDialog` 的 `bodyScroll=false`，由表单内部管理滚动；标题、页签和底部操作区保持可见。默认仍由弹窗内容区滚动。分组创建/编辑（`GroupSettingsForm`）和提供商创建/编辑/批量编辑都按[设置表单](#settings_form)约定分页。
 - 安全凭证流程（TOTP 设置/禁用/登录验证/提权）走 `AuthCardDialog`：居中图标头、无右上角关闭按钮、整卡 p-6，是与 BaseDialog 并存的独立风格族。它不 teleport、保持内联渲染，嵌套层级由 `z-index` prop 决胜。
 - 分诊标准：结构同构（标题头 + 内容 + 按钮行）的手写弹窗迁 BaseDialog；有定制视觉结构的保留并登记在下面的例外清单。
+
+<a id="settings_form"></a>
+## 设置表单
+
+设置较多的弹窗用 `components/common/settings/` 下的组件搭建，不再手写分区和开关行。
+
+- **分页**：`SettingsTabs` 接收 `tabs`（`key`、`label`、`hidden`）并按 `key` 提供同名插槽。面板全部持续挂载，切页不丢失编辑器内部草稿；`hidden` 只隐藏页签按钮，当前页签被隐藏时回到第一个可见页签。切页回到顶部，支持方向键与 Home/End。表单加 `novalidate`，提交时先调用 `validate()`，由组件切到无效字段所在页签再报告原生校验；业务校验仍用 toast 提示，同时调用 `revealField()` 定位字段（提供商弹窗用 `data-provider-field` 标记）。新手引导的 `onboarding-reveal` 也走同一定位流程。
+- **分区**：`SettingsSection` 提供 `text-sm font-semibold` 标题、`.input-hint` 说明和 `actions` 插槽；相邻分区之间自动加 `border-t pt-6`，页内分区间距 24px，分区内 16px。不要用 `.input-label` 冒充标题，也不要再手写 `border-t pt-4` 分隔。
+- **设置行**：布尔项用 `SettingToggleRow`（左侧标题、说明和可选 `HelpTooltip`，右侧 `Toggle size="md"` 默认 inset 变体）。右侧是选择框或输入框时用 `SettingRow` 并传 `field`，控件宽度固定为 `sm:w-56`，窄屏改为上下排列。
+- **依赖字段**：开关打开后才需要的字段放进 `Collapse` 包裹的 `SettingsSubpanel`（`rounded-surface`、淡边框和浅底、`p-4`），不用 `v-if` 直接展开。
+- **选择与提示**：两到五个互斥选项用 `SettingsSegmented`（基于 `.segmented` 与 `v-segmented`）；带图标和说明的类型选择用卡片，选中态统一品牌色描边与浅底。说明和风险提示只用 `SettingsNotice` 的 `info` / `warning` 两种语气，不再手写蓝、琥珀或紫色提示块。字段说明一律 `.input-hint`。
+- **批量编辑**：每个可修改项用 `BulkApplyField` 包裹，左侧复选框（`${id}-enabled`）决定是否提交。未勾选时内容区加 `inert` 并置灰，键盘也无法进入；布尔值放在 `control` 插槽的开关里，不再出现“复选框 + 开关”两层控件。
 
 <a id="dark_colors"></a>
 ## 深色配色
