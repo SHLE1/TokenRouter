@@ -71,10 +71,10 @@ func parsePricingFixture(body []byte) (map[string]*pricing.CatalogModelPricing, 
 	return values, err
 }
 
-// newOfflinePricingFixture 使用真实内嵌目录和发布补充文件验证默认价格。
+// newOfflinePricingFixture 使用真实内嵌目录和官方补充验证默认价格。
 func newOfflinePricingFixture(t *testing.T) *Service {
 	t.Helper()
-	service := newModelCatalogFixture(modelCatalogFixture{options: Options{DataDir: t.TempDir(), FallbackFile: "../../../resources/model-pricing/model_pricing_supplements.json"}})
+	service := newModelCatalogFixture(modelCatalogFixture{options: Options{DataDir: t.TempDir()}})
 	require.NoError(t, service.Initialize())
 	return service
 }

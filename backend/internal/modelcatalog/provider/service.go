@@ -180,14 +180,19 @@ func loadLocalPricingEntries(path string) (map[string]json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
+	return decodePricingSupplement(body, path)
+}
+
+// decodePricingSupplement 对内嵌和外部补充使用相同的完整校验。
+func decodePricingSupplement(body []byte, source string) (map[string]json.RawMessage, error) {
 	entries, err := purepricing.DecodeCatalogEntries(body)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", source, err)
 	}
 	// 补充可以不带价格，但已提供字段必须合法；被目录覆盖的补充字段也须校验。
 	_, diagnostics, _ := purepricing.ParsePricingEntries(entries)
 	if err := diagnostics.ValidationError(); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, fmt.Errorf("%s: %w", source, err)
 	}
 	return entries, nil
 }

@@ -132,9 +132,8 @@ RUN addgroup -g 1000 tokenrouter && \
 # Set working directory
 WORKDIR /app
 
-# Copy binary/resources with ownership to avoid extra full-layer chown copy
+# 复制已内嵌默认价格补充的二进制，并设置运行用户。
 COPY --from=backend-builder --chown=tokenrouter:tokenrouter /app/tokenrouter /app/tokenrouter
-COPY --from=backend-builder --chown=tokenrouter:tokenrouter /app/backend/resources /app/resources
 
 # Create data directory
 RUN mkdir -p /app/data && chown tokenrouter:tokenrouter /app/data

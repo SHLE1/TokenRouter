@@ -55,6 +55,14 @@ LEGACY_ONLY=false
 download_and_extract
 [[ "$(cat "$INSTALL_DIR/$BINARY_NAME")" == new-binary ]]
 [[ "$BINARY_NAME" == sub2api ]]
+# 默认补充已内嵌；安装器不创建外部资源，也不覆盖部署者留下的文件。
+PRICING_RESOURCE="resources/model-pricing/model_pricing_supplements.json"
+[[ ! -e "$INSTALL_DIR/$PRICING_RESOURCE" ]]
+mkdir -p "$INSTALL_DIR/resources/model-pricing"
+printf 'custom-pricing' > "$INSTALL_DIR/$PRICING_RESOURCE"
+rm -rf "$TEMP_DIR"
+download_and_extract
+[[ "$(cat "$INSTALL_DIR/$PRICING_RESOURCE")" == custom-pricing ]]
 # 被测下载函数会注册自己的退出清理，因此在断言之后恢复测试清理。
 trap 'rm -rf "$TEST_ROOT" "$TEMP_DIR"' EXIT
 echo 'Installer brand compatibility tests passed.'

@@ -144,8 +144,7 @@ func TestModelsCatalogInvalidLocalReloadReportsError(t *testing.T) {
 // TestModelsCatalogGeminiImageTextPricing 同时验证内嵌目录、媒体补充和实际用量拆分。
 func TestModelsCatalogGeminiImageTextPricing(t *testing.T) {
 	service := NewService(Options{
-		DataDir:      t.TempDir(),
-		FallbackFile: "../../../resources/model-pricing/model_pricing_supplements.json",
+		DataDir: t.TempDir(),
 	}, nil)
 	require.NoError(t, service.Initialize())
 	for _, tc := range []struct {

@@ -53,43 +53,31 @@ func (s *Service) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[st
 		return nil, nil, pricing.OperationPrices{}, err
 	}
 	raw := pricing.ModelsDevPrices(catalog)
-	// 本地补充仅填补模型或媒体维度缺口，不覆盖远程已有的普通 token 报价。
-	supplement, err := loadLocalPricingEntries(s.options.FallbackFile)
+	// 自定义补充先填缺口，官方补充再补齐剩余字段；目录已有值始终优先。
+	custom, err := loadLocalPricingEntries(s.options.FallbackFile)
 	if err != nil {
 		return nil, nil, pricing.OperationPrices{}, err
 	}
-	// 先应用精确键，再为同一原厂记录的其他查价键补齐空缺。
-	// 这样两种名称显式配置了不同补充价时，不受 map 遍历顺序影响。
-	for model, entry := range supplement {
-		if model == pricing.BillingDefaultsKey {
-			continue
-		}
-		if err := mergeMediaSupplement(raw, model, entry); err != nil {
+	builtin, err := decodePricingSupplement(modelcatalog.PricingSupplements(), "embedded pricing supplements")
+	if err != nil {
+		return nil, nil, pricing.OperationPrices{}, err
+	}
+	for _, supplement := range []map[string]json.RawMessage{custom, builtin} {
+		if err := applyModelSupplements(raw, catalog, supplement); err != nil {
 			return nil, nil, pricing.OperationPrices{}, err
 		}
 	}
-	for model, entry := range supplement {
-		if model == pricing.BillingDefaultsKey {
-			continue
-		}
-		for _, alias := range catalog.FirstPartyAliases(model) {
-			if alias == model {
-				continue
-			}
-			if err := mergeMediaSupplement(raw, alias, entry); err != nil {
+	// 操作价先加载官方默认值，再逐字段叠加自定义值，保留显式零价。
+	var defaults pricing.OperationPrices
+	for _, supplement := range []map[string]json.RawMessage{builtin, custom} {
+		if body := supplement[pricing.BillingDefaultsKey]; len(body) > 0 {
+			if err := json.Unmarshal(body, &defaults); err != nil {
 				return nil, nil, pricing.OperationPrices{}, err
 			}
 		}
 	}
-	// 操作默认价只读取补充文件，运营者售价由价格管理独立提供。
-	var defaults pricing.OperationPrices
-	if body := supplement[pricing.BillingDefaultsKey]; len(body) > 0 {
-		if err := json.Unmarshal(body, &defaults); err != nil {
-			return nil, nil, defaults, err
-		}
-		if err := defaults.Validate(); err != nil {
-			return nil, nil, defaults, err
-		}
+	if err := defaults.Validate(); err != nil {
+		return nil, nil, pricing.OperationPrices{}, err
 	}
 	if len(raw) == 0 {
 		return catalog, map[string]*CatalogModelPricing{}, defaults, nil
@@ -108,6 +96,33 @@ func (s *Service) buildModelsCatalog(body []byte) (*modelcatalog.Catalog, map[st
 	warnOrphanCacheTierFields(diagnostics.OrphanCacheTiers)
 	warnLopsidedLongContextLadders(diagnostics.LopsidedLadders)
 	return catalog, prices, defaults, nil
+}
+
+// applyModelSupplements 先应用精确键，再补齐同一原厂记录的其他查价键。
+// 精确配置优先于别名传播，结果不依赖 map 遍历顺序。
+func applyModelSupplements(raw map[string]json.RawMessage, catalog *modelcatalog.Catalog, supplement map[string]json.RawMessage) error {
+	for model, entry := range supplement {
+		if model == pricing.BillingDefaultsKey {
+			continue
+		}
+		if err := mergeMediaSupplement(raw, model, entry); err != nil {
+			return err
+		}
+	}
+	for model, entry := range supplement {
+		if model == pricing.BillingDefaultsKey {
+			continue
+		}
+		for _, alias := range catalog.FirstPartyAliases(model) {
+			if alias == model {
+				continue
+			}
+			if err := mergeMediaSupplement(raw, alias, entry); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // mergeMediaSupplement 只填补允许的计费字段，目录已有值和零价均优先。

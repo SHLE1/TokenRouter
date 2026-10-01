@@ -46,7 +46,7 @@ Claude Code、Codex、Gemini、Grok、OpenCode 与 CC Switch 配置按用户选�
 
 `modelcatalog` 解析 models.dev 统一目录并拥有供应商身份索引、属性与内容版本。`modelcatalog/provider.Service` 在应用生命周期中下载、缓存和原子发布统一目录及其价格投影；`billing/pricing` 将目录报价归一为 `CatalogModelPricing` 计费模型，并解释本地补充和计费规则。app 的独立目录装配只创建一个运行实例，计费和属性消费者共享该实例。目录维护步骤封装在运行时内，对外提供生命周期、查询、快照和强制更新。价格与属性不会独立更新，候选目录失败时保留整个旧版本。代理失败策略及 URL 校验继续由现有出站边界执行。
 
-生产只使用 models.dev 加载流程，远程入口为 `https://models.dev/catalog.json`，按 `pricing.check_interval_minutes` 默认每 10 分钟检查，使用 ETag 条件请求和本地内容摘要；管理员可强制更新。程序内嵌经过解析验证的压缩离线快照，并附 models.dev 的 MIT 许可。首次启动和网络故障可以使用磁盘或离线目录，缓存文件为 `models_dev_catalog.json`，完整解析成功后通过临时文件替换。管理员接口返回版本、最近成功更新时间与最近更新错误。 本地文件在合并前将旧 `litellm_provider` 归一为 `provider`，显式新字段（含空值和 `null`）优先；内部来源分类为 `catalog`，不会覆盖实际数据出处。远程 304 不跳过本地层校验。
+生产只使用 models.dev 加载流程，远程入口为 `https://models.dev/catalog.json`，按 `pricing.check_interval_minutes` 默认每 10 分钟检查，使用 ETag 条件请求和本地内容摘要；管理员可强制更新。程序内嵌经过解析验证的压缩离线快照和官方价格补充，并附 models.dev 的 MIT 许可。官方补充与二进制一起升级和回退，不依赖外部资源目录。首次启动和网络故障可以使用磁盘或离线目录，缓存文件为 `models_dev_catalog.json`，完整解析成功后通过临时文件替换。管理员接口返回版本、最近成功更新时间与最近更新错误。 本地文件在合并前将旧 `litellm_provider` 归一为 `provider`，显式新字段（含空值和 `null`）优先；内部来源分类为 `catalog`，不会覆盖实际数据出处。远程 304 不跳过本地层校验。
 
 裸模型名优先选原厂记录。明确的 `canonical_model_id` 归属优先；关联缺失时，已知原厂端点（包括 OpenAI、Anthropic、Google、xAI、Mistral 等）仍可识别为原厂，不要求每个模型同时存在于公共资料表。原厂端点托管的其他作者模型继续按明确的 canonical 归属识别。Azure、OpenRouter 等独立供应商不通过该兜底获得原厂身份；其他来源无法确定时保留歧义，不从遍历顺序中选价。供应商限定名称先精确匹配，已知供应商前缀不会在查询时被删除而借用其他来源。只含模型公共资料的记录也能参与属性查询，无需具备价格。
 
@@ -148,11 +148,11 @@ xAI 达到上下文阈值即切换价格。转换层将这类目录阶梯的内�
 
 原厂 Google 的 Gemini 生图记录中，`cost.output` 表示图片输出 token 费率，投影到 `output_cost_per_image_token`；文本及思考输出价由媒体补充文件填入，来源标为 `local_supplement`。目录已有的图片费率继续优先于补充文件，管理员可通过关联价格配置设置用户侧的两项单价。该解释只用于原厂 Gemini 生图记录，不套用到 Deep Research 或中继报价。models.dev 缺少完整文本输入、输出价时保持 token 未定价，独立媒体价格仍可查询；显式零价不视为缺失。价格依据见 [Google 官方定价](https://ai.google.dev/gemini-api/docs/pricing)。
 
-`source` 与 `price_sources` 区分 models.dev、本地补充和规则补充。补充只填缺失字段，目录中的显式零价同样优先；不因条目同名而用补充覆盖现价。补充按“提供方＋原始模型 ID”同步到同一原厂记录的裸名和限定名，先应用精确键，再填其他等价名称的空缺；日期版本与中继记录不共享补充。
+`source` 与 `price_sources` 区分 models.dev、本地补充和规则补充。补充只填缺失字段，目录中的显式零价同样优先；自定义补充优先于内嵌补充，媒体尺寸表等复合字段整体选择，不因条目同名而覆盖目录现价。补充按“提供方＋原始模型 ID”同步到同一原厂记录的裸名和限定名，先应用精确键，再填其他等价名称的空缺；日期版本与中继记录不共享补充。
 
-补充文件只保留目录未覆盖、当前计费需要且能核实来源的字段，并记录 `source_url` 和 `verified_at`。展示属性继续来自 models.dev 和分组属性配置；文件里的旧属性字段不会成为新展示属性来源。型号专属 Fast/Flex、Max、缓存写入及峰谷数值不再写在 Go 中；需要时通过 `fast_multiplier`、`flex_multiplier`、`max_reasoning_effort_multiplier`、`cache_write_multiplier`、`cache_write_1h_multiplier` 和 `time_pricing` 明确声明。没有规则时不根据型号生成加价或折扣。Fast 缓存写入价格对所有来源按同一规则缩放 5m/1h TTL 费用，不把来源标签作为收费条件。
+官方补充的维护源为 `backend/internal/modelcatalog/model_pricing_supplements.json`，通过 `go:embed` 编入二进制；`pricing.fallback_file` 默认为空，只读取显式配置的自定义补充。自定义文件删除后恢复内嵌值，损坏时保留上次有效目录。官方补充只保留目录未覆盖、当前计费需要且能核实来源的字段，并记录 `source_url` 和 `verified_at`。展示属性继续来自 models.dev 和分组属性配置；文件里的旧属性字段不会成为新展示属性来源。型号专属 Fast/Flex、Max、缓存写入及峰谷数值不再写在 Go 中；需要时通过 `fast_multiplier`、`flex_multiplier`、`max_reasoning_effort_multiplier`、`cache_write_multiplier`、`cache_write_1h_multiplier` 和 `time_pricing` 明确声明。没有规则时不根据型号生成加价或折扣。Fast 缓存写入价格对所有来源按同一规则缩放 5m/1h TTL 费用，不把来源标签作为收费条件。
 
-`image_prices` 按 1K/2K/4K 保存美元/张，`video_prices` 按 480p/720p/1080p 保存美元/秒；缺失维度保持缺价，不套用通用尺寸倍率。旧 `output_cost_per_image` 仍表示不分尺寸的单张价格。操作价格位于保留节点 `_billing_defaults`，不进入模型列表，与价格和属性一起校验、发布并克隆。历史账单及任务资金快照不重算。
+`image_prices` 按 1K/2K/4K 保存美元/张，`video_prices` 按 480p/720p/1080p 保存美元/秒；缺失维度保持缺价，不套用通用尺寸倍率。旧 `output_cost_per_image` 仍表示不分尺寸的单张价格。操作价格位于保留节点 `_billing_defaults`，自定义值按字段叠加到内嵌默认值并保留显式零价，不进入模型列表，与价格和属性一起校验、发布并克隆。历史账单及任务资金快照不重算。
 
 统一目录发布会检查价格解析的逐条诊断。模型价格字段类型错误或嵌套阶梯解码失败时，本轮更新返回包含模型名和字段信息的错误，保留原有价格、属性、版本、更新时间及磁盘缓存，只更新错误状态。仅有属性而没有报价的模型仍是合法目录记录，不因缺价而拒绝属性查询。
 

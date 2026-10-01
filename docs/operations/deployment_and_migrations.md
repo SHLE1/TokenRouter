@@ -39,6 +39,8 @@
 
 标准发布的主归档命名为 `tokenrouter_<版本>_<系统>_<架构>`，另有 `sub2api_` 兼容归档。每个归档包含新旧两个普通二进制文件，旧更新器可以继续提取 `sub2api`。CI 的两个 GoReleaser build ID 复用同一 matrix 二进制，全部归档进入 `checksums.txt`。新版更新器优先新归档并兼容旧归档，替换位置仍是当前实际可执行路径；下载、校验和、备份与失败恢复规则不变。
 
+官方价格补充与离线模型目录均内嵌到二进制，后台在线更新、安装脚本、完整归档和 Docker 使用同一份默认数据。替换或回退二进制时，官方补充随版本切换，无需额外安装资源文件。安装器不会创建或覆盖外部价格补充。`pricing.fallback_file` 默认为空，显式配置的自定义文件继续读取并优先于内嵌补充，旧打包路径沿用[配置兼容规则](../interfaces/configuration.md#configuration_sources)；如不再需要旧文件，应清空该配置，文件本身由部署者管理。
+
 已有 Compose 部署保留原编排和 `.env`，只升级镜像即可。更换新模板时先记录实际应用、PostgreSQL 和 Redis 卷名，分别设置 `TOKENROUTER_DATA_VOLUME`、`TOKENROUTER_POSTGRES_VOLUME`、`TOKENROUTER_REDIS_VOLUME`；同时保留数据库名称、用户及密钥，停止旧栈后再启动新模板，不使用 `down -v`。新变量为空时沿用 Compose 项目前缀生成新卷名。
 
 Apple container 新栈使用 `org.tokenrouter.stack` 标签；已有 `sub2api-apple*` 资源继续按 `org.sub2api.stack` 标签核对所有权并原位复用。两种资源同时出现或归属不符时停止。脚本继续共享旧互斥锁，避免新旧脚本并发修改同一栈。`TOKENROUTER_ENV_FILE` 和 `APPLE_CONTAINER_TOKENROUTER_IMAGE` 分别兼容对应旧变量。

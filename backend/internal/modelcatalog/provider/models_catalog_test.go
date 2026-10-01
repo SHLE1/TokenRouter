@@ -168,6 +168,7 @@ func TestModelsCatalogAttributesOnlyWithUnknownPatch(t *testing.T) {
 	remote := &catalogRemoteFixture{body: []byte(`{"providers":{"openai":{"models":{"attributes-only":{"name":"No prices"}}}}}`)}
 	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: dir, FallbackFile: file}, remote)
 	require.NoError(t, service.ForceUpdate())
-	require.Empty(t, service.Snapshot().Data)
+	require.NotContains(t, service.Snapshot().Data, "typo")
+	require.Nil(t, service.GetModelPricing("attributes-only"))
 	require.Equal(t, "No prices", *service.ModelAttributes("attributes-only").DisplayName)
 }

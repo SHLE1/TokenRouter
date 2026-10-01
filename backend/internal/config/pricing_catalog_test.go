@@ -84,6 +84,30 @@ func TestPricingCatalogPackagedFallbackMigration(t *testing.T) {
 	require.Equal(t, "./custom/model_prices_and_context_window.json", cfg.Pricing.FallbackFile)
 }
 
+// TestPricingCatalogSupplementConfig 验证默认不依赖外部文件，自定义路径及环境变量优先级保持有效。
+func TestPricingCatalogSupplementConfig(t *testing.T) {
+	for _, tc := range []struct {
+		name, yaml, env, want string
+	}{
+		{"default", "", "", ""},
+		{"custom yaml", "  fallback_file: ./custom/prices.json\n", "", "./custom/prices.json"},
+		{"custom env", "  fallback_file: ./custom/prices.json\n", "/data/custom.json", "/data/custom.json"},
+		{"explicit resource", "  fallback_file: ./resources/model-pricing/model_pricing_supplements.json\n", "", "./resources/model-pricing/model_pricing_supplements.json"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := "pricing:\n  remote_url: https://models.dev/catalog.json\n" + tc.yaml
+			file := prepareLegacyConfigTest(t, body)
+			t.Setenv("PRICING_FALLBACK_FILE", tc.env)
+			cfg, err := Load()
+			require.NoError(t, err)
+			require.Equal(t, tc.want, cfg.Pricing.FallbackFile)
+			saved, err := os.ReadFile(file)
+			require.NoError(t, err)
+			require.Equal(t, body, string(saved))
+		})
+	}
+}
+
 // TestRetiredPricingOverrideWarnsWithoutRewritingFiles 验证旧键只提示迁移，既不加载也不改写文件。
 func TestRetiredPricingOverrideWarnsWithoutRewritingFiles(t *testing.T) {
 	for _, env := range []bool{false, true} {

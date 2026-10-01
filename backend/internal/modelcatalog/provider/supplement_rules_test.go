@@ -10,6 +10,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,13 +64,13 @@ func TestSupplementRulesPublishAtomically(t *testing.T) {
 	require.NoError(t, os.WriteFile(supplement, []byte(`{"claude-test":{"cache_creation_input_token_cost_above_1hr":0,"image_prices":{"1K":0}},"_billing_defaults":{"audio_tts_price_per_million_chars":0}}`), 0o600))
 	remote.unchanged = true
 	require.NoError(t, service.syncWithRemote())
-	require.Nil(t, service.BillingDefaults().WebSearchPricePerCall)
+	require.Equal(t, 0.01, *service.BillingDefaults().WebSearchPricePerCall)
 	require.Zero(t, *service.BillingDefaults().AudioTTSPricePerMillionChars)
 	require.Zero(t, service.GetModelPricing("claude-test").CacheCreationInputTokenCostAbove1hr)
 	require.NoError(t, os.Remove(supplement))
 	require.NoError(t, service.syncWithRemote())
 	require.Empty(t, service.GetModelPricing("claude-test").ImagePrices)
-	require.Nil(t, service.BillingDefaults().WebSearchPricePerCall)
+	require.Equal(t, 0.01, *service.BillingDefaults().WebSearchPricePerCall)
 	// 发布后的快照可以独立修改，不能污染服务。
 	snap := before
 	snap.BillingDefaults.WebSearchPricePerCall = new(float64)
@@ -95,8 +96,7 @@ func TestIncompleteCatalogFieldsAreNotReplaced(t *testing.T) {
 
 // TestShippedSupplementsAreMinimalAndDocumented 验证分发数据没有混入旧展示字段。
 func TestShippedSupplementsAreMinimalAndDocumented(t *testing.T) {
-	body, err := os.ReadFile("../../../resources/model-pricing/model_pricing_supplements.json")
-	require.NoError(t, err)
+	body := modelcatalog.PricingSupplements()
 	var records map[string]map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(body, &records))
 	for model, fields := range records {

@@ -100,9 +100,8 @@ RUN addgroup -g 1000 tokenrouter && \
 # Set working directory
 WORKDIR /app
 
-# 从构建阶段复制二进制及运行时兜底资源
+# 从构建阶段复制已内嵌默认价格补充的二进制。
 COPY --from=backend-builder /app/tokenrouter /app/tokenrouter
-COPY --from=backend-builder --chown=tokenrouter:tokenrouter /app/backend/resources /app/resources
 
 # Create data directory
 RUN mkdir -p /app/data && chown -R tokenrouter:tokenrouter /app
