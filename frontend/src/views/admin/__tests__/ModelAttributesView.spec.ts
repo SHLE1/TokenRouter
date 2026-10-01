@@ -50,7 +50,7 @@ describe('属性管理页面', () => {
     expect(filter.text()).toBe('')
     expect(modelAttributesAPI.defaults).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, provider: '', capability: '' }))
 
-    await wrapper.get('.dropdown').trigger('keydown', { key: 'Escape' })
+    await wrapper.get('.filter-panel').trigger('keydown', { key: 'Escape' })
     expect(filter.attributes('aria-expanded')).toBe('false')
     expect(document.activeElement).toBe(filter.element)
     await filter.trigger('click')

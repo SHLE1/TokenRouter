@@ -35,6 +35,7 @@ export default {
       "actions": "Actions",
       "model": "Model",
       "provider": "Provider",
+      "capability": "Capability",
       "context": "Context",
       "output": "Output limit"
     },

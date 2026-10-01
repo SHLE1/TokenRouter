@@ -12,35 +12,14 @@
               class="input min-w-0 flex-1 sm:flex-none sm:w-56 lg:w-40 xl:w-64"
               @input="handleSearch"
             />
-            <div ref="filterDropdownRef" class="relative shrink-0">
-              <button
-                type="button"
-                class="btn btn-secondary relative btn-icon"
-                :aria-expanded="showFilterDropdown"
-                :aria-label="t('common.filter')"
-                :title="t('common.filter')"
-                @click="showFilterDropdown = !showFilterDropdown"
-              >
-                <Icon name="filter" size="sm" />
-                <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">{{ activeFilterCount }}</span>
-              </button>
-              <MotionTransition name="dropdown-fade">
-                <div
-                  v-if="showFilterDropdown" :inert="!(showFilterDropdown) || undefined"
-                  class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-72 rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto"
-                  @click.stop
-                >
-                  <div class="mb-3 flex items-center justify-between">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                    <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetRedeemFilters">{{ t('common.reset') }}</button>
-                  </div>
-                  <div class="space-y-3">
-                    <Select v-model="filters.type" :options="filterTypeOptions" @change="loadCodes" />
-                    <Select v-model="filters.status" :options="filterStatusOptions" @change="loadCodes" />
-                  </div>
-                </div>
-              </MotionTransition>
-            </div>
+            <FilterDropdown :active-count="activeFilterCount" @reset="resetRedeemFilters">
+              <FilterField :label="t('admin.redeem.columns.type')">
+                <Select v-model="filters.type" :options="filterTypeOptions" @change="loadCodes" />
+              </FilterField>
+              <FilterField :label="t('admin.redeem.columns.status')">
+                <Select v-model="filters.status" :options="filterStatusOptions" @change="loadCodes" />
+              </FilterField>
+            </FilterDropdown>
           </div>
 
           <!-- 右侧：操作按钮 -->
@@ -650,7 +629,6 @@
 </template>
 
 <script setup lang="ts">
-import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -670,6 +648,8 @@ import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -803,8 +783,6 @@ const filters = reactive({
   type: '',
   status: ''
 })
-const showFilterDropdown = ref(false)
-const filterDropdownRef = ref<HTMLElement | null>(null)
 const pagination = reactive({
   page: 1,
   page_size: getPersistedPageSize(),
@@ -823,12 +801,6 @@ const resetRedeemFilters = () => {
   filters.status = ''
   pagination.page = 1
   loadCodes()
-}
-
-const handleFilterClickOutside = (event: MouseEvent) => {
-  const target = event.target
-  if (target instanceof Node && filterDropdownRef.value?.contains(target)) return
-  showFilterDropdown.value = false
 }
 
 let abortController: AbortController | null = null
@@ -1298,12 +1270,10 @@ const loadSubscriptionPlans = async () => {
 onMounted(() => {
   loadCodes()
   loadSubscriptionPlans()
-  document.addEventListener('click', handleFilterClickOutside)
 })
 
 onUnmounted(() => {
   clearTimeout(searchTimeout)
   abortController?.abort()
-  document.removeEventListener('click', handleFilterClickOutside)
 })
 </script>

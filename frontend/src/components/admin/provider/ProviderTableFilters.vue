@@ -8,82 +8,33 @@
       @search="$emit('change')"
     />
 
-    <div ref="filterPanelRef" class="relative shrink-0">
-      <button
-        type="button"
-        data-testid="provider-filters-toggle"
-        class="btn btn-secondary relative btn-icon"
-        :class="activeFilterCount > 0 ? 'border-primary-400 text-primary-700 dark:border-primary-500 dark:text-primary-300' : ''"
-        :aria-expanded="showFilters"
-        :aria-label="t('common.filter')"
-        :title="t('common.filter')"
-        @click="toggleFilters"
-      >
-        <Icon name="filter" size="sm" />
-        <span
-          v-if="activeFilterCount > 0"
-          class="pointer-events-none absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
-        >
-          {{ activeFilterCount }}
-        </span>
-      </button>
-
-      <MotionTransition name="dropdown-fade">
-        <div
-          v-if="showFilters" :inert="!(showFilters) || undefined"
-          class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto"
-          @click.stop
-        >
-          <div class="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-dark-700">
-            <div>
-              <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-              <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.providers.filterHint') }}</div>
-            </div>
-            <button
-              v-if="activeFilterCount > 0"
-              type="button"
-              class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-              @click="clearFilters"
-            >
-              {{ t('common.reset') }}
-            </button>
-          </div>
-
-          <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
-            <div>
-              <label class="input-label">{{ t('admin.providers.columns.platform') }}</label>
-              <Select :model-value="filters.platform" class="w-full" :options="pOpts" @update:model-value="updatePlatform" @change="$emit('change')" />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.columns.type') }}</label>
-              <Select :model-value="filters.type" class="w-full" :options="tOpts" @update:model-value="updateType" @change="$emit('change')" />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.columns.status') }}</label>
-              <Select :model-value="filters.status" class="w-full" :options="sOpts" @update:model-value="updateStatus" @change="$emit('change')" />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.privacyFilter') }}</label>
-              <Select :model-value="filters.privacy_mode" class="w-full" :options="privacyOpts" @update:model-value="updatePrivacyMode" @change="$emit('change')" />
-            </div>
-            <div class="sm:col-span-2">
-              <label class="input-label">{{ t('admin.providers.columns.groups') }}</label>
-              <Select :model-value="filters.group" class="w-full" :options="gOpts" searchable @update:model-value="updateGroup" @change="$emit('change')" />
-            </div>
-          </div>
-        </div>
-      </MotionTransition>
-    </div>
+    <FilterDropdown :active-count="activeFilterCount" :columns="2" :description="t('admin.providers.filterHint')" @reset="clearFilters">
+      <FilterField :label="t('admin.providers.columns.platform')">
+        <Select :model-value="filters.platform" :options="pOpts" @update:model-value="updatePlatform" @change="$emit('change')" />
+      </FilterField>
+      <FilterField :label="t('admin.providers.columns.type')">
+        <Select :model-value="filters.type" :options="tOpts" @update:model-value="updateType" @change="$emit('change')" />
+      </FilterField>
+      <FilterField :label="t('admin.providers.columns.status')">
+        <Select :model-value="filters.status" :options="sOpts" @update:model-value="updateStatus" @change="$emit('change')" />
+      </FilterField>
+      <FilterField :label="t('admin.providers.privacyFilter')">
+        <Select :model-value="filters.privacy_mode" :options="privacyOpts" @update:model-value="updatePrivacyMode" @change="$emit('change')" />
+      </FilterField>
+      <FilterField :label="t('admin.providers.columns.groups')" full>
+        <Select :model-value="filters.group" :options="gOpts" searchable @update:model-value="updateGroup" @change="$emit('change')" />
+      </FilterField>
+    </FilterDropdown>
   </div>
 </template>
 
 <script setup lang="ts">
-import MotionTransition from '@/components/common/MotionTransition.vue'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
-import Icon from '@/components/icons/Icon.vue'
 import type { AdminGroup } from '@/types'
 import { CONCRETE_PLATFORM_OPTIONS } from '@/constants/platforms'
 
@@ -91,8 +42,6 @@ const props = defineProps<{ searchQuery: string; filters: Record<string, any>; g
 const emit = defineEmits(['update:searchQuery', 'update:filters', 'change'])
 const { t } = useI18n()
 
-const showFilters = ref(false)
-const filterPanelRef = ref<HTMLElement | null>(null)
 const filterKeys = ['platform', 'type', 'status', 'privacy_mode', 'group'] as const
 
 const activeFilterCount = computed(() => filterKeys.filter((key) => String(props.filters?.[key] ?? '').trim() !== '').length)
@@ -109,33 +58,6 @@ const clearFilters = () => {
   emit('update:filters', nextFilters)
   emit('change')
 }
-
-const toggleFilters = () => {
-  showFilters.value = !showFilters.value
-}
-
-const handleDocumentClick = (event: MouseEvent) => {
-  if (!showFilters.value || !filterPanelRef.value) return
-  const target = event.target
-  if (target instanceof Node && filterPanelRef.value.contains(target)) return
-  // Select 的候选菜单挂载到 body，选择选项时不要提前关闭筛选面板。
-  if (target instanceof Element && target.closest('.select-dropdown-portal')) return
-  showFilters.value = false
-}
-
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') showFilters.value = false
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleDocumentClick)
-  document.addEventListener('keydown', handleKeydown)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleDocumentClick)
-  document.removeEventListener('keydown', handleKeydown)
-})
 
 const pOpts = computed(() => [{ value: '', label: t('admin.providers.allPlatforms') }, ...CONCRETE_PLATFORM_OPTIONS])
 const tOpts = computed(() => [

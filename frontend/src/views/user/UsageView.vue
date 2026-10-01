@@ -80,31 +80,12 @@
 
       <div class="card p-4">
         <div class="flex items-center justify-between gap-2">
-          <div ref="filterPanelRef" class="relative shrink-0">
-            <button
-              type="button"
-              class="btn btn-secondary relative btn-icon"
-              :aria-expanded="showFilterDropdown"
-              :aria-label="t('common.filter')"
-              :title="t('common.filter')"
-              @click="showFilterDropdown = !showFilterDropdown"
-            >
-              <Icon name="filter" size="sm" />
-              <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-                {{ activeFilterCount }}
-              </span>
-            </button>
-
-            <MotionTransition persisted name="dropdown-fade">
-              <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute left-0 top-full z-modal-nested mt-2 max-h-[min(70vh,42rem)] w-[min(48rem,calc(100vw-3rem))] overflow-y-auto rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
-                <div class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                <div v-if="activeTab === 'errors'" v-content-reveal class="flex flex-wrap items-end gap-4">
-              <div class="w-full sm:w-auto sm:min-w-[220px]">
-                <label class="input-label">{{ t('usage.errors.keyName') }}</label>
+          <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetCurrentFilters">
+            <template v-if="activeTab === 'errors'">
+              <FilterField :label="t('usage.errors.keyName')">
                 <Select v-model="errorFilter.api_key_id" :options="errorKeyOptions" @change="applyErrorFilters" />
-              </div>
-              <div class="w-full sm:w-auto sm:min-w-[220px]">
-                <label class="input-label">{{ t('usage.errors.model') }}</label>
+              </FilterField>
+              <FilterField :label="t('usage.errors.model')">
                 <Select
                   v-model="errorFilter.model"
                   :options="errorModelOptions"
@@ -114,49 +95,38 @@
                   :placeholder="t('usage.errors.modelPlaceholder')"
                   @change="applyErrorFilters"
                 />
-              </div>
-              <div class="w-full sm:w-auto sm:min-w-[200px]">
-                <label class="input-label">{{ t('usage.errors.category') }}</label>
+              </FilterField>
+              <FilterField :label="t('usage.errors.category')">
                 <Select v-model="errorFilter.category" :options="errorCategoryOptions" @change="applyErrorFilters" />
-              </div>
-              <div class="w-full sm:w-auto sm:min-w-[180px]">
-                <label class="input-label">{{ t('usage.errors.status') }}</label>
+              </FilterField>
+              <FilterField :label="t('usage.errors.status')">
                 <Select v-model="errorFilter.status_code" :options="errorStatusOptions" @change="applyErrorFilters" />
-              </div>
-            </div>
-                <div v-else class="flex flex-wrap items-end gap-4">
-              <div class="w-full sm:w-auto sm:min-w-[220px]">
-                <label class="input-label">{{ t('usage.apiKeyFilter') }}</label>
+              </FilterField>
+            </template>
+            <template v-else>
+              <FilterField :label="t('usage.apiKeyFilter')">
                 <Select v-model="filters.api_key_id" :options="apiKeyOptions" @change="applyFilters" />
-              </div>
-              <div class="w-full sm:w-auto sm:min-w-[220px]">
-                <label class="input-label">{{ t('usage.model') }}</label>
+              </FilterField>
+              <FilterField :label="t('usage.model')">
                 <Select v-model="filters.model" :options="modelOptions" searchable @change="applyFilters" />
-              </div>
-              <div class="w-full sm:w-auto sm:min-w-[200px]">
-                <label class="input-label">{{ t('admin.usage.group') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.usage.group')">
                 <Select v-model="filters.group_id" :options="groupOptions" searchable @change="applyFilters" />
-              </div>
-              <div class="w-full sm:w-auto sm:min-w-[180px]">
-                <label class="input-label">{{ t('usage.type') }}</label>
+              </FilterField>
+              <FilterField :label="t('usage.type')">
                 <Select v-model="filters.request_type" :options="requestTypeOptions" @change="applyFilters" />
-              </div>
-              <div class="w-full sm:w-auto sm:min-w-[200px]">
-                <label class="input-label">{{ t('admin.usage.billingType') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.usage.billingType')">
                 <Select v-model="filters.billing_type" :options="billingTypeOptions" @change="applyFilters" />
-              </div>
-              <div class="w-full sm:w-auto sm:min-w-[200px]">
-                <label class="input-label">{{ t('admin.usage.billingMode') }}</label>
+              </FilterField>
+              <FilterField :label="t('admin.usage.billingMode')">
                 <Select v-model="filters.billing_mode" :options="billingModeOptions" @change="applyFilters" />
-              </div>
-              <div class="w-full sm:w-auto sm:min-w-[220px]">
-                <label class="input-label">{{ t('usage.compactionFilter') }}</label>
+              </FilterField>
+              <FilterField :label="t('usage.compactionFilter')">
                 <Select v-model="filters.native_compaction_v2" :options="compactionOptions" @change="applyFilters" />
-              </div>
-                </div>
-              </div>
-            </MotionTransition>
-          </div>
+              </FilterField>
+            </template>
+          </FilterDropdown>
 
           <div class="flex flex-wrap items-center justify-end gap-2">
             <button type="button" @click="refreshData" :disabled="activeTab === 'errors' ? errorLoading : loading" class="btn btn-secondary btn-icon" :title="t('common.refresh')">
@@ -283,6 +253,8 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import UsageStatsCards from '@/components/admin/usage/UsageStatsCards.vue'
 import UsageTable from '@/components/admin/usage/UsageTable.vue'
 import IpGeoBatchToolbar from '@/components/common/IpGeoBatchToolbar.vue'
@@ -348,8 +320,6 @@ const errorFilter = ref<{ model: string | null; category: string; api_key_id: nu
   api_key_id: null,
   status_code: null,
 })
-const showFilterDropdown = ref(false)
-const filterPanelRef = ref<HTMLElement | null>(null)
 const activeFilterCount = computed(() => {
   const source = activeTab.value === 'errors' ? errorFilter.value : filters.value
   return Object.entries(source).filter(([key, value]) => !['start_date', 'end_date'].includes(key) && value !== null && value !== undefined && String(value) !== '').length
@@ -634,6 +604,26 @@ const applyFilters = () => {
   resetErrorRows()
 }
 
+// 重置只清空当前标签页的筛选条件，日期范围保持不变。
+const resetCurrentFilters = () => {
+  if (activeTab.value === 'errors') {
+    errorFilter.value = { model: '', category: '', api_key_id: null, status_code: null }
+    applyErrorFilters()
+    return
+  }
+  filters.value = {
+    ...filters.value,
+    api_key_id: null,
+    group_id: null,
+    model: null,
+    request_type: null,
+    billing_type: null,
+    billing_mode: null,
+    native_compaction_v2: null,
+  }
+  applyFilters()
+}
+
 const refreshData = () => {
   void loadLogs()
   void loadStats()
@@ -880,12 +870,6 @@ const handleColumnClickOutside = (event: MouseEvent) => {
     showColumnDropdown.value = false
   }
 }
-const handleFilterClickOutside = (event: MouseEvent) => {
-  const target = event.target
-  if (target instanceof Node && filterPanelRef.value?.contains(target)) return
-  if (target instanceof Element && target.closest('.select-dropdown-portal')) return
-  showFilterDropdown.value = false
-}
 
 const loadFilterOptions = async () => {
   try {
@@ -1015,7 +999,6 @@ onMounted(() => {
   loadSavedColumns()
   loadSavedErrColumns()
   document.addEventListener('click', handleColumnClickOutside)
-  document.addEventListener('click', handleFilterClickOutside)
   void loadFilterOptions()
   refreshData()
 })
@@ -1023,7 +1006,6 @@ onMounted(() => {
 onUnmounted(() => {
   abortController?.abort()
   document.removeEventListener('click', handleColumnClickOutside)
-  document.removeEventListener('click', handleFilterClickOutside)
 })
 
 watch(endpointDistributionSource, () => {

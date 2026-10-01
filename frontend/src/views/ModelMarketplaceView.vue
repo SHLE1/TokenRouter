@@ -13,45 +13,17 @@
           />
         </div>
 
-        <div ref="filterPanelRef" class="relative shrink-0">
-          <button
-            type="button"
-            class="btn btn-secondary relative btn-icon"
-            :aria-expanded="showFilterDropdown"
-            :aria-label="t('common.filter')"
-            :title="t('common.filter')"
-            @click="showFilterDropdown = !showFilterDropdown"
-          >
-            <Icon name="filter" size="sm" />
-            <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-              {{ activeFilterCount }}
-            </span>
-          </button>
-          <MotionTransition persisted name="dropdown-fade">
-            <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
-              <div class="mb-3 flex items-center justify-between">
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetFilters">
-                  {{ t('common.reset') }}
-                </button>
-              </div>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label class="input-label">{{ t('marketplace.allBrands') }}</label>
-                  <Select v-model="selectedBrand" :options="brandSelectOptions" />
-                </div>
-                <div>
-                  <label class="input-label">{{ t('marketplace.allTypes') }}</label>
-                  <Select v-model="selectedPricingMode" :options="pricingSelectOptions" />
-                </div>
-                <div>
-                  <label class="input-label">{{ t('marketplace.allGroups') }}</label>
-                  <Select v-model="selectedGroupId" :options="groupSelectOptions" searchable />
-                </div>
-              </div>
-            </div>
-          </MotionTransition>
-        </div>
+        <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetPanelFilters">
+          <FilterField :label="t('marketplace.filterBrand')">
+            <Select v-model="selectedBrand" :options="brandSelectOptions" />
+          </FilterField>
+          <FilterField :label="t('marketplace.filterPricingMode')">
+            <Select v-model="selectedPricingMode" :options="pricingSelectOptions" />
+          </FilterField>
+          <FilterField :label="t('marketplace.filterGroup')">
+            <Select v-model="selectedGroupId" :options="groupSelectOptions" searchable />
+          </FilterField>
+        </FilterDropdown>
       </div>
     </template>
 
@@ -125,45 +97,17 @@
             />
           </div>
 
-          <div ref="filterPanelRef" class="relative shrink-0">
-            <button
-              type="button"
-              class="btn btn-secondary relative btn-icon"
-              :aria-expanded="showFilterDropdown"
-              :aria-label="t('common.filter')"
-              :title="t('common.filter')"
-              @click="showFilterDropdown = !showFilterDropdown"
-            >
-              <Icon name="filter" size="sm" />
-              <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-                {{ activeFilterCount }}
-              </span>
-            </button>
-            <MotionTransition persisted name="dropdown-fade">
-              <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute right-0 top-full z-modal-nested mt-2 w-[min(34rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900" @click.stop>
-                <div class="mb-3 flex items-center justify-between">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                  <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetFilters">
-                    {{ t('common.reset') }}
-                  </button>
-                </div>
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label class="input-label">{{ t('marketplace.allBrands') }}</label>
-                    <Select v-model="selectedBrand" :options="brandSelectOptions" />
-                  </div>
-                  <div>
-                    <label class="input-label">{{ t('marketplace.allTypes') }}</label>
-                    <Select v-model="selectedPricingMode" :options="pricingSelectOptions" />
-                  </div>
-                  <div>
-                    <label class="input-label">{{ t('marketplace.allGroups') }}</label>
-                    <Select v-model="selectedGroupId" :options="groupSelectOptions" searchable />
-                  </div>
-                </div>
-              </div>
-            </MotionTransition>
-          </div>
+          <FilterDropdown :active-count="activeFilterCount" :columns="3" keep-mounted @reset="resetPanelFilters">
+            <FilterField :label="t('marketplace.filterBrand')">
+              <Select v-model="selectedBrand" :options="brandSelectOptions" />
+            </FilterField>
+            <FilterField :label="t('marketplace.filterPricingMode')">
+              <Select v-model="selectedPricingMode" :options="pricingSelectOptions" />
+            </FilterField>
+            <FilterField :label="t('marketplace.filterGroup')">
+              <Select v-model="selectedGroupId" :options="groupSelectOptions" searchable />
+            </FilterField>
+          </FilterDropdown>
         </div>
 
         <ModelMarketplaceSkeleton v-if="loading" />
@@ -340,8 +284,7 @@ import { vContentReveal } from '@/directives/contentReveal'
 import { useRoute as useMotionRoute } from 'vue-router'
 const motionRoute = useMotionRoute()
 
-import MotionTransition from '@/components/common/MotionTransition.vue'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -356,6 +299,8 @@ import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import ModelIdLabel from '@/components/common/ModelIdLabel.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { initTheme, useTheme } from '@/composables/useTheme'
@@ -389,8 +334,6 @@ const search = ref('')
 const selectedBrand = ref<string | 'all'>('all')
 const selectedPricingMode = ref<PricingFilter>('all')
 const selectedGroupId = ref<number | 'all'>('all')
-const showFilterDropdown = ref(false)
-const filterPanelRef = ref<HTMLElement | null>(null)
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
@@ -525,19 +468,16 @@ function pricingKind(pricing: MarketplaceModelPricing): Exclude<PricingFilter, '
   return 'unpriced'
 }
 
-function resetFilters() {
-  search.value = ''
+// 面板内重置只清空下拉条件；空结果页的重置还会一并清空搜索词。
+function resetPanelFilters() {
   selectedBrand.value = 'all'
   selectedPricingMode.value = 'all'
   selectedGroupId.value = 'all'
-  showFilterDropdown.value = false
 }
 
-function handleFilterClickOutside(event: MouseEvent) {
-  const target = event.target
-  if (target instanceof Node && filterPanelRef.value?.contains(target)) return
-  if (target instanceof Element && target.closest('.select-dropdown-portal')) return
-  showFilterDropdown.value = false
+function resetFilters() {
+  search.value = ''
+  resetPanelFilters()
 }
 
 function formatMultiplier(multiplier: number): string {
@@ -796,7 +736,6 @@ async function fetchMarketplace() {
 }
 
 onMounted(async () => {
-  document.addEventListener('click', handleFilterClickOutside)
   initTheme()
   authStore.checkAuth()
   if (!appStore.publicSettingsLoaded) {
@@ -805,5 +744,4 @@ onMounted(async () => {
   await fetchMarketplace()
 })
 
-onUnmounted(() => document.removeEventListener('click', handleFilterClickOutside))
 </script>

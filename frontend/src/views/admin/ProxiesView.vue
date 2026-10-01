@@ -19,31 +19,14 @@
               @input="handleSearch"
             />
             </div>
-            <div ref="filterDropdownRef" class="relative shrink-0">
-              <button
-                type="button"
-                class="btn btn-secondary relative btn-icon"
-                :aria-expanded="showFilterDropdown"
-                :aria-label="t('common.filter')"
-                :title="t('common.filter')"
-                @click="showFilterDropdown = !showFilterDropdown"
-              >
-                <Icon name="filter" size="sm" />
-                <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">{{ activeFilterCount }}</span>
-              </button>
-              <MotionTransition name="dropdown-fade">
-                <div v-if="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute left-auto right-0 top-full z-modal-nested mt-2 w-72 rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 sm:left-0 sm:right-auto" @click.stop>
-                  <div class="mb-3 flex items-center justify-between">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                    <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetProxyFilters">{{ t('common.reset') }}</button>
-                  </div>
-                  <div class="space-y-3">
-                    <Select v-model="filters.protocol" :options="protocolOptions" :placeholder="t('admin.proxies.allProtocols')" @change="loadProxies" />
-                    <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.proxies.allStatus')" @change="loadProxies" />
-                  </div>
-                </div>
-              </MotionTransition>
-            </div>
+            <FilterDropdown :active-count="activeFilterCount" @reset="resetProxyFilters">
+              <FilterField :label="t('admin.proxies.columns.protocol')">
+                <Select v-model="filters.protocol" :options="protocolOptions" :placeholder="t('admin.proxies.allProtocols')" @change="loadProxies" />
+              </FilterField>
+              <FilterField :label="t('admin.proxies.columns.status')">
+                <Select v-model="filters.status" :options="statusOptions" :placeholder="t('admin.proxies.allStatus')" @change="loadProxies" />
+              </FilterField>
+            </FilterDropdown>
           </div>
 
           <!-- Right: All action buttons -->
@@ -940,6 +923,8 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import ImportDataModal from '@/components/admin/proxy/ImportDataModal.vue'
 import Select from '@/components/common/Select.vue'
+import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import ProxyAdBanner from '@/components/common/ProxyAdBanner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import PlatformTypeBadge from '@/components/common/PlatformTypeBadge.vue'
@@ -1010,8 +995,6 @@ const filters = reactive({
   protocol: '',
   status: ''
 })
-const showFilterDropdown = ref(false)
-const filterDropdownRef = ref<HTMLElement | null>(null)
 const showMoreActionsDropdown = ref(false)
 const moreActionsDropdownRef = ref<HTMLElement | null>(null)
 const pagination = reactive({
@@ -2051,8 +2034,7 @@ function closeCopyMenu() {
 function handleProxyClickOutside(event: MouseEvent) {
   const target = event.target
   closeCopyMenu()
-  if (target instanceof Node && (filterDropdownRef.value?.contains(target) || moreActionsDropdownRef.value?.contains(target))) return
-  showFilterDropdown.value = false
+  if (target instanceof Node && moreActionsDropdownRef.value?.contains(target)) return
   showMoreActionsDropdown.value = false
 }
 

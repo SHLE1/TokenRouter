@@ -9,8 +9,12 @@
               <input v-model="search" class="input input-has-icon" :placeholder="t('admin.pricing.defaults.search')" :aria-label="t('admin.pricing.defaults.search')" />
             </div>
             <FilterDropdown :active-count="activeFilterCount" @reset="platform = ''; mode = ''">
-              <Select v-model="platform" :options="platformOptions" :aria-label="t('admin.pricing.defaults.columns.platform')" />
-              <Select v-model="mode" :options="modeOptions" :aria-label="t('admin.pricing.defaults.columns.billing_mode')" />
+              <FilterField :label="t('admin.pricing.defaults.columns.platform')">
+                <Select v-model="platform" :options="platformOptions" :aria-label="t('admin.pricing.defaults.columns.platform')" />
+              </FilterField>
+              <FilterField :label="t('admin.pricing.defaults.columns.billing_mode')">
+                <Select v-model="mode" :options="modeOptions" :aria-label="t('admin.pricing.defaults.columns.billing_mode')" />
+              </FilterField>
             </FilterDropdown>
           </div>
           <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -111,6 +115,7 @@ import DataTable from '@/components/common/DataTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import Select from '@/components/common/Select.vue'
 import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import PlatformBadge from '@/components/common/PlatformBadge.vue'
 import BillingModeBadge from '@/components/common/BillingModeBadge.vue'

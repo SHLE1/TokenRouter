@@ -11,41 +11,14 @@
                 class="min-w-0 flex-1 sm:w-56 sm:flex-none lg:w-48 xl:w-64"
                 @search="onFilterChange"
               />
-              <div ref="filterDropdownRef" class="relative shrink-0">
-                <button
-                  type="button"
-                  class="btn btn-secondary relative btn-icon"
-                  :aria-expanded="showFilterDropdown"
-                  :aria-label="t('common.filter')"
-                  :title="t('common.filter')"
-                  @click="showFilterDropdown = !showFilterDropdown"
-                >
-                  <Icon name="filter" size="sm" />
-                  <span v-if="activeFilterCount > 0" class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-100 px-1.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-                    {{ activeFilterCount }}
-                  </span>
-                </button>
-                <MotionTransition persisted name="dropdown-fade">
-                  <div v-show="showFilterDropdown" :inert="!(showFilterDropdown) || undefined" class="absolute left-0 right-auto top-full z-modal-nested mt-2 w-[min(32rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-surface border border-gray-200 bg-white p-4 shadow-xl dark:border-dark-600 dark:bg-dark-900 max-[639px]:left-auto max-[639px]:right-0" @click.stop>
-                    <div class="mb-3 flex items-center justify-between">
-                      <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('common.filter') }}</div>
-                      <button v-if="activeFilterCount > 0" type="button" class="text-xs font-medium text-primary-600 dark:text-primary-400" @click="resetKeyFilters">
-                        {{ t('common.reset') }}
-                      </button>
-                    </div>
-                    <div class="space-y-3">
-                      <div>
-                        <label class="input-label">{{ t('keys.allGroups') }}</label>
-                        <Select :model-value="filterGroupId" :options="groupFilterOptions" @update:model-value="onGroupFilterChange" />
-                      </div>
-                      <div>
-                        <label class="input-label">{{ t('keys.allStatus') }}</label>
-                        <Select :model-value="filterStatus" :options="statusFilterOptions" @update:model-value="onStatusFilterChange" />
-                      </div>
-                    </div>
-                  </div>
-                </MotionTransition>
-              </div>
+              <FilterDropdown :active-count="activeFilterCount" :columns="2" keep-mounted @reset="resetKeyFilters">
+                <FilterField :label="t('keys.group')">
+                  <Select :model-value="filterGroupId" :options="groupFilterOptions" @update:model-value="onGroupFilterChange" />
+                </FilterField>
+                <FilterField :label="t('common.status')">
+                  <Select :model-value="filterStatus" :options="statusFilterOptions" @update:model-value="onStatusFilterChange" />
+                </FilterField>
+              </FilterDropdown>
             </div>
             <div class="flex shrink-0 justify-end gap-2">
               <button
@@ -1258,6 +1231,8 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 	import EmptyState from '@/components/common/EmptyState.vue'
 	import Select from '@/components/common/Select.vue'
+	import FilterDropdown from '@/components/common/FilterDropdown.vue'
+	import FilterField from '@/components/common/FilterField.vue'
 	import Toggle from '@/components/common/Toggle.vue'
 	import SearchInput from '@/components/common/SearchInput.vue'
 	import RuleListEditor from '@/components/common/RuleListEditor.vue'
@@ -1491,8 +1466,6 @@ const sortState = ref({
 const filterSearch = ref('')
 const filterStatus = ref('')
 const filterGroupId = ref<string | number>('')
-const showFilterDropdown = ref(false)
-const filterDropdownRef = ref<HTMLElement | null>(null)
 
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
@@ -1685,15 +1658,7 @@ const resetKeyFilters = () => {
   filterGroupId.value = ''
   filterStatus.value = ''
   pagination.value.page = 1
-  showFilterDropdown.value = false
   loadApiKeys()
-}
-
-const handleFilterClickOutside = (event: MouseEvent) => {
-  const target = event.target
-  if (target instanceof Node && filterDropdownRef.value?.contains(target)) return
-  if (target instanceof Element && target.closest('.select-dropdown-portal')) return
-  showFilterDropdown.value = false
 }
 
 const onFilterChange = () => {
@@ -2622,7 +2587,6 @@ function formatResetTime(resetAt: string | null): string {
 onMounted(async () => {
   loadSavedColumns()
   document.addEventListener('click', closeGroupSelector)
-  document.addEventListener('click', handleFilterClickOutside)
   resetTimer = setInterval(() => { now.value = new Date() }, 60000)
   await loadPublicSettings()
   await Promise.all([loadApiKeys(), loadGroups(), loadUserGroupRates(), loadBillingOptions(), loadFormGroups()])
@@ -2630,7 +2594,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', closeGroupSelector)
-  document.removeEventListener('click', handleFilterClickOutside)
   abortController?.abort()
 	if (resetTimer) clearInterval(resetTimer)
 })

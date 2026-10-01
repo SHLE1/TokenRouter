@@ -21,8 +21,12 @@
               </div>
               <Select v-if="activeTab === 'configs'" v-model="status" :options="statusOptions" class="w-32 shrink-0" />
               <FilterDropdown v-else :active-count="activeFilterCount" @reset="provider = ''; capability = ''">
-                <Select v-model="provider" :options="providerOptions" :aria-label="t('admin.modelAttributes.allProviders')" />
-                <Select v-model="capability" :options="capabilityOptions" :aria-label="t('admin.modelAttributes.allCapabilities')" />
+                <FilterField :label="t('admin.modelAttributes.columns.provider')">
+                  <Select v-model="provider" :options="providerOptions" :aria-label="t('admin.modelAttributes.allProviders')" />
+                </FilterField>
+                <FilterField :label="t('admin.modelAttributes.columns.capability')">
+                  <Select v-model="capability" :options="capabilityOptions" :aria-label="t('admin.modelAttributes.allCapabilities')" />
+                </FilterField>
               </FilterDropdown>
             </div>
             <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -140,6 +144,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import RuleListEditor from '@/components/common/RuleListEditor.vue'
 import Select from '@/components/common/Select.vue'
 import FilterDropdown from '@/components/common/FilterDropdown.vue'
+import FilterField from '@/components/common/FilterField.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'

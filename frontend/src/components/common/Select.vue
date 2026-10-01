@@ -127,10 +127,11 @@
 <script setup lang="ts">
 import { useFloatingMotion } from '@/composables/useFloatingMotion'
 import MotionTransition from '@/components/common/MotionTransition.vue'
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import { SELECT_PANEL_MAX_HEIGHT, Z_INDEX } from '@/constants/overlay'
+import { FILTER_FIELD_KEY, isSameFilterValue, resolveEmptyValue } from './filterPanel'
 
 const { t } = useI18n()
 
@@ -421,6 +422,26 @@ const clearSelection = () => {
   if (props.disabled) return
   emit('update:modelValue', null)
   emit('change', null, null)
+}
+
+// 放在筛选面板字段里时，向字段上报当前选项，用于生成已选条件标签；移除标签即恢复“全部”。
+const filterField = inject(FILTER_FIELD_KEY, null)
+if (filterField) {
+  const emptyValue = computed(() => {
+    const explicit = filterField.emptyValue()
+    if (explicit !== undefined) return explicit
+    return resolveEmptyValue(props.options.length ? getOptionValue(props.options[0]) : null)
+  })
+  filterField.bindControl(computed(() => ({
+    active: !isSameFilterValue(props.modelValue, emptyValue.value),
+    text: selectedLabel.value,
+    clear: () => {
+      const value = (emptyValue.value ?? null) as SelectOption['value']
+      const option = props.options.find((opt) => getOptionValue(opt) === value) ?? null
+      emit('update:modelValue', value)
+      emit('change', value, option as SelectOption | null)
+    },
+  })))
 }
 
 // Keyboards
