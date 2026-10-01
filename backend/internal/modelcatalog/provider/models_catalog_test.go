@@ -21,6 +21,34 @@ type catalogRemoteFixture struct {
 	validators []string
 }
 
+// TestModelAttributesCanonicalFallbackKeepsPricing 验证服务接入属性回退后仍保留价格来源隔离。
+func TestModelAttributesCanonicalFallbackKeepsPricing(t *testing.T) {
+	remote := &catalogRemoteFixture{body: []byte(`{
+		"models":{"openai/gpt-image-2.5-flare":{
+			"modalities":{"input":["text","image"],"output":["image"]}
+		}},
+		"providers":{
+			"azure":{"models":{"gpt-image-2.5-flare":{
+				"canonical_model_id":"openai/gpt-image-2.5-flare","cost":{"input":1,"output":2}
+			}}},
+			"relay":{"models":{"gpt-image-2.5-flare":{
+				"canonical_model_id":"openai/gpt-image-2.5-flare","cost":{"input":3,"output":4}
+			}}}
+		}
+	}`)}
+	s := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: t.TempDir()}, remote)
+	require.NoError(t, s.ForceUpdate())
+	attributes := s.ModelAttributes("gpt-image-2.5-flare")
+	require.Equal(t, []string{"text", "image"}, *attributes.InputModalities)
+	require.Equal(t, []string{"image"}, *attributes.OutputModalities)
+	price := s.GetModelPricing("gpt-image-2.5-flare")
+	require.Equal(t, "unpriced", price.Source)
+	require.True(t, price.TokenPricingAbsent)
+	require.False(t, price.InputPricePresent)
+	require.Nil(t, s.ModelAttributes("azure/gpt-image-2.5-flare").InputModalities)
+	require.InDelta(t, 1e-6, s.GetModelPricing("azure/gpt-image-2.5-flare").InputCostPerToken, 1e-12)
+}
+
 func (r *catalogRemoteFixture) FetchCatalog(_ context.Context, _ string, validator string) ([]byte, string, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
