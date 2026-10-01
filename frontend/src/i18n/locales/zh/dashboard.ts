@@ -5,18 +5,11 @@ export default {
     welcomeMessage: '欢迎回来！这是您账户的概览。',
     usageChart: {
       metricsLabel: '用量指标',
-      rangeLabel: '时间范围',
       metrics: {
         requests: '请求数',
         tokens: 'Token',
         cost: '消费',
         cacheHitRate: '缓存命中率'
-      },
-      ranges: {
-        '24h': '24 小时',
-        '7d': '7 天',
-        '30d': '30 天',
-        '90d': '90 天'
       },
       series: {
         input: '输入',
@@ -26,6 +19,10 @@ export default {
         actualCost: '实际扣费',
         total: '合计'
       },
+      currentPeriod: '本期',
+      previousPeriod: '上一周期',
+      peak: '峰值',
+      average: '均值',
       vsPrevious: '较上一周期',
       noPrevious: '上一周期无数据',
       byHour: '按小时',
@@ -33,7 +30,26 @@ export default {
       trendTitle: '用量趋势 · {metric}',
       empty: '所选时间范围内暂无用量'
     },
+    live: {
+      rpm: 'RPM',
+      tpm: 'TPM',
+      rpmHint: '近 5 分钟平均每分钟请求数',
+      tpmHint: '近 5 分钟平均每分钟 Token 数',
+      latency: '平均耗时',
+      todayCost: '今日消费'
+    },
+    topModels: {
+      title: '模型排行',
+      subtitle: '按{metric}',
+      others: '其他模型（{count}）',
+      viewAll: '查看全部',
+      empty: '所选范围内暂无模型用量',
+      filterHint: '点击按此模型筛选',
+      clearFilter: '再次点击取消筛选',
+      hitRate: '命中率 {rate}'
+    },
     activityHeatmap: '用量热力图',
+    heatmapSelectDay: '点击查看当天按小时用量',
     heatmapLess: '少',
     heatmapMore: '多',
     heatmapNoUsage: '无用量',

@@ -3,9 +3,9 @@
     <!-- 数据未返回时直接用日期格子占位，保留自适应网格和月份标签。 -->
 
     <div class="mb-4 flex items-center justify-between gap-2">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.activityHeatmap') }}</h3>
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-dark-50">{{ t('dashboard.activityHeatmap') }}</h3>
       <!-- 色阶图例 -->
-      <div class="flex shrink-0 items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+      <div class="flex shrink-0 items-center gap-1 text-xs text-gray-500 dark:text-dark-400">
         <span>{{ t('dashboard.heatmapLess') }}</span>
         <span v-for="level in 5" :key="level" class="heatmap-cell h-3 w-3" :class="levelClass(level - 1)" />
         <span>{{ t('dashboard.heatmapMore') }}</span>
@@ -16,7 +16,14 @@
       格子固定 12px、间距 3px，周列数随容器宽度自适应（宽屏显示更多历史周），
       justify-between 把不足一格的零头均摊到列间隙，保证左右贴齐。
     -->
-    <div ref="gridWrapRef" data-testid="heatmap-grid-wrap" @mouseleave="hoveredDay = null">
+    <div
+      ref="gridWrapRef"
+      data-testid="heatmap-grid-wrap"
+      @mouseleave="hoveredDay = null"
+      @focusout="onGridFocusOut"
+      @keydown="onGridKeydown"
+      @animationend="onWaveEnd"
+    >
       <!--
         统一网格：第 1 列是星期标签，第 1 行是月份标签，其余为日期格子。
         格子显式指定 gridColumn/gridRow，保证标签与格子严格对齐。
@@ -61,14 +68,26 @@
         >{{ w.label }}</div>
 
         <!-- 日期格子 -->
+        <!--
+          格子可点击查看当天按小时的用量。键盘使用漫游焦点：只有一个格子可 Tab 进入，
+          方向键在日期间移动，Enter / Space 选中。
+        -->
         <div
           v-for="day in visibleDays"
           :key="day.date"
           data-testid="heatmap-cell"
+          :data-date="day.date"
+          :data-wave-last="day.weekIndex === visibleWeeks - 1 ? 'true' : undefined"
           class="heatmap-cell h-3 w-3"
-          :class="day.future ? 'invisible' : loading ? 'animate-pulse bg-gray-200 dark:bg-dark-700 motion-reduce:animate-none' : levelClass(day.level)"
-          :style="{ gridColumn: day.weekIndex + 2, gridRow: day.dayOfWeek + 2 }"
+          :class="cellClasses(day)"
+          :style="{ gridColumn: day.weekIndex + 2, gridRow: day.dayOfWeek + 2, '--wave-delay': waveDelay(day.weekIndex) }"
+          :role="day.future ? undefined : 'button'"
+          :tabindex="day.future ? undefined : day.date === focusDate ? 0 : -1"
+          :aria-label="day.future ? undefined : cellLabel(day)"
+          :aria-pressed="day.future ? undefined : day.date === selectedDay"
           @mouseenter="!loading && onCellHover(day, $event)"
+          @focus="!loading && onCellHover(day, $event)"
+          @click="selectCell(day)"
         />
       </div>
     </div>
@@ -93,6 +112,7 @@
             <div>{{ t('dashboard.heatmapCost') }}: {{ formatBalanceAmount(hoveredDay.actualCost, { fractionDigits: 4 }) }}</div>
           </template>
           <div v-else>{{ t('dashboard.heatmapNoUsage') }}</div>
+          <div class="mt-1 opacity-70">{{ t('dashboard.heatmapSelectDay') }}</div>
         </template>
       </div>
     </div>
@@ -105,6 +125,8 @@ import { useI18n } from 'vue-i18n'
 import { usageAPI } from '@/api/usage'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { formatDateLocalInput, formatNumberLocaleString as formatNumber, formatTokensK as formatTokens } from '@/utils/format'
+import { HEATMAP_WAVE_MAX_MS, HEATMAP_WAVE_STEP_MS } from './dashboardMotion'
+import { injectUsageChartState } from './usageChartState'
 
 const CELL_SIZE = '12px'
 const CELL_GAP = '3px'
@@ -123,6 +145,8 @@ const LEVEL_CLASSES = [
   'bg-green-500 dark:bg-green-400',
   'bg-green-700 dark:bg-green-300',
 ]
+// 方向键在日期间移动的步长：上下为前后一天，左右为前后一周
+const KEY_OFFSETS: Record<string, number> = { ArrowUp: -1, ArrowDown: 1, ArrowLeft: -7, ArrowRight: 7 }
 
 interface HeatmapDay {
   date: string // YYYY-MM-DD（本地时区）
@@ -135,8 +159,14 @@ interface HeatmapDay {
   future?: boolean // 补齐最后一周的未来占位格，不展示不响应悬停
 }
 
+const emit = defineEmits<{
+  // 用户选中某一天，页面据此把趋势图滚动到可见区域
+  (event: 'select-day', date: string): void
+}>()
+
 const { t, locale } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()
+const { selectDay, selectedDay } = injectUsageChartState()
 
 const loading = ref(true)
 const days = ref<HeatmapDay[]>([])
@@ -153,6 +183,12 @@ const tooltipSize = ref({ width: 0, height: 0 })
 // 网格容器宽度，驱动可见周数自适应
 const gridWidth = ref(0)
 let resizeObserver: ResizeObserver | null = null
+// 今天的日期键，每次取数时更新，跨午夜后刷新即可对上
+const todayKey = ref(formatDateLocalInput(new Date()))
+// 首次拿到数据时格子按列错峰入场，最后一列播放完后关闭
+const waveActive = ref(true)
+// 键盘焦点所在日期；未设置时落在选中日或今天
+const focusOverride = ref<string | null>(null)
 
 const levelClass = (level: number) => LEVEL_CLASSES[level] ?? LEVEL_CLASSES[0]
 
@@ -180,6 +216,7 @@ const computeLevel = (tokens: number, sortedNonZero: number[]): number => {
 const load = async () => {
   loading.value = true
   hoveredDay.value = null
+  todayKey.value = formatDateLocalInput(new Date())
   try {
     const { start, end } = buildDateRange()
     const res = await usageAPI.getDashboardTrend({
@@ -288,8 +325,86 @@ const formatMonth = (date: string) =>
 const formatDayLabel = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString(locale.value, { year: 'numeric', month: 'short', day: 'numeric' })
 
+// 漫游焦点所在的日期：优先手动移动到的日期，其次是选中日，最后是今天
+const focusDate = computed(() => {
+  const visible = new Set(visibleDays.value.filter((day) => !day.future).map((day) => day.date))
+  for (const candidate of [focusOverride.value, selectedDay.value, todayKey.value]) {
+    if (candidate && visible.has(candidate)) return candidate
+  }
+  return null
+})
+
+// waveDelay 按列计算入场延迟；列数很多时压缩步长，最后一列不晚于上限
+const waveDelay = (weekIndex: number): string => {
+  const step = Math.min(HEATMAP_WAVE_STEP_MS, HEATMAP_WAVE_MAX_MS / Math.max(1, visibleWeeks.value))
+  return `${Math.round(weekIndex * step)}ms`
+}
+
+const cellClasses = (day: HeatmapDay) => {
+  if (day.future) return 'invisible'
+  if (loading.value) return 'animate-pulse bg-gray-200 dark:bg-dark-700 motion-reduce:animate-none'
+  return [
+    levelClass(day.level),
+    'heatmap-cell-interactive',
+    {
+      'heatmap-cell-enter': waveActive.value,
+      'heatmap-cell-today': day.date === todayKey.value,
+      'heatmap-cell-selected': day.date === selectedDay.value,
+    },
+  ]
+}
+
+const cellLabel = (day: HeatmapDay): string => {
+  const usage = day.requests > 0
+    ? `${t('dashboard.requests')} ${formatNumber(day.requests)}`
+    : t('dashboard.heatmapNoUsage')
+  return `${formatDayLabel(day.date)}, ${usage}`
+}
+
+// selectCell 把趋势图切到这一天，按小时查看
+const selectCell = (day: HeatmapDay) => {
+  if (day.future || loading.value) return
+  focusOverride.value = day.date
+  selectDay(day.date)
+  emit('select-day', day.date)
+}
+
+// focusCell 把焦点移到指定日期的格子
+const focusCell = (date: string) => {
+  focusOverride.value = date
+  gridWrapRef.value?.querySelector<HTMLElement>(`[data-date="${date}"]`)?.focus()
+}
+
+// onGridKeydown 处理格子上的方向键和选中键，越界或落到未来日期时不移动
+const onGridKeydown = (event: KeyboardEvent) => {
+  const date = (event.target as HTMLElement).dataset?.date
+  if (!date || loading.value) return
+  const index = visibleDays.value.findIndex((day) => day.date === date)
+  if (index < 0) return
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    selectCell(visibleDays.value[index])
+    return
+  }
+  const offset = KEY_OFFSETS[event.key]
+  if (offset === undefined) return
+  event.preventDefault()
+  const next = visibleDays.value[index + offset]
+  if (next && !next.future) focusCell(next.date)
+}
+
+// 焦点离开网格时收起提示
+const onGridFocusOut = (event: FocusEvent) => {
+  if (!gridWrapRef.value?.contains(event.relatedTarget as Node | null)) hoveredDay.value = null
+}
+
+// 最后一列入场结束后去掉入场类，之后新增的格子（如窗口变宽）直接显示
+const onWaveEnd = (event: AnimationEvent) => {
+  if ((event.target as HTMLElement).dataset?.waveLast) waveActive.value = false
+}
+
 // 以格子中心相对卡片的位置定位 tooltip
-const onCellHover = (day: HeatmapDay, event: MouseEvent) => {
+const onCellHover = (day: HeatmapDay, event: Event) => {
   if (day.future) return
   const cell = event.currentTarget as HTMLElement
   const card = cardRef.value
@@ -306,10 +421,23 @@ const onCellHover = (day: HeatmapDay, event: MouseEvent) => {
   void updateTooltipSize()
 }
 
+// tooltip 与卡片左右边缘保持的最小距离
+const TOOLTIP_EDGE_PX = 8
+
+// tooltipLeft 以格子中心为准，靠近卡片两侧时向内收，避免提示超出卡片和视口。
+const tooltipLeft = computed(() => {
+  const half = tooltipSize.value.width / 2
+  const cardWidth = cardRef.value?.clientWidth ?? 0
+  if (half <= 0 || cardWidth <= 0) return hoverPos.value.left
+  const min = half + TOOLTIP_EDGE_PX
+  const max = cardWidth - half - TOOLTIP_EDGE_PX
+  return max < min ? cardWidth / 2 : Math.min(Math.max(hoverPos.value.left, min), max)
+})
+
 const tooltipStyle = computed(() => {
   const above = tooltipAbove.value
   return {
-    left: `${hoverPos.value.left}px`,
+    left: `${tooltipLeft.value}px`,
     top: above ? `${hoverPos.value.top - 6}px` : `${hoverPos.value.top + 18}px`,
     transform: above ? 'translate(-50%, -100%)' : 'translateX(-50%)',
     width: tooltipSize.value.width > 0 ? `${tooltipSize.value.width}px` : '0px',
@@ -363,5 +491,69 @@ defineExpose({ reload: load })
 .heatmap-cell {
   --radius-cell: 4px;
   border-radius: var(--radius-cell);
+}
+
+/* 可点击的格子：悬停或键盘聚焦时放大并加外环 */
+.heatmap-cell-interactive {
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.heatmap-cell-interactive:hover,
+.heatmap-cell-interactive:focus-visible {
+  transform: scale(1.25);
+  outline: none;
+  box-shadow: 0 0 0 1px theme('colors.gray.400');
+}
+
+:global(.dark) .heatmap-cell-interactive:hover,
+:global(.dark) .heatmap-cell-interactive:focus-visible {
+  box-shadow: 0 0 0 1px theme('colors.dark.300');
+}
+
+/* 今天与选中日的描边用中性色，和绿色色阶搭配；选中日更粗更深 */
+.heatmap-cell-today {
+  outline: 1px solid theme('colors.gray.400');
+  outline-offset: 1px;
+}
+
+.heatmap-cell-selected {
+  outline: 2px solid theme('colors.gray.900');
+  outline-offset: 1px;
+}
+
+:global(.dark) .heatmap-cell-today {
+  outline-color: theme('colors.dark.400');
+}
+
+:global(.dark) .heatmap-cell-selected {
+  outline-color: theme('colors.dark.50');
+}
+
+/* 首次入场：按列错峰从小到大淡入，延迟由 --wave-delay 提供 */
+.heatmap-cell-enter {
+  animation: heatmap-cell-enter var(--dash-heatmap-enter-ms, 320ms) var(--motion-ease) var(--wave-delay, 0ms) both;
+}
+
+@keyframes heatmap-cell-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heatmap-cell-enter {
+    animation: none;
+  }
+
+  .heatmap-cell-interactive:hover,
+  .heatmap-cell-interactive:focus-visible {
+    transform: none;
+  }
 }
 </style>

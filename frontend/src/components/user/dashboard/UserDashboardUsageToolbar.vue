@@ -49,37 +49,16 @@
       :end-date="pickerEnd"
       @change="selectCustomRange"
     />
-    <div
-      v-segmented
-      class="segmented h-9 items-stretch"
-      role="group"
-      :aria-label="t('dashboard.usageChart.rangeLabel')"
-    >
-      <button
-        v-for="option in rangeOptions"
-        :key="option.value"
-        type="button"
-        class="segmented-item flex items-center px-3 text-xs"
-        :class="{ 'segmented-item-active': rangePreset === option.value }"
-        :aria-pressed="rangePreset === option.value"
-        :data-testid="`usage-range-${option.value}`"
-        @click="selectPreset(option.value)"
-      >
-        {{ option.label }}
-      </button>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { vSegmented } from '@/directives/segmented'
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import FilterDropdown from '@/components/common/FilterDropdown.vue'
 import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { injectUsageChartState, USAGE_RANGE_PRESETS } from './usageChartState'
+import { injectUsageChartState } from './usageChartState'
 
 // 刷新范围覆盖整个仪表盘，由页面统一处理。
 defineProps<{ refreshing?: boolean }>()
@@ -87,13 +66,11 @@ const emit = defineEmits<{ (event: 'refresh'): void }>()
 
 const { t } = useI18n()
 const {
-  rangePreset,
   pickerStart,
   pickerEnd,
   filterState,
   applyFilters,
   resetFilters,
-  selectPreset,
   selectCustomRange,
 } = injectUsageChartState()
 const {
@@ -107,9 +84,4 @@ const {
   billingModeOptions,
   compactionOptions,
 } = filterState
-
-const rangeOptions = computed(() => USAGE_RANGE_PRESETS.map((value) => ({
-  value,
-  label: t(`dashboard.usageChart.ranges.${value}`),
-})))
 </script>

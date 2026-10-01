@@ -38,7 +38,7 @@
 - 全部间距落在 Tailwind 4px 网格上，禁止 `mt-[2px]`、`padding-left: 17px` 这类任意值。
 - 页面布局使用两档间距：独立大卡片、统计卡、图表卡和移动端数据卡之间，以及工具栏、控件组与卡片之间为 16px（`gap-4` / `space-y-4`）；工具栏和控件组内部仍为 8px（`gap-2` / `space-y-2`）。横向网格与纵向堆叠遵守同一档位，加载骨架与实际内容一致。`TablePageLayout` 中相邻工具组保持 8px，最后一组工具到表格使用 16px；移动端数据卡与分页器之间也是 16px。`RuleListEditor` 的标题操作区到卡片列表为 16px，卡片行之间为 16px，线形行及其标题操作区之间保持 8px。
 - 列表的搜索、筛选、刷新和批量操作工具栏统一使用 `gap-2`（8px），覆盖工具栏外层、左侧筛选组和右侧操作组；共用组件与加载骨架遵守同一间距。窄屏换行仍使用 8px 行间距。筛选弹层内带标签的字段按表单间距排列，分页摘要、正文信息组和卡片区块保留各自间距。
-- 页面或卡片的标题带说明文字时，同一行的操作区与整块标题说明底部对齐。`AppLayout` 页头使用 `items-end`，自绘页头和带说明的卡片标题行遵守同一约定；先纵向堆叠、宽屏再横排的布局只在横排断点启用底部对齐，窄屏控件仍正常换行。
+- 页面或卡片的标题带说明文字时，同一行的操作区与整块标题说明底部对齐。`AppLayout` 页头使用 `items-end`，自绘页头和带说明的卡片标题行遵守同一约定。页头补充信息放在可选的 `page-heading-meta` 插槽，位于说明下方 8px，参与同一底部对齐，例如用户仪表盘的实时状态条；先纵向堆叠、宽屏再横排的布局只在横排断点启用底部对齐，窄屏控件仍正常换行。
 - 卡片 padding 只有两档：独立卡片 `p-6`，嵌套面板、网格卡和统计卡 `p-4`。不再使用 `p-5`。
 - 布局水平 padding 链在 header 与 main 之间完全一致：`px-4 md:px-6 lg:px-8`，保证两侧边缘在所有断点对齐。
 - 默认首页和控制台共用 `AppHeader`，统一品牌、工具按钮、余额和用户菜单。首页通过 `public-page` 隐藏侧栏开关，保留模型广场与访客登录入口，并为固定顶栏预留高度；自定义 HTML 或 iframe 首页继续使用全页模式。操作台的返回仪表盘图标位于品牌右侧。
@@ -162,6 +162,7 @@
 - 图表主题的唯一入口是 `composables/useChartTheme.ts`：响应式 `colors`（text/muted/grid 三档语义，zinc 体系）+ `onThemeChange` 重绘钩子。禁止 `document.documentElement.classList.contains('dark')` 快照判断（门禁拦截）——它没有响应式依赖，切主题不重算，曾导致 8 处图表切主题不换色。vue-chartjs 场景 colors 变响应式即自动重绘；Stripe Elements 等命令式场景用 watch + `elements.update({ appearance })` 重应用。
 - 分布图调色板只有一份 `CHART_PALETTE`（12 色，按切片排名取色），"Others" 聚合切片用 `CHART_OTHER_COLOR`;token 趋势序列色用 `CHART_SERIES_COLORS`。刻度字号 `CHART_TICK_FONT_SIZE`(10)、图例字号 `CHART_LEGEND_FONT_SIZE`(11)。
 - 业务色例外留在本地：TeamMemberUsageCharts 成员固定配色（跨图表按成员稳定取色）、OpsSwitchRateTrendChart 与 DashboardView 的本地图表主题（深色刻度 `#D4D4D8`、网格 `#27272A`，浅色保留品牌调字面值）、DailyRevenueChart 的线/填充色对。
+- 用户仪表盘趋势图（`UserDashboardUsageChart`）只画线，不填充线下区域，也不加辉光阴影，保持扁平风格。单指标叠加上一周期对比线，使用 `colors.muted` 虚线，按下标与本期对齐。峰值环、均值虚线、标签胶囊和末端呼吸点画在同一个本地插件里，颜色取自 `useChartTheme` 与卡片底色。未结束的时段仍画虚线。
 - token 数量格式化统一 `utils/format.ts` 的 `formatTokens`（两位小数 + 千分位）与 `formatTokensK`（一位小数），语义不同不混用；ProviderTodayStatsCell 的 K1/M2 混合精度是有意的本地变体。
 
 <a id="loading_feedback"></a>
@@ -173,7 +174,7 @@
 
 未取得数据时，在内容将要出现的位置显示骨架，保留页头、筛选工具栏、卡片外框和表格列结构。不要在加载期间展示业务零值或“暂无数据”。通用骨架使用 `Skeleton.vue` / `.skeleton` 的中性色与轻微脉动，减少动画模式下关闭脉动；装饰块用 `aria-hidden`，区域用加载标签和 `aria-busy` 表明状态。
 
-当前入口包括管理员仪表盘的 `DashboardSkeleton`、设置页的 `SettingsSkeleton`、模型广场的 `ModelMarketplaceSkeleton`、图表的 `ChartSkeleton`，以及 DataTable 的表格行和移动卡片。公告按时间线条目占位，热力图直接用日期格子占位。用户仪表盘的用量指标卡和趋势图只在首次取数时给数值和绘图区显示骨架，刷新或切换范围时保留已有数据；加载成功或失败后退出占位状态，沿用页面原有的数据、错误或空状态分支。
+当前入口包括管理员仪表盘的 `DashboardSkeleton`、设置页的 `SettingsSkeleton`、模型广场的 `ModelMarketplaceSkeleton`、图表的 `ChartSkeleton`，以及 DataTable 的表格行和移动卡片。公告按时间线条目占位，热力图直接用日期格子占位。用户仪表盘的用量指标卡、趋势图和模型排行只在首次取数时显示骨架，分别占位数值、绘图区和 5 行排行；刷新、切换范围或筛选时保留已有数据。加载成功或失败后退出占位状态，沿用页面原有的数据、错误或空状态分支。标题下方的实时状态条首次取数时用行内骨架占位数值；之后轮询失败只把数值显示为“—”，不弹出错误。
 
 页面、弹窗和局部数据区共用这套规则。列表、表单、字段详情和文档正文可使用 `ContentSkeleton`；统计页按实际卡片网格组合 `Skeleton` 与 `ChartSkeleton`。原生表格使用 `TableSkeletonBody`，保留真实表头并传入当前可见列数，条件列变化时同步调整占位列。加载更多只在列表末尾追加占位，已有内容保留。
 
@@ -210,6 +211,7 @@
 - 系统减少动态效果时，普通过渡变量缩短至 1ms、位移归零，Collapse 和内容淡入直接完成状态切换；动态改变偏好会取消内容淡入。完成和清理继续通过 Vue 生命周期、动画完成事件执行，不用业务定时器猜测结束时间。
 - 专用动画保留自身几何：CreativeCanvas 工具条扩展、CreativeRunHistory 详情及 CustomPageView 目录抽屉共用普通时长和缓动；通用图标、加载反馈、计时进度和公开页数字滚动保留专用节奏与各自的减少动态效果处理。主题切换沿用临时关闭过渡的规则。
 - 用户兑换成功使用卡片内的 `RedeemCelebration`：统计区保留占位，显示成功图标与权益信息，彩纸使用独立的 2 秒节奏并通过动画完成事件移除；提示保留 3 秒后按公共 fade 配方退出。每次成功以独立序号触发，再次提交或卸载时清理旧效果。减少动态效果时只展示静态成功信息，播放期间修改偏好也立即取消装饰；成功消息通过礼貌播报区域通知辅助技术。
+- 用户仪表盘的专用动效时长集中在 `components/user/dashboard/dashboardMotion.ts`：脚本直接引用常量，样式读取页面根节点注入的 `--dash-*` 变量。动效包括指标数字滚动（`useCountUp`，四次缓出，读屏只读取最终值）、趋势图在切换指标或重新取数时按指标和数据版本重建，与首次打开一样从左到右裁剪描线、迷你走势线裁剪展开、热力图首次取数时按列错峰入场、模型占比条依次伸展，以及区块首次挂载时依次上移淡入（结束后不保留 transform）。减少动态效果时，以上动效全部直接显示最终状态。
 - 同一次动效的 JS/CSS 时长必须同源。KeyUsageView 圆环和数字滚动共用 `RING_ANIMATION_MS`。`constants/ui.ts` 的 `COPY_FEEDBACK_MS`（2000）和 `SEARCH_DEBOUNCE_MS`（300）属于反馈保留与防抖，不并入过渡档位。公告连播仍由 after-leave 推进队列，组件途中卸载时由卸载回调完成清理。
 
 <a id="rule_list_editor"></a>

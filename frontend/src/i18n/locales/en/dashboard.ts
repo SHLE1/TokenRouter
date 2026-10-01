@@ -5,18 +5,11 @@ export default {
     welcomeMessage: "Welcome back! Here's an overview of your account.",
     usageChart: {
       metricsLabel: 'Usage metrics',
-      rangeLabel: 'Time range',
       metrics: {
         requests: 'Requests',
         tokens: 'Tokens',
         cost: 'Cost',
         cacheHitRate: 'Cache hit rate'
-      },
-      ranges: {
-        '24h': '24h',
-        '7d': '7d',
-        '30d': '30d',
-        '90d': '90d'
       },
       series: {
         input: 'Input',
@@ -26,6 +19,10 @@ export default {
         actualCost: 'Charged',
         total: 'Total'
       },
+      currentPeriod: 'This period',
+      previousPeriod: 'Previous period',
+      peak: 'Peak',
+      average: 'Avg',
       vsPrevious: 'vs previous period',
       noPrevious: 'No data for previous period',
       byHour: 'Hourly',
@@ -33,7 +30,26 @@ export default {
       trendTitle: 'Usage trend · {metric}',
       empty: 'No usage in the selected range'
     },
+    live: {
+      rpm: 'RPM',
+      tpm: 'TPM',
+      rpmHint: 'Average requests per minute over the last 5 minutes',
+      tpmHint: 'Average tokens per minute over the last 5 minutes',
+      latency: 'Avg latency',
+      todayCost: 'Spent today'
+    },
+    topModels: {
+      title: 'Top Models',
+      subtitle: 'By {metric}',
+      others: 'Other models ({count})',
+      viewAll: 'View all',
+      empty: 'No model usage in the selected range',
+      filterHint: 'Click to filter by this model',
+      clearFilter: 'Click again to clear the filter',
+      hitRate: '{rate} hit rate'
+    },
     activityHeatmap: 'Usage Activity',
+    heatmapSelectDay: 'Click to see hourly usage for this day',
     heatmapLess: 'Less',
     heatmapMore: 'More',
     heatmapNoUsage: 'No usage',
