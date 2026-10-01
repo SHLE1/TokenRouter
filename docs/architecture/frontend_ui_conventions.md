@@ -161,6 +161,8 @@
 
 ## 图表主题
 
+- 饼图与圆环图按原始指标值绘制扇区，占比为该项数值除以图中所有项之和；tooltip 使用同一组数值计算百分比。禁止对扇区数据做对数压缩或设置最小占比，零值不占扇区。消费排行的“其他”汇总项也按实际费用参与计算。
+- 分组与端点分布的条形图、柱状图使用从零开始的线性数值轴，柱长与原始指标值成正比；禁止对数轴和数据压缩。
 - 图表主题的唯一入口是 `composables/useChartTheme.ts`：响应式 `colors`（text/muted/grid 三档语义，zinc 体系）+ `onThemeChange` 重绘钩子。禁止 `document.documentElement.classList.contains('dark')` 快照判断（门禁拦截）——它没有响应式依赖，切主题不重算，曾导致 8 处图表切主题不换色。vue-chartjs 场景 colors 变响应式即自动重绘；Stripe Elements 等命令式场景用 watch + `elements.update({ appearance })` 重应用。
 - 分布图调色板只有一份 `CHART_PALETTE`（12 色，按切片排名取色），"Others" 聚合切片用 `CHART_OTHER_COLOR`;token 趋势序列色用 `CHART_SERIES_COLORS`。刻度字号 `CHART_TICK_FONT_SIZE`(10)、图例字号 `CHART_LEGEND_FONT_SIZE`(11)。
 - 业务色例外留在本地：TeamMemberUsageCharts 成员固定配色（跨图表按成员稳定取色）、OpsSwitchRateTrendChart 与 DashboardView 的本地图表主题（深色刻度 `#D4D4D8`、网格 `#27272A`，浅色保留品牌调字面值）、DailyRevenueChart 的线/填充色对。
