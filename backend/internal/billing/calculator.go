@@ -86,8 +86,8 @@ func (s *Calculator) CalculateCostUnified(input CostInput) (*CostBreakdown, erro
 		})
 	}
 
-	// 图片结算与报价、预占使用同一尺寸单价，不让缺失档位落成零价。
-	if resolved.Mode == purepricing.BillingModeImage || resolved.Mode == purepricing.BillingModePerRequest && looksLikeImageModel(input.Model) {
+	// 只有明确的图片计费模式使用尺寸查价；按次价卡保留标签、上下文区间及默认价规则。
+	if resolved.Mode == purepricing.BillingModeImage {
 		price, err := s.resolvedImageUnitPrice(input.Model, input.SizeTier, resolved)
 		if err != nil {
 			return nil, err
