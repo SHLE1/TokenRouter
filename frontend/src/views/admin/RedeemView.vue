@@ -51,7 +51,7 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh')"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <button @click="handleExportCodes" class="btn btn-secondary shrink-0 whitespace-nowrap">
               {{ t('admin.redeem.exportCsv') }}
@@ -62,7 +62,7 @@
               :disabled="selectedCount === 0 || batchUpdating"
               class="btn btn-secondary shrink-0 whitespace-nowrap"
             >
-              <Icon name="edit" size="md" class="mr-2" />
+              <Icon name="edit" size="sm" class="mr-2" />
               {{ t('admin.redeem.batchUpdate') }}
             </button>
             <button data-testid="generate-open" @click="showGenerateDialog = true" class="btn btn-primary shrink-0 whitespace-nowrap">
@@ -609,7 +609,7 @@
               @click="closeResultDialog"
               class="rounded-control p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-300"
             >
-              <Icon name="x" size="md" :stroke-width="2" />
+              <Icon name="x" size="sm" :stroke-width="2" />
             </button>
           </div>
           <!-- 内容 -->

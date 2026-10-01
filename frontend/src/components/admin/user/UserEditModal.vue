@@ -21,7 +21,7 @@
             </button>
           </div>
           <button type="button" @click="generatePassword" class="btn btn-secondary px-3">
-            <Icon name="refresh" size="md" />
+            <Icon name="refresh" size="sm" />
           </button>
         </div>
       </div>

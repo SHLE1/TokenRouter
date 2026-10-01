@@ -78,8 +78,8 @@
               @click="showPassword = !showPassword"
               class="input-icon-right text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
-              <Icon v-if="showPassword" name="eyeOff" size="md" />
-              <Icon v-else name="eye" size="md" />
+              <Icon v-if="showPassword" name="eyeOff" size="sm" />
+              <Icon v-else name="eye" size="sm" />
             </button>
           </div>
           <p class="input-hint">
@@ -265,7 +265,7 @@
             v-if="isLoading"
             class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
           />
-          <Icon v-else name="userPlus" size="md" class="mr-2" />
+          <Icon v-else name="userPlus" size="sm" class="mr-2" />
           {{
             isLoading
               ? t('auth.processing')

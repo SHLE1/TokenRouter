@@ -17,7 +17,7 @@
       <span class="select-icon">
         <Icon
           name="chevronDown"
-          size="md"
+          size="sm"
           :class="['transition-transform duration-normal', isOpen && 'rotate-180']"
           :animate-on-hover="false"
         />

@@ -161,9 +161,9 @@ describe('统一图标入口', () => {
     expect(wrapper.attributes('aria-hidden')).toBe('true')
     expect(wrapper.attributes('focusable')).toBe('false')
     expect(wrapper.attributes('tabindex')).toBe('-1')
-    expect(wrapper.attributes('stroke-width')).toBe('2')
-    expect(wrapper.classes()).not.toContain('h-5')
-    expect(wrapper.classes()).not.toContain('w-5')
+    expect(wrapper.attributes('stroke-width')).toBe('1.75')
+    expect(wrapper.classes()).not.toContain('h-[18px]')
+    expect(wrapper.classes()).not.toContain('w-[18px]')
     wrapper.unmount()
   })
 

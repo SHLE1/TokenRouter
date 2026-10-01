@@ -94,7 +94,7 @@
                   class="rounded-compact p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-dark-700"
                   @click="copySecret"
                 >
-                  <Icon name="clipboard" size="md" class="h-5 w-5" />
+                  <Icon name="clipboard" size="sm" />
                 </button>
               </div>
             </div>

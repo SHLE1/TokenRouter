@@ -9,7 +9,7 @@
       data-test="scope-dropdown-trigger"
       @click="open = !open"
     >
-      <Icon :name="scope === 'team' ? 'users' : 'user'" size="md" class="md:mr-1.5" />
+      <Icon :name="scope === 'team' ? 'users' : 'user'" size="sm" class="md:mr-1.5" />
       <span class="hidden md:inline">{{ currentLabel }}</span>
       <Icon name="chevronDown" size="xs" class="ml-1 hidden md:inline" :animate-on-hover="false" />
     </button>

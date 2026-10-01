@@ -164,7 +164,7 @@
             <Icon
               v-else-if="dbConnected"
               name="check"
-              size="md"
+              size="sm"
               class="mr-2 text-green-500"
               :stroke-width="2"
               :animate-on-hover="false"
@@ -268,7 +268,7 @@
             <Icon
               v-else-if="redisConnected"
               name="check"
-              size="md"
+              size="sm"
               class="mr-2 text-green-500"
               :stroke-width="2"
               :animate-on-hover="false"

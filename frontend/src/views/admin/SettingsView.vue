@@ -4323,7 +4323,7 @@
                         :aria-label="t('admin.settings.scheduling.advancedHelp.trigger')"
                         :title="t('admin.settings.scheduling.advancedHelp.trigger')"
                       >
-                        <Icon name="questionCircle" size="md" :stroke-width="1.75" />
+                        <Icon name="questionCircle" size="sm" :stroke-width="1.75" />
                       </button>
                     </template>
                     <div class="space-y-2.5">

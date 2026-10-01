@@ -103,7 +103,7 @@
             v-if="isLoading"
             class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
           />
-          <Icon v-else name="mail" size="md" class="mr-2" />
+          <Icon v-else name="mail" size="sm" class="mr-2" />
           {{ isLoading ? t('auth.sendingResetLink') : t('auth.sendResetLink') }}
         </button>
       </form>

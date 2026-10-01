@@ -76,7 +76,7 @@
                   :aria-label="t('common.close')"
                   @click="closeModal"
                 >
-                  <Icon name="x" size="md" :stroke-width="1.75" />
+                  <Icon name="x" size="sm" :stroke-width="1.75" />
                 </button>
               </div>
             </header>

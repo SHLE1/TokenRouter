@@ -5,6 +5,7 @@
         {{ t('admin.dashboard.groupDistribution') }}
       </h3>
       <div
+        v-segmented
         v-if="showMetricToggle"
         class="segmented"
       >
@@ -109,6 +110,7 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
 import ExpandableTableRow from '@/components/common/ExpandableTableRow.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'

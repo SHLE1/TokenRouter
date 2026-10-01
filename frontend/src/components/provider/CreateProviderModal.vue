@@ -785,7 +785,7 @@
             >
               <Icon
                 name="chevronRight"
-                size="md"
+                size="sm"
                 :animate-on-hover="false"
                 :class="['h-4 w-4 transition-transform', showAdvancedOAuth ? 'rotate-90' : '']"
               />

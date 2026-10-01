@@ -8,7 +8,7 @@
         :title="t('common.refresh')"
         @click="loadDashboardStats"
       >
-        <Icon name="refresh" size="md" :class="chartsLoading ? 'animate-spin' : ''" />
+        <Icon name="refresh" size="sm" :class="chartsLoading ? 'animate-spin' : ''" />
       </button>
     </template>
 

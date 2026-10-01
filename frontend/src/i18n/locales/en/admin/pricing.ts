@@ -419,7 +419,7 @@ riskControl: {
       tabs: { configs: 'Price configurations', defaults: 'Gateway defaults' },
       description: 'Manage price configurations and custom model pricing',
       searchPricingConfigs: 'Search price configurations...',
-      createPricingConfig: 'Create Price Configuration',
+      createPricingConfig: 'Create config',
       editPricingConfig: 'Edit Price Configuration',
       deletePricingConfig: 'Delete Price Configuration',
       statusActive: 'Active',

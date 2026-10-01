@@ -8,10 +8,10 @@
           :title="t('common.refresh')"
           @click="loadPlans"
         >
-          <Icon name="refresh" size="md" :class="plansLoading ? 'animate-spin' : ''" />
+          <Icon name="refresh" size="sm" :class="plansLoading ? 'animate-spin' : ''" />
         </button>
         <button class="btn btn-primary" @click="openPlanEdit(null)">
-          <Icon name="plus" size="md" class="mr-2" />
+          <Icon name="plus" size="sm" class="mr-2" />
           {{ t('payment.admin.createPlan') }}
         </button>
       </div>

@@ -54,7 +54,7 @@
                 class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('common.refresh')"
               >
-                <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+                <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
               </button>
               <div class="relative" ref="columnDropdownRef">
                 <button
@@ -62,7 +62,7 @@
                   class="btn btn-secondary shrink-0 btn-icon"
                   :title="t('keys.columnSettings')"
                 >
-                  <Icon name="grid" size="md" />
+                  <Icon name="grid" size="sm" />
                 </button>
                 <MotionTransition name="dropdown-fade">
                   <div
@@ -90,7 +90,7 @@
               </div>
               <ScopeDropdown v-if="teamFeatureEnabled" v-model="scope" @change="onScopeChange" />
               <button @click="openCreateModal" class="btn btn-primary" data-tour="keys-create-btn">
-                <Icon name="plus" size="md" class="mr-2" />
+                <Icon name="plus" size="sm" class="mr-2" />
                 {{ t('keys.createKey') }}
               </button>
             </div>
@@ -228,20 +228,21 @@
           </template>
 
           <template #cell-usage="{ row }">
+            <!-- 窄屏卡片的用量靠右排列，桌面表格保持左对齐。 -->
             <div class="text-sm">
-              <div v-if="usageLoading && !usageStats[row.id]" class="flex h-10 flex-col justify-center gap-2" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
+              <div v-if="usageLoading && !usageStats[row.id]" class="flex h-10 flex-col items-end justify-center gap-2 lg:items-start" role="status" :aria-label="t('common.loading')" aria-busy="true" data-loading-skeleton>
                 <Skeleton :width="96" :height="12" />
                 <Skeleton :width="112" :height="12" />
               </div>
               <div v-else class="space-y-0.5">
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center justify-end gap-1.5 lg:justify-start">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('keys.today') }}:</span>
                   <span class="font-medium text-gray-900 dark:text-white">
                     {{ formatBalanceAmount(usageStats[row.id]?.today_actual_cost ?? 0, { fractionDigits: 4 }) }}
                   </span>
                 </div>
                 <!-- 批量接口的 total_actual_cost 统计近 30 天，使用对应文案标明范围。 -->
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center justify-end gap-1.5 lg:justify-start">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('keys.total') }}:</span>
                   <span class="font-medium text-gray-900 dark:text-white">
                     {{ formatBalanceAmount(usageStats[row.id]?.total_actual_cost ?? 0, { fractionDigits: 4 }) }}
@@ -250,7 +251,7 @@
               </div>
               <!-- Quota progress (if quota is set) -->
               <div v-if="row.quota > 0" class="mt-1.5">
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center justify-end gap-1.5 lg:justify-start">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('keys.quota') }}:</span>
                   <span :class="[
                     'font-medium',

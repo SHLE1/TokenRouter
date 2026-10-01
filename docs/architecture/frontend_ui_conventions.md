@@ -52,11 +52,11 @@
 ## 控件尺寸
 
 - 按钮、输入框、下拉触发器共用 36px 基线（`.btn` / `.input` 均为 `min-h-9`），分页器控件同为 36px——表格页脚不再压缩分页尺寸。基线之上再写 `h-9` 属冗余（门禁拦截）；紧凑档要 36px 时用 `btn-sm/md/lg + h-9` 显式提挡。
-- 主操作使用 `.btn-primary`；普通编辑、查询、筛选和链接操作使用 `primary-*` 品牌色，不单独指定 `blue-*`。状态提示、业务分类与第三方品牌保留各自的语义配色。原生 checkbox、radio 和 range 的选中色由全局 `accent-color` 引用 `primary-600`。
+- 主操作使用 `.btn-primary`；普通编辑、查询、筛选和链接操作使用 `primary-*` 品牌色，不单独指定 `blue-*`。状态提示、业务分类与第三方品牌保留各自的语义配色。radio 和 range 通过全局 `accent-color` 使用 `primary-600`。checkbox 保留原生 input 的勾选、半选、禁用和键盘语义，由 `style.css` 统一外观；浅色填充为 `primary-700`，深色为 `primary-600`，白色勾选标记复用通用 check 路径与 1.75 描边。选中、取消采用 `--motion-fast` 的缩放和透明度过渡，半选显示横线；系统强制配色时回到原生外观。
 - 原生按钮、`role="button"` 和 `.btn` 禁止文字选取，按钮内图片禁止浏览器拖拽；正文、表格数据和输入内容仍可选取复制。
 - 图标按钮两档：`.btn-icon`（h-9 w-9）与 `.btn-icon-sm`（h-8 w-8），自带 `rounded-control` 与居中布局，站点只补 hover/颜色类；`.btn-sm` 用于表格行内等紧凑场景。
 - 下拉触发器（Select、DateRangePicker）模板组合 `input input-trigger` + 各自状态类，不复制基线配方。
-- 分段切换（两到五个互斥选项，如指标、时间范围、数据来源）统一用 `style.css` 的 `.segmented` 轨道、`.segmented-item` 选项和 `.segmented-item-active` 选中态，不再手写灰底白块。三个类只管颜色、圆角和选中描边，内边距、字号和高度由调用方补工具类；放进 36px 工具栏时给轨道加 `h-9 items-stretch`。选中项必须保留 1px 描边，浅色下只靠阴影和白底分不清边界。页面级大页签仍用 `.tabs`。
+- 分段切换（两到五个互斥选项，如指标、时间范围、数据来源）统一用 `style.css` 的 `.segmented` 轨道、`.segmented-item` 选项和 `.segmented-item-active` 选中态，不再手写灰底白块。轨道加 `v-segmented`（`directives/segmented.ts`），共用一个选中背景；内边距、字号和高度由调用方补工具类；放进 36px 工具栏时给轨道加 `h-9 items-stretch`。选中项必须保留 1px 描边，浅色下只靠阴影和白底分不清边界。页面级大页签仍用 `.tabs`。
 - 输入框图标/字符前后缀统一走 `input-icon-*` 机制（`style.css`）：容器 `input-icon-wrap`，图标位 `input-icon` / `input-icon-right`（可点击内容加 `input-icon-action`），输入框按侧加 `input-has-icon` / `input-has-icon-right`；文本留白由变量推导（`留白 = inset + slot`）。档位：默认（inset 0.75rem、留白 2.5rem）、`input-icon-lg`（auth 表单，inset 0.875rem、留白 2.75rem）、`input-icon-text`（`$` 等窄字符前缀，留白 2rem），紧凑搜索框内联 `--input-icon-slot:1.5rem`（留白 2.25rem）。
 - 价格管理和属性管理的页签栏与下方工具栏之间使用 16px 间距。搜索框使用同一图标布局，`sm` 及以上固定为 `w-64`，更窄时随工具栏剩余宽度伸缩，提示写明配置名称或模型名称。工具栏相邻控件统一使用 `gap-2`；配置页的状态筛选框使用 `w-32 shrink-0`，默认目录页的两个筛选条件收纳到 `FilterDropdown`，支持条件计数、重置、Esc 和点击外部关闭。条件较多时传入 `wide`，面板加宽，默认向右展开，右侧放不下时改为向左展开；调用方在插槽内用两列网格排列字段（参考用户仪表盘的用量筛选）。两页的默认目录信息共用 `ModelCatalogInfo`，以辅助字号展示来源、短版本号和更新时间，窄屏自动换行。
 
@@ -183,7 +183,9 @@
 
 通用界面图标统一使用 `components/icons/Icon.vue`，名称与 `IconName` 类型由同目录的 `registry.ts` 管理。图形采用 Lucide 风格，官方逐元素动效移植自 Lucide Animated，以 `motion-v` 运行；缺少官方动画的图形使用一次 400ms 的轻微缩放。源码版本和许可见图标目录的 README 与 LICENSE 文件。
 
-- 保留 `name`、`size`、`strokeWidth` 接口；默认描边为 2，颜色继承 `currentColor`。根节点只有一个 SVG，调用点的样式、事件、标签和显式尺寸透传。
+- 保留 `name`、`size`、`strokeWidth` 接口；默认描边为 1.75，颜色继承 `currentColor`。根节点只有一个 SVG，调用点的样式、事件、标签和显式尺寸透传。
+- 尺寸档位为 `xs` 12px、`sm` 16px、`md` 18px、`lg` 24px、`xl` 32px。侧栏一级导航和顶栏工具区使用 `md`（18px）；普通按钮、纯图标操作按钮、分页、选择框箭头、弹窗关闭按钮及侧栏子项统一使用 `sm`（16px），刷新、创建、编辑等操作保持同尺寸。表格内微型操作可保留 `xs`，快捷入口卡片的主图和媒体灯箱关闭图标保留 `lg`。侧栏自定义 SVG 与一级导航同尺寸。图标尺寸不改变按钮的点击区域。
+- 英文导航使用简短名称，省去上下文已说明的 Management、Records 等词；页面标题和说明仍可保留完整名称。
 - `animateOnHover` 默认开启。动画绑定最近的按钮、链接、菜单项等控件，非标准交互容器加 `data-icon-trigger`；独立图标响应自身悬停。键盘聚焦使用同一反馈，每次进入只播放一次，鼠标和焦点都离开后复位，初次挂载不自动播放。
 - `disabled`、`aria-disabled`、父级 `inert`、加载转圈和系统减少动态效果均抑制装饰动画，状态变化立即生效。动画序列在离开、换图形或卸载时取消，禁止用定时器猜测完成时间。
 - 加载转圈继续由业务状态控制，`animate-spin` 和 `.spinner` 在减少动态效果模式下静止。展开、排序和选中指示图标设置 `:animate-on-hover="false"`，外层 CSS 旋转仍表达原有状态。
@@ -200,7 +202,8 @@
 - 显隐入口使用 `MotionTransition`，它将 Vue Transition 的属性和事件原样透传，并在退出时设置 inert、暂时禁用表单控件，防止旧节点响应操作或阻止原生校验。`v-show` 调用点显式传 `persisted`。菜单的点击捕获层随关闭立即移除，面板保留到退出结束。Select、HelpTooltip 等通过 `useFloatingMotion` 跟随正在折叠的触发器，祖先变为 inert 时同步关闭 Teleport 浮层。
 - 纵向展开使用 `Collapse`：`open` 控制显隐，默认保留内容；`unmountOnHide` 让原本按需挂载的内容在退出后卸载，退出期间保留上一帧的 slot 数据。`animate=false` 跳过动效，`appear` 控制首次可见挂载，`after-enter` / `after-leave` 通知完成。Grid 行高自动适配内容，过渡时裁剪，展开结束恢复正常溢出；收起内容设置 inert。表格明细使用 `ExpandableTableRow`，保持 tr/td 结构，关闭完成后不留空行。
 - 原生 details 的交互迁入 `Disclosure`，折叠头使用按钮并关联 `aria-expanded` / `aria-controls`。校验和引导通过 `form-field-reveal` / `onboarding-reveal` 展开字段时，Collapse 跳过动画，保证下一次 DOM 更新后即可定位。
-- 页签和页面内容使用 `vContentReveal`：只对已有元素执行 150ms 透明度动画，不增加包装层或重新挂载组件。AppLayout 仅处理 main，AuthLayout 仅处理内容区，公开页面在自身内容容器接入。路由以 `route.path` 触发，同路径 query/hash 更新不重播；快速换页取消旧动画，导航进度条继续独立表示路由加载。保留页签原有的 v-if/v-show 策略。
+- 分段切换使用 `vSegmented` 定位轨道的 `::before` 背景，以 `--motion-normal`（200ms）和公共缓动过渡位置、宽度及高度。选中项仍由调用方的 `.segmented-item-active` 标记，原有点击、键盘和 ARIA 语义不变；不增加可聚焦节点。首屏和隐藏后重现直接定位，没有选中项时移除背景。指令在 Vue 更新和 ResizeObserver 通知时重新测量，覆盖不等宽文案、换行、字体及尺寸变化，卸载时释放观察器。快速切换由 CSS 从当前位置继续过渡，减少动态效果时沿用公共时长变量立即完成。
+- 页签和页面内容使用 `vContentReveal`：默认对已有元素执行 150ms 透明度动画，不增加包装层或重新挂载组件。AppLayout 仅处理 main，AuthLayout 仅处理内容区，公开页面在自身内容容器接入。路由以 `route.path` 触发，同路径 query/hash 更新不重播；快速换页取消旧动画，导航进度条继续独立表示路由加载。保留页签原有的 v-if/v-show 策略。购买页用 `MotionTransition` 在同一视窗内横向切换，面板仅以 `activeTab` 为 key：进入 Subscribe 向左翻页，返回 Pay-as-you-go 向右翻页，持续 `--motion-layout`（220ms）。退出面板绝对定位并由公共生命周期隔离交互，动画期间裁剪视窗，结束后恢复摘要吸顶和浮层布局；同一页签内填写表单或推进支付流程不重新挂载面板。首次加载骨架不播放，减少动态效果时沿用公共时长变量直接切换。
 - 两类弹窗共用 `useDialogLifecycle`，滚动锁保留到实际退出结束，快速重开不会重复计数，旧弹窗不覆盖新弹窗的焦点，Escape 仅关闭最上层 BaseDialog。父级按需挂载的安全凭证弹窗使用 `useLeavingPresence`，关闭后等待外壳 `after-leave` 再卸载。
 - Toast 和用户直接增删的短列表使用 `motion-list`，以稳定业务 key 识别进入、退出与位置变化。分页表格、虚拟列表和轮询结果不逐行播放动效。
 - 系统减少动态效果时，普通过渡变量缩短至 1ms、位移归零，Collapse 和内容淡入直接完成状态切换；动态改变偏好会取消内容淡入。完成和清理继续通过 Vue 生命周期、动画完成事件执行，不用业务定时器猜测结束时间。

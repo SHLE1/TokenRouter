@@ -60,7 +60,7 @@
             >
               <Icon
                 name="refresh"
-                size="md"
+                size="sm"
                 :class="loading ? 'animate-spin' : ''"
               />
             </button>
@@ -70,7 +70,7 @@
                 class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('admin.groups.columnSettings')"
               >
-                <Icon name="grid" size="md" />
+                <Icon name="grid" size="sm" />
                 <span class="hidden">{{ t("admin.groups.columnSettings") }}</span>
               </button>
               <MotionTransition name="dropdown-fade">
@@ -102,14 +102,14 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('admin.groups.sortOrder')"
             >
-              <Icon name="arrowsUpDown" size="md" :animate-on-hover="false" />
+              <Icon name="arrowsUpDown" size="sm" :animate-on-hover="false" />
             </button>
             <button
               @click="openCreateModal"
               class="btn btn-primary whitespace-nowrap"
               data-tour="groups-create-btn"
             >
-              <Icon name="plus" size="md" class="mr-2" />
+              <Icon name="plus" size="sm" class="mr-2" />
               {{ t("admin.groups.createGroup") }}
             </button>
           </div>

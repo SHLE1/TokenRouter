@@ -42,11 +42,11 @@
       <!-- Action Buttons -->
       <div class="flex flex-col justify-center gap-3 sm:flex-row">
         <button @click="goBack" class="btn btn-secondary">
-          <Icon name="arrowLeft" size="md" class="mr-2" />
+          <Icon name="arrowLeft" size="sm" class="mr-2" />
           Go Back
         </button>
         <router-link to="/dashboard" class="btn btn-primary">
-          <Icon name="home" size="md" class="mr-2" />
+          <Icon name="home" size="sm" class="mr-2" />
           Go to Dashboard
         </router-link>
       </div>

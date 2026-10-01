@@ -8,7 +8,7 @@
           @change="onDateRangeChange"
         />
         <button @click="loadDashboard" :disabled="loading" class="btn btn-secondary shrink-0 btn-icon" :title="t('common.refresh')">
-          <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+          <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
         </button>
       </div>
     </template>

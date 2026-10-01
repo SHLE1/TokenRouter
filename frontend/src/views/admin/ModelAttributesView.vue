@@ -26,8 +26,8 @@
               </FilterDropdown>
             </div>
             <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
-              <button class="btn btn-secondary btn-icon" :disabled="loading || updating" :aria-label="t('common.refresh')" @click="load"><Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" /></button>
-              <button v-if="activeTab === 'configs'" class="btn btn-primary" @click="edit()"><Icon name="plus" size="md" class="mr-2" />{{ t('admin.modelAttributes.create') }}</button>
+              <button class="btn btn-secondary btn-icon" :disabled="loading || updating" :aria-label="t('common.refresh')" @click="load"><Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" /></button>
+              <button v-if="activeTab === 'configs'" class="btn btn-primary" @click="edit()"><Icon name="plus" size="sm" class="mr-2" />{{ t('admin.modelAttributes.create') }}</button>
               <button v-else class="btn btn-primary" :disabled="updating" @click="updateCatalog">{{ t(updating ? 'admin.pricing.defaults.updating' : 'admin.pricing.defaults.update') }}</button>
             </div>
           </div>

@@ -54,7 +54,7 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh')"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <div ref="moreActionsDropdownRef" class="relative shrink-0">
               <button
@@ -64,7 +64,7 @@
                 :title="t('admin.proxies.moreActions')"
                 @click="showMoreActionsDropdown = !showMoreActionsDropdown"
               >
-                <Icon name="more" size="md" />
+                <Icon name="more" size="sm" />
                 {{ t('admin.proxies.moreActions') }}
                 <Icon name="chevronDown" size="xs" :animate-on-hover="false" />
               </button>
@@ -117,11 +117,11 @@
               class="btn btn-danger shrink-0 whitespace-nowrap"
               :title="t('admin.proxies.batchDeleteAction')"
             >
-              <Icon name="trash" size="md" class="mr-2" />
+              <Icon name="trash" size="sm" class="mr-2" />
               {{ t('admin.proxies.batchDeleteAction') }}
             </button>
             <button @click="showCreateModal = true" class="btn btn-primary shrink-0 whitespace-nowrap">
-              <Icon name="plus" size="md" class="mr-2" />
+              <Icon name="plus" size="sm" class="mr-2" />
               {{ t('admin.proxies.createProxy') }}
             </button>
           </div>
@@ -494,7 +494,7 @@
               class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               @click="createPasswordVisible = !createPasswordVisible"
             >
-              <Icon :name="createPasswordVisible ? 'eyeOff' : 'eye'" size="md" />
+              <Icon :name="createPasswordVisible ? 'eyeOff' : 'eye'" size="sm" />
             </button>
           </div>
         </div>
@@ -691,7 +691,7 @@
               class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               @click="editPasswordVisible = !editPasswordVisible"
             >
-              <Icon :name="editPasswordVisible ? 'eyeOff' : 'eye'" size="md" />
+              <Icon :name="editPasswordVisible ? 'eyeOff' : 'eye'" size="sm" />
             </button>
           </div>
         </div>

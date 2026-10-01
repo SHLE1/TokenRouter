@@ -6,6 +6,7 @@
       </h3>
       <div class="flex flex-wrap items-center justify-end gap-2">
         <div
+          v-segmented
           v-if="showSourceToggle"
           class="segmented"
         >
@@ -36,6 +37,8 @@
         </div>
 
         <div
+
+          v-segmented
           v-if="showMetricToggle"
           class="segmented"
         >
@@ -127,6 +130,7 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
 import ExpandableTableRow from '@/components/common/ExpandableTableRow.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'

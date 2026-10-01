@@ -27,7 +27,7 @@
               :aria-label="t('common.close')"
               @click="handleDismiss"
             >
-              <Icon name="x" size="md" :stroke-width="1.75" />
+              <Icon name="x" size="sm" :stroke-width="1.75" />
             </button>
 
             <h2 class="mt-4 break-words pr-10 text-lg font-semibold leading-7 text-gray-900 dark:text-white sm:text-xl">

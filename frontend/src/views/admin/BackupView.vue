@@ -291,7 +291,7 @@
           <div class="fixed inset-0 bg-[var(--overlay-bg)]" @click="showR2Guide = false"></div>
           <div class="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-surface bg-white p-6 shadow-2xl dark:bg-dark-800 sm:rounded-dialog">
             <button type="button" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="showR2Guide = false">
-              <Icon name="x" size="md" class="h-5 w-5" />
+              <Icon name="x" size="sm" />
             </button>
 
             <h2 class="mb-4 text-lg font-bold text-gray-900 dark:text-white">{{ t('admin.backup.r2Guide.title') }}</h2>

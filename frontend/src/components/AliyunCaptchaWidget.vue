@@ -9,13 +9,13 @@
     >
       <Icon
         name="checkCircle"
-        size="md"
+        size="sm"
         :animate-on-hover="false"
         v-if="state === 'verified'"
         class="aliyun-captcha-icon"
         aria-hidden="true"
       />
-      <Icon name="shieldCheck" size="md" v-else class="aliyun-captcha-icon" aria-hidden="true" />
+      <Icon name="shieldCheck" size="sm" v-else class="aliyun-captcha-icon" aria-hidden="true" />
       <span>{{ buttonText }}</span>
     </button>
     <div :id="elementId"></div>

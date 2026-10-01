@@ -67,7 +67,7 @@
             to="/login"
             class="btn btn-primary inline-flex items-center gap-2"
           >
-            <Icon name="login" size="md" />
+            <Icon name="login" size="sm" />
             {{ t('auth.signIn') }}
           </router-link>
         </div>
@@ -120,8 +120,8 @@
               @click="showPassword = !showPassword"
               class="input-icon-right text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
-              <Icon v-if="showPassword" name="eyeOff" size="md" />
-              <Icon v-else name="eye" size="md" />
+              <Icon v-if="showPassword" name="eyeOff" size="sm" />
+              <Icon v-else name="eye" size="sm" />
             </button>
           </div>
         </div>
@@ -151,8 +151,8 @@
               @click="showConfirmPassword = !showConfirmPassword"
               class="input-icon-right text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
-              <Icon v-if="showConfirmPassword" name="eyeOff" size="md" />
-              <Icon v-else name="eye" size="md" />
+              <Icon v-if="showConfirmPassword" name="eyeOff" size="sm" />
+              <Icon v-else name="eye" size="sm" />
             </button>
           </div>
         </div>
@@ -170,7 +170,7 @@
             v-if="isLoading"
             class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
           />
-          <Icon v-else name="checkCircle" size="md" class="mr-2" :animate-on-hover="false" />
+          <Icon v-else name="checkCircle" size="sm" class="mr-2" :animate-on-hover="false" />
           {{ isLoading ? t('auth.resettingPassword') : t('auth.resetPassword') }}
         </button>
       </form>

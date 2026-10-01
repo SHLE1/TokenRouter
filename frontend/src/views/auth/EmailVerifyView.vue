@@ -118,7 +118,7 @@
             v-if="isLoading"
             class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
           />
-          <Icon v-else name="checkCircle" size="md" class="mr-2" :animate-on-hover="false" />
+          <Icon v-else name="checkCircle" size="sm" class="mr-2" :animate-on-hover="false" />
           {{ isLoading ? t('auth.verifying') : t('auth.verifyAndCreate') }}
         </button>
 

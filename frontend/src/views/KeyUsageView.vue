@@ -21,7 +21,7 @@
             class="rounded-control p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
             :title="t('home.viewDocs')"
           >
-            <Icon name="book" size="md" />
+            <Icon name="book" size="sm" />
           </a>
           <button
             @click="toggleTheme"
@@ -65,8 +65,8 @@
               @click="keyVisible = !keyVisible"
               class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:text-dark-500 dark:hover:text-white transition-colors"
             >
-              <Icon name="eyeOff" size="md" v-if="!keyVisible" class="w-5 h-5" />
-              <Icon name="eye" size="md" v-else class="w-5 h-5" />
+              <Icon name="eyeOff" size="sm" v-if="!keyVisible" />
+              <Icon name="eye" size="sm" v-else />
             </button>
           </div>
           <button

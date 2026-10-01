@@ -15,7 +15,7 @@
           :aria-expanded="settingsOpen"
           @click="settingsOpen = !settingsOpen"
         >
-          <Icon name="cog" size="md" />
+          <Icon name="cog" size="sm" />
         </button>
         <!-- 向下展开的设置面板：清空画布 / 清空本机创作数据 -->
         <MotionTransition name="pop-float">

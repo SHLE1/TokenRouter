@@ -5,10 +5,11 @@ import type { IconControls, IconDefinition } from './types'
 import { useIconAnimation } from './useIconAnimation'
 
 type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+// 导航使用 18px，普通按钮使用 16px，展示图标按场景选择更大档位。
 const SIZE_CLASSES: Record<IconSize, [string, string]> = {
   xs: ['h-3', 'w-3'],
   sm: ['h-4', 'w-4'],
-  md: ['h-5', 'w-5'],
+  md: ['h-[18px]', 'w-[18px]'],
   lg: ['h-6', 'w-6'],
   xl: ['h-8', 'w-8']
 }
@@ -26,7 +27,7 @@ export default defineComponent({
   props: {
     name: { type: String as PropType<IconName>, required: true },
     size: { type: String as PropType<IconSize>, default: 'md' },
-    strokeWidth: { type: Number, default: 2 },
+    strokeWidth: { type: Number, default: 1.75 },
     animateOnHover: { type: Boolean, default: true }
   },
   setup(props, { attrs, slots }) {
@@ -74,7 +75,7 @@ export default defineComponent({
           ...attrs,
           ref: svgRef,
           'data-animated-icon': definition().name,
-          // 调用点的显式尺寸优先，避免 h-4 和默认 h-5 同时争夺尺寸。
+          // 调用点的显式尺寸优先，避免与 size 档位的类名争夺尺寸。
           class: [
             'shrink-0 select-none',
             !attrs.height &&

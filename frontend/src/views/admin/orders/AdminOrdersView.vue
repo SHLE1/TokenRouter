@@ -34,7 +34,7 @@
           class="btn btn-secondary shrink-0 btn-icon"
           :title="t('common.refresh')"
         >
-          <Icon name="refresh" size="md" :class="ordersLoading ? 'animate-spin' : ''" />
+          <Icon name="refresh" size="sm" :class="ordersLoading ? 'animate-spin' : ''" />
         </button>
       </div>
       </template>

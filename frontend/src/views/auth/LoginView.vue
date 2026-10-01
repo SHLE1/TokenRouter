@@ -69,8 +69,8 @@
               :disabled="authActionDisabled"
               class="input-icon-right text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
-              <Icon v-if="showPassword" name="eyeOff" size="md" />
-              <Icon v-else name="eye" size="md" />
+              <Icon v-if="showPassword" name="eyeOff" size="sm" />
+              <Icon v-else name="eye" size="sm" />
             </button>
           </div>
           <div class="mt-1 flex items-center justify-between">
@@ -130,7 +130,7 @@
             v-if="isLoading"
             class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
           />
-          <Icon v-else name="login" size="md" class="mr-2" />
+          <Icon v-else name="login" size="sm" class="mr-2" />
           {{ isLoading ? t('auth.signingIn') : t('auth.signIn') }}
         </button>
       </form>
@@ -150,7 +150,7 @@
           :disabled="authActionDisabled"
           @click="handlePasskeyLogin"
         >
-          <Icon name="key" size="md" class="mr-2" />
+          <Icon name="key" size="sm" class="mr-2" />
           {{ passkeyLoading ? t('auth.passkeySigningIn') : t('auth.passkeySignIn') }}
         </button>
         <EmailOAuthButtons

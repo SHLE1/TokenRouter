@@ -50,6 +50,7 @@
       @change="selectCustomRange"
     />
     <div
+      v-segmented
       class="segmented h-9 items-stretch"
       role="group"
       :aria-label="t('dashboard.usageChart.rangeLabel')"
@@ -71,6 +72,7 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'

@@ -15,10 +15,10 @@
           </div>
           <div class="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
             <button type="button" class="btn btn-secondary btn-icon" :disabled="loading || updating" :title="t('common.refresh')" :aria-label="t('common.refresh')" @click="load">
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <button type="button" class="btn btn-primary whitespace-nowrap" :disabled="loading || updating" :title="t('admin.pricing.defaults.updateHint')" @click="updateCatalog">
-              <Icon :name="updating ? 'refresh' : 'download'" size="md" class="mr-2" :class="updating ? 'animate-spin' : ''" />
+              <Icon :name="updating ? 'refresh' : 'download'" size="sm" class="mr-2" :class="updating ? 'animate-spin' : ''" />
               {{ t(updating ? 'admin.pricing.defaults.updating' : 'admin.pricing.defaults.update') }}
             </button>
           </div>
@@ -63,7 +63,7 @@
       <template v-else>
         <!-- 上下文与模式是两个独立开关，与模型广场定价面板同款；价格行展示当前组合应用后的单价。 -->
         <div v-if="availableContexts.length > 1 || availableTiers.length > 1" class="flex flex-wrap items-center justify-end gap-2">
-          <div v-if="availableContexts.length > 1" class="segmented max-w-full flex-wrap" data-testid="pricing-context-switch">
+          <div v-segmented v-if="availableContexts.length > 1" class="segmented max-w-full flex-wrap" data-testid="pricing-context-switch">
             <button
               v-for="context in availableContexts"
               :key="context"
@@ -75,7 +75,7 @@
               {{ contextRangeLabel(context) }}
             </button>
           </div>
-          <div v-if="availableTiers.length > 1" class="segmented max-w-full flex-wrap" data-testid="pricing-tier-switch">
+          <div v-segmented v-if="availableTiers.length > 1" class="segmented max-w-full flex-wrap" data-testid="pricing-tier-switch">
             <button
               v-for="tier in availableTiers"
               :key="tier"
@@ -101,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDebounceFn } from '@vueuse/core'

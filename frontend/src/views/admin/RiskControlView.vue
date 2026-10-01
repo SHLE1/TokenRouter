@@ -252,7 +252,7 @@
               </button>
             </div>
 
-            <div class="segmented">
+            <div v-segmented class="segmented">
               <button
                 v-for="tab in recordTabs"
                 :key="tab.id"
@@ -881,7 +881,7 @@
                 <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('admin.riskControl.groupScope') }}</h3>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.riskControl.groupScopeHint') }}</p>
               </div>
-              <div class="segmented">
+              <div v-segmented class="segmented">
                 <button
                   type="button"
                   class="segmented-item px-3 py-1.5 text-sm"
@@ -1479,6 +1479,7 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
 import Skeleton from '@/components/common/Skeleton.vue'
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'

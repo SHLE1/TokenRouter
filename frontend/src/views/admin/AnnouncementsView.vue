@@ -30,10 +30,10 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh')"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <button @click="openCreateDialog" class="btn btn-primary shrink-0 whitespace-nowrap">
-              <Icon name="plus" size="md" class="mr-1" />
+              <Icon name="plus" size="sm" class="mr-1" />
               {{ t('admin.announcements.createAnnouncement') }}
             </button>
           </div>

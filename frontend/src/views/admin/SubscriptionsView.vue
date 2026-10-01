@@ -131,7 +131,7 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh')"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <!-- Column Settings Dropdown -->
             <div class="relative" ref="columnDropdownRef">
@@ -207,10 +207,10 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('admin.subscriptions.guide.showGuide')"
             >
-              <Icon name="questionCircle" size="md" />
+              <Icon name="questionCircle" size="sm" />
             </button>
             <button @click="showAssignModal = true" class="btn btn-primary whitespace-nowrap">
-              <Icon name="plus" size="md" class="mr-2" />
+              <Icon name="plus" size="sm" class="mr-2" />
               {{ t('admin.subscriptions.assignSubscription') }}
             </button>
           </div>
@@ -668,7 +668,7 @@
           <div class="fixed inset-0 bg-[var(--overlay-bg)]" @click="showGuideModal = false"></div>
           <div class="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-surface bg-white p-6 shadow-2xl dark:bg-dark-800 sm:rounded-dialog">
             <button type="button" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="showGuideModal = false">
-              <Icon name="x" size="md" class="h-5 w-5" />
+              <Icon name="x" size="sm" />
             </button>
 
             <h2 class="mb-4 text-lg font-bold text-gray-900 dark:text-white">{{ t('admin.subscriptions.guide.title') }}</h2>

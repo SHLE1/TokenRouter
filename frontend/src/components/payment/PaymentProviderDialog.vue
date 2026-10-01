@@ -238,7 +238,7 @@
           </h4>
           <Icon
             name="chevronDown"
-            size="md"
+            size="sm"
             :animate-on-hover="false"
             :class="['h-4 w-4 text-gray-400 transition-transform', limitsExpanded && 'rotate-180']"
           />

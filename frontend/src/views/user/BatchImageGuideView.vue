@@ -22,14 +22,14 @@
                 {{ t('common.reset') }}
               </button>
               <button type="button" class="btn btn-secondary" :disabled="loadingKeys || loadingJobs" :title="t('common.refresh')" @click="refreshPage">
-                <Icon name="refresh" size="md" :class="loadingKeys || loadingJobs ? 'animate-spin' : ''" />
+                <Icon name="refresh" size="sm" :class="loadingKeys || loadingJobs ? 'animate-spin' : ''" />
               </button>
               <button type="button" class="btn btn-secondary" @click="showGuideModal = true">
-                <Icon name="book" size="md" class="mr-2" />
+                <Icon name="book" size="sm" class="mr-2" />
                 {{ t('batchImage.actions.usageGuide') }}
               </button>
               <button type="button" class="btn btn-primary" @click="openCreateModal">
-                <Icon name="plus" size="md" class="mr-2" />
+                <Icon name="plus" size="sm" class="mr-2" />
                 {{ t('batchImage.actions.createJob') }}
               </button>
             </div>

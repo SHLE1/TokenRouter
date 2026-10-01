@@ -215,7 +215,7 @@
 
               <!-- 主题三段式切换放在菜单底部，使用共用的分段样式，与顶部账户卡同一种灰底。 -->
               <div class="menu-section">
-                <div class="segmented grid grid-cols-3 gap-1" role="radiogroup" :aria-label="t('nav.theme')">
+                <div v-segmented class="segmented grid grid-cols-3 gap-1" role="radiogroup" :aria-label="t('nav.theme')">
                   <button
                     v-for="option in themeOptions"
                     :key="option.mode"
@@ -245,6 +245,7 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'

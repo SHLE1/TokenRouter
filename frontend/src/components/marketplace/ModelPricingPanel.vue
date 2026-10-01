@@ -24,6 +24,7 @@
           class="mb-3 flex flex-wrap items-center justify-end gap-2"
         >
           <div
+            v-segmented
             v-if="selectableIntervals.length > 0"
             class="segmented max-w-full flex-wrap"
             data-testid="pricing-interval-switch"
@@ -40,6 +41,7 @@
             </button>
           </div>
           <div
+            v-segmented
             v-if="hasFastPricing"
             class="segmented max-w-full flex-wrap"
             data-testid="pricing-fast-switch"
@@ -83,6 +85,7 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
 import Collapse from '@/components/common/Collapse.vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

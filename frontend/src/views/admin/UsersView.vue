@@ -188,7 +188,7 @@
                 class="btn btn-secondary shrink-0 btn-icon"
                 :title="t('common.refresh')"
               >
-                <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+                <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
               </button>
               <!-- Column Settings Dropdown -->
               <div class="relative" ref="columnDropdownRef">
@@ -249,13 +249,13 @@
               data-test="bulk-edit-limits"
               @click="showBulkEditModal = true"
             >
-              <Icon name="users" size="md" class="mr-2" />
+              <Icon name="users" size="sm" class="mr-2" />
               {{ t('admin.users.bulkLimits.action', { count: selectedCount }) }}
             </button>
 
             <!-- Create User Button (full width on mobile, auto width on desktop) -->
             <button @click="showCreateModal = true" class="btn btn-primary flex-none whitespace-nowrap px-3 md:flex-initial">
-              <Icon name="plus" size="md" class="mr-2" />
+              <Icon name="plus" size="sm" class="mr-2" />
               {{ t('admin.users.createUser') }}
             </button>
           </div>

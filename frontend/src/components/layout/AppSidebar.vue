@@ -27,7 +27,7 @@
                 :aria-controls="`sidebar-group-${item.path}`"
                 @click="sidebarCollapsed ? undefined : toggleGroup(item)"
               >
-                <Icon :name="item.icon ?? 'home'" class="h-5 w-5 flex-shrink-0" />
+                <Icon :name="item.icon ?? 'home'" size="md" class="flex-shrink-0" />
                 <span
                   class="sidebar-label sidebar-label-flex"
                   :class="{ 'sidebar-label-collapsed': sidebarCollapsed }"
@@ -78,8 +78,8 @@
               "
               @click="handleMenuItemClick(item.path)"
             >
-              <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
-              <Icon v-else :name="item.icon ?? 'home'" class="h-5 w-5 flex-shrink-0" />
+              <span v-if="item.iconSvg" class="flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
+              <Icon v-else :name="item.icon ?? 'home'" size="md" class="flex-shrink-0" />
               <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
             </router-link>
           </template>
@@ -103,8 +103,8 @@
             :data-tour="item.path === '/keys' ? 'sidebar-my-keys' : item.path === '/usage' ? 'sidebar-usage' : undefined"
             @click="handleMenuItemClick(item.path)"
           >
-            <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
-            <Icon v-else :name="item.icon ?? 'home'" class="h-5 w-5 flex-shrink-0" />
+            <span v-if="item.iconSvg" class="flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
+            <Icon v-else :name="item.icon ?? 'home'" size="md" class="flex-shrink-0" />
             <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
           </router-link>
         </div>
@@ -123,8 +123,8 @@
             :data-tour="item.path === '/keys' ? 'sidebar-my-keys' : item.path === '/usage' ? 'sidebar-usage' : undefined"
             @click="handleMenuItemClick(item.path)"
           >
-            <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
-            <Icon v-else :name="item.icon ?? 'home'" class="h-5 w-5 flex-shrink-0" />
+            <span v-if="item.iconSvg" class="flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
+            <Icon v-else :name="item.icon ?? 'home'" size="md" class="flex-shrink-0" />
             <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
           </router-link>
         </div>
@@ -552,14 +552,16 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
-/* Custom SVG icon in sidebar: constrain size without overriding uploaded SVG colors */
+/* 自定义图标与导航图标同尺寸，保留上传 SVG 自身的颜色。 */
 .sidebar-svg-icon {
+  width: 1.125rem;
+  height: 1.125rem;
   color: currentColor;
 }
 
 .sidebar-svg-icon :deep(svg) {
   display: block;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 100%;
+  height: 100%;
 }
 </style>

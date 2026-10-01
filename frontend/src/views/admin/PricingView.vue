@@ -41,10 +41,10 @@
               class="btn btn-secondary shrink-0 btn-icon"
               :title="t('common.refresh', 'Refresh')"
             >
-              <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
+              <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
             </button>
             <button @click="openCreateDialog" class="btn btn-primary whitespace-nowrap px-3 sm:px-4">
-              <Icon name="plus" size="md" class="mr-2" />
+              <Icon name="plus" size="sm" class="mr-2" />
               {{ t('admin.pricing.createPricingConfig', 'Create price configuration') }}
             </button>
           </div>

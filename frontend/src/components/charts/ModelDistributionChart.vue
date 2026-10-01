@@ -8,6 +8,7 @@
       </h3>
       <div class="flex flex-wrap items-center justify-end gap-2">
         <div
+          v-segmented
           v-if="showSourceToggle"
           class="segmented"
         >
@@ -37,6 +38,7 @@
           </button>
         </div>
         <div
+          v-segmented
           v-if="showMetricToggle"
           class="segmented"
         >
@@ -57,7 +59,7 @@
             {{ t('admin.dashboard.metricActualCost') }}
           </button>
         </div>
-        <div v-if="enableRankingView" class="segmented">
+        <div v-segmented v-if="enableRankingView" class="segmented">
           <button
             type="button"
             class="segmented-item px-2.5 py-1 text-xs"
@@ -227,6 +229,7 @@
 </template>
 
 <script setup lang="ts">
+import { vSegmented } from '@/directives/segmented'
 import ExpandableTableRow from '@/components/common/ExpandableTableRow.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { computed, onBeforeUnmount, ref } from 'vue'
