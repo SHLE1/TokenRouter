@@ -10,6 +10,10 @@ export const CLIENT_PROTOCOLS: Record<Exclude<ClientKind, 'opencode'>, ProtocolI
 export const CLIENT_LABELS: Record<ClientKind, string> = {
   claude: 'Claude Code', codex: 'Codex CLI', gemini: 'Gemini CLI', grok: 'Grok CLI', opencode: 'OpenCode',
 }
+// 客户端按钮使用所属厂商的品牌图形；OpenCode 没有收录品牌图形，由调用方显示终端图标。
+export const CLIENT_ICON_KEYS: Record<Exclude<ClientKind, 'opencode'>, string> = {
+  claude: 'claude', codex: 'openai', gemini: 'gemini', grok: 'xai',
+}
 const textProtocols: ProtocolID[] = ['openai_responses', 'anthropic_messages', 'openai_chat_completions', 'gemini_generate_content']
 
 // 可请求集合来自服务端，不用分组品牌或模型名称推断上游平台。

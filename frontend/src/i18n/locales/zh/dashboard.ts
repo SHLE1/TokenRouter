@@ -247,9 +247,11 @@ export default {
     useKeyModal: {
       model: '请求模型',
       selectModel: '选择可请求模型',
+      shell: '终端环境',
       noModels: '此分组没有适用于当前客户端的模型',
       directAuth: '将 API Key 写入配置文件',
-
+      directAuthDescription: '开启后 Key 写入 config.toml，不再生成 auth.json，已有的登录信息不会被覆盖。',
+      websocketDescription: '通过 WebSocket 连接 Responses 接口，需要 Codex 客户端支持 WebSocket v2，不确定时保持关闭。',
       title: '使用 API 密钥',
       compositeDescription: '调用模型时，请在模型 ID 前添加对应分组前缀。',
       description: '将以下环境变量添加到您的终端配置文件或直接在终端中运行。',

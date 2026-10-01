@@ -247,9 +247,11 @@ export default {
     useKeyModal: {
       model: 'Request model',
       selectModel: 'Select an available model',
+      shell: 'Shell',
       noModels: 'This group has no models available for this client',
       directAuth: 'Store the API key in the configuration file',
-
+      directAuthDescription: 'Writes the key to config.toml instead of generating auth.json, so any existing sign-in stays untouched.',
+      websocketDescription: 'Connects to the Responses API over WebSocket. Requires a Codex client with WebSocket v2 support; leave it off if unsure.',
       title: 'Use API Key',
       compositeDescription: 'Prefix each model ID with the group prefix when making requests.',
       description:
