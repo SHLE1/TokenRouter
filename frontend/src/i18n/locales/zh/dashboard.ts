@@ -883,6 +883,9 @@ affiliate: {
     startDate: '开始日期',
     endDate: '结束日期',
     apply: '应用',
-    selectDateRange: '选择日期范围'
+    selectDateRange: '选择日期范围',
+    selectEndDate: '请选择结束日期',
+    previousMonth: '上个月',
+    nextMonth: '下个月'
   },
 }

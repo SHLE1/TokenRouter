@@ -878,6 +878,9 @@ affiliate: {
     startDate: 'Start Date',
     endDate: 'End Date',
     apply: 'Apply',
-    selectDateRange: 'Select date range'
+    selectDateRange: 'Select date range',
+    selectEndDate: 'Select an end date',
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month'
   },
 }

@@ -52,7 +52,7 @@ describe('36px control sizing', () => {
       expect(source).not.toContain('@apply h-9 min-h-9 rounded-control px-4 py-1.5 text-sm;')
     }
     // 弹层内的确认按钮直接使用共享按钮配方。
-    expect(dateRangePickerSource).toContain('class="btn btn-primary"')
+    expect(dateRangePickerSource).toContain('class="btn btn-primary btn-sm h-8"')
     expect(dateRangePickerSource).not.toContain('.date-picker-apply')
     // 分页控件直接由模板里的 h-9 提供 36px 基线,不再有局部高度覆盖。
     expect(paginationSource).toContain('pagination-jump-button btn btn-ghost btn-sm h-9')
