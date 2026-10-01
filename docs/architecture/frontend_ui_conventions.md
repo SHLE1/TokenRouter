@@ -125,7 +125,7 @@
 - **分区**：`SettingsSection` 提供 `text-sm font-semibold` 标题、`.input-hint` 说明和 `actions` 插槽；相邻分区之间自动加 `border-t pt-6`，页内分区间距 24px，分区内 16px。不要用 `.input-label` 冒充标题，也不要再手写 `border-t pt-4` 分隔。
 - **设置行**：布尔项用 `SettingToggleRow`（左侧标题、说明和可选 `HelpTooltip`，右侧 `Toggle size="md"` 默认 inset 变体）。右侧是选择框或输入框时用 `SettingRow` 并传 `field`，控件宽度固定为 `sm:w-56`，窄屏改为上下排列。
 - **依赖字段**：开关打开后才需要的字段放进 `Collapse` 包裹的 `SettingsSubpanel`（`rounded-surface`、淡边框和浅底、`p-4`），不用 `v-if` 直接展开。
-- **选择与提示**：两到五个互斥选项用 `SettingsSegmented`（基于 `.segmented` 与 `v-segmented`）；带图标和说明的类型选择用卡片，选中态统一品牌色描边与浅底。说明和风险提示只用 `SettingsNotice` 的 `info` / `warning` 两种语气，不再手写蓝、琥珀或紫色提示块。字段说明一律 `.input-hint`。
+- **选择与提示**：两到五个互斥选项用 `SettingsSegmented`（基于 `.segmented` 与 `v-segmented`）；带图标和说明的类型选择用卡片，选中态统一品牌色描边与浅底。说明、风险提示和错误只用 `SettingsNotice` 的 `info` / `warning` / `error` 三种语气，不再手写蓝、琥珀、红或紫色提示块。字段说明一律 `.input-hint`。
 - **批量编辑**：每个可修改项用 `BulkApplyField` 包裹，左侧复选框（`${id}-enabled`）决定是否提交。未勾选时内容区加 `inert` 并置灰，键盘也无法进入；布尔值放在 `control` 插槽的开关里，不再出现“复选框 + 开关”两层控件。
 
 <a id="dark_colors"></a>
