@@ -553,7 +553,7 @@
         </div>
         <div
           v-else-if="showGeminiTodayStats && todayStatsLoading"
-          class="mb-0.5 flex items-center gap-1"
+          class="mb-0.5 flex items-center justify-end gap-1 lg:justify-start"
         >
           <div class="h-3 w-10 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
           <div class="h-3 w-8 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
@@ -624,7 +624,7 @@
           >U {{ formatKeyUserCost }}</span>
         </div>
       </div>
-      <div v-else-if="showGeminiTodayStats && todayStatsLoading" class="mb-0.5 flex items-center gap-1">
+      <div v-else-if="showGeminiTodayStats && todayStatsLoading" class="mb-0.5 flex items-center justify-end gap-1 lg:justify-start">
         <div class="h-3 w-10 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
         <div class="h-3 w-8 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
         <div class="h-3 w-12 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
@@ -686,7 +686,7 @@
       <!-- Loading skeleton for today stats -->
       <div
         v-else-if="todayStatsLoading"
-        class="mb-0.5 flex items-center gap-1"
+        class="mb-0.5 flex items-center justify-end gap-1 lg:justify-start"
       >
         <div class="h-3 w-10 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
         <div class="h-3 w-8 animate-pulse rounded-compact bg-gray-200 dark:bg-gray-700"></div>
