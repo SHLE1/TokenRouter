@@ -104,8 +104,9 @@
                   :class="{ 'segmented-item-active': form.platform === item.value }"
                   @click="selectPlatform(item.value)"
                 >
-                  <PlatformIcon :platform="item.value" size="sm" />
-                  {{ item.label }}
+                  <!-- 图标始终使用平台品牌色；选中项文字同色，颜色放在 span 上以免被分段控件的悬停色覆盖。 -->
+                  <PlatformIcon :platform="item.value" size="sm" :class="platformIconClass(item.value)" />
+                  <span :class="form.platform === item.value && platformTextClass(item.value)">{{ item.label }}</span>
                 </button>
               </div>
             </div>
@@ -115,6 +116,7 @@
               <span class="input-label">{{ t('admin.providers.providerType') }}</span>
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" data-tour="provider-form-type">
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="providerCategory === 'oauth-based'"
                   icon="sparkles"
                   :title="t('admin.providers.claudeCode')"
@@ -122,6 +124,7 @@
                   @click="providerCategory = 'oauth-based'"
                 />
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="providerCategory === 'apikey'"
                   icon="key"
                   :title="t('admin.providers.claudeConsole')"
@@ -129,6 +132,7 @@
                   @click="providerCategory = 'apikey'"
                 />
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="providerCategory === 'bedrock'"
                   icon="cloud"
                   :title="t('admin.providers.bedrockLabel')"
@@ -136,6 +140,7 @@
                   @click="providerCategory = 'bedrock'"
                 />
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="providerCategory === 'service_account'"
                   icon="cloud"
                   title="Vertex"
@@ -153,6 +158,7 @@
               <span class="input-label">{{ t('admin.providers.providerType') }}</span>
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" data-tour="provider-form-type">
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="providerCategory === 'oauth-based'"
                   icon="key"
                   title="OAuth"
@@ -160,6 +166,7 @@
                   @click="providerCategory = 'oauth-based'"
                 />
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="providerCategory === 'apikey'"
                   icon="key"
                   title="API Key"
@@ -174,6 +181,7 @@
               <span class="input-label">{{ t('admin.providers.providerType') }}</span>
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" data-tour="provider-form-type">
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="providerCategory === 'oauth-based'"
                   platform="grok"
                   title="OAuth"
@@ -181,6 +189,7 @@
                   @click="providerCategory = 'oauth-based'"
                 />
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="providerCategory === 'apikey'"
                   icon="key"
                   title="API Key"
@@ -196,6 +205,7 @@
               <span class="input-label">{{ t('admin.providers.cnProviders.providerMode.title') }}</span>
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" data-tour="provider-form-mode">
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="providerMode === 'payg'"
                   icon="creditCard"
                   :title="t('admin.providers.cnProviders.providerMode.payg')"
@@ -204,6 +214,7 @@
                 />
                 <!-- Coding Plan 仅支持 Kimi / 智谱，DeepSeek 不支持 -->
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   v-if="form.platform !== 'deepseek'"
                   :selected="providerMode === 'coding'"
                   icon="bolt"
@@ -272,6 +283,7 @@
                 </div>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" data-tour="provider-form-type">
                   <ProviderChoiceCard
+                    :accent="form.platform"
                     :selected="providerCategory === 'oauth-based'"
                     icon="key"
                     :title="t('admin.providers.gemini.providerType.oauthTitle')"
@@ -279,6 +291,7 @@
                     @click="providerCategory = 'oauth-based'"
                   />
                   <ProviderChoiceCard
+                    :accent="form.platform"
                     :selected="providerCategory === 'apikey'"
                     icon="key"
                     :title="t('admin.providers.gemini.providerType.apiKeyTitle')"
@@ -287,6 +300,7 @@
                     @click="providerCategory = 'apikey'"
                   />
                   <ProviderChoiceCard
+                    :accent="form.platform"
                     :selected="providerCategory === 'service_account'"
                     icon="cloud"
                     title="Vertex"
@@ -315,6 +329,7 @@
                 <span class="input-label">{{ t('admin.providers.oauth.gemini.oauthTypeLabel') }}</span>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup">
                   <ProviderChoiceCard
+                    :accent="form.platform"
                     :selected="geminiOAuthType === 'google_one'"
                     icon="user"
                     :title="t('admin.providers.gemini.oauthType.googleOneTitle')"
@@ -327,6 +342,7 @@
                     </span>
                   </ProviderChoiceCard>
                   <ProviderChoiceCard
+                    :accent="form.platform"
                     :selected="geminiOAuthType === 'code_assist'"
                     icon="cloud"
                     :title="t('admin.providers.gemini.oauthType.codeAssistTitle')"
@@ -370,6 +386,7 @@
                 <Collapse :open="showAdvancedOAuth" unmount-on-hide>
                   <div class="space-y-2">
                     <ProviderChoiceCard
+                      :accent="form.platform"
                       :selected="geminiOAuthType === 'ai_studio'"
                       :disabled="!geminiAIStudioOAuthEnabled"
                       icon="sparkles"
@@ -422,6 +439,7 @@
               <span class="input-label">{{ t('admin.providers.providerType') }}</span>
               <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup">
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="antigravityProviderType === 'oauth'"
                   icon="key"
                   title="OAuth"
@@ -429,6 +447,7 @@
                   @click="antigravityProviderType = 'oauth'"
                 />
                 <ProviderChoiceCard
+                  :accent="form.platform"
                   :selected="antigravityProviderType === 'upstream'"
                   icon="cloud"
                   title="API Key"
@@ -454,6 +473,7 @@
                 <span class="input-label">{{ t('admin.providers.providerType') }}</span>
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup">
                   <ProviderChoiceCard
+                    :accent="form.platform"
                     :selected="qoderProviderType === 'oauth'"
                     icon="link"
                     :title="t('admin.providers.qoder.providerType.oauthTitle')"
@@ -461,6 +481,7 @@
                     @click="qoderProviderType = 'oauth'"
                   />
                   <ProviderChoiceCard
+                    :accent="form.platform"
                     :selected="qoderProviderType === 'manual'"
                     icon="key"
                     :title="t('admin.providers.qoder.providerType.manualTitle')"
@@ -1698,6 +1719,7 @@ import {
   type RpmStrategy
 } from '@/components/provider/form/providerFormOptions'
 import { vSegmented } from '@/directives/segmented'
+import { platformIconClass, platformTextClass } from '@/utils/platformColors'
 import {
   applyAntigravityProjectID,
   applyHeaderOverride,
