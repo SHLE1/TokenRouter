@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ModelAttributesView from '../ModelAttributesView.vue'
 import { modelAttributesAPI } from '@/api/admin/modelAttributes'
+import ModelAttributesFields from '@/components/admin/ModelAttributesFields.vue'
+import RuleListEditor from '@/components/common/RuleListEditor.vue'
+import type { ModelAttributes } from '@/types/modelAttributes'
 
-vi.mock('@/api/admin/modelAttributes', () => ({ modelAttributesAPI: { list: vi.fn(), defaults: vi.fn(), update: vi.fn(), save: vi.fn(), remove: vi.fn() } }))
+vi.mock('@/api/admin/modelAttributes', () => ({ modelAttributesAPI: { list: vi.fn(), defaults: vi.fn(), getModelDefaultAttributes: vi.fn(), update: vi.fn(), save: vi.fn(), remove: vi.fn() } }))
 vi.mock('@/api/admin', () => ({ adminAPI: { groups: { getAll: vi.fn().mockResolvedValue([{ id: 7, name: 'Group' }]) } } }))
 vi.mock('vue-i18n', async () => ({ ...(await vi.importActual<typeof import('vue-i18n')>('vue-i18n')), useI18n: () => ({ t: (key: string) => key }) }))
 
@@ -18,11 +21,117 @@ const stubs = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(modelAttributesAPI.getModelDefaultAttributes).mockReset().mockResolvedValue({})
   vi.mocked(modelAttributesAPI.list).mockResolvedValue({ items: [{ id: 1, name: 'Profile', description: '', status: 'active', group_ids: [7], rules: [{ models: ['upstream'], attributes: { tool_call: false } }] }], total: 1 })
   vi.mocked(modelAttributesAPI.defaults).mockResolvedValue({ items: [{ model: 'default-keep', provider: 'original', source: 'models.dev', attributes: {} }], total: 1, providers: ['original'], version: 'abc123', last_updated: '2026-09-30T00:00:00Z' })
 })
 
 describe('属性管理页面', () => {
+  async function openEmptyRule() {
+    const wrapper = mount(ModelAttributesView, { global: { stubs } })
+    await flushPromises()
+    await wrapper.get('button[aria-label="common.edit"]').trigger('click')
+    await flushPromises()
+    wrapper.getComponent(RuleListEditor).vm.$emit('add')
+    await flushPromises()
+    return wrapper
+  }
+
+  it('新增模型填入完整已知属性，保存时保留 false、空模态和未知字段', async () => {
+    const attributes = { display_name: 'Known', context: 128000, output_limit: 8192, reasoning: false, tool_call: true, input_modalities: ['text'], output_modalities: [] }
+    vi.mocked(modelAttributesAPI.getModelDefaultAttributes).mockResolvedValueOnce(attributes)
+    const wrapper = await openEmptyRule()
+    const input = wrapper.findAll('input[aria-label="admin.modelAttributes.models"]')[1]!
+    await input.setValue('vendor/known')
+    await input.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+
+    expect(modelAttributesAPI.getModelDefaultAttributes).toHaveBeenCalledWith('vendor/known')
+    expect(wrapper.findAllComponents(ModelAttributesFields)[1]!.props('modelValue')).toEqual(attributes)
+    await wrapper.get('#attribute-form').trigger('submit')
+    await flushPromises()
+    expect(modelAttributesAPI.save).toHaveBeenCalledWith(expect.objectContaining({
+      rules: [{ models: ['upstream'], attributes: { tool_call: false } }, { models: ['vendor/known'], attributes }],
+    }))
+    wrapper.unmount()
+  })
+
+  it('批量粘贴只查询第一个新增模型，已有显式属性不覆盖', async () => {
+    vi.mocked(modelAttributesAPI.getModelDefaultAttributes).mockResolvedValue({ reasoning: false })
+    const wrapper = await openEmptyRule()
+    const inputs = wrapper.findAll('input[aria-label="admin.modelAttributes.models"]')
+    await inputs[0]!.setValue('another')
+    await inputs[0]!.trigger('keydown', { key: 'Enter' })
+    expect(modelAttributesAPI.getModelDefaultAttributes).not.toHaveBeenCalled()
+
+    await inputs[1]!.trigger('paste', { clipboardData: { getData: () => 'first,second\nfirst' } })
+    await flushPromises()
+    expect(modelAttributesAPI.getModelDefaultAttributes).toHaveBeenCalledTimes(1)
+    expect(modelAttributesAPI.getModelDefaultAttributes).toHaveBeenCalledWith('first')
+    expect(wrapper.findAllComponents(ModelAttributesFields)[1]!.props('modelValue')).toEqual({ reasoning: false })
+    wrapper.unmount()
+  })
+
+  it('通配符跳过查询，未知模型和失败查询仍可手动填写', async () => {
+    const wrapper = await openEmptyRule()
+    const input = wrapper.findAll('input[aria-label="admin.modelAttributes.models"]')[1]!
+    for (const model of ['claude-*', 'unknown', 'offline']) {
+      if (model === 'offline') vi.mocked(modelAttributesAPI.getModelDefaultAttributes).mockRejectedValueOnce(new Error('offline'))
+      await input.setValue(model)
+      await input.trigger('keydown', { key: 'Enter' })
+      await flushPromises()
+      expect(wrapper.findAllComponents(ModelAttributesFields)[1]!.props('modelValue')).toEqual({})
+    }
+    expect(modelAttributesAPI.getModelDefaultAttributes).toHaveBeenCalledTimes(2)
+    const fields = wrapper.findAllComponents(ModelAttributesFields)[1]!
+    await fields.get('input').setValue('Manual')
+    expect(fields.props('modelValue')).toEqual({ display_name: 'Manual' })
+    wrapper.unmount()
+  })
+
+  it.each(['手动编辑', '删除模型', '删除规则', '重新打开', '关闭弹窗'])(
+    '%s 后丢弃仍在等待的查询结果', async (action) => {
+      let resolve!: (attributes: ModelAttributes) => void
+      vi.mocked(modelAttributesAPI.getModelDefaultAttributes).mockReturnValueOnce(new Promise(done => { resolve = done }))
+      const wrapper = await openEmptyRule()
+      const input = wrapper.findAll('input[aria-label="admin.modelAttributes.models"]')[1]!
+      await input.setValue('pending')
+      await input.trigger('keydown', { key: 'Enter' })
+      const fields = wrapper.findAllComponents(ModelAttributesFields)[1]!
+      const rule = wrapper.getComponent(RuleListEditor).props('items')[1]
+
+      if (action === '手动编辑') await fields.get('input').setValue('Manual')
+      if (action === '删除模型') await wrapper.get('button[aria-label="common.delete pending"]').trigger('click')
+      if (action === '删除规则') wrapper.getComponent(RuleListEditor).vm.$emit('remove', 1)
+      if (action === '重新打开') await wrapper.get('button[aria-label="common.edit"]').trigger('click')
+      if (action === '关闭弹窗') await wrapper.findAll('button').find(button => button.text() === 'common.cancel')!.trigger('click')
+      await flushPromises()
+      resolve({ display_name: 'Stale', tool_call: true })
+      await flushPromises()
+
+      expect(rule.attributes).toEqual(action === '手动编辑' ? { display_name: 'Manual' } : {})
+      wrapper.unmount()
+    },
+  )
+
+  it('连续添加模型时，先发后到的结果不覆盖最新属性', async () => {
+    let resolve!: (attributes: ModelAttributes) => void
+    vi.mocked(modelAttributesAPI.getModelDefaultAttributes)
+      .mockReturnValueOnce(new Promise(done => { resolve = done }))
+      .mockResolvedValueOnce({ display_name: 'Latest' })
+    const wrapper = await openEmptyRule()
+    const input = wrapper.findAll('input[aria-label="admin.modelAttributes.models"]')[1]!
+    for (const model of ['slow', 'latest']) {
+      await input.setValue(model)
+      await input.trigger('keydown', { key: 'Enter' })
+    }
+    await flushPromises()
+    resolve({ display_name: 'Stale' })
+    await flushPromises()
+    expect(wrapper.findAllComponents(ModelAttributesFields)[1]!.props('modelValue')).toEqual({ display_name: 'Latest' })
+    wrapper.unmount()
+  })
+
   it('默认属性的筛选面板支持组合查询、计数、重置和关闭', async () => {
     const wrapper = mount(ModelAttributesView, { attachTo: document.body, global: { stubs } })
     await flushPromises()
