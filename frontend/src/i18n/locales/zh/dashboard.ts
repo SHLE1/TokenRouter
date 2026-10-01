@@ -173,6 +173,16 @@ export default {
     },
     modelRedirect: {
       label: '模型重定向',
+      help: {
+        title: '模型重定向如何工作？',
+        description: '客户端照常填写模型名，这个密钥会按规则把它换成目标模型，再交给后续路由。',
+        example: '示例规则',
+        replay: '重播',
+        request: '客户端',
+        match: '密钥规则',
+        target: '后续路由',
+        flow: '客户端请求 {from}，密钥规则将它替换为 {to}，再交给后续路由。'
+      },
       hint: '精确来源优先；来源可使用一个末尾 *，目标必须是具体模型。',
       addRule: '添加规则',
       empty: '未配置模型重定向规则',

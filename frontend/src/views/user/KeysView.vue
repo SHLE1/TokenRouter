@@ -655,7 +655,11 @@
           :field-errors="modelMappingFieldErrors"
           test-id="model-mapping"
           data-test="model-mapping-editor"
-        />
+        >
+          <template #title-suffix>
+            <ModelRedirectHelp />
+          </template>
+        </ModelMappingEditor>
 
         <!-- Custom Key Section (only for create) -->
         <div v-if="!showEditModal" class="space-y-3">
@@ -1261,6 +1265,7 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import Icon from '@/components/icons/Icon.vue'
 	import KeyActionMenu from '@/components/keys/KeyActionMenu.vue'
 	import UseKeyModal from '@/components/keys/UseKeyModal.vue'
+	import ModelRedirectHelp from '@/components/keys/ModelRedirectHelp.vue'
 	import TfCliImportDialog from '@/components/keys/TfCliImportDialog.vue'
 	import EndpointPopover from '@/components/keys/EndpointPopover.vue'
 	import GroupBadge from '@/components/common/GroupBadge.vue'

@@ -33,6 +33,7 @@ function host(
     defineComponent({
       props: {
         enabled: { default: true },
+        animationActive: { default: false },
         disabled: { default: false },
         spinning: { default: false }
       },
@@ -41,7 +42,8 @@ function host(
         useIconAnimation(
           svg,
           () => definition,
-          () => props.enabled
+          () => props.enabled,
+          () => props.animationActive
         )
         return () => {
           const icon = h('svg', {
@@ -89,6 +91,45 @@ afterEach(() => {
 })
 
 describe('图标交互', () => {
+  it('业务状态独立于悬停触发一次，复位后可重播', async () => {
+    wrapper = host()
+    await wrapper.setProps({ enabled: false })
+    await wrapper.trigger('pointerenter')
+    expect(controls.start).not.toHaveBeenCalled()
+    await wrapper.setProps({ animationActive: true })
+    await nextTick()
+    expect(controls.start.mock.calls.map(([target]) => target)).toEqual(['first', 'second'])
+    await wrapper.trigger('pointerenter')
+    expect(controls.start).toHaveBeenCalledTimes(2)
+    await wrapper.setProps({ animationActive: false })
+    expect(controls.set).toHaveBeenLastCalledWith('normal')
+    controls.start.mockClear()
+    await wrapper.setProps({ animationActive: true })
+    await nextTick()
+    expect(controls.start.mock.calls.map(([target]) => target)).toEqual(['first', 'second'])
+  })
+
+  it('业务触发仍遵守禁用和减少动态效果，关闭状态会取消旧序列', async () => {
+    wrapper = host({ disabled: true })
+    await wrapper.setProps({ enabled: false, animationActive: true })
+    expect(controls.start).not.toHaveBeenCalled()
+    Object.assign(media, { matches: true })
+    await wrapper.setProps({ disabled: false })
+    expect(controls.start).not.toHaveBeenCalled()
+    let complete: (() => void) | undefined
+    controls.start.mockImplementationOnce(() => new Promise<void>((resolve) => {
+      complete = resolve
+    }))
+    Object.assign(media, { matches: false })
+    change?.()
+    expect(controls.start).toHaveBeenCalledWith('first')
+    await wrapper.setProps({ animationActive: false })
+    complete?.()
+    await nextTick()
+    expect(controls.start).toHaveBeenCalledTimes(1)
+    expect(controls.set).toHaveBeenLastCalledWith('normal')
+  })
+
   it('标签关联的表单控件在悬停中禁用时立即复位', async () => {
     wrapper = host({ label: true })
     await wrapper.trigger('pointerenter')

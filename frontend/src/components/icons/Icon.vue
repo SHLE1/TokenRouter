@@ -28,7 +28,8 @@ export default defineComponent({
     name: { type: String as PropType<IconName>, required: true },
     size: { type: String as PropType<IconSize>, default: 'md' },
     strokeWidth: { type: Number, default: 1.75 },
-    animateOnHover: { type: Boolean, default: true }
+    animateOnHover: { type: Boolean, default: true },
+    animationActive: { type: Boolean, default: false }
   },
   setup(props, { attrs, slots }) {
     const svgRef = ref<SVGSVGElement | null>(null)
@@ -36,7 +37,8 @@ export default defineComponent({
     const controls = useIconAnimation(
       svgRef,
       definition,
-      () => props.animateOnHover
+      () => props.animateOnHover,
+      () => props.animationActive
     )
 
     // motion-v 给内部 SVG 节点注册 focus 事件后，浏览器可能将其加入 Tab 顺序。

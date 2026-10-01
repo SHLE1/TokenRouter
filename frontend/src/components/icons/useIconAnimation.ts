@@ -23,7 +23,8 @@ const INTERACTIVE_SELECTOR = [
 export function useIconAnimation(
   svgRef: Ref<SVGSVGElement | null>,
   definition: () => IconDefinition,
-  enabled: () => boolean
+  enabled: () => boolean,
+  animationActive: () => boolean = () => false
 ) {
   const controls = useAnimationControls()
   let cleanup: (() => void) | undefined
@@ -49,7 +50,7 @@ export function useIconAnimation(
 
     const update = () => {
       const suppressed =
-        !enabled() ||
+        (!enabled() && !animationActive()) ||
         media.matches ||
         trigger.matches(':disabled') ||
         Boolean(
@@ -59,7 +60,9 @@ export function useIconAnimation(
           svg.closest('fieldset:disabled, [aria-disabled="true"], [inert]')
         ) ||
         svg.classList.contains('animate-spin')
-      const next = !suppressed && (hovered || focused)
+      const next =
+        !suppressed &&
+        (animationActive() || (enabled() && (hovered || focused)))
       if (suppressed && !active) {
         // 复位动画尚未结束时切换系统偏好，也必须立即停在静态图形。
         ++generation
@@ -140,6 +143,8 @@ export function useIconAnimation(
     }
 
     const unwatchEnabled = watch(enabled, update)
+    // 业务时间轴可独立触发一次动画，仍遵守减少动态效果和禁用状态。
+    const unwatchActive = watch(animationActive, update)
     const unwatchDefinition = watch(
       definition,
       () => {
@@ -156,6 +161,7 @@ export function useIconAnimation(
       controls.stop()
       observer.disconnect()
       unwatchEnabled()
+      unwatchActive()
       unwatchDefinition()
       trigger.removeEventListener('pointerenter', enter)
       trigger.removeEventListener('pointerleave', leave)
@@ -163,6 +169,7 @@ export function useIconAnimation(
       trigger.removeEventListener('focusout', blur)
       media.removeEventListener('change', update)
     }
+    if (animationActive()) update()
   })
 
   onBeforeUnmount(() => cleanup?.())

@@ -14,6 +14,9 @@
     @add="addRow"
     @remove="removeRow"
   >
+    <template v-if="$slots['title-suffix']" #title-suffix>
+      <slot name="title-suffix" />
+    </template>
     <template v-if="$slots['header-actions']" #header-actions>
       <slot name="header-actions" />
     </template>

@@ -173,6 +173,16 @@ export default {
     },
     modelRedirect: {
       label: 'Model redirects',
+      help: {
+        title: 'How do model redirects work?',
+        description: 'The client sends a model name as usual. This key replaces it with the matching target before routing continues.',
+        example: 'Example rule',
+        replay: 'Replay',
+        request: 'Client',
+        match: 'Key rule',
+        target: 'Routing',
+        flow: 'The client requests {from}. The key rule replaces it with {to} before routing continues.'
+      },
       hint: 'Exact sources take priority. A source may use one trailing *, while targets must be concrete models.',
       addRule: 'Add rule',
       empty: 'No model redirect rules configured',
