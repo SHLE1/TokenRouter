@@ -95,6 +95,7 @@ func (s *Calculator) CalculateCostUnified(input CostInput) (*CostBreakdown, erro
 		copy := *resolved
 		copy.RequestTiers = nil
 		copy.DefaultPerRequestPrice = price
+		copy.DefaultPerRequestPricePresent = true
 		resolved = &copy
 	}
 	return purepricing.CalculateCost(resolved, s.ProjectCostInput(input, resolved))
@@ -206,8 +207,14 @@ func (s *Calculator) DisplayPricingWithResolvedMultipliers(model string, rateMul
 	if rateMultiplier < 0 {
 		rateMultiplier = 0
 	}
-	if resolved != nil && (resolved.Mode == purepricing.BillingModeImage || resolved.Mode == purepricing.BillingModePerRequest && looksLikeImageModel(model)) {
+	if resolved != nil && resolved.Mode == purepricing.BillingModeImage {
 		if quote, ok := s.imageDisplayPricingWithResolved(model, rateMultiplier, resolved); ok {
+			return quote
+		}
+		return unknownDisplayPricing()
+	}
+	if resolved != nil && resolved.Mode == purepricing.BillingModePerRequest {
+		if quote, ok := displayPricingFromResolved(model, rateMultiplier, resolved); ok {
 			return quote
 		}
 		return unknownDisplayPricing()

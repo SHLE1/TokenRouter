@@ -409,21 +409,10 @@ func CalculatePerRequestCost(resolved *ResolvedPricing, input CostInput) (*CostB
 		units = float64(count)
 	}
 
-	var unitPrice float64
-	var priceFound bool
-
-	if input.SizeTier != "" {
-		unitPrice, priceFound = GetRequestTierPriceValue(resolved, input.SizeTier)
-	}
-
-	if !priceFound {
-		totalContext := input.Tokens.InputTokens + input.Tokens.CacheCreationTokens + input.Tokens.CacheReadTokens
-		unitPrice, priceFound = GetRequestTierPriceByContextValue(resolved, totalContext)
-	}
-
-	// 回退到默认按次价格
-	if !priceFound {
-		unitPrice = resolved.DefaultPerRequestPrice
+	totalContext := input.Tokens.InputTokens + input.Tokens.CacheCreationTokens + input.Tokens.CacheReadTokens
+	unitPrice, found := ResolveRequestUnitPrice(resolved, input.SizeTier, &totalContext)
+	if !found {
+		return nil, fmt.Errorf("%w for request price: %s", ErrModelPricingUnavailable, input.Model)
 	}
 
 	totalCost := unitPrice * units
