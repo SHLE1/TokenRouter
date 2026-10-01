@@ -11,7 +11,6 @@ import (
 
 // mappedProbeExecutor 验证选择结果进入真实测试参数，历史记录仍使用管理员选择的请求模型。
 type mappedProbeExecutor struct {
-	probeExecutorStub
 	t *testing.T
 }
 
