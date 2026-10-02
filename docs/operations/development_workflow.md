@@ -91,7 +91,7 @@ gateway 的请求值与固定 `Execute` 契约位于 `gateway/execution`；该�
 
 creative、batchimage 的核心、HTTP、PostgreSQL、Redis 与平台 Adapter 使用各自角色门禁。任务资金引用的 scope 只在 app 注册，所属存储参与者不得开启或提交自己的事务；真实 PostgreSQL 测试必须覆盖投影失败整体回滚和旧请求 ID 重放。平台及 GCS 测试使用本地夹具，不能用真实收费生成替代回归。成功元数据、输出保存和资金效果分别核验，输出保存失败不能重新调用供应商；临时 Redis 故障也不能直接断言结果永久丢失。
 
-所有手写代码都要写必要注释，注释使用中文；生成文件不手改。注释应解释约束、失败语义或非显然原因，不复述语句。跨模块不变量应同步到 Project Doc，并在关键手写入口添加唯一 `@project-doc` 锚点。
+所有手写代码都写必要的中文注释，生成文件只由生成命令更新。注释写约束、失败时的行为或代码里看不出来的原因。注释、文档、提交信息和界面文案按 `.agents/skills/humanizer/` 的规则书写。跨模块不变量应同步到 Project Doc，并在关键手写入口添加唯一 `@project-doc` 锚点。
 
 前端使用 Vue 3、TypeScript、Pinia、Vue Router、Vue I18n 和项目组件。修改界面时：
 
