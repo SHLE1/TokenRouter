@@ -72,6 +72,8 @@ Compact 请求白名单、reasoning replay 与 store=false 修复由原生请求
 
 Responses 标准/透传读取、Responses 转 Chat/Messages、Raw Chat 直通及 Chat 转 Responses/Messages 的响应执行已归 upstream/openai；协议算法继续由 protocol/bridge 唯一拥有。缓冲终态、空响应检测与流状态按每次尝试创建，终态 usage 的覆盖顺序和断开返回差异分别保留。执行适配传入提供商策略和观察端口；HTTP 只在原输出时点取得 Header，等待心跳不因创建适配器而提前结束。
 
+HTTP Responses 的标准流与透传流兼容第三方生命周期事件：当 `event` 行声明 created、in_progress 或终态，data 却是带 `object=response` 和 ID 的裸 Response 时，补齐 `type`、`response` 包装及缺失的事件序号。旧 `response.done` 按实际 status 转为 completed、failed 或 incomplete 等终态；缺少 status 时只依据非空的 error 或 incomplete_details 补齐失败或未完成状态，没有状态证据则保留原事件。event 行与 JSON type 同步，前置独立 error 的抑制状态在规范化后重新判断，避免吞掉失败终态；同一 Response ID 的重复成功终态只下发一次，后续用量仍参与原有解析。未知字段、模型回填和工具内容保留；真正缺少终态的断流不会被补成成功。该兼容不改变 WebSocket 或其它客户端协议的事件处理。
+
 OpenAI 平台拥有以下正式协议族：
 
 | 协议 | 处理边界 |

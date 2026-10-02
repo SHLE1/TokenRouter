@@ -502,6 +502,8 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		sendErrorEvent("stream_read_error")
 		return resultWithUsage(), fmt.Errorf("stream read error: %w", scanErr), true
 	}
+	var lifecycleNormalizer wire.ResponseLifecycleNormalizer
+	pendingLifecycleHeader := ""
 	processSSELine := func(line string, queueDrained bool) {
 		if streamEarlyErr != nil {
 			return
@@ -510,16 +512,28 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			pendingSSEEventType = eventType
 			eventType = strings.TrimSpace(eventType)
 			suppressCurrentEvent = codexFailureTerminal && (eventType == "error" || (sawBareError && !sawResponseFailed && eventType != "response.failed"))
+			if wire.IsResponseLifecycleEvent(eventType) {
+				// 等 data 到达后再写事件头，确保 done 改名和重复终态过滤覆盖整个事件。
+				pendingLifecycleHeader = line
+				return
+			}
 		}
 		// Extract data from SSE line (supports both "data: " and "data:" formats)
 		if data, ok := wire.ExtractSSEDataLine(line); ok {
 			options.MarkTime(StreamTimeData)
 			dataBytes := []byte(data)
 			eventType := wire.EffectiveOpenAISSEEventType(dataBytes, pendingSSEEventType)
+			options.Observe(dataBytes, eventType)
+			normalizedData, normalizedType, duplicateTerminal := lifecycleNormalizer.Normalize(dataBytes, eventType)
+			if !bytes.Equal(normalizedData, dataBytes) {
+				dataBytes = normalizedData
+				data = string(dataBytes)
+				line = "data: " + data
+			}
+			eventType = normalizedType
 			if codexFailureTerminal && sawBareError && !sawResponseFailed &&
-				(eventType == "response.completed" || eventType == "response.done") {
-				// A later successful terminal is authoritative over a pending bare
-				// error. Keep its usage and terminal visible to the client.
+				eventType == "response.completed" {
+				// 只有规范化后确认成功的终态才能覆盖此前暂存的独立错误。
 				sawBareError = false
 				sawFailedEvent = false
 				terminalFailurePending = false
@@ -528,11 +542,9 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 				bareErrorProviderSideEffectsPending = false
 				failedMessage = ""
 			}
-			if codexFailureTerminal && sawBareError && !sawResponseFailed && eventType != "response.failed" {
-				suppressCurrentEvent = true
-			}
-			options.Observe(dataBytes, eventType)
-			// 初始上游 data 的 type 只解析一次：原始值保持终止事件的精确匹配，规范化值供后续分支复用。
+			// 失败终态需要清除旧事件头的抑制状态，避免误丢收尾事件。
+			suppressCurrentEvent = codexFailureTerminal && (eventType == "error" || (sawBareError && !sawResponseFailed && eventType != "response.failed"))
+			// 使用规范化后的类型判定终态，兼容 data 中缺少 type 的生命周期事件。
 			if options.OpenAIStreamEventIsTerminalWithType(data, eventType) {
 				sawTerminalEvent = true
 			}
@@ -729,6 +741,15 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 				return
 			}
 
+			if pendingLifecycleHeader != "" {
+				header := pendingLifecycleHeader
+				if eventType != strings.TrimSpace(pendingSSEEventType) {
+					header = "event: " + eventType
+				}
+				line = header + "\n" + line
+				pendingLifecycleHeader = ""
+			}
+			suppressCurrentEvent = suppressCurrentEvent || duplicateTerminal
 			// 写入客户端（客户端断开后继续 drain 上游）
 			if !clientDisconnected && !failureDelivered && !suppressCurrentEvent {
 				shouldFlush := queueDrained && (clientOutputStarted || startsClientOutput)
@@ -761,6 +782,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 
 		// A blank line dispatches a guarded event from the attempt-local stage.
 		if stageFirstOutput && line == "" {
+			pendingLifecycleHeader = ""
 			pendingSSEEventType = ""
 			if suppressCurrentEvent {
 				suppressCurrentEvent = false
@@ -797,6 +819,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		// or queue-drain flush must never split an open SSE event.
 		shouldFlush := false
 		if line == "" {
+			pendingLifecycleHeader = ""
 			pendingSSEEventType = ""
 			if suppressCurrentEvent {
 				suppressCurrentEvent = false
