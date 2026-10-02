@@ -23,6 +23,7 @@ jobs:
           /bin/sh deploy/tests/docker-runtime-resources-test.sh
           /bin/sh deploy/test-caddyfile-cache.sh
           /bin/sh tools/goreleaser_prebuilt_test.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 tools/test_notify_discord_release.py
 
   installer:
     # Linux 安装器依赖 Bash 4+ 和 sha256sum；macOS 系统 Bash 仅支持 3.2。
