@@ -884,7 +884,6 @@ affiliates: {
       providersAvailable: 'Avail:',
       providersRateLimited: 'Limited:',
       providersTotal: 'Total:',
-      providersUnit: '',
       rateAndProviders: '{rate}x rate · {count} providers',
       providersCount: '{count} providers',
       form: {
