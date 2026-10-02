@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// CountTokens 保留无计費端点的准备、单次签名修复和返回语义。
+// CountTokens 准备计数请求并调用上游，支持一次签名修复重试。
 func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *requeststate.ParsedRequest) error {
 	if parsed == nil {
 		p.CountError(400, "invalid_request_error", "Request body is empty")
@@ -39,8 +39,8 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 		return nil
 	}
 
-	// Antigravity/Qoder 提供商不支持 count_tokens，返回 404 让客户端 fallback 到本地估算。
-	// 返回 nil 避免 handler 层记录为错误，也不设置 ops 上游错误上下文。
+	// Antigravity 和 Qoder 的 count_tokens 返回 404，客户端据此使用本地估算。
+	// 函数返回 nil，handler 按正常返回处理。
 	if in.Platform == "antigravity" || in.Platform == "qoder" {
 		p.CountError(404, "not_found_error", "count_tokens endpoint is not supported for this platform")
 		return nil
@@ -56,7 +56,7 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 	}
 	reqModel := parsed.Model
 
-	// count_tokens 与 messages 主路径共用提供商映射和平台规范化顺序，确保真正发送的模型与调度结果一致。
+	// count_tokens 与 messages 共用提供商映射和平台规范化顺序，发送模型与调度结果相同。
 	if reqModel != "" {
 		upstreamModel := p.ResolveModel(ctx, reqModel)
 		if upstreamModel != "" && upstreamModel != reqModel {
@@ -157,7 +157,7 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 	}
 
 	if resp.StatusCode < 400 && !bytes.Equal(acceptedWireBody, body) {
-		// count_tokens 成功后再同步最终 wire body，避免后续逻辑继续从重试前 body 派生。
+		// count_tokens 成功后保存最终报文，后续步骤使用重试后的 body。
 		if err := replaceBody(acceptedWireBody); err != nil {
 			return err
 		}
@@ -221,7 +221,7 @@ func CountTokens(ctx context.Context, p CountPorts, in MessageInput, parsed *req
 	return nil
 }
 
-// CountPassthrough 保留无计費端点的准备、单次签名修复和返回语义。
+// CountPassthrough 透传计数请求并处理响应，支持一次签名修复重试。
 func CountPassthrough(ctx context.Context, p CountPorts, in MessageInput, body []byte, mappedModel string) error {
 	err := p.Credential(ctx)
 	if err != nil {
@@ -268,9 +268,8 @@ func CountPassthrough(ctx context.Context, p CountPorts, in MessageInput, body [
 		upstreamMsg := strings.TrimSpace(upstream.ExtractErrorMessage(respBody))
 		upstreamMsg = p.Sanitize(upstreamMsg)
 
-		// 中转站不支持 count_tokens 端点时（404），返回 404 让客户端 fallback 到本地估算。
-		// 仅在错误消息明确指向 count_tokens endpoint 不存在时生效，避免误吞其他 404（如错误 base_url）。
-		// 返回 nil 避免 handler 层记录为错误，也不设置 ops 上游错误上下文。
+		// 错误消息确认 count_tokens 端点不存在时返回 404，客户端据此本地估算，函数返回 nil。
+		// 错误 base_url 等其他 404 继续按上游错误处理。
 		if p.UnsupportedCount(resp.StatusCode, respBody) {
 			p.Log(fmt.Sprintf(
 				"[count_tokens] Upstream does not support count_tokens (404), returning 404: provider=%d name=%s msg=%s",

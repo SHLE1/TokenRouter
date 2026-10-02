@@ -65,7 +65,7 @@
           </div>
         </div>
 
-        <!-- 完整定价允许在窄卡片内换行，避免隐藏的抽屉也撑大父网格。 -->
+        <!-- 定价信息在窄卡片内换行，抽屉宽度随父网格收缩。 -->
         <div v-if="activeRows.length > 0" class="space-y-2.5" data-testid="pricing-rows">
           <div
             v-for="row in activeRows"
@@ -94,7 +94,7 @@ import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { formatCompactTokenRange } from '@/utils/formatters'
 import type { MarketplaceModel, MarketplaceModelPricing, MarketplacePricingInterval } from '@/types'
 
-// 抽屉式完整定价面板：原地展开收起、上下文区间与 fast mode 切换都收敛在卡片内部。
+// 完整定价面板在卡片内展开、收起，并提供上下文区间与 fast mode 切换。
 const props = defineProps<{
   model: MarketplaceModel
 }>()
@@ -117,7 +117,7 @@ function hasPositiveValue(value?: number | null): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
 }
 
-// —— 价格格式化：与模型广场卡片预览保持同一口径 ——
+// 价格格式化与模型广场卡片预览使用相同规则。
 
 function formatPriceNumber(value: number): string {
   const abs = Math.abs(value)
@@ -142,7 +142,7 @@ function formatPerImage(value: number): string {
   return `${formatPrice(value)} ${t('marketplace.perImage')}`
 }
 
-// —— 定价行构建 ——
+// 构建定价行。
 
 function tokenPricingRowsFromValues(pricing: MarketplaceModelPricing | MarketplacePricingInterval): PricingRow[] {
   const rows: PricingRow[] = []
@@ -201,7 +201,7 @@ function fastTokenPricingRows(pricing: MarketplaceModelPricing | MarketplacePric
   return rows
 }
 
-// 显式价格为 0 表示免费， priced 状态但无正价时展示 0 而不是空列表。
+// 价格为 0 表示免费，priced 状态下缺少正价时展示 0。
 function zeroTokenPricingRows(): PricingRow[] {
   return [
     { key: 'input', label: t('marketplace.input'), value: formatPerMillion(0) },
@@ -252,7 +252,7 @@ function pricingKind(pricing: MarketplaceModelPricing): 'token' | 'image' | 'unp
 
 const hasDisplayPricing = computed(() => pricingKind(props.model.pricing) !== 'unpriced')
 
-// 后端仅返回有定价的区间；零价字段会被 JSON 省略，不能据此过滤免费区间。
+// 后端返回有定价的区间，JSON 省略的零价字段仍表示免费区间。
 const selectableIntervals = computed(() =>
   (props.model.pricing.context_intervals ?? [])
     .map((interval, index) => ({ interval, key: `${interval.min_tokens}-${interval.max_tokens ?? 'up'}-${index}` }))

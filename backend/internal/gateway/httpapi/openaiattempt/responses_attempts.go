@@ -55,7 +55,7 @@ type responsesAttemptBridge struct {
 	fields                                                                   []zap.Field
 }
 
-// Select 只执行单次 Responses 适配操作，不持有重试循环。
+// Select 选择支持请求模型的提供商。
 func (b *responsesAttemptBridge) Select(excluded map[int64]struct{}) (textflow.ResponseSelection, error) {
 	// Select provider supporting the requested model
 	b.reqLog.Debug("openai.provider_selecting", zap.Int("excluded_provider_count", len(excluded)))
@@ -128,7 +128,7 @@ func (b *responsesAttemptBridge) Select(excluded map[int64]struct{}) (textflow.R
 	return b.selectedView(), nil
 }
 
-// SelectionFailure 只执行单次 Responses 适配操作，不持有重试循环。
+// SelectionFailure 将选择失败写为客户端错误。
 func (b *responsesAttemptBridge) SelectionFailure(err error, excludedCount int, last *textflow.AttemptFailure) {
 	var lastFailoverErr *forwardcore.UpstreamFailoverError
 	if last != nil {
@@ -164,7 +164,7 @@ func (b *responsesAttemptBridge) SelectionFailure(err error, excludedCount int, 
 	}
 }
 
-// Acquire 只执行单次 Responses 适配操作，不持有重试循环。
+// Acquire 取得当前提供商的并发槽位。
 func (b *responsesAttemptBridge) Acquire() bool {
 	if b.sessionAttempts != nil && b.binding().sessions.Track != nil {
 		b.binding().sessions.Track(b.sessionAttempts, b.provider, b.sessionHash)
@@ -174,17 +174,15 @@ func (b *responsesAttemptBridge) Acquire() bool {
 	return acquired
 }
 
-// Forward 只执行单次 Responses 适配操作，不持有重试循环。
+// Forward 向当前提供商转发请求并捕获响应结果。
 func (b *responsesAttemptBridge) Forward() textflow.ResponseOutcome {
 	var err error
 	// Forward request
 	gatewayhttp.SetOpsLatencyMs(b.c, gatewayhttp.OpsRoutingLatencyMsKey, time.Since(b.routingStart).Milliseconds())
 	forwardStart := time.Now()
-	// 用扣除非语义心跳字节的口径快照：心跳注释不构成语义响应，
-	// 不能因心跳字节变化而放弃 failover 换号（#3887）。
+	// 快照扣除心跳注释字节，上游失败时仍可按协议输出状态决定换号（#3887）。
 	b.writerSizeBeforeForward = gatewayhttp.OpenAICompactKeepaliveAdjustedWrittenSize(b.c)
-	// 跨透传边界时，从不可变的 canonical 请求体派生当前尝试体，
-	// 避免非透传上游拒绝透传提供商产生的私有加密 reasoning 项。
+	// 从透传切换到非透传提供商时，从 canonical 请求体派生本次正文并清除上游私有的加密 reasoning。
 	attemptBody := b.binding().deriveOpenAIForwardAttemptBody(b.reqLog, b.forwardBody, b.provider, &b.passthroughFailoverState)
 	b.result, err = func() (*forwardcore.OpenAIResult, error) {
 		defer func() {
@@ -220,7 +218,7 @@ func (b *responsesAttemptBridge) Forward() textflow.ResponseOutcome {
 	return out
 }
 
-// Complete 只执行单次 Responses 适配操作，不持有重试循环。
+// Complete 捕获用量与请求数据并提交完成任务。
 func (b *responsesAttemptBridge) Complete() {
 	res := b.result
 
@@ -235,7 +233,7 @@ func (b *responsesAttemptBridge) Complete() {
 	upstreamEndpoint := ResolveOpenAIUpstreamEndpoint(b.c, b.provider, res)
 
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
-	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
+	// 入队前捕获资金和报文数据，worker 使用这份快照。
 	completionInput := gatewaycapture.CaptureOpenAI(gatewayhttp.CompletionContext(b.c), &gatewaycapture.OpenAICapture{
 		Result:             res,
 		APIKey:             b.apiKey,
@@ -272,7 +270,7 @@ func (b *responsesAttemptBridge) Complete() {
 	})
 }
 
-// PartialImages 只执行单次 Responses 适配操作，不持有重试循环。
+// PartialImages 记录已产出部分图片时发生的转发错误。
 func (b *responsesAttemptBridge) PartialImages(err error) {
 	b.reqLog.Warn("openai.forward_partial_error_with_image_result",
 		zap.Int64("provider_id", b.provider.Record.ID),
@@ -281,7 +279,7 @@ func (b *responsesAttemptBridge) PartialImages(err error) {
 	)
 }
 
-// RetryReady 只执行单次 Responses 适配操作，不持有重试循环。
+// RetryReady 检查客户端连接和输出状态，决定是否允许重试。
 func (b *responsesAttemptBridge) RetryReady(failure *textflow.AttemptFailure) bool {
 	err := failure.Cause
 	var failoverErr *forwardcore.UpstreamFailoverError
@@ -301,8 +299,7 @@ func (b *responsesAttemptBridge) RetryReady(failure *textflow.AttemptFailure) bo
 		b.binding().handleFailoverExhausted(b.c, failoverErr, true)
 		return false
 	}
-	// OpenAIForwardMayFailover 已确认写出的字节不含语义输出，
-	// 但重试耗尽时仍须按已提交的 SSE 响应返回流内错误。
+	// OpenAIForwardMayFailover 已确认可以换号。响应头已提交时，重试耗尽仍返回 SSE 流内错误。
 	if b.c.Writer.Written() {
 		*b.streamStarted = true
 	}
@@ -312,7 +309,7 @@ func (b *responsesAttemptBridge) RetryReady(failure *textflow.AttemptFailure) bo
 	return true
 }
 
-// RetryWait 只执行单次 Responses 适配操作，不持有重试循环。
+// RetryWait 记录同一提供商的重试次数和等待时间。
 func (b *responsesAttemptBridge) RetryWait(failure *textflow.AttemptFailure, retryLimit, retryCount int, retryDelay time.Duration) {
 	var failoverErr *forwardcore.UpstreamFailoverError
 	errors.As(failure.Cause, &failoverErr)
@@ -325,7 +322,7 @@ func (b *responsesAttemptBridge) RetryWait(failure *textflow.AttemptFailure, ret
 	)
 }
 
-// Switching 只执行单次 Responses 适配操作，不持有重试循环。
+// Switching 记录提供商切换次数和代理信息。
 func (b *responsesAttemptBridge) Switching(failure *textflow.AttemptFailure, switchCount, maxProviderSwitches int) {
 	var failoverErr *forwardcore.UpstreamFailoverError
 	errors.As(failure.Cause, &failoverErr)
@@ -339,7 +336,7 @@ func (b *responsesAttemptBridge) Switching(failure *textflow.AttemptFailure, swi
 	b.reqLog.Warn("openai.upstream_failover_switching", failoverSwitchFields...)
 }
 
-// OtherFailure 只执行单次 Responses 适配操作，不持有重试循环。
+// OtherFailure 记录转发错误并补充尚未输出的客户端错误。
 func (b *responsesAttemptBridge) OtherFailure(err error) {
 	statusCode := 0
 	if v, ok := GetContextInt64(b.c, gatewayhttp.OpsUpstreamStatusCodeKey); ok {
@@ -352,8 +349,8 @@ func (b *responsesAttemptBridge) OtherFailure(err error) {
 	b.binding().reportOpenAIProviderScheduleResult(b.provider, OpenAIProviderScheduleModel(b.c, b.provider, b.forwardModel, b.requireCompact, b.result), false, nil, err)
 	upstreamErrorAlreadyCommunicated := gatewayhttp.OpenAIForwardErrorAlreadyCommunicated(b.c, b.writerSizeBeforeForward, err)
 	b.wroteFallback = false
-	// cyber warning 场景下，service 层可能已经把上游 response.failed/JSON 错误写给下游。
-	// 此时不再补写第二个 fallback，避免客户端看到重复的终止事件。
+	// cyber warning 处理可能已写出 response.failed 或 JSON 错误，
+	// 补充错误前检查输出状态，使客户端收到一次终止错误。
 	if !upstreamErrorAlreadyCommunicated && (!recordedWarning || gatewayhttp.OpenAICompactKeepaliveAdjustedWrittenSize(b.c) == b.writerSizeBeforeForward) {
 		b.wroteFallback = b.binding().ensureOpenAIForwardErrorResponse(b.c, *b.streamStarted, err)
 	}
@@ -365,7 +362,7 @@ func (b *responsesAttemptBridge) OtherFailure(err error) {
 	}
 }
 
-// Failed 只执行单次 Responses 适配操作，不持有重试循环。
+// Failed 按错误分类记录转发失败日志。
 func (b *responsesAttemptBridge) Failed() {
 	if gatewayhttp.ShouldLogOpenAIForwardFailureAsWarn(b.c, b.wroteFallback) {
 		b.reqLog.Warn("openai.forward_failed", b.fields...)
@@ -374,7 +371,7 @@ func (b *responsesAttemptBridge) Failed() {
 	b.reqLog.Error("openai.forward_failed", b.fields...)
 }
 
-// Success 只执行单次 Responses 适配操作，不持有重试循环。
+// Success 更新用量快照并报告调度结果。
 func (b *responsesAttemptBridge) Success() {
 	if b.result != nil {
 		// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新。
@@ -387,7 +384,7 @@ func (b *responsesAttemptBridge) Success() {
 	}
 }
 
-// Completed 只执行单次 Responses 适配操作，不持有重试循环。
+// Completed 记录请求完成时的提供商和切换次数。
 func (b *responsesAttemptBridge) Completed(switchCount int) {
 	b.reqLog.Debug("openai.request_completed",
 		zap.Int64("provider_id", b.provider.Record.ID),

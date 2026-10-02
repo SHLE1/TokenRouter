@@ -17,7 +17,7 @@ import (
 )
 
 // AuditLogHandler 操作审计日志管理接口。
-// 审计日志仅管理员可见；不提供单条删除，仅支持带 TOTP 验证的全量清空。
+// 审计日志供管理员查看，全量清空需要 TOTP 验证。
 type AuditLogHandler struct {
 	auditService *audit.AuditLogService
 	totpService  TOTPVerifier

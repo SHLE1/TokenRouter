@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProtocolRouteMethodAndResourceBoundaries 验证同一路径的方法与子资源边界决定准入归属，已有任务操作不能继承新建入口开关。
+// TestProtocolRouteMethodAndResourceBoundaries 验证准入按方法和子资源区分，已有任务操作使用自己的开关。
 func TestProtocolRouteMethodAndResourceBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		method, path string

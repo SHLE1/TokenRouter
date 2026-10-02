@@ -48,7 +48,7 @@ describe('gateway settings locale copy', () => {
   })
 
   it('limits the Grok cross-client mapping copy to Claude Messages', () => {
-    // 文案必须反映当前仅接入 Claude Messages 的运行时范围，避免扩大能力声明。
+    // 检查文案所述的接入范围为 Claude Messages。
     const zhCopy = zh.admin.settings.gatewayForwarding
     const enCopy = en.admin.settings.gatewayForwarding
 

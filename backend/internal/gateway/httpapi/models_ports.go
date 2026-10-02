@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ModelsPorts 只取得目录与已选模型资源，不暴露完整执行器或提供商凭据。
+// ModelsPorts 读取模型目录和已选目标的模型资源。
 type ModelsPorts struct {
 	Catalogue interface {
 		ResolveRequestableModels(context.Context, *int64, string) routing.RequestableModelsResult
@@ -22,7 +22,7 @@ type ModelsPorts struct {
 	SafeSegment      func(string) bool
 }
 
-// Access 保留有效 Key 优先和请求独立副本，认证失败投影不进入此入口。
+// Access 优先读取通过认证的 Key，返回请求独立的副本。
 func (p ModelsPorts) Access(c *gin.Context) (*apikey.APIKey, bool) {
 	if key, ok := EffectiveAPIKey(c); ok {
 		return key, true
@@ -41,7 +41,7 @@ func (p ModelsPorts) Resolve(ctx context.Context, id *int64, platform string) ro
 	return p.Catalogue.ResolveRequestableModels(ctx, id, platform)
 }
 
-// PreferredSubscription 仅为目录展示选择已确认的指定订阅，保持原资格边界。
+// PreferredSubscription 为目录展示返回已确认的指定订阅。
 func (p ModelsPorts) PreferredSubscription(c *gin.Context) (*billing.UserSubscription, bool) {
 	value, ok := p.ReadBilling(c)
 	if !ok || value == nil || value.Mode != apikey.APIKeyBillingModeSubscription || value.Subscription == nil {

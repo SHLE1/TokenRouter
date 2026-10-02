@@ -36,7 +36,7 @@ func (s *Compatible) advancedSchedulerGroupForRequest(ctx context.Context, id *i
 	return schedulerRequestGroup(ctx, id, s != nil && s.schedulerSnapshot != nil, s.readSchedulingGroup)
 }
 
-// schedulerGroupOverrides 只投影最终高级分组，基础分组忽略其配置残留。
+// schedulerGroupOverrides 返回最终高级分组的配置覆盖值，基础分组返回空配置。
 func schedulerGroupOverrides(group *routing.Group) policy.GroupAdvancedSchedulerOverrides {
 	if group != nil && group.UsesAdvancedScheduler() {
 		return group.AdvancedSchedulerOverrides

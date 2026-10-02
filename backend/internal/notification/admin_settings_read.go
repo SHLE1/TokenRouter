@@ -2,8 +2,9 @@ package notification
 
 import (
 	"strconv"
-) // AdminReadSettings 只包含本模块在综合管理页的展示投影。
+)
 
+// AdminReadSettings 包含 SMTP 参数及密码配置状态。
 type AdminReadSettings struct {
 	SMTPFrom               string
 	SMTPFromName           string
@@ -15,9 +16,8 @@ type AdminReadSettings struct {
 	SMTPUsername           string
 }
 
-// ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
+// ReadAdminSettings 从传入的设置值解析 SMTP 参数及密码配置状态。
 func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
-
 	result := &AdminReadSettings{}
 	result.SMTPHost = settings[SettingKeySMTPHost]
 	result.SMTPUsername = settings[SettingKeySMTPUsername]

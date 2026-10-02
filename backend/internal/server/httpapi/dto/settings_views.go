@@ -1,6 +1,6 @@
 package dto
 
-// PanelRateLimitSettings 保留现有 HTTP JSON 字段与省略语义。
+// PanelRateLimitSettings 是控制台限流设置的 HTTP JSON 数据。
 type PanelRateLimitSettings struct {
 	Enabled     bool `json:"enabled"`
 	UserRPM     int  `json:"user_rpm"`

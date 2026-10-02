@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// provideCNUsageMonitor 绑定同一提供商 Store 与只读查询；数据库咨询锁只在技术装配侧构造。
+// provideCNUsageMonitor 绑定提供商 Store、用量查询和数据库咨询锁。
 func provideCNUsageMonitor(store *providerpostgres.ProviderStore, queries *provider.UpstreamUsageService, cfg *config.Config, leader provider.CNMonitorLeader, db *sql.DB) *provider.CNUsageMonitor {
 	options := provider.CNMonitorOptions{Now: time.Now, InstanceID: uuid.NewString(), BalanceThreshold: 0.5, Leader: leader, Warn: slog.Warn, Debug: slog.Debug}
 	if cfg != nil {

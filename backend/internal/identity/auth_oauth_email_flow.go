@@ -267,7 +267,7 @@ func (s *AuthService) AuthCreateOAuthEmailAccountUser(ctx context.Context, user 
 		return ErrServiceUnavailable
 	}
 
-	// 这些 OAuth 注册路径延后消费邀请码；这里只复用注册路径的邮箱归一化保护，不提前核销邀请码。
+	// OAuth 注册先归一化邮箱，邀请码在后续步骤核销。
 	err := s.AuthCreateRegisteredUser(ctx, user, &AuthRegistrationArtifacts{EnforceEmailDomainQuota: true})
 	if err != nil && user.ID > 0 && !errors.Is(err, ErrEmailExists) {
 		_ = s.RollbackOAuthEmailAccountCreation(ctx, user.ID, "")

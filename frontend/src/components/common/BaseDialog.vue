@@ -116,7 +116,7 @@ const zIndexStyle = computed(() => {
 })
 
 const widthClasses = computed(() => {
-  // 移动端统一保留遮罩边距，避免弹窗内容的最小宽度撑开页面。
+  // 移动端弹窗宽度限制在视口内，并保留遮罩边距。
   const widths: Record<DialogWidth, string> = {
     narrow: 'max-w-[calc(100vw-1rem)] sm:max-w-md',
     normal: 'max-w-[calc(100vw-1rem)] sm:max-w-lg',
@@ -170,7 +170,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* 贴边分栏由内容自行留白，外壳不再加内边距。 */
+/* 贴边分栏的外壳内边距为 0，由内容自行留白。 */
 .modal-body-flush {
   padding: 0;
 }

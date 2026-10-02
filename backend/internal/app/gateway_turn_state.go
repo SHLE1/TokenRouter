@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 )
 
-// provideCodexTurnStateHeaders 为所有 HTTP 响应路径绑定同一来源表和原粘性 TTL。
+// provideCodexTurnStateHeaders 为 HTTP 响应绑定共享的来源表和粘性会话 TTL。
 func provideCodexTurnStateHeaders(choices *selection.Compatible) *gatewayhttp.CodexTurnStateHeaders {
 	return &gatewayhttp.CodexTurnStateHeaders{Origins: session.NewCodexTurnOrigins(time.Now), TTL: choices.SessionStickyTTL}
 }

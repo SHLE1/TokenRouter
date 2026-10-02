@@ -7,7 +7,7 @@ import (
 )
 
 // ApplyCNConcurrencyLimit 将 Kimi 并发限制写为短期临时不可调度，
-// 保留当前请求的切号信号，并确保不会进入累计 403 永久禁用计数。
+// 当前请求继续切换提供商，此类错误的累计 403 次数保持不变。
 func (s *HealthService) ApplyCNConcurrencyLimit(
 	ctx context.Context,
 	provider *Record, reason string,
@@ -101,7 +101,7 @@ func (s *HealthService) ApplyCNQuotaSnapshotCooldown(ctx context.Context, provid
 		return false
 	}
 	// 2) Coding Plan 窗口耗尽：冷却到快照中最早的窗口重置点（见
-	// CNProviderQuotaSnapshotReset：429 多由 5h 窗口触发，取较早点避免过度停调）。
+	// CNProviderQuotaSnapshotReset 取较早窗口的重置时间，429 通常来自 5h 窗口。
 	if provider.IsCodingPlan() {
 		if until := CNProviderQuotaSnapshotReset(provider, s.options.Now()); until != nil {
 			s.notifyProviderSchedulingBlocked(provider, *until, "429")

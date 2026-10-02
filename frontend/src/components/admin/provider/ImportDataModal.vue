@@ -251,8 +251,7 @@ const readFileAsText = async (sourceFile: File): Promise<string> => {
 const SUPPORTED_DATA_TYPES = ['tokenrouter-data', 'sub2api-data']
 const SUPPORTED_DATA_VERSION = 2
 
-// 与后端 validateDataHeader 对齐：合并前逐文件校验，避免坏文件混入合并 payload 后
-// 无法定位报错来源，或绕过后端原本会对单文件执行的 type/version 检查。
+// 合并前按 validateDataHeader 的规则逐文件检查 type/version，错误可定位到具体文件。
 const isValidDataPayload = (payload: unknown): payload is AdminDataPayload => {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false
   const candidate = payload as Record<string, unknown>

@@ -21,7 +21,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// provideOpenAITextHTTP 直接组合原生 HTTP 与固定单次运行时，不经过旧 Handler。
+// provideOpenAITextHTTP 为 OpenAI 文本 HTTP 入口绑定单次执行组件。
 func provideOpenAITextHTTP(
 	source *gatewayhttp.OpenAIResponsesExecutor,
 	funding *admission.FundingAdmission,
@@ -48,7 +48,7 @@ func provideOpenAITextHTTP(
 	return result
 }
 
-// openAITextOptions 仅投影静态 HTTP 与切号预算。
+// openAITextOptions 返回静态 HTTP 参数和提供商切换预算。
 func openAITextOptions(cfg *config.Config) gatewayhttp.OpenAITextOptions {
 	options := gatewayhttp.OpenAITextOptions{MaxSwitches: 3}
 	if cfg != nil {
@@ -64,7 +64,7 @@ func openAITextOptions(cfg *config.Config) gatewayhttp.OpenAITextOptions {
 	return options
 }
 
-// openAITextBindings 固定原生能力，运行时只创建请求数据。
+// openAITextBindings 在装配时绑定依赖，请求期间创建本次调用的数据。
 func openAITextBindings(source *gatewayhttp.OpenAIResponsesExecutor, funding *admission.FundingAdmission, keys *apikey.APIKeyService, resources *gatewayhttp.OpenAIHTTPResources, cyber *gatewayhttp.CyberHandler, rules *errorpolicy.ErrorPassthroughService, moderator *moderation.ContentModerationService, planner *gatewayadapter.RoutePlanner, cache session.GatewayCache, subscriptions *billing.SubscriptionService) gatewayhttp.OpenAITextBindings {
 	var moderationPort gatewayhttp.ModerationPort
 	if moderator != nil {

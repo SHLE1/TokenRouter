@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// readerStoreProbe 确认装配不提前读取动态值，也不在缓存命中时增加查询。
+// readerStoreProbe 记录动态设置查询次数，首次读取和缓存命中分别检查。
 type readerStoreProbe struct {
 	settings.Repository
 	reads int
@@ -34,7 +34,7 @@ func TestSettingsReadersSharePublishedState(t *testing.T) {
 	searchRuntime := search.NewConfigService(store, nil, nil, search.NewRegistry())
 	readers := provideGatewayRuntimeReaders(store, gatewayRuntime, provider, quota, routing, moderation, searchRuntime)
 	t.Cleanup(func() {
-		// 清除本测试安装的默认 UA 读取器，避免影响同进程的其他装配契约。
+		// 清除本测试安装的默认 UA 读取器，使同进程的其他测试使用各自的装配。
 		openai.SetCodexCanonicalUserAgentResolver(nil)
 		antigravity.SetUserAgentVersionResolver(nil)
 	})

@@ -19,7 +19,7 @@ type Participant struct {
 	Prepare func(context.Context, Fields, map[string]string) (PreparedChange, error)
 }
 
-// Registry 只保存静态参与者及其顺序，没有运行时注册或替换入口。
+// Registry 按构造时的顺序保存设置更新参与者。
 type Registry struct{ participants []Participant }
 
 // NewRegistry 在构造期间拒绝重复字段、键或模块，避免运行更新互相覆盖。

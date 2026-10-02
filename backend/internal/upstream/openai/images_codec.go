@@ -34,9 +34,8 @@ type OpenAIImagesUpstreamError struct {
 	Param             string
 	UpstreamRequestID string
 
-	// SynthesizedFromModelText 表示网关从模型纯文本输出推断出错误，而不是从上游结构化错误帧读取。
-	// 该判定只描述当前轮次（模型返回文字而非图片），不代表提供商能力失效；详见
-	// shouldCoolOpenAIImagesToolForError。
+	// SynthesizedFromModelText 表示网关从本轮模型返回的文字推断出图片生成错误。
+	// 提供商能力冷却另由 shouldCoolOpenAIImagesToolForError 判断。
 	SynthesizedFromModelText bool
 }
 
@@ -615,9 +614,8 @@ func OpenAIImagesUpstreamErrorFromSSEPayload(payload []byte) *OpenAIImagesUpstre
 		response := gjson.GetBytes(payload, "response")
 		return OpenAIImagesUpstreamErrorFromGJSON(response.Get("error"), response.Get("id").String())
 	case "response.incomplete":
-		// 上游在生成预算内未产出图片（超时/被截断），返回 response.incomplete 而非 error。
-		// 旧逻辑识别不到，统一报成模糊的 "upstream did not return image output" + 502，
-		// 且不触发 failover。这里把它显式建模为可重试的上游错误，使其能换提供商重试。
+		// 上游在生成预算内未产出图片（超时或截断）时返回 response.incomplete。
+		// 将其转换为可重试的上游错误，允许切换提供商。
 		return OpenAIImagesIncompleteUpstreamError(gjson.GetBytes(payload, "response"))
 	default:
 		return nil
@@ -724,8 +722,7 @@ func OpenAIImagesTextFallbackErrorForText(text string) *OpenAIImagesUpstreamErro
 		ErrorType:  "upstream_error",
 		Code:       "image_generation_unavailable",
 		Message:    "Upstream did not execute image generation",
-		// 该错误从模型文字推断而来，而非上游错误帧：足以让本轮切换提供商，
-		// 但不能证明当前提供商图片工具未来 30 分钟不可用。
+		// 模型文字推断的错误允许本轮切换提供商。30 分钟的图片工具冷却需要上游错误帧证据。
 		SynthesizedFromModelText: true,
 	}
 }

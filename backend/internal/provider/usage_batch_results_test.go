@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 缺失提供商错误和并发查询错误写入同一结果集，二者必须共享同步边界。
+// 缺失提供商和并发查询的错误写入同一结果集，写入共用同步保护。
 type usageBatchRaceRepo struct{ OAuthUsageReader }
 
 func (usageBatchRaceRepo) GetByIDs(_ context.Context, ids []int64) ([]*Record, error) {

@@ -75,12 +75,9 @@ describe('OpsErrorLogTable user/api-key/provider columns', () => {
   })
 })
 
-// 防回归:组件用 admin.ops.errorLog.* 命名空间。若 i18n 键写错命名空间(如误放到
-// errorDetail),真实 vue-i18n 会回退返回 key 本身 → 界面显示原始路径字符串。
-// 这里用真实 locale 校验键确实可解析(返回译文而非 key)。
-// 防回归:组件用 admin.ops.errorLog.* 命名空间。若键写错命名空间(如误放到
-// errorDetail),界面会显示原始路径字符串而非译文。vitest 的 vue-i18n 为 runtime-only
-// (无消息编译器,t() 对任何键都回退返回 key),故直接校验 locale 对象的命名空间含这些键。
+// 组件使用 admin.ops.errorLog.* 命名空间，键放错位置时界面会显示路径字符串。
+// Vitest 使用的 vue-i18n 是 runtime-only 版本，缺少消息编译器，t() 会返回 key。
+// 因此直接检查 locale 对象中是否存在这些键。
 describe('OpsErrorLogTable i18n keys exist in the errorLog namespace', () => {
   const locales: Record<string, any> = { zh: zhLocale, en: enLocale }
   for (const [name, msgs] of Object.entries(locales)) {

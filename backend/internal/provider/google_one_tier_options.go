@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// ProviderTierManagementOptions 只转换 Drive 观测，不包含管理配置快照。
+// ProviderTierManagementOptions 将 Drive 查询结果转换为档位数据。
 func ProviderTierManagementOptions(source *GeminiAuthorization) TierManagementOptions {
 	return TierManagementOptions{Observe: func(ctx context.Context, v *Record) (GoogleOneTierObservation, error) {
 		kind, ok := v.Credentials["oauth_type"].(string)

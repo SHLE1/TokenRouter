@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestIdempotencyHTTPUsesExplicitApplicationCoordinator 验证所有写入口共享同一协调器，独立装配不能覆盖既有处理器的期限。
+// TestIdempotencyHTTPUsesExplicitApplicationCoordinator 检查写入口共享协调器，以及各次装配的处理期限独立生效。
 func TestIdempotencyHTTPUsesExplicitApplicationCoordinator(t *testing.T) {
 	options := idempotency.DefaultIdempotencyConfig()
 	options.DefaultTTL = 2 * time.Hour
@@ -48,7 +48,7 @@ func TestIdempotencyHTTPUsesExplicitApplicationCoordinator(t *testing.T) {
 		require.Equal(t, 2*time.Hour, handler.DefaultWriteIdempotencyTTL())
 		require.Equal(t, 17*time.Minute, handler.DefaultSystemOperationIdempotencyTTL())
 	}
-	// 同路由的两个已绑定入口验证真实共享认领与重放，不仅比较指针。
+	// 同路由的两个入口共享认领结果，并能重放响应。
 	calls := 0
 	router := gin.New()
 	request := 0

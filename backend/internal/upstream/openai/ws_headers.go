@@ -23,7 +23,7 @@ type WSHeaderOptions struct {
 func (WSHeaderOptions) String() string     { return "openai websocket header options" }
 func (v WSHeaderOptions) GoString() string { return v.String() }
 
-// BuildWSHeaders 不读取入站 Context，不持有凭据存储或客户端。
+// BuildWSHeaders 根据 WSHeaderOptions 构造握手请求头。
 func BuildWSHeaders(ctx context.Context, options WSHeaderOptions) (http.Header, error) {
 	headers := make(http.Header)
 	if !options.AgentIdentity {
@@ -41,7 +41,7 @@ func BuildWSHeaders(ctx context.Context, options WSHeaderOptions) (http.Header, 
 				headers.Add("x-codex-beta-features", value)
 			}
 		}
-		// 仅转发 Codex 明确使用的窗口与安装身份提示，不开放任意客户端头透传。
+		// 按下方清单透传 Codex 的窗口与安装身份请求头。
 		for _, name := range [...]string{
 			"x-codex-window-id",
 			"x-codex-installation-id",

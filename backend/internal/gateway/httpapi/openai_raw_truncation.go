@@ -39,8 +39,7 @@ func NewOpenAIRawTruncationFailure(
 	}
 }
 
-// RecordOpenAIRawTruncation 把上游截断记入 ops 上下文，使其在错误日志与
-// 提供商健康度中可见——这正是此前"HTTP 200 假成功"丢掉的信息。
+// RecordOpenAIRawTruncation 将上游截断写入 Ops 上下文，供错误日志和提供商健康统计使用。
 func RecordOpenAIRawTruncation(
 	c *gin.Context,
 	provider *gatewayprovider.ExecutionProvider,

@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ResponsesWSFailure 是升级后错误展示的明确投影，不含内部凭据或原始上游报文。
+// ResponsesWSFailure 保存连接升级后的客户端错误展示信息。
 type ResponsesWSFailure struct {
 	Reason            string
 	StatusCode        int
@@ -173,7 +173,7 @@ func ResponsesWSIsolationCloseReason(err error) string {
 	return "session isolation check failed"
 }
 
-// ResponsesWSEndedByClient 保留正常关闭和客户端取消的原提供商归因边界。
+// ResponsesWSEndedByClient 判断连接是否因正常关闭或客户端取消而结束。
 func ResponsesWSEndedByClient(err error, info gatewayws.EntryClose) bool {
 	if err == nil {
 		return true

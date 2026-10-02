@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Fallback 复用统一准入端口，循环仍由 gateway/text 保证每个请求最多回退一次。
+// Fallback 调用分组准入接口，gateway/text 限制每个请求最多回退一次。
 func (b *messageAttemptBridge) Fallback(cause error, fallbackUsed bool) bool {
 	var tooLong *antigravity.PromptTooLongError
 	if !errors.As(cause, &tooLong) {
@@ -53,7 +53,7 @@ func (b *messageAttemptBridge) Fallback(cause error, fallbackUsed bool) bool {
 		d.handleStreamingAwareError(b.c, http.StatusForbidden, "permission_error", "fallback group does not allow this request", false)
 		return false
 	}
-	// 保留入口的平台、显式会话与已触发的计费策略，只替换已重新授权的分组快照。
+	// 入口的平台、客户端会话与已触发的计费策略继续生效，分组使用重新授权后的快照。
 	ctx := requeststate.WithGroup(b.Context(), resolved.Group)
 	ctx = apikey.WithRuntimeAPIKey(ctx, resolved)
 	ctx = requeststate.WithPrefetchedStickySession(ctx, 0, 0)
@@ -83,7 +83,7 @@ func (b *messageAttemptBridge) Fallback(cause error, fallbackUsed bool) bool {
 	return true
 }
 
-// Fallback 兼容入口保留自己的报文投影，回退成功后必须同步 context 和模型映射。
+// Fallback 在回退成功后同步请求 context 和模型映射，使用兼容入口的报文数据。
 func (b *genericResponsesAttemptBridge) Fallback(cause error, used bool) bool {
 	if !b.messageAttemptBridge.Fallback(cause, used) {
 		return false

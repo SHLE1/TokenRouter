@@ -11,8 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// parseGatewayRequestOld 是基于完整 json.Unmarshal 的旧实现，用于 benchmark 对比基线。
-// 核心路径：先 Unmarshal 到 map[string]any，再逐字段提取。
+// parseGatewayRequestOld 为基准测试提供完整 json.Unmarshal 的解析方式，先解码为 map[string]any 再逐字段提取。
 func parseGatewayRequestOld(body []byte, protocol string) (*requeststate.ParsedRequest, error) {
 	parsed := &requeststate.ParsedRequest{
 		Body: requeststate.NewRequestBodyRef(body),

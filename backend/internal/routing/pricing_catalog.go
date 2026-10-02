@@ -10,7 +10,7 @@ type ModelPriceReader interface {
 	GetModelPricing(string) (*ModelPricing, error)
 }
 
-// PricingCatalog 提供现有价格目录的查询和更新入口，不构建第二份目录缓存。
+// PricingCatalog 提供价格目录快照、单价查询和更新函数。
 type PricingCatalog struct {
 	Snapshot func() DefaultPricingSnapshot
 	Update   func() error

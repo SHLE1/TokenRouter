@@ -8,7 +8,7 @@ const (
 	AntigravityForceTokenRefreshAtExtraKey     = "antigravity_force_token_refresh_at"
 )
 
-// RefreshRequestClearer 只清理已完成交换身份的单次请求，不接收任意 Extra 补丁。
+// RefreshRequestClearer 按已完成交换的身份清理单次刷新请求标记。
 type RefreshRequestClearer interface {
 	ClearAntigravityRefreshRequest(context.Context, CredentialVersion) (bool, error)
 }

@@ -601,7 +601,7 @@
         class="text-xs text-gray-400"
       >-</div>
     </div>
-    <!-- 非 API Key 的 Gemini 提供商继续保留原有本地配额视图。 -->
+    <!-- 非 API Key 的 Gemini 提供商展示本地配额视图。 -->
     <ProviderQuotaInfo
       v-else-if="provider.platform === 'gemini' && provider.type !== 'apikey'"
       :provider="provider"
@@ -668,7 +668,7 @@
       >-</div>
     </div>
   </div>
-  <!-- 查询入口统一放在本地统计和配额之后，内容组件不再重复显示按钮。 -->
+  <!-- 查询入口放在本地统计和配额之后，由外层统一展示。 -->
   <div v-if="isUpstreamUsageQueryEnabled(provider)" class="mt-0.5 flex items-center gap-1.5">
     <ProviderUpstreamUsageQueryButton
       :provider="provider"
@@ -1265,7 +1265,7 @@ const grokMonthlyBillingBar = computed((): GrokQuotaBarInfo | null => {
     utilization = (billing.used_cents / billing.monthly_limit_cents) * 100
   }
   if (utilization == null) return null
-  // 仅有周度 period_type 且没有月度数据时，避免重复显示周度进度条。
+  // 仅有周度数据时跳过重复的周度进度条。
   if (billing.period_type?.toLowerCase() === 'weekly' && billing.monthly_limit_cents == null) {
     return null
   }
@@ -1473,7 +1473,7 @@ const loadUsage = async (options?: { source?: 'passive' | 'active'; bypassCache?
     return
   }
 
-  // 命中缓存时复用上次请求结果，避免列表批量渲染时重复打接口
+  // 命中缓存时返回上次请求结果，供列表各次渲染复用。
   if (!options?.bypassCache) {
     const cached = _usageCache.get(props.provider.id)
     if (cached && Date.now() - cached.ts < USAGE_CACHE_TTL) {

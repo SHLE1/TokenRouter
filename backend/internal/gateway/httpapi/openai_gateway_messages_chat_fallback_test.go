@@ -164,8 +164,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsNonStreaming(t *testing.T) {
 	require.False(t, result.Stream)
 }
 
-// TestForwardAsAnthropic_ForceChatCompletionsStreamingClosesOpenBlockOnDone 验证覆盖流式组合：收到 [DONE] 时文本块仍开启，收尾必须先发
-// content_block_stop，再发 message_delta / message_stop。
+// TestForwardAsAnthropic_ForceChatCompletionsStreamingClosesOpenBlockOnDone 验证文本块未关闭时收到 [DONE]，依次输出 content_block_stop、message_delta 和 message_stop。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingClosesOpenBlockOnDone(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":32,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -270,8 +269,8 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingToolCallAggregation(t *
 	require.Equal(t, 5, result.Usage.OutputTokens)
 }
 
-// TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelToolCalls 验证覆盖真实交错的并行工具参数分片：上游声明顺序可以与工具 index 不同，
-// 下游仍必须按 index 输出互不交错且严格闭合的 Anthropic tool_use 块。
+// TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelToolCalls 验证交错的并行工具参数分片。
+// 上游声明顺序与 index 不同时，下游按 index 输出各自闭合的 Anthropic tool_use 块。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelToolCalls(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":64,"messages":[{"role":"user","content":"read the file and print the directory"}],"tools":[{"name":"Read","input_schema":{"type":"object","properties":{"file_path":{"type":"string"}}}},{"name":"Bash","input_schema":{"type":"object","properties":{"command":{"type":"string"}}}}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -366,8 +365,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamingInterleavedParallelTool
 	require.Equal(t, 9, result.Usage.OutputTokens)
 }
 
-// TestForwardAsAnthropic_ForceChatCompletionsStreamingLengthMapsToMaxTokens 验证finish_reason=length 经 CC → Responses → Anthropic 双重转换后，
-// 必须保留为 stop_reason=max_tokens。
+// TestForwardAsAnthropic_ForceChatCompletionsStreamingLengthMapsToMaxTokens 验证 finish_reason=length 经 Chat、Responses、Anthropic 转换后为 stop_reason=max_tokens。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamingLengthMapsToMaxTokens(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -425,8 +423,8 @@ func TestForwardAsAnthropic_ForceChatCompletionsEmptyStreamStillFramesMessage(t 
 	require.Contains(t, out, "event: message_stop")
 }
 
-// TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHandler 验证非 failover 的 4xx 响应必须经过共享兼容错误处理器：按状态返回 Anthropic
-// 错误类型、保留上游消息并记录 ops 上游错误事件。
+// TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHandler 验证非故障转移的 4xx 使用共享错误处理器。
+// 响应按状态选择 Anthropic 错误类型，保留上游消息并记录 Ops 错误。
 func TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHandler(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
@@ -464,7 +462,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsNonFailover400UsesSharedErrorHan
 	require.Equal(t, "invalid roles", events[0].Message)
 }
 
-// TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize 验证上游读取在流中断开时必须返回错误，且不得合成 message_stop 掩盖截断。
+// TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize 验证流读取中断返回错误，输出以截断状态结束。
 func TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":8,"messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -497,8 +495,7 @@ func TestForwardAsAnthropic_ForceChatCompletionsStreamReadErrorSkipsFinalize(t *
 	require.NotContains(t, out, "event: message_stop", "no synthetic completion after a broken read")
 }
 
-// TestForwardAsAnthropic_ResponsesSupportedProviderStillUsesResponsesEndpoint 验证门控回归：已确认上游支持 Responses API 的 API Key 提供商必须继续使用
-// /v1/responses，不得进入 Chat Completions fallback。
+// TestForwardAsAnthropic_ResponsesSupportedProviderStillUsesResponsesEndpoint 验证已确认支持 Responses 的 API Key 提供商使用 /v1/responses。
 func TestForwardAsAnthropic_ResponsesSupportedProviderStillUsesResponsesEndpoint(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","max_tokens":16,"messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()

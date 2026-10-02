@@ -38,7 +38,7 @@ type (
 	}
 )
 
-// BindingMismatchEvent 是 HTTP 安全观察投影，由装配适配到既有审计能力。
+// BindingMismatchEvent 记录 HTTP 会话绑定不匹配的用户和请求信息，供审计记录。
 type BindingMismatchEvent struct {
 	UserID                                         int64
 	Email, Role, Method, Path, ClientIP, UserAgent string

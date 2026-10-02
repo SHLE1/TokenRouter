@@ -2,7 +2,7 @@ package upstream
 
 import "net/http"
 
-// NewDeferredOutputContext 直到真正触碰输出时才取得响应 Header，不预先提交。
+// NewDeferredOutputContext 在首次访问输出接口时取得响应 Header。
 func NewDeferredOutputContext(sink OutputSink) *OutputContext {
 	return &OutputContext{Writer: &deferredOutputWriter{sink: sink}}
 }

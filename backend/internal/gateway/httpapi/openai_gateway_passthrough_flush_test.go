@@ -109,7 +109,7 @@ func TestOpenAIStreamingPassthroughFlushesAtCompleteEventBoundaries(t *testing.T
 		"id: event-1\n" +
 		`data: {"type":"response.output_text.delta","delta":"hello"}` + "\n\n"
 	heartbeat := ": keepalive\n\n"
-	// 显式提供 output，避免 fork 的终止输出重建影响本用例只关注的 Flush 边界。
+	// 提供完整 output，测试检查 Flush 调用。
 	terminalEvent := "event: response.completed\n" +
 		`data: {"type":"response.completed","response":{"id":"resp_flush","usage":{"input_tokens":3,"output_tokens":2,"total_tokens":5},"output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"hello"}]}]}}` + "\n\n"
 	upstream := firstEvent + heartbeat + terminalEvent

@@ -690,12 +690,12 @@ func (s *Gemini) applyGeminiUpstreamErrorPolicy(
 	return decision
 }
 
-// ensureGeminiFunctionCallThoughtSignatures 委托原生 Gemini 方言的纯转换，调用顺序与各协议入口保持一致。
+// ensureGeminiFunctionCallThoughtSignatures 调用 Gemini 协议函数补充函数调用的 thought signature。
 func ensureGeminiFunctionCallThoughtSignatures(body []byte) []byte {
 	return bridge.NativeEnsureGeminiFunctionCallThoughtSignatures(bridge.NativeGeminiOptions{DummyThoughtSignature: geminiDummyThoughtSignature}, body)
 }
 
-// convertClaudeMessagesToGeminiGenerateContent 委托原生 Gemini 方言的纯转换，调用顺序与各协议入口保持一致。
+// convertClaudeMessagesToGeminiGenerateContent 调用 Gemini 协议转换函数生成请求体。
 func convertClaudeMessagesToGeminiGenerateContent(body []byte) ([]byte, error) {
 	return bridge.NativeConvertClaudeMessagesToGeminiGenerateContent(bridge.NativeGeminiOptions{DummyThoughtSignature: geminiDummyThoughtSignature}, body)
 }

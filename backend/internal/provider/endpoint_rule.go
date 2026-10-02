@@ -86,7 +86,7 @@ func (a *Record) SupportsOpenAIEndpointCapability(requested OpenAIEndpointCapabi
 		// alpha/search 的转发按提供商类型分流：OAuth/PAT 走
 		// chatgpt.com/backend-api/codex/alpha/search，API key 走
 		// {base_url}/v1/alpha/search（见 openAIAlphaSearchURL），两类提供商
-		// 都可承接独立搜索请求。上游不支持该端点时由转发层 failover 兜底。
+		// 都可承接独立搜索请求，上游拒绝该端点时由转发层切换提供商。
 		if a.Type != ProviderTypeOAuth && a.Type != ProviderTypeAPIKey {
 			return false
 		}

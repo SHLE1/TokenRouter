@@ -2,7 +2,7 @@ package querycache
 
 import "reflect"
 
-// Clone 复制投影中的 map、slice 和指针。不可变值的未导出字段保持原值。
+// Clone 复制值中的 map、slice 和指针。不可变值的未导出字段保持原值。
 func Clone[T any](value T) T {
 	v := reflect.ValueOf(value)
 	if !v.IsValid() {

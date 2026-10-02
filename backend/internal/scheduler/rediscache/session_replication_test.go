@@ -58,7 +58,7 @@ func TestRedisLuaTimeScriptsEnableEffectsReplication(t *testing.T) {
 
 			require.NotEqual(t, -1, timeCallIndex)
 			require.NotEqual(t, -1, replicateIndex)
-			// 回归保护：使用 TIME 的脚本必须先启用按效果复制，避免旧版 Redis 从库同步失败。
+			// 使用 TIME 的脚本需要先启用按效果复制，Redis 3.2 至 4.x 才能同步脚本写入。
 			require.Less(t, replicateIndex, timeCallIndex)
 		})
 	}

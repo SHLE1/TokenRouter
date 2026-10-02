@@ -332,7 +332,7 @@ func (h *ProxyTransfer) listProxiesFiltered(ctx context.Context, protocol, statu
 	return out, nil
 }
 
-// GetProxiesByIDs 为提供商备份提供原顺序的只读代理投影。
+// GetProxiesByIDs 按传入 ID 的顺序返回供提供商备份使用的代理数据。
 func (h *ProxyTransfer) GetProxiesByIDs(ctx context.Context, ids []int64) ([]Proxy, error) {
 	return h.getProxiesByIDs(ctx, ids)
 }

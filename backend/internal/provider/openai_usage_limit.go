@@ -91,7 +91,7 @@ func PersistOpenAIObservedPlan(ctx context.Context, repo OpenAIPlanWriter, provi
 	info("openai_429_plan_type_synced", "provider_id", provider.ID, "previous_plan_type", current, "plan_type", planType)
 }
 
-// OpenAIPlanWriter 只允许按字段补丁写入本次观测到的套餐，不覆盖消费或其他凭据。
+// OpenAIPlanWriter 按字段更新本次观测的套餐信息，其余字段保持当前值。
 type OpenAIPlanWriter interface {
 	BulkUpdate(context.Context, []int64, ProviderBulkUpdate) (int64, error)
 }

@@ -16,7 +16,7 @@ import (
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// Generic 只组合通用选择所需的读取、资格和资源；尝试切换与平台转发不属于本对象。
+// Generic 包含通用提供商选择所需的读取接口、资格规则和并发资源。
 type Generic struct {
 	options                 Options
 	providerRepo            Providers
@@ -36,7 +36,7 @@ type Generic struct {
 	setProviderError        func(context.Context, int64, string) error
 }
 
-// NewGeneric 绑定唯一状态拥有者，执行凭据只留在单次选择的适配作用域。
+// NewGeneric 绑定共享调度状态，为每次选择建立执行目标。
 // @project-doc docs/architecture/provider_scheduling_and_cache.md#advanced_scheduler_selection
 func NewGeneric(deps GenericDependencies, options Options) *Generic {
 	if deps.Window == nil {
@@ -65,7 +65,7 @@ func NewGeneric(deps GenericDependencies, options Options) *Generic {
 	}
 }
 
-// Compatible 在同一原生调度器上连接 OpenAI/Grok 资格，借用共享状态而不拥有供应商执行。
+// Compatible 为调度器提供 OpenAI/Grok 资格规则和共享状态。
 type Compatible struct {
 	generic             *Generic
 	gemini              *Gemini
@@ -135,7 +135,7 @@ func NewCompatible(deps CompatibleDependencies, options Options) *Compatible {
 	}
 }
 
-// Gemini 仅持有 Gemini/混合池的无槽选择依赖，凭据和报文执行留在各自拥有者。
+// Gemini 包含 Gemini 和混合池的无槽选择依赖。
 type Gemini struct {
 	options               Options
 	providerRepo          Providers
@@ -161,7 +161,7 @@ func NewGemini(deps GeminiDependencies, options Options) *Gemini {
 	}
 }
 
-// DiagnosticSource 只允许原诊断读取；安全 DTO 仍由 scheduler 核心产生。
+// DiagnosticSource 定义诊断所需的提供商读取方法，scheduler 构造诊断结果。
 type DiagnosticSource interface {
 	GetProvider(context.Context, int64) (*gatewayadapter.ExecutionProvider, error)
 	GetGroup(context.Context, int64) (*routing.Group, error)
@@ -169,7 +169,7 @@ type DiagnosticSource interface {
 	ListSchedulableProvidersForAdvancedSchedulerScore(context.Context, *int64, string) ([]gatewayadapter.ExecutionProvider, error)
 }
 
-// Diagnostics 与真实选择共用参数、反馈和资格实例，不抢槽或写入粘性。
+// Diagnostics 与请求选择共用参数、反馈和资格规则，用于只读诊断。
 type Diagnostics struct {
 	source              DiagnosticSource
 	concurrencyService  *schedulercore.ConcurrencyService

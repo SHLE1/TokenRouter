@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestTestEventSinkPreservesPreludeAndFrames 验证准备与提交两个时机分别保留旧自适应/完整 SSE Header 行为。
+// TestTestEventSinkPreservesPreludeAndFrames 检查准备与提交阶段分别设置自适应及完整的 SSE Header。
 func TestTestEventSinkPreservesPreludeAndFrames(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	sink := NewTestEventSink(recorder)

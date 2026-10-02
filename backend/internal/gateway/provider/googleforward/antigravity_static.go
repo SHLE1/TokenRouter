@@ -15,7 +15,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// ForwardUpstream 衔接提供商与 HTTP 错误策略和结果，单次执行由原生模块关闭资源。
+// ForwardUpstream 连接提供商、HTTP 错误处理和结果转换，由 upstream 执行器关闭本次资源。
 func (s *Antigravity) ForwardUpstream(ctx context.Context, output Output, provider *gatewayprovider.ExecutionProvider, body []byte) (*forwardcore.MessagesResult, error) {
 	c := &attempt{Output: output}
 

@@ -91,8 +91,8 @@ func TestParentHealthyForShadow(t *testing.T) {
 	})
 
 	t.Run("manual_schedulable_false_parent_does_not_block_shadow", func(t *testing.T) {
-		// F1 决策 A:母提供商被手动暂停(Schedulable=false)是「调度配置」而非「凭据不可用」,
-		// 不传播到影子——影子有自己的 Schedulable 开关。凭据(active+未过期)仍可用 → 影子健康。
+		// 母提供商 Schedulable=false 时，影子仍按自己的 Schedulable 判断调度资格。
+		// 母提供商凭据处于 active 且未过期时，影子的凭据检查通过。
 		manualPausedParent := &provider.Record{
 			ID:          100,
 			Platform:    capability.PlatformOpenAI,

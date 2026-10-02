@@ -19,7 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// openAITokenExecution 只将旧选择原语接到原生计数端口，不参与循环或资金规则。
+// openAITokenExecution 将提供商选择接入 token 计数操作。
 type openAITokenExecution struct {
 	*gatewayhttp.OpenAIAuxiliary
 	planner *gatewayprovider.RoutePlanner
@@ -54,7 +54,7 @@ func (p openAITokenExecution) SelectInputTokens(ctx context.Context, group *int6
 	return result, nil
 }
 
-// openAITokenTarget 将凭据留在受控调用内，仅向 HTTP 提供独立选择快照。
+// openAITokenTarget 保存单次计数的凭据，向 HTTP 返回独立的选择结果快照。
 type openAITokenTarget struct {
 	source *gatewayhttp.OpenAIAuxiliary
 	value  *gatewayprovider.ExecutionProvider
@@ -74,7 +74,7 @@ func (t openAITokenTarget) ForwardInputTokens(ctx context.Context, c *gin.Contex
 	return t.source.ForwardResponsesInputTokens(ctx, c, t.value, body)
 }
 
-// provideOpenAITokensHTTP 不构造旧 Handler，也不取得用户槽、worker 或第二份缓存。
+// provideOpenAITokensHTTP 为 OpenAI token 计数入口绑定选择和计数组件。
 func provideOpenAITokensHTTP(source *gatewayhttp.OpenAIAuxiliary, funding *admission.FundingAdmission, keys *apikey.APIKeyService, concurrency *scheduler.ConcurrencyService, rules *errorpolicy.ErrorPassthroughService, cfg *config.Config, activity *gatewayRequestActivity, prompts *promptpolicy.Service, availability *gatewayModelAvailability, choices *selection.Compatible, planner *gatewayprovider.RoutePlanner) *gatewayhttp.OpenAITokensHandler {
 	options := gatewayhttp.OpenAITokenOptions{MaxSwitches: 3}
 	if cfg != nil {

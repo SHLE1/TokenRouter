@@ -78,7 +78,7 @@ const formatHourLabel = (value: string): string => {
   return match?.[1] || value
 }
 
-// 日粒度只展示月日，避免年份重复占用横轴空间。
+// 日粒度标签显示月日。
 const formatDayLabel = (value: string): string => {
   const match = value.match(/^(?:\d{4}[-/])?(\d{1,2})[-/](\d{1,2})/)
   if (!match) return value

@@ -353,7 +353,7 @@ func TestDirectBridge_RequestMatchesDoubleConversion(t *testing.T) {
 	double, err := bridge.ResponsesToChatCompletionsRequestWithOptions(responsesReq, nil)
 	require.NoError(t, err)
 
-	// 比较关键字段。
+	// 比较转换后的模型、内容和用量字段。
 	require.Equal(t, double.Model, direct.Model)
 	require.Equal(t, double.Temperature, direct.Temperature)
 	require.Equal(t, double.MaxCompletionTokens, direct.MaxCompletionTokens)
@@ -417,7 +417,7 @@ func TestChatCompletionsChunkToAnthropicEvents_ImageInToolResult(t *testing.T) {
 }
 
 func TestAnthropicToChatCompletionsRequest_UserArrayContentFoldsToString(t *testing.T) {
-	// 纯文本数组按旧桥用空行折叠为字符串，避免严格 Chat 上游拒绝无图片的数组 content。
+	// 纯文本数组以空行拼成字符串，部分 Chat 上游会拒绝无图片的数组 content。
 	req := &protocolanthropic.AnthropicRequest{
 		Model:     "deepseek-v4-pro",
 		MaxTokens: 100,

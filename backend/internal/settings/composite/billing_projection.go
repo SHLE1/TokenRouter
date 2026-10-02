@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/billing"
 
-// BillingAdminSettings 仅转换所属模块值，不读取设置或发布状态。
+// BillingAdminSettings 从综合快照提取计费设置。
 func (s *Snapshot) BillingAdminSettings() billing.AdminSettings {
 	return billing.AdminSettings{
 		BalanceIconSVG:                  s.BalanceIconSVG,
@@ -19,7 +19,7 @@ func (s *Snapshot) BillingAdminSettings() billing.AdminSettings {
 	}
 }
 
-// ApplyBillingAdminSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyBillingAdminSettings 将计费设置写入综合快照。
 func (s *Snapshot) ApplyBillingAdminSettings(value billing.AdminSettings) {
 	s.BalanceIconSVG = value.BalanceIconSVG
 	s.BalanceLowNotifyEnabled = value.BalanceLowNotifyEnabled

@@ -135,7 +135,7 @@ func TestHandleUpstreamError_OpenAIHTML403RepeatedNeverEscalates(t *testing.T) {
 	h.requireNoProviderPenalty(t)
 }
 
-// TestHandleUpstreamError_OpenAIStructured403StillPenalizes 保护真实提供商级 403 的既有处罚链路。
+// TestHandleUpstreamError_OpenAIStructured403StillPenalizes 检查提供商级结构化 403 是否触发处罚。
 func TestHandleUpstreamError_OpenAIStructured403StillPenalizes(t *testing.T) {
 	t.Run("first_hit_temp_unschedulable", func(t *testing.T) {
 		h := newOpenAI403TestHarness(t, 503, 1)

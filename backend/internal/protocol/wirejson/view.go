@@ -10,6 +10,6 @@ func ParseView(raw []byte) gjson.Result {
 	if len(raw) == 0 {
 		return gjson.Result{}
 	}
-	// 这里只做同步只读解析，避免 gjson.ParseBytes 为大 messages/contents 复制整段 raw。
+	// 同步解析直接引用 raw，适用于较大的 messages 和 contents。
 	return gjson.Parse(*(*string)(unsafe.Pointer(&raw)))
 }

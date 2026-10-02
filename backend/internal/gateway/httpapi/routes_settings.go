@@ -2,7 +2,7 @@ package httpapi
 
 import "github.com/gin-gonic/gin"
 
-// GatewaySettingsEndpoints 只描述所属设置的 HTTP 操作，规则由对应模块实现。
+// GatewaySettingsEndpoints 声明设置的 HTTP 操作，对应模块实现设置规则。
 type GatewaySettingsEndpoints interface {
 	GetRectifierSettings(*gin.Context)
 	UpdateRectifierSettings(*gin.Context)

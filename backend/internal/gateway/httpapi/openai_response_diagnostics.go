@@ -15,7 +15,7 @@ import (
 
 const codexCLIOnlyHeaderValueMaxBytes = 256
 
-// codex_cli_only 拒绝时记录的请求头白名单（仅用于诊断日志，不参与上游透传）
+// codex_cli_only 拒绝时，诊断日志记录以下白名单中的请求头。
 var codexCLIOnlyDebugHeaderWhitelist = []string{
 	"User-Agent",
 	"Content-Type",
@@ -79,14 +79,14 @@ func SnapshotCodexRejectedHeaders(header http.Header) map[string]string {
 	return result
 }
 
-// openAIUpstreamClientErrorFallbackType 是上游未返回 error.type 时的兜底类型。
+// openAIUpstreamClientErrorFallbackType 是上游缺少 error.type 时使用的类型。
 const openAIUpstreamClientErrorFallbackType = "invalid_request_error"
 
-// openAIUpstreamClientErrorFallbackMessage 是上游未返回可用消息时的兜底文案。
+// openAIUpstreamClientErrorFallbackMessage 是上游缺少可用消息时使用的文案。
 const openAIUpstreamClientErrorFallbackMessage = "Upstream rejected the request"
 
 // IsOpenAIDeterministicClientError 判断错误是否为不可通过换号或重试恢复的客户端请求错误。
-// fork 的普通提供商与池模式使用不同故障转移规则，因此必须同时检查既有分类结果。
+// 普通提供商与池模式使用不同故障转移规则，判断时同时检查分类结果。
 func IsOpenAIDeterministicClientError(statusCode int, shouldFailover bool) bool {
 	return statusCode == http.StatusBadRequest && !shouldFailover
 }

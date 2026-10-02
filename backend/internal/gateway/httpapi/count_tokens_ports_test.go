@@ -122,7 +122,7 @@ func TestCountTokensNativeHTTPAttemptContract(t *testing.T) {
 	require.Equal(t, int16(usage.RequestTypeSync), value)
 }
 
-// unexpectedCountModelDiagnosis 原计数合同未配置诊断依赖；意外进入该分支必须继续使测试失败。
+// unexpectedCountModelDiagnosis 在计数测试进入未配置的诊断分支时使测试失败。
 func unexpectedCountModelDiagnosis(context.Context, *int64, string, string) routing.ModelAvailabilityDiagnosis {
 	panic("计数合同不应进入模型诊断")
 }

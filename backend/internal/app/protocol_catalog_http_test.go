@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProtocolCatalogHTTPContract 验证管理员目录沿用认证和审计顺序，注入后修改原投影不改变 HTTP 输出。
+// TestProtocolCatalogHTTPContract 检查管理员目录的认证和审计顺序，以及 HTTP 使用注入数据的独立副本。
 func TestProtocolCatalogHTTPContract(t *testing.T) {
 	endpoints := testEndpoints()
 	expected, err := json.Marshal(routinghttpapi.AdminProtocolCatalog(endpoints))

@@ -8,9 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// anthropicInboundBlockTypes 是 Anthropic Messages 请求体里合法的 content block
-// 类型。转换结果只能落在这个集合内——发出集合外的类型，上游一律回
-// 400 "Request body format invalid"（见 issue #5329）。
+// anthropicInboundBlockTypes 是 Anthropic Messages 接受的 content block 类型集合。
+// 输出集合外的类型会触发 400 Request body format invalid（issue #5329）。
 var anthropicInboundBlockTypes = map[string]bool{
 	"text":              true,
 	"image":             true,
@@ -71,8 +70,7 @@ func TestResponsesToAnthropic_ReasoningItemWithContentIsDropped(t *testing.T) {
 	require.NotContains(t, string(messages[0].Content), "let me think")
 }
 
-// TestResponsesToAnthropic_ReasoningItemSummaryOnlyStillDropped 验证Codex 的常见 reasoning 形态（只有 summary + encrypted_content）本来就会被丢弃，
-// 这条守卫确保行为没有被改变。
+// TestResponsesToAnthropic_ReasoningItemSummaryOnlyStillDropped 检查仅含 summary 和 encrypted_content 的 reasoning item 被丢弃。
 func TestResponsesToAnthropic_ReasoningItemSummaryOnlyStillDropped(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]},
@@ -94,7 +92,7 @@ func TestResponsesToAnthropic_UnknownItemTypeContentIsSanitized(t *testing.T) {
 	require.Empty(t, messages, "整条内容都无法映射时不应发出消息")
 }
 
-// TestResponsesToAnthropic_UnknownItemTypeKeepsRecognizableText 验证未知 item type 里夹带的可识别文本仍然保留，不做无谓丢弃。
+// TestResponsesToAnthropic_UnknownItemTypeKeepsRecognizableText 检查未知 item type 中的可识别文本被保留。
 func TestResponsesToAnthropic_UnknownItemTypeKeepsRecognizableText(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
 		{"type":"some_future_item","content":[
@@ -152,7 +150,7 @@ func TestResponsesToAnthropic_BlankTextMessagesAreDropped(t *testing.T) {
 	}
 }
 
-// TestResponsesToAnthropic_BlankTextBesideImageKeepsImage 验证空白文本和合法图片混合时只移除坏文本，不能连带丢失图片。
+// TestResponsesToAnthropic_BlankTextBesideImageKeepsImage 检查空白文本被移除后，合法图片仍在输出中。
 func TestResponsesToAnthropic_BlankTextBesideImageKeepsImage(t *testing.T) {
 	messages := responsesToAnthropicMessages(t, `[
 		{"type":"message","role":"user","content":[

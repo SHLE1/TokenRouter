@@ -66,7 +66,7 @@ func (c *QoderClient) BodyCount() int {
 	return len(c.Bodies)
 }
 
-// QoderFixture 保存测试绑定，客户端替换仅供原有阻塞流夹具在执行前配置。
+// QoderFixture 保存测试依赖，阻塞流测试在执行前替换客户端。
 type QoderFixture struct {
 	Runtime *gatewayprovider.QoderRuntime
 	Tokens  *provideradapter.QoderTokenProvider
@@ -79,7 +79,7 @@ func (c qoderFixtureClient) StreamRequestContext(ctx context.Context, session *q
 	return c.fixture.Client.StreamRequestContext(ctx, session, path, body, headers)
 }
 
-// NewQoderFixture 构造唯一运行时；不提供旧 Service 方法或另一套循环。
+// NewQoderFixture 为测试构造 Qoder 运行时。
 func NewQoderFixture(tokens *provideradapter.QoderTokenProvider, client qoder.StreamClient, conversations *qoder.QoderConversationStore) *QoderFixture {
 	f := &QoderFixture{Tokens: tokens, Client: client}
 	f.Runtime = gatewayprovider.NewQoderRuntime(gatewayprovider.QoderRuntimeOptions{Tokens: tokens, Client: qoderFixtureClient{fixture: f}, Conversations: conversations})

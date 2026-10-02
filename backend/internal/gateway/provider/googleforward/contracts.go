@@ -22,7 +22,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
-// Options 由 app 投影启动配置；动态修复开关仍在原调用位置读取。
+// Options 包含 app 传入的启动配置，动态修复开关在请求处理中读取。
 type Options struct {
 	Configured           bool
 	LogErrorBody         bool
@@ -55,7 +55,7 @@ func (o Options) ErrorDetail(body []byte) string {
 	return logredact.TruncateUTF8(string(body), n)
 }
 
-// Output 只表示同步 HTTP 交换与错误观察，不持有业务状态或重试循环。
+// Output 定义同步 HTTP 交换与错误观测操作。
 type Output interface {
 	RequestContext() context.Context
 	GetHeader(string) string
@@ -84,7 +84,7 @@ type Output interface {
 	MappedClaudeError(*gatewayadapter.ExecutionProvider, int, string, []byte) error
 }
 
-// Gemini 只组合凭据、传输和错误观察；不持有另一平台服务或完整配置。
+// Gemini 包含凭据、传输和错误观测依赖。
 type Gemini struct {
 	Options      Options
 	Tokens       *provider.GeminiTokenSource

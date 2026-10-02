@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/search/contract"
 )
 
-// Selection 只携带选中标识和取得资源，不向核心暴露提供商凭据或旧实体。
+// Selection 保存选中提供商的标识和已取得资源的释放函数。
 type Selection struct {
 	ProviderID int64
 	Acquired   bool
@@ -38,12 +38,12 @@ func (e *StandaloneFailure) Error() string {
 }
 func (e *StandaloneFailure) Unwrap() error { return e.Cause }
 
-// noAvailableProvidersError 保留原 HTTP 使用的首字母大写消息，表示选择阶段没有提供商。
+// noAvailableProvidersError 表示选择阶段没有可用提供商，HTTP 消息以大写字母开头。
 type noAvailableProvidersError struct{}
 
 func (noAvailableProvidersError) Error() string { return "No available providers" }
 
-// RunStandalone 保留最多四次提供商选择、首次失败映射及后续 failover 的原有区别。
+// RunStandalone 最多选择四次提供商，首次选择失败直接映射错误，后续失败按故障切换处理。
 // 请求 Lease 由 HTTP 在写完响应后释放；失败切换只提前释放当前 attempt。
 func RunStandalone(ctx context.Context, request StandaloneRequest, model string, maxResults int, ports StandalonePorts, lease *scheduler.Lease) (StandaloneResult, error) {
 	failed := make(map[int64]struct{})

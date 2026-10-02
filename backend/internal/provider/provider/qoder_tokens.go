@@ -20,7 +20,7 @@ type (
 
 type qoderSessionCacheEntry = providercore.QoderSessionCacheEntry[*qoder.SessionContext]
 
-// errQoderSessionBuildInvalidated 表示在途构建已被显式失效或新凭据取代。
+// errQoderSessionBuildInvalidated 表示在途构建已失效，或已有更新的凭据。
 var errQoderSessionBuildInvalidated = providercore.ErrQoderSessionBuildInvalidated
 
 // QoderTokenProvider 为 Qoder 提供商构建并缓存 COSY session 上下文。
@@ -95,7 +95,7 @@ func (p *QoderTokenProvider) StopContext(ctx context.Context) error {
 	return p.qoderState().StopContext(ctx)
 }
 
-// QoderCredentialInput 只投影供应商交换实际读取的字段，缓存快照仍由 provider 管理。
+// QoderCredentialInput 返回供应商交换需要的凭据字段，provider 管理缓存快照。
 func QoderCredentialInput(value *providercore.Record) *qoder.CredentialInput {
 	if value == nil {
 		return nil

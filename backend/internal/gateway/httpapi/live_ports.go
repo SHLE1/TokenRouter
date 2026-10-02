@@ -25,7 +25,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// LiveExecution 仅提供已经建立的 Live 用例，不向 HTTP 交付执行凭据。
+// LiveExecution 提供已装配的 Live 用例。
 type LiveExecution interface {
 	Create(context.Context, *session.LiveCallRequest, session.LiveCallIdentity, int) (*gatewaylive.Created, error)
 	Lookup(context.Context, string, session.LiveCallIdentity) (*session.LiveCallRecord, error)
@@ -71,7 +71,7 @@ func (a LivePorts) Subscription(c *gin.Context) (*LiveSubscription, bool) {
 }
 
 func (a LivePorts) Redirect(ctx context.Context, key *LiveAPIKey, model string) (context.Context, string) {
-	// 重定向只读取模型映射，不需要用户、资金或分组对象。
+	// 模型重定向从模型映射读取目标。
 	return APIKeyModelRedirectContext(ctx, &apikey.APIKey{ID: key.ID, ModelMapping: key.ModelMapping}, model)
 }
 

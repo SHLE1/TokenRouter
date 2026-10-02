@@ -9,12 +9,12 @@ var ErrRefreshStopped = errors.New("oauth refresh coordinator is stopped")
 
 type refreshActivity = operationActivity
 
-// beginRefresh 将原取消语义和提供商活动拥有者连接，停止后不再认领。
+// beginRefresh 为刷新操作登记活动和取消函数，停止后拒绝新操作。
 func (api *OAuthRefreshAPI) beginRefresh(parent context.Context) (context.Context, func(), error) {
 	return api.activity.begin(parent, ErrRefreshStopped)
 }
 
-// checkRefreshActive 在取得提供商锁后复核停止屏障，避免先释放锁、后取消等待者时开启新交换。
+// checkRefreshActive 在取得提供商锁后复查停止状态，已停止时拒绝 token 交换。
 func (api *OAuthRefreshAPI) checkRefreshActive(ctx context.Context) error {
 	api.activity.mu.Lock()
 	defer api.activity.mu.Unlock()

@@ -99,6 +99,7 @@ type NonStreamingProcessor struct {
 func NewNonStreamingProcessor() *NonStreamingProcessor {
 	return &NonStreamingProcessor{bridge.NewGeminiToAnthropicResponseProcessor(geminiConversionRuntime())}
 }
+
 func (p *NonStreamingProcessor) Process(response *GeminiResponse, responseID, model string) *ClaudeResponse {
 	result := p.GeminiToAnthropicResponseProcessor.Process(response, responseID, model)
 	for _, message := range p.TakeDiagnostics() {
@@ -107,7 +108,7 @@ func (p *NonStreamingProcessor) Process(response *GeminiResponse, responseID, mo
 	return result
 }
 
-// geminiConversionRuntime 保留原随机 ID、失败回退及全局计数器的唯一来源。
+// geminiConversionRuntime 为响应转换提供随机 ID 和消息 ID 生成函数。
 func geminiConversionRuntime() bridge.GeminiConversionRuntime {
 	return bridge.GeminiConversionRuntime{RandomID: generateRandomID, MessageID: generateAnthropicMsgID}
 }

@@ -51,8 +51,7 @@ func (p *OpenAIResponseOutput) messagesBufferedFailure(c *gin.Context, provider 
 		)
 	}
 	message = p.RecordStreamError(c, provider, false, requestID, "http_error", payload, message)
-	// 统一走语义状态推断 + body 归一化（与 /v1/responses 路径一致），
-	// 使按错误码配置的透传规则可命中。
+	// 根据事件内容推断状态码并归一化 body，供按错误码配置的透传规则匹配。
 	if status, errType, errMsg, matched := ApplyOpenAIStreamFailedErrorRule(
 		c, provider.Record.Platform, payload, message,
 	); matched {
@@ -72,8 +71,7 @@ func (p *OpenAIResponseOutput) messagesStreamFailure(c *gin.Context, provider *g
 		c.Request.Context(), provider, upstreamModel, resp.Header, payloadBytes, message,
 	)
 	policyGeneric := decision.ShouldReturnGenericError()
-	// 客户端已有输出时切换提供商会拼接两段模型流，此时必须回写 Anthropic error 事件，
-	// 不能返回 handler 已无法安全重试的 failover 错误。
+	// 客户端已收到内容后，写出 Anthropic error 结束流。切换提供商会将两段模型流拼接在一起。
 	shouldFailoverSignal := openai.OpenAIStreamFailedEventShouldFailover(payloadBytes, message)
 	if isBareErrorEvent {
 		shouldFailoverSignal = openai.OpenAIStreamErrorEventShouldFailover(payloadBytes, message)
@@ -91,8 +89,7 @@ func (p *OpenAIResponseOutput) messagesStreamFailure(c *gin.Context, provider *g
 	if policyGeneric {
 		errStatus, errType, errMsg = http.StatusInternalServerError, "api_error", "Upstream gateway error"
 	}
-	// 统一走语义状态推断 + body 归一化（与 /v1/responses 路径一致），
-	// 使按错误码配置的透传规则可命中。
+	// 根据事件内容推断状态码并归一化 body，供按错误码配置的透传规则匹配。
 	if status, passthroughType, passthroughMsg, matched := ApplyOpenAIStreamFailedErrorRule(
 		c, provider.Record.Platform, payloadBytes, message,
 	); matched && !policyGeneric {

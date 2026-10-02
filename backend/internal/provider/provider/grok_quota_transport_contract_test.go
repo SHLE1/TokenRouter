@@ -146,7 +146,7 @@ func TestGrokQuotaServiceFetchBillingDoesNotRetryNonTransientStatuses(t *testing
 	}
 }
 
-// Do 顺序传输替身只返回原响应步骤，重试仍由真实供应商客户端执行。
+// Do 按测试步骤返回响应，供应商客户端执行重试。
 func (u *grokQuotaSequenceUpstream) Do(req *http.Request, _ string, _ int64, _ int) (*http.Response, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()

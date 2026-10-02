@@ -2,7 +2,7 @@ package gateway
 
 import "context"
 
-// IsIdentityPatchEnabled 保留原请求时读取及读取失败时开启的默认值。
+// IsIdentityPatchEnabled 在请求时读取身份修补开关，读取失败时返回 true。
 func (s *RuntimeSettings) IsIdentityPatchEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyEnableIdentityPatch)
 	if err != nil {

@@ -16,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// publicBalanceUnit 只投影 billing 的单键展示读取，不创建独立缓存。
+// publicBalanceUnit 从 billing 读取余额展示单位。
 type publicBalanceUnit struct{ store *settings.Store }
 
 func (r publicBalanceUnit) GetBalanceUnitName(ctx context.Context) string {

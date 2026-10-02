@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// CreativeCatalogProvider 与任务执行共用提供商规则，保留透传、平台归一化及一跳映射语义。
+// CreativeCatalogProvider 按执行时的透传、平台归一化和一跳映射规则解析目录模型。
 func CreativeCatalogProvider(value *provider.Record) creative.CatalogProvider {
 	if value == nil {
 		return nil

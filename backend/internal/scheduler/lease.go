@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// ReleaseMode 由执行入口明确选择；完成释放不会因客户端断开提前归还上游容量。
+// ReleaseMode 由执行入口选择。ReleaseOnCompletion 在上游执行完成后归还容量。
 type ReleaseMode uint8
 
 const (
@@ -23,7 +23,7 @@ type Lease struct {
 	once      sync.Once
 }
 
-// NewLease 先登记资源再关联取消，保证已取消输入也不会遗失刚取得的资源。
+// NewLease 先登记资源再关联取消，传入已取消的 context 时也会释放刚取得的资源。
 func NewLease(ctx context.Context, mode ReleaseMode, resources ...func()) *Lease {
 	l := &Lease{}
 	for _, release := range resources {
@@ -59,7 +59,7 @@ func (l *Lease) Own(release func()) bool {
 	return true
 }
 
-// Release 在取消、错误补偿和显式完成并发发生时只清理一次；重复调用等待相同清理完成。
+// Release 在取消、错误补偿和请求完成并发发生时清理一次，重复调用等待这次清理完成。
 func (l *Lease) Release() {
 	if l == nil {
 		return
@@ -79,7 +79,7 @@ func (l *Lease) Release() {
 	})
 }
 
-// WrapRelease 保留旧函数形状，所有取消和幂等语义委托 Lease。
+// WrapRelease 返回 Lease 的释放函数，取消处理和重复释放由 Lease 管理。
 func WrapRelease(ctx context.Context, mode ReleaseMode, release func()) func() {
 	if release == nil {
 		return nil
@@ -108,7 +108,7 @@ func NewAttemptLease(parent *Lease, finish func(AttemptOutcome), resources ...fu
 	return a
 }
 
-// Finish 先处理会话完成语义，再释放本次资源；父租约兜底不会重复执行。
+// Finish 先记录会话结果，再释放本次资源。父租约和本方法共用一次清理。
 func (a *AttemptLease) Finish(outcome AttemptOutcome) {
 	if a == nil {
 		return
@@ -121,5 +121,5 @@ func (a *AttemptLease) Finish(outcome AttemptOutcome) {
 	})
 }
 
-// Release 为尚未明确完成的尝试提供失败兜底。
+// Release 将尚未完成的尝试按失败结果结束。
 func (a *AttemptLease) Release() { a.Finish(AttemptOutcome{}) }

@@ -91,7 +91,7 @@ export class SquarePencilBrush extends PencilBrush {
     return path
   }
 
-  /** 最终 Path 用填充方块而非描边，彻底避免斜向描边的帽/接问题 */
+  /** 最终 Path 由填充方块组成，斜向笔迹的端点和连接处保持方形。 */
   override createPath(pathData: TSimplePathData): Path {
     const path = new Path(pathData, {
       fill: this.color,

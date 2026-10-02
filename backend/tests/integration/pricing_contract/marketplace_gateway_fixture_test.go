@@ -15,7 +15,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// newPricingMarketplaceFixture 只装配网关目录与原生报价端口，不持有市场规则或缓存。
+// newPricingMarketplaceFixture 使用网关目录和 billing 报价接口构造市场服务。
 func newPricingMarketplaceFixture(groupRepo routing.GroupRepository, settingRepo settings.Repository, resolver *billing.PriceResolver, billingService *billing.Calculator, capacityService *routing.CapacityService, availabilityRepo routing.GroupAvailabilityProbeRepository, cfg *config.Config) *routing.Marketplace {
 	projection := routing.RequestableResolver{Defaults: gatewayprovider.CatalogueDefaults(), Warn: slog.Warn}
 	source := &routing.RequestableCatalogue{Models: &routing.ModelList{}, Resolver: projection, Warn: slog.Warn}

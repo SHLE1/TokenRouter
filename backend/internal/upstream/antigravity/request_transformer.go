@@ -98,7 +98,7 @@ func TransformClaudeToGeminiWithOptions(claudeReq *ClaudeRequest, projectID, map
 		return nil, fmt.Errorf("build contents: %w", err)
 	}
 
-	// 2. 构建 systemInstruction（使用 targetModel 而非原始请求模型，确保身份注入基于最终模型）
+	// 2. 根据最终 targetModel 构建 systemInstruction 并注入身份
 	systemInstruction := buildSystemInstruction(claudeReq.System, targetModel, opts, claudeReq.Tools)
 	if len(messageSystemParts) > 0 {
 		if systemInstruction == nil {
@@ -356,7 +356,7 @@ func buildContents(messages []ClaudeMessage, toolIDToName map[string]string, isT
 	return bridge.BuildContents(messages, toolIDToName, isThinkingEnabled, allowDummyThought)
 }
 
-// DummyThoughtSignature 保留 wire 常量的旧入口。
+// DummyThoughtSignature 是协议包定义的占位思考签名。
 const DummyThoughtSignature = bridge.DummyThoughtSignature
 
 // buildGenerationConfig 构建 generationConfig
@@ -382,7 +382,7 @@ func isAntigravityOpusHighTierModel(model string) bool {
 		strings.HasPrefix(lower, "claude-opus-4-8")
 }
 
-// buildGenerationConfig 将平台/模型策略投影为纯转换选项。
+// buildGenerationConfig 按模型设置生成参数，再转换为 Gemini 配置。
 func buildGenerationConfig(req *ClaudeRequest) *GeminiGenerationConfig {
 	options := bridge.InternalGeminiGenerationOptions{
 		DefaultOutputTokens: defaultMaxOutputTokens, MaxOutputTokens: maxOutputTokensLimit(req.Model),
@@ -401,15 +401,15 @@ func buildGenerationConfig(req *ClaudeRequest) *GeminiGenerationConfig {
 	return result
 }
 
-// hasWebSearchTool 委托显式选用的内部 Gemini 工具方言。
+// hasWebSearchTool 按内部 Gemini 格式检查搜索工具。
 func hasWebSearchTool(tools []ClaudeTool) bool { return bridge.InternalHasWebSearchTool(tools) }
 
-// hasMixedToolInvocations 委托显式选用的内部 Gemini 工具方言。
+// hasMixedToolInvocations 按内部 Gemini 格式检查混合工具调用。
 func hasMixedToolInvocations(declarations []GeminiToolDeclaration) bool {
 	return bridge.InternalHasMixedToolInvocations(declarations)
 }
 
-// buildTools 输出纯转换产生的诊断，保持原有工具处理行为。
+// buildTools 转换工具声明并记录转换诊断。
 func buildTools(tools []ClaudeTool) []GeminiToolDeclaration {
 	result, diagnostics := bridge.BuildInternalGeminiTools(tools)
 	for _, message := range diagnostics {

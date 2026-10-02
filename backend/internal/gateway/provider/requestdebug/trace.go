@@ -123,7 +123,7 @@ func CaptureLine(req *http.Request, body []byte, provider *gatewayprovider.Execu
 		return ""
 	}
 
-	// 只读取原有指纹字段，认证 Header 使用脱敏值。
+	// 读取指纹字段，认证 Header 使用脱敏值。
 	interesting := []string{
 		"user-agent",
 		"x-app",
@@ -155,7 +155,7 @@ func CaptureLine(req *http.Request, body []byte, provider *gatewayprovider.Execu
 	metaUserID := strings.TrimSpace(gjson.GetBytes(body, "metadata.user_id").String())
 	sysPreview := strings.TrimSpace(extractSystemPreviewFromBody(body))
 
-	// 系统提示预览保留原 300 字节上限。
+	// 系统提示预览最多显示 300 字节。
 	if len(sysPreview) > 300 {
 		sysPreview = sysPreview[:300] + "..."
 	}
@@ -244,7 +244,7 @@ func (s *Trace) Snapshot(tag string, headers http.Header, body []byte, extra map
 		}
 	}
 
-	// 2. headers（按真实 Claude CLI wire 顺序排列，便于与抓包对比；auth 脱敏）
+	// 2. headers（按 Claude CLI 的发送顺序排列，便于与抓包对比，auth 脱敏）
 	fmt.Fprint(&buf, "--- headers ---\n")
 	for _, k := range claude.SortHeadersByWireOrder(headers) {
 		for _, v := range headers[k] {
@@ -266,6 +266,6 @@ func (s *Trace) Snapshot(tag string, headers http.Header, body []byte, extra map
 		}
 	}
 
-	// 写入文件（调试用，并发写入可能交错但不影响可读性）
+	// 写入调试文件，并发写入的内容可能交错。
 	_, _ = f.WriteString(buf.String())
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// creativeDownloadRequests 使用实际 URL 格式校验，其他端口不参与图片下载。
+// creativeDownloadRequests 使用 URL 校验器检查图片下载地址。
 type creativeDownloadRequests struct{}
 
 func (creativeDownloadRequests) ValidateBaseURL(raw string) (string, error) {
@@ -31,7 +31,7 @@ func (creativeDownloadRequests) TLSProfile(*ExecutionProvider, ...egress.TLSFing
 	panic("unexpected generation TLS lookup")
 }
 
-// creativeDownloadTransport 验证下载只走不附带生图认证的传输入口。
+// creativeDownloadTransport 检查图片下载请求的传输方式和认证 Header。
 type creativeDownloadTransport struct {
 	do func(*http.Request, string, int64, int) (*http.Response, error)
 }

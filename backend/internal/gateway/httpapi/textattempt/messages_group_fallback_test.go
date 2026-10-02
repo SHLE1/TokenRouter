@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// newFallbackMessageBridge 夹具通过真实 Open 和 Begin 保留入口快照；只替换远端授权与缓存端口。
+// newFallbackMessageBridge 调用 Open 和 Begin 建立入口快照，并提供远端授权和缓存替身。
 func newFallbackMessageBridge(t *testing.T, bindings Bindings) (*messageAttemptBridge, *apikey.APIKey, *httptest.ResponseRecorder) {
 	t.Helper()
 	targetID, groupID := int64(20), int64(10)
@@ -72,7 +72,7 @@ func authorizedMessageFallback(key *apikey.APIKey, id int64) *apikey.APIKey {
 	return resolved
 }
 
-// TestMessageGroupFallbackPreservesBoundaryAndRefreshesSnapshots 验证专用入口不能在回退时放开平台限制，计费和认证也必须看到同一个新分组。
+// TestMessageGroupFallbackPreservesBoundaryAndRefreshesSnapshots 验证回退后平台限制继续生效，计费与认证共用目标分组。
 func TestMessageGroupFallbackPreservesBoundaryAndRefreshesSnapshots(t *testing.T) {
 	resolveCalls, stickyCalls := 0, 0
 	sub := &billing.UserSubscription{ID: 90}

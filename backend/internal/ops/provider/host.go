@@ -23,6 +23,7 @@ func (c *HostObserver) DbPoolStats() (active int, idle int) {
 	stats := c.db.Stats()
 	return stats.InUse, stats.Idle
 }
+
 func (c *HostObserver) RedisPoolStats() (total int, idle int, ok bool) {
 	if c == nil || c.redisClient == nil {
 		return 0, 0, false
@@ -33,6 +34,7 @@ func (c *HostObserver) RedisPoolStats() (total int, idle int, ok bool) {
 	}
 	return int(stats.TotalConns), int(stats.IdleConns), true
 }
+
 func (c *HostObserver) CheckRedis(ctx context.Context) bool {
 	if c == nil || c.redisClient == nil {
 		return false
@@ -42,6 +44,7 @@ func (c *HostObserver) CheckRedis(ctx context.Context) bool {
 	}
 	return c.redisClient.Ping(ctx).Err() == nil
 }
+
 func (c *HostObserver) CheckDB(ctx context.Context) bool {
 	if c == nil || c.db == nil {
 		return false
@@ -55,6 +58,7 @@ func (c *HostObserver) CheckDB(ctx context.Context) bool {
 	}
 	return one == 1
 }
+
 func readIntFile(path string) (int64, bool) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -70,6 +74,7 @@ func readIntFile(path string) (int64, bool) {
 	}
 	return v, true
 }
+
 func readUintFile(path string) (uint64, bool) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -85,6 +90,7 @@ func readUintFile(path string) (uint64, bool) {
 	}
 	return v, true
 }
+
 func readCgroupCPULimitCores() float64 {
 	// cgroup v2: cpu.max => "<quota> <period>" or "max <period>"
 	if raw, err := os.ReadFile("/sys/fs/cgroup/cpu.max"); err == nil {
@@ -107,6 +113,7 @@ func readCgroupCPULimitCores() float64 {
 
 	return 0
 }
+
 func readCgroupCPUUsageNanos() (usageNanos uint64, ok bool) {
 	// cgroup v2: cpu.stat has usage_usec
 	if raw, err := os.ReadFile("/sys/fs/cgroup/cpu.stat"); err == nil {
@@ -134,6 +141,7 @@ func readCgroupCPUUsageNanos() (usageNanos uint64, ok bool) {
 
 	return 0, false
 }
+
 func readCgroupMemoryBytes() (usedBytes uint64, totalBytes uint64, ok bool) {
 	// cgroup v2 (most common in modern containers)
 	if used, ok1 := readUintFile("/sys/fs/cgroup/memory.current"); ok1 {
@@ -164,6 +172,7 @@ func readCgroupMemoryBytes() (usedBytes uint64, totalBytes uint64, ok bool) {
 
 	return 0, 0, false
 }
+
 func (c *HostObserver) TryCgroupCPUPercent(now time.Time) *float64 {
 	usageNanos, ok := readCgroupCPUUsageNanos()
 	if !ok {
@@ -219,7 +228,7 @@ func (c *HostObserver) TryCgroupCPUPercent(now time.Time) *float64 {
 
 // resolveMemoryStats 从 cgroup（容器）或宿主机指标中选择一组自洽的
 // used、total、percent，绝不混用两种来源。
-// cgroup 只有在同时报告当前使用量和明确上限（memory.max 是数字而不是 "max"，即
+// cgroup 同时报告当前用量和数值上限时（memory.max 为数字，即
 // cgroupTotal > 0）时才优先；否则三个值全部回退到宿主机，避免把容器 used 除以宿主机
 // total 而严重低估内存占用。
 func resolveMemoryStats(cgroupUsed, cgroupTotal uint64, cgroupOK bool, host *mem.VirtualMemoryStat) (usedMB *int64, totalMB *int64, usagePercent *float64) {
@@ -248,6 +257,7 @@ func resolveMemoryStats(cgroupUsed, cgroupTotal uint64, cgroupOK bool, host *mem
 	}
 	return usedMB, totalMB, usagePercent
 }
+
 func (c *HostObserver) CollectSystemStats(ctx context.Context) (*ops.CollectedSystemStats, error) {
 	out := &ops.CollectedSystemStats{}
 	if ctx == nil {

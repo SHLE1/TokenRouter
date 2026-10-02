@@ -120,7 +120,7 @@ func (s *ManagedRefreshService) refresh(ctx context.Context, value *Record) (*Re
 	return updated, "", nil
 }
 
-// current 在 CAS 冲突后只回读，不二次交换或继续旧成功副作用。
+// current 在 CAS 冲突后返回当前记录，本次交换结果的后续操作终止。
 func (s *ManagedRefreshService) current(ctx context.Context, id int64) (*Record, string, error) {
 	current, err := s.options.Store.GetProvider(ctx, id)
 	if err != nil {
@@ -132,7 +132,7 @@ func (s *ManagedRefreshService) current(ctx context.Context, id int64) (*Record,
 	return current, "", nil
 }
 
-// ClearError 保留原状态清理与尽力 token 失效顺序，供单项及批量管理共用。
+// ClearError 清理状态后尝试使 token 失效，供单项和批量管理共用。
 func (s *ManagedRefreshService) ClearError(ctx context.Context, id int64) (*Record, error) {
 	value, err := s.options.Store.ClearProviderError(ctx, id)
 	if err != nil {

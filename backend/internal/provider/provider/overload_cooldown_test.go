@@ -72,7 +72,7 @@ func TestHandle529_NilSettingService_FallsBackToConfig(t *testing.T) {
 	providerRepo := &overloadProviderRepoStub{}
 	minutes := 20
 	svc := newOverloadObserver(providerRepo, providercore.HealthOptions{OverloadMinutes: minutes})
-	// NOT calling SetSettingService — remains nil
+	// 设置读取器留空。
 
 	provider := &providercore.Record{ID: 77, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth}
 	before := time.Now()
@@ -169,7 +169,7 @@ func TestHandleUpstreamError_529CustomCodeDisablesInsteadOfOverloadCooldown(t *t
 	require.Zero(t, repo.overloadCalls)
 }
 
-// newOverloadObserver 只绑定原生健康实现；供应商窗口和模型端口未被这些过载用例调用。
+// newOverloadObserver 为过载测试绑定健康状态组件。
 func newOverloadObserver(repo providercore.HealthStore, options providercore.HealthOptions) *UpstreamHealth {
 	return &UpstreamHealth{Core: providercore.NewHealthService(repo, nil, options)}
 }

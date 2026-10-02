@@ -75,7 +75,7 @@ type SelectionPorts struct {
 	UpdateCodexUsageSnapshotFromHeaders func(ctx context.Context, providerID int64, headers http.Header)
 }
 
-// Bindings 在构造时注入固定端口，运行时不创建共享资源。
+// Bindings 保存构造时注入的共享资源和执行接口。
 type Bindings struct {
 	Fallback          GroupFallbackPorts
 	Sessions          SessionPorts
@@ -168,7 +168,7 @@ type openAIExecutionDependencies struct {
 	submitOpenAIUsageRecordTask          func(c *gin.Context, result *forwardcore.OpenAIResult, task completion.UsageRecordTask)
 }
 
-// New 不启动后台任务，Open 仅构造本请求的尝试状态。
+// New 保存依赖，Open 创建当前请求的尝试状态。
 func New(b Bindings) *Runtime {
 	support := b.Support
 	output := gatewayhttp.DefaultOpenAIErrorOutput()

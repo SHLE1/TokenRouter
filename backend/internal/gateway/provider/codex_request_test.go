@@ -619,7 +619,7 @@ func TestCodexInputItemRequiresNameTypesAllowCallID(t *testing.T) {
 }
 
 func TestApplyCodexOAuthTransform_ExplicitStoreFalsePreserved(t *testing.T) {
-	// 续链场景：显式 store=false 不再强制为 true，保持 false。
+	// 续链请求中的 store=false 保持为 false。
 
 	reqBody := map[string]any{
 		"model": "gpt-5.1",
@@ -2039,7 +2039,7 @@ func TestFilterCodexInput_ReasoningBackfillsMissingSummary(t *testing.T) {
 }
 
 func TestFilterCodexInput_PreservesReasoningSummaryContentAndEncryptedContent(t *testing.T) {
-	// 只移除 store=false 下不可续链的 rs_* id，其余 reasoning 字段必须原样保留。
+	// store=false 时移除不可续链的 rs_* id，其他 reasoning 字段原样保留。
 	summary := []any{map[string]any{"type": "summary_text", "text": "checked files"}}
 	content := []any{map[string]any{"type": "reasoning_text", "text": "private state"}}
 	input := []any{

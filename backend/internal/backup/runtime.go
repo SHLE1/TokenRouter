@@ -10,7 +10,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// Options 只包含备份需要的不可变启动投影。
+// Options 包含备份所需的启动参数和日志函数。
 type Options struct {
 	Log func(string, string, ...any)
 

@@ -52,7 +52,7 @@ func ResponsesToChatCompletions(runtime Runtime, resp *ResponsesResponse, model 
 				}
 			}
 		case "web_search_call":
-			// silently consumed — results already incorporated into text output
+			// 结果已合入文本输出，此处跳过。
 		}
 	}
 
@@ -145,7 +145,7 @@ func ResponsesEventToChatChunks(evt *ResponsesStreamEvent, state *ResponsesEvent
 		"response.custom_tool_call_input.delta":
 		return resToChatHandleFuncArgsDelta(evt, state)
 	case "response.reasoning_summary_text.delta",
-		// 原始推理文本增量（真实 Codex 客户端消费的 reasoning_text.delta），
+		// Codex 客户端使用的原始推理文本增量 reasoning_text.delta，
 		// 与 reasoning summary 一样映射为 reasoning_content。
 		"response.reasoning_text.delta":
 		return resToChatHandleReasoningDelta(evt, state)
@@ -358,9 +358,8 @@ func chatUsageFromResponsesUsage(u *ResponsesUsage) *ChatUsage {
 	return usage
 }
 
-// promptDetailsFromResponses 将 Responses API 的 input_tokens_details 映射为
-// Chat Completions 的 prompt_tokens_details；没有可输出字段时返回 nil，
-// 避免不拆分 prompt usage 的上游输出空明细。
+// promptDetailsFromResponses 将 Responses 的 input_tokens_details 映射为 Chat 的 prompt_tokens_details。
+// 没有可输出字段时返回 nil，省略空明细。
 func promptDetailsFromResponses(src *ResponsesInputTokensDetails) *ChatTokenDetails {
 	if src == nil {
 		return nil
@@ -376,10 +375,9 @@ func promptDetailsFromResponses(src *ResponsesInputTokensDetails) *ChatTokenDeta
 	}
 }
 
-// completionDetailsFromResponses 将 Responses API 的 output_tokens_details 映射为
-// Chat Completions 的 completion_tokens_details；字段集合对齐 OpenAI 官方
-// CompletionUsage schema，包括 reasoning_tokens、audio_tokens 以及预测输出的
-// accepted/rejected 计数。没有可输出字段时返回 nil，避免污染非推理、非音频响应。
+// completionDetailsFromResponses 将 Responses 的 output_tokens_details 映射为 Chat 的 completion_tokens_details。
+// 字段对应 OpenAI CompletionUsage，包括 reasoning_tokens、audio_tokens 和预测输出的 accepted/rejected 计数。
+// 没有可输出字段时返回 nil。
 func completionDetailsFromResponses(src *ResponsesOutputTokensDetails) *ChatTokenDetails {
 	if src == nil {
 		return nil

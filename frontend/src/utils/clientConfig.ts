@@ -56,7 +56,7 @@ function environment(values: Record<string, string>, shell: ConfigShell): string
   }).join('\n')
 }
 
-// 配置只使用用户选定且服务端可请求的模型；协议选择不改变分组或提供商路由。
+// 配置使用用户选定且服务端可请求的模型，分组和提供商仍按网关规则路由。
 export function buildClientConfig(input: {
   client: ClientKind; protocol: ProtocolID; model: string; baseUrl: string; apiKey: string;
   shell: ConfigShell; websocket?: boolean; directAuth?: boolean; attributes?: ModelAttributes;

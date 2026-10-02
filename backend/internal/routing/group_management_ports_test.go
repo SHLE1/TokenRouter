@@ -228,7 +228,7 @@ func TestGroupModelsListCandidatesApplyGroupMappingAndRestrictions(t *testing.T)
 			} else {
 				require.ElementsMatch(t, append(append([]string{}, requested...), mapped...), models)
 			}
-			// 自定义列表只筛选请求模型，不会将历史上游名称重新加入候选。
+			// 自定义列表筛选可请求的模型，已失效的上游名称会被排除。
 			group.ModelsListConfig = routing.GroupModelsListConfig{Enabled: true, Models: []string{"gemini-3.8-flash", "unavailable-alias"}}
 			models, err = svc.GetGroupModelsListCandidates(context.Background(), group.ID, "")
 			require.NoError(t, err)

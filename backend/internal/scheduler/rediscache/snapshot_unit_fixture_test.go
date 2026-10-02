@@ -12,7 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// newSchedulerCacheWithChunkSizes unit 白盒断言沿用旧提供商报文，只委托新缓存与兼容 codec。
+// newSchedulerCacheWithChunkSizes 按测试指定的分块大小构造快照缓存，提供商报文由 codec 编解码。
 func newSchedulerCacheWithChunkSizes(rdb *redis.Client, read, write int) *schedulerCache {
 	return &schedulerCache{NewSnapshotCache(rdb, codec.ProviderCodec{}, SnapshotCacheOptions{MGetChunkSize: read, WriteChunkSize: write})}
 }

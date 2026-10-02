@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 在每次旧独立提交前插入管理员修改，使用真实 PostgreSQL 验证条件而非模拟 SQL。
+// 在每个提交步骤前插入管理员修改，使用 PostgreSQL 检查提交条件。
 type managedRecoveryInterleaveStore struct {
 	*providerpostgres.ProviderStore
 	before  func(provider.ManagedRecoveryStep) error

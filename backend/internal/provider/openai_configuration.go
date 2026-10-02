@@ -78,7 +78,7 @@ func NormalizeOpenAIAPIKeyConfiguration(provider *Record) error {
 	return nil
 }
 
-// NormalizeOpenAIAPIKeyConfigurationPatch 只规范化增量中显式出现的字段。
+// NormalizeOpenAIAPIKeyConfigurationPatch 规范化增量中提供的字段。
 func NormalizeOpenAIAPIKeyConfigurationPatch(credentials, extra map[string]any) error {
 	// 增量中出现旧键表示旧客户端正在主动修改该项；即使它回传了不认识的新键，
 	// 也应让本次旧字段修改生效。完整持久化数据仍由全量规范化优先采用新键。

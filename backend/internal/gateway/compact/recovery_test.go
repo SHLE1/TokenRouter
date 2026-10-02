@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// 记录各端口调用，确认提取后仍延迟读取全局模型且按原次序释放旧响应。
+// recoveryPorts 记录恢复步骤调用，检查全局模型按需读取和旧响应释放顺序。
 type recoveryPorts struct {
 	calls         []string
 	providerModel string

@@ -399,7 +399,7 @@ func (s *GrokExecutor) handleGrokMediaErrorResponse(
 	requestedModel string,
 ) (*forwardcore.OpenAIResult, error) {
 	body := s.Output.ReadErrorBody(resp)
-	// 在可配置的透传分支返回前同步提供商策略；池模式默认只保留上游观测，不写本地冷却。
+	// 透传返回前应用提供商策略，池模式默认记录上游观测，冷却时间保持原样。
 	decision := gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Health, provider, resp.StatusCode, resp.Header, body, "", requestedModel)
 	upstreamMsg := logredact.SanitizeUpstreamQueries(strings.TrimSpace(upstream.ExtractErrorMessage(body)))
 	if upstreamMsg == "" {

@@ -1,6 +1,6 @@
 package routing
 
-// GroupAllowsResponsesImages 保留四态配置及旧内存分组的历史许可语义。
+// GroupAllowsResponsesImages 检查 Responses 图片策略，空分组默认允许，未设置策略时读取 AllowImageGeneration。
 func GroupAllowsResponsesImages(group *Group) bool {
 	return group == nil || group.ResponsesImagePolicy != "" || group.AllowImageGeneration
 }

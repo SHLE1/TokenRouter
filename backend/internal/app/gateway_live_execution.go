@@ -15,7 +15,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai/liveattestation"
 )
 
-// provideLiveExecution 构造不启动观察者；Live与HTTP/WS共用凭据、拨号器和后台任务拥有者。
+// provideLiveExecution 为 Live 绑定与 HTTP、WS 共享的凭据、拨号器和后台任务跟踪器。
 func provideLiveExecution(cfg *config.Config, auxiliary *gatewayhttp.OpenAIAuxiliary, cache session.GatewayCache, concurrency *scheduler.ConcurrencyService, choices *selection.Compatible, routes *gatewayadapter.RoutePlanner, recorders GatewayCompletionRecorders, tasks *lifecycle.Tasks, manager *lifecycle.Manager, grok *gatewayhttp.GrokExecutor) *gatewayhttp.OpenAILiveExecutor {
 	out := &gatewayhttp.OpenAILiveExecutor{
 		Options:  gatewayhttp.OpenAILiveOptions{MaxSessionDuration: time.Hour, ObserverRetryInterval: time.Second},

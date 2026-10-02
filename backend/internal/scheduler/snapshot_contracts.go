@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// SnapshotMetadata 是重建和事件展开所需的最小投影，不包含凭据或管理 Extra。
+// SnapshotMetadata 保存重建和展开事件所需的提供商 ID、名称、平台及所属分组。
 type SnapshotMetadata struct {
 	ID       int64
 	Name     string
@@ -13,13 +13,13 @@ type SnapshotMetadata struct {
 	GroupIDs []int64
 }
 
-// SnapshotProvider 将发布数据保留在 Adapter 中；核心只能查看其重建元数据。
-// 同批次复用这个对象不会再次查询数据库或复制完整提供商缓存。
+// SnapshotProvider 向调度器提供重建元数据，发布数据由存储适配器保存。
+// 同一批次的重建复用该对象。
 type SnapshotProvider interface {
 	SnapshotMetadata() SnapshotMetadata
 }
 
-// SnapshotGroup 仅表达生命周期判断使用的权威状态。
+// SnapshotGroup 保存判断分组启停所需的当前状态。
 type SnapshotGroup struct {
 	ID       int64
 	Hydrated bool
@@ -29,7 +29,7 @@ type SnapshotGroup struct {
 
 func (g *SnapshotGroup) IsActive() bool { return g != nil && g.Status == "active" }
 
-// SnapshotProviderSource 保留原分组/平台查询差异，Adapter 返回可发布的数据拥有者。
+// SnapshotProviderSource 按分组和平台查询可调度提供商，返回可发布的快照对象。
 type SnapshotProviderSource interface {
 	GetByID(context.Context, int64) (SnapshotProvider, error)
 	GetByIDs(context.Context, []int64) ([]SnapshotProvider, error)
@@ -47,7 +47,7 @@ type SnapshotGroupSource interface {
 	ListActive(context.Context) ([]SnapshotGroup, error)
 }
 
-// SnapshotOptions 由 app 投影，保留 nil 配置与显式关闭 fallback 的区别。
+// SnapshotOptions 由 app 提供。nil 配置使用默认值，DbFallbackEnabled 为 false 则关闭数据库回退。
 type SnapshotOptions struct {
 	DbFallbackEnabled          bool
 	DbFallbackMaxQPS           int
@@ -60,7 +60,7 @@ type SnapshotOptions struct {
 	OutboxBacklogRebuildRows   int
 }
 
-// SnapshotCache 的数据对象仅由存储 Adapter 解码和发布，调度规则不读取其完整内容。
+// SnapshotCache 读写调度快照，快照对象由存储适配器解码和发布。
 type SnapshotCache interface {
 	GetSnapshot(context.Context, SchedulerBucket) ([]SnapshotProvider, bool, error)
 	CaptureBucketWriteToken(context.Context, SchedulerBucket) (SchedulerBucketWriteToken, error)
@@ -79,7 +79,7 @@ type SnapshotCache interface {
 	SetOutboxWatermark(context.Context, int64) error
 }
 
-// SnapshotBindings 注入错误身份与观察端口，独立于 nil 配置的历史语义。
+// SnapshotBindings 提供未找到提供商或分组时的错误值，以及诊断回调。
 type SnapshotBindings struct {
 	ProviderNotFound error
 	GroupNotFound    error

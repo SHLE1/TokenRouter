@@ -15,7 +15,7 @@ import (
 type Result struct {
 	// UpstreamResponseModel 是协议转换前的上游模型声明；空值表示未声明。
 	UpstreamResponseModel string
-	// NativeUsage 表示结果沿用原生输入与缓存分桶，不使用 OpenAI 总输入口径。
+	// NativeUsage 表示执行器已将输入与缓存用量拆成独立分桶。
 	NativeUsage                                                                  bool
 	RequestID, ResponseID, Model, BillingModel, UpstreamModel                    string
 	UpstreamRequestID                                                            *string
@@ -32,7 +32,7 @@ type Result struct {
 	AudioUsage                                                                   *AudioUsage
 }
 
-// TokenUsage 在完成边界区分普通输入与供应商返回的总输入，具体桶转换由对应入口执行。
+// TokenUsage 区分未缓存输入和供应商返回的总输入，各入口负责转换计量分桶。
 type TokenUsage struct {
 	InputTokens, OutputTokens, CacheCreationInputTokens, CacheReadInputTokens         int
 	CacheCreation5mTokens, CacheCreation1hTokens, ImageInputTokens, ImageOutputTokens int
@@ -43,7 +43,7 @@ type AudioUsage struct {
 	DurationOrUnits float64
 }
 
-// PayerSnapshot 不含身份凭据，资金主体与行为主体分别显式提供。
+// PayerSnapshot 分别记录资金主体和行为主体。
 type PayerSnapshot struct {
 	ID           int64
 	Balance      float64
@@ -60,7 +60,7 @@ type ProviderSnapshot struct {
 	Type                                                        string
 	RateMultiplier                                              float64
 	OpenAI, CNProvider, OAuthLike, QuotaEligible, HasQuotaLimit bool
-	// CredentialProviderID 仅供提供商端口按原时机读取影子母提供商。
+	// CredentialProviderID 用于读取影子的母提供商。
 	CredentialProviderID *int64
 	Notification         *billing.QuotaNotifyProvider
 }
@@ -78,7 +78,7 @@ type KeySnapshot struct {
 	Group                                    *GroupSnapshot
 }
 
-// GroupSnapshot 只含完成计费字段，不接收路由/调度实体。
+// GroupSnapshot 保存完成计费所需的分组字段。
 type GroupSnapshot struct {
 	ID                                      int64
 	RateMultiplier                          float64
@@ -98,7 +98,7 @@ func (g *GroupSnapshot) PeakMultiplierAt(at time.Time) float64 {
 	return (&pricing.BillingSettings{PeakRateEnabled: g.PeakRateEnabled, PeakStart: g.PeakStart, PeakEnd: g.PeakEnd, PeakRateMultiplier: g.PeakRateMultiplier}).PeakMultiplierAt(at)
 }
 
-// Input 是异步完成快照，调用方通过 Snapshot 后提交队列；不保留原请求体。
+// Input 保存异步完成所需的数据，调用方先调用 Snapshot 再提交队列。
 type Input struct {
 	Result                                                                   *Result
 	APIKey                                                                   *KeySnapshot
@@ -170,17 +170,17 @@ type ProviderStats interface {
 	ResolveProviderStats(context.Context, billing.ProviderStatsCostInput) *float64
 }
 
-// Effects 只消费已提交资金结果，具体缓存及通知由原领域能力持有。
+// Effects 根据已提交的资金结果更新缓存并发送通知。
 type Effects interface {
 	ProviderUsed(int64)
 	InvalidateAuth(context.Context, string)
 	Settled(SettlementInput, *billing.UsageBillingApplyResult)
 }
 
-// Dependencies 只绑定窄读取/写入端口及 billing 唯一计算器，不包含旧网关对象。
+// CacheInjectionPolicy 读取 Anthropic 一小时缓存 TTL 注入开关。
 type CacheInjectionPolicy interface{ IsAnthropicCacheTTL1hInjectionEnabled(context.Context) bool }
 
-// BillingEvent 把原日志字段交给技术适配器，核心不持有 logger 或可变字段容器。
+// BillingEvent 将计费日志字段交给日志适配器。
 type BillingEvent struct {
 	Kind, Component, RequestID, RequestedModel, MappedModel, UpstreamModel, Model, Platform string
 	RequestedTier, ObservedTier, BilledTier                                                 string
@@ -190,6 +190,8 @@ type BillingEvent struct {
 	SearchCount                                                                             int
 	Err                                                                                     error
 }
+
+// Dependencies 提供完成器所需的读写接口和 billing 计算器。
 type Dependencies struct {
 	Emit           func(BillingEvent)
 	CacheInjection CacheInjectionPolicy
@@ -229,7 +231,7 @@ type Recorder struct {
 	now               func() time.Time
 }
 
-// NewRecorder 不创建缓存、队列或后台任务，所有状态沿用装配传入的唯一实例。
+// NewRecorder 使用 app 传入的缓存、队列和服务实例构造记录器。
 func NewRecorder(d Dependencies, o RecorderOptions) *Recorder {
 	if o.Now == nil {
 		o.Now = time.Now
@@ -254,7 +256,7 @@ func NewRecorder(d Dependencies, o RecorderOptions) *Recorder {
 	}
 }
 
-// Record 是普通完成入口；openAI 标记原有总输入桶和媒体计价分支，不改变部分结果的提交资格。
+// Record 记录已满足提交条件的完成结果，openAI 指定总输入分桶和媒体计价方式。
 func (s *Recorder) Record(ctx context.Context, input *Input, openAI bool) error {
 	input = Snapshot(input)
 	if openAI && (input == nil || input.Result == nil || !input.Result.NativeUsage) {

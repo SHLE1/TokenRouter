@@ -8,7 +8,7 @@ import (
 )
 
 // Requests 跟踪完整 handler 的返回，包括断开后仍按既有策略收集用量的请求。
-// 只包装 Handler，不包装 ResponseWriter，保留 Flush、Hijack 和 HTTP/2 能力。
+// 这里包装 Handler，ResponseWriter 原样交给下游，下游仍能调用 Flush、Hijack 和 HTTP/2 相关接口。
 type Requests struct {
 	mu             sync.Mutex
 	sealed         bool
@@ -40,7 +40,7 @@ func TrackRequests(server *http.Server, manager *Manager) {
 			delete(r.hijacked, conn)
 		}
 		r.mu.Unlock()
-		// 已在处理的请求可能晚于关闭快照才升级连接，也必须进入断开清理。
+		// 关闭快照取得后才升级的连接，也进入断开清理。
 		if closeHijack {
 			_ = conn.Close()
 		}
@@ -71,7 +71,7 @@ func TrackRequests(server *http.Server, manager *Manager) {
 		}()
 		next.ServeHTTP(w, req)
 	})
-	// net/http 的 Shutdown 不关闭已 hijack 的连接，必须先唤醒其原有断开清理路径。
+	// net/http 的 Shutdown 将 hijack 连接留给调用方关闭，此处触发这些连接的断开清理。
 	manager.Register(Hook{Name: "HTTPHijackedConnections", StartOrder: 990, StopOrder: 10, Stop: func(context.Context) error {
 		r.mu.Lock()
 		r.closingHijacks = true

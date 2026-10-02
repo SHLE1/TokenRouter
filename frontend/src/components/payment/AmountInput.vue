@@ -69,7 +69,7 @@ const { t } = useI18n()
 
 const customText = ref('')
 
-// 自定义金额前缀跟随支付币种；NZ$、KWD 这类多字符符号在模板中回退到默认留白，避免与输入文字重叠。
+// 金额前缀使用支付币种符号，NZ$、KWD 等多字符符号使用默认留白。
 const symbol = computed(() => currencySymbol(props.currency))
 
 // 0 = no limit

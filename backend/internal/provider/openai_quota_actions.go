@@ -110,7 +110,7 @@ func (s *OpenAIQuotaActions) Reset(ctx context.Context, providerID int64) (*Open
 		}
 	}
 
-	// 返回恢复后的提供商投影，供 API 调用方立即清除旧限流状态显示。
+	// 返回恢复后的提供商数据，API 调用方据此更新限流展示。
 	provider, err := s.Providers.GetProvider(postCtx, providerID)
 	if err != nil {
 		s.Warn("openai_quota_reset_provider_refresh_failed", "provider_id", providerID, "error", err)

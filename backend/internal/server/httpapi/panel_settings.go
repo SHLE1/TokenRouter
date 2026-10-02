@@ -9,13 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// PanelSettingsStore 只提供面板管理操作，不让 HTTP 依赖旧聚合服务。
+// PanelSettingsStore 读取和保存面板限流设置。
 type PanelSettingsStore interface {
 	GetPanelRateLimitSettings(context.Context) (*runtimeconfig.PanelRateLimitSettings, error)
 	SetPanelRateLimitSettings(context.Context, *runtimeconfig.PanelRateLimitSettings) error
 }
 
-// PanelSettingsHandler 维持面板限流的独立管理契约。
+// PanelSettingsHandler 处理面板限流设置的管理请求。
 type PanelSettingsHandler struct{ settingService PanelSettingsStore }
 
 // NewPanelSettingsHandler 注入同一个面板配置实例。

@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
-// siteBillingSubscriptions 只把新 billing 的有效订阅投影为公告资格输入。
+// siteBillingSubscriptions 将 billing 的有效订阅转换为公告资格判断需要的数据。
 type siteBillingSubscriptions struct {
 	repo billing.UserSubscriptionRepository
 }
@@ -23,6 +23,7 @@ func (a siteBillingSubscriptions) ListActiveByUserID(ctx context.Context, id int
 	}
 	return out, nil
 }
+
 func provideAnnouncementSubscriptions(repo billing.UserSubscriptionRepository) site.SubscriptionReader {
 	return siteBillingSubscriptions{repo: repo}
 }

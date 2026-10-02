@@ -30,7 +30,7 @@ type (
 	TLSFingerprintCaptureRecord    = egress.TLSFingerprintCaptureRecord
 )
 
-// CollectorOptions 由 app 投影配置，不包含完整应用配置或业务服务。
+// CollectorOptions 包含 app 提供的 TLS 采集器配置。
 type CollectorOptions struct {
 	Host                 string
 	Port                 int

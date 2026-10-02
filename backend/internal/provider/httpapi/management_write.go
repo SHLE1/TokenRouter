@@ -71,7 +71,7 @@ func (h *ManagementHandler) Create(c *gin.Context) {
 	}
 
 	// 捕获闭包内创建的提供商引用，用于创建成功后触发仍受支持的能力探测。
-	// 幂等重放时闭包不会执行，createdProvider 保持 nil，避免重复调度。
+	// 幂等重放时跳过闭包，createdProvider 为 nil，因此跳过后续调度。
 	var createdProvider *providercore.Record
 
 	result, err := h.ExecuteAdminIdempotent(c, "admin.providers.create", req, h.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
@@ -166,7 +166,7 @@ func (h *ManagementHandler) Duplicate(c *gin.Context) {
 	response.Success(c, result.Data)
 }
 
-// Update 保留字段省略语义并编辑提供商。
+// Update 编辑请求提供的字段，省略项保持当前值。
 // PUT /api/v1/admin/providers/:id
 func (h *ManagementHandler) Update(c *gin.Context) {
 	providerID, err := strconv.ParseInt(c.Param("id"), 10, 64)

@@ -415,7 +415,7 @@ describe('admin UsageTable tooltip', () => {
     }
   })
 
-  // 上游声明只在后端确认不同后显示，未知数据不补成请求模型。
+  // 后端确认上游模型与出站模型不同后展示声明，未知模型保持未知。
   it.each([
     { mismatch: true, response: 'runtime-model-' + 'v'.repeat(160), visible: true },
     { mismatch: false, response: 'sent-model', visible: false },

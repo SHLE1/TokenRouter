@@ -297,7 +297,7 @@ func TestOpenAIGatewayDiagnoseModelAvailabilityForPlatform_GrokPlatformFiltersOp
 	require.False(t, diag.HasModelSupport)
 }
 
-// availabilityProviderStore 保留原持久候选夹具的过滤边界，不提供瞬时快照或选号能力。
+// availabilityProviderStore 按测试提供商的持久配置筛选候选。
 type availabilityProviderStore struct {
 	providers      []gatewayprovider.ExecutionProvider
 	providersByID  map[int64]*gatewayprovider.ExecutionProvider
@@ -340,7 +340,7 @@ func (m *availabilityProviderStore) ListModelAvailabilityCandidates(_ context.Co
 
 func availabilityFixtureGroupID() *int64 { id := int64(71); return &id }
 
-// newAvailabilityForTest 原有模型诊断用例都显式声明测试分组，模型范围保持各用例原配置。
+// newAvailabilityForTest 为模型诊断用例配置测试分组和模型范围。
 func newAvailabilityForTest(repo *availabilityProviderStore, policies *routing.PricingConfigService, compatible bool) *routing.ModelAvailability {
 	for i := range repo.providers {
 		value := &repo.providers[i].Record

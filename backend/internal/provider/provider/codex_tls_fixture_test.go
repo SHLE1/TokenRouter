@@ -17,7 +17,7 @@ func (s *tlsProfileTestStore) List(context.Context) ([]*egress.TLSFingerprintPro
 	return s.profiles, nil
 }
 
-// newTLSProfileServiceWithCacheForTest 测试通过公开构造与预热播种，避免依赖核心缓存布局。
+// newTLSProfileServiceWithCacheForTest 通过构造函数和预热填充 TLS 测试缓存。
 func newTLSProfileServiceWithCacheForTest(profiles map[int64]*egress.TLSFingerprintProfile) *egressadapter.TLSProfiles {
 	values := make([]*egress.TLSFingerprintProfile, 0, len(profiles))
 	for _, profile := range profiles {

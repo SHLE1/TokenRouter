@@ -11,10 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 凭据预算由 HTTP 请求持有，平台准备器只接收显式状态，不读取 Gin 容器。
+// 凭据预算保存在 HTTP 请求中，平台准备器通过参数接收预算状态。
 const credentialBudgetKey = "grok_credential_failover_deadline"
 
-// RequestCredentialBudget 返回本请求共享的预算；这里只分配状态，不提前启动计时。
+// RequestCredentialBudget 返回本请求共享的预算，计时由使用方启动。
 func RequestCredentialBudget(c *gin.Context) *requeststate.CredentialBudget {
 	if c == nil {
 		return nil
@@ -29,7 +29,7 @@ func RequestCredentialBudget(c *gin.Context) *requeststate.CredentialBudget {
 	return state
 }
 
-// CredentialObserver 保留原凭据故障分类与 Ops 关联，不保存凭据值。
+// CredentialObserver 将凭据故障分类记录到 Ops。
 type CredentialObserver struct{ Context *gin.Context }
 
 func (o CredentialObserver) ObserveCredentialFailure(id int64, class forward.GrokCredentialFailure) {

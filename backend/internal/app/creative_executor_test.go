@@ -17,7 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// creativeExecutionGroupProbe 只提供原生分组读取，验证装配不提前取得提供商或启动尝试。
+// creativeExecutionGroupProbe 提供分组读取函数，记录装配期间的读取次数。
 type creativeExecutionGroupProbe struct{ reads int }
 
 func (p *creativeExecutionGroupProbe) GetByIDLite(context.Context, int64) (*routing.Group, error) {
@@ -100,7 +100,7 @@ func TestCreativeExecutorForwardsModelAllowedByGroupScheduler(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "gpt-image-2", gjson.GetBytes(body, "model").String())
 
-	// 目录投影与执行投影均深拷贝策略，不能反向改变持久化分组的数据。
+	// 模型目录和执行数据各自持有策略的深拷贝，修改副本后持久化分组的数据保持不变。
 	view := creativeGroupView(group)
 	executionGroup, err := executor.Group(ctx, group.ID)
 	require.NoError(t, err)
@@ -110,7 +110,7 @@ func TestCreativeExecutorForwardsModelAllowedByGroupScheduler(t *testing.T) {
 	require.Equal(t, []string{"gpt-image-2"}, group.RoutingPolicy.AllowedModels)
 }
 
-// TestCreativeExecutorKeepsPersistedGroupWhenClientRestricted 验证已持久化任务遇到客户端限制时停留在原组，不访问管理员配置的回退组。
+// TestCreativeExecutorKeepsPersistedGroupWhenClientRestricted 检查已保存的任务遇到客户端限制时仍使用原分组。
 func TestCreativeExecutorKeepsPersistedGroupWhenClientRestricted(t *testing.T) {
 	fallback := int64(99)
 	group := &routing.Group{

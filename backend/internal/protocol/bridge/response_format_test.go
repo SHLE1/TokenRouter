@@ -37,7 +37,7 @@ func TestResponseFormatPassesThroughCompatibleShapes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 只有 json_schema 的层级差异需要转换，其余格式必须原样保留。
+			// json_schema 调整层级，其余格式原样保留。
 			assert.JSONEq(t, string(tt.raw), string(chatResponseFormatToResponsesTextFormat(tt.raw)))
 			assert.JSONEq(t, string(tt.raw), string(responsesTextFormatToChatResponseFormat(tt.raw)))
 		})

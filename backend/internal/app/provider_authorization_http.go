@@ -7,7 +7,7 @@ import (
 	providerhttp "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
 )
 
-// provideClaudeAuthorizationHTTP 直接绑定已有授权用例，不再经管理 handler 转接。
+// provideClaudeAuthorizationHTTP 为 Claude 授权 HTTP 入口绑定授权用例。
 func provideClaudeAuthorizationHTTP(source *providerauth.ClaudeAuthorization) *providerhttp.ClaudeOAuthHandler {
 	return providerhttp.NewClaudeOAuthHandler(source)
 }

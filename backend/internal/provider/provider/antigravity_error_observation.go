@@ -22,7 +22,7 @@ type AntigravityModelLimitResult struct {
 	SwitchError  *antigravity.AntigravityProviderSwitchError // 提供商切换错误
 }
 
-// handleModelRateLimit 处理模型级限流（在原有逻辑之前调用）
+// handleModelRateLimit 在一般错误处理之前记录模型限流。
 // 仅处理 429/503，解析模型名和 retryDelay
 // - MODEL_CAPACITY_EXHAUSTED: 返回 Handled=true（实际重试由 handleSmartRetry 处理）
 // - RATE_LIMIT_EXCEEDED + retryDelay < 阈值: 返回 ShouldRetry=true，由调用方等待后重试
@@ -85,7 +85,7 @@ func (s *AntigravityErrorObserver) setModelRateLimitAndClearSession(p *Antigravi
 	}
 }
 
-// Observe 处理一次失败观测；不负责等待、重试或提供商选择。
+// Observe 解析单次失败并记录提供商状态。
 func (s *AntigravityErrorObserver) Observe(p AntigravityErrorInput) *AntigravityModelLimitResult {
 	ctx, prefix, value := p.Context, p.Prefix, p.Provider
 	statusCode, body, requestedModel := p.Status, p.Body, p.RequestedModel
@@ -100,12 +100,12 @@ func (s *AntigravityErrorObserver) Observe(p AntigravityErrorInput) *Antigravity
 	}
 
 	// 503 仅处理模型限流（MODEL_CAPACITY_EXHAUSTED），非模型限流不做额外处理
-	// 避免将普通的 503 错误误判为提供商问题
+	// 普通 503 按上游容量错误处理。
 	if statusCode == 503 {
 		return nil
 	}
 
-	// 429：尝试解析模型级限流，解析失败时兜底为提供商级限流
+	// 429 先尝试解析模型限流，解析失败时按提供商限流处理。
 	if statusCode == 429 {
 		if logBody, maxBytes := s.LogConfig(); logBody {
 			logging.LegacyPrintf("service.antigravity_gateway", "[Antigravity-Debug] 429 response body: %s", s.TruncateString(string(body), maxBytes))
@@ -118,11 +118,11 @@ func (s *AntigravityErrorObserver) Observe(p AntigravityErrorInput) *Antigravity
 		//
 		// 注意：requestedModel 可能是"映射前"的请求模型名（例如 claude-opus-4-6），
 		// 调度与限流判定使用的是 Antigravity 最终模型名（包含映射与 thinking 后缀）。
-		// 因此这里必须写入最终模型 key，确保后续调度能正确避开已限流模型。
+		// 此处使用最终模型名记录限流，后续调度按同一名称检查。
 		modelKey := FinalAntigravityModel(value, requestedModel, p.Thinking)
 		if strings.TrimSpace(modelKey) == "" {
 			// 极少数情况下无法映射（理论上不应发生：能转发成功说明映射已通过），
-			// 保持旧行为作为兜底，避免完全丢失模型级限流记录。
+			// 缺少最终模型名时使用回退模型记录限流。
 			modelKey = antigravity.NormalizeAntigravityModelName(requestedModel)
 		}
 		if modelKey != "" {
@@ -136,7 +136,7 @@ func (s *AntigravityErrorObserver) Observe(p AntigravityErrorInput) *Antigravity
 			return nil
 		}
 
-		// 无法解析模型 key，兜底为提供商级限流
+		// 模型 key 解析失败时记录提供商限流。
 		ra := s.resolveResetTime(resetAt, defaultDur)
 		logging.LegacyPrintf("service.antigravity_gateway", "%s status=429 rate_limited provider=%d reset_at=%v reset_in=%v (fallback)",
 			prefix, value.ID, ra.Format("15:04:05"), time.Until(ra).Truncate(time.Second))
@@ -164,7 +164,7 @@ func (s *AntigravityErrorObserver) resolveResetTime(resetAt *int64, defaultDur t
 	return time.Now().Add(defaultDur)
 }
 
-// AntigravityErrorInput 是本次错误的独立模型、粘性和报文投影。
+// AntigravityErrorInput 保存本次错误的模型、粘性会话和报文信息。
 type AntigravityErrorInput struct {
 	Context          context.Context
 	Provider         *provider.Record
@@ -179,7 +179,7 @@ type AntigravityErrorInput struct {
 	ClearSticky      func()
 }
 
-// AntigravityErrorObserver 组合既有模型窗口和提供商健康端口，不创建共享状态。
+// AntigravityErrorObserver 组合模型窗口和提供商健康状态接口。
 type AntigravityErrorObserver struct {
 	Health          *provider.AntigravityHealth
 	LogConfig       func() (bool, int)

@@ -43,7 +43,7 @@ func (t *ImagesTarget) String() string {
 }
 func (t *ImagesTarget) GoString() string { return t.String() }
 
-// ImagesExecutor 只执行一次已选提供商请求，不包含提供商切换循环。
+// ImagesExecutor 对已选提供商执行一次图片请求。
 type ImagesExecutor struct{}
 
 func (ImagesExecutor) Execute(ctx context.Context, input upstream.AttemptInput, sink upstream.OutputSink) (result upstream.AttemptResult, failure error) {
@@ -133,14 +133,14 @@ func (ImagesExecutor) Execute(ctx context.Context, input upstream.AttemptInput, 
 	if output != nil {
 		result.HTTPCommitted = output.Writer.Written()
 	}
-	// 只把原先不能交付图片的 OAuth 错误交回旧提供商/重试策略，部分结果保留。
+	// OAuth 非流式请求或尚未产出图片的流式请求失败时，调用 ResponseError 处理。
 	if err != nil && t.OAuth && (!input.Stream || result.ObservedImages <= 0) {
 		err = t.ResponseError(resp, before, err)
 	}
 	return result, err
 }
 
-// imagesObservedSink 只记录同步输出事实，不修改事件、缓存报文或安装后台任务。
+// imagesObservedSink 记录同步输出的提交状态、内容标记和写入失败。
 type imagesObservedSink struct {
 	upstream.OutputSink
 	committed, retryCommitted, semantic, failed bool

@@ -738,7 +738,7 @@ func TestCleanToolSchema_ConvertsNestedIntegerExclusiveMinimum(t *testing.T) {
 	require.Equal(t, 3, weak["minimum"])
 }
 
-// TestCleanToolSchema_DropsAmbiguousExclusiveMinimumWithoutConversion 验证无法等价转换的边界只被清理。
+// TestCleanToolSchema_DropsAmbiguousExclusiveMinimumWithoutConversion 检查无法等价转换的 exclusiveMinimum 是否被删除。
 func TestCleanToolSchema_DropsAmbiguousExclusiveMinimumWithoutConversion(t *testing.T) {
 	for name, schema := range map[string]map[string]any{
 		"number schema": {
@@ -1128,7 +1128,7 @@ func TestUnwrapGeminiResponse(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Task 8.1 — extractGeminiUsage 测试
+// extractGeminiUsage 测试。
 // ---------------------------------------------------------------------------
 
 func TestExtractGeminiUsage(t *testing.T) {
@@ -1259,7 +1259,7 @@ func TestExtractGeminiUsage(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Task 8.2 — estimateGeminiCountTokens 测试
+// estimateGeminiCountTokens 测试。
 // ---------------------------------------------------------------------------
 
 func TestEstimateGeminiCountTokens(t *testing.T) {
@@ -1336,7 +1336,7 @@ func TestEstimateGeminiCountTokens(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Task 8.3 — ParseGeminiRateLimitResetTime 测试
+// ParseGeminiRateLimitResetTime 测试。
 // ---------------------------------------------------------------------------
 
 func TestParseGeminiRateLimitResetTime(t *testing.T) {
@@ -1414,7 +1414,7 @@ func TestParseGeminiRateLimitResetTime(t *testing.T) {
 				t.Fatalf("期望返回非 nil，实际返回 nil")
 			}
 
-			// approxDelta == -1 表示只检查非 nil，不检查具体值（如 daily quota 场景）
+			// approxDelta == -1 时断言结果为非 nil，适用于 daily quota 等时间不确定的场景。
 			if tt.approxDelta == -1 {
 				// 仅验证返回的时间戳在合理范围内（未来的某个时间）
 				if *got < now {

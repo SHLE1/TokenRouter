@@ -481,7 +481,7 @@ func TestApplyGrokCLIProxyHeaders(t *testing.T) {
 		require.Equal(t, xai.CLIUserAgent(xai.CLIClientVersion), req.Header.Get("User-Agent"))
 	})
 
-	// 所有样本都高于固定版本，拒绝原因只能是 SemVer 格式非法，而不是版本过旧。
+	// 所有样本版本都高于固定版本，预期因 SemVer 格式非法而被拒绝。
 	for _, version := range []string{
 		"0.2.0121",
 		"0.2.121-alpha..1",
@@ -537,7 +537,7 @@ func (s *HTTPUpstreamSuite) newService() *Client {
 }
 
 // TestDefaultResponseHeaderTimeout 测试默认响应头超时配置
-// 验证显式 0 会禁用等待响应头超时
+// 配置为 0 时禁用响应头超时。
 func (s *HTTPUpstreamSuite) TestDefaultResponseHeaderTimeout() {
 	svc := s.newService()
 	entry := mustGetOrCreateClient(s.T(), svc, "", 0, 0)
@@ -546,7 +546,7 @@ func (s *HTTPUpstreamSuite) TestDefaultResponseHeaderTimeout() {
 	require.Equal(s.T(), time.Duration(0), transport.ResponseHeaderTimeout, "ResponseHeaderTimeout mismatch")
 }
 
-// TestNilConfigResponseHeaderTimeoutFallback 验证 nil 配置使用代码级兜底值。
+// TestNilConfigResponseHeaderTimeoutFallback 检查 nil 配置是否使用代码定义的默认值。
 func (s *HTTPUpstreamSuite) TestNilConfigResponseHeaderTimeoutFallback() {
 	up := New(nil)
 	svc := up

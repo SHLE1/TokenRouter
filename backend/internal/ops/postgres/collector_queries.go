@@ -194,7 +194,7 @@ WHERE created_at >= $1 AND created_at < $2`
 	return successCount, tokenConsumed, nil
 }
 
-// MetricsQueries 仅承载原有业务表查询，不拥有采样周期或策略。
+// MetricsQueries 查询监控指标所需的业务表。
 type MetricsQueries struct {
 	*Advisory
 	db *sql.DB

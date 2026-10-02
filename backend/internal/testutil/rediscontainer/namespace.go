@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 命名空间沿用原集成夹具的 key 改写与清理，多个契约共享容器但不共享测试数据。
+// redisNamespaceSeq 为共享 Redis 容器的测试分配独立键前缀，测试结束后清理对应数据。
 var redisNamespaceSeq uint64
 
 func Namespaced(t *testing.T, base *redisclient.Client) *redisclient.Client {

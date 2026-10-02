@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// WriteUnifiedModelsList 按模型目录保留名称与厂商，未知别名归属于网关而非某个上游。
+// WriteUnifiedModelsList 使用模型目录中的名称和厂商，未知别名归属于网关。
 func (h *ModelsHandler) WriteUnifiedModelsList(c *gin.Context, ids []string) {
 	if len(ids) == 0 {
 		c.JSON(http.StatusOK, gin.H{"object": "list", "data": []any{}})

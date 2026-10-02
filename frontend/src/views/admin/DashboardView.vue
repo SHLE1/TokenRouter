@@ -18,7 +18,7 @@
 
       <template v-else-if="stats">
         <!-- Row 1: Core Stats -->
-        <!-- 卡片在移动端纵向排布（图标在上、文字占满卡宽），桌面端保持横向图标+文字，避免窄屏下数值与中文被折断 -->
+        <!-- 移动端卡片纵向排列图标和文字，文字占满卡宽，桌面端横向排列。 -->
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <!-- Total API Keys -->
           <div class="card p-4">
@@ -121,7 +121,7 @@
                 <p class="mt-0.5 whitespace-nowrap text-lg font-bold tabular-nums text-gray-900 dark:text-white lg:text-xl">
                   {{ formatTokens(stats.today_tokens) }}
                 </p>
-                <!-- 三段金额 nowrap，只能在分段处换行，避免窄屏下金额与符号被折断 -->
+                <!-- 金额与符号在各段内保持同一行，段间可以换行。 -->
                 <div class="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs">
                   <span
                     class="whitespace-nowrap text-green-600 dark:text-green-400"
@@ -158,7 +158,7 @@
                 <p class="mt-0.5 whitespace-nowrap text-lg font-bold tabular-nums text-gray-900 dark:text-white lg:text-xl">
                   {{ formatTokens(stats.total_tokens) }}
                 </p>
-                <!-- 三段金额 nowrap，只能在分段处换行，避免窄屏下金额与符号被折断 -->
+                <!-- 金额与符号在各段内保持同一行，段间可以换行。 -->
                 <div class="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs">
                   <span
                     class="whitespace-nowrap text-green-600 dark:text-green-400"

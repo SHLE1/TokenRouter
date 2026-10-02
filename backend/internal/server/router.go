@@ -2,7 +2,7 @@ package server
 
 import "github.com/gin-gonic/gin"
 
-// RouterRuntime 只接收 app 已装配的 HTTP 行为；不持有业务实例。
+// RouterRuntime 包含 app 提供的中间件、前端处理器和路由注册函数。
 type RouterRuntime struct {
 	Middleware []gin.HandlerFunc
 	Frontend   gin.HandlerFunc

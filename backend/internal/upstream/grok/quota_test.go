@@ -80,7 +80,7 @@ func TestParseResetHeaderRelativeSecondsNotMisreadAsEpoch(t *testing.T) {
 
 	headers := http.Header{}
 	// xAI 可能以相对秒数（如 "60"）返回重置窗口。
-	// 该值应解析为当前时间后约 60 秒，而不是 Unix 时间戳 60 对应的 1970 年日期。
+	// 该值表示从当前时间起约六十秒后重置。
 	headers.Set("x-ratelimit-reset-requests", "60")
 	headers.Set("x-ratelimit-remaining-requests", "0")
 

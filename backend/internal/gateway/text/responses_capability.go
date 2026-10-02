@@ -6,7 +6,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// ResponsesCapability 根据显式生图意图选择提供商必须支持的端点能力。
+// ResponsesCapability 根据请求的生图意图返回所需端点能力。
 func ResponsesCapability(imageIntent bool, platform string) providercore.OpenAIEndpointCapability {
 	if imageIntent && platform == capability.PlatformOpenAI {
 		return providercore.OpenAIEndpointCapabilityResponses
@@ -14,8 +14,7 @@ func ResponsesCapability(imageIntent bool, platform string) providercore.OpenAIE
 	return providercore.OpenAIEndpointCapabilityTextGeneration
 }
 
-// RequiredResponsesCapability 让两类压缩都要求 Responses 能力，
-// 其中原生 V2 还必须通过自身独立的提供商模式和探测状态门禁。
+// RequiredResponsesCapability 为旧版压缩返回 Responses 能力，为 V2 返回 RemoteCompactionV2 能力。
 func RequiredResponsesCapability(imageIntent bool, nativeCompactionV2 bool, legacyCompact bool, platform string) providercore.OpenAIEndpointCapability {
 	if nativeCompactionV2 && platform == capability.PlatformOpenAI {
 		return providercore.OpenAIEndpointCapabilityRemoteCompactionV2

@@ -8,7 +8,7 @@ import (
 )
 
 // RefreshLoop 只拥有周期刷新启停，候选和交换规则由同一刷新用例的 cycle 提供。
-// 构造不创建后台任务；仅第一次启动有效，停止后不能重新启动。
+// 首次调用 Start 时创建后台任务，停止后再次启动无效。
 type RefreshLoop struct {
 	mu               sync.Mutex
 	started, stopped bool

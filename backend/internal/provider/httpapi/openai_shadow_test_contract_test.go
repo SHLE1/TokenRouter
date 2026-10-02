@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProviderTestServiceSkipsShadow 验证影子提供商连接测试不再早拒,而是尝试解析母提供商凭据。
+// TestProviderTestServiceSkipsShadow 检查影子提供商测试通过母提供商解析凭据。
 func TestProviderTestServiceSkipsShadow(t *testing.T) {
 	pid := int64(100)
 	shadow := &providererrors.Record{

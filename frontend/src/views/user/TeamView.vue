@@ -232,7 +232,7 @@
               </div>
             </form>
           </div>
-          <!-- 将生命周期操作收拢成一致的设置行，避免危险操作脱离上下文。 -->
+          <!-- 生命周期操作与其说明放在同一设置行。 -->
           <div class="card overflow-hidden">
             <div v-if="isOwner" class="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-end sm:justify-between">
               <div class="flex min-w-0 items-start gap-3">
@@ -367,7 +367,7 @@ const invitationToken = computed(() => typeof route.query.invitation === 'string
 const transferToken = computed(() => typeof route.query.transfer === 'string' ? route.query.transfer : '')
 const isOwner = computed(() => teamContext.value?.membership.role === 'owner')
 
-// 邀请详情单独加载，避免依赖当前团队上下文才能展示确认弹窗。
+// 邀请详情单独加载，确认弹窗可在取得当前团队上下文前展示。
 const loadInvitationPreview = async () => {
   invitationPreview.value = null
   invitationPreviewError.value = ''

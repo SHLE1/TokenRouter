@@ -107,9 +107,8 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 				forceHTTPBridge = true
 				break
 			}
-			// 透传 relay 通过 TurnStarted 记录每个 turn 的开始时刻，但不触发
-			// BeforeTurn；因此仍只有建连时的利润准入门，没有 turn 级复核。
-			// handler 计费在 turn 定价未冻结时回退到对应的 turn 开始时刻。
+			// 透传 relay 通过 TurnStarted 记录每轮开始时刻，利润准入在建连时执行。
+			// turn 定价尚未冻结时，handler 使用该轮开始时刻计费。
 			return s.proxyResponsesWebSocketV2Passthrough(
 				ctx,
 				c,
@@ -285,7 +284,7 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 		req := openai.CloneWSAcquireRequest(baseAcquireReq)
 		req.PreferredConnID = strings.TrimSpace(preferred)
 		req.ForcePreferredConn = forcePreferredConn
-		// dedicated 模式下每次获取均新建连接，避免跨会话复用残留上下文。
+		// dedicated 模式为每次获取创建独立连接，隔离会话上下文。
 		req.ForceNewConn = dedicatedMode
 		acquireCtx, acquireCancel := context.WithTimeout(ctx, acquireTimeout)
 		lease, acquireErr := pool.Acquire(acquireCtx, req)

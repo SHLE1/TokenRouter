@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// readSnapshotProvider 以下边界只借用已绑定拥有者；缓存解码、健康状态和窗口规则不在本包重建。
+// readSnapshotProvider 从已绑定的快照读取器取得提供商。
 func readSnapshotProvider(ctx context.Context, source Snapshots, id int64) (*gatewayadapter.ExecutionProvider, error) {
 	value, err := source.GetProvider(ctx, id)
 	return gatewayadapter.NewExecutionProvider(value), err
@@ -73,7 +73,7 @@ func mapAntigravityModel(value *gatewayadapter.ExecutionProvider, model string) 
 	return provideradapter.MapAntigravityModel(gatewayadapter.ExecutionRecord(value), model)
 }
 
-// defaultWindowCostGuard 保留未装配来源时的原窗口边界及全局观测，不复制窗口算法。
+// defaultWindowCostGuard 返回使用默认参数的窗口费用检查器。
 func defaultWindowCostGuard() *billing.WindowCostGuard {
 	return billing.NewWindowCostGuard(nil, nil, billing.WindowCostGuardOptions{Now: time.Now, Stats: billing.SharedWindowCostMetrics(), Log: func(format string, args ...any) { logging.LegacyPrintf("service.gateway", format, args...) }, Debug: slog.Debug})
 }

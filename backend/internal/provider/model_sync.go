@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// ModelSyncService 拥有请求触发的模型查询生命周期，供应商解析通过端口执行。
+// ModelSyncService 管理请求触发的模型查询，通过接口解析供应商响应。
 type ModelSyncService struct {
 	fetch    func(context.Context, *Record) ([]string, error)
 	activity operationActivity

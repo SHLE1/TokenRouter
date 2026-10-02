@@ -70,7 +70,7 @@ func ValidateHTTPURL(raw string, allowInsecureHTTP bool, opts ValidationOptions)
 }
 
 func ValidateURLFormat(raw string, allowInsecureHTTP bool) (string, error) {
-	// 最小格式校验：仅保证 URL 可解析且 scheme 合规，不做白名单/私网/SSRF 校验
+	// 检查 URL 能否解析及 scheme 是否有效。
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		return "", errors.New("url is required")

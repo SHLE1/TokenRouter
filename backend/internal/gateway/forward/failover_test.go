@@ -13,9 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ---------------------------------------------------------------------------
 // Mock
-// ---------------------------------------------------------------------------
 
 // mockTempUnscheduler 记录 TempUnscheduleRetryableError 的调用信息。
 type mockTempUnscheduler struct {
@@ -127,9 +125,7 @@ func newTestFailoverErr(statusCode int, retryable, forceBilling bool) *UpstreamF
 	}
 }
 
-// ---------------------------------------------------------------------------
 // NewFailoverState 测试
-// ---------------------------------------------------------------------------
 
 func TestNewFailoverState(t *testing.T) {
 	t.Run("初始化字段正确", func(t *testing.T) {
@@ -157,9 +153,7 @@ func TestNewFailoverState(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
 // sleepWithContext 测试
-// ---------------------------------------------------------------------------
 
 func TestSleepWithContext(t *testing.T) {
 	t.Run("零时长立即返回true", func(t *testing.T) {
@@ -210,9 +204,7 @@ func TestSleepWithContext(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// HandleFailoverError — 基本切换流程
-// ---------------------------------------------------------------------------
+// HandleFailoverError：基本切换流程
 
 func TestHandleFailoverError_BasicSwitch(t *testing.T) {
 	t.Run("显式停止不切换提供商且旧错误默认仍切换", func(t *testing.T) {
@@ -350,9 +342,7 @@ func TestHandleFailoverError_BasicSwitch(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// HandleFailoverError — 缓存计费 (ForceCacheBilling)
-// ---------------------------------------------------------------------------
+// HandleFailoverError：缓存计费 (ForceCacheBilling)
 
 func TestHandleFailoverError_CacheBilling(t *testing.T) {
 	t.Run("hasBoundSession为true且实际切换时设置ForceCacheBilling", func(t *testing.T) {
@@ -453,9 +443,7 @@ func TestHandleFailoverError_CacheBilling(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// HandleFailoverError — 同提供商重试 (RetryableOnSameProvider)
-// ---------------------------------------------------------------------------
+// HandleFailoverError：同提供商重试 (RetryableOnSameProvider)
 
 func TestHandleFailoverError_SameProviderRetry(t *testing.T) {
 	t.Run("第一次重试返回FailoverContinue", func(t *testing.T) {
@@ -567,7 +555,7 @@ func TestHandleFailoverError_SameProviderRetry(t *testing.T) {
 		require.Equal(t, 0, fs.SwitchCount, "首次重试不应切换提供商")
 		require.Empty(t, mock.calls, "未耗尽前不应 TempUnschedule")
 
-		// 第 2 次：已达上限 1 → 不再同提供商重试，直接切换 + TempUnschedule
+		// 第二次已达到一次重试上限，切换提供商并调用 TempUnschedule。
 		action = fs.HandleFailoverError(context.Background(), mock, 100, "openai", retryLimit, err)
 		require.Equal(t, failover.FailoverContinue, action)
 		require.Equal(t, 1, fs.SameProviderRetryCount[100], "重试计数不应超过 retryLimit")
@@ -590,9 +578,7 @@ func TestHandleFailoverError_SameProviderRetry(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// HandleFailoverError — TempUnschedule 调用验证
-// ---------------------------------------------------------------------------
+// HandleFailoverError：TempUnschedule 调用验证
 
 func TestHandleFailoverError_TempUnschedule(t *testing.T) {
 	t.Run("非重试错误不调用TempUnschedule", func(t *testing.T) {
@@ -623,9 +609,7 @@ func TestHandleFailoverError_TempUnschedule(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// HandleFailoverError — Context 取消
-// ---------------------------------------------------------------------------
+// HandleFailoverError：Context 取消
 
 func TestHandleFailoverError_ContextCanceled(t *testing.T) {
 	t.Run("同提供商重试sleep期间context取消", func(t *testing.T) {
@@ -689,9 +673,7 @@ func TestHandleFailoverError_ContextCanceled(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// HandleFailoverError — FailedProviderIDs 跟踪
-// ---------------------------------------------------------------------------
+// HandleFailoverError：FailedProviderIDs 跟踪
 
 func TestHandleFailoverError_FailedProviderIDs(t *testing.T) {
 	t.Run("切换时添加到失败列表", func(t *testing.T) {
@@ -734,9 +716,7 @@ func TestHandleFailoverError_FailedProviderIDs(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// HandleFailoverError — LastFailoverErr 更新
-// ---------------------------------------------------------------------------
+// HandleFailoverError：LastFailoverErr 更新
 
 func TestHandleFailoverError_LastFailoverErr(t *testing.T) {
 	t.Run("每次调用都更新LastFailoverErr", func(t *testing.T) {
@@ -762,9 +742,7 @@ func TestHandleFailoverError_LastFailoverErr(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// HandleFailoverError — 综合集成场景
-// ---------------------------------------------------------------------------
+// HandleFailoverError：综合集成场景
 
 func TestHandleFailoverError_IntegrationScenario(t *testing.T) {
 	t.Run("模拟完整failover流程_多提供商混合重试与切换", func(t *testing.T) {
@@ -858,9 +836,7 @@ func TestHandleFailoverError_IntegrationScenario(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// HandleFailoverError — 边界条件
-// ---------------------------------------------------------------------------
+// HandleFailoverError：空值和极值
 
 func TestHandleFailoverError_EdgeCases(t *testing.T) {
 	t.Run("StatusCode为0的错误也能正常处理", func(t *testing.T) {
@@ -907,9 +883,7 @@ func TestHandleFailoverError_EdgeCases(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
 // HandleSelectionExhausted 测试
-// ---------------------------------------------------------------------------
 
 func TestHandleSelectionExhausted(t *testing.T) {
 	t.Run("无LastFailoverErr时返回Exhausted", func(t *testing.T) {
@@ -973,8 +947,7 @@ func TestHandleSelectionExhausted(t *testing.T) {
 	})
 
 	t.Run("context已取消_非503也返回Canceled而非Exhausted", func(t *testing.T) {
-		// #4257 核心场景：客户端断开后选号失败源于 context canceled，
-		// 不应被当成提供商耗尽转成 502。
+		// 客户端断开后，选择因 context canceled 失败，按取消处理（#4257）。
 		fs := failover.NewFailoverState[*UpstreamFailoverError](3, false, gatewaytelemetry.Failover)
 		fs.LastFailoverErr = newTestFailoverErr(520, false, false)
 

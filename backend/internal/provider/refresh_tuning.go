@@ -27,7 +27,7 @@ const (
 	DefaultTokenRefreshCleanupTimeout           = 2 * time.Second
 )
 
-// RefreshTuning 仅包含后台刷新的静态配置值，app 将配置投影到此结构。
+// RefreshTuning 保存 app 传入的后台刷新静态参数。
 type RefreshTuning struct {
 	Enabled                  bool
 	CheckIntervalMinutes     int
@@ -95,7 +95,7 @@ func (s *RefreshTuning) RetryBackoff(providerID int64, attempt int) time.Duratio
 	}
 	baseSeconds := min(s.RetryBackoffSeconds, int(MaxTokenRefreshRetryBackoff/time.Second))
 	base := time.Duration(baseSeconds) * time.Second * time.Duration(1<<shift)
-	// 稳定的 75%-125% 抖动避免多个副本在同一边界重试，同时保持测试和运维结果可复现。
+	// 重试间隔按稳定种子在 75% 到 125% 之间变化，不同实例的重试时间错开，同一输入可复现。
 	jitterPercent := int64(75) + (providerID+int64(attempt*17))%51
 	backoff := base * time.Duration(jitterPercent) / 100
 	return min(backoff, MaxTokenRefreshRetryBackoff)

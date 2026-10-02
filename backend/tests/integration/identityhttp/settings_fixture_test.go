@@ -23,7 +23,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// authSettingsFixture 只装配认证契约所需的原生读取器；数据仍来自同一个替身。
+// authSettingsFixture 组合认证设置读取器，共用同一个测试存储。
 type authSettingsFixture struct {
 	*identity.RuntimeSettings
 	*identity.GrantSettings

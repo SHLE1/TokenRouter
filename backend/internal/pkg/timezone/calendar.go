@@ -32,7 +32,7 @@ func (c Calendar) Now() time.Time {
 	return time.Now().In(c.Location())
 }
 
-// UTCOffset 保留原偏移展示格式，计算时刻由调用方提供。
+// UTCOffset 返回给定时刻在当前时区的 UTC 偏移文本。
 func (c Calendar) UTCOffset(t time.Time) string {
 	_, offset := t.In(c.Location()).Zone()
 	hours := offset / 3600

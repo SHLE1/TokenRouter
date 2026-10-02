@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/billing"
 
-// ApplyBillingAdminReadSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyBillingAdminReadSettings 将计费读取结果写入综合快照。
 func (s *Snapshot) ApplyBillingAdminReadSettings(value *billing.AdminReadSettings) {
 	s.BalanceIconSVG = value.BalanceIconSVG
 	s.BalanceLowNotifyEnabled = value.BalanceLowNotifyEnabled

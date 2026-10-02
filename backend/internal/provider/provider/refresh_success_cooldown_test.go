@@ -37,7 +37,7 @@ func TestRefreshSuccessCannotClearNewAdministratorCooldown(t *testing.T) {
 	require.Equal(t, "new cooldown", current.TempUnschedulableReason)
 }
 
-// 完成清理后发布的缓存投影必须反映已经提交的健康状态。
+// 清理完成后发布的快照包含已提交的健康状态。
 type refreshSuccessScheduler struct {
 	last *providercore.Record
 }

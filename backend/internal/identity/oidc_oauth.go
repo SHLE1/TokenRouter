@@ -77,7 +77,7 @@ type OIDCUserInfoClaims struct {
 	AvatarURL     string
 }
 
-// OIDCVerifiedClaims 是 SDK 校验后的本站投影，不把 JWT 库类型带入 HTTP 或身份规则。
+// OIDCVerifiedClaims 包含 SDK 验证后的 OIDC 身份和资料字段。
 type OIDCVerifiedClaims struct {
 	Issuer, Subject, Email, PreferredUsername, Name string
 	EmailVerified                                   *bool

@@ -13,10 +13,10 @@ import (
 //
 // 设计说明：
 //   - key 形式：rpm:ug:{uid}:{gid}:{minute}、rpm:u:{uid}:{minute}
-//   - 时间来源：rdb.Time()（Redis 服务端时间），避免多实例时钟漂移。
+//   - 时间来源为 rdb.Time()，各实例共用 Redis 服务端时间。
 //   - 原子操作：TxPipeline (MULTI/EXEC) 执行 INCR+EXPIRE，兼容 Redis Cluster。
 //   - TTL：120s，覆盖当前分钟窗口 + 少量冗余。
-//   - 返回值语义：超限判断由调用方（billing_cache_scheduler.checkRPM）与 RPMLimit 比较完成。
+//   - 返回当前计数，由 RPMAdmission.Check 与 RPMLimit 比较以判断是否超限。
 const (
 	userGroupRPMKeyPrefix = "rpm:ug:"
 	userRPMKeyPrefix      = "rpm:u:"

@@ -13,7 +13,7 @@ func GrokRetryableOnSameProvider(provider *ExecutionProvider, statusCode int, re
 	if provider == nil || !provider.View().IsGrok() {
 		return false
 	}
-	// 显式错误码策略优先于池模式默认状态列表，命中后不得在同一提供商重试。
+	// 配置的错误码策略优先于池模式默认状态列表，命中后交给外层故障转移处理。
 	if provider.View().IsCustomErrorCodesEnabled() && provider.View().ShouldHandleErrorCode(statusCode) {
 		return false
 	}
@@ -39,6 +39,6 @@ func GrokSameProviderRetryMetadata(provider *ExecutionProvider, statusCode int, 
 		return true, 0, time.Time{}, 0
 	}
 	// 每次上游尝试都会重新构造错误，因此错误上的截止时间不能覆盖整个请求；
-	// 对容量错误显式限制为一次重放，即使第一次尝试超过名义 30 秒窗口也仍然生效。
+	// 容量错误最多重放一次，首次尝试超过 30 秒时也适用。
 	return true, 500 * time.Millisecond, time.Now().Add(30 * time.Second), 1
 }

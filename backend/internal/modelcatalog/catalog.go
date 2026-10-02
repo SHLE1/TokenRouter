@@ -78,7 +78,7 @@ type Catalog struct {
 	Entries   map[string]Entry
 	Providers map[string]bool
 	Ambiguous map[string]bool
-	// attributeFallbacks 只保存归属一致的公共模型属性，不参与报价索引。
+	// attributeFallbacks 保存归属一致的公共模型属性，供属性查询回退使用。
 	attributeFallbacks map[string]Attributes
 }
 
@@ -180,7 +180,7 @@ func Parse(body []byte) (*Catalog, error) {
 		}
 	}
 	publicAttributes := make(map[string]Attributes, len(source.Models))
-	// 仅模型资料也可单独查询，不借用任意中继的报价。
+	// 模型资料可独立查询，报价按各供应商记录解析。
 	for id, model := range source.Models {
 		entry, err := model.entry(id, strings.SplitN(id, "/", 2)[0])
 		if err != nil {

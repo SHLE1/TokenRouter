@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// GrokRoutes 接收已投影的目标策略，在原位置读取动态默认地址。
+// GrokRoutes 根据目标策略读取动态默认地址。
 type GrokRoutes struct {
 	Validate    grok.BaseURLValidator
 	DefaultMode func(context.Context) string

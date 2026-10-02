@@ -24,7 +24,7 @@ func (r *completionRateScopeFixture) GetByUserAndGroup(context.Context, int64, i
 	return &value, nil
 }
 
-// TestCompletionRuntimeOwnsIsolatedRatesAndSharedRecorders 验证两条生产链各保留一份倍率缓存，旧执行端直接使用组合根的同一完成实例。
+// TestCompletionRuntimeOwnsIsolatedRatesAndSharedRecorders 检查两种完成流程各有独立倍率缓存，执行入口共用 app 构造的完成实例。
 func TestCompletionRuntimeOwnsIsolatedRatesAndSharedRecorders(t *testing.T) {
 	cfg := &config.Config{}
 	repo := &completionRateScopeFixture{value: 2}
@@ -40,7 +40,7 @@ func TestCompletionRuntimeOwnsIsolatedRatesAndSharedRecorders(t *testing.T) {
 
 	require.Same(t, recorders.Forward, forward.Recorder)
 	require.Same(t, recorders.OpenAI, openai.Recorder)
-	// 装配提供的摘要缓存由后续请求反复复用，不随完成器查询重建。
+	// 后续请求复用装配时创建的摘要缓存。
 	bindings := text.PromptCache
 	bindings.Bind(5, 7, "s:a-u:b", "cache-key", "", time.Hour)
 	require.Same(t, bindings, text.PromptCache)

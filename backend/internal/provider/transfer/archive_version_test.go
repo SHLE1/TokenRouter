@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProviderArchiveVersionBoundary 验证导入必须显式使用新版格式，旧集合即使与新集合同时出现也不能忽略。
+// TestProviderArchiveVersionBoundary 检查导入使用支持的版本和提供商集合，出现旧账号集合时拒绝。
 func TestProviderArchiveVersionBoundary(t *testing.T) {
 	var payload DataPayload
 	require.NoError(t, json.Unmarshal([]byte(`{"type":"tokenrouter-data","version":2,"proxies":[],"providers":[]}`), &payload))

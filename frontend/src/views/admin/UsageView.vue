@@ -679,7 +679,7 @@ const ALWAYS_VISIBLE = ['user', 'created_at']
 const DEFAULT_HIDDEN_COLUMNS = ['reasoning_effort', 'request_id', 'upstream_request_id', 'user_agent']
 const HIDDEN_COLUMNS_KEY = 'usage-hidden-columns'
 const HIDDEN_COLUMNS_VERSION_KEY = 'usage-hidden-columns-version'
-// 隐藏列版本链：每级只把当级新增列加入隐藏集，不重置用户已显式打开的列。
+// 隐藏列按版本逐级升级，每级将新增列加入隐藏集，用户打开的既有列保持可见。
 const HIDDEN_COLUMNS_PREV_VERSION = 'request-id-hidden-by-default'
 const HIDDEN_COLUMNS_CURRENT_VERSION = 'upstream-request-id-hidden-by-default'
 
@@ -806,7 +806,7 @@ const loadSavedColumns = () => {
       (JSON.parse(saved) as string[]).forEach((key) => {
         hiddenColumns.add(key)
       })
-      // 升级旧偏好时只追加新列的默认隐藏状态，保留管理员原有选择。
+      // 升级列偏好时追加新列的默认隐藏状态，已有列使用管理员保存的选择。
       const savedVersion = localStorage.getItem(HIDDEN_COLUMNS_VERSION_KEY)
       if (savedVersion !== HIDDEN_COLUMNS_CURRENT_VERSION) {
         if (savedVersion !== HIDDEN_COLUMNS_PREV_VERSION) {
@@ -858,7 +858,7 @@ const errSortOrder = ref<'asc' | 'desc'>('desc')
 const showErrorModal = ref(false)
 const selectedErrorId = ref<number | null>(null)
 
-// 注意：'YYYY-MM-DDT00:00:00' 无时区后缀，按本地时区解析后再转 UTC——与页面其它日期处理语义一致，刻意如此，勿改成 'T00:00:00Z'
+// 日期字符串省略时区后缀，先按本地时区解析，再转为 UTC，与页面其它日期处理一致。
 const toRFC3339 = (d: string | undefined, endOfDay = false): string | undefined =>
   d ? new Date(d + (endOfDay ? 'T23:59:59.999' : 'T00:00:00')).toISOString() : undefined
 

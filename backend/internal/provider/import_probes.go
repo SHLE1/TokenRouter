@@ -14,7 +14,7 @@ const (
 	grokImportProbeQueueLimit = 64
 )
 
-// GrokImportProbeResult 只投影记录所需的脱敏观测，不包含凭据或完整额度报文。
+// GrokImportProbeResult 保存导入记录需要的脱敏观测摘要。
 type GrokImportProbeResult struct {
 	Model           string
 	StatusCode      int
@@ -169,7 +169,7 @@ func (s *GrokImportProbeScheduler) run(parent context.Context, prober GrokImport
 		}
 	}()
 
-	// 排队时间不计入超时，确保每个导入提供商都会执行探测；该超时只限制实际的上游请求。
+	// 任务出队后开始计算探测预算，额度查询的准备、等待和请求共用该预算。
 	ctx, cancel := context.WithTimeout(parent, s.timeout)
 	defer cancel()
 	result, err := prober.QueryQuota(ctx, providerID)

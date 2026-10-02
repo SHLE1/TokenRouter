@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// ModelFailureObservation 不携带请求 Context；端点和最终模型由当前尝试显式投影。
+// ModelFailureObservation 保存当前尝试的端点和最终模型。
 type ModelFailureObservation struct {
 	NotFound       bool
 	CodexPlanGated bool
@@ -21,7 +21,7 @@ const (
 	CodexPlanGatedModelReason   = "upstream_400_codex_plan_gated_model"
 )
 
-// ApplyModelUnavailable 只暂停当前提供商与模型组合，保留池模式和错误码策略边界。
+// ApplyModelUnavailable 按池模式和错误码规则暂停当前提供商与模型组合。
 func (s *HealthService) ApplyModelUnavailable(ctx context.Context, value *Record, status int, observation ModelFailureObservation) bool {
 	if s == nil || s.providerRepo == nil || value == nil || value.IsPoolMode() || !value.ShouldHandleErrorCode(status) {
 		return false

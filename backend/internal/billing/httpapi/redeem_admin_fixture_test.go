@@ -22,7 +22,7 @@ func newRedeemAdminFixture() *redeemAdminFixture {
 	return &redeemAdminFixture{redeems: []billing.RedeemCode{{ID: 5, Code: "R-TEST", Type: billing.RedeemTypeBalance, Value: 10, Status: billing.StatusUnused, CreatedAt: time.Now().UTC()}}}
 }
 
-// setupRedeemAdminContractRouter 直接装配原生处理器，保留原端点覆盖。
+// setupRedeemAdminContractRouter 为兑换管理接口测试装配处理器和路由。
 func setupRedeemAdminContractRouter() (*gin.Engine, *redeemAdminFixture) {
 	router := gin.New()
 	source := newRedeemAdminFixture()

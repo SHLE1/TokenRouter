@@ -11,9 +11,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 )
 
-const opsCleanupBatchTimeout = 15 * time.Second
-const opsCleanupDefaultBatchSize = ops.OpsCleanupDefaultBatchSize
-const opsCleanupDefaultBatchPause = ops.OpsCleanupDefaultBatchPause
+const (
+	opsCleanupBatchTimeout      = 15 * time.Second
+	opsCleanupDefaultBatchSize  = ops.OpsCleanupDefaultBatchSize
+	opsCleanupDefaultBatchPause = ops.OpsCleanupDefaultBatchPause
+)
 
 func opsCleanupRunOne(
 	ctx context.Context,
@@ -146,6 +148,7 @@ func truncateOpsTable(ctx context.Context, db *sql.DB, table string) (int64, err
 	}
 	return estimatedRows, nil
 }
+
 func isMissingRelationError(err error) bool {
 	if err == nil {
 		return false
@@ -154,7 +157,7 @@ func isMissingRelationError(err error) bool {
 	return strings.Contains(s, "does not exist") && strings.Contains(s, "relation")
 }
 
-// CleanupStore 保留每批事务与节流边界，复用原底层连接池。
+// CleanupStore 使用连接池执行清理，每批单独提交事务并节流。
 type CleanupStore struct {
 	*Advisory
 	db *sql.DB
@@ -166,9 +169,11 @@ func NewCleanupStore(db *sql.DB) ops.CleanupBackend {
 	}
 	return &CleanupStore{&Advisory{db}, db}
 }
+
 func (s *CleanupStore) AcquireMaintenance(ctx context.Context) (func(), bool, error) {
 	return infra.TryAcquireDBAdvisoryLockWithError(ctx, s.db, infra.HashAdvisoryLockID("maintenance:database-heavy"))
 }
+
 func (s *CleanupStore) RunTarget(ctx context.Context, truncate bool, cutoff time.Time, table, col string, cast bool, batch int, pause time.Duration) (ops.CleanupTargetResult, error) {
 	return opsCleanupRunOne(ctx, s.db, truncate, cutoff, table, col, cast, batch, pause)
 }

@@ -6,7 +6,7 @@ import (
 )
 
 // RefreshFailureBlocks 只保存凭据版本级临时阻断，提供商级配额/容量阻断由 RuntimeBlockState 统一拥有。
-// 多个在途版本独立保留截止时间，迟到的旧版本不能覆盖新版本的阻断；无后台协程。
+// 各在途凭据版本分别保存阻断截止时间。
 type RefreshFailureBlocks struct {
 	mu      sync.Mutex
 	entries map[int64]map[string]time.Time
@@ -36,7 +36,7 @@ func (b *RefreshFailureBlocks) Block(id int64, identity string, until, now time.
 	}
 }
 
-// Blocked 在无条目时不计算身份散列；identity 必须为不读取存储的纯投影。
+// Blocked 在存在条目时调用 identity 计算身份哈希，identity 需要使用当前数据直接计算。
 func (b *RefreshFailureBlocks) Blocked(id int64, now time.Time, identity func() string) bool {
 	if b == nil {
 		return false

@@ -415,8 +415,7 @@ func TestChatCompletionsToResponses_FilePartFileID(t *testing.T) {
 }
 
 func TestChatCompletionsToResponses_EmptyFilePartSkipped(t *testing.T) {
-	// 同时缺少 file_data 和 file_id 的文件 part 没有可供 Responses 使用的内容；
-	// 与空图片 URL 一样丢弃，避免空 input_file 导致上游 400。
+	// file_data 和 file_id 均缺失时丢弃文件 part，空 input_file 会触发上游 400。空图片 URL 同样丢弃。
 	content := `[{"type":"text","text":"Describe this"},{"type":"file","file":{"filename":"empty.pdf"}}]`
 	req := &protocolopenai.ChatCompletionsRequest{
 		Model: "gpt-4o",

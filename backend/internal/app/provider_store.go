@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// provideProviderStore 固定唯一提供商存储，跨模块只注入值映射和原事件写入。
+// provideProviderStore 构造共享的提供商存储，并绑定数据转换和事件写入函数。
 func provideProviderStore(client *dbent.Client, db *sql.DB, cache scheduler.SnapshotCache) *providerpostgres.ProviderStore {
 	store := providerpostgres.NewProviderStore(client, db, providerpostgres.ProviderStoreOptions{
 		Group: func(g *dbent.Group) *accessview.GroupConfig {

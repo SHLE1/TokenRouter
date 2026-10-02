@@ -195,7 +195,7 @@ func TestApplyErrorPolicy_GeminiRateLimitBypassesCustomSkip(t *testing.T) {
 	require.Equal(t, "gemini:sticky", cleared[0].sessionHash)
 }
 
-// 夹具只记录原健康端口写入；策略与供应商分类使用生产实现。
+// 夹具记录健康状态写入，策略和供应商错误分类使用生产实现。
 type antigravityPolicyStoreFixture struct {
 	providercore.HealthStore
 	tempCalls           int

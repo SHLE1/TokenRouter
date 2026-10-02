@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// FundingCheck 只提供已投影权益检查，不向网关暴露资金缓存实现。
+// FundingCheck 根据计费检查输入验证权益。
 type FundingCheck interface {
 	Check(context.Context, billing.CheckInput) error
 }
@@ -41,12 +41,12 @@ func (a *FundingAdmission) Check(ctx context.Context, input billing.CheckInput, 
 	return a.rpm.Check(ctx, user, group)
 }
 
-// CheckFunding 用于原本只复查权益的等待后边界，不增加第二次 RPM 消费。
+// CheckFunding 在等待结束后复查权益，RPM 已在进入等待前累计。
 func (a *FundingAdmission) CheckFunding(ctx context.Context, input billing.CheckInput) error {
 	return a.funds.Check(ctx, input)
 }
 
-// CheckKey 只从当前有效 Key 投影准入字段；Key 必须已完成认证及最终分组授权。
+// CheckKey 从已认证并完成最终分组授权的 Key 提取资金和 RPM 检查字段。
 func (a *FundingAdmission) CheckKey(ctx context.Context, key *apikey.APIKey, subscription *billing.UserSubscription, platform string, afterWait bool) error {
 	var payer *billing.UserSummary
 	var user *scheduler.RPMUser

@@ -2,7 +2,7 @@ package capability
 
 import "slices"
 
-// ProviderProtocols 是候选判断的只读投影，不包含凭据或旧实体。
+// ProviderProtocols 包含候选提供商的平台、类型、认证模式和已启用协议。
 type ProviderProtocols struct {
 	Platform, Type, AuthMode string
 	Enabled                  []ProtocolID

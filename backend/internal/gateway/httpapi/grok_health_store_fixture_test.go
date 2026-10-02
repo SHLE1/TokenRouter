@@ -77,7 +77,7 @@ func (r *grokQuotaProviderRepo) SetTempUnschedulable(_ context.Context, id int64
 	return nil
 }
 
-// grokFixtureProviders 保留原按ID回读的指针和计数，其他写入复用测试底座。
+// grokFixtureProviders 保存按 ID 回读的指针和计数，其他写入使用基础夹具。
 type grokFixtureProviders struct {
 	gatewaytestkit.HealthStoreBase
 	providersByID map[int64]*gatewayprovider.ExecutionProvider

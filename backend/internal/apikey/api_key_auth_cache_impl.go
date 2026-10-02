@@ -443,7 +443,7 @@ func (s *APIKeyService) KeySnapshotFromAPIKey(ctx context.Context, apiKey *APIKe
 		snapshot.TeamMembership = cloneMembership(apiKey.TeamMembership)
 	}
 
-	// 填充 (user, group) RPM override —— 仅对可用分组预取，避免停用分组的 override 进入认证快照。
+	// 预取可用分组的用户 RPM override，供认证快照使用。
 	if apiKey.GroupID != nil && *apiKey.GroupID > 0 && apiKey.Group != nil && apiKey.Group.IsActive() && s.userGroupRateRepo != nil {
 		override, err := s.userGroupRateRepo.GetRPMOverrideByUserAndGroup(ctx, apiKey.User.ID, *apiKey.GroupID)
 		if err == nil && override != nil {

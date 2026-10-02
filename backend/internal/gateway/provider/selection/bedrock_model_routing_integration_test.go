@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newBedrockRoutingTestProvider 使用虚构凭据构造可调度提供商，测试不会访问真实 AWS。
+// newBedrockRoutingTestProvider 用虚构凭据构造测试用可调度提供商。
 func newBedrockRoutingTestProvider(id int64, region string, forceGlobal bool) gatewayprovider.ExecutionProvider {
 	provider := gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
@@ -131,7 +131,7 @@ func (m *mockProviderRepoForPlatform) availabilityRecords(_ context.Context, gro
 	return result, nil
 }
 
-// selectionAvailabilityFixture 保留原候选查询过滤，只投影诊断需要的记录。
+// selectionAvailabilityFixture 筛选候选并返回模型诊断需要的记录。
 type selectionAvailabilityFixture struct{ *mockProviderRepoForPlatform }
 
 func (s selectionAvailabilityFixture) ListModelAvailabilityCandidates(ctx context.Context, group *int64, platforms []string, all bool) ([]providercore.Record, error) {

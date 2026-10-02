@@ -8,7 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// TestNormalizeResponsesStreamingTerminalOutputPreservesReportedItems 验证output 为空的终止事件必须根据流中报告的 item 重建，而不是使用 delta 累积结果。
+// TestNormalizeResponsesStreamingTerminalOutputPreservesReportedItems 检查终止事件的空 output 由流中报告的 item 重建。
 // 累积器只建模一个 reasoning 和一个 message，经其重建会把多 item 回合压缩成
 // 单个伪造 message。
 func TestNormalizeResponsesStreamingTerminalOutputPreservesReportedItems(t *testing.T) {
@@ -50,7 +50,7 @@ func TestNormalizeResponsesStreamingTerminalOutputPreservesReportedItems(t *test
 	require.Equal(t, "shipped", gjson.GetBytes(normalized, "response.output.1.content.0.text").String())
 }
 
-// TestResponsesStreamOutputItemsOrderByOutputIndex 验证item 按 output_index 排序，而不是按到达顺序排序。
+// TestResponsesStreamOutputItemsOrderByOutputIndex 检查乱序到达的 item 按 output_index 输出。
 func TestResponsesStreamOutputItemsOrderByOutputIndex(t *testing.T) {
 	doneItems := bridge.NewResponsesStreamOutputItems()
 	doneItems.Observe([]byte(`{"type":"response.output_item.done","output_index":2,"item":{"id":"c","type":"message"}}`))
@@ -62,7 +62,7 @@ func TestResponsesStreamOutputItemsOrderByOutputIndex(t *testing.T) {
 	require.Equal(t, "c", gjson.GetBytes(built, "1.id").String())
 }
 
-// TestNormalizeResponsesStreamingTerminalOutputIgnoresNonDoneEvents 验证从未报告 done item 的流继续使用原有重建路径。
+// TestNormalizeResponsesStreamingTerminalOutputIgnoresNonDoneEvents 检查没有 done item 的流使用增量重建。
 func TestNormalizeResponsesStreamingTerminalOutputIgnoresNonDoneEvents(t *testing.T) {
 	doneItems := bridge.NewResponsesStreamOutputItems()
 	doneItems.Observe([]byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg_1","type":"message"}}`))

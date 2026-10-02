@@ -73,7 +73,7 @@ func newTestGroupCapacityService(providers capacityFixtureRepository, groups rou
 	return routing.NewCapacityService(newTestCapacityProviders(providers, settings), testCapacityGroups{groups}, counters, sessions, rpm)
 }
 
-// 容量夹具只提供本组原断言实际读取的两个投影，不重建旧仓储接口。
+// capacityFixtureRepository 为容量测试提供分组内的可调度提供商。
 type capacityFixtureRepository interface {
 	ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error)
 }

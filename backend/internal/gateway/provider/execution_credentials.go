@@ -30,7 +30,7 @@ func (s executionCredentialFields) UpdateCredentials(ctx context.Context, id int
 	return s.updater.UpdateCredentials(ctx, id, credentials)
 }
 
-// PersistExecutionCredentials 只投影专用字段及旧调用者的赋值时机，所有写入规则由 provider 提供。
+// PersistExecutionCredentials 将执行目标的凭据字段交给 provider 写入。
 func PersistExecutionCredentials(ctx context.Context, repo ExecutionProviderStore, value *ExecutionProvider, credentials map[string]any) error {
 	if repo == nil || value == nil {
 		return nil

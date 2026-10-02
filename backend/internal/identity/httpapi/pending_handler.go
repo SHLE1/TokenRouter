@@ -18,7 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// PendingHTTPOptions 只保留 HTTP 与测试观察，不承载注册事务。
+// PendingHTTPOptions 包含 HTTP 回调和测试观察函数。
 type PendingHTTPOptions struct {
 	AfterLogin        func(context.Context, *identity.PendingAuthSession, int64)
 	AfterRegistration func(context.Context, *identity.PendingAuthSession, int64)
@@ -816,17 +816,11 @@ func (h *PendingHandler) ExchangePendingOAuthCompletion(c *gin.Context) {
 		response.Success(c, payload)
 		return
 	}
-	// ─── 安全修复（账号接管 0day）────────────────────────────────────────────
-	// 非终态 session（如 choose_account_action_required）的 TargetUserID 可能来自
-	// 攻击者提交的他人邮箱：createPendingOAuthAccount / SendPendingOAuthVerifyCode
-	// 发现邮箱已存在时会把本 session 指向该邮箱用户，全程无密码、无邮箱验证码、
-	// 无账号所有权证明。若此时带着 adoption decision 继续执行，下方的
-	// applyPendingOAuthAdoption 会把本 OAuth identity 直接绑定到 TargetUserID，
-	// 攻击者随后再次 OAuth 登录即被系统识别为受害者本人（完整账号接管）。
-	// 只有两类 session 允许在此处执行 adoption/binding：
-	//   1. canIssueTokenPair == true —— 登录终态，identity 已安全绑定该用户；
-	//   2. intent == bind_current_user —— 已登录用户主动发起绑定（绑定目标来自登录态 cookie）。
-	// 其余状态一律只返回 payload，不绑定、不消费 session。
+	// 绑定需要满足以下任一条件：canIssueTokenPair 为 true，身份已通过认证并绑定用户；
+	// 或 intent 为 bind_current_user，目标用户来自已登录的会话 cookie。
+	// 非终态 session 的 TargetUserID 可能只是根据提交的邮箱查到的用户，尚未完成密码或邮箱验证。
+	// 这时执行 applyPendingOAuthAdoption 会把外部身份绑定到该用户，造成账户被接管。
+	// 其他状态返回 payload，session 保持待处理。
 	if !canIssueTokenPair && !strings.EqualFold(strings.TrimSpace(session.Intent), oauthIntentBindCurrentUser) {
 		response.Success(c, payload)
 		return

@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// provideProviderImportProbes 为提供商/供应商导入绑定唯一按需队列，构造不会提前探测。
+// provideProviderImportProbes 为提供商导入绑定按需启动的探测队列。
 func provideProviderImportProbes(manager *lifecycle.Manager) *provider.GrokImportProbeScheduler {
 	queue := provider.NewGrokImportProbeScheduler(provider.GrokImportProbeOptions{Concurrency: 3, Timeout: 25 * time.Second, Debug: slog.Debug, Info: slog.Info, Warn: slog.Warn, Error: slog.Error})
 	manager.Register(lifecycle.Hook{Name: "ProviderImportProbes", StopOrder: 20, Stop: queue.StopContext})
@@ -51,7 +51,7 @@ func provideGrokOAuthWithImports(
 	return providerhttp.NewGrokOAuthHandler(auth, imports, quota, providerhttp.GrokOAuthHTTPOptions{ProxyURL: proxyURL, RuntimeSanity: func() any { return grok.RuntimeSanity() }, Reconciler: reconciler})
 }
 
-// 导入队列只读取探测摘要，不暴露完整额度或凭据。
+// 导入队列读取探测摘要。
 type grokQuotaImportProbe struct{ Source *provider.GrokQuotaService }
 
 func (p grokQuotaImportProbe) QueryQuota(ctx context.Context, id int64) (*provider.GrokImportProbeResult, error) {

@@ -9,9 +9,9 @@ import (
 
 // WindowStats 窗口期统计
 //
-// cost: 提供商口径费用（COALESCE(provider_stats_cost, total_cost) * provider_rate_multiplier）
+// cost: 提供商费用（COALESCE(provider_stats_cost, total_cost) * provider_rate_multiplier）
 // standard_cost: 标准费用（total_cost，不含倍率）
-// user_cost: 用户/API Key 口径费用（actual_cost，受分组倍率影响）
+// user_cost: 用户或 API Key 的实际扣费（actual_cost，受分组倍率影响）
 type WindowStats struct {
 	Requests     int64   `json:"requests"`
 	Tokens       int64   `json:"tokens"`
@@ -153,7 +153,7 @@ type UsageInfo struct {
 	// 错误码（机器可读）：forbidden / unauthenticated / rate_limited / network_error
 	ErrorCode string `json:"error_code,omitempty"`
 
-	// 获取 usage 时的错误信息（降级返回，而非 500）
+	// 用量查询失败时在展示结果中返回错误信息。
 	Error string `json:"error,omitempty"`
 }
 

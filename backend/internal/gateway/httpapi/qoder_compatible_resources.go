@@ -64,7 +64,7 @@ func (h *QoderCompatibleRuntime) qoderSessionHash(c *gin.Context, endpoint Qoder
 	return ""
 }
 
-// qoderExplicitStickySessionSeed 显式会话识别复用 gateway/session，HTTP 仅提供头部快照。
+// qoderExplicitStickySessionSeed 将 HTTP 请求头快照交给 gateway/session 识别会话。
 func qoderExplicitStickySessionSeed(c *gin.Context, body []byte) string {
 	var headers map[string][]string
 	if c != nil && c.Request != nil {
@@ -121,7 +121,7 @@ func (h *QoderCompatibleRuntime) shouldRefreshQoderProvider(err error, streamSta
 	return h.options.MayRefresh(err)
 }
 
-// refreshQoderProvider 只保留原三十秒恢复预算，供应商与持久化由受控目标完成。
+// refreshQoderProvider 使用三十秒恢复预算，由执行目标刷新供应商并持久化。
 func (h *QoderCompatibleRuntime) refreshQoderProvider(ctx context.Context, target QoderCompatibleTarget) (QoderCompatibleTarget, error) {
 	if h == nil || !h.options.PlatformAvailable {
 		return nil, errors.New("qoder gateway service is not configured")
@@ -222,7 +222,7 @@ func (h *QoderCompatibleRuntime) qoderGatewayErrorDetails(c *gin.Context, err er
 	return h.options.Errors.Details(c, err)
 }
 
-// submitUsageRecordTask 保留无池与停池各自原提交语义。
+// submitUsageRecordTask 根据工作池是否配置及运行状态提交用量任务。
 func (h *QoderCompatibleRuntime) submitUsageRecordTask(c *gin.Context, task completion.UsageRecordTask) {
 	NewQoderCompletionSubmission(h.options.Pool).Submit(c, task)
 }

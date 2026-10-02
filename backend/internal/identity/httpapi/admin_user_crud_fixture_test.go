@@ -2,13 +2,12 @@ package httpapi
 
 import (
 	"context"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
-	"time"
 )
 
 func (s *adminUserFixture) ListUsers(ctx context.Context, page, pageSize int, filters identity.UserListFilters, sortBy, sortOrder string) ([]identity.User, int64, error) {
@@ -122,7 +121,7 @@ func (s *adminUserFixture) BindUserAuthIdentity(ctx context.Context, userID int6
 	return result, nil
 }
 
-// adminUserFixture 只提供身份管理端口与只读 Key 列表，其他领域不在夹具内重建。
+// adminUserFixture 提供身份管理测试的用户操作和 Key 列表。
 type adminUserFixture struct {
 	UserAdministration
 	users                []identity.User

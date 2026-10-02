@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RouteAccess 是每次门禁从当前认证请求读取的最小投影，不持有完整旧实体。
+// RouteAccess 是路由门禁从当前认证请求取得的数据。
 type RouteAccess struct {
 	HasGroup         bool
 	Composite        bool
@@ -36,7 +36,7 @@ const (
 	RouteLimitLocalPolicyDenied = "local_policy_denied"
 )
 
-// RouteGuards 共享现有路由表和当次认证投影，不读取请求报文。
+// RouteGuards 使用路由表和当前请求的认证数据执行门禁。
 type RouteGuards struct{ options RouteMiddleware }
 
 func NewRouteGuards(options RouteMiddleware) *RouteGuards { return &RouteGuards{options: options} }
@@ -76,7 +76,7 @@ func (g *RouteGuards) EnforceGroupClientProtocol(c *gin.Context, protocol wirepr
 	g.options.InstallClientProtocol(c, protocol)
 	group := routing.Group{AllowedProtocols: access.AllowedProtocols}
 	if !access.HasGroup || group.AllowsClientProtocol(protocol) {
-		// Messages 必须先读正文识别客户端；其它协议在捕获任务、资金或会话归属前完成回退。
+		// Messages 先读取正文识别客户端，其他协议在捕获任务、资金或会话归属前完成分组回退。
 		if protocol != wireprotocol.ProtocolAnthropicMessages {
 			key, ok := EffectiveAPIKey(c)
 			if !ok {
@@ -166,14 +166,14 @@ func (g *RouteGuards) RequireGeminiGenerateContentProtocol(c *gin.Context) {
 // ExtendedRouteProtocol 为非文本入口及别名统一命名；已有任务操作不受新建开关影响。
 func ExtendedRouteProtocol(method, path string) wireprotocol.ProtocolID {
 	protocol := RouteProtocol(method, path)
-	// Compact 由 Responses 通配路由完成路径校验后检查，保留无效路径的错误语义。
+	// Compact 在 Responses 通配路由完成路径校验后检查，无效路径返回路径错误。
 	if protocol == wireprotocol.ProtocolResponsesCompact {
 		return ""
 	}
 	return protocol
 }
 
-// RouteProtocol 仅移除完整的别名前缀，避免相似路径被误归为已知入口。
+// RouteProtocol 按完整别名前缀匹配并移除前缀。
 func RouteProtocol(method, path string) wireprotocol.ProtocolID {
 	for _, prefix := range []string{"/backend-api/codex", "/v1"} {
 		if strings.HasPrefix(path, prefix+"/") {

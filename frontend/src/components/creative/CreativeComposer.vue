@@ -39,7 +39,7 @@
       @keydown="onKeydown"
     ></textarea>
 
-    <!-- 底栏：左下 = 模型 / 参数 / 操作 三个调参入口；右下 = 预估费用 + 发送（预估费用窄屏隐藏，避免把发送按钮挤出屏幕） -->
+    <!-- 底栏左侧放模型、参数和操作入口，右侧放预估费用和发送按钮，窄屏隐藏预估费用。 -->
     <div class="flex items-center gap-1 px-2 pb-2">
       <!-- 模型：弹层锚定在该按钮上方 -->
       <span class="relative min-w-0">
@@ -360,7 +360,7 @@ const sendButtonRef = ref<HTMLButtonElement | null>(null)
 // 当前展开的调参面板（同时只开一个）
 const openPanel = ref<'model' | 'params' | 'operation' | null>(null)
 // 调参弹层的水平定位（内联样式）：宽度取 320px、输入框宽、视口宽 - 3.5rem 三者最小值，
-// 左侧位置钳制在输入框范围内——窄屏下 chip 右侧空间不足时自动向左回退，避免弹层超出屏幕
+// 左缘限制在输入框范围内。窄屏下 chip 右侧空间不足时向左移动弹层，使其留在屏幕内。
 const popoverStyle = ref<{ left: string; width: string }>({ left: '0px', width: '' })
 // 当前展开面板对应的 chip 按钮（窗口缩放时据此重算弹层定位）
 let panelAnchor: HTMLElement | null = null
@@ -599,7 +599,7 @@ function layoutPopover(anchor: HTMLElement | null): void {
   popoverStyle.value = { left: `${left - chipOffset}px`, width: `${width}px` }
 }
 
-// 窗口尺寸变化（如旋转屏幕）时重算已展开弹层的定位，避免错位溢出
+// 窗口尺寸变化时重新定位已展开的弹层。
 useEventListener(window, 'resize', () => layoutPopover(panelAnchor))
 
 // 选择模型后收起面板；参数面板支持连续调整，不自动收起
@@ -691,7 +691,7 @@ defineExpose({ sendButtonRef, fillPrompt })
   @apply dark:border-dark-600 dark:bg-dark-900;
 }
 
-/* 弹层动效用全局 pop-float，reduced-motion 由全局收敛。 */
+/* 弹层使用全局 pop-float，减少动态效果由全局样式处理。 */
 
 /* 模型和操作的选项行：悬停配色与 .menu-item 一致，选中项淡品牌青底 */
 .composer-option {

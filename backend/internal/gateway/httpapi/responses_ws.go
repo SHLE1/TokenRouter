@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// ResponsesWSOptions 只保留 HTTP 连接与首帧预算，不接收完整配置。
+// ResponsesWSOptions 配置 HTTP 连接和首帧预算。
 type ResponsesWSOptions struct {
 	MaxIngressConnectionsPerAPIKey int
 	ReadLimit                      int64
@@ -25,7 +25,7 @@ type ResponsesWSOptions struct {
 	MaxProviderSwitches            int
 }
 
-// ResponsesWSCall 是完成升级后交给依赖工厂的明确请求投影。
+// ResponsesWSCall 是连接升级后传给依赖工厂的请求数据。
 type ResponsesWSCall struct {
 	Key                 *gatewayws.EntryKey
 	Subject             gatewayws.EntrySubject
@@ -34,7 +34,7 @@ type ResponsesWSCall struct {
 	ClientIP, UserAgent string
 }
 
-// ResponsesWSBackend 提供认证投影及分解的单步端口，不以单一回调执行旧 handler。
+// ResponsesWSBackend 提供认证数据和逐步执行接口。
 type ResponsesWSBackend interface {
 	Access(*gin.Context) (*gatewayws.EntryKey, bool)
 	Transport(*gin.Context)
@@ -175,7 +175,7 @@ func (h *ResponsesWSHandler) ResponsesWebSocket(c *gin.Context) {
 	gatewayws.RunEntry(ctx, ports, gatewayws.EntryInput{Key: apiKey, Subject: subjectView, ClientLifecycleContext: clientLifecycleCtx, FirstTurnStartedAt: firstTurnStartedAt, ClientIP: clientIP, UserAgent: userAgent, MaxProviderSwitches: h.options.MaxProviderSwitches}, WSClientFrames{Conn: wsConn}, firstMessage)
 }
 
-// IsResponsesWSUpgrade 保留原 Upgrade 和 Connection 判断。
+// IsResponsesWSUpgrade 根据 Upgrade 和 Connection 头判断升级请求。
 func IsResponsesWSUpgrade(r *http.Request) bool {
 	if r == nil {
 		return false
@@ -186,7 +186,7 @@ func IsResponsesWSUpgrade(r *http.Request) bool {
 	return strings.Contains(strings.ToLower(strings.TrimSpace(r.Header.Get("Connection"))), "upgrade")
 }
 
-// CloseResponsesWS 保留原字节截断和关闭顺序，不顺带修改关闭码或文本行为。
+// CloseResponsesWS 截断关闭文本，发送关闭帧后关闭连接。
 func CloseResponsesWS(conn *coderws.Conn, status coderws.StatusCode, reason string) {
 	if conn == nil {
 		return

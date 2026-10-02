@@ -692,7 +692,7 @@ function resetRollbackState() {
 async function toggleRollbackPanel() {
   if (!isAdmin.value) return
   rollbackPanelOpen.value = !rollbackPanelOpen.value
-  // 源码构建只显示提示，不拉取版本列表。
+  // 发布构建加载版本列表，源码构建显示提示。
   if (
     rollbackPanelOpen.value &&
     isReleaseBuild.value &&

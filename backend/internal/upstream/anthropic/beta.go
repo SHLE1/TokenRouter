@@ -189,15 +189,14 @@ func ComputeFinalAnthropicBeta(
 }
 
 // ComputeFinalCountTokensAnthropicBeta 是 count_tokens 路径上 anthropic-beta header 的
-// 计算纯函数。语义与 ComputeFinalAnthropicBeta 对齐，但备份了 count_tokens 独有的
-// 两条特殊规则：
+// 计算函数，使用以下 count_tokens 规则：
 //
 //   - OAuth mimic：requiredBetas 为 FullClaudeCodeMimicryBetas + BetaTokenCounting；
 //     count_tokens 另外保留客户端 beta，而 messages mimic 会忽略客户端 beta。
 //   - OAuth 透传 + 客户端未传 anthropic-beta：补齐 CountTokensBetaHeader
 //   - OAuth 透传 + 客户端传了：补齐 BetaTokenCounting（如果未含）
 //
-// 返回语义同 ComputeFinalAnthropicBeta。
+// 返回值含义见 ComputeFinalAnthropicBeta。
 func ComputeFinalCountTokensAnthropicBeta(
 	tokenType string,
 	mimicClaudeCode bool,
@@ -351,7 +350,7 @@ func ApplyClaudeCodeMimicHeaders(req *http.Request, isStream bool) {
 	// Start with the standard defaults (fill missing).
 	ApplyClaudeOAuthHeaderDefaults(req)
 	// Then force key headers to match Claude Code fingerprint regardless of what the client sent.
-	// 使用 ResolveWireCasing 确保 key 与真实 wire format 一致（如 "x-app" 而非 "X-App"）
+	// 使用 ResolveWireCasing 恢复发送时的请求头大小写，例如 x-app。
 	for key, value := range DefaultHeaders {
 		if value == "" {
 			continue

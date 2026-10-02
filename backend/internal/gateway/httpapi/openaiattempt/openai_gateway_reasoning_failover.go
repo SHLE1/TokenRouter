@@ -6,8 +6,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// openAIPassthroughFailoverState 记录本次提供商尝试是否经过 OpenAI 透传提供商。
-// 一旦经过透传，后续切换到非透传提供商时必须清理上游私有的加密 reasoning。
+// openAIPassthroughFailoverState 记录请求是否尝试过 OpenAI 透传提供商。
+// 之后切换为非透传提供商时，清除上游私有的加密 reasoning。
 type openAIPassthroughFailoverState struct {
 	passthroughSeen bool
 }

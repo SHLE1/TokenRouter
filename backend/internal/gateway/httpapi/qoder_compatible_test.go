@@ -408,7 +408,7 @@ func (s *qoderStickyBindCacheStub) RefreshSessionOwnerTTL(context.Context, int64
 	return nil
 }
 
-// qoderStickyExecutionStub 只记录原生粘性端口调用，不创建旧网关服务。
+// qoderStickyExecutionStub 记录粘性会话接口调用。
 type qoderStickyExecutionStub struct {
 	QoderCompatibleExecution
 	cache session.GatewayCache

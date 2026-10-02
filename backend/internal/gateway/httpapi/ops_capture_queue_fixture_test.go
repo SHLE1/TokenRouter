@@ -60,7 +60,7 @@ func flushOpsErrorLogBatch(batch []opsErrorLogJob) {
 	}
 }
 
-// OpsErrorLogQueueLength 测试队列只观察同步提交；真实工作线程与停机契约在 ops 集成测试中验证。
+// OpsErrorLogQueueLength 记录测试中的同步提交，工作线程和停机处理由 ops 集成测试覆盖。
 func OpsErrorLogQueueLength() int64   { return testOpsCaptureQueue.Health().Length }
 func OpsErrorLogEnqueuedTotal() int64 { return testOpsCaptureQueue.Health().Enqueued }
 
@@ -68,7 +68,7 @@ func newOpsServiceFixture(repo ops.OpsRepository, settings ops.Settings) *ops.Op
 	return ops.NewOpsService(repo, settings, nil, nil, nil, nil, nil, nil)
 }
 
-// opsAccessFixture 注入只读观测端口，不模拟完整鉴权或伪造已验证主体。
+// opsAccessFixture 为测试注入只读观测接口。
 func opsAccessFixture() OpsObservationAccess {
 	return OpsObservationAccess{
 		APIKey: func(c *gin.Context) *apikey.APIKey {

@@ -9,7 +9,7 @@ import (
 	coderws "github.com/coder/websocket"
 )
 
-// wsPlatformFrames 只在边界转换帧枚举，供应商 relay 继续使用唯一实现。
+// wsPlatformFrames 在网关与供应商 relay 之间转换帧枚举。
 type wsPlatformFrames struct{ gatewayws.FrameConn }
 
 func (c wsPlatformFrames) ReadFrame(ctx context.Context) (coderws.MessageType, []byte, error) {

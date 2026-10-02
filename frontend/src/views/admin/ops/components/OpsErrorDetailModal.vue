@@ -8,7 +8,7 @@
 
     <div v-else class="space-y-6 p-6">
       <!-- Summary -->
-      <!-- 深色信息块统一使用提升面，避免与弹窗底色重合。 -->
+      <!-- 深色信息块使用与弹窗底色有区分的背景。 -->
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-surface bg-gray-50 p-4 dark:bg-dark-950">
           <div class="text-xs font-bold uppercase tracking-wider text-gray-400">{{ t('admin.ops.errorDetail.requestId') }}</div>

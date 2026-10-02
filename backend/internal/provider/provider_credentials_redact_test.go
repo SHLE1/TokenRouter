@@ -38,7 +38,7 @@ func TestMergePreservingSensitiveCreds_OverwritesWhenIncomingProvidesSensitive(t
 	}
 	incoming := map[string]any{
 		"refresh_token": "rt-new",
-		// 显式没传 api_key —— 应保留
+		// 未传入 api_key 时保持当前值。
 	}
 	out := MergePreservingSensitiveCreds(existing, incoming)
 	require.Equal(t, "rt-new", out["refresh_token"], "incoming 显式传入应覆盖")
@@ -74,7 +74,7 @@ func TestMergePreservingSensitiveCreds_NonSensitiveDeletionAllowed(t *testing.T)
 	}
 	incoming := map[string]any{
 		"base_url": "https://new",
-		// 不带 project_id —— 等同删除（非敏感键由 incoming 决定）
+		// 未传入 project_id 时删除该字段，非敏感字段以 incoming 为准。
 	}
 	out := MergePreservingSensitiveCreds(existing, incoming)
 	require.Equal(t, "rt", out["refresh_token"], "敏感键保留")

@@ -14,7 +14,7 @@
     :aria-disabled="props.disabled"
     :disabled="props.disabled"
   >
-    <!-- 滑块尺寸、边距与开态位移全部由下方 CSS 变量推导,改档位只调变量不改位移。 -->
+    <!-- 滑块尺寸、边距和开启位移由 CSS 变量推导，调整尺寸档位时修改变量。 -->
     <span
       class="toggle-thumb pointer-events-none absolute block transform rounded-full bg-white shadow ring-0 transition-transform duration-normal ease-standard"
     />

@@ -284,7 +284,7 @@ func IsOfficialBaseURLHost(host string) bool {
 
 // IsOfficialBaseURL 报告 raw 是否指向官方主机（api.x.ai / *.api.x.ai 区域端点 / CLI 网关），
 // 容忍存量凭证中的历史变体（大小写、显式 443 端口、百分号编码 path 等）。
-// 无法解析的值一并视为官方，调用方据此回落默认端点而不是把流量发往未定义目标。
+// 无法解析的值视为官方地址，调用方据此使用默认端点。
 func IsOfficialBaseURL(raw string) bool {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {

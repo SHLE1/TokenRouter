@@ -33,7 +33,7 @@ func (h *CRSHandler) SyncFromCRS(c *gin.Context) {
 		return
 	}
 
-	// 缺省同步代理；显式 false 保留关闭语义。
+	// 缺省同步代理，传入 false 时关闭同步。
 	syncProxies := true
 	if req.SyncProxies != nil {
 		syncProxies = *req.SyncProxies
@@ -47,7 +47,7 @@ func (h *CRSHandler) SyncFromCRS(c *gin.Context) {
 		SelectedProviderIDs: req.SelectedProviderIDs,
 	})
 	if err != nil {
-		// 保留旧 CRS 错误响应内容。
+		// 按 CRS 接口格式返回错误内容。
 		response.InternalError(c, "CRS sync failed: "+err.Error())
 		return
 	}

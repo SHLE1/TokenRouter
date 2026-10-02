@@ -28,7 +28,7 @@ func TestParseTimeRange(t *testing.T) {
 	require.False(t, end.IsZero())
 }
 
-// TestParseTimeRangeInjectedCalendar 验证管理查询采用注入的服务端时区，并保留用户覆盖与日历日结束边界。
+// TestParseTimeRangeInjectedCalendar 检查注入的服务端时区、用户时区覆盖和日历日结束时间。
 func TestParseTimeRangeInjectedCalendar(t *testing.T) {
 	newYork, err := time.LoadLocation("America/New_York")
 	require.NoError(t, err)

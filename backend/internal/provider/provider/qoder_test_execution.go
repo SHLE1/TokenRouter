@@ -209,7 +209,7 @@ func qoderTestProfile(value *providercore.Record) (qoder.Profile, error) {
 	return qoder.ProfileForSite(site)
 }
 
-// qoderTestClient 自定义客户端保持原注入行为，真实客户端按提供商站点构造原协议端点。
+// qoderTestClient 优先使用注入的客户端，缺省时按提供商站点构造客户端。
 func qoderTestClient(configured qoder.StreamClient, value *providercore.Record) (qoder.StreamClient, error) {
 	if configured != nil {
 		if _, production := configured.(*qoder.Client); !production {

@@ -3,7 +3,7 @@
  * 在浏览器空闲时预加载可能访问的下一个页面，提升导航体验
  *
  * 优化说明：
- * - 不使用静态 import() 映射表，避免增加入口文件大小
+ * 预加载复用路由配置中的 import 函数。
  * - 通过路由配置动态获取组件的 import 函数
  * - 只在实际需要预加载时才执行
  */
@@ -17,7 +17,7 @@ type ComponentImportFn = () => Promise<unknown>
 
 /**
  * 预加载邻接表：定义每个路由应该预加载哪些相邻路由
- * 只存储路由路径，不存储 import 函数，避免打包问题
+ * 邻接表存储路由路径，组件导入函数从路由配置获取。
  */
 const PREFETCH_ADJACENCY: Record<string, string[]> = {
   // Admin routes - 预加载最常访问的相邻页面

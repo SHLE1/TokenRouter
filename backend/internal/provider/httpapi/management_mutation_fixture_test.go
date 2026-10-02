@@ -43,7 +43,7 @@ func (s *managementMutationFixture) GetProvidersByIDs(ctx context.Context, ids [
 }
 
 func (s *managementMutationFixture) UpdateProvider(ctx context.Context, id int64, input *providercore.UpdateProviderInput) (*providercore.Record, error) {
-	// 夹具模拟锁内身份条件；无条件管理请求继续保留原行为。
+	// 夹具在锁内检查请求携带的身份条件，未提供条件时执行普通管理更新。
 	if input.ExpectedCredentials != nil {
 		for i := range s.providers {
 			if s.providers[i].ID == id && !providercore.MatchesCredentialVersion(&s.providers[i], *input.ExpectedCredentials) {
@@ -100,7 +100,7 @@ func (s *managementMutationFixture) EnsureAntigravityPrivacy(ctx context.Context
 	return ""
 }
 
-// managementMutationFixture 记录配置、凭据与失效输入，复用原独立存储替身语义。
+// managementMutationFixture 记录配置、凭据和失效输入，存储替身保持独立状态。
 type managementMutationFixture struct {
 	managementCreateFixture
 	providers                   []providercore.Record
@@ -114,7 +114,7 @@ type managementMutationFixture struct {
 
 func newManagementMutationFixture() *managementMutationFixture { return &managementMutationFixture{} }
 
-// newMutationHandler 直接组合提供商用例和展示层，不经过旧管理服务。
+// newMutationHandler 组合提供商用例和展示组件。
 func newMutationHandler(source *managementMutationFixture, invalidator providercore.TokenCacheInvalidator) *ManagementHandler {
 	options := providercore.ManagedRefreshOptions{Store: source, Privacy: source}
 	if invalidator != nil {

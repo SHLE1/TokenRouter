@@ -11,7 +11,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// cnQueryFixtureOptions 只包含查询目标许可和监控预算，不加载应用配置。
+// cnQueryFixtureOptions 提供查询目标许可和监控预算。
 type cnQueryFixtureOptions struct {
 	Policy  egress.UsageURLPolicy
 	Monitor acctcore.CNMonitorOptions

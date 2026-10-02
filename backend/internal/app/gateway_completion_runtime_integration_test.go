@@ -29,10 +29,10 @@ func (nativeCompletionCatalog) GetModelPricing(string) *pricing.CatalogModelPric
 	return &pricing.CatalogModelPricing{InputCostPerToken: 0.01, OutputCostPerToken: 0.02}
 }
 
-// 直接执行同一存储 SQL，避免本装配契约额外启动写入批处理。
+// 测试直接执行存储 SQL，写入按同步方式完成。
 type nativeCompletionSQL struct{ *sql.DB }
 
-// TestNativeCompletionRuntimeOneFinancialEffect 验证两种生产记录器都走真实结算与事实存储；重放不能再次扣款或写第二条事实。
+// TestNativeCompletionRuntimeOneFinancialEffect 检查两种完成记录器调用结算和用量存储，重放后各保留一次资金变动和记录。
 func TestNativeCompletionRuntimeOneFinancialEffect(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()

@@ -273,7 +273,7 @@ func (s *AuthService) AuthHasNormalizedEmailBindingConflict(
 		if checker := s.NormalizedEmailConflict; checker != nil {
 			return checker.ExistsByNormalizedEmailExcluding(ctx, registrationNormalizedEmail, currentUserID)
 		}
-		// 降级路径无法排除当前用户自身，保留原有宽松行为，避免把自己误判为冲突。
+		// 降级查询无法排除当前用户自身，此时返回未冲突。
 		return false, nil
 	}
 

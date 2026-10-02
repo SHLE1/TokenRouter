@@ -522,7 +522,7 @@ func (r *SubscriptionStore) translateConditionalWindowReset(ctx context.Context,
 	}
 
 	// 旧快照触发的重置是预期的空操作，说明另一请求已推进窗口；但目标记录
-	// 确实不存在时仍需保留 not-found 语义。
+	// 不存在时返回 ErrSubscriptionNotFound。
 	exists, err := client.UserSubscription.Query().Where(usersubscription.IDEQ(id)).Exist(ctx)
 	if err != nil {
 		return translatePersistenceError(err, billing.ErrSubscriptionNotFound, nil)

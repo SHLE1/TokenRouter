@@ -74,7 +74,7 @@ func TestGatewayRoutesModelsWithClientVersionUsesLocalList(t *testing.T) {
 	}
 }
 
-// TestGatewayRoutesCodexModelsManifestPathIsRemoved 验证Codex manifest 路由应被移除，已有 Responses 兼容路由仍需保留。
+// TestGatewayRoutesCodexModelsManifestPathIsRemoved 检查 Codex manifest 路径返回 404，Responses 兼容路由仍可访问。
 func TestGatewayRoutesCodexModelsManifestPathIsRemoved(t *testing.T) {
 	router := newGatewayRoutesTestRouter(capability.PlatformOpenAI)
 
@@ -83,7 +83,7 @@ func TestGatewayRoutesCodexModelsManifestPathIsRemoved(t *testing.T) {
 	router.ServeHTTP(recorder, req)
 	require.Equal(t, http.StatusNotFound, recorder.Code)
 
-	// 合法 Live call 动态段仍需进入 Sideband handler，而不是被旧路由守卫误判为 404。
+	// 合法 Live call 动态段进入 Sideband handler。
 	req = httptest.NewRequest(http.MethodGet, "/backend-api/codex/call_test", nil)
 	recorder = httptest.NewRecorder()
 	router.ServeHTTP(recorder, req)

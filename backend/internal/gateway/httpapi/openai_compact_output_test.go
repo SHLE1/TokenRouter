@@ -78,7 +78,7 @@ func TestBuildOpenAICompactSSEPayload_InjectsMissingResponseID(t *testing.T) {
 	events := httpapitestkit.ParseCompactSSE(t, string(payload))
 	require.Len(t, events, 2)
 	completed := events[1][1]
-	// Codex 的 ResponseCompleted 解析要求 response.id 为非空 string，缺失时必须注入。
+	// Codex 的 ResponseCompleted 要求非空字符串 response.id，缺失时补入该字段。
 	id := gjson.Get(completed, "response.id").String()
 	require.True(t, strings.HasPrefix(id, "resp_"), "缺失 id 必须注入 resp_* 兜底: %q", id)
 	require.NotEqual(t, "resp_", id)
@@ -109,7 +109,7 @@ func TestBuildOpenAICompactSSEPayload_DropsMalformedUsage(t *testing.T) {
 
 			events := httpapitestkit.ParseCompactSSE(t, string(payload))
 			completed := events[len(events)-1][1]
-			// usage 无法由 Codex 的整数结构解析时必须整体删除，否则 completed 事件解析失败。
+			// 删除无法解析为 Codex 整数结构的 usage，防止 completed 事件解析失败。
 			require.False(t, gjson.Get(completed, "response.usage").Exists())
 		})
 	}
@@ -163,9 +163,8 @@ func TestWriteOpenAICompactSSEBridge_RequiresMarkAndSuccessStatus(t *testing.T) 
 	require.Contains(t, rec.Body.String(), "event: response.completed")
 }
 
-// TestHandleNonStreamingResponse_CompactClientStreamBridgesToSSE 验证回归 #3875：body-signal 提升后的 compact 请求，上游返回 unary JSON，
-// 客户端（Codex remote compact v2）必须收到 SSE 事件流而非 JSON 文档，
-// 否则报 "stream closed before response.completed" 并无限重连。
+// TestHandleNonStreamingResponse_CompactClientStreamBridgesToSSE 验证 body-signal 提升后的 Compact 请求将上游 JSON 转为 SSE（#3875）。
+// Codex remote compact v2 需要 SSE，收到 JSON 会报 stream closed before response.completed 并重连。
 func TestHandleNonStreamingResponse_CompactClientStreamBridgesToSSE(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, true)
@@ -201,8 +200,7 @@ func TestHandleNonStreamingResponse_CompactClientStreamBridgesToSSE(t *testing.T
 	require.Equal(t, "resp_compact_json", result.ResponseID)
 }
 
-// TestHandleNonStreamingResponse_PathBasedCompactStaysJSON 验证回归防护：path-based compact（Codex v1 unary 协议、链式 tokenrouter）未标记
-// client stream，必须保持 v0.1.146 以来的 JSON 写回行为。
+// TestHandleNonStreamingResponse_PathBasedCompactStaysJSON 验证 path-based Compact 缺少 client-stream 标记时输出 JSON，适用于 Codex v1 unary 和链式网关。
 func TestHandleNonStreamingResponse_PathBasedCompactStaysJSON(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, false)
@@ -226,8 +224,7 @@ func TestHandleNonStreamingResponse_PathBasedCompactStaysJSON(t *testing.T) {
 	require.Equal(t, "compaction", gjson.Get(body, "output.0.type").String())
 }
 
-// TestHandleSSEToJSON_CompactClientStreamBridgesToSSE 验证上游对 compact 返回 SSE（如链式网关）时，最终响应经 SSE→JSON 提取后，
-// 对 client-stream 请求同样必须再合成回 SSE。
+// TestHandleSSEToJSON_CompactClientStreamBridgesToSSE 验证 Compact 上游 SSE 提取为 JSON 后，client-stream 请求重新合成为 SSE。
 func TestHandleSSEToJSON_CompactClientStreamBridgesToSSE(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, true)
@@ -254,11 +251,8 @@ func TestHandleSSEToJSON_CompactClientStreamBridgesToSSE(t *testing.T) {
 	require.Equal(t, "resp_compact_sse", gjson.Get(events[1][1], "response.id").String())
 }
 
-// TestHandleSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput 验证回归 #3887（#3777 问题 2）：上游对 compact 返回 SSE，compaction item 只在
-// raw output_item.done 中、终态 response.completed 的 output 为空。SSE→JSON
-// 提取必须保留 raw item 修补终态 output，否则桥接合成 0 个 output_item.done，
-// Codex 报 "expected exactly one compaction output item, got 0" 并盲目重试，
-// 每次重试都重新计费。fixture 取自 #3777 的上游实录形态。
+// TestHandleSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput 使用 #3777 的上游形状：compaction 仅在 raw output_item.done 中，终态 output 为空。
+// 提取时用 raw item 补充 output，使桥接输出一个 compaction item。缺失时 Codex 报 expected exactly one compaction output item, got 0 并重试，每次重试重新计费（#3887）。
 func TestHandleSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, true)
@@ -298,7 +292,7 @@ func TestHandleSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput(t *t
 	require.Equal(t, 4, result.Usage.OutputTokens)
 }
 
-// TestHandlePassthroughSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput 验证同一形态经透传分支（handlePassthroughSSEToJSON）也必须修补。
+// TestHandlePassthroughSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput 验证透传提取使用 raw compaction item 补充空终态 output。
 func TestHandlePassthroughSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminalOutput(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, true)
@@ -326,8 +320,7 @@ func TestHandlePassthroughSSEToJSON_CompactRawOutputItemDoneRepairsEmptyTerminal
 	require.Len(t, gjson.Get(events[1][1], "response.output").Array(), 1)
 }
 
-// TestHandleSSEToJSON_PathBasedCompactRawOutputItemDoneRepairsJSON 验证path-based（Codex v1 unary、链式 tokenrouter）未标记 client stream：同一上游
-// 形态修补后仍按 JSON 写回，output 中必须包含 compaction item。
+// TestHandleSSEToJSON_PathBasedCompactRawOutputItemDoneRepairsJSON 验证 path-based Compact 缺少 client-stream 标记时，写回包含 compaction item 的 JSON。
 func TestHandleSSEToJSON_PathBasedCompactRawOutputItemDoneRepairsJSON(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, false)
@@ -347,7 +340,7 @@ func TestHandleSSEToJSON_PathBasedCompactRawOutputItemDoneRepairsJSON(t *testing
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	// 写回 body 必须是修补后的 JSON 文档（非 SSE 事件流）。
+	// 写回 body 是修补后的 JSON 文档。
 	body := rec.Body.String()
 	require.NotContains(t, body, "event:")
 	require.NotContains(t, body, "data:")
@@ -388,8 +381,7 @@ func TestReconstructResponseOutputFromSSE_CompactionAddedFallback(t *testing.T) 
 	require.Equal(t, "added-only", items[0].Get("encrypted_content").String())
 }
 
-// TestReconstructResponseOutputFromSSE_MixedDoneAndCompactionAdded 验证混合形态：其他 item 有 done、compaction 只在 added 中——compaction 必须
-// 被补入；done 已含 compaction 时 added 不得重复计入。
+// TestReconstructResponseOutputFromSSE_MixedDoneAndCompactionAdded 验证 compaction 仅出现在 added 时补入结果，done 已包含时计入一次。
 func TestReconstructResponseOutputFromSSE_MixedDoneAndCompactionAdded(t *testing.T) {
 	bodyText := strings.Join([]string{
 		`data: {"type":"response.output_item.added","output_index":0,"item":{"id":"cmp_mixed","type":"compaction","encrypted_content":"mixed"}}`,
@@ -418,9 +410,7 @@ func TestReconstructResponseOutputFromSSE_MixedDoneAndCompactionAdded(t *testing
 	require.Equal(t, "final", items[0].Get("encrypted_content").String())
 }
 
-// TestHandleSSEToJSON_CompactSupplementsMissingCompactionIntoNonEmptyOutput 验证上游不一致形态：终态 output 非空（含 message）但 compaction 只在 raw
-// output_item.done 中。146 纯流式透传下 Codex 直接读事件流能拿到 compaction，
-// SSE→JSON 提取必须补入等价结果。
+// TestHandleSSEToJSON_CompactSupplementsMissingCompactionIntoNonEmptyOutput 验证终态 output 已有 message，但 compaction 仅在 raw output_item.done 时，提取结果补入 compaction。
 func TestHandleSSEToJSON_CompactSupplementsMissingCompactionIntoNonEmptyOutput(t *testing.T) {
 	svc := newCompactBridgeTestService()
 	c, rec := newCompactBridgeTestContext(t, true)

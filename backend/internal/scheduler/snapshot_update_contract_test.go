@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// updateSnapshotValue 仅提供重建元数据，不向核心引入完整提供商或凭据。
+// updateSnapshotValue 为快照更新测试提供重建元数据。
 type updateSnapshotValue struct{ id int64 }
 
 func (v updateSnapshotValue) SnapshotMetadata() SnapshotMetadata {
@@ -28,7 +28,7 @@ func (c *updateSnapshotCache) SetProvider(_ context.Context, value SnapshotProvi
 	return c.err
 }
 
-// TestSchedulerSnapshotService_UpdateProviderInCache 验证保留旧快照包装的四项更新断言，直接验证唯一核心实现。
+// TestSchedulerSnapshotService_UpdateProviderInCache 检查提供商快照更新和错误处理。
 func TestSchedulerSnapshotService_UpdateProviderInCache(t *testing.T) {
 	t.Run("calls cache.SetProvider", func(t *testing.T) {
 		cache := &updateSnapshotCache{}

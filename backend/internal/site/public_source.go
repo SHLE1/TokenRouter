@@ -10,7 +10,7 @@ type PublicInputStore interface {
 	GetMultiple(context.Context, []string) (map[string]string, error)
 }
 
-// PublicInputOptions 的投影回调由 app 静态组合，不把完整配置或原始敏感值交给 web。
+// PublicInputOptions 包含 app 提供的公开设置转换函数，web 接收转换后的公开值。
 type PublicInputOptions struct {
 	Auth    func(map[string]string) PublicAuth
 	Usage   func(map[string]string) PublicUsage

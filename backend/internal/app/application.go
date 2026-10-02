@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
-// BuildInfo 仅供进程入口传入，模块通过投影取得所需字段。
+// BuildInfo 接收进程入口传入的构建信息，各模块取得自己需要的字段。
 type BuildInfo struct {
 	Version   string
 	BuildType string
@@ -21,14 +21,14 @@ type Application struct {
 	lifecycle *lifecycle.Manager
 }
 
-// Initialize 不启动后台 worker；构造失败时释放此前取得的连接与绑定。
+// Initialize 构造应用依赖，后台 worker 由 Run 启动。构造失败时释放已取得的连接和绑定。
 // @project-doc docs/architecture/system_architecture.md#dependency_layers
 func Initialize(ctx context.Context, cfg *config.Config, buildInfo BuildInfo, restarter *lifecycle.Restarter) (_ *Application, err error) {
 	manager := lifecycle.New(func(name, event string, err error) {
 		if name == "LogBackend" && event == "stopped" {
 			return
 		}
-		// 生命周期等级取决于实际结果，不让 ErrorPassthrough 等任务名被旧日志启发式误判。
+		// 日志级别根据启停结果确定，任务名称按普通字段记录。
 		if err != nil {
 			logging.S().Errorf("[Lifecycle] %s %s err=%v", event, name, err)
 		} else {
@@ -47,7 +47,7 @@ func Initialize(ctx context.Context, cfg *config.Config, buildInfo BuildInfo, re
 	return initializeApplication(ctx, cfg, buildInfo, manager, restarter, tasks)
 }
 
-// Run 先完成后台启动，再开放 HTTP；所有返回路径经过相同的有界清理。
+// Run 先启动后台任务，再开放 HTTP，返回前按超时预算清理资源。
 // @project-doc docs/architecture/system_architecture.md#startup_and_shutdown
 func (a *Application) Run(ctx context.Context) (err error) {
 	started := false

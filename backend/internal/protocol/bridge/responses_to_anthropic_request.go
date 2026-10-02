@@ -91,8 +91,7 @@ func defaultThinkingBudget(effort string) int {
 	}
 }
 
-// mapResponsesEffortToAnthropic 保留 Anthropic 已支持的 xhigh/max 区分，
-// 避免兼容桥将 xhigh 隐式提升到会触发独立计费倍率的 max。
+// mapResponsesEffortToAnthropic 分别映射 xhigh 和 max，max 会触发独立的计费倍率。
 func mapResponsesEffortToAnthropic(effort string) string {
 	switch value := strings.ToLower(strings.TrimSpace(effort)); value {
 	case "low", "medium", "high", "xhigh", "max":
@@ -169,11 +168,9 @@ func convertResponsesInputToAnthropic(instructions string, inputRaw json.RawMess
 			})
 
 		case item.Type == "reasoning":
-			// Anthropic 无法摄入 OpenAI 的 reasoning：encrypted_content 是不透明的，
-			// 而 thinking 块的重放需要 Anthropic 自己签发的 signature，无法伪造。
-			// Codex 常见形态（只带 summary + encrypted_content）本来就会被丢弃，
-			// 这里让带 content 数组的形态保持同样行为——否则 reasoning_text 块会被
-			// 原样塞进 Anthropic 请求体，上游直接回 400。
+			// Anthropic thinking 重放需要自己签发的 signature，OpenAI reasoning 的 encrypted_content 无法用于重放。
+			// 因此丢弃 reasoning item，包括 summary、encrypted_content 和 content 数组。
+			// 将 reasoning_text 原样放入 Anthropic 请求会返回 400。
 
 		case item.Role == "user":
 			content, err := convertResponsesUserToAnthropicContent(item.Content)
@@ -207,10 +204,8 @@ func convertResponsesInputToAnthropic(instructions string, inputRaw json.RawMess
 			})
 
 		default:
-			// 未知 role/type —— 尽量当作 user 消息保留其中的文本/图片。
-			// 必须走与真实 user 消息同一套白名单转换：直接透传 item.Content 会把
-			// Responses 专有的分片类型（reasoning_text、web_search_call 的载荷等）
-			// 原样发给 Anthropic，上游只会回 400 把整轮打挂。
+			// 未知 role/type 按 user 消息的白名单转换其中的文本和图片。
+			// Responses 专用分片（如 reasoning_text、web_search_call 载荷）会使 Anthropic 返回 400。
 			if item.Content == nil {
 				continue
 			}
@@ -283,22 +278,13 @@ func responsesFunctionOutputToAnthropicContent(item ResponsesInputItem) json.Raw
 	return content
 }
 
-// normalizeAnthropicToolPairing 重建消息序列，确保满足 Anthropic 的 tool_use/tool_result 不变量。
-// 逐项转换 Responses 历史时，只要 function_call 和 function_call_output 之间夹入其他条目，就可能破坏这些不变量：
-//
-//   - 每个 tool_result 必须在前一条 assistant 消息里有对应 tool_use；
-//   - 每个 tool_use 必须在后一条 user 消息里有对应 tool_result；
-//   - user/assistant 轮次必须交替。
-//
-// Codex 的 Responses store:false 每轮会重发完整历史，并经常在调用和输出之间插入开发者/审批提示，
-// 或者留下未返回输出的并行 sibling 调用。未修复的转换器会把每个 function_call 发成独立 assistant
-// 消息、把每个 output 发成独立 user 消息，导致 tool_use 与 tool_result 不相邻并触发上游 400。
-//
-// 修复逻辑先按 tool_use id 索引所有 tool_result；随后遍历带 tool_use 的 assistant 消息，只保留
-// 已有结果的调用（丢弃未回答/悬空调用，若无其他内容则整条 assistant 消息也丢弃），并按调用顺序把
-// 对应 tool_result 作为下一条 user 消息发出。原位置的 standalone tool_result 会被移除；找不到
-// tool_use 的孤儿 tool_result 会被丢弃。非工具内容保持原位。该逻辑与 Responses→Chat 路径的
-// normalizeChatMessages 保持一致。
+// normalizeAnthropicToolPairing 重建消息序列，使 tool_use 和 tool_result 相邻配对，user 与 assistant 交替。
+// 每个 tool_result 对应前一条 assistant 中的 tool_use，每个 tool_use 对应后一条 user 中的 tool_result。
+// Codex 的 store:false 请求会重发完整历史，其中调用与输出之间可能有开发者或审批提示，
+// 也可能有尚未返回输出的并行调用。逐项转换会产生分离的工具消息并触发 Anthropic 400。
+// 此处先按 tool_use ID 索引结果，再按调用顺序把有结果的调用和结果放入相邻消息。
+// 缺少结果的调用、孤立结果和由此产生的空 assistant 消息会被丢弃，非工具内容保持原位。
+// Responses 转 Chat 的 normalizeChatMessages 使用相同的配对规则。
 func normalizeAnthropicToolPairing(messages []AnthropicMessage) []AnthropicMessage {
 	// 按 tool_use id 索引所有 tool_result；重复 id 时保留最后一个。
 	results := make(map[string]AnthropicContentBlock)
@@ -579,7 +565,7 @@ func mergeConsecutiveMessages(messages []AnthropicMessage) []AnthropicMessage {
 			continue
 		}
 
-		// Same role — merge content arrays
+		// 相邻消息角色相同时合并内容数组。
 		last := &merged[len(merged)-1]
 		lastBlocks := parseContentBlocks(last.Content)
 		newBlocks := parseContentBlocks(msg.Content)
@@ -639,7 +625,7 @@ func convertResponsesToAnthropicTools(tools []ResponsesTool) []AnthropicTool {
 	return out
 }
 
-// normalizeAnthropicInputSchema 确保 input_schema 是合法 object schema。
+// normalizeAnthropicInputSchema 将 input_schema 规范化为 object schema。
 func normalizeAnthropicInputSchema(schema json.RawMessage) json.RawMessage {
 	const emptyObjectSchema = `{"type":"object","properties":{}}`
 

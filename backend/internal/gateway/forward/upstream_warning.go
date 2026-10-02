@@ -1,6 +1,6 @@
 package forward
 
-// UpstreamWarning 保存上游风控警告事实；是否结算与如何响应仍由完成及 HTTP 边界决定。
+// UpstreamWarning 保存上游风控警告，完成器决定是否结算，HTTP 层决定响应方式。
 type UpstreamWarning struct {
 	StatusCode   int
 	ResponseBody []byte

@@ -158,7 +158,7 @@ func TestThinkingCapabilityForSiteUsesSiteSnapshot(t *testing.T) {
 		{site: SiteGlobal, model: "glm-5.3", want: ThinkingLowHighMax},
 		{site: SiteGlobal, model: "glm-5.2", want: ThinkingHighMax},
 		{site: SiteGlobal, model: "kimi-k3", want: ThinkingUnsupported},
-		// 空站点与 ParseSite 的旧提供商兼容语义一致，按国际站查询能力。
+		// 空站点与 ParseSite 一致，按国际站查询能力。
 		{site: "", model: "deepseek-v4-pro", want: ThinkingHighMax},
 		{site: SiteCN, model: "auto", want: ThinkingUnsupported},
 		{site: SiteCN, model: "qwen3.8-max", want: ThinkingToggleOnly},

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestResponseHeaderFilterConfigurationProjection 验证静态配置只在组合根投影，编译结果保留 nil、默认、显式增删及输入隔离。
+// TestResponseHeaderFilterConfigurationProjection 检查响应头过滤配置的 nil、默认值、增删规则及输入副本隔离。
 func TestResponseHeaderFilterConfigurationProjection(t *testing.T) {
 	require.Nil(t, provideResponseHeaderFilter(nil))
 	cfg := &config.Config{}

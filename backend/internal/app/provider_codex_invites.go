@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// provideCodexInvites 直接装配提供商用例及平台端口，复用请求侧令牌与传输实例。
+// provideCodexInvites 绑定提供商用例和平台接口，复用请求侧的 token 和传输实例。
 func provideCodexInvites(admin *provider.Admin, proxy egress.ProxyRepository, token *provider.OpenAITokenSource, transport httpclient.UpstreamTransport, profiles *egressprovider.TLSProfiles, routers provideradapter.OpenAITokenRouterReader) *provider.CodexInviteResetService {
 	factory := provideradapter.CodexInviteFactory{Token: token, Proxy: proxy.GetByID, Transport: transport, Profiles: profiles, Routers: routers}
 	return &provider.CodexInviteResetService{Options: provider.CodexInviteResetOptions{

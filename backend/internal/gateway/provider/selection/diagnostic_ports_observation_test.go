@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// providers 为诊断测试投影候选列表，保留 nil 列表语义。
+// providers 将测试候选转换为诊断列表，输入为 nil 时返回 nil。
 func (s *diagnosticScope) providers(values []*provider.ExecutionProvider) []*scheduler.DiagnosticProvider {
 	if values == nil {
 		return nil

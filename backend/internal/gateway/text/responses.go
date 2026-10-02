@@ -28,7 +28,7 @@ type ResponseOptions struct {
 	FirstOutputBudget bool
 }
 
-// ResponsePorts 只执行一次选取、转发、观测或完成，核心统一拥有重试计数。
+// ResponsePorts 提供单次选择、转发、观测和完成操作，RunResponses 管理重试计数。
 type ResponsePorts interface {
 	Context() context.Context
 	CanAttempt() bool
@@ -49,7 +49,7 @@ type ResponsePorts interface {
 	Completed(int)
 }
 
-// RunResponses 保留同提供商恢复、一次请求的提供商预算和首输出后的禁止重放边界。
+// RunResponses 管理同提供商恢复和请求的提供商预算，首次输出后结束重放机会。
 func RunResponses(options ResponseOptions, p ResponsePorts) {
 	served := false
 	if lifecycle, ok := p.(interface {

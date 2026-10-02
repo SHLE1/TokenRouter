@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/transport"
 )
 
-// provideHTTPUpstream 保持一个传输实例；每次读取只投影传输所需配置。
+// provideHTTPUpstream 构造共享传输实例，每次调用时读取传输所需的配置。
 // @project-doc docs/architecture/system_architecture.md#dependency_layers
 func provideHTTPUpstream(cfg *config.Config) *transport.Client {
 	return transport.New(func() *transport.Options {

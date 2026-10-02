@@ -136,8 +136,7 @@ func (s *RuntimeStats) Report(providerID int64, success bool, firstTokenMs *int,
 	}
 }
 
-// FeedbackSnapshot 是诊断与评分共享的只读运行时反馈快照。
-// 不暴露任何请求内容，仅包含经 EWMA 聚合后的健康指标及其观测新鲜度。
+// FeedbackSnapshot 是诊断与评分共享的只读反馈快照，记录 EWMA 聚合后的健康指标和观测时间。
 type FeedbackSnapshot struct {
 	HasFeedback    bool
 	ErrorRate      float64
@@ -229,8 +228,7 @@ type CandidateScore struct {
 	Factors            CandidateFactors
 }
 
-// CandidateFactors 保留评分核心实际使用的归一化因子。
-// 它只服务于诊断，不参与候选排序之外的业务决策。
+// CandidateFactors 保存评分使用的归一化因子，供诊断展示。
 type CandidateFactors struct {
 	Priority      float64
 	Load          float64
@@ -298,7 +296,7 @@ func CandidateBetter(left, right CandidateScore) bool {
 	if left.Provider.Priority != right.Provider.Priority {
 		return left.Provider.Priority < right.Provider.Priority
 	}
-	// 负载与等待已经进入评分；同分时只用实体 ID 决胜，保持严格且可传递的稳定全序。
+	// 负载与等待参与评分，同分时按实体 ID 排序。
 	return left.Provider.ID < right.Provider.ID
 }
 
@@ -622,7 +620,7 @@ func BuildWeightedSelectionOrder(candidates []CandidateScore, input ScoreInput) 
 		}
 	}
 	for i := range pool {
-		// 将 Top-K 分值平移到正区间，避免单个提供商长期垄断。
+		// 将 Top-K 分值平移到正区间，让每个候选都有机会被抽中。
 		weight := (pool[i].Score - minScore) + 1.0
 		if math.IsNaN(weight) || math.IsInf(weight, 0) || weight <= 0 {
 			weight = 1.0
@@ -714,9 +712,9 @@ func BuildScoreSnapshot(
 	return result
 }
 
-// ScoreProvider 只包含评分使用的值，不携带凭据、管理对象或动态设置。
+// ScoreProvider 保存提供商评分所需的数值和标识。
 type ScoreProvider struct {
-	// Name 和 ProjectionID 仅用于只读诊断关联，不参与评分。
+	// Name 和 ProjectionID 供诊断关联候选使用。
 	Name             string
 	ProjectionID     uint64
 	ID               int64

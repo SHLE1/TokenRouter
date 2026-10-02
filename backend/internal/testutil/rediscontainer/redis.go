@@ -12,7 +12,7 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// New 使用隔离的真实 Redis 保留 token、锁和取消契约，不使用内存替身。
+// New 为 token、锁和取消行为测试启动隔离的 Redis 实例。
 func New(t *testing.T) *redis.Client {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

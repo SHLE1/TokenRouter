@@ -15,7 +15,7 @@ const (
 	UpstreamUsageDefaultAdapter         = UpstreamUsageAdapterSub2API
 )
 
-// UsageAdapterSpec 声明稳定的目录属性，不持有具体网络实现。
+// UsageAdapterSpec 声明用量适配器的目录属性。
 type UsageAdapterSpec struct {
 	Name, Label string
 	Automatic   bool

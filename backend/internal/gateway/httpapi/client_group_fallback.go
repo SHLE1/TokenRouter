@@ -22,8 +22,8 @@ type clientGroupFallbackBackend interface {
 	ResolveClientGroup(context.Context, *apikey.APIKey, protocol.ProtocolID) (*apikey.APIKey, *billing.UserSubscription, error)
 }
 
-// resolveClientGroupForRequest 必须位于客户端检测之后、组策略和路由规划之前。
-// 成功前不发布中间组，避免失败请求留下另一组的资金或权限快照。
+// resolveClientGroupForRequest 在客户端检测后、组策略和路由规划前调用。
+// 分组校验成功后发布最终分组及其资金、权限快照。
 func resolveClientGroupForRequest(c *gin.Context, backend any, key *apikey.APIKey, source protocol.ProtocolID) (*apikey.APIKey, error) {
 	if key == nil || key.Group == nil || !key.Group.ClaudeCodeOnly || (source == protocol.ProtocolAnthropicMessages && requeststate.IsClaudeCodeClient(c.Request.Context())) {
 		return key, nil
@@ -55,7 +55,7 @@ func resolveClientGroupForRequest(c *gin.Context, backend any, key *apikey.APIKe
 	return resolved, nil
 }
 
-// writeClientGroupFallbackError 初始回退发生在输出之前；错误沿用各入口协议的 envelope。
+// writeClientGroupFallbackError 在初始回退失败时，按入口协议写出错误响应。
 func writeClientGroupFallbackError(c *gin.Context, err error, write func(*gin.Context, int, string, string)) {
 	MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
 	status, code, message, retryAfter := BillingErrorDetails(err)

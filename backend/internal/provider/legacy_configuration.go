@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// 废弃探测键仅在输入边界清理；路由、调度和公开类型不得引用这些状态。
+// 接收输入时删除废弃探测键，路由和调度使用协议配置。
 var DeprecatedOpenAIProviderExtraKeys = [...]string{
 	"openai_responses_probe_status", "openai_responses_supported",
 	"openai_compact_supported", "openai_compact_checked_at",
@@ -14,7 +14,7 @@ var DeprecatedOpenAIProviderExtraKeys = [...]string{
 }
 
 // NormalizeLegacyOpenAIProviderExtra 收拢提供商和导入模板的历史兼容处理。
-// 只规范化已提供的开关，保留模板缺省语义；旧 auto 与其它遗留值沿用默认开启。
+// 规范化请求携带的开关，省略项保持缺省，auto 和其他兼容值按开启处理。
 // @project-doc docs/interfaces/openai_upstream.md#openai_account_configuration
 func NormalizeLegacyOpenAIProviderExtra(extra map[string]any) {
 	for _, key := range DeprecatedOpenAIProviderExtraKeys {

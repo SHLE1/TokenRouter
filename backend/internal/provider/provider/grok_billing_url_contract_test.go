@@ -66,8 +66,7 @@ func TestGrokBillingURLFollowsProviderBaseURL(t *testing.T) {
 	})
 
 	t.Run("billing probe honors the operator allowlist like forwarding", func(t *testing.T) {
-		// 探测路径必须复用转发 URL 策略，避免被白名单拒绝的自定义主机
-		// 通过 billing 探测收到 OAuth bearer token。
+		// 额度探测与转发共用 URL 策略，被白名单拒绝的主机会在发送 OAuth token 前返回错误。
 		value := &provider.Record{
 			Platform: capability.PlatformGrok,
 			Type:     capability.ProviderTypeOAuth,
@@ -82,7 +81,7 @@ func TestGrokBillingURLFollowsProviderBaseURL(t *testing.T) {
 	})
 }
 
-// billingURLForTest 这里只组合现有函数，不增加第二份 URL 校验或端点规则。
+// billingURLForTest 组合 URL 校验和端点解析函数。
 func billingURLForTest(value *provider.Record, operator xai.BaseURLValidator, weekly bool) (string, error) {
 	validator, err := GrokBaseURLValidator(value, operator)
 	if err != nil {

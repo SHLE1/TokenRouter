@@ -34,7 +34,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// failNextTransaction 在用户已创建后仅拒绝下一次 Begin，不影响真实 PostgreSQL 的补偿删除。
+// failNextTransaction 在用户创建后拒绝下一次 Begin，补偿删除通过 PostgreSQL 执行。
 type failNextTransaction struct {
 	dialect.Driver
 	armed    atomic.Bool

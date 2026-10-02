@@ -60,7 +60,7 @@ func TestDiceCoefficient(t *testing.T) {
 	}
 }
 
-// TestClaudeCodeValidationInputPreservesGateOrder 验证输入投影不得交换 UA、探测绕过与严格报文检查的顺序。
+// TestClaudeCodeValidationInputPreservesGateOrder 检查识别按 UA、探测绕过、报文校验的顺序执行。
 func TestClaudeCodeValidationInputPreservesGateOrder(t *testing.T) {
 	validator := NewClaudeCodeValidator()
 	cases := []struct {

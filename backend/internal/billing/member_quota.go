@@ -27,7 +27,7 @@ func CheckMemberQuotaSnapshot(member MemberQuotaSnapshot) error {
 	return nil
 }
 
-// NormalizeMemberQuotaWindows 只调整读取投影，持久化消费/重置仍由原事务执行。
+// NormalizeMemberQuotaWindows 返回按当前日期重置过期窗口的额度副本，持久化消费和重置由事务执行。
 func NormalizeMemberQuotaWindows(member MemberQuotaSnapshot, now time.Time, calendar timezone.Calendar) MemberQuotaSnapshot {
 	daily, weekly, monthly := calendar.StartOfDay(now), calendar.StartOfWeek(now), calendar.StartOfMonth(now)
 	if member.DailyWindowStart == nil || member.DailyWindowStart.Before(daily) {

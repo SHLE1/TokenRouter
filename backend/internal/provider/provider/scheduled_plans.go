@@ -9,7 +9,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// 解析器不持有运行状态，保留原分钟/小时/日/月/星期字段集合。
+// 解析器接受分钟、小时、日、月和星期字段。
 var scheduledTestParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 
 func NextScheduledTestRun(expression string, from time.Time) (time.Time, error) {

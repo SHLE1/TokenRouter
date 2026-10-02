@@ -47,7 +47,7 @@ func BuildGeminiAIStudioModelActionURL(baseURL, model, action string, stream boo
 }
 
 // IsSafeGeminiModelPathSegment 供 handler 层在解析出 URL 里的模型名后立刻校验，
-// 让客户端拿到明确的 400，而不是等到构造上游请求时才报错。
+// 模型名非法时在 handler 返回 400。
 func IsSafeGeminiModelPathSegment(model string) bool {
 	return upstream.IsSafeUpstreamPathSegment(strings.TrimSpace(model))
 }

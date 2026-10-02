@@ -708,7 +708,7 @@ import {
   hasImageInputCost,
 } from '@/utils/imageUsage'
 
-/** 计算提供商口径展示费用：(provider_stats_cost ?? total_cost) * rate_multiplier */
+/** 计算提供商展示费用，基础费用乘以提供商倍率。 */
 function providerBilled(row: { total_cost?: number | null; provider_stats_cost?: number | null; provider_rate_multiplier?: number | null }): number {
   const base = row.provider_stats_cost != null ? row.provider_stats_cost : (row.total_cost ?? 0)
   const result = base * (row.provider_rate_multiplier ?? 1)
@@ -737,7 +737,7 @@ interface Props {
   /** 用户端只展示实际扣费时隐藏标准费用明细。 */
   showStandardCost?: boolean
   showUpstreamEndpoint?: boolean
-  /** 用户端只展示成员归因，不提供管理端余额入口。 */
+  /** 控制成员名称是否链接到管理端余额入口。 */
   userClickable?: boolean
   /** 团队用量表固定成员列宽，长邮箱在单元格内省略。 */
   compactUserColumn?: boolean

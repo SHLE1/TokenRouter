@@ -104,7 +104,7 @@ func (h *Runtime) recordGrokVoiceUsage(
 	})
 }
 
-// grokRealtimeAdapter 只转换已选提供商与技术连接，不保留第二套候选循环。
+// grokRealtimeAdapter 将已选提供商转换为 Realtime 连接。
 type grokRealtimeAdapter struct {
 	h         *Runtime
 	c         *gin.Context
@@ -150,7 +150,7 @@ func (p *grokRealtimeAdapter) RealtimeOpenFailed(ctx context.Context, selected p
 	p.h.bindings.Platform.RealtimeError(ctx, p.selection.Provider, status, []byte(err.Error()))
 }
 
-// grokVoiceAdapter 只桥接单次选择、HTTP 原生执行及完成投影。
+// grokVoiceAdapter 连接单次提供商选择、HTTP 执行和完成数据捕获。
 type grokVoiceAdapter struct {
 	h            *Runtime
 	c            *gin.Context

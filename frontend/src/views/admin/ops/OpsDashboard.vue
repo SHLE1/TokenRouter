@@ -437,7 +437,7 @@ const requestDetailsPreset = ref<OpsRequestDetailsPreset>({
 type DetailReturnTarget = 'errorList' | 'requestList' | null
 const detailReturnTarget = ref<DetailReturnTarget>(null)
 
-// 从详情返回时，列表弹窗应保留上一次的筛选/分页状态而非重置。
+// 从详情返回时，列表弹窗恢复上一次的筛选和分页状态。
 const resumeListState = ref(false)
 
 const showSettingsDialog = ref(false)

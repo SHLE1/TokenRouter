@@ -65,7 +65,7 @@ func (s *Antigravity) clearStickySession(ctx context.Context, groupID int64, ses
 	}
 }
 
-// 转发投影本次观测；平台健康判断和写入顺序由 provider 拥有。
+// 将本次观测交给 provider 判断健康状态并写入。
 
 func (s *Antigravity) handleUpstreamError(ctx context.Context, prefix string, value *gatewayprovider.ExecutionProvider, status int, headers http.Header, body []byte, model string, groupID int64, sessionHash string, sticky bool) *provideradapter.AntigravityModelLimitResult {
 	view := gatewayprovider.ExecutionRecord(value)

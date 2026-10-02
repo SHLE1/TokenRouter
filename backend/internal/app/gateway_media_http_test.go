@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMediaAssemblyKeepsReadAndStopBoundaries 验证媒体与辅助入口直接复用原生运行时，依赖拒绝和关闭都不能提前读取正文。
+// TestMediaAssemblyKeepsReadAndStopBoundaries 检查媒体与辅助入口在读取正文前拒绝缺失依赖或已关闭的请求。
 func TestMediaAssemblyKeepsReadAndStopBoundaries(t *testing.T) {
 	activity := &gatewayRequestActivity{Operations: lifecycle.NewOperations("media-entry-contract")}
 	common := provideOpenAIAttemptBindings(nil, nil, nil, nil, nil, nil, GatewayCompletionRecorders{}, nil, nil, nil, nil, nil, nil, nil, nil, nil)

@@ -213,7 +213,7 @@ function playSubmissionAnimation(): void {
     submissionAnimationVisible.value = true
   }
   // 节点移除由 CSS 动画的 animationend 事件驱动（见 onSubmitFlightEnd），
-  // 不再用定时器猜时长；reduced-motion 下动画缩到 1ms，事件同样触发。
+  // reduced-motion 下动画缩到 1ms，仍通过动画事件通知完成。
 }
 
 function onSubmitFlightEnd(event: AnimationEvent): void {
@@ -343,6 +343,6 @@ async function onClearLocalData(): Promise<void> {
     animation-duration: 1ms;
   }
 
-  /* 设置菜单走全局 pop-float,reduced-motion 由全局配方收敛。 */
+  /* 设置菜单使用全局 pop-float，减少动态效果由全局样式处理。 */
 }
 </style>

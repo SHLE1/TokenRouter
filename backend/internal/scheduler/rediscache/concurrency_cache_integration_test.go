@@ -713,7 +713,7 @@ func (s *ConcurrencyCacheSuite) TestCleanupExpiredProviderSlotKeys_ReapsUserInde
 	expiredScore := float64(now - 10)
 	userKeyWithFresh := fmt.Sprintf("%s%d", userSlotKeyPrefix, 401)
 
-	// 401 有真实负载但索引 score 已过期：应刷新而不是删除。
+	// 401 的索引 score 已过期，但仍有负载，清理时应刷新 score。
 	require.NoError(s.T(), s.rdb.ZAdd(s.ctx, userKeyWithFresh,
 		redis.Z{Score: float64(now), Member: "fresh"},
 	).Err())
@@ -756,7 +756,7 @@ func (s *ConcurrencyCacheSuite) TestCleanupStaleProcessSlots_LegacyWaitSweepRuns
 	require.NoError(s.T(), err)
 	require.EqualValues(s.T(), 1, exists, "sweep marker should be set after first run")
 
-	// 再次运行：marker 已存在，未入索引的等待计数不再被触碰。
+	// marker 已存在时跳过清扫，未入索引的等待计数保持原值。
 	require.NoError(s.T(), s.rdb.Set(s.ctx, unindexedProviderWaitKey, 5, time.Minute).Err())
 	require.NoError(s.T(), s.cache.CleanupStaleProcessSlots(s.ctx, "keep-"))
 	val, err := s.rdb.Get(s.ctx, unindexedProviderWaitKey).Int()
@@ -812,7 +812,7 @@ func (s *ConcurrencyCacheSuite) TestCleanupStaleProcessSlots_ProcessesExpiredInd
 }
 
 func (s *ConcurrencyCacheSuite) TestCleanupStaleProcessSlots_RemovesOldPrefixesAndWaitCounters() {
-	// 预置迁移 marker，确保等待计数删除来自索引驱动路径而非一次性清扫。
+	// 预置迁移 marker 后，等待计数由索引清理路径删除。
 	require.NoError(s.T(), s.rdb.Set(s.ctx, legacyWaitSweepMarkerKey, "1", 0).Err())
 	providerID := int64(901)
 	userID := int64(902)

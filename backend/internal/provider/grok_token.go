@@ -247,7 +247,7 @@ func (p *GrokTokenSource) WaitForRefreshedToken(ctx context.Context, provider *R
 				changed := token != initialToken || (version > 0 && version > initialVersion)
 				valid := expiresAt != nil && time.Now().Before(*expiresAt)
 				if token != "" && changed && valid {
-					// 带版本的数据库凭据是权威状态；旧缓存不得让请求继续使用过期令牌，需尽力修复。
+					// 数据库凭据版本较新时，使用数据库 token 并尝试更新缓存。
 					if cachedToken != "" && cachedToken != token {
 						ttl := time.Until(*expiresAt)
 						if ttl > GrokTokenCacheSkew {

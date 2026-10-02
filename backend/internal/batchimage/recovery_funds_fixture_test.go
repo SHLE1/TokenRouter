@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-// recoveryFundsFixture 保留原恢复测试的释放记录、错误及请求去重，不提供无关结算入口。
+// recoveryFundsFixture 记录资金释放请求、模拟释放错误并按请求去重。
 type recoveryFundsFixture struct {
 	releases   []*billing.TaskFundsCommand
 	releaseErr error
@@ -18,9 +18,11 @@ type recoveryFundsFixture struct {
 func (r *recoveryFundsFixture) Reserve(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error) {
 	panic("unexpected Reserve")
 }
+
 func (r *recoveryFundsFixture) Capture(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error) {
 	panic("unexpected Capture")
 }
+
 func (r *recoveryFundsFixture) Release(_ context.Context, cmd *billing.TaskFundsCommand) (*billing.TaskFundsResult, error) {
 	if r.releaseErr != nil {
 		r.releases = append(r.releases, cmd)

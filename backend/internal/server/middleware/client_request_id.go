@@ -19,7 +19,7 @@ const (
 )
 
 // ClientRequestID 为请求生成内部关联 ID，并把调用方 ID 单独保存为 parent_client_request_id。
-// 外部 ID 只用于跨服务排障，不能影响结算幂等或内部身份判断。
+// 外部 ID 用于跨服务排障，结算幂等和身份判断使用内部 ID。
 func ClientRequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request == nil {
@@ -53,13 +53,13 @@ func ClientRequestID() gin.HandlerFunc {
 		// 内部关联头由服务独占；清除调用方伪造值，避免被其它转发路径带到上游。
 		c.Request.Header.Del(internalRequestIDHeader)
 		c.Request.Header.Del(legacyInternalRequestIDHeader)
-		// 只将关联 ID 写入响应；不把服务生成的内部 ID 加入上游请求。
+		// 将关联 ID 写入响应，服务生成的内部 ID 用于响应诊断。
 		if parentID != "" {
 			c.Header(clientRequestIDHeader, parentID)
 		} else {
 			c.Header(clientRequestIDHeader, internalID)
 		}
-		// 专用内部头只用于下游诊断响应，不加入出站上游请求。
+		// 专用内部头携带下游响应的诊断 ID。
 		c.Header(internalRequestIDHeader, internalID)
 		// 兼容仍按旧头读取诊断 ID 的客户端，两者不能产生不同身份。
 		c.Header(legacyInternalRequestIDHeader, internalID)

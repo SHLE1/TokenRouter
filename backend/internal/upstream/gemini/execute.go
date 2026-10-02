@@ -32,7 +32,7 @@ type Target struct {
 	OpenAIProtocol                      OpenAICompatProtocol
 	ClientTools                         bridge.ResponsesClientToolMapping
 	Enter                               func() (func(), error)
-	// BeforeResponse 仅衔接旧 HTTP/提供商错误策略；返回 stop 时不再处理响应。
+	// BeforeResponse 处理 HTTP 和提供商错误，返回 stop 时结束响应处理。
 	BeforeResponse func(context.Context, *http.Response, string) (stop bool, err error)
 }
 
@@ -94,7 +94,7 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 	}
 	if exchange.EstimatedTokens != nil {
 		result.EstimatedTokenCount = exchange.EstimatedTokens
-		// 只保留原 countTokens 的本地预检回退，绝不把估算写入实际 usage。
+		// countTokens 预检失败时返回本地估算，结算用量单独记录。
 		output := upstream.NewOutputContext(sink)
 		output.JSON(http.StatusOK, map[string]any{"totalTokens": *exchange.EstimatedTokens})
 		result.Stream = false

@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// ClassifyOpenAIAPIKeyHealthFailure 保留请求取消、平台故障与提供商故障的原归因边界。
+// ClassifyOpenAIAPIKeyHealthFailure 区分请求取消、平台故障和提供商故障。
 func ClassifyOpenAIAPIKeyHealthFailure(err error) (int, []byte, bool) {
 	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return 0, nil, false

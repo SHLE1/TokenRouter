@@ -36,7 +36,7 @@ type SubscriptionGroupReader interface {
 }
 
 // SubscriptionTransactions 将权益变更闭包限制在同一个持久化事务，锁序由适配层固定。
-// 回调仅接收 context，不向业务核心泄漏 Ent 或 SQL 对象。
+// 回调通过 context 使用事务。
 type SubscriptionTransactions interface {
 	HasPersistence(context.Context) bool
 	Within(context.Context, func(context.Context) error) error

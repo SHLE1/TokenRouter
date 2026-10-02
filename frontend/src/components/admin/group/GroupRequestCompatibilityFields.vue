@@ -42,7 +42,7 @@ function featureEnabled(key: string) {
 }
 
 function setFeature(key: string, enabled: boolean) {
-  // 从当前完整策略合并，避免跨页编辑功能时覆盖模型草稿或其他平台的历史设置。
+  // 编辑时合并当前完整策略，保留模型草稿和其他平台设置。
   const policy = cloneRoutingPolicy(props.modelValue)
   const raw = policy.features_config[key]
   const values =

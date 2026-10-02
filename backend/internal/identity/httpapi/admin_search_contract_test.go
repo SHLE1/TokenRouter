@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// captureTruncatedAdminSearch 通过真实管理路由记录搜索输入，不复制截断算法。
+// captureTruncatedAdminSearch 通过管理路由记录截断后的搜索输入。
 func captureTruncatedAdminSearch(t *testing.T, search string, maxRunes int) string {
 	t.Helper()
 	require.Equal(t, 100, maxRunes)

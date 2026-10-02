@@ -31,7 +31,7 @@ func TestCalendarKeepsExplicitLocation(t *testing.T) {
 	}
 }
 
-// TestUninitializedClockKeepsMonotonicReading 保留初始化前 Now 及用户时区回退的计时语义。
+// TestUninitializedClockKeepsMonotonicReading 检查初始化前 Now 与用户时区回退仍保有单调时钟读数。
 func TestUninitializedClockKeepsMonotonicReading(t *testing.T) {
 	calendar := NewCalendar(nil)
 	for name, value := range map[string]time.Time{

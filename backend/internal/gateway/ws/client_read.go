@@ -10,14 +10,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// ClientConn 让读循环在关闭帧发出后仍能等待唯一的读取任务结束。
+// ClientConn 支持关闭帧发送后等待当前读取任务结束。
 type ClientConn interface {
 	Read(context.Context) (int, []byte, error)
 	Close(int, string) error
 	CloseNow() error
 }
 
-// ClientCloseError 描述 HTTP Adapter 必须发送的关闭帧，不依赖 WebSocket 库。
+// ClientCloseError 指定 HTTP 适配器要发送的关闭帧。
 type ClientCloseError struct {
 	Status int
 	Reason string
@@ -33,12 +33,14 @@ func (e *ClientCloseError) Error() string {
 	}
 	return fmt.Sprintf("openai ws client close: %d %s: %v", e.Status, strings.TrimSpace(e.Reason), e.Cause)
 }
+
 func (e *ClientCloseError) Unwrap() error {
 	if e == nil {
 		return nil
 	}
 	return e.Cause
 }
+
 func NewClientCloseError(status int, reason string, cause error) *ClientCloseError {
 	return &ClientCloseError{Status: status, Reason: strings.TrimSpace(reason), Cause: cause}
 }

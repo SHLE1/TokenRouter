@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// 展示契约只提供列表和单条读取，保持原列表一次批量解析的断言。
+// 展示夹具提供列表和单条读取函数，检查列表数据一次批量解析。
 type ollamaManagementFixture struct {
 	ProviderManagement
 	providers []provider.Record

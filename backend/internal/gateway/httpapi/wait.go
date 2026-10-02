@@ -208,7 +208,7 @@ func (h *ConcurrencyHelper) AcquireProviderSlotWithWaitTimeout(c *gin.Context, p
 	return h.WaitForSlotWithPingTimeout(c, "provider", providerID, maxConcurrency, timeout, isStream, streamStarted, true)
 }
 
-// WaitObserver 只负责原有 HTTP 心跳和首次输出标记；串行队列保留无 Flusher 时不输出的降级。
+// WaitObserver 发送 HTTP 心跳并标记首次输出。串行队列在 writer 支持 Flusher 时输出心跳。
 func WaitObserver(c *gin.Context, format SSEPingFormat, interval time.Duration, isStream bool, started *bool, strict bool) scheduler.WaitObserver {
 	if !isStream || format == "" {
 		return scheduler.WaitObserver{}
@@ -241,7 +241,7 @@ func WaitObserver(c *gin.Context, format SSEPingFormat, interval time.Duration, 
 	}}
 }
 
-// Service 只供兼容装配复用原来的唯一并发实例。
+// Service 返回兼容入口共用的并发服务实例。
 func (h *ConcurrencyHelper) Service() *scheduler.ConcurrencyService {
 	if h == nil {
 		return nil

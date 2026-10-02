@@ -40,7 +40,7 @@ func PersistGrokRateLimit(ctx context.Context, writer GrokRateLimitWriter, value
 	}
 }
 
-// ClearGrokRateLimitAfterRecovery 只恢复本轮观察的限流代次，不清除管理员或新请求写入的状态。
+// ClearGrokRateLimitAfterRecovery 比较本轮观察的代次，匹配后清除限流。
 func ClearGrokRateLimitAfterRecovery(ctx context.Context, writer GrokRateLimitWriter, value *Record, warn func(string, ...any)) {
 	if writer == nil || value == nil || value.RateLimitedAt == nil || value.RateLimitResetAt == nil || ctx.Err() != nil {
 		return

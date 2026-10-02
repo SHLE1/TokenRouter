@@ -2,14 +2,14 @@ package text
 
 import "context"
 
-// QoderCompatibleOutcome 固化该协议入口原有的字节提交与部分用量边界。
+// QoderCompatibleOutcome 记录响应字节是否已提交及部分用量。
 type QoderCompatibleOutcome struct {
 	Err                                                       error
 	OutputChanged, Partial, Canceled, CanRefresh, CanFailover bool
 }
 type QoderRefreshResult struct{ Ready, Pending bool }
 
-// QoderCompatiblePorts 承接 Messages/Responses 的单步执行。Chat 使用独立执行契约，
+// QoderCompatiblePorts 提供 Messages 和 Responses 的单步执行操作。Chat 使用独立执行接口，
 // 此入口不追加等待后权益复查，且任意实际输出都关闭当前尝试的重试窗口。
 type QoderCompatiblePorts interface {
 	Context() context.Context
@@ -27,7 +27,7 @@ type QoderCompatiblePorts interface {
 	Switched()
 }
 
-// RunQoderCompatible 只拥有当前请求的提供商循环，不执行第二层全局 failover。
+// RunQoderCompatible 执行当前请求的提供商尝试循环。
 func RunQoderCompatible(p QoderCompatiblePorts, maxProviders int) {
 	excluded := make(map[int64]struct{})
 	pending := false

@@ -388,7 +388,7 @@ func (w *CreativeRunWorker) Process(ctx context.Context, runID string) (Creative
 			Mime:    output.Mime,
 		})
 	}
-	// 已确认成功后只重试记录事实，不能把同一结果重新送入供应商分支。
+	// 成功已确认后，重试从保存结果记录继续。
 	for {
 		_, recordErr := w.service.SucceedRun(ctx, runID, result.ProviderID, results)
 		if recordErr == nil {

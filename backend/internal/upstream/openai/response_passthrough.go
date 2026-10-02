@@ -19,9 +19,9 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// PassthroughOptions 沿用共享观察契约，独立保留透传的 HTTP 和 keepalive 规则。
+// PassthroughOptions 配置响应透传的观测、HTTP 输出和心跳。
 type PassthroughOptions struct {
-	// ObserveModel 在响应模型恢复前只观察原始模型，不改变服务档位。
+	// ObserveModel 在恢复响应模型前读取上游模型声明。
 	ObserveModel func([]byte, string)
 	StreamOptions
 	NonStream                    NonStreamOptions
@@ -32,7 +32,7 @@ type PassthroughOptions struct {
 	PassthroughFailoverWithModel func(string, []byte, string, string) error
 }
 
-// ReadPassthroughStreaming 保留透传报文、失败与刷新边界，核心不持有入站上下文。
+// ReadPassthroughStreaming 透传 SSE，并记录用量和终态。
 func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstream.OutputContext, options PassthroughOptions, startTime time.Time, originalModel, mappedModel string) (*StreamingResult, error) {
 	options.Headers(c.Writer.Header(), resp.Header)
 
@@ -77,40 +77,19 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 	// pendingLines 在首个可见输出前保留前导事件，确保无输出失败仍可安全 failover。
 	pendingLines := make([]string, 0, 8)
 
-	// ── 首个可见输出之前的下游 keepalive ──────────────────────────────────
-	//
-	// 与 Forward 路径同源的问题。openai_gateway_response_handling.go 里那句注释
-	// 说得最清楚：
-	//
-	//   "Track downstream writes separately from upstream reads: pre-output
-	//    failover can buffer response.created / response.in_progress, so
-	//    keepalive must be based on downstream idle time."
-	//
-	// 上面的 pendingLines 正是同一种缓冲：首个可见输出到来之前，下游【一个字节
-	// 都收不到】—— 连 HTTP 响应头都不会提交（gin 的 ResponseWriter 直到首次写入
-	// 才发送 header）。Forward 路径为此加了心跳，透传路径漏了。
-	//
-	// 推理模型在首个可见输出前思考数百秒是常态，于是中间层代理会按空闲超时把
-	// 连接判死。这不是假设：某生产部署实测 12 小时内 44 个 /v1/responses 请求在
-	// 600~900s 才产出首个可见输出（每个 3~5 万 output token，上游其实算完了），
-	// 全部被中间 nginx 的 proxy_read_timeout(600s) 判超时回 504，用户一个字没拿到。
-	//
-	// 心跳写出的 SSE 注释同时做到三件事：
-	//   1. 提交 HTTP 响应头，让下游知道连接活着；
-	//   2. 刷新中间层的空闲超时（proxy_read_timeout 衡量的是两次读之间的间隔，
-	//      不是请求总时长），长推理因此不再被误杀；
-	//   3. 不写出任何 pendingLines、不泄露提供商相关的头，
-	//      且心跳字节已由 OpenAICompactKeepaliveAdjustedWrittenSize 排除，
-	//      所以 pre-output failover 的能力完全不受影响（#3887 的记账在此复用）。
-	//
-	// 用 startOpenAISSEKeepalive 而不是 StartOpenAICompactSSEKeepalive：后者会检查
-	// compact 标记，而这里是普通 /v1/responses 透传。走到这一行时上游已回
-	// text/event-stream、SSE 响应头也已设好，处于流式上下文是确定的。
+	// pendingLines 在首段内容前缓冲事件，首次写入前 HTTP 响应头也处于待提交状态。
+	// 推理等待期间发送 SSE 注释心跳，提交响应头并刷新中间代理的空闲超时。
+	// 某生产部署在 12 小时内有 44 个 /v1/responses 请求等待 600~900s 才产生输出，
+	// 每个请求生成 3~5 万 output token，均被 nginx 的 proxy_read_timeout(600s) 中断为 504。
+	// proxy_read_timeout 衡量两次读取的间隔，心跳可维持这些长推理请求的连接。
+	// pendingLines 和提供商请求头在内容开始时交付，心跳字节由
+	// OpenAICompactKeepaliveAdjustedWrittenSize 排除（#3887），首输出前仍可切换提供商。
+	// 此处上游已返回 text/event-stream，使用普通 SSE 心跳；Compact 心跳还要求 compact 标记。
 	stopKeepalive := options.StartKeepalive(c.Writer.Header())
 	// 任何返回路径都要停拍。Stop 与心跳 goroutine 之间有互斥锁，
 	// 返回后不会再有字节写出。
 	defer stopKeepalive()
-	// flushPending 表示已写入但未到 SSE 空行边界的脏状态；defer 兜底函数退出前的残留，断连后不再 Flush。
+	// flushPending 标记尚未遇到 SSE 空行的写入。函数退出时刷新残留数据，已断连时跳过。
 	flushPending := false
 	pendingSSEEventType := ""
 	flushPendingOutput := func() {
@@ -407,8 +386,8 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 				pendingLines = append(pendingLines, line)
 				continue
 			}
-			// 真实输出开始，心跳的使命结束。停拍是幂等的，且会与心跳 goroutine
-			// 建立 happens-before —— 之后 ResponseWriter 由本循环独占。
+			// 内容输出开始时停止心跳。停止操作可重复调用，并等待心跳 goroutine 完成写入，
+			// 此后 ResponseWriter 由本循环独占。
 			if !clientOutputStarted {
 				stopKeepalive()
 			}
@@ -490,7 +469,7 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 	return resultWithUsage(), nil
 }
 
-// ReadPassthroughNonStreaming 保留透传报文、失败与刷新边界，核心不持有入站上下文。
+// ReadPassthroughNonStreaming 读取并透传非流式响应。
 func ReadPassthroughNonStreaming(ctx context.Context, resp *http.Response, sink upstream.OutputSink, options PassthroughOptions, originalModel, mappedModel string) (*NonStreamingResult, error) {
 	body, err := options.NonStream.ReadBody(resp.Body)
 	if err != nil {
@@ -546,7 +525,7 @@ func ReadPassthroughNonStreaming(ctx context.Context, resp *http.Response, sink 
 	}, nil
 }
 
-// ReadPassthroughSSEAsJSON 保留透传报文、失败与刷新边界，核心不持有入站上下文。
+// ReadPassthroughSSEAsJSON 收集 SSE 终态并输出 JSON 响应。
 func ReadPassthroughSSEAsJSON(resp *http.Response, sink upstream.OutputSink, options PassthroughOptions, body []byte, originalModel, mappedModel string) (*NonStreamingResult, error) {
 	bodyText := string(body)
 	terminalType, terminalPayload, terminalOK := wire.ExtractOpenAISSETerminalEvent(bodyText)

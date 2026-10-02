@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// QueueObserver 绑定请求级观察，核心不持有 HTTP 或日志后端。
+// QueueObserver 提供请求级的排队事件回调。
 type QueueObserver struct {
 	Wait  WaitObserver
 	Event func(name string, providerID int64, err error)
@@ -19,7 +19,7 @@ func (o QueueObserver) event(name string, id int64, err error) {
 	}
 }
 
-// acquireWithWait 保留串行锁首次尝试及 RPM 延迟时点；失败放行不会伪造已持有的锁。
+// acquireWithWait 先尝试取得串行锁，取得后执行 RPM 延迟，否则进入等待。
 func (s *UserMessageQueueService) acquireWithWait(parent context.Context, providerID int64, baseRPM int, timeout time.Duration, observer QueueObserver) (*Lease, error) {
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
@@ -33,7 +33,7 @@ func (s *UserMessageQueueService) acquireWithWait(parent context.Context, provid
 	return s.WaitForLock(ctx, providerID, baseRPM, observer)
 }
 
-// finishQueueAcquire 在延迟开始前接管锁；取消或异常返回不会遗失释放责任。
+// finishQueueAcquire 在延迟开始前将锁交给 Lease 管理，延迟被取消时立即释放锁。
 func (s *UserMessageQueueService) finishQueueAcquire(ctx context.Context, id int64, rpm int, result *QueueLockResult, observer QueueObserver) (*Lease, error) {
 	released := false
 	lease := NewLease(context.Background(), ReleaseOnCompletion, func() {
@@ -49,7 +49,7 @@ func (s *UserMessageQueueService) finishQueueAcquire(ctx context.Context, id int
 		}
 	})
 	if err := s.EnforceDelay(ctx, id, rpm); err != nil && ctx.Err() != nil {
-		// 保留取消补偿不发出成功释放日志的原行为。
+		// 此时尚未报告取得锁，取消后的释放也跳过锁事件通知。
 		lease.Release()
 		return nil, ctx.Err()
 	}
@@ -96,7 +96,7 @@ func (s *UserMessageQueueService) WaitForLock(ctx context.Context, providerID in
 	}
 }
 
-// ThrottleWithWait 不取得串行锁，沿用独立 RPM 软限速及原超时。
+// ThrottleWithWait 按 RPM 计算延迟，在给定超时内等待并发送心跳。
 func (s *UserMessageQueueService) ThrottleWithWait(parent context.Context, id int64, rpm int, timeout time.Duration, observer QueueObserver) error {
 	operation, done, err := s.runtime.Enter(parent, "message-throttle")
 	if err != nil {

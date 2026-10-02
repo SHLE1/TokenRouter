@@ -148,7 +148,7 @@ func (s *ModelAvailability) DiagnoseCompatibleRouting(
 	return diag
 }
 
-// AvailabilityProvider 只暴露持久资格投影和模型判断端口，不持有可任意读取的凭据。
+// AvailabilityProvider 包含提供商平台和模型支持判断函数。
 type AvailabilityProvider struct {
 	Platform string
 	Supports func(context.Context, string) bool

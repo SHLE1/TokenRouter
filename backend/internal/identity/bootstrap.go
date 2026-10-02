@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// InitialAdminInput 是安装入口的最小写入投影，不进入注册赠送链。
+// InitialAdminInput 包含安装时创建管理员的邮箱、密码、并发数和时钟。
 type InitialAdminInput struct {
 	Email, Password string
 	Concurrency     int

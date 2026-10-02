@@ -20,7 +20,7 @@ type AuthorizationSubscriptions interface {
 	admission.SubscriptionValidator
 }
 
-// APIKeyAuthorizationOptions 只携带入口选项、观测与旧 context 投影，不接收完整配置。
+// APIKeyAuthorizationOptions 提供入口选项、观测接口和请求上下文数据。
 type APIKeyAuthorizationOptions struct {
 	Authentication keyhttp.AuthenticationOptions
 	BindLegacyKey  func(*gin.Context, *apikey.APIKey)
@@ -83,7 +83,7 @@ func NewAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscriptionSer
 		if abortAuthorizationGroupNotAllowed(c, apiKey, options) {
 			return
 		}
-		// 沿用通用入口的绑定时点；Google 入口仍不增加这一步策略投影。
+		// 通用入口在此绑定策略数据，Google 入口使用自己的策略处理。
 		requestAccess := *access
 		requestAccess.PayerUserID = apiKey.User.ID
 		ctx := apikey.WithAccessSnapshot(c.Request.Context(), requestAccess)
@@ -202,7 +202,7 @@ func NewGoogleAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscript
 			IsBatchImageBillingBypassRequest(c.Request.Method, c.Request.URL.Path) ||
 			(apiKey.IsComposite && IsGrokVideoTaskRead(c.Request.Method, c.Request.URL.Path))
 
-		// 非消费请求（包括 /v1/usage 和批任务管理）只读取配置快照，不因资金来源失效而拒绝。
+		// 非消费请求（包括 /v1/usage 和批任务管理）读取配置快照，资金来源失效时仍可查询和管理。
 		billingContext, billingErr := admission.ResolveFundingFromKey(c.Request.Context(), apiKey, subscriptionService, !skipBilling)
 		if billingErr != nil {
 			switch {

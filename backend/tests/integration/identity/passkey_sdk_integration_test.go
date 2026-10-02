@@ -25,7 +25,7 @@ import (
 )
 
 // TestPasskeySDKCeremony 使用真实 SDK、签名、PostgreSQL 与 Redis，验证消费先于解析及凭据更新。
-// 本地软件认证器只验证服务端协议行为，不声称覆盖真实硬件或浏览器交互。
+// 本地软件认证器用于检查服务端的 Passkey 协议处理。
 func TestPasskeySDKCeremony(t *testing.T) {
 	integrationDB, integrationEntClient := identityDatabase(t)
 	ctx := context.Background()

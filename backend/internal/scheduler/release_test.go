@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestWrapReleaseOnDone_NoGoroutineLeak 验证 wrapReleaseOnDone 修复后不会泄露 goroutine
+// TestWrapReleaseOnDone_NoGoroutineLeak 检查释放后的 goroutine 数量。
 func TestWrapReleaseOnDone_NoGoroutineLeak(t *testing.T) {
 	// 记录测试开始时的 goroutine 数量
 	runtime.GC()
@@ -28,7 +28,7 @@ func TestWrapReleaseOnDone_NoGoroutineLeak(t *testing.T) {
 	// 正常释放
 	release()
 
-	// 等待足够时间确保 goroutine 退出
+	// 给取消回调中的 goroutine 留出退出时间。
 	time.Sleep(200 * time.Millisecond)
 
 	// 验证只释放一次
@@ -48,7 +48,7 @@ func TestWrapReleaseOnDone_NoGoroutineLeak(t *testing.T) {
 	}
 }
 
-// TestWrapReleaseOnDone_ContextCancellation 验证 context 取消时也能正确释放
+// TestWrapReleaseOnDone_ContextCancellation 检查 context 取消时释放资源。
 func TestWrapReleaseOnDone_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 

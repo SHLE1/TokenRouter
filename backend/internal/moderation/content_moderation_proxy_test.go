@@ -79,7 +79,7 @@ func TestContentModerationCallRoutesThroughProxy(t *testing.T) {
 	}
 }
 
-// TestContentModerationProxyResolveFailureDoesNotFallBackToDirect 验证代理解析失败必须报错，而不是静默回退直连。
+// TestContentModerationProxyResolveFailureDoesNotFallBackToDirect 检查代理解析失败时返回错误并终止请求。
 func TestContentModerationProxyResolveFailureDoesNotFallBackToDirect(t *testing.T) {
 	var direct atomic.Int64
 	directSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

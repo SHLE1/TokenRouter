@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// HealthStore 只提供健康状态的原独立写入，不扩大事务或缓存成功条件。
+// HealthStore 提供各项独立的健康状态写入操作。
 type HealthStore interface {
 	GetByID(context.Context, int64) (*Record, error)
 	SetError(context.Context, int64, string) error
@@ -184,7 +184,7 @@ func (s *HealthService) TriggerTempUnschedulable(ctx context.Context, provider *
 	}
 
 	// 已知模型的失败写入模型键，使调度器只排除当前提供商与模型的组合。
-	// 认证失败和模型未知的失败仍沿用下方提供商级临时不可调度行为。
+	// 认证失败或模型未知时，使用下方的提供商临时停调规则。
 	modelKey := firstRequestedModel(requestedModel)
 	if modelKey != "" && statusCode != 401 {
 		if err := s.providerRepo.SetModelRateLimit(ctx, provider.ID, modelKey, until, reason); err != nil {
@@ -214,7 +214,7 @@ func (s *HealthService) TriggerTempUnschedulable(ctx context.Context, provider *
 }
 
 // TryTempUnschedulable 允许调用方关闭重复 401 的默认升级。
-// 池模式显式配置的 401 规则每次都应按规则暂停，而不是写入默认提供商错误。
+// 池模式配置的 401 规则命中时，按该规则暂停提供商。
 func (s *HealthService) TryTempUnschedulable(ctx context.Context, provider *Record, statusCode int, responseBody []byte, escalateRepeated401 bool, requestedModel ...string) bool {
 	if provider == nil {
 		return false
@@ -373,7 +373,7 @@ func (s *HealthService) TriggerStreamTimeoutError(ctx context.Context, provider 
 	return true
 }
 
-// HandleTempUnschedulable 保留错误码策略与池模式的升级边界，模型由调用方显式提供。
+// HandleTempUnschedulable 根据错误码策略和池模式决定停调或升级处理，调用方传入模型名。
 func (s *HealthService) HandleTempUnschedulable(ctx context.Context, value *Record, status int, body []byte, model string) bool {
 	if value == nil || !value.ShouldHandleErrorCode(status) {
 		return false

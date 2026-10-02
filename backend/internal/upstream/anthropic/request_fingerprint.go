@@ -143,7 +143,7 @@ func (s *RequestFingerprint) GetOrCreateFingerprint(ctx context.Context, provide
 				"Replaced malformed cached fingerprint for provider %d: %q -> %q",
 				providerID, poisonedUA, cached.UserAgent)
 		} else if uaAcceptable && IsNewerVersion(clientUA, cached.UserAgent) {
-			// 版本升级：merge 语义 — 仅更新请求中实际携带的字段，保留缓存值
+			// 版本升级时更新请求携带的字段，其余字段使用缓存值
 			// 避免缺失的头被硬编码默认值覆盖（如新 CLI 版本 + 旧 SDK 默认值的不一致）
 			MergeHeadersIntoFingerprint(cached, headers)
 			needWrite = true
@@ -208,9 +208,9 @@ func (s *RequestFingerprint) createFingerprintFromHeaders(headers http.Header) *
 }
 
 // MergeHeadersIntoFingerprint 将请求头中实际存在的字段合并到现有指纹中（用于版本升级场景）
-// 关键语义：请求中有的字段 → 用新值覆盖；缺失的头 → 保留缓存中的已有值
+// 请求携带的字段覆盖缓存，缺失的字段使用缓存值。
 // 与 createFingerprintFromHeaders 的区别：后者用于首次创建，缺失头回退到 DefaultFingerprint；
-// 本函数用于升级更新，缺失头保留缓存值，避免将已知的真实值退化为硬编码默认值
+// 版本升级时，缺失字段使用缓存值。
 func MergeHeadersIntoFingerprint(fp *Fingerprint, headers http.Header) {
 	// User-Agent：版本升级的触发条件，一定存在
 	if ua := headers.Get("User-Agent"); ua != "" {
@@ -241,7 +241,7 @@ func GetHeaderOrDefault(headers http.Header, key, defaultValue string) string {
 }
 
 // ApplyFingerprint 将指纹应用到请求头（覆盖原有的x-stainless-*头）
-// 使用 setHeaderRaw 保持原始大小写（如 X-Stainless-OS 而非 X-Stainless-Os）
+// 使用 setHeaderRaw 保持请求头的大小写，例如 X-Stainless-OS。
 func (s *RequestFingerprint) ApplyFingerprint(req *http.Request, fp *Fingerprint) {
 	if fp == nil {
 		return

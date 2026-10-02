@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// EntryKey 是入站 WS 所需的已验证访问投影，不携带 Key 密文或完整身份对象。
+// EntryKey 保存入站 WebSocket 所需的已验证访问数据。
 type EntryKey struct {
 	ID                int64
 	UserID            int64
@@ -43,7 +43,7 @@ type EntryInput struct {
 	MaxProviderSwitches    int
 }
 
-// EntryProvider 保留无凭据的提供商资格和展示投影。
+// EntryProvider 保存提供商资格和展示字段。
 type EntryProvider struct {
 	provider.ProviderSnapshot
 	Name   string
@@ -77,7 +77,7 @@ type EntryCyberSnapshot struct {
 	Input   moderation.ContentModerationInput
 }
 
-// EntryHooks 使用核心 turn 值，与传输策略端口分离。
+// EntryHooks 在 turn 生命周期中接收入口回调。
 type EntryHooks struct {
 	ClientLifecycleContext      context.Context
 	InitialRequestModel         string
@@ -94,7 +94,7 @@ type EntryHooks struct {
 	AfterTurn                   func(TurnCapture)
 }
 
-// EntryTarget 是已选提供商的受控单次执行能力，不向核心暴露凭据。
+// EntryTarget 提供已选提供商的一次执行操作，执行时由目标处理凭据。
 type EntryTarget interface {
 	MappedModel(string) string
 	Report(string, bool, *int)
@@ -173,7 +173,7 @@ type EntryPorts interface {
 	SubmitCompletion(*ForwardResult, func(context.Context))
 }
 
-// EntryField 只允许日志值，不以任意对象携带业务实体。
+// EntryField 保存可写入日志的字段值。
 type EntryField struct {
 	Key     string
 	Text    string

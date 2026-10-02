@@ -126,7 +126,7 @@ defineExpose({
     inputRefs.value.forEach(input => {
       if (input) input.value = ''
     })
-    // 清空隐藏的自动填充输入框，避免下一次打开时残留旧验证码。
+    // 清空隐藏的自动填充输入框，下次打开时重新输入验证码。
     if (hiddenOtpInputRef.value) {
       hiddenOtpInputRef.value.value = ''
     }

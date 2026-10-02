@@ -44,7 +44,7 @@ func TestNormalizeLenientJSONRequestBodyAcceptsClientControlCharsInStrings(t *te
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 测试数据必须能复现严格 JSON 解析失败。
+			// 测试数据会触发严格 JSON 解析错误。
 			require.False(t, gjson.ValidBytes(tt.body))
 
 			got, err := NormalizeLenientJSONRequestBody(tt.body, 1024)
@@ -77,7 +77,7 @@ func TestNormalizeLenientJSONRequestBodyKeepsInvalidStructureInvalid(t *testing.
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NormalizeLenientJSONRequestBody(tt.body, 1024)
 			require.NoError(t, err)
-			// 归一化只处理字符串内容，不能修复非法 JSON 结构。
+			// 规范化处理字符串内容，JSON 结构非法时返回解析错误。
 			require.False(t, gjson.ValidBytes(got))
 		})
 	}

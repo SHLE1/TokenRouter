@@ -117,7 +117,7 @@ func (i *CodexProviderIndex) removeFromKey(key string, providerID int64) {
 }
 
 // upsertCodexProvider 保留共享键的全部候选提供商，并原位替换已有提供商，
-// 使存在歧义的旧身份匹配保持原候选顺序。
+// 身份匹配有多个候选时，按候选顺序处理。
 func upsertCodexProvider(providers []Record, provider Record) []Record {
 	for idx := range providers {
 		if providers[idx].ID == provider.ID {

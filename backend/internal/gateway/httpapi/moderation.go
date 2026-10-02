@@ -167,7 +167,7 @@ func SetOpenAICyberWarningRequestSnapshot(c *gin.Context, protocol string, body 
 	if c == nil || len(body) == 0 {
 		return
 	}
-	// Cyber 与本地审核复用同一份结构化当前轮快照，确保工具输出和图片上下文不会丢失。
+	// Cyber 与本地审核共用当前轮快照，其中包含工具输出和图片上下文。
 	snapshot := moderation.ExtractContentModerationInput(protocol, body)
 	c.Set(CyberWarningSnapshotKey, snapshot)
 	excerpt := moderation.ExtractContentModerationPromptExcerptFromInput(snapshot)

@@ -22,7 +22,7 @@ func RegisterBackupRoutes(admin *gin.RouterGroup, endpoint *BackupHandler, stepU
 
 		// S3 存储配置
 		backup.GET("/s3-config", endpoint.GetS3Config)
-		// 修改 S3 目标可将数据库备份外泄——要求 step-up 2FA
+		// 修改 S3 目标会改变数据库备份的接收位置，需要 step-up 二次验证。
 		backup.PUT("/s3-config", stepUpAuth, endpoint.UpdateS3Config)
 		backup.POST("/s3-config/test", endpoint.TestS3Connection)
 
@@ -35,11 +35,11 @@ func RegisterBackupRoutes(admin *gin.RouterGroup, endpoint *BackupHandler, stepU
 		backup.GET("", endpoint.ListBackups)
 		backup.GET("/:id", RequireCanonicalBackupID, endpoint.GetBackup)
 		backup.DELETE("/:id", RequireCanonicalBackupID, endpoint.DeleteBackup)
-		// 备份下载链接可直接取走整库数据——要求 step-up 2FA
+		// 备份下载链接可取得整库数据，需要 step-up 二次验证。
 		backup.GET("/:id/download-url", RequireCanonicalBackupID, stepUpAuth, endpoint.GetDownloadURL)
 		backup.GET("/:id/download", RequireCanonicalBackupID, stepUpAuth, endpoint.DownloadBackup)
 
-		// 恢复操作：整库覆盖可回滚安全设置（含 step-up 开关本身）——要求 step-up 2FA
+		// 恢复会覆盖整库及安全设置，包括 step-up 开关，需要先通过二次验证。
 		backup.POST("/:id/restore", RequireCanonicalBackupID, stepUpAuth, endpoint.RestoreBackup)
 	}
 }
@@ -58,7 +58,7 @@ func RegisterDataManagementRoutes(admin *gin.RouterGroup, endpoint *DataManageme
 		dataManagement.POST("/sources/:source_type/profiles/:profile_id/activate", endpoint.SetActiveSourceProfile)
 		dataManagement.POST("/s3/test", endpoint.TestS3)
 		dataManagement.GET("/s3/profiles", endpoint.ListS3Profiles)
-		// 修改 S3 目标可将数据备份外泄——要求 step-up 2FA
+		// 修改 S3 目标会改变备份的接收位置，需要 step-up 二次验证。
 		dataManagement.POST("/s3/profiles", stepUpAuth, endpoint.CreateS3Profile)
 		dataManagement.PUT("/s3/profiles/:profile_id", stepUpAuth, endpoint.UpdateS3Profile)
 		dataManagement.DELETE("/s3/profiles/:profile_id", endpoint.DeleteS3Profile)

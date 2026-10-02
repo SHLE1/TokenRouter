@@ -28,7 +28,7 @@ type AuthSourceDefaultSettings struct {
 
 type DefaultSubscriptionSetting = billing.DefaultSubscriptionSetting
 
-// AuthOptions 是启动认证参数投影，不接受整份运行配置。
+// AuthOptions 包含启动时的认证参数。
 type AuthOptions struct {
 	Default struct {
 		UserBalance     float64

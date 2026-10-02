@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 设置读取替身记录原批量失败降级的完整键序列。
+// runtimeSettingFixture 记录批量读取失败后逐键读取的完整键序列。
 type runtimeSettingFixture struct {
 	RuntimeSettingSource
 	keys  []string
@@ -51,7 +51,7 @@ func TestSettingsRuntimePreservesFallbackAndIsolatesValues(t *testing.T) {
 	require.Equal(t, 3, third.LbTopKOverride)
 }
 
-// TestValidationWeightsReadFreshAndPropagateFailure 验证管理写入校验不能复用热路径缓存，也不能在批量读取失败后掩盖错误。
+// TestValidationWeightsReadFreshAndPropagateFailure 检查管理写入校验读取当前设置，并返回批量读取错误。
 func TestValidationWeightsReadFreshAndPropagateFailure(t *testing.T) {
 	source := &runtimeSettingFixture{}
 	defaults := DefaultAdminSettingsDefaults()

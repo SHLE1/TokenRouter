@@ -36,7 +36,7 @@ type CyberObservation struct {
 	UpstreamOutTok int
 }
 
-// StreamOptions 只投影当前尝试的技术参数及外层观察端口，不持有提供商、配置或 HTTP 上下文。
+// StreamOptions 配置本次流读取的超时、输出和观测回调。
 type StreamOptions struct {
 	ProviderID                                                           int64
 	NativeOpenAI, StageFirstOutput, CodexFailureTerminal, GrokIdlePolicy bool
@@ -81,7 +81,7 @@ type StreamOptions struct {
 
 // StreamingResult streaming response result
 type StreamingResult struct {
-	// 原生执行结果独立报告语义输出、用量存在和 HTTP/重试提交，旧资金入口不读取新增字段。
+	// 分别记录内容输出、用量是否存在、HTTP 提交和重试窗口关闭状态。
 	Served, HasUsage, HttpCommitted, RetryCommitted, ClientDisconnected, ObservedOnly bool
 	FirstSemanticOutput                                                               *time.Duration
 	Usage                                                                             *wire.ForwardUsage
@@ -158,7 +158,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 		return int64(bufferedWriter.Buffered())
 	}
 	flushBuffered := func() error {
-		// 空缓冲区的 Flush 只是整理写入边界，不代表已向下游发送响应数据。
+		// 缓冲区有数据时，刷新才算向下游写出响应。
 		hadPendingBytes := pendingBytes() > 0
 		if firstOutputStage != nil && !firstOutputStage.Closed() {
 			if err := firstOutputStage.CommitTo(w); err != nil {
@@ -192,7 +192,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 	documentScanner := wire.NewSSEJSONDocumentScanner(scanner)
 
 	streamInterval := options.StreamInterval
-	// 仅监控上游数据间隔超时，不被下游写入阻塞影响
+	// 按上游数据到达间隔监控超时，下游写入耗时单独处理
 	var intervalTicker *time.Ticker
 	if streamInterval > 0 {
 		intervalTicker = time.NewTicker(streamInterval)
@@ -378,7 +378,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			SearchCount: searchCounter,
 		}
 	}
-	// 只保存本次读取器已获得的事实，不执行成功专属后置操作，也不改变旧调用错误返回。
+	// 读取失败时返回已收集的用量，并标记 ObservedOnly。
 	defer func() {
 		if observed == nil && failure != nil {
 			observed = resultWithUsage()
@@ -880,7 +880,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 	}
 	// 独立 goroutine 读取上游，避免读取阻塞影响 keepalive/超时处理
 	// 保护模式允许一个排队 token 和一个正在处理的 token；配合 scanner 上限，
-	// scanner/channel 保留量约束在 16 MiB 附近。禁用超时时保留原有深度 16。
+	// scanner/channel 保留量约束在 16 MiB 附近。禁用超时时队列深度为 16。
 	events := make(chan scanEvent, OpenAIFirstOutputEventQueueSize(guardFirstOutput))
 	done := make(chan struct{})
 	sendEvent := func(ev scanEvent) bool {
@@ -964,7 +964,7 @@ func ReadStreamingResponse(ctx context.Context, resp *http.Response, c *upstream
 			// 处理流超时，可能标记提供商为临时不可调度或错误状态
 			options.StreamTimeout(originalModel)
 			// Grok 在尚未向客户端提交可见字节时执行短期冷却与提供商故障转移。
-			// 输出开始后保留旧版 stream_timeout 路径，避免部分 SSE 被重复写入。
+			// 输出开始后按 stream_timeout 处理，已发送的 SSE 保持原样。
 			if options.GrokIdlePolicy {
 				options.IdleCooldown()
 				if !options.ClientOutputStarted(clientOutputStarted) && !eventShouldFlush {

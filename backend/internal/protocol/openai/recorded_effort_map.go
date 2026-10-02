@@ -1,7 +1,6 @@
 package openai
 
-// GetOpenAIReasoningEffortFromReqBody 只提取请求中显式给出的档位。
-// 显式值代表客户端真实请求，缺失字段时不从模型名称推导。
+// GetOpenAIReasoningEffortFromReqBody 提取请求字段指定的推理档位，字段缺失时返回空字符串。
 func GetOpenAIReasoningEffortFromReqBody(reqBody map[string]any) (value string, present bool) {
 	if reqBody == nil {
 		return "", false

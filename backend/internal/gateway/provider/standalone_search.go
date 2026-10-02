@@ -6,7 +6,7 @@ import (
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// GrokStandaloneSearchModel 在请求原有取值点读取动态默认型号。
+// GrokStandaloneSearchModel 读取独立搜索当前配置的默认型号。
 func GrokStandaloneSearchModel() string {
 	return xai.ResolveDefaultTextModel(xai.RuntimeModelMappingOptions().DefaultText)
 }

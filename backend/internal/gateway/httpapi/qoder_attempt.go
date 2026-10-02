@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ForwardQoderAttempt 只执行单次尝试并同步写出，提供商切换仍由外层唯一循环决定。
+// ForwardQoderAttempt 执行一次请求并同步输出响应，外层循环负责切换提供商。
 // 保留旧入口的部分结果资格和结果字段，不额外填充首次输出或估算用量。
 func ForwardQoderAttempt(ctx context.Context, c *gin.Context, runtime *gatewayadapter.QoderRuntime, value *provider.Record, body []byte, wire protocol.ProtocolID, responseModels ...string) (*forward.MessagesResult, error) {
 	responseModel := qoder.FirstNonEmptyQoder(responseModels...)

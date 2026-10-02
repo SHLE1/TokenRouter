@@ -121,7 +121,7 @@ type OpsInsertErrorLogInput struct {
 	CreatedAt time.Time
 
 	// 有效(未删除)key 报错时快照的 key 脱敏前缀(前 8 位)。
-	// 落库快照而非读时 JOIN:key 之后被删(key 列被 tombstone 覆盖)仍保留当时前缀。
+	// 前缀随错误快照落库。Key 删除、被 tombstone 覆盖后，快照仍保存当时的前缀。
 	APIKeyPrefix string
 }
 

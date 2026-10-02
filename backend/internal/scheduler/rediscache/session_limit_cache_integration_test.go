@@ -63,8 +63,7 @@ func (s *SessionLimitCacheSuite) TestUnregisterSession_IdempotentAndMissing() {
 	s.RequireNoError(s.cache.UnregisterSession(s.ctx, providerID, ""), "空 sessionUUID 应为 no-op")
 }
 
-// TestUnregisterSession_OnlyTargetsSpecifiedSession 验证释放只影响目标会话，
-// 不影响同提供商上的其他活跃会话。
+// TestUnregisterSession_OnlyTargetsSpecifiedSession 检查指定会话被移除后，同提供商的其他会话仍然活跃。
 func (s *SessionLimitCacheSuite) TestUnregisterSession_OnlyTargetsSpecifiedSession() {
 	const providerID = int64(103)
 	maxSessions := 2

@@ -23,7 +23,7 @@ const (
 
 // AccessDeniedFallbackTransport 保持订阅 CLI 代理为 OAuth 主路由；仅当代理返回
 // 兼容性特有的 403 "Access denied" 且请求体可重放时，才向 api.x.ai 重试一次。
-// 其它授权失败继续返回原响应，避免改变提供商调度语义。
+// 其它授权失败返回原响应，由提供商调度处理。
 type AccessDeniedFallbackTransport struct {
 	Base http.RoundTripper
 }
@@ -94,7 +94,7 @@ func IsCLICompatibilityAccessDenied(body []byte) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(payload.Error)), chatEndpointDeniedPrefix)
 }
 
-// IsCLIAccessDeniedFallbackCandidate 在读取响应体前校验路由、身份和可重放边界。
+// IsCLIAccessDeniedFallbackCandidate 在读取响应体前检查路由、身份和请求能否重放。
 func IsCLIAccessDeniedFallbackCandidate(req *http.Request, resp *http.Response) bool {
 	return req != nil && req.URL != nil && req.GetBody != nil && resp != nil &&
 		resp.StatusCode == http.StatusForbidden &&
@@ -159,13 +159,13 @@ func bufferSmallResponseBody(resp *http.Response, limit int64) ([]byte, bool) {
 	return body, true
 }
 
-// prefixedReadCloser 将已探测前缀与剩余响应体重新拼接，并保留原关闭语义。
+// prefixedReadCloser 拼接已读取的前缀与剩余响应体，关闭时调用响应体的 Close。
 type prefixedReadCloser struct {
 	io.Reader
 	io.Closer
 }
 
-// ApplyTransportCLIHeaders 在最终共享 transport 边界写入官方 Grok Build 客户端身份。
+// ApplyTransportCLIHeaders 在共享 transport 发送请求前写入官方 Grok Build 客户端身份。
 // 仅精确匹配 CLI 代理主机，避免改变直连 api.x.ai 的流量，并统一覆盖 Responses、
 // Chat Completions、媒体、额度探测和提供商测试请求。
 func ApplyTransportCLIHeaders(req *http.Request) {

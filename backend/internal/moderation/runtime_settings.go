@@ -12,7 +12,7 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// RuntimeSettings 只拥有审核开关的原运行缓存；不承担网关捕获与处置。
+// RuntimeSettings 缓存审核开关。
 type RuntimeSettings struct {
 	settingRepo            RuntimeSettingsStore
 	notFound               error

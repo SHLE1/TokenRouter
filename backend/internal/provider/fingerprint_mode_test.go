@@ -35,8 +35,7 @@ func TestGetCodexFingerprintMode(t *testing.T) {
 		{"非 OAuth 提供商", &providercore.Record{Platform: capability.PlatformOpenAI, Type: "api_key"}, providercore.CodexFingerprintOff},
 		{"OpenAI setup token", &providercore.Record{Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeSetupToken, Extra: map[string]any{providercore.CodexFingerprintModeExtraKey: "session"}}, providercore.CodexFingerprintSession},
 		{"Anthropic setup token", &providercore.Record{Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeSetupToken, Extra: map[string]any{providercore.CodexFingerprintModeExtraKey: "session"}}, providercore.CodexFingerprintOff},
-		// 收敛是显式 opt-in：缺省/空/非法一律 off（#5610）。存量提供商普遍没有这个
-		// extra 键，升级不得把它们静默切进收敛。
+		// 指纹功能需要管理员开启，字段缺省、为空或无效时均为 off（#5610）。
 		{"无 extra 默认 off", newTestOAuthProvider(1, nil), providercore.CodexFingerprintOff},
 		{"空值默认 off", newTestOAuthProvider(1, map[string]any{providercore.CodexFingerprintModeExtraKey: ""}), providercore.CodexFingerprintOff},
 		{"非法值默认 off", newTestOAuthProvider(1, map[string]any{providercore.CodexFingerprintModeExtraKey: "invalid"}), providercore.CodexFingerprintOff},

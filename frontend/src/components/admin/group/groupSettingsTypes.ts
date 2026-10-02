@@ -7,7 +7,7 @@ import type {
 import type { ReasoningEffortMappingRow } from '@/views/admin/groupsReasoningEffort'
 import type { CodexImageToolMode } from '@/utils/codexImageToolMode'
 
-// 表单类型只描述可编辑草稿，API 兼容字段继续由页面初始化和提交逻辑持有。
+// 表单类型描述可编辑草稿，页面初始化和提交逻辑处理 API 兼容字段。
 export interface GroupSettingsDraft {
   name: string
   description: string

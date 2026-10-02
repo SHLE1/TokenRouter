@@ -13,7 +13,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideProviderHealthRuntime 直接投影配置、原生设置和技术端口；构造期间不回源或启动工作。
+// provideProviderHealthRuntime 为提供商健康状态组件绑定配置、设置读取器和基础设施接口。
 func provideProviderHealthRuntime(
 	store *providerpostgres.ProviderStore,
 	cache provider.TempUnschedCache,
@@ -54,7 +54,7 @@ func provideProviderHealthRuntime(
 		options.Block = state.BlockProviderScheduling
 	}
 
-	// 恢复与窗口观测互相调用；绑定完成后才对外发布，构造本身不执行这些回调。
+	// 恢复与窗口观测会相互调用，完成函数绑定后再返回组件供调用方使用。
 	var recovery *provider.RecoveryService
 	options.ClearWindowRateLimit = func(ctx context.Context, id int64) error {
 		return recovery.ClearRateLimit(ctx, id)
@@ -87,14 +87,14 @@ func provideProviderHealthRuntime(
 	}
 }
 
-// providerHealthRuntime 仅聚合同一装配的原生拥有者，不另建规则或可变状态。
+// providerHealthRuntime 保存同一次装配创建的健康状态组件。
 type providerHealthRuntime struct {
 	Health   *provider.HealthService
 	Recovery *provider.RecoveryService
 	Observer *provideradapter.UpstreamHealth
 }
 
-// provideProviderRecovery 对原生消费者直接发布唯一恢复用例。
+// provideProviderRecovery 返回共享的提供商恢复用例。
 func provideProviderRecovery(runtime *providerHealthRuntime) *provider.RecoveryService {
 	return runtime.Recovery
 }

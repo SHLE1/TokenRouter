@@ -20,7 +20,7 @@ import (
 // - TTL: 120 秒（覆盖当前分钟 + 一定冗余）
 //
 // 使用 TxPipeline（MULTI/EXEC）执行 INCR + EXPIRE，保证原子性且兼容 Redis Cluster。
-// 通过 rdb.Time() 获取服务端时间，避免多实例时钟不同步。
+// 通过 rdb.Time() 取得服务端时间，各实例共用该时间源。
 //
 // 设计决策：
 //   - TxPipeline vs Pipeline：Pipeline 仅合并发送但不保证原子，TxPipeline 使用 MULTI/EXEC 事务保证原子执行。
@@ -46,7 +46,7 @@ func NewRPMCache(rdb *redis.Client) scheduler.RPMCache {
 }
 
 // currentMinuteKey 获取当前分钟的完整 Redis key
-// 使用 rdb.Time() 获取 Redis 服务端时间，避免多实例时钟偏差
+// 通过 rdb.Time() 取得 Redis 服务端时间，各实例共用该时间源。
 func (c *RPMCacheImpl) currentMinuteKey(ctx context.Context, providerID int64) (string, error) {
 	serverTime, err := c.rdb.Time(ctx).Result()
 	if err != nil {
@@ -76,7 +76,7 @@ func (c *RPMCacheImpl) IncrementRPM(ctx context.Context, providerID int64) (int,
 	}
 
 	// 使用 TxPipeline (MULTI/EXEC) 保证 INCR + EXPIRE 原子执行
-	// EXPIRE 幂等，每次都设置不影响正确性
+	// 每次执行 EXPIRE 刷新计数键的有效期。
 	pipe := c.rdb.TxPipeline()
 	incrCmd := pipe.Incr(ctx, key)
 	pipe.Expire(ctx, key, rpmKeyTTL)

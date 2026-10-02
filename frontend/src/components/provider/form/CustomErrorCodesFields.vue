@@ -93,7 +93,7 @@ import { useAppStore } from '@/stores/app'
 
 // 自定义错误码的开关、快捷选择和手动添加，三个提供商弹窗共用。
 defineProps<{
-  /** 批量编辑由外层的应用开关控制，此时不再显示本组件的启用开关。 */
+  /** 批量编辑时由外层的应用开关控制启用状态。 */
   hideToggle?: boolean
 }>()
 const enabled = defineModel<boolean>('enabled', { default: false })

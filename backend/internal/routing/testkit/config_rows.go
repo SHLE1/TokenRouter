@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// ConfigRows 仅提供可替换的持久化输入；查询缓存仍由真实模型配置服务管理。
+// ConfigRows 为模型配置服务提供可替换的测试数据，服务负责查询缓存。
 type ConfigRows struct {
 	routing.PricingConfigRepository
 	Values    []Configuration
@@ -29,7 +29,7 @@ func (r ConfigRows) GetByID(_ context.Context, id int64) (*Configuration, error)
 	return nil, routing.ErrPricingConfigNotFound
 }
 
-// PricingConfig 保留原分组绑定、数据副本、时钟及定价时区加载器。
+// PricingConfig 复制配置并绑定指定分组，注入时钟和定价时区加载器。
 func PricingConfig(groupID int64, platform string, value Configuration) *routing.PricingConfigService {
 	cloned := value.Clone()
 	cloned.GroupIDs = []int64{groupID}

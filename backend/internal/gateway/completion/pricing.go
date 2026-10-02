@@ -177,7 +177,7 @@ func (s *Recorder) CalculateTokenCost(
 		opts = &PricingOptions{}
 	}
 
-	// 共享价格配置显式价格优先，并按价格配置选择计费模型。
+	// 共享价格配置中的价格优先，计费模型也按该配置选择。
 	if resolved, resolvedModel := s.resolveConfigPricingForUsage(ctx, billingModel, apiKey); resolved != nil {
 		gid := apiKey.Group.ID
 		cost, err = s.billingService.CalculateCostUnified(CostInput{
@@ -244,10 +244,8 @@ func (s *Recorder) CalculateOpenAIRecordUsageCostAt(
 ) (*CostBreakdown, error) {
 	billingModel := firstUsageBillingModel(billingModels)
 	if result != nil && result.WebSearchCalls > 0 {
-		// Codex alpha/search 网页搜索按次计费：上游不返回 usage/token 字段，单价只取
-		// 配置单价（nil 时默认 0.01 = 官方 $10/1000 次），不参与共享模型价卡定价。
-		// 倍率与 image/video 按次口径一致：使用不含高峰因子的基础倍率
-		//（用户专属 > 分组 rate_multiplier > 系统默认）。
+		// Codex alpha/search 网页搜索按次计费，使用配置单价，nil 时默认 0.01（$10/1000 次）。
+		// 上游缺少 usage/token 字段，价格单独配置。倍率与图片和视频按次计费相同，按用户专属、分组、系统默认的顺序选择基础倍率，高峰因子在此处排除。
 		return s.billingService.CalculateWebSearchCost(result.WebSearchCalls, webSearchPricePerCallFromAPIKey(apiKey), webSearchMultiplier), nil
 	}
 	if IsGrokVideoUsageResult(result, billingModels) {
@@ -497,7 +495,7 @@ func (s *Recorder) FilterCNProviderBillingModelCandidates(
 			continue
 		}
 		if IsCNProviderClaudeFallbackCandidate(candidate) {
-			// 纯倍率可以参与媒体计费，但不能替国产模型建立 Claude 的显式基础价。
+			// 纯倍率可用于媒体计费，国产模型的 Claude 基础价仍需单独配置。
 			resolved := s.ResolveOpenAIConfigPricing(ctx, candidate, apiKey)
 			if !resolved.HasEffectiveOverridePricing() {
 				continue
@@ -540,7 +538,7 @@ func OpenAIUsageBillingModel(result *Result, fields PricingUsageFields) string {
 
 	switch fields.BillingModelSource {
 	case BillingModelSourceUpstream:
-		// 图片轮次的上游文本模型不是图片计价 SKU，必须保留显式解析出的图片模型。
+		// 图片计价使用解析出的图片模型，上游文本模型用于文本处理。
 		if upstreamModel := strings.TrimSpace(result.UpstreamModel); upstreamModel != "" && (result.ImageCount <= 0 || explicitBillingModel == "") {
 			billingModel = upstreamModel
 		}

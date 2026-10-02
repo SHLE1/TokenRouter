@@ -9,7 +9,7 @@ import (
 	"github.com/lib/pq"
 )
 
-// HistoricalIngressCleanup 只操作分析记录，保留原主键分页和截止过滤。
+// HistoricalIngressCleanup 按主键分页清理截止时间前的分析记录。
 type HistoricalIngressCleanup struct{ db *sql.DB }
 
 func NewHistoricalIngressCleanup(db *sql.DB) *HistoricalIngressCleanup {

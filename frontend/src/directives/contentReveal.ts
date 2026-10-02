@@ -8,7 +8,7 @@ interface RevealState {
 
 const states = new WeakMap<HTMLElement, RevealState>()
 
-/** 内容立即可用；动画只改变透明度，不改变定位、挂载或请求时机。 */
+/** 对已挂载、可交互的内容播放透明度动画。 */
 function reveal(element: HTMLElement) {
   const state = states.get(element)
   state?.stop()
@@ -21,7 +21,7 @@ function reveal(element: HTMLElement) {
     easing: style.getPropertyValue('--motion-ease').trim() || 'ease-out',
   })
   state.animation = animation
-  // 完成后释放动画，不留下会覆盖后续主题或显隐状态的填充样式。
+  // 完成后释放动画，让后续主题和显隐样式控制元素。
   void animation.finished.then(() => {
     if (state.animation === animation) state.animation = undefined
   }, () => {})

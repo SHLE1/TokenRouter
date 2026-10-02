@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHTTPTransportConfigurationReadBoundary 保留同一实例按请求读取安全配置的边界。
+// TestHTTPTransportConfigurationReadBoundary 检查传输实例在每次请求时读取安全配置。
 func TestHTTPTransportConfigurationReadBoundary(t *testing.T) {
 	var calls atomic.Int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

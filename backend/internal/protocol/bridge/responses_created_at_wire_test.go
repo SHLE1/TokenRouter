@@ -7,13 +7,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// issue #5601：严格的 Responses 客户端（Rust serde 系，如 Codex / Grok CLI）把
-// created_at 声明为必填字段，缺失即 `missing field 'created_at'` 反序列化失败。
-// 网关合成的 Responses 对象（Chat→Responses、Anthropic→Responses 两座桥）此前从不
-// 写这个字段——尽管两个流式 state 早就采集好了 Created 时间戳，只是没有出口。
-// 原生 Responses 透传走 gjson/sjson 字节级改写，不受影响。
+// issue #5601：Codex、Grok CLI 等使用 Rust serde 的 Responses 客户端要求 created_at 字段，
+// 缺失时返回 missing field 'created_at'。Chat 和 Anthropic 转换出的 Responses 对象
+// 使用流状态中的 Created 时间戳，透传响应则通过 gjson/sjson 局部改写。
 
-// responseObjectOf 取出事件里的 response 子对象（按线格式，而不是按 Go 结构体）。
+// responseObjectOf 从事件序列化后的 JSON 中取出 response 子对象。
 func responseObjectOf(t *testing.T, evt ResponsesStreamEvent) map[string]any {
 	t.Helper()
 	m := marshalEvent(t, evt)
@@ -74,7 +72,7 @@ func TestChatCompletionsResponseToResponses_CarriesCreatedAt(t *testing.T) {
 }
 
 // TestChatCompletionsToResponsesStream_CreatedAtStableAcrossEvents 验证同一条流里 response.created 与终止事件必须报同一个 created_at
-// （官方语义：created_at 是这次 response 的创建时刻，不随事件变化）。
+// created_at 表示本次 response 的创建时刻，各事件使用同一时间。
 func TestChatCompletionsToResponsesStream_CreatedAtStableAcrossEvents(t *testing.T) {
 	state := NewChatCompletionsToResponsesStreamState(testRuntime(), "deepseek-v4-flash")
 	require.Greater(t, state.Created, int64(0), "前提：state 早就采集了时间戳")

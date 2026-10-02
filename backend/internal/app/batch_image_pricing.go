@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// batchPricingGroups 只投影任务报价所需字段，读取仍由任务用例按需触发。
+// batchPricingGroups 返回任务报价需要的分组字段，由任务用例按需读取。
 type batchPricingGroups struct {
 	source   routing.GroupRepository
 	settings *routing.PricingConfigService

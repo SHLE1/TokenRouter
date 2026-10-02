@@ -31,7 +31,7 @@ func entitlementTx(t *testing.T) *dbent.Tx {
 	return tx
 }
 
-// billingUserForContract 为资金测试投影所需用户字段。
+// billingUserForContract 为资金测试提取用户资料。
 func billingUserForContract(u *identity.User) *billing.UserSummary {
 	if u == nil {
 		return nil

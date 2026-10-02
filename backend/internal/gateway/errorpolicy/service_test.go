@@ -139,7 +139,7 @@ func newTestService(rules []*ErrorPassthroughRule) *ErrorPassthroughService {
 		repo:  repo,
 		cache: nil, // 不使用缓存
 	}
-	// 直接设置本地缓存，避免调用 refreshLocalCache
+	// 直接设置本地缓存作为测试输入。
 	svc.setLocalCache(rules)
 	return svc
 }
@@ -168,9 +168,7 @@ func newCachedRuleForTest(rule *ErrorPassthroughRule) *cachedPassthroughRule {
 	return cr
 }
 
-// =============================================================================
-// 测试 ruleMatchesOptimized 核心匹配逻辑
-// =============================================================================
+// 测试 ruleMatchesOptimized 的匹配规则。
 
 func TestRuleMatches_NoConditions(t *testing.T) {
 	// 没有配置任何条件时，不应该匹配
@@ -613,9 +611,7 @@ func TestMatchRule_CaseInsensitiveKeyword(t *testing.T) {
 	}
 }
 
-// =============================================================================
-// 测试真实场景
-// =============================================================================
+// 测试完整错误响应中的规则匹配。
 
 func TestMatchRule_RealWorldScenario_ContextLimitPassthrough(t *testing.T) {
 	// 场景：上游返回 422 + "context limit has been reached"，需要透传给客户端

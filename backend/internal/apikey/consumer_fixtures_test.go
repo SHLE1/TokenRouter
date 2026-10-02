@@ -13,7 +13,7 @@ import (
 
 const apiKeyLimitUpperBound = apikey.KeyApiKeyLimitUpperBound
 
-// 用户和团队替身只提供 Key 用例实际读取的端口；意外调用仍会失败。
+// userRepoStub 为 Key 用例提供用户读取，未配置的方法调用会失败。
 type userRepoStub struct {
 	identity.UserRepository
 	user *identity.User

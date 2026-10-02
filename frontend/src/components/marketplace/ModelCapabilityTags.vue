@@ -36,7 +36,7 @@ const props = defineProps<{
 
 const { t } = useI18n()
 
-// 新属性投影保留未知与显式空集合；仅兼容旧接口时使用历史模态推断。
+// 模型包含 attributes 时读取其模态字段，缺少 attributes 的旧接口响应通过模型信息推断模态。
 const capabilities = computed(() =>
   props.model.attributes ? {
     input: (props.model.attributes.input_modalities ?? []) as ModelModality[],

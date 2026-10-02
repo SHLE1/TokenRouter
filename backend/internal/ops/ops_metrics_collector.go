@@ -26,7 +26,7 @@ const (
 	opsMetricsCollectorHeartbeatTimeout = 2 * time.Second
 )
 
-// opsSchedulableProviderLoadRepository 是 Ops 采样可选使用的轻量提供商投影能力。
+// opsSchedulableProviderLoadRepository 为 Ops 采样提供可调度提供商的并发负载。
 type opsSchedulableProviderLoadRepository interface {
 	ListSchedulableProviderLoads(ctx context.Context) ([]ProviderWithConcurrency, error)
 }
@@ -421,7 +421,7 @@ func (c *OpsMetricsCollector) collectConcurrencyQueueDepth(parentCtx context.Con
 	return &v
 }
 
-// listSchedulableProviderLoads 优先使用轻量投影，不支持时保持原仓储回退语义。
+// listSchedulableProviderLoads 优先查询并发负载，仓储未实现该接口时从完整提供商记录提取。
 func (c *OpsMetricsCollector) listSchedulableProviderLoads(ctx context.Context) ([]ProviderWithConcurrency, error) {
 	if repo, ok := c.providerRepo.(opsSchedulableProviderLoadRepository); ok {
 		return repo.ListSchedulableProviderLoads(ctx)

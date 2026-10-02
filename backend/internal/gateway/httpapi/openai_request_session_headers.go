@@ -56,7 +56,7 @@ func ResolveOpenAIUpstreamOriginator(c *gin.Context, isOfficialClient bool, rout
 	}, isOfficialClient, routerMatch...)
 }
 
-// ResolveOpenAIUpstreamOriginatorForClient originator 的平台规则由 upstream 执行，此处投影路由结果。
+// ResolveOpenAIUpstreamOriginatorForClient 将路由结果交给 upstream 解析 originator。
 func ResolveOpenAIUpstreamOriginatorForClient(read func() string, official bool, matches ...egress.TLSFingerprintRouterMatchResult) string {
 	var match egress.TLSFingerprintRouterMatchResult
 	if len(matches) > 0 {
@@ -68,15 +68,14 @@ func ResolveOpenAIUpstreamOriginatorForClient(read func() string, official bool,
 const OpenAICodexRoutingHintHeader = "x-codex-routing-hint"
 
 // SetOpenAICodexRoutingHint 为 OpenAI OAuth 请求生成 Codex 后端路由提示。
-// model 必须是最终上游模型名，serviceTier 必须已应用本地策略改写与过滤。
+// 调用方传入最终上游模型名，以及应用本地改写和过滤策略后的 serviceTier。
 func SetOpenAICodexRoutingHint(headers http.Header, provider *gatewayprovider.ExecutionProvider, model string, serviceTier string) {
 	if headers == nil {
 		return
 	}
 
-	// 路由提示由网关独占控制。生成前删除所有大小写变体，避免 API Key、
-	// Provider 凭证路径透传调用方或提供商头覆盖注入的提示；Header.Del 只会
-	// 删除规范化键，而入站映射可能保留原始小写键。
+	// 生成路由提示前删除同名头的全部大小写变体，网关写入的提示使用最终值。
+	// Header.Del 只删除规范化键，入站映射还可能包含小写键。
 	DeleteOpenAIHeaderEqualFold(headers, OpenAICodexRoutingHintHeader)
 	if provider == nil || !provider.View().IsOpenAIOAuthLike() {
 		return
@@ -87,8 +86,7 @@ func SetOpenAICodexRoutingHint(headers http.Header, provider *gatewayprovider.Ex
 		return
 	}
 
-	// Codex 将 default 视为标准路由哨兵而非发往后端的服务层级；fast 沿用
-	// 网关现有规范化规则转为 priority，flex 和 ultrafast 保持不变。
+	// Codex 的 default 表示标准路由，发送时省略服务层级。fast 规范化为 priority，flex 和 ultrafast 保持原样。
 	canonicalTier := protocolopenai.ServiceTierValue(serviceTier)
 	// 当前回移不含 Codex 模型目录快照，无法校验任意层级 ID，因此只发送
 	// Codex 实际选择的有效层级；default、空值和其他兼容 API 值仅保留模型。
@@ -125,8 +123,7 @@ func SetOpenAICodexRoutingHintFromBody(headers http.Header, provider *gatewaypro
 	SetOpenAICodexRoutingHint(headers, provider, fields[0].String(), fields[1].String())
 }
 
-// LogOpenAIRoutingDiagnostics 仅记录网关推导出的路由状态；该逻辑位于携带认证
-// 信息的链路中，因此明确不记录任何请求头值、令牌或凭证。
+// LogOpenAIRoutingDiagnostics 记录网关推导的路由状态，日志字段为路由诊断值。
 func LogOpenAIRoutingDiagnostics(
 	ctx context.Context,
 	provider *gatewayprovider.ExecutionProvider,

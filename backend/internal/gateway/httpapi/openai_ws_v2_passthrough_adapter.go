@@ -29,7 +29,7 @@ const openaiWSV2PassthroughModeFields = "ws_mode=passthrough ws_router=v2"
 
 // 首输出与活跃读取超时由 gateway/ws 唯一拥有。
 
-// openAIWSCoreFrames 将供应商帧连接投影为网关接口，不改变连接释放责任。
+// openAIWSCoreFrames 将供应商帧连接适配为网关接口。
 type openAIWSCoreFrames struct{ openaiwsv2.FrameConn }
 
 func (c openAIWSCoreFrames) ReadFrame(ctx context.Context) (int, []byte, error) {

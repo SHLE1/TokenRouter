@@ -134,7 +134,7 @@ export function useUsageChartFilters() {
     }
   }
 
-  // setModelOptions 用一次模型统计结果刷新候选项；已选模型即使不在结果里也保留，避免选中值被悄悄清空。
+  // setModelOptions 根据模型统计刷新候选项，并保留当前选中的模型。
   const setModelOptions = (models: ModelStat[]) => {
     const names = new Set(models.map((item) => item.model).filter(Boolean))
     if (filters.value.model) names.add(filters.value.model)
@@ -144,7 +144,7 @@ export function useUsageChartFilters() {
   // 用递增序号丢弃过期的模型候选响应。
   let modelSeq = 0
 
-  // loadModelOptions 读取时间范围内用过的模型，不带筛选，避免选中其它条件后模型候选变少。
+  // loadModelOptions 按时间范围读取用过的模型，其他筛选条件独立于候选查询。
   const loadModelOptions = async (range: UsageRange) => {
     const seq = ++modelSeq
     try {

@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// OAuthSettingsDefaults 只包含身份认证的启动缺省，完整 config 不进入核心。
+// OAuthSettingsDefaults 包含启动时提供的身份认证默认值。
 type OAuthSettingsDefaults struct {
 	LinuxDo     authconfig.LinuxDoConnectConfig
 	DingTalk    authconfig.DingTalkConnectConfig
@@ -22,7 +22,7 @@ type OAuthSettingsDefaults struct {
 	GoogleOAuth authconfig.EmailOAuthProviderConfig
 }
 
-// OAuthSettingsStore 保留原批量读取时点。
+// OAuthSettingsStore 提供 OAuth 配置的批量读取。
 type OAuthSettingsStore interface {
 	GetMultiple(context.Context, []string) (map[string]string, error)
 }
@@ -1142,7 +1142,7 @@ func (cfg WeChatConnectOAuthConfig) AppSecretForMode(mode string) string {
 	return strings.TrimSpace(oauthSettingsFirstNonEmpty(cfg.OpenAppSecret, cfg.LegacyAppSecret))
 }
 
-// oauthSettingsFirstNonEmpty 保留原首个非空值优先级。
+// oauthSettingsFirstNonEmpty 返回首个非空值。
 func oauthSettingsFirstNonEmpty(values ...string) string {
 	for _, value := range values {
 		if value = strings.TrimSpace(value); value != "" {

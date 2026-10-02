@@ -6,7 +6,7 @@ import "time"
 type ProviderRefreshErrorAction int
 
 const (
-	// ProviderRefreshErrorReturn 失败即返回错误（不降级旧 token）。
+	// ProviderRefreshErrorReturn 在刷新失败时返回错误。
 	ProviderRefreshErrorReturn ProviderRefreshErrorAction = iota
 	// ProviderRefreshErrorUseExistingToken 失败后继续使用现有 token。
 	ProviderRefreshErrorUseExistingToken

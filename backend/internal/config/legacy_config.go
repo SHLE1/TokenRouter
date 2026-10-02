@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// legacyConfigKeys 只映射已有明确替代项的部署配置，不匹配用户自定义名称。
+// legacyConfigKeys 列出部署配置的旧键及其替代键。
 var legacyConfigKeys = []struct {
 	oldKey string
 	newKey string

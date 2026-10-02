@@ -259,7 +259,7 @@ func TestComputeFinalCountTokensAnthropicBeta_OAuthTransparent_AppendsBetaTokenC
 }
 
 // ============================================================================
-// normalizeClaudeOAuthRequestBody — 回归：context_management 补齐恢复原行为
+// normalizeClaudeOAuthRequestBody 的 context_management 补齐测试
 // ============================================================================
 //
 // 该函数不按 model 名短路：thinking=enabled/adaptive 时补齐 context_management，

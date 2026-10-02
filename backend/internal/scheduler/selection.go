@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// SelectionCandidate 只携带候选快照和当次观测；关联号由外层当前选择调用独立管理。
+// SelectionCandidate 保存候选快照和本次观测，关联号由当前选择调用管理。
 type SelectionCandidate struct {
 	Snapshot     *provider.ProviderSnapshot
 	ProjectionID uint64
@@ -16,7 +16,7 @@ type SelectionCandidate struct {
 	Plan         *routing.CandidatePlan
 }
 
-// SelectionInput 固化最终分组与请求能力，不提前确定提供商或保存到共享缓存。
+// SelectionInput 保存本次选择的最终分组、请求能力和候选列表。
 type SelectionInput struct {
 	GroupID               *int64
 	RequestedModel        string
@@ -28,8 +28,8 @@ type SelectionInput struct {
 	PreserveStickyBinding bool
 }
 
-// AttemptSelectionPorts 保留获取、fresh 和数据库复核的独立预算及查询时点。
-// 供应商资格由只读端口给出，gateway 继续拥有真正的上游重试循环。
+// AttemptSelectionPorts 提供获取槽位、刷新候选和数据库复核的函数，各步骤分别检查预算。
+// gateway 根据返回的候选执行上游请求和重试。
 type AttemptSelectionPorts struct {
 	Acquire        func(context.Context, int64, int) (*AcquireResult, bool, error)
 	Fresh          func(context.Context, SelectionCandidate) (SelectionCandidate, bool)
@@ -45,7 +45,7 @@ type SelectionResult struct {
 }
 
 // Select 接管每次已取得槽位，所有补全、协议与资格复核失败均通过 AttemptLease 归还。
-// 本方法只推进已排列候选，不执行上游请求或建立另一套 failover。
+// 候选按传入顺序尝试，上游请求和重试由 gateway 执行。
 func (l *Lease) Select(ctx context.Context, input SelectionInput, ports AttemptSelectionPorts) (SelectionResult, bool, error) {
 	ctx = WithRequestLease(ctx, l)
 	output := SelectionResult{}

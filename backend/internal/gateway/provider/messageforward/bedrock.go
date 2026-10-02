@@ -154,7 +154,7 @@ func (r *Runtime) bedrockError(
 		return r.handleError(ctx, output, state, provider, resp, true, mappedModel)
 	}
 
-	// 无法在当前提供商重试时，保留原切号裁决。
+	// 无法在当前提供商重试时，返回换号决定。
 	if forward.ShouldFailover(resp.StatusCode) {
 		respBody, _ := r.readErrorBody(resp)
 		_ = resp.Body.Close()
@@ -200,7 +200,7 @@ func (r *Runtime) bedrockOptions(ctx context.Context, output HTTPBoundary, state
 	return options, policy
 }
 
-// bedrockBetaTokens 保留原 Header 校验、平台变换、最终 token 再校验的顺序。
+// bedrockBetaTokens 依次校验 Header、转换平台 token，并再次校验转换结果。
 func (r *Runtime) bedrockBetaTokens(ctx context.Context, target *gatewayprovider.ExecutionProvider, header string, body []byte, model string) ([]string, error) {
 	policy := r.evaluateBeta(ctx, target, header, model)
 	if policy.BlockErr != nil {

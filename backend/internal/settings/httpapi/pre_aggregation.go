@@ -137,7 +137,7 @@ func (h *PreAggregationHandler) buildPreAggregationSettingsResponse(c *gin.Conte
 	return result
 }
 
-// AggregationStatus 只输出只读任务状态，不持有旧聚合服务。
+// AggregationStatus 查询预聚合任务的运行状态。
 type AggregationStatus interface {
 	RuntimeStatus(context.Context) preaggregation.PreAggregationRuntimeStatus
 }

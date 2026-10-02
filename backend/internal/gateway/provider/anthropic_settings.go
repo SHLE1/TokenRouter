@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 )
 
-// GatewayBetaPolicy 只投影平台规则值，不复制其算法或状态。
+// GatewayBetaPolicy 返回平台的 Beta 过滤规则。
 func GatewayBetaPolicy(value *anthropic.BetaPolicySettings) *gateway.BetaPolicySettings {
 	if value == nil {
 		return nil

@@ -516,7 +516,7 @@ func NewVertexGCSObjectStore(baseURL string, client *http.Client) *VertexGCSObje
 	return vertex.NewVertexGCSObjectStore(baseURL, client)
 }
 
-// BuildVertexBatchJSONL 仅投影任务 wire 字段；MIME 规范化仍在任务输入边界执行。
+// BuildVertexBatchJSONL 将批量任务编码为 Vertex JSONL，输入中的 MIME 类型需要已完成规范化。
 func BuildVertexBatchJSONL(input core.BatchImageInput) ([]byte, error) {
 	value := vertex.BatchJSONLInput{Model: input.Model, Items: make([]vertex.BatchJSONLItem, len(input.Items))}
 	for i, item := range input.Items {

@@ -1,15 +1,14 @@
 package creative
 
-// AdminReadSettings 只包含本模块在综合管理页的展示投影。
+// AdminReadSettings 包含创作台开关、模型和 worker 数量。
 type AdminReadSettings struct {
 	CreativeEnabled       bool
 	CreativeModelSettings []CreativeModelSetting
 	CreativeWorkerCount   int
 }
 
-// ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
+// ReadAdminSettings 从传入的设置值解析创作台开关、模型和 worker 数量。
 func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
-
 	result := &AdminReadSettings{}
 	result.CreativeModelSettings = ParseCreativeModelSettings(settings[SettingKeyCreativeModelSettings])
 	result.CreativeWorkerCount = ParseCreativeWorkerCount(settings[SettingKeyCreativeWorkerCount])

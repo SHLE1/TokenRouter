@@ -35,7 +35,7 @@ func (p searchGroupPolicy) Enabled(ctx context.Context, groupID int64, platform 
 	return policy.IsWebSearchEmulationEnabled(platform), nil
 }
 
-// NewSearchTools 只装配同步工具编排；分组策略、Manager 与配额分别从所属端口读取。
+// NewSearchTools 构造同步搜索工具，绑定分组策略、Manager 和配额读取接口。
 func NewSearchTools(runtime *search.ConfigService, groupPolicies *routing.PricingConfigService) *searchtools.Emulator {
 	var registry *search.Registry
 	var settings searchtools.Settings
@@ -50,7 +50,7 @@ func NewSearchTools(runtime *search.ConfigService, groupPolicies *routing.Pricin
 	return searchtools.NewEmulator(searchSource{registry}, settings, policy, time.Now, func() string { return uuid.New().String() }, observeSearch)
 }
 
-// SearchProviderMode 保留历史布尔输入的原诊断字段和级别。
+// SearchProviderMode 读取搜索提供商模式并记录配置诊断。
 func SearchProviderMode(value *searchtools.ProviderPolicy) string {
 	selection := searchtools.ProviderMode(value)
 	if selection.LegacyBool != nil {

@@ -77,7 +77,7 @@ func retryPostgresDeadlock[T any](ctx context.Context, operation string, size in
 func postgresSQLState(err error) string { return infra.SQLState(err) }
 func isPostgresDeadlock(err error) bool { return infra.IsDeadlock(err) }
 
-// clientFromContext 仅沿用既有 Ent 事务键，不创建或提交事务。
+// clientFromContext 读取 context 中的 Ent 事务客户端，缺失时使用 fallback。
 func clientFromContext(ctx context.Context, fallback *ent.Client) *ent.Client {
 	if tx := ent.TxFromContext(ctx); tx != nil {
 		return tx.Client()

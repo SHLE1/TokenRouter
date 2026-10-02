@@ -69,7 +69,7 @@ func TestAvailableRequestModelsFromProvidersFiltersConfiguredQoderModels(t *test
 	require.ElementsMatch(t, []string{"claude-opus-4-6", "qwen3.6-flash"}, mixedModels)
 }
 
-// rejectedModelsForContract 只装配原生记录与 routing 规则，断言不经过旧提供商形状。
+// rejectedModelsForContract 根据测试记录调用 routing 的模型拒绝规则。
 func rejectedModelsForContract(values []providercore.Record, platform string) []string {
 	sources := make([]routing.ModelRejectionSource, len(values))
 	for i := range values {

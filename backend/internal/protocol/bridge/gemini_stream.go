@@ -406,7 +406,7 @@ func (p *GeminiToAnthropicStreamProcessor) emitDelta(deltaType string, deltaCont
 	return p.formatSSE("content_block_delta", event)
 }
 
-// emitEmptyThinkingWithSignature 发送空 thinking 块承载签名
+// emitEmptyThinkingWithSignature 发送带签名的空 thinking 块。
 func (p *GeminiToAnthropicStreamProcessor) emitEmptyThinkingWithSignature(signature string) []byte {
 	var result bytes.Buffer
 

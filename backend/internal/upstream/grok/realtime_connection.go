@@ -83,7 +83,7 @@ func DialRealtime(ctx context.Context, options RealtimeDialOptions) (*RealtimeSe
 	return &RealtimeSession{FrameConn: conn, done: done}, nil
 }
 
-// ProbeRealtime 保留探测仅握手即关闭及原始错误形状，不持有连接租约。
+// ProbeRealtime 握手后关闭连接，拨号失败时返回底层错误。
 func ProbeRealtime(ctx context.Context, options RealtimeDialOptions) error {
 	conn, err := DialRealtime(ctx, options)
 	if err != nil {

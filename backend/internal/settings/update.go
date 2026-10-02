@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// PreparedChange 只包含已经校验的持久值和提交后应用，不持有数据库事务。
+// PreparedChange 包含校验后的设置值和提交后执行的函数。
 type PreparedChange struct {
 	Module string
 	Values map[string]string
@@ -125,6 +125,7 @@ func (s *UpdateSession) Close() {
 		s.owner.finish()
 	})
 }
+
 func (u *Updates) finish() {
 	u.mu.Lock()
 	defer u.mu.Unlock()

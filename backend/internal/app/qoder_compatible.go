@@ -24,7 +24,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// qoderCompatibleExecution 只连接现有选择、刷新和完成投影，不持有循环或缓存。
+// qoderCompatibleExecution 连接 Qoder 兼容入口的选择、刷新和完成记录操作。
 type qoderCompatibleExecution struct {
 	choices *selection.Generic
 	*gatewayprovider.RoutePlanner
@@ -66,7 +66,7 @@ func (s *qoderCompatibleSelection) Report(id int64, ok bool, result *forward.Mes
 
 func (s *qoderCompatibleSelection) Switched() { s.owner.choices.RecordAdvancedProviderSwitch(s.value) }
 
-// qoderCompatibleTarget 把旧执行提供商限制在单次调用目标内；HTTP 只取得原生快照。
+// qoderCompatibleTarget 保存单次调用的提供商，向 HTTP 层返回其快照。
 type qoderCompatibleTarget struct {
 	owner *qoderCompatibleExecution
 	value *gatewayprovider.ExecutionProvider
@@ -97,7 +97,7 @@ func (t *qoderCompatibleTarget) Completion(ctx context.Context, capture gatewayh
 	})
 }
 
-// provideQoderCompatibleHTTP 直接构造原生固定端口，共享原池、计费、刷新及活动屏障。
+// provideQoderCompatibleHTTP 构造 Qoder 兼容入口，共享连接池、计费、刷新和请求结束等待。
 func provideQoderCompatibleHTTP(source *gatewayprovider.RoutePlanner, runtime *gatewayprovider.QoderRuntime, refresh *provideradapter.QoderRequestRefresh, concurrency *scheduler.ConcurrencyService, funding *admission.FundingAdmission, keys *apikey.APIKeyService, rules *errorpolicy.ErrorPassthroughService, pool *completion.UsageRecordWorkerPool, recorders GatewayCompletionRecorders, activity *gatewayRequestActivity, qoderActivity *qoderRequestActivity, choices *selection.Generic) *gatewayhttp.QoderCompatibleHandler {
 	slots := gatewayhttp.NewConcurrencyHelper(concurrency, gatewayhttp.SSEPingFormatComment, 0)
 	var matcher gatewayhttp.ErrorRuleMatcher
@@ -126,7 +126,7 @@ func provideQoderCompatibleHTTP(source *gatewayprovider.RoutePlanner, runtime *g
 	return result
 }
 
-// BindStickySession 仅将原 HTTP 成功后的绑定意图交给同一选择器。
+// BindStickySession 在 HTTP 调用成功后，委托选择器绑定会话。
 func (p *qoderCompatibleExecution) BindStickySession(ctx context.Context, group *int64, hash string, id int64) error {
 	return p.choices.BindStickySession(ctx, group, hash, id)
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RefreshTier 保留原 ID、404 和响应字段。
+// RefreshTier 校验提供商 ID，缺失时返回 404，成功时返回档位数据。
 func (h *ManagementHandler) RefreshTier(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

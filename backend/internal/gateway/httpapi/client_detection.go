@@ -17,13 +17,13 @@ type ClientDetection struct {
 
 var claudeCodeValidator = clientmeta.NewClaudeCodeValidator()
 
-// DetectClaudeCodeRequest 返回显式识别结果，旧 context 写入由兼容入口完成。
+// DetectClaudeCodeRequest 返回客户端识别结果，兼容入口将结果写入 context。
 func DetectClaudeCodeRequest(c *gin.Context, body []byte, parsedReq *requeststate.ParsedRequest, probe bool) ClientDetection {
 	if c == nil || c.Request == nil {
 		return ClientDetection{}
 	}
 	ua := c.GetHeader("User-Agent")
-	// Fast path：非 Claude CLI UA 直接判定 false，避免热路径二次 JSON 反序列化。
+	// 非 Claude CLI UA 直接返回 false，省去 JSON 反序列化。
 	if !claudeCodeValidator.ValidateUserAgent(ua) {
 		return ClientDetection{}
 	}

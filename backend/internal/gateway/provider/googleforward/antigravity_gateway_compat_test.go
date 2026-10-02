@@ -206,7 +206,7 @@ func TestAntigravityCompatOAuthUsesNativeTokenAndRoute(t *testing.T) {
 	}
 }
 
-// TestAntigravityCompatResponsesRestoresNamespaceTools 验证原生网关不会破坏 Codex namespace 工具协议。
+// TestAntigravityCompatResponsesRestoresNamespaceTools 检查 Responses 转发是否恢复 Codex namespace 工具。
 func TestAntigravityCompatResponsesRestoresNamespaceTools(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -255,7 +255,7 @@ func TestAntigravityCompatResponsesRestoresNamespaceTools(t *testing.T) {
 	}
 }
 
-// TestAntigravityCompatChatRestoresForkToolNames 验证原生路径继续执行 fork 的工具名双向映射。
+// TestAntigravityCompatChatRestoresForkToolNames 检查 Chat 转发是否执行工具名的双向映射。
 func TestAntigravityCompatChatRestoresForkToolNames(t *testing.T) {
 	tests := []struct {
 		name   string

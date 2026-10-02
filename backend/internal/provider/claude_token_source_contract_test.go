@@ -244,7 +244,7 @@ func TestClaudeTokenProvider_TTLCalculation(t *testing.T) {
 	}
 }
 
-// TestClaudeTokenProvider_Real_LockFailedWait 验证真实 token 源在获取锁失败时的等待行为。
+// TestClaudeTokenProvider_Real_LockFailedWait 检查 Claude token 源获取锁失败后的等待行为。
 func TestClaudeTokenProvider_Real_LockFailedWait(t *testing.T) {
 	cache := newClaudeTokenCacheStub()
 	cache.lockAcquired = false // Lock acquisition fails

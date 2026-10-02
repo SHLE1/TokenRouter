@@ -36,7 +36,7 @@ type PlatformSelectionInput struct {
 	RequirePrivacySet        bool
 	PreviousResponseID       string
 	PreviousResponseCanMove  bool
-	RequestedModel           string // 客户端请求模型 R，用于限制、错误和会话语义。
+	RequestedModel           string // 客户端请求模型 R，用于限制检查、错误消息和会话标识。
 	RoutingModel             string // 提供商层模型：普通请求为 C，Messages 为分组映射后的 D。
 	RequiredTransport        string
 	RequiredCapability       provider.OpenAIEndpointCapability
@@ -218,7 +218,7 @@ type PlatformCandidateScore struct {
 	Factors                                                          CandidateFactors
 }
 
-// PlatformSelectionPorts 负责平台特有资格，评分、绑定优先级、抢槽与等待由核心决定。
+// PlatformSelectionPorts 提供平台资格检查，PlatformSelector 决定评分、绑定优先级、抢槽与等待顺序。
 type PlatformSelectionPorts struct {
 	BasicStickyTTL       time.Duration
 	CheckPricing         func(context.Context, *int64, string) bool
@@ -271,7 +271,7 @@ type PlatformSelectionPorts struct {
 	Unavailable                                                    func(context.Context, string, string, bool, string, ...[]FlowProvider) error
 }
 
-// PlatformSelector 复用同一个反馈与计数实例，按次创建的端口只持有请求内投影。
+// PlatformSelector 共用反馈与计数实例，每次选择使用本次请求的数据和回调。
 type PlatformSelector struct {
 	ports       PlatformSelectionPorts
 	concurrency *ConcurrencyService
@@ -365,7 +365,7 @@ func (s *PlatformSelector) Select(
 		req.StickyEscapeConfig = policy.NormalizeStickyEscape(effective.StickyEscape)
 	}
 	defer func() {
-		// 统一给所有成功选择路径附带请求开始时捕获的反馈配置，避免回写时重新读取运行时设置。
+		// 成功选择结果携带请求开始时捕获的反馈配置，反馈回写使用这份配置。
 		if selectionResult != nil && selectionResult.AdvancedSchedulerFeedback == nil && s != nil && s.ports.Available {
 			feedback := NormalizeFeedbackConfig(req.AdvancedSchedulerFeedbackConfig)
 			selectionResult.AdvancedSchedulerFeedback = &feedback
@@ -527,13 +527,12 @@ func (s *PlatformSelector) SelectBySessionHash(
 		clearBinding()
 		return nil, false, nil
 	}
-	// 免费层软性门禁：粘性会话不得固定到已超额的免费 OAuth 提供商。
-	// 管理端额度查询与导入探测不经过此路径。
+	// 粘性选择过滤已超额的免费 OAuth 提供商。管理端额度查询和导入探测各自执行。
 	if provider != nil && len(s.ports.FreeQuota(ctx, []FlowProvider{*provider})) == 0 {
 		clearBinding()
 		return nil, false, nil
 	}
-	// 团队与模型冷却：粘性会话不得固定到同团队中仍处于 429 窗口的关联提供商。
+	// 团队与模型冷却期间，粘性选择过滤同团队中仍处于 429 窗口的关联提供商。
 	now := s.now()
 	upstreamModel := s.ports.CanonicalModel(provider, req.RequestedModel)
 	if provider != nil && s.ports.TeamLimited(provider, upstreamModel, now) {
@@ -732,7 +731,7 @@ func (s *PlatformSelector) SelectByLoadBalance(
 	if len(providers) == 0 {
 		return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, PlatformFilterStats{}.Summary(""), providers)
 	}
-	// 本地免费层软性门禁仅应用于 Grok 调度路径，不影响管理端探测。
+	// Grok 调度在此检查本地免费层额度，管理端探测单独执行。
 	providers = s.ports.FreeQuota(ctx, providers)
 	if len(providers) == 0 {
 		return nil, 0, 0, 0, s.ports.Unavailable(ctx, req.RequestedModel, req.routingModel(), false, PlatformFilterStats{}.Summary("grok_free_quota_soft_gate"))
@@ -782,7 +781,7 @@ func (s *PlatformSelector) SelectByLoadBalance(
 			filterStats.Exclude("runtime_blocked")
 			continue
 		}
-		// 隐私要求是当前分组的资格门，不修改共享提供商状态，避免影响其它分组。
+		// 当前分组的隐私要求在候选资格检查时生效。
 		if req.RequirePrivacySet && !provider.IsPrivacySet() {
 			filterStats.Exclude("privacy_not_set")
 			continue

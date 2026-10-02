@@ -787,12 +787,12 @@ export interface GroupRoutingPolicy {
 
 export interface AdminGroup extends Group {
   routing_policy: GroupRoutingPolicy
-  // 仅管理端可配置，公开分组接口不返回该策略。
+  // 该策略由管理端配置，在管理员分组接口中返回。
   force_openai_fast?: boolean
   openai_fast_policy?: GroupOpenAIFastPolicy
-  // 仅管理端可配置，公开分组接口不返回该计费策略。
+  // 该计费策略由管理端配置，在管理员分组接口中返回。
 
-  // 仅管理端可配置，公开分组接口不返回调度器模式。
+  // 调度器模式由管理端配置，在管理员分组接口中返回。
   scheduler_type: GroupSchedulerType
   advanced_scheduler_overrides?: GroupAdvancedSchedulerOverrides
 

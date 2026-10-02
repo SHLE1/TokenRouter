@@ -58,7 +58,7 @@ func TestBuildOpenAIProviderLoadPlan_ResetWeightPrefersSoonestReset(t *testing.T
 	require.Greater(t, scores[2], scores[1], "重置时间最早的提供商（ID=2）得分更高")
 }
 
-// TestBuildOpenAIProviderLoadPlan_ResetWeightZeroNoEffect 验证Reset 权重为 0（默认）时，窗口重置时间不应影响打分，保持原有行为。
+// TestBuildOpenAIProviderLoadPlan_ResetWeightZeroNoEffect 检查 Reset 权重为 0 时，改变窗口重置时间是否保持分数相同。
 func TestBuildOpenAIProviderLoadPlan_ResetWeightZeroNoEffect(t *testing.T) {
 	now := time.Now()
 	soon := now.Add(1 * time.Hour)
@@ -74,7 +74,7 @@ func TestBuildOpenAIProviderLoadPlan_ResetWeightZeroNoEffect(t *testing.T) {
 	require.Equal(t, scores[1], scores[2], "Reset 权重为 0 时两提供商得分相同")
 }
 
-// TestBuildOpenAIProviderLoadPlan_BillingRatesDoNotAffectScoreOrOrder 验证提供商本地倍率和遗留声明倍率都只属于结算/清理边界，不得影响候选打分与排序。
+// TestBuildOpenAIProviderLoadPlan_BillingRatesDoNotAffectScoreOrOrder 检查不同计费倍率下候选分数和排序是否相同。
 func TestBuildOpenAIProviderLoadPlan_BillingRatesDoNotAffectScoreOrOrder(t *testing.T) {
 	expensiveRate := 100.0
 	cheapRate := 0.01

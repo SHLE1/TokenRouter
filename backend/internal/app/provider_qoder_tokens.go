@@ -17,7 +17,7 @@ func provideQoderTokens(transport provideradapter.QoderTransport, profiles *egre
 	return source
 }
 
-// provideTokenCacheInvalidator 复用已登记会话和令牌缓存，不创建第二份状态。
+// provideTokenCacheInvalidator 为失效操作绑定共享的会话和 token 缓存。
 func provideTokenCacheInvalidator(cache provider.AccessTokenCache, sessions *provideradapter.QoderTokenProvider) provider.TokenCacheInvalidator {
 	return provider.NewCompositeTokenCacheInvalidator(cache, sessions, slog.Warn)
 }

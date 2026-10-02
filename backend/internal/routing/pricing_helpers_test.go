@@ -2,7 +2,7 @@
 
 package routing
 
-// testPtrFloat64 测试直接给出价卡可空金额，沿用原断言输入。
+// testPtrFloat64 为测试价卡生成可空金额指针。
 func testPtrFloat64(value float64) *float64 { return &value }
 func testPtrInt(value int) *int             { return &value }
 

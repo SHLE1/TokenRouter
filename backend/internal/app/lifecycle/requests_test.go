@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRequestsWaitIncludesHandlerTail 验证handler 的尾部清理结束前，生命周期不能关闭其依赖。
+// TestRequestsWaitIncludesHandlerTail 检查 handler 完成尾部清理后才关闭依赖资源。
 func TestRequestsWaitIncludesHandlerTail(t *testing.T) {
 	entered := make(chan struct{})
 	release := make(chan struct{})
@@ -51,7 +51,7 @@ func TestRequestsWaitIncludesHandlerTail(t *testing.T) {
 	require.NoError(t, <-served)
 }
 
-// TestRequestsCloseHijackedConnectionsBeforeWaiting 验证不包装 ResponseWriter，并在 net/http 不管理的 hijack 连接上触发原有断开路径。
+// TestRequestsCloseHijackedConnectionsBeforeWaiting 检查 ResponseWriter 原样传给 handler，并主动关闭 hijack 连接触发清理。
 func TestRequestsCloseHijackedConnectionsBeforeWaiting(t *testing.T) {
 	address := make(chan string, 1)
 	hijacked := make(chan struct{})
@@ -100,7 +100,7 @@ func TestServeReturnsListenerFailure(t *testing.T) {
 	require.Error(t, Serve(context.Background(), &http.Server{Addr: ln.Addr().String()}))
 }
 
-// TestRequestsCloseLateHijack 验证升级晚于关闭快照时，ConnState 仍须关闭该连接，不能遗留到总预算超时。
+// TestRequestsCloseLateHijack 检查关闭快照取得后升级的连接由 ConnState 关闭。
 func TestRequestsCloseLateHijack(t *testing.T) {
 	manager := New()
 	server := &http.Server{}

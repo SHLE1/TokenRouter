@@ -12,7 +12,7 @@ import (
 	"github.com/google/wire"
 )
 
-// billing 模块的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
+// billingAssemblyProviders 汇总 billing 模块的 Wire provider。
 var billingAssemblyProviders = wire.NewSet(
 	wire.Bind(new(identity.DefaultSubscriptionAssigner), new(*billing.SubscriptionService)),
 	wire.Bind(new(completion.Store), new(*billingpostgres.SettlementStore)),

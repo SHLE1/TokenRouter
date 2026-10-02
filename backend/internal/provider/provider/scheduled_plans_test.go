@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestScheduledCronLifecycle 验证真实 cron 构造不注册任务，停止后也不允许新的注册或启动。
+// TestScheduledCronLifecycle 检查 cron 在构造后等待注册任务，停止后拒绝注册和启动。
 func TestScheduledCronLifecycle(t *testing.T) {
 	for _, stopFirst := range []bool{true, false} {
 		schedule, ok := NewScheduledCron(time.UTC).(*ScheduledCron)

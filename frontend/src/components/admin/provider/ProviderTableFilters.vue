@@ -90,7 +90,7 @@ const gOpts = computed(() => [
   { value: 'ungrouped', label: t('admin.providers.ungroupedGroup') },
   ...(props.groups || []).map(g => ({
     value: String(g.id),
-    // 管理端保留禁用分组可见性，后缀只提示状态，不阻止筛选。
+    // 禁用分组仍可筛选，名称后缀显示禁用状态。
     label: g.status === 'active' ? g.name : `${g.name} (${t('common.inactive')})`
   }))
 ])

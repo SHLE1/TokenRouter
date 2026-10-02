@@ -15,7 +15,7 @@ import (
 	openaiwire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// provideOpenAIAttemptBindings 为 HTTP 与 WS 固定同一平台单次调用、槽位与完成端口。
+// provideOpenAIAttemptBindings 为 HTTP 和 WS 绑定共享的平台单次调用、槽位和完成记录函数。
 func provideOpenAIAttemptBindings(
 	source *gatewayhttp.OpenAIResponsesExecutor,
 	keys *apikey.APIKeyService,
@@ -87,7 +87,7 @@ func provideOpenAIAttemptBindings(
 	return b
 }
 
-// provideOpenAITextAttemptRuntime 复用已装配的原生支持与平台能力。
+// provideOpenAITextAttemptRuntime 组合文本请求所需的执行支持和平台调用函数。
 func provideOpenAITextAttemptRuntime(b openaiattempt.Bindings) *openaiattempt.Runtime {
 	return openaiattempt.New(b)
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// provideModelsHTTP 直接构造四个只读目录入口，不经过旧聚合 handler。
+// provideModelsHTTP 构造四个模型目录查询入口。
 func provideModelsHTTP(catalogue *routing.RequestableCatalogue, reader *googleforward.Gemini, activity *gatewayRequestActivity, choices *selection.Gemini) *gatewayhttp.ModelsHandler {
 	ports := gatewayhttp.ModelsPorts{
 		ReadAccess: keyhttp.GetAPIKeyFromContext, ReadPlatform: keyhttp.GetForcePlatformFromContext,
@@ -42,7 +42,7 @@ func provideModelsHTTP(catalogue *routing.RequestableCatalogue, reader *googlefo
 	return result
 }
 
-// geminiModelReadTarget 固化一次选择，仅允许读取模型资源；不额外回源或重新选择。
+// geminiModelReadTarget 保存本次选中的提供商，供模型资源查询使用。
 type geminiModelReadTarget struct {
 	reader *googleforward.Gemini
 	value  *gatewayprovider.ExecutionProvider

@@ -38,7 +38,7 @@ type CreativeTargets struct {
 	Enter        func() (func(), error)
 }
 
-// ForProvider 不读取凭据或启动请求，各端口继续在实际执行时求值。
+// ForProvider 绑定所选提供商的执行函数，调用这些函数时读取凭据并发送请求。
 func (gateway *CreativeTargets) ForProvider(provider *ExecutionProvider) *creativeprovider.Target {
 	target := &creativeprovider.Target{}
 	if gateway == nil {
@@ -123,7 +123,7 @@ func (gateway *CreativeTargets) ForProvider(provider *ExecutionProvider) *creati
 	return target
 }
 
-// validateGeminiBaseURL 校验显式目标，错误不会改投到默认地址。
+// validateGeminiBaseURL 校验目标地址，校验失败或地址为空时返回错误。
 func (s *CreativeTargets) validateGeminiBaseURL(raw string) (string, error) {
 	validated, err := s.Requests.ValidateBaseURL(raw)
 	if err != nil {

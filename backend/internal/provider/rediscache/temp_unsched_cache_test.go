@@ -14,7 +14,7 @@ import (
 func newTempUnschedCacheTest(t *testing.T) (provider.TempUnschedCache, *redis.Client, *miniredis.Miniredis) {
 	t.Helper()
 
-	// 每个测试使用独立 Redis 实例，避免提供商键和 TTL 相互影响。
+	// 每个测试使用独立 Redis 实例，提供商键和 TTL 各自隔离。
 	server := miniredis.RunT(t)
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() {

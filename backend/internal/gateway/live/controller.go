@@ -137,12 +137,9 @@ func (s *Service) ProxyLiveSideband(
 	return runErr
 }
 
-// SessionEnded 判断控制连接的退出原因是否意味着会话已终结（应 finalize：写
-// usage log 并释放租约），而不是可以交给 observer 重连的临时错误。
-//
-// session.ErrLiveUnavailable 在控制循环里只会来自租约续租失败。RefreshLiveLease 的 Lua 在
-// leaseID 被 GC 后不会重新写入，重连也拿不回并发槽 —— 若按临时错误重试，会话会以
-// 约 1 秒一轮的节奏空转到 ExpiresAt，期间持着上游连接却不计入任何并发限制。
+// SessionEnded 判断控制连接退出后是否需要结束会话、记录用量并释放租约。
+// session.ErrLiveUnavailable 表示续租失败，RefreshLiveLease 在 leaseID 被回收后返回失败。
+// 此时需要结束会话，重连会使连接在缺少并发槽的情况下每秒重试直到 ExpiresAt。
 func SessionEnded(err error) bool {
 	return errors.Is(err, session.ErrLiveCallNotFound) ||
 		errors.Is(err, session.ErrLiveUnavailable) ||
@@ -198,7 +195,7 @@ func (s *Service) Observe(record *session.LiveCallRecord) {
 		return
 	}
 	if claimErr != nil {
-		// 无法确认控制权时保留会话快照，到期后幂等 finalize，避免租约和用量记录静默丢失。
+		// 无法确认控制权时保存会话快照，到期后完成一次结算和租约释放。
 		s.FinalizeAfterExpiry(ctx, record)
 		return
 	}
@@ -218,7 +215,7 @@ func (s *Service) Observe(record *session.LiveCallRecord) {
 			if errors.Is(getErr, session.ErrLiveCallNotFound) {
 				return
 			}
-			// Redis 抖动不表示控制权已变化；有限重试后按会话到期时间兜底 finalize。
+			// Redis 查询失败时有限重试，超过次数后按会话到期时间结束会话。
 			storeErrStreak++
 			if storeErrStreak >= liveObserverStoreRetryLimit {
 				s.FinalizeAfterExpiry(ctx, record)
@@ -346,7 +343,7 @@ func (s *Service) WaitForObserverRetry(ctx context.Context, record *session.Live
 	}
 	controller, getErr := store.GetLiveController(context.Background(), record.CallHash)
 	if getErr != nil && !errors.Is(getErr, session.ErrLiveCallNotFound) {
-		// store 故障不等于控制权变化，交回 observer 主循环统一重试和到期兜底。
+		// store 读取失败交回 observer 主循环重试，到期后结束会话。
 		return true
 	}
 	// 过期不在此处判定：返回 true 让调用方回到循环顶部的过期分支，由它 finalize
@@ -354,8 +351,8 @@ func (s *Service) WaitForObserverRetry(ctx context.Context, record *session.Live
 	return getErr == nil && controller == session.LiveControllerObserver
 }
 
-// FinalizeAfterExpiry 在 observer 无法读取 store 时保留最后快照，最迟在会话到期后
-// finalize；MarkLiveCallClosed 的 first 语义负责与其他恢复路径去重。
+// FinalizeAfterExpiry 在 observer 读取存储失败时使用最后快照，最迟于会话到期后完成。
+// MarkLiveCallClosed 返回的 first 标记用于和其他恢复路径去重。
 func (s *Service) FinalizeAfterExpiry(ctx context.Context, record *session.LiveCallRecord) {
 	if record == nil {
 		return

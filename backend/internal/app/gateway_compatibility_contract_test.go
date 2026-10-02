@@ -14,7 +14,7 @@ func TestSnapshotOpenAICompatibilityFallbackMetrics(t *testing.T) {
 	_, _ = requeststate.ThinkingEnabledFromContext(ctx)
 
 	after := gatewayCompatibilitySnapshot(nil)
-	// 请求已使用唯一原生快照，不再发生旧 key 回退；公开字段继续保留。
+	// 请求使用提供商快照，响应返回约定的公开字段。
 	require.Zero(t, after.MetadataTotal)
 	require.Zero(t, before.MetadataTotal)
 }

@@ -43,7 +43,7 @@ import type { Provider } from '@/types'
 const props = withDefaults(
   defineProps<{
     provider: Provider
-    /** 为 true 时只显示探测按钮与错误，不重复显示周度摘要。 */
+    /** 为 true 时显示探测按钮与错误，周度摘要由外层展示。 */
     compact?: boolean
   }>(),
   { compact: false }

@@ -59,7 +59,7 @@ func (s *adminUserStub) UpdateUser(_ context.Context, id int64, _ *identity.Upda
 	return &identity.User{ID: id, Email: "updated@example.com", Status: identity.StatusActive}, nil
 }
 
-// newAdminUserTestHandler 保留原缺少认证主体时的 step-up 拒绝路径。
+// newAdminUserTestHandler 构造启用 step-up 检查的测试处理器，缺少认证主体时拒绝请求。
 func newAdminUserTestHandler(users UserAdministration) *AdminUserHandler[struct{}] {
 	return NewAdminUserHandler[struct{}](users, nil, nil, func(c *gin.Context) bool {
 		return EnforceStepUp(c, nil, nil, nil)

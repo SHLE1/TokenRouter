@@ -126,7 +126,7 @@ func TestForwardOpenAIImagesAPIKey_StreamKeepsDetachedUpstreamContext(t *testing
 		"流式路径原本就脱钩，不能被改回随客户端取消")
 }
 
-// TestDetachUpstreamContextSemantics 验证两个 detach 辅助函数的语义差异是本次修复的根据，锁死它们防止被悄悄改动。
+// TestDetachUpstreamContextSemantics 验证两个 detach 辅助函数对请求取消的不同处理。
 func TestDetachUpstreamContextSemantics(t *testing.T) {
 	t.Run("detachUpstreamContext_always_detaches", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())

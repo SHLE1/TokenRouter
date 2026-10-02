@@ -25,7 +25,7 @@ func TestGrokVideoE2EDurationFromCreatedAt(t *testing.T) {
 
 func TestGrokVideoPendingCreatedAtStampOnStoreShape(t *testing.T) {
 	t.Parallel()
-	// GrokVideoPendingCreatedAtNow 的结果必须可被 GrokVideoE2EDuration 解析。
+	// GrokVideoE2EDuration 能解析 GrokVideoPendingCreatedAtNow 的结果。
 	stamp := media.GrokVideoPendingCreatedAtNow()
 	require.NotEmpty(t, stamp)
 	d := media.GrokVideoE2EDuration(stamp, time.Now().UTC().Add(2*time.Second))

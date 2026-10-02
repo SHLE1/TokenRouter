@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// AdminReadSettings 保留管理页覆盖值与 effective 值的区别。
+// AdminReadSettings 分别记录管理页设置的覆盖值和最终生效值。
 type AdminReadSettings struct {
 	AdvancedSchedulerEWMAErrorRateAlpha              string
 	AdvancedSchedulerEWMATTFTAlpha                   string
@@ -42,7 +42,7 @@ type AdminReadSettings struct {
 	AdvancedSchedulerWeightTTFT                      string
 }
 
-// ReadAdminSettings 复用原运行参数和反馈规范化，不为读取设置临时构造网关服务。
+// ReadAdminSettings 读取运行参数并规范化反馈设置。
 func ReadAdminSettings(settings map[string]string, defaults AdminDefaults) *AdminReadSettings {
 	result := &AdminReadSettings{}
 	result.AdvancedSchedulerStickyWeightedEnabled = settings[SettingKeyAdvancedSchedulerStickyWeightedEnabled] == "true"

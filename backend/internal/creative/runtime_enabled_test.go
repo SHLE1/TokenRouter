@@ -23,7 +23,7 @@ func TestSettingService_IsCreativeEnabled(t *testing.T) {
 	require.True(t, svc.IsCreativeEnabled(context.Background()))
 }
 
-// 设置读取替身只提供原键值和缺键结果，不重建旧设置服务。
+// creativeRuntimeSettingsFixture 按键读取测试设置，缺键时返回设置不存在错误。
 type creativeRuntimeSettingsFixture struct{ values map[string]string }
 
 func (r *creativeRuntimeSettingsFixture) GetValue(_ context.Context, key string) (string, error) {

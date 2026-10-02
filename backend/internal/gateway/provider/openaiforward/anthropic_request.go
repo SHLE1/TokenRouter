@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// NativeAnthropicRequestOptions 只投影本次请求的 Header 和安全策略。
+// NativeAnthropicRequestOptions 包含本次请求的 Header 和安全策略。
 type NativeAnthropicRequestOptions struct {
 	Headers        http.Header
 	GetHeader      func(http.Header, string) string

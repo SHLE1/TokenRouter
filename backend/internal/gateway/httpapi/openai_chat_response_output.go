@@ -61,8 +61,7 @@ func (p *OpenAIResponseOutput) chatBufferedFailure(c *gin.Context, provider *gat
 		)
 	}
 	message = p.RecordStreamError(c, provider, false, requestID, "http_error", payload, message)
-	// response.failed 到达在 HTTP 200 SSE 流上，无真实 HTTP 错误码；统一走语义
-	// 状态推断 + body 归一化（与 /v1/responses 路径一致），使按错误码配置的规则可命中。
+	// HTTP 200 SSE 中的 response.failed 按事件内容推断错误状态，并归一化 body，供按错误码配置的规则匹配。
 	if status, errType, errMsg, matched := ApplyOpenAIStreamFailedErrorRule(
 		c, provider.Record.Platform, payload, message,
 	); matched {
@@ -95,8 +94,7 @@ func (p *OpenAIResponseOutput) chatStreamFailure(c *gin.Context, provider *gatew
 	if policyGeneric {
 		defaultStatus, defaultErrType, defaultMsg = http.StatusInternalServerError, "upstream_error", "Upstream gateway error"
 	}
-	// 统一走语义状态推断 + body 归一化（与 /v1/responses 路径一致），
-	// 使按错误码配置的透传规则可命中。
+	// 按事件内容推断状态码并归一化 body，与 /v1/responses 共用错误规则匹配。
 	if status, errType, errMsg, matched := ApplyOpenAIStreamFailedErrorRule(
 		c, provider.Record.Platform, payloadBytes, message,
 	); matched && !policyGeneric {

@@ -110,7 +110,7 @@ export async function create(groupData: CreateGroupRequest): Promise<AdminGroup>
 
 /**
  * 在服务端复制分组，确保列表响应未返回的配置也能完整保留。
- * 请求结果不明确时保留操作键，使重试复用原操作，避免重复创建分组。
+ * 请求结果未知时保留操作键，重试使用同一次分组复制操作。
  */
 const duplicateOperationKeys = new Map<string, string>()
 

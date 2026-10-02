@@ -17,7 +17,7 @@ const (
 	ErrorPolicyPoolBypassed                             // 池模式跳过默认本地状态，继续响应分类
 )
 
-// UpstreamErrorDecision 汇总显式策略和默认提供商状态处理结果。
+// UpstreamErrorDecision 汇总配置的错误策略和默认的提供商状态处理结果。
 // 网关必须使用 Policy 区分池模式绕过与自定义错误码未命中，不能只依赖 StopScheduling。
 type UpstreamErrorDecision struct {
 	Policy         ErrorPolicyResult
@@ -30,7 +30,7 @@ func (d UpstreamErrorDecision) ShouldReturnGenericError() bool {
 }
 
 // ShouldFailover 表示当前请求应切换提供商。池模式配置的重试状态码可以把原本的
-// 非故障转移状态提升为故障转移；显式策略命中则始终切换提供商。
+// 配置的错误策略命中时切换提供商，其他状态按入口的默认规则处理。
 func (d UpstreamErrorDecision) ShouldFailover(provider *Record, statusCode int, defaultFailover bool) bool {
 	if d.Policy == ErrorPolicyCustomSkipped {
 		return false
@@ -45,7 +45,7 @@ func (d UpstreamErrorDecision) ShouldFailover(provider *Record, statusCode int, 
 }
 
 // ShouldFailoverWithDefaults 分别保留普通提供商的入口既有切号规则和池模式的上游错误分类。
-// 这样显式策略可以跨入口统一，又不会把某个入口原本只回写客户端的状态扩大成普通提供商切号。
+// 各入口共用配置的错误策略，默认规则决定其他错误是否切换提供商。
 func (d UpstreamErrorDecision) ShouldFailoverWithDefaults(
 	provider *Record,
 	statusCode int,
@@ -64,13 +64,13 @@ func (d UpstreamErrorDecision) ShouldFailoverWithDefaults(
 	}
 }
 
-// RetryableOnSameProvider 仅允许未命中显式策略的池模式错误在当前提供商上重试。
+// RetryableOnSameProvider 判断池模式错误能否在当前提供商重试，配置的错误策略命中时返回 false。
 func (d UpstreamErrorDecision) RetryableOnSameProvider(provider *Record, statusCode int) bool {
 	return d.Policy == ErrorPolicyPoolBypassed && provider != nil && provider.IsPoolModeRetryableStatus(statusCode)
 }
 
 // ErrorDecisionWithoutPersistence 在错误状态服务未注入时保留纯配置决策。
-// 该路径不能写数据库，但仍必须识别自定义错误码和池模式，否则会丢失通用错误或同提供商重试语义。
+// 此处通过自定义错误码和池模式判断重试资格，持久化由后续错误处理完成。
 func ErrorDecisionWithoutPersistence(provider *Record, statusCode int) UpstreamErrorDecision {
 	decision := UpstreamErrorDecision{Policy: ErrorPolicyNone}
 	if provider == nil {
@@ -105,14 +105,13 @@ func (s *HealthService) CheckErrorPolicy(ctx context.Context, provider *Record, 
 		return ErrorPolicyCustomSkipped
 	}
 	if provider.IsPoolMode() {
-		// 池模式下管理员显式配置的临时不可调度规则仍优先；401 不执行默认的
-		// 二次认证错误升级，否则会违背池模式不写默认提供商错误状态的约定。
+		// 池模式命中管理员配置的临时停调规则时，按该规则处理 401。
 		if s.TryTempUnschedulable(ctx, provider, statusCode, responseBody, false, model) {
 			return ErrorPolicyTempUnscheduled
 		}
 		return ErrorPolicyPoolBypassed
 	}
-	// 普通提供商保持原全局过载回退，显式提供商策略优先。
+	// 普通提供商使用全局过载处理规则，提供商配置的策略优先。
 	if statusCode == 529 {
 		return ErrorPolicyCustomMatched
 	}

@@ -38,7 +38,7 @@ func ApplyGrokFreeRequestToolCacheRoute(c *gin.Context, body, intentSourceBody [
 	allowPureClientTools, providerPolicyExplicit := gatewayprovider.GrokClientToolCacheProviderPolicy(provider)
 	requestOptOut := false
 	if c != nil {
-		// 新头显式关闭时也必须优先，只有缺失新头才读取旧头。
+		// 新请求头的关闭值优先，缺失新头时读取兼容请求头。
 		value := c.GetHeader(grokClientToolCacheOptInHeader)
 		if _, present := c.Request.Header[http.CanonicalHeaderKey(grokClientToolCacheOptInHeader)]; !present {
 			value = c.GetHeader(legacyGrokClientToolCacheOptInHeader)
@@ -60,9 +60,8 @@ func ApplyGrokFreeRequestToolCacheRoute(c *gin.Context, body, intentSourceBody [
 	return gatewayprovider.ApplyGrokFreeToolCacheRoute(body, intentSourceBody, provider, cacheIdentity, allowPureClientTools, allowPureClientTools)
 }
 
-// isGrokClaudeDesktopResponsesCacheRequest 识别 Claude Desktop 本地代理经 CC Switch
-// 转为 OpenAI Responses 请求时的严格线路指纹。必须同时满足所有独立信号，避免普通
-// Claude 兼容客户端或 Chat bridge 被静默加入原生/客户端混合工具路由。
+// isGrokClaudeDesktopResponsesCacheRequest 识别 Claude Desktop 本地代理经 CC Switch 转换的 Responses 请求。
+// 全部指纹信号匹配时启用平台和客户端混合工具路由。
 func isGrokClaudeDesktopResponsesCacheRequest(c *gin.Context) bool {
 	if c == nil || c.Request == nil || c.Request.URL == nil || IsOpenAIResponsesCompactPath(c) {
 		return false

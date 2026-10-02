@@ -25,7 +25,7 @@ type RetryNotice struct {
 	Kind, Reason    string
 }
 
-// Notice 只规范化已确定的恢复事件，不暴露未启用的上游正文。
+// Notice 将已确定的恢复事件转换为通知，正文按启用设置提供。
 func Notice(in RetryObservation, payload []byte, message string, truncate func(string, int) string) *RetryNotice {
 	if !in.ProviderPresent {
 		return nil

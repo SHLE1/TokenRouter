@@ -248,7 +248,7 @@ func NormalizePendingOAuthCompletionResponse(payload map[string]any) map[string]
 	}
 	step := strings.ToLower(strings.TrimSpace(PendingSessionStringValue(normalized, "step")))
 	// 把多种 choice 别名归一为 OAuthPendingChoiceStep；bind_login_required 是独立终态
-	// （前端渲染 needsBindLogin 而非 needsChooser），故不能并入归一化列表。
+	// （前端渲染 needsBindLogin），此状态单独处理。
 	switch step {
 	case "choice", "choose_account_action", "choose_account", "choose", "email_required":
 		normalized["step"] = OAuthPendingChoiceStep

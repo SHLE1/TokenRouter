@@ -1042,9 +1042,8 @@ func TestOpenAIWSHTTPBridgeLaterTurn429CarriesCurrentTurnReplayPayload(t *testin
 	require.Contains(t, string(upstream.bodies[2]), "second")
 }
 
-// TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient 验证桥接转发 error / response.failed 给 WS 客户端前必须把容量降载码改写为可重试
-// 的 server_error：Codex 对 server_is_overloaded/slow_down 判致命并终止会话。
-// 提供商状态判定使用改写前的原始事件，不受影响。
+// TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient 验证 error / response.failed 的容量降载码改写为可重试的 server_error。
+// Codex 对 server_is_overloaded / slow_down 终止会话。提供商策略使用改写前的事件。
 func TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -1059,7 +1058,7 @@ func TestProxyOpenAIWSHTTPBridgeTurnRewritesCapacityShedCodeForClient(t *testing
 			wantErr: true,
 		},
 		{
-			// 后续 turn 不允许 replay，容量错误必须改写后交给客户端重试。
+			// 后续 turn 将容量错误改写后返回，客户端负责重试。
 			name: "turn2_bare_response_failed",
 			turn: 2,
 			body: "data: {\"type\":\"response.failed\",\"response\":{\"id\":\"resp_shed\",\"status\":\"failed\",\"error\":{\"code\":\"server_is_overloaded\",\"message\":\"Our servers are currently overloaded. Please try again later.\"}}}\n\n",

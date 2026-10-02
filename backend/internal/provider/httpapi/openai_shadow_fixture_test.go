@@ -30,7 +30,7 @@ func (s *openAIShadowFixture) CreateShadow(ctx context.Context, parentID int64, 
 	}, nil
 }
 
-// openAIShadowFixture 只保留原影子创建输出与受控失败。
+// openAIShadowFixture 返回影子创建结果或测试指定的错误。
 type openAIShadowFixture struct {
 	OpenAIAdminOperations
 	createSparkShadowErr error

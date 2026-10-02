@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// identityPatchStore 只控制原单键读取，不引入缓存或批量查询。
+// identityPatchStore 提供身份修补开关测试中的单键读取。
 type identityPatchStore struct {
 	RuntimeSettingsStore
 	values map[string]string

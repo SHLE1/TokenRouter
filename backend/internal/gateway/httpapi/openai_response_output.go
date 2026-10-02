@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// OpenAIResponseOptions 由装配投影静态配置，动态 TTFT 仍通过读取端口按原时点求值。
+// OpenAIResponseOptions 接收应用的静态配置，TTFT 设置在请求时读取。
 type OpenAIResponseOptions struct {
 	ImageStreamDataIntervalTimeout, ImageStreamKeepaliveInterval               int
 	Configured                                                                 bool
@@ -59,7 +59,7 @@ func (p *OpenAIResponseOutput) redact(ctx context.Context, target *gatewayadapte
 
 const openAIResponseDefaultMaxLineSize = 500 * 1024 * 1024
 
-// ExecutionErrorProvider 仅投影当前尝试的诊断字段，不向输出层传递凭据。
+// ExecutionErrorProvider 返回当前尝试的提供商诊断字段。
 func ExecutionErrorProvider(value *gatewayadapter.ExecutionProvider) *UpstreamErrorProvider {
 	if value == nil {
 		return nil

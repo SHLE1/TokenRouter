@@ -20,7 +20,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// tokenExecutionContract 替换外部选择和交换，保留真实 HTTP、映射与尝试循环。
+// tokenExecutionContract 为 HTTP、模型映射和尝试循环测试提供选择与网络交换替身。
 type tokenExecutionContract struct {
 	OpenAITokenExecution
 	t          *testing.T

@@ -23,7 +23,7 @@ import (
 
 func newBatchImageRepositoryWithSQL(t *testing.T, sqlq postgres.SQLExecutor) (*postgres.Repository, int64) {
 	t.Helper()
-	// billing_user_id 新增外键后，每个事务都创建真实付款用户，避免用悬空固定 ID 掩盖数据契约。
+	// 每个事务创建付款用户，满足 billing_user_id 的外键约束。
 	var userID int64
 	err := sqlq.QueryRowContext(context.Background(), `
 		INSERT INTO users (email, password_hash, role, status)

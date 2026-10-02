@@ -67,15 +67,15 @@ func (r *AntigravityRefreshRules) Refresh(ctx context.Context, provider *Record)
 	newCredentials = MergeCredentials(provider.Credentials, newCredentials)
 
 	// 特殊处理 project_id：如果新值为空但旧值非空，保留旧值
-	// 这确保了即使 LoadCodeAssist 失败，project_id 也不会丢失
+	// LoadCodeAssist 失败时，已有的 project_id 可继续使用。
 	if newProjectID, _ := newCredentials["project_id"].(string); newProjectID == "" {
 		if oldProjectID := strings.TrimSpace(provider.GetCredential("project_id")); oldProjectID != "" {
 			newCredentials["project_id"] = oldProjectID
 		}
 	}
 
-	// 如果 project_id 获取失败，只记录警告，不返回错误
-	// LoadCodeAssist 失败可能是临时网络问题，应该允许重试而不是立即标记为不可重试错误
+	// project_id 获取失败时记录警告，刷新流程继续。
+	// LoadCodeAssist 失败可能来自临时网络错误，此处允许后续重试。
 	// Token 刷新本身是成功的（access_token 和 refresh_token 已更新）
 	if tokenInfo.ProjectIDMissing {
 		if tokenInfo.ProjectID != "" {

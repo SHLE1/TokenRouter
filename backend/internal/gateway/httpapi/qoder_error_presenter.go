@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// QoderErrorPresenter 共用原生错误展示；供应商识别和目录读取由固定端口注入。
+// QoderErrorPresenter 使用错误展示函数，并接收供应商识别和目录读取接口。
 type QoderErrorPresenter struct {
 	Rules      ErrorRuleMatcher
 	Describe   func(error) forward.QoderErrorView

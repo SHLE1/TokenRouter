@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/identity"
 
-// IdentityAdminSettings 仅转换所属模块值，不读取设置或发布状态。
+// IdentityAdminSettings 从综合快照提取身份设置。
 func (s *Snapshot) IdentityAdminSettings() identity.AdminSettings {
 	return identity.AdminSettings{
 		AliyunCaptchaAccessKeyID:               s.AliyunCaptchaAccessKeyID,
@@ -105,7 +105,7 @@ func (s *Snapshot) IdentityAdminSettings() identity.AdminSettings {
 	}
 }
 
-// ApplyIdentityAdminSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyIdentityAdminSettings 将身份设置写入综合快照。
 func (s *Snapshot) ApplyIdentityAdminSettings(value identity.AdminSettings) {
 	s.AliyunCaptchaAccessKeyID = value.AliyunCaptchaAccessKeyID
 	s.AliyunCaptchaAccessKeySecret = value.AliyunCaptchaAccessKeySecret
@@ -206,7 +206,7 @@ func (s *Snapshot) ApplyIdentityAdminSettings(value identity.AdminSettings) {
 	s.WeChatConnectScopes = value.WeChatConnectScopes
 }
 
-// ApplyIdentityAdminReadSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyIdentityAdminReadSettings 将身份读取结果写入综合快照。
 func (s *Snapshot) ApplyIdentityAdminReadSettings(value *identity.AdminReadSettings) {
 	s.AliyunCaptchaAccessKeyID = value.AliyunCaptchaAccessKeyID
 	s.AliyunCaptchaAccessKeySecret = value.AliyunCaptchaAccessKeySecret

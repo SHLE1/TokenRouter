@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/runtimeconfig"
 )
 
-// settingsRuntimeReady 确保转发设置加载和默认模型设置迁移已登记到启动流程。
+// settingsRuntimeReady 标记转发设置加载和默认模型设置迁移已登记到启动流程。
 type settingsRuntimeReady struct{}
 
 // provideSettingsRuntime 在目录初始化前加载运行设置；单项失败记录告警并继续启动。

@@ -59,7 +59,7 @@ func TestResponsesEventToChatChunks_PreservesUpstreamServiceTier(t *testing.T) {
 		require.Equal(t, "priority", chunk.ServiceTier)
 	}
 
-	// 后续 delta chunk 继续携带（OpenAI 流式 chunk 的 service_tier 语义）。
+	// 后续 delta chunk 继续携带 service_tier。
 	delta := &ResponsesStreamEvent{Type: "response.output_text.delta", Delta: "hi"}
 	chunks = ResponsesEventToChatChunks(delta, state)
 	require.NotEmpty(t, chunks)
@@ -88,7 +88,7 @@ func TestResponsesEventToChatChunks_NoServiceTierStaysClean(t *testing.T) {
 	require.NotContains(t, string(raw), "service_tier")
 }
 
-// TestResponsesResponse_UnmarshalPreservesServiceTier 验证上游 JSON 反序列化时 service_tier 进入 ResponsesResponse（缓冲桥读取链路）。
+// TestResponsesResponse_UnmarshalPreservesServiceTier 检查上游 JSON 中的 service_tier 被读取到 ResponsesResponse。
 func TestResponsesResponse_UnmarshalPreservesServiceTier(t *testing.T) {
 	var resp ResponsesResponse
 	require.NoError(t, json.Unmarshal([]byte(`{"id":"resp_1","object":"response","model":"gpt-5.5","status":"completed","service_tier":"flex","output":[]}`), &resp))

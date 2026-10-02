@@ -17,7 +17,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider/transfer"
 )
 
-// CRSClientOptions 只投影原 CRS 连接约束，不持有完整应用配置。
+// CRSClientOptions 保存 CRS 连接所需的参数。
 type CRSClientOptions struct {
 	Configured, AllowlistEnabled, AllowInsecureHTTP, AllowPrivateHosts bool
 	Hosts                                                              []string

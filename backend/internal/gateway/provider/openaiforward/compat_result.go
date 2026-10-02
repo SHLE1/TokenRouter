@@ -2,7 +2,7 @@ package openaiforward
 
 import "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 
-// FromCompatResult 仅附加已有计费模型，供应商事实仍由原生读取器提供。
+// FromCompatResult 将兼容响应结果转换为转发结果并附加计费模型。
 func FromCompatResult(r *openai.CompatResponseResult, billing string) *Result {
 	if r == nil {
 		return nil

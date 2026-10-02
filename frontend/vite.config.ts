@@ -100,7 +100,7 @@ export default defineConfig(({ mode }) => {
   },
   define: {
     // 启用 vue-i18n JIT 编译，在 CSP 环境下处理消息插值
-    // JIT 编译器生成 AST 对象而非 JS 代码，无需 unsafe-eval
+    // JIT 编译器生成 AST 对象，兼容禁用 unsafe-eval 的 CSP。
     __INTLIFY_JIT_COMPILATION__: true
   },
   build: {
@@ -149,7 +149,7 @@ export default defineConfig(({ mode }) => {
           }
 
           // 应用代码：按入口点自动分包，不手动干预
-          // 这样可以避免循环依赖，同时保持合理的 chunk 数量
+          // 按功能合并应用 chunk，减少循环依赖和碎片文件。
         }
       }
     }

@@ -31,10 +31,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// provideRouterRuntime 装配公开投影与 HTTP 能力，规则及运行状态由原生模块持有。
+// provideRouterRuntime 为路由器绑定公开数据和 HTTP 处理函数，规则和状态由各模块管理。
 func provideRouterRuntime(public *site.PublicService, pages *sitehttp.PageHandler, backendMode *admission.BackendMode, store *settings.Store, redisClient *redis.Client, manager *lifecycle.Manager, cfg *config.Config, mount httpRouteMount, panelSettings *runtimeconfig.PanelSettings, opsService *ops.OpsService, jwtAuth identityhttp.JWTAuthMiddleware, adminAuth identityhttp.AdminAuthMiddleware, auditLog middleware.AuditLogMiddleware, stepUpAuth identityhttp.StepUpAuthMiddleware,
 ) (*server.RouterRuntime, error) {
-
 	manager.Register(lifecycle.Hook{Name: "SettingsUpdateAdmission", StopOrder: 14, Stop: func(context.Context) error { store.Updates().Seal(); return nil }})
 	manager.Register(lifecycle.Hook{Name: "SettingsUpdates", StopOrder: 17, Stop: store.Updates().Stop})
 
@@ -72,7 +71,6 @@ func provideRouterRuntime(public *site.PublicService, pages *sitehttp.PageHandle
 		notify = func() { frontend.InvalidateCache(); refresh() }
 	}
 	manager.Register(lifecycle.Hook{Name: "HTTPSettingsInitialization", StartOrder: 182, StopOrder: 800, Start: func(context.Context) error {
-
 		refresh()
 		return nil
 	}})

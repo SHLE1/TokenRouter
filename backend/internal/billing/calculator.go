@@ -18,12 +18,12 @@ type UsageTokens = purepricing.UsageTokens
 // CostBreakdown 保留旧用量/定价类型入口。
 type CostBreakdown = purepricing.CostBreakdown
 
-// applyCostBreakdownMultiplier 委托纯定价实现，旧查询与配置投影保留在适配层。
+// applyCostBreakdownMultiplier 按倍率调整各项费用。
 func applyCostBreakdownMultiplier(cost *CostBreakdown, multiplier float64) {
 	purepricing.ApplyCostBreakdownMultiplier(cost, multiplier)
 }
 
-// maxReasoningEffortBillingMultiplier 委托纯定价实现，旧查询与配置投影保留在适配层。
+// maxReasoningEffortBillingMultiplier 返回 max 推理强度的计费倍率。
 func maxReasoningEffortBillingMultiplier(model, effort string, pricing *ModelPricing) float64 {
 	return purepricing.MaxReasoningEffortBillingMultiplier(model, effort, pricing)
 }
@@ -38,7 +38,7 @@ func (s *Calculator) GetModelPricing(model string) (*ModelPricing, error) {
 	return purepricing.ResolveModelPricing(model, raw)
 }
 
-// GetModelPricingWithConfig 保留目录查价失败语义，覆盖计算由纯包完成。
+// GetModelPricingWithConfig 查询目录价格并应用覆盖配置，查价失败时返回错误。
 func (s *Calculator) GetModelPricingWithConfig(model string, configPricing *ModelPricingEntry) (*ModelPricing, error) {
 	pricing, err := s.GetModelPricing(model)
 	if err != nil {
@@ -101,7 +101,7 @@ func (s *Calculator) CalculateCostUnified(input CostInput) (*CostBreakdown, erro
 	return purepricing.CalculateCost(resolved, s.ProjectCostInput(input, resolved))
 }
 
-// ComputeTokenBreakdown 委托纯定价实现，旧查询与配置投影保留在适配层。
+// ComputeTokenBreakdown 计算各类 token 的费用明细。
 func (s *Calculator) ComputeTokenBreakdown(
 	pricing *ModelPricing, tokens UsageTokens,
 	rateMultiplier float64, serviceTier string,
@@ -239,7 +239,7 @@ func (s *Calculator) DisplayPricingWithResolvedMultipliers(model string, rateMul
 	return s.DisplayPricing(model, rateMultiplier)
 }
 
-// imageDisplayPricing 只展示已知按张报价，不把聊天模型的图片元数据改成图片计费。
+// imageDisplayPricing 展示已知的按张报价，聊天模型的图片元数据按其计费模式处理。
 func (s *Calculator) imageDisplayPricing(model string, rateMultiplier float64) (ModelDisplayPricing, bool) {
 	return s.imageDisplayPricingWithResolved(model, rateMultiplier, nil)
 }
@@ -267,30 +267,30 @@ func (s *Calculator) imageDisplayPricingWithResolved(model string, rateMultiplie
 	return result, found
 }
 
-// displayPricingFromResolved 委托纯定价实现，旧查询与配置投影保留在适配层。
+// displayPricingFromResolved 将已解析价格转换为展示报价。
 func displayPricingFromResolved(model string, rateMultiplier float64, resolved *ResolvedPricing) (ModelDisplayPricing, bool) {
 	return purepricing.DisplayPricingFromResolved(model, rateMultiplier, resolved)
 }
 
-// buildTokenDisplayPricing 委托纯定价实现，旧查询与配置投影保留在适配层。
+// buildTokenDisplayPricing 按倍率生成 token 展示单价。
 func buildTokenDisplayPricing(pricing *ModelPricing, rateMultiplier float64) ModelDisplayPricing {
 	return purepricing.BuildTokenDisplayPricing(pricing, rateMultiplier)
 }
 
-// buildImageDisplayPricing 委托纯定价实现，旧查询与配置投影保留在适配层。
+// buildImageDisplayPricing 按图片尺寸生成展示单价。
 func buildImageDisplayPricing(price1K, price2K, price4K float64) ModelDisplayPricing {
 	return purepricing.BuildImageDisplayPricing(price1K, price2K, price4K)
 }
 
-// unknownDisplayPricing 委托纯定价实现，旧查询与配置投影保留在适配层。
+// unknownDisplayPricing 返回缺价的展示结果。
 func unknownDisplayPricing() ModelDisplayPricing { return purepricing.UnknownDisplayPricing() }
 
-// CalculateWebSearchCost 委托纯定价实现，旧查询与配置投影保留在适配层。
+// CalculateWebSearchCost 按调用次数计算网页搜索费用。
 func (s *Calculator) CalculateWebSearchCost(callCount int, groupPrice *float64, rateMultiplier float64) *CostBreakdown {
 	return purepricing.CalculateWebSearchCost(callCount, operationPrice("web_search", groupPrice, s.operationPrices().WebSearchPricePerCall), rateMultiplier)
 }
 
-// CalculateSearchCost 委托纯定价实现，旧查询与配置投影保留在适配层。
+// CalculateSearchCost 按每千次调用单价计算搜索费用。
 func (s *Calculator) CalculateSearchCost(numCalls int, groupPricePer1k *float64, rateMultiplier float64) *CostBreakdown {
 	return purepricing.CalculateSearchCost(numCalls, operationPrice("search", groupPricePer1k, s.operationPrices().SearchPricePer1k), rateMultiplier)
 }
@@ -298,7 +298,7 @@ func (s *Calculator) CalculateSearchCost(numCalls int, groupPricePer1k *float64,
 // audioPriceConfig 保留旧用量/定价类型入口。
 type audioPriceConfig = purepricing.AudioPriceConfig
 
-// CalculateAudioCost 委托纯定价实现，旧查询与配置投影保留在适配层。
+// CalculateAudioCost 按模式和时长或单位数计算音频费用。
 func (s *Calculator) CalculateAudioCost(mode string, durationOrUnits float64, groupConfig *audioPriceConfig, rateMultiplier float64) *CostBreakdown {
 	return purepricing.CalculateAudioCost(mode, durationOrUnits, s.audioPrices(mode, groupConfig), rateMultiplier)
 }
@@ -350,20 +350,20 @@ func (s *Calculator) RawModelPricing(model string) *CatalogModelPricing {
 	return s.catalog.GetModelPricing(model)
 }
 
-// hasExplicitImageGenerationPricing 委托纯定价实现，旧查询与配置投影保留在适配层。
+// hasExplicitImageGenerationPricing 检查目录是否配置了图片生成单价。
 func hasExplicitImageGenerationPricing(pricing *CatalogModelPricing) bool {
 	return purepricing.HasExplicitImageGenerationPricing(pricing)
 }
 
-// hasAnyDisplayTokenPricing 委托纯定价实现，旧查询与配置投影保留在适配层。
+// hasAnyDisplayTokenPricing 检查是否有可展示的 token 单价。
 func hasAnyDisplayTokenPricing(pricing *ModelPricing) bool {
 	return purepricing.HasAnyDisplayTokenPricing(pricing)
 }
 
-// looksLikeImageModel 委托纯定价实现，旧查询与配置投影保留在适配层。
+// looksLikeImageModel 根据模型名称判断是否为图片模型。
 func looksLikeImageModel(model string) bool { return purepricing.LooksLikeImageModel(model) }
 
-// DefaultVideoPrice 只读取已登记的每秒价，不借用图片单价。
+// DefaultVideoPrice 返回已登记的视频每秒单价。
 func (s *Calculator) DefaultVideoPrice(model string, resolution string) (float64, error) {
 	if price, ok := purepricing.DefaultVideoPrice(s.RawModelPricing(model), resolution); ok {
 		return purepricing.ValidateImageUnitPrice(price)
@@ -378,7 +378,7 @@ type PriceCatalog interface {
 	ForceUpdate() error
 }
 
-// CalculatorOptions 由 app 投影默认倍率、取时点和平台模型身份。
+// CalculatorOptions 包含 app 提供的默认倍率、时钟、时区加载器和平台模型标识。
 type CalculatorOptions struct {
 	DefaultRateMultiplier float64
 	Now                   func() time.Time
@@ -401,7 +401,7 @@ func NewCalculator(catalog PriceCatalog, options CalculatorOptions) *Calculator 
 	return &Calculator{catalog: catalog, options: options}
 }
 
-// ProjectCostInput 只投影已解析结果，保持查价懒加载与请求固定的取时点。
+// ProjectCostInput 将解析结果转换为定价输入，按需查价并使用请求固定的计价时刻。
 func (s *Calculator) ProjectCostInput(input CostInput, resolved *ResolvedPricing) purepricing.CostInput {
 	var location *time.Location
 	if resolved != nil && resolved.ConfigPricing != nil && resolved.ConfigPricing.TimePricing != nil {

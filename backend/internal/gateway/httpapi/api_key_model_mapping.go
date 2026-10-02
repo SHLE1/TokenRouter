@@ -13,7 +13,7 @@ import (
 )
 
 // ApplyAPIKeyModelRedirect 在复合 Key 选组后应用单 Key 模型重定向。
-// 解析失败时保留原请求，让现有协议处理器继续返回原有校验错误。
+// 解析失败时原请求交给协议处理器返回校验错误。
 // @project-doc docs/domains/api_key_model_redirects.md#redirect_order
 func ApplyAPIKeyModelRedirect(c *gin.Context, apiKey *apikey.APIKey) {
 	if c == nil || c.Request == nil || apiKey == nil || len(apiKey.ModelMapping) == 0 {

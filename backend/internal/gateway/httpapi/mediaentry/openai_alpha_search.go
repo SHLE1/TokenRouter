@@ -23,9 +23,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// recordAlphaSearchUsage 为一次成功的 alpha/search 网页搜索落按次计费用量行
-// （上游不返回 usage 字段，按 WebSearchCalls 走分组单价 × 倍率的按次口径）。
-// 与 images 一致使用 mandatory 池提交，池满时同步兜底执行，保证扣费不丢。
+// recordAlphaSearchUsage 为成功的 alpha/search 记录一次 WebSearchCalls，按分组单价乘倍率计费。
+// 上游缺少 usage 字段。任务提交到 mandatory 池，池满时同步执行。
 func (h *Runtime) recordAlphaSearchUsage(
 	c *gin.Context,
 	apiKey *apikey.APIKey,
@@ -76,7 +75,7 @@ func (h *Runtime) recordAlphaSearchUsage(
 	})
 }
 
-// alphaRequestAdapter 保留 HTTP、平台恢复与观察端口，提供商尝试次序由 media 拥有。
+// alphaRequestAdapter 处理 HTTP 输出、平台恢复和观测，media 决定提供商尝试顺序。
 type alphaRequestAdapter struct {
 	h                           *Runtime
 	c                           *gin.Context

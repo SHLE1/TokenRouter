@@ -81,11 +81,9 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesAPIKey(
 	if err != nil {
 		return nil, err
 	}
-	// 生图是长耗时、上游侧已产生实际成本的操作：客户端中途断开不应连带取消上游请求。
-	// gatewayprovider.DetachStreamUpstreamContext 在非流式时原样返回请求 context，于是客户端一断开
-	// 就把已经在出图的上游调用打断成 context canceled，网关记 502、不扣费，而上游那边
-	// 图已经生成并计费。同一端点的 OAuth 分支 forwardOpenAIImagesOAuth 以及 Grok 媒体
-	// 路径本来就无条件脱钩，这里对齐；上游侧仍由 ResponseHeaderTimeout 兜底。
+	// 生图请求与客户端取消分离，上游继续完成生成并返回计费用量。
+	// 非流式请求若使用 DetachStreamUpstreamContext，会传递客户端取消，导致上游已产生费用而本地仅记录 502。
+	// 图片 OAuth 和 Grok 媒体也采用取消分离，上游等待响应头受 ResponseHeaderTimeout 限制。
 	upstreamCtx, releaseUpstreamCtx := gatewayprovider.DetachUpstreamContext(ctx)
 	defer releaseUpstreamCtx()
 

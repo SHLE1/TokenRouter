@@ -684,7 +684,7 @@ type UserInfo = googlewire.AntigravityUserInfo
 // ClientOptions 接受已经装配的技术客户端，不改变默认代理或超时策略。
 type ClientOptions struct{ HTTPClient *http.Client }
 
-// NewClientWithOptions 用于显式传输装配；未提供客户端时仍执行原构造路径。
+// NewClientWithOptions 接收传输客户端，未提供时创建默认客户端。
 func NewClientWithOptions(proxyURL string, options ClientOptions) (*Client, error) {
 	client, err := NewClient(proxyURL)
 	if err != nil {

@@ -14,7 +14,7 @@ func TestModelIdentityPreservesEffortSuffix(t *testing.T) {
 	}
 }
 
-// TestExplicitMessagesEffortPreserved 验证显式档位仍按最终型号能力转换。
+// TestExplicitMessagesEffortPreserved 检查客户端指定的档位是否按最终型号能力转换。
 func TestExplicitMessagesEffortPreserved(t *testing.T) {
 	req := &protocolanthropic.AnthropicRequest{Model: "client-alias", OutputConfig: &protocolanthropic.AnthropicOutputConfig{Effort: "max"}}
 	require.Equal(t, "max", OpenAICompatAnthropicReasoningEffort(req, "gpt-5.6-sol", "xhigh"))

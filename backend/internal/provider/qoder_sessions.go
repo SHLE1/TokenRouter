@@ -157,7 +157,7 @@ func QoderCredentialSnapshotOlder(incoming, current *Record) bool {
 	return !incoming.UpdatedAt.IsZero() && !current.UpdatedAt.IsZero() && incoming.UpdatedAt.Before(current.UpdatedAt)
 }
 
-// prepareQoderSessionBuild 返回当前凭据状态；低版本调度快照只能复用已观察到的新凭据，不能反向淘汰它。
+// prepareQoderSessionBuild 返回当前凭据，调度快照版本较低时使用已观察到的新凭据。
 func (p *QoderSessions[T]) prepareQoderSessionBuild(provider *Record, hash string) (uint64, string, *Record, T) {
 	var zero T
 	p.Mu.Lock()
@@ -201,7 +201,7 @@ func (p *QoderSessions[T]) prepareQoderSessionBuild(provider *Record, hash strin
 	return state.Generation, hash, provider, zero
 }
 
-// cachedQoderSessionForBuild 在单飞回调内复查缓存与世代，避免排队期间重复回源。
+// cachedQoderSessionForBuild 在 singleflight 回调中复查缓存和代次，排队期间已有结果时直接使用。
 func (p *QoderSessions[T]) cachedQoderSessionForBuild(providerID int64, hash string, generation uint64) (T, bool) {
 	var zero T
 	p.Mu.Lock()
@@ -255,7 +255,7 @@ func (p *QoderSessions[T]) Invalidate(providerID int64) {
 	p.Mu.Unlock()
 }
 
-// InvalidateProvider 使用已从数据库或刷新结果取得的权威提供商快照失效旧 session，封住新 token 尚未被请求观察到的窗口。
+// InvalidateProvider 根据数据库或刷新结果中的提供商快照使 session 失效，后续请求使用该快照的 token。
 func (p *QoderSessions[T]) InvalidateProvider(provider *Record) {
 	if p == nil || provider == nil {
 		return

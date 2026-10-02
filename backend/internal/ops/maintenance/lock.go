@@ -2,13 +2,12 @@ package maintenance
 
 import (
 	"context"
-	"strconv"
-	"sync"
-	"time"
-
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"strconv"
+	"sync"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/idempotency"
 
@@ -20,9 +19,7 @@ const (
 	systemOperationLockKey   = "global-system-operation-lock"
 )
 
-var (
-	ErrSystemOperationBusy = infraerrors.Conflict("SYSTEM_OPERATION_BUSY", "another system operation is in progress")
-)
+var ErrSystemOperationBusy = infraerrors.Conflict("SYSTEM_OPERATION_BUSY", "another system operation is in progress")
 
 type SystemOperationLock struct {
 	recordID    int64
@@ -72,7 +69,8 @@ func NewSystemOperationLockService(repo idempotency.OperationLeaseStore, cfg Opt
 	if cfg.Log == nil {
 		cfg.Log = func(string, string, ...any) {}
 	}
-	return &SystemOperationLockService{log: cfg.Log,
+	return &SystemOperationLockService{
+		log:           cfg.Log,
 		repo:          repo,
 		lease:         lease,
 		renewInterval: renewInterval,
@@ -203,14 +201,16 @@ func (s *SystemOperationLockService) busyError(operationID string, lockedUntil *
 	return ErrSystemOperationBusy.WithMetadata(metadata)
 }
 
-// Options 由装配投影原系统维护锁的时限。
+// Options 配置系统维护锁的处理超时、TTL 和日志函数。
 type Options struct {
 	Log                                   func(string, string, ...any)
 	ProcessingTimeout, SystemOperationTTL time.Duration
 }
 
-var ErrIdempotencyStoreUnavail = idempotency.ErrIdempotencyStoreUnavail
-var ErrOperationOwnershipLost = infraerrors.Conflict("SYSTEM_OPERATION_OWNERSHIP_LOST", "system operation ownership lost")
+var (
+	ErrIdempotencyStoreUnavail = idempotency.ErrIdempotencyStoreUnavail
+	ErrOperationOwnershipLost  = infraerrors.Conflict("SYSTEM_OPERATION_OWNERSHIP_LOST", "system operation ownership lost")
+)
 
 // Context 在确认丢失所有权时取消后续阶段，浏览器断开不取消已接受操作。
 func (l *SystemOperationLock) Context() context.Context { return l.ctx }

@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/idempotency"
 )
 
-// idempotencyOptions 保留正数覆盖默认值和 ObserveOnly 的原配置语义。
+// idempotencyOptions 用正数配置覆盖默认值，并读取 ObserveOnly 开关。
 func idempotencyOptions(cfg *config.Config) idempotency.IdempotencyConfig {
 	opts := idempotency.DefaultIdempotencyConfig()
 	if cfg == nil {
@@ -34,13 +34,13 @@ func idempotencyOptions(cfg *config.Config) idempotency.IdempotencyConfig {
 	return opts
 }
 
-// provideIdempotencyCoordinator 构造唯一协调器，由 HTTP 装配显式共享。
+// provideIdempotencyCoordinator 构造供各 HTTP 入口共享的幂等协调器。
 func provideIdempotencyCoordinator(repo idempotency.IdempotencyRepository, cfg *config.Config) *idempotency.IdempotencyCoordinator {
 	coordinator := idempotency.NewIdempotencyCoordinator(repo, idempotencyOptions(cfg), idempotencyObserver())
 	return coordinator
 }
 
-// provideIdempotencyCleanupService 只构造任务，启动和停止由应用生命周期持有。
+// provideIdempotencyCleanupService 构造清理任务，应用生命周期管理器负责启停。
 func provideIdempotencyCleanupService(repo idempotency.IdempotencyRepository, cfg *config.Config) *idempotency.IdempotencyCleanupService {
 	opts := idempotency.CleanupOptions{Observer: idempotencyObserver()}
 	if cfg != nil {
@@ -50,7 +50,7 @@ func provideIdempotencyCleanupService(repo idempotency.IdempotencyRepository, cf
 	return idempotency.NewIdempotencyCleanupService(repo, opts)
 }
 
-// idempotencyObserver 由组合根提供日志出口，不在幂等核心安装全局后端。
+// idempotencyObserver 将幂等事件写入应用日志。
 func idempotencyObserver() idempotency.Observer {
 	return idempotency.ObserverFunc(func(component, message string) { logging.LegacyPrintf(component, "%s", message) })
 }

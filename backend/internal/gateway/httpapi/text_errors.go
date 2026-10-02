@@ -20,16 +20,13 @@ import (
 
 func WriteAnthropicStreamError(c *gin.Context, status int, errType, code, message string, streamStarted bool, observe func(*gin.Context, string, string, int)) {
 	if streamStarted {
-		// 响应状态码已固化为 200（ping/部分数据已 flush），错误只能就地以 SSE 帧回传。
-		// 标记本次流内错误，供 ops_error_logger 补记——否则该中间件按 status>=400 采集，
-		// 这类挂在 200 流上的失败（如并发限流回退）不会进错误看板。
+		// ping 或部分数据 Flush 后，状态码已提交为 200，错误通过 SSE 返回。
+		// 标记流内错误，ops_error_logger 据此补记 status < 400 的失败，例如并发限流。
 		if observe != nil {
 			observe(c, errType, message, status)
 		}
 
-		// /v1/responses 的严格 SDK（Codex CLI）要求终止事件必须属于
-		// response.completed/failed/incomplete/cancelled 集合。
-		// Anthropic-backed Responses 路径同样会因为通用 error 帧被拒。
+		// Codex CLI 接受 response.completed、failed、incomplete 或 cancelled 终止事件，Anthropic 上游的 Responses 也按此格式输出。
 		if InboundIsResponses(c) {
 			if WriteResponsesFailedSSE(c, errType, code, message, ErrorRequestID(c), ErrorRequestModel(c)) {
 				return
@@ -38,7 +35,7 @@ func WriteAnthropicStreamError(c *gin.Context, status int, errType, code, messag
 		// Stream already started, send error as SSE event then close
 		flusher, ok := c.Writer.(http.Flusher)
 		if ok {
-			// SSE 错误事件固定 schema，使用 Quote 直拼可避免额外 Marshal 分配。
+			// SSE 错误事件使用固定 schema，通过 Quote 拼接 JSON。
 			errorEvent := `data: {"type":"error","error":{"type":` + strconv.Quote(errType) + `,"message":` + strconv.Quote(message) + `}}` + "\n\n"
 			if code != "" {
 				errorObject := gin.H{"type": errType, "code": code, "message": message}

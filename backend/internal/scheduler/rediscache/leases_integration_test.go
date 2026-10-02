@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestBucketLeaseExpiredOwnerCannotReleaseSuccessor 验证真实 Redis 中旧锁自然过期后，旧句柄不能释放继任持有者的锁。
+// TestBucketLeaseExpiredOwnerCannotReleaseSuccessor 检查 Redis 中旧锁过期后，旧句柄释放时仍保留继任持有者的锁。
 func TestBucketLeaseExpiredOwnerCannotReleaseSuccessor(t *testing.T) {
 	ctx := context.Background()
 	rdb := testRedis(t)
@@ -46,7 +46,7 @@ func TestBucketLeaseExpiredOwnerCannotReleaseSuccessor(t *testing.T) {
 	require.Zero(t, count)
 }
 
-// 仅注入增加操作的传输错误，查询和释放继续操作真实 Redis。
+// waitIncrementFault 为增加操作注入传输错误，查询和释放访问测试 Redis。
 type waitIncrementFault struct{ scheduler.ConcurrencyCache }
 
 func (c waitIncrementFault) IncrementWaitCount(context.Context, int64, int) (bool, error) {

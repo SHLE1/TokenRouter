@@ -18,7 +18,7 @@ import (
 //   - 当 thinking.type 是 "enabled"/"adaptive"：仅移除缺失/无效 signature 的 thinking 块（避免 400）
 //     例如缺失、空值或占位 signature 的块
 //
-// 调用方传入 mappedModel 时会按上游协议族分流：仅 Anthropic 官方语义执行过滤；
+// 调用方传入 mappedModel 时按上游协议族选择规则：Anthropic 官方协议执行过滤，
 // DeepSeek/Kimi/GLM/MiniMax 等 passback-required 上游必须原样回传历史 thinking block。
 // 未传 mappedModel 时保留旧行为，便于既有单元测试和纯工具调用继续使用。
 func FilterThinkingBlocks(body []byte, mappedModel ...string) []byte {
@@ -40,7 +40,7 @@ func DefaultEffortForThinkingEnabled(mappedModel string) *string {
 }
 
 // ApplyThinkingEnabledFallback 在调用方尚未解析出 effort 时，为启用 thinking 的
-// 国产 passback-required 上游补默认 effort；已显式传入的 effort 永远不覆盖。
+// 国产 passback-required 上游缺少 effort 时补默认值，已有值原样保留。
 func ApplyThinkingEnabledFallback(effort *string, body []byte, mappedModel string) *string {
 	return requeststate.ApplyThinkingEnabledFallback(effort, body, thinkingRequestOptions(mappedModel))
 }

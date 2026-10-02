@@ -20,7 +20,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// mappingHTTPTransport 将已构造的真实上游请求交给本机 HTTP 服务，避免外部网络依赖。
+// mappingHTTPTransport 将构造好的上游请求发给本机 HTTP 服务。
 type mappingHTTPTransport struct {
 	client   *http.Client
 	endpoint *url.URL
@@ -40,7 +40,7 @@ func (p mappingHTTPTransport) DoWithTLS(request *http.Request, proxy string, id 
 	return p.Do(request, proxy, id, concurrency)
 }
 
-// TestOpenAIPassthroughHTTPAppliesExplicitModelMappingOnce 验证 HTTP 透传实际发送显式映射后的模型，并保持单跳和请求模型的回填口径。
+// TestOpenAIPassthroughHTTPAppliesExplicitModelMappingOnce 验证 HTTP 透传发送配置映射后的模型，执行一次映射并回填请求模型。
 func TestOpenAIPassthroughHTTPAppliesExplicitModelMappingOnce(t *testing.T) {
 	for _, providerType := range []string{capability.ProviderTypeAPIKey, capability.ProviderTypeOAuth} {
 		for _, stream := range []bool{false, true} {

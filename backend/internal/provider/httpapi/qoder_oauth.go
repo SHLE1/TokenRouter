@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// QoderAuthorizationUseCase 只暴露提供商授权操作，不允许 HTTP 直接访问状态存储或供应商客户端。
+// QoderAuthorizationUseCase 提供 HTTP 层需要的 Qoder 授权操作。
 type QoderAuthorizationUseCase interface {
 	ValidateSite(string) (string, error)
 	GenerateAuthURLForSite(context.Context, string, *int64) (*provider.QoderAuthURLResult, error)

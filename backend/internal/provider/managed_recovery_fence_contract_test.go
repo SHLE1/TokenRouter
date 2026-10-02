@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagedRecoveryFencePreservesNewRuntimeBlock 验证恢复等待期间出现新阻断时，旧恢复不得清除新状态；显式清理仍使用原路径。
+// TestManagedRecoveryFencePreservesNewRuntimeBlock 检查恢复期间出现新阻断时该状态保持不变，并检查管理员清理操作。
 func TestManagedRecoveryFencePreservesNewRuntimeBlock(t *testing.T) {
 	s := acctcore.NewRuntimeBlockState(time.Now)
 	a := &acctcore.Record{LoadLocation: time.LoadLocation, ID: 72, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}

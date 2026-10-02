@@ -144,7 +144,7 @@ func TestRedeemEffectsWaitForCommit(t *testing.T) {
 	}
 }
 
-// subscriptionContractEmptyGroups 保留旧未配置分组来源的空读取语义。
+// subscriptionContractEmptyGroups 模拟未配置分组来源时的空查询结果。
 type subscriptionContractEmptyGroups struct{}
 
 func (subscriptionContractEmptyGroups) GetByIDLite(context.Context, int64) (*billing.SubscriptionPlanGroup, error) {

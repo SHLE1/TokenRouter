@@ -34,7 +34,7 @@ type Target struct {
 	Gemini func(string) gemininative.ImageOptions
 }
 
-// ExecutePlatform 保留任务实际提供商平台分派，不改变各平台独立协议与错误语义。
+// ExecutePlatform 按任务提供商的平台分派执行，协议与错误由各平台实现处理。
 func (t *Target) ExecutePlatform(ctx context.Context, platform string, run creative.CreativeRun, payload creative.CreativeRunPayload, model string) ([]creative.CreativeOutput, error) {
 	switch platform {
 	case creative.PlatformOpenAI:

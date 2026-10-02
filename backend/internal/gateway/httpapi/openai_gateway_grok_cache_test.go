@@ -53,7 +53,7 @@ func TestResolveGrokCacheIdentityUsesPreviousResponseIDWhenNoOtherSeed(t *testin
 	again := ResolveGrokCacheIdentity(c, body, "", "grok-4.5")
 	require.Equal(t, got, again)
 
-	// 不同模型生成不同身份，确保模型维度隔离。
+	// 不同模型生成不同的缓存身份。
 	otherModel := ResolveGrokCacheIdentity(c, body, "", "grok-4.3")
 	require.NotEqual(t, got, otherModel)
 
@@ -449,7 +449,7 @@ func TestGrokFreeMessagesClientToolCacheDefaultsOnForKnownFree(t *testing.T) {
 	}
 }
 
-// TestGrokFreeFunctionToolCacheRouteConvertsNamedSearchFunctions 验证Grok Build 可能把原生搜索工具声明成同名函数，缓存路由必须转换并去重。
+// TestGrokFreeFunctionToolCacheRouteConvertsNamedSearchFunctions 验证 Grok Build 将搜索工具声明为同名函数时，缓存路由转换并去重。
 func TestGrokFreeFunctionToolCacheRouteConvertsNamedSearchFunctions(t *testing.T) {
 	provider := gatewaytestkit.HealthyGrokOAuthProvider(916, "access-token")
 	provider.Record.Credentials["subscription_tier"] = "free"
@@ -881,7 +881,7 @@ func TestApplyGrokCacheIdentityRequiresPatchedFunctionTools(t *testing.T) {
 }
 
 func TestGrokFreeMessagesFunctionToolCacheRouteRequiresKnownFreeTier(t *testing.T) {
-	// 以函数形式加入 web_search 来触发原生工具注入；纯客户端函数已不再触发。
+	// 以函数形式声明 web_search 会触发搜索工具注入，纯客户端函数保持原样。
 	intentBody := []byte(`{"model":"grok","tools":[{"type":"function","name":"lookup"},{"type":"function","name":"web_search"}],"tool_choice":"auto"}`)
 	tests := []struct {
 		name     string
@@ -1187,7 +1187,7 @@ func TestResolveGrokCacheIdentityConcurrentDeterminism(t *testing.T) {
 	require.NotEmpty(t, first)
 }
 
-// TestGrokCacheHeaderBrandCompatibility 验证旧头可用，新头显式关闭优先。
+// TestGrokCacheHeaderBrandCompatibility 验证兼容请求头可用，新请求头的关闭值优先。
 func TestGrokCacheHeaderBrandCompatibility(t *testing.T) {
 	for _, value := range []string{"", "0", "false"} {
 		provider := gatewaytestkit.HealthyGrokOAuthProvider(9014, "access-token")

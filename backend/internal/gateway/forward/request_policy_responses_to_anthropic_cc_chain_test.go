@@ -10,10 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ccChainToAnthropic 这些测试覆盖 Anthropic 分组上 Chat Completions 客户端的真实生产链路：
-// ForwardAsChatCompletions 会执行 ChatCompletionsToResponses →
-// ResponsesToAnthropicRequest，再把 Anthropic 请求体转发给上游。这里验证配对修复在完整链路生效，
-// 而不仅是 Codex 风格 Responses 输入的直接转换。
+// ccChainToAnthropic 按 Anthropic 分组中 Chat 客户端的转发顺序执行转换：
+// 先 ChatCompletionsToResponses，再 ResponsesToAnthropicRequest，测试工具配对在两次转换后仍有效。
 func ccChainToAnthropic(t *testing.T, ccReq *protocolopenai.ChatCompletionsRequest) []protocolanthropic.AnthropicMessage {
 	t.Helper()
 	respReq, err := ChatCompletionsToResponses(ccReq)

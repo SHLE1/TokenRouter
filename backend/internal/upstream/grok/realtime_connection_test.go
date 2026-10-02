@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 测试侧仅适配真实本地 WS 库，不把 SDK 引入原生帧契约。
+// testWSFrames 将本地 WebSocket 连接适配为帧读写接口。
 type testWSFrames struct {
 	conn   *websocket.Conn
 	closed *atomic.Int64
@@ -138,7 +138,7 @@ func TestRealtimeNativeLocalWebSocket(t *testing.T) {
 	require.EqualValues(t, 1, released.Load())
 }
 
-// TestRealtimeNativeDialFailureAndProbeError 验证握手失败释放活动登记；探测仍返回原错误而不是升级错误包装。
+// TestRealtimeNativeDialFailureAndProbeError 检查握手失败时释放活动登记，探测返回底层错误。
 func TestRealtimeNativeDialFailureAndProbeError(t *testing.T) {
 	sentinel := errors.New("fixture unavailable")
 	var released atomic.Int64

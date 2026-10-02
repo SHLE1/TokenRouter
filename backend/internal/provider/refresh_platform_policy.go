@@ -1,6 +1,6 @@
 package provider
 
-// ProviderRefreshPlatformPolicy 组合提供商已有的刷新资格与错误快照，不持有平台客户端。
+// ProviderRefreshPlatformPolicy 组合刷新资格判断和错误快照。
 func ProviderRefreshPlatformPolicy() RefreshPlatformPolicy {
 	return RefreshPlatformPolicy{
 		Eligibility: GrokOAuthRequestProviderEligibilityError,

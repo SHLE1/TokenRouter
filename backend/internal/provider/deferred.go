@@ -11,7 +11,7 @@ type DeferredRepository interface {
 	BatchUpdateLastUsed(context.Context, map[int64]time.Time) error
 }
 
-// DeferredSchedule 只登记和取消周期任务，不要求提供商模块依赖时间轮实现。
+// DeferredSchedule 提供周期任务的登记与取消接口。
 type DeferredSchedule interface {
 	ScheduleRecurring(string, time.Duration, func())
 	Cancel(string)
@@ -109,7 +109,7 @@ func (s *DeferredService) StopContext(ctx context.Context) error {
 func (s *DeferredService) flushLastUsed()          { _ = s.flushLastUsedErr() }
 func (s *DeferredService) flushLastUsedErr() error { return s.flush(s.waitCtx, false) }
 
-// flush 拿取批次与入队共用锁；失败回填只补空位，不能覆盖批次发出之后的新活动。
+// flush 与入队共用锁取出批次，写入失败时补回仍为空的条目。
 func (s *DeferredService) flush(ctx context.Context, final bool) error {
 	if err := s.flushMu.Lock(ctx); err != nil {
 		return err
@@ -138,7 +138,7 @@ func (s *DeferredService) flush(ctx context.Context, final bool) error {
 	if len(updates) == 0 {
 		return nil
 	}
-	// 运行中的周期写入保留原十秒预算；最终写回还受应用剩余退出预算约束。
+	// 周期写入预算为十秒，最终写回同时受应用剩余退出预算限制。
 	parent := context.Background()
 	if final {
 		parent = ctx

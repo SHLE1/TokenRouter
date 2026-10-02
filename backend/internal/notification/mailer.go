@@ -110,7 +110,7 @@ const (
 // SanitizeEmailHeader 防止模板参数注入额外邮件头。
 func SanitizeEmailHeader(s string) string { return strings.NewReplacer("\r", "", "\n", "").Replace(s) }
 
-// CheckTransport 只检查运行参数，不建立连接或发送邮件。
+// CheckTransport 检查邮件传输参数，建连和发送由后续调用执行。
 func (s *NotificationEmailService) CheckTransport(ctx context.Context) error {
 	if s == nil || s.emailService == nil {
 		return ErrEmailNotConfigured

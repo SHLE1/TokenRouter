@@ -143,7 +143,7 @@
             <Select :model-value="filters.billing_type ?? null" @update:model-value="filters.billing_type = $event" :options="billingTypeOptions" @change="emitChange" />
           </FilterField>
 
-          <!-- 计费模式筛选仅用于用量列表；用户排行接口不支持该维度。 -->
+          <!-- 计费模式筛选适用于用量列表，用户排行按其接口支持的维度筛选。 -->
           <FilterField v-if="mode === 'usage'" :label="t('admin.usage.billingMode')">
             <Select :model-value="filters.billing_mode ?? null" @update:model-value="filters.billing_mode = $event" :options="billingModeOptions" @change="emitChange" />
           </FilterField>
@@ -288,7 +288,7 @@ const billingTypeOptions = ref<SelectOption[]>([
   { value: 1, label: t('admin.usage.billingTypeSubscription') }
 ])
 
-// 错误类型对应后端 phase 参数(与错误表"类型"徽章同语义)
+// 错误类型对应后端 phase 参数，与错误表的“类型”徽章使用相同分类。
 const errorPhaseOptions = computed<SelectOption[]>(() => [
   { value: null, label: t('admin.usage.allTypes') },
   { value: 'upstream', label: t('admin.ops.errorLog.typeUpstream') },
@@ -555,7 +555,7 @@ const setUserKeyword = (email: string) => {
   showUserDropdown.value = false
 }
 
-// 暴露搜索修订号，避免路由用户查询的异步结果覆盖管理员后续输入。
+// 以搜索修订号识别异步结果，管理员继续输入后过期的查询结果失效。
 const getUserSearchRevision = () => userSearchSequence
 
 defineExpose({ getUserSearchRevision, setUserKeyword })

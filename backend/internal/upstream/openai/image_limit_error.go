@@ -80,5 +80,5 @@ func ParseImageTryAgainCooldown(body []byte) time.Duration {
 	}
 }
 
-// 保留原错误文本中的数值与单位识别顺序。
+// openAIImageTryAgainPattern 依次提取重试提示中的数值和时间单位。
 var openAIImageTryAgainPattern = regexp.MustCompile(`(?i)try again in\s+([0-9]+(?:\.[0-9]+)?)\s*(ms|s|sec|secs|second|seconds|m|min|mins|minute|minutes)`)

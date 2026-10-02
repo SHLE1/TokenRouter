@@ -66,7 +66,7 @@ func TestProviderTestService_OpenAISuccessPersistsSnapshotFromHeaders(t *testing
 	require.Contains(t, recorder.Body.String(), "test_complete")
 }
 
-// TestProviderTestService_OpenAIOAuthTestDoesNotRedirectBareGPT56 验证管理员显式测试未知名称时保持透传，不再自动改成 Sol。
+// TestProviderTestService_OpenAIOAuthTestDoesNotRedirectBareGPT56 检查管理员测试未知模型名时按输入透传。
 func TestProviderTestService_OpenAIOAuthTestDoesNotRedirectBareGPT56(t *testing.T) {
 	ctx, _ := newTestContext()
 
@@ -404,7 +404,7 @@ func TestProviderTestService_OpenAI401SetsPermanentErrorOnly(t *testing.T) {
 }
 
 // TestProviderTestService_DeepSeekResponsesRoutesToOpenAIProbe 验证 CN Responses
-// 提供商从统一入口进入 OpenAI 探针，而不是通用 CN 请求处理器。
+// 提供商通过统一测试入口调用 OpenAI 探针。
 func TestProviderTestService_DeepSeekResponsesRoutesToOpenAIProbe(t *testing.T) {
 	ctx, _ := newTestContext()
 
@@ -579,7 +579,7 @@ func TestProviderTestService_OpenAIChatCompletionsPathRejectsNonJSONStream(t *te
 	require.NotContains(t, recorder.Body.String(), `"success":true`)
 }
 
-// TestProviderTestServiceExplicitProtocolDoesNotMutateProvider 验证协议选择必须覆盖当前测试路由，但不能改变提供商保存的路由模式。
+// TestProviderTestServiceExplicitProtocolDoesNotMutateProvider 检查本次测试按选择的协议执行，持久化路由配置保持不变。
 func TestProviderTestServiceExplicitProtocolDoesNotMutateProvider(t *testing.T) {
 	for _, protocol := range []string{"responses", "chat_completions"} {
 		t.Run(protocol, func(t *testing.T) {

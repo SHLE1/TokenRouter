@@ -49,7 +49,7 @@ type providerWire struct {
 	Groups                  []*groupWire
 }
 
-// 原分组记录不回载反向提供商关系；旧字段仍写 null，避免改变现存缓存形状。
+// groupWire 编码分组配置，ProviderGroups 写为 null，以兼容缓存格式。
 type groupWire struct {
 	*accessview.GroupConfig
 	ProviderGroups []json.RawMessage
@@ -141,7 +141,7 @@ func recordToWire(value *provider.Record, seen map[*provider.Record]*providerWir
 	return out
 }
 
-// UnmarshalProviderRecord 只恢复受控完整读取结果，不把凭据交给调度评分核心。
+// UnmarshalProviderRecord 从缓存报文恢复完整提供商记录，供执行适配器读取。
 func UnmarshalProviderRecord(payload []byte) (*provider.Record, error) {
 	var wire providerWire
 	if err := json.Unmarshal(payload, &wire); err != nil {

@@ -22,7 +22,7 @@ func SanitizeClientSessionID(raw string) string {
 	count := 0
 	for _, r := range trimmed {
 		if r < 0x20 || r == 0x7f {
-			// 显式关联标识不应包含控制字符；整值丢弃，避免持久化被篡改或部分注入的内容。
+			// 关联标识含控制字符时丢弃整个值。
 			return ""
 		}
 		count++
@@ -33,7 +33,7 @@ func SanitizeClientSessionID(raw string) string {
 	return trimmed
 }
 
-// ExtractClientSessionID 保留调用方声明的头部优先级，Grok 扩展只在原适用入口启用。
+// ExtractClientSessionID 按调用方指定的 Header 顺序读取会话 ID，Grok 扩展由对应入口启用。
 func ExtractClientSessionID(header func(string) string, names []string, grok bool) string {
 	for _, name := range names {
 		if value := SanitizeClientSessionID(header(name)); value != "" {

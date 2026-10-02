@@ -56,8 +56,7 @@ func (p *OpenAIResponseOutput) ProtocolError(resp *http.Response, c *gin.Context
 		message = "Upstream returned an invalid non-streaming response"
 	}
 	SetOpsUpstreamError(c, http.StatusBadGateway, message, "")
-	// body-signal compact 心跳可能已把响应头提交为 200，此时只能以
-	// response.failed 终止事件回传错误，不能再写 JSON+状态码。
+	// body-signal Compact 心跳提交 200 后，错误通过 response.failed 终止事件返回。
 	if OpenAICompactClientWantsStream(c) && StopOpenAICompactSSEKeepaliveCommitted(c) {
 		WriteOpenAICompactSSEFailureMessage(c, http.StatusBadGateway, "upstream_error", message, MarkOpsStreamError)
 		return fmt.Errorf("non-streaming openai protocol error: %s", message)

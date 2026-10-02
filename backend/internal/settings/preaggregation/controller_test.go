@@ -70,7 +70,7 @@ func TestPreAggregationSettingsUpdateNotifies(t *testing.T) {
 	require.Equal(t, updated, persisted)
 }
 
-// 夹具保留原读取计数和实际保存值，通知由真实控制器触发。
+// preaggregationFixture 保存设置值和读取次数，更新通知由控制器触发。
 type preaggregationFixture struct {
 	values        map[string]string
 	getValueCalls int

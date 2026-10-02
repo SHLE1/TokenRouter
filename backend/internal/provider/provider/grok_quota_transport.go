@@ -62,7 +62,7 @@ func applyGrokQuotaHeaders(value *provider.Record, headers http.Header) {
 	ApplyProviderHeaderOverrides(value, headers)
 }
 
-// ResolveProxy 保留关联对象优先、必要时读取存储，以及原有缺失返回值。
+// ResolveProxy 优先使用已加载的关联代理，缺失时查询存储，并返回查询结果。
 func (s *GrokQuotaTransport) ResolveProxy(ctx context.Context, value *provider.Record) string {
 	if value == nil || value.ProxyID == nil {
 		return ""

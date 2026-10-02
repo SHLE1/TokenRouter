@@ -51,7 +51,7 @@ func GenerateSessionHash(parsed *requeststate.ParsedRequest, observe func(string
 
 	// 3. 最后 fallback: 使用 session上下文 + system + 所有消息的完整摘要串
 	var combined strings.Builder
-	// 混入请求上下文区分因子，避免不同用户相同消息产生相同 hash
+	// 哈希中加入请求来源，使不同用户的相同消息生成不同哈希。
 	if parsed.SessionContext != nil {
 		_, _ = combined.WriteString(parsed.SessionContext.ClientIP)
 		_, _ = combined.WriteString(":")

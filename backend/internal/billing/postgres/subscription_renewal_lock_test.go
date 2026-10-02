@@ -48,7 +48,7 @@ func TestAssignOrExtendSubscriptionSerializesWithUserRowLock(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// lockOrderGroupReader 保留原夹具的意外读取拒绝，锁失败前不能查询分组。
+// lockOrderGroupReader 在查询分组时 panic，用来检查获取锁失败后是否提前退出。
 type lockOrderGroupReader struct{}
 
 func (lockOrderGroupReader) GetByIDLite(context.Context, int64) (*billing.SubscriptionPlanGroup, error) {

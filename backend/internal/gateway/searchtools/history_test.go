@@ -19,7 +19,7 @@ const emulatedWebSearchBody = `{"model":"claude-sonnet-4-6","max_tokens":1024,"m
 	`{"type":"text","text":"Here are the search results for \"weather\":"}]},` +
 	`{"role":"user","content":[{"type":"text","text":"thanks, continue"}]}]}`
 
-// genuineWebSearchBody 包含真实 Anthropic web search 块，其 ID 不带本地前缀。
+// genuineWebSearchBody 保存 Anthropic 上游 web search 块，其 ID 使用上游格式。
 const genuineWebSearchBody = `{"model":"claude-sonnet-4-6","max_tokens":1024,"messages":[` +
 	`{"role":"user","content":[{"type":"text","text":"search"}]},` +
 	`{"role":"assistant","content":[` +
@@ -42,7 +42,7 @@ func TestFilterWebSearchHistoryBlocks_StripsEmulatedBlocksForAnthropicStrict(t *
 	out := FilterWebSearchHistoryBlocks([]byte(emulatedWebSearchBody), false)
 
 	require.Equal(t, []string{"text", "text", "text"}, collectContentTypes(t, out))
-	// 保留模拟响应中的文本摘要，确保搜索上下文仍然存在。
+	// 模拟响应中的文本摘要保存搜索上下文。
 	require.Contains(t, string(out), "Here are the search results")
 	require.NotContains(t, string(out), "srvtoolu_ws_")
 	require.True(t, gjson.ValidBytes(out))
@@ -56,7 +56,7 @@ func TestFilterWebSearchHistoryBlocks_KeepsGenuineBlocksForAnthropicStrict(t *te
 }
 
 func TestFilterWebSearchHistoryBlocks_StripsAllBlocksForPassbackRequired(t *testing.T) {
-	// GLM 不接受 server_tool_use，因此真实 web search 块也必须剥离。
+	// GLM 拒绝 server_tool_use，转换时也剥离上游 web search 块。
 	out := FilterWebSearchHistoryBlocks([]byte(genuineWebSearchBody), true)
 
 	require.Equal(t, []string{"text", "text"}, collectContentTypes(t, out))

@@ -16,8 +16,8 @@ const (
 
 type toolOutputMediaByCallID map[string][]ChatContentPart
 
-// ResponsesToChatOptions 为 Responses→Chat 桥接提供可选的 reasoning 回查钩子。
-// 所有字段均可为空；传入 nil 或空选项时保持原有转换行为。
+// ResponsesToChatOptions 提供 Responses 转 Chat 时的 reasoning 历史查询函数。
+// 字段均可为空，nil 或空选项使用默认转换。
 type ResponsesToChatOptions struct {
 	// ReasoningContentByID 按 reasoning item id 返回缓存的明文推理内容。
 	// 客户端回放 encrypted-only item 时可借此恢复 DeepSeek thinking 所需的
@@ -60,9 +60,8 @@ func ResponsesToChatCompletionsRequestWithOptions(req *ResponsesRequest, opts *R
 		}
 		out.Tools = tools
 	}
-	// tools 全部被丢弃（如仅含 web_search/image_generation 等服务端工具）时不再转发
-	// tool_choice：上游会拒绝 "'tool_choice' is only allowed when 'tools' are specified"。
-	// 指向被丢弃工具的选择项同理（见 responsesToolChoiceToChatToolChoice）。
+	// tools 全部丢弃时同时移除 tool_choice，上游会拒绝仅有 tool_choice 的请求。
+	// 指向已丢弃工具的选择项也会被移除，见 responsesToolChoiceToChatToolChoice。
 	if len(out.Tools) > 0 && len(req.ToolChoice) > 0 {
 		declared := make(map[string]bool, len(out.Tools))
 		for _, tool := range out.Tools {
@@ -172,7 +171,7 @@ func CustomToolNames(tools []ResponsesTool) map[string]bool {
 	return out
 }
 
-// FunctionToolNames 收集 Responses 请求中显式声明的顶层 function 工具。
+// FunctionToolNames 收集 Responses 请求声明的顶层 function 工具。
 func FunctionToolNames(tools []ResponsesTool) map[string]bool {
 	var out map[string]bool
 	for _, tool := range tools {
@@ -194,7 +193,7 @@ type NamespacedToolName struct {
 
 // NamespaceToolNames 收集 namespace 子工具摊平名到原始归属的映射。Chat 桥回程时
 // 需要恢复 namespace 与裸工具名；超长摊平名包含截断哈希，不能靠字符串切分还原。
-// 摊平名撞名的请求已在转换阶段被显式拒绝（见 namespaceChildrenToChatTools），
+// 摊平后名称冲突的请求在转换阶段被拒绝（见 namespaceChildrenToChatTools），
 // 此处映射不存在歧义。
 func NamespaceToolNames(tools []ResponsesTool) map[string]NamespacedToolName {
 	var out map[string]NamespacedToolName
@@ -434,8 +433,7 @@ func buildChatMessagesFromItems(messages []ChatMessage, rawItems []json.RawMessa
 		case "function_call_output", "custom_tool_call_output", "tool_search_output":
 			outputRaw := bytesTrimSpace(item["output"])
 			if itemType == "tool_search_output" && (len(outputRaw) == 0 || string(outputRaw) == "null") {
-				// 新版客户端将发现结果放在 tools[] 而不是单独的 output 字段，
-				// 需要保留这部分结果以生成 Chat 工具历史。
+				// 客户端将发现结果放在 tools[] 时，从该字段生成 Chat 工具历史。
 				outputRaw = bytesTrimSpace(item["tools"])
 			}
 			callID := rawString(item["call_id"])
@@ -916,10 +914,8 @@ func chatContentFromSingleResponsesPart(partType string, part map[string]json.Ra
 const customToolInputSchema = `{"type":"object","properties":{"input":{"type":"string","description":"The raw input for this tool, passed through verbatim."}},"required":["input"]}`
 
 func responsesToolsToChatTools(tools []ResponsesTool) ([]ChatTool, error) {
-	// 顶层 function/custom 工具名集合：namespace 子工具摊平后与其撞名时，chat
-	// 上游无法按 namespace 区分调用归属。这类请求在原生 Responses 上游是合法的
-	// （按 namespace+name 路由），歧义由摊平转换制造且无法消除，必须显式拒绝，
-	// 不能静默降级（重复声明发给上游、回程还原到错误工具）。
+	// 收集顶层 function/custom 工具名，检查 namespace 子工具摊平后是否重名。
+	// Responses 可按 namespace 和 name 区分这些工具，Chat 仅按名称区分，重名时返回错误。
 	topLevel := make(map[string]bool)
 	for _, tool := range tools {
 		if (tool.Type == "function" || tool.Type == "custom") && tool.Name != "" {
@@ -945,8 +941,7 @@ func responsesToolsToChatTools(tools []ResponsesTool) ([]ChatTool, error) {
 				},
 			})
 		case "custom":
-			// codex 0.14x 的核心执行工具 exec 即为 custom 类型；丢弃它会让模型
-			// 无法执行任何命令，必须降级为 function 工具透传。
+			// Codex 0.14x 的 exec 为 custom 类型，转成 function 后模型才能继续执行命令。
 			out = append(out, ChatTool{
 				Type: "function",
 				Function: &ChatFunction{
@@ -956,9 +951,8 @@ func responsesToolsToChatTools(tools []ResponsesTool) ([]ChatTool, error) {
 				},
 			})
 		case "tool_search":
-			// 代理不能改名（codex 的模型侧按 tool_search 这个名字调用），与客户端
-			// 声明的同名工具无法区分——回程会把普通工具的调用劫持成 tool_search_call，
-			// 必须显式拒绝；重复声明 type=tool_search 去重即可。
+			// Codex 按 tool_search 名称调用代理，客户端声明同名普通工具时返回错误，
+			// 否则回程会将普通工具调用还原为 tool_search_call。重复的 type=tool_search 声明按名称去重。
 			if topLevel[toolSearchProxyName] {
 				return nil, fmt.Errorf("built-in tool_search conflicts with a declared tool named %q; this upstream cannot disambiguate them, rename the tool", toolSearchProxyName)
 			}
@@ -1007,10 +1001,8 @@ func toolSearchProxyChatTool() ChatTool {
 	}
 }
 
-// namespaceChildrenToChatTools 将 namespace 工具的子 function 工具摊平为顶层
-// function 工具，名字加 "<namespace>__" 前缀。摊平名与顶层工具或其他 namespace
-// 撞名时返回错误（歧义不可消除，显式拒绝）；同一 (namespace, 子工具) 的重复声明
-// 去重后不算冲突。
+// namespaceChildrenToChatTools 将 namespace 的子 function 摊平到顶层，并加上 <namespace>__ 名称前缀。
+// 摊平后与顶层或其他 namespace 工具重名时返回错误，同一 namespace 内的重复子工具声明去重。
 func namespaceChildrenToChatTools(tool ResponsesTool, topLevel map[string]bool, flatOwner map[string]NamespacedToolName) ([]ChatTool, error) {
 	if tool.Name == "" {
 		return nil, nil
@@ -1072,10 +1064,10 @@ func flattenNamespaceToolName(namespace, name string) string {
 	return prefix.String() + suffix
 }
 
-// responsesToolChoiceToChatToolChoice 把 Responses 的 tool_choice 转为 chat 形态。
-// declared 是转换后实际声明的 chat 工具名集合：具名选择项仅在目标工具幸存时转发，
-// 服务端工具（web_search 等）的选择项随工具本身丢弃——指向未声明工具的 tool_choice
-// 会被 chat 上游 400 拒绝。返回 nil 表示丢弃 tool_choice。
+// responsesToolChoiceToChatToolChoice 将 Responses 的 tool_choice 转为 Chat 格式。
+// declared 是转换后的工具名集合，具名选择项的目标仍在该集合中时才转发。
+// 服务端工具及其选择项一起丢弃，指向未声明工具的 tool_choice 会触发上游 400。
+// 返回 nil 表示丢弃 tool_choice。
 func responsesToolChoiceToChatToolChoice(raw json.RawMessage, declared map[string]bool) json.RawMessage {
 	var choice map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &choice); err != nil {
@@ -1152,7 +1144,7 @@ func extractCustomToolCallInput(arguments string) string {
 
 // ChatCompletionsResponseToResponses 将非流式 Chat Completions 响应转换为
 // Responses API 响应。customTools 是客户端请求中 custom 工具的名字集合，
-// functionTools 是显式声明的顶层 function 工具集合；命中的 custom 调用会还原为
+// functionTools 是请求声明的顶层 function 工具集合，命中的 custom 调用会还原为
 // custom_tool_call。toolSearch 表示客户端声明了 tool_search，namespaceTools 用于
 // 恢复子工具的原始 namespace 与裸名称。
 func ChatCompletionsResponseToResponses(runtime Runtime, resp *ChatCompletionsResponse, model string, customTools, functionTools map[string]bool, toolSearch bool, namespaceTools map[string]NamespacedToolName) *ResponsesResponse {
@@ -1403,7 +1395,7 @@ type ChatCompletionsToResponsesStreamState struct {
 	// 路由回它注册的 custom 工具。
 	CustomTools map[string]bool
 
-	// FunctionTools 保存显式声明的顶层 function 工具集合。
+	// FunctionTools 保存请求声明的顶层 function 工具集合。
 	FunctionTools map[string]bool
 
 	// ToolSearchDeclared 表示客户端请求声明了 tool_search 工具（见
@@ -1450,8 +1442,8 @@ func NewChatCompletionsToResponsesStreamState(runtime Runtime, model string) *Ch
 	}
 }
 
-// ValidateToolCallArguments 在流结束前校验累积的 function-call 参数，避免
-// 截断或丢失参数的工具项以 completed 状态写入 Responses 历史。
+// ValidateToolCallArguments 在流结束前校验累积的 function-call 参数。
+// 截断或缺失参数时返回错误，调用方据此阻止工具项以 completed 状态写入历史。
 func (state *ChatCompletionsToResponsesStreamState) ValidateToolCallArguments() error {
 	if state == nil {
 		return nil
@@ -1547,8 +1539,8 @@ func ChatCompletionsChunkToResponsesEvents(runtime Runtime,
 					copyCall.ID = generateItemID(runtime)
 				}
 				copyCall.Type = "function"
-				// arguments 由下面的共享累加逻辑统一处理，避免 GLM/Zhipu 这类
-				// 首帧同时携带 id/name/arguments 的上游把首帧参数计入两次。
+				// 首帧与后续分片的 arguments 由下方代码一起累加。
+				// GLM/Zhipu 的首帧可同时包含 id、name 和 arguments。
 				copyCall.Function.Arguments = ""
 				state.ToolCalls[idx] = &copyCall
 				stored = &copyCall
@@ -1788,9 +1780,9 @@ func ensureChatToResponsesTextPart(state *ChatCompletionsToResponsesStreamState)
 	})}
 }
 
-// announceChatToolItem 在类型可判定时发出工具调用的 output_item.added。custom
-// 工具的判定依赖名字：名字未到且请求里存在 custom 工具时延迟宣告，避免 added/done
-// 的项类型不一致；force 用于流收尾，名字始终未到时按 function_call 兜底。
+// announceChatToolItem 在工具类型确定后输出 output_item.added。
+// 请求含 custom 工具时等名称到达后再判定类型，使 added 与 done 的类型一致。
+// force 用于流收尾，名称仍缺失时使用 function_call。
 func announceChatToolItem(
 	state *ChatCompletionsToResponsesStreamState,
 	idx int,
@@ -1865,7 +1857,7 @@ func closeChatToolItems(state *ChatCompletionsToResponsesStreamState) []Response
 		if !opened {
 			continue
 		}
-		// 名字始终未到导致尚未宣告的调用，收尾前按最终名字兜底宣告。
+		// 收尾前为尚未宣告的调用发出 added 事件，名称缺失时使用 function_call。
 		events = append(events, announceChatToolItem(state, i, toolCall, true)...)
 		arguments := toolCall.Function.Arguments
 		if strings.TrimSpace(arguments) == "" {

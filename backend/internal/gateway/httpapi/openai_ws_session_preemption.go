@@ -113,7 +113,7 @@ func (s *OpenAIWebSocketExecutor) openAIWSSessionPreemptionCache() session.OpenA
 	return cache
 }
 
-// wsPreemption 只投影既有应用实例中的会话依赖。
+// wsPreemption 返回应用实例中的会话依赖。
 func (s *OpenAIWebSocketExecutor) wsPreemption() *gatewayws.Preemption {
 	return &gatewayws.Preemption{Registry: &s.openaiWSSessionPreemptions.PreemptRegistry, Cache: s.openAIWSSessionPreemptionCache(), State: s.State, RedisTimeout: session.StateStoreRedisTimeout}
 }

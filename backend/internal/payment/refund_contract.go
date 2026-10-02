@@ -19,7 +19,7 @@ type RefundPlan struct {
 	BalanceToDeduct float64
 	SubDaysToDeduct int
 	SubscriptionID  int64
-	// OperationID 只关联本地审计，不改变渠道幂等编码。
+	// OperationID 关联本地审计记录，渠道使用自身的幂等编码。
 	OperationID     string
 	ChannelRefundID string
 }
@@ -76,7 +76,6 @@ type RefundStore interface {
 	PendingDetail(context.Context, int64) (RefundPendingDetail, error)
 }
 
-// RefundRuntime 由装配提供渠道身份解析、观测及必要的只读权益投影。
 type (
 	RefundUser         struct{ Balance float64 }
 	RefundSubscription struct {
@@ -85,6 +84,7 @@ type (
 	}
 )
 
+// RefundRuntime 提供渠道解析、权益查询、审计和时钟函数。
 type RefundRuntime struct {
 	User          func(context.Context, int64) (*RefundUser, error)
 	Subscriptions func(context.Context, int64) ([]RefundSubscription, error)

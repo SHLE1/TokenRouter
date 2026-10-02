@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 通过原生管理刷新与 SDK 解析，仅把网络交换替换成固定本地响应。
+// 管理刷新和 SDK 解析使用生产实现，网络交换返回固定的本地响应。
 type agRecoveryIdentityAdmin struct {
 	provider.ManagedCredentialStore
 	current provider.Record
@@ -75,7 +75,7 @@ func TestAntigravityManualRecoveryDoesNotClearNewAdministratorState(t *testing.T
 	require.Zero(t, admin.clears)
 }
 
-// ClearManagedRefreshError 替身执行与生产端口相同的条件判断，真实 SQL 交错由 integration 矩阵验证。
+// ClearManagedRefreshError 模拟条件更新，integration 测试覆盖 SQL 交错执行。
 func (s *agRecoveryIdentityAdmin) ClearManagedRefreshError(_ context.Context, old *provider.Record) (*provider.Record, bool, error) {
 	if !provider.ObserveManagedRecovery(old).Matches(&s.current) {
 		return &s.current, false, nil

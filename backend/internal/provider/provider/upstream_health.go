@@ -25,8 +25,8 @@ func (s *UpstreamHealth) CheckErrorPolicy(ctx context.Context, provider *provide
 	return s.Core.CheckErrorPolicy(ctx, provider, statusCode, responseBody, observation.EffectiveModel, provider == nil || provider.Platform != capability.PlatformAntigravity)
 }
 
-// ApplyExplicitErrorPolicy 检查并应用管理员显式配置的错误策略。
-// 自定义错误码命中时在这里统一写入提供商错误，避免 400、429、529 被内置分支覆盖。
+// ApplyExplicitErrorPolicy 检查并应用管理员配置的错误策略。
+// 自定义错误码命中后写入提供商错误，后续跳过内置状态码分支。
 func (s *UpstreamHealth) ApplyExplicitErrorPolicy(ctx context.Context, provider *providercore.Record, observation HealthObservation) providercore.ErrorPolicyResult {
 	statusCode, responseBody := observation.Status, observation.Body
 	result := s.CheckErrorPolicy(ctx, provider, observation)
@@ -41,7 +41,7 @@ func (s *UpstreamHealth) ApplyExplicitErrorPolicy(ctx context.Context, provider 
 	return result
 }
 
-// ApplyUpstreamError 先执行显式策略，再在非池模式下执行平台默认提供商状态处理。
+// ApplyUpstreamError 先执行配置的错误策略，非池模式下再执行平台默认处理。
 func (s *UpstreamHealth) ApplyUpstreamError(ctx context.Context, provider *providercore.Record, observation HealthObservation) providercore.UpstreamErrorDecision {
 	statusCode, responseBody := observation.Status, observation.Body
 	// Team 联动熔断必须先于池模式、自定义错误码和临时不可调度的各类早退；
@@ -49,7 +49,7 @@ func (s *UpstreamHealth) ApplyUpstreamError(ctx context.Context, provider *provi
 	s.Team.HandleWorkspaceDeactivated(ctx, provider, statusCode == http.StatusPaymentRequired && ClientRejectionObservation("", responseBody).WorkspaceDeactivated)
 	policy := providercore.ErrorPolicyNone
 	// 非池提供商未启用自定义错误码时，模型不存在和官方硬窗口等精确状态必须
-	// 先于宽泛的临时不可调度规则；池模式和自定义错误码仍作为前置显式策略。
+	// 此检查先于通用临时停调规则，池模式和自定义错误码在此前判断。
 	if provider != nil && (provider.IsPoolMode() || provider.IsCustomErrorCodesEnabled()) {
 		policy = s.ApplyExplicitErrorPolicy(ctx, provider, observation)
 	}
@@ -65,7 +65,7 @@ func (s *UpstreamHealth) ApplyUpstreamError(ctx context.Context, provider *provi
 	return decision
 }
 
-// HandleDefault 只处理非池模式、未命中显式策略时的平台默认提供商状态。
+// HandleDefault 在非池模式且配置策略未命中时，更新平台默认的提供商状态。
 func (s *UpstreamHealth) HandleDefault(ctx context.Context, provider *providercore.Record, observation HealthObservation) (shouldDisable bool) {
 	statusCode, headers, responseBody := observation.Status, observation.Headers, observation.Body
 	if provider == nil {
@@ -99,7 +99,7 @@ func (s *UpstreamHealth) HandleDefault(ctx context.Context, provider *providerco
 		s.Core.ApplyOverload(ctx, provider)
 		return false
 	}
-	// 非池提供商保留既有精确状态优先级；401 继续进入认证刷新与默认冷却逻辑。
+	// 非池提供商优先处理具体状态，401 进入认证刷新和默认冷却流程。
 	if statusCode != http.StatusUnauthorized && s.Core.TryTempUnschedulable(ctx, provider, statusCode, responseBody, provider.Platform != capability.PlatformAntigravity, observation.EffectiveModel) {
 		return true
 	}
@@ -162,7 +162,7 @@ type HealthObservation struct {
 	ImagesEndpoint bool
 }
 
-// UpstreamHealth 只组合供应商观测与提供商健康核心，不持有旧服务、配置或存储客户端。
+// UpstreamHealth 组合供应商观测和提供商健康状态处理。
 type UpstreamHealth struct {
 	Core   *providercore.HealthService
 	Team   *providercore.TeamLinkedHealth

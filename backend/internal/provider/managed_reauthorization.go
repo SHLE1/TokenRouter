@@ -11,7 +11,7 @@ type ManagedReauthorizationInput struct {
 	Credentials, Extra map[string]any
 }
 
-// Reauthorize 保留原多次写入、Extra 尽力合并、错误清理和缓存失效顺序。
+// Reauthorize 分步写入凭据和 Extra，再清理错误和 token 缓存。Extra 合并失败时记录日志。
 func (s *ManagedRefreshService) Reauthorize(ctx context.Context, existing *Record, req ManagedReauthorizationInput) (*Record, error) {
 	if existing == nil {
 		return nil, ErrProviderNotFound
@@ -35,7 +35,7 @@ func (s *ManagedRefreshService) Reauthorize(ctx context.Context, existing *Recor
 		return nil, err
 	}
 
-	// Extra 采用增量合并；失败只记录日志，避免重新授权的 token 落库结果被回滚。
+	// Extra 按字段合并，写入失败时记录日志，已保存的 token 保持有效。
 	if len(req.Extra) > 0 {
 		if extraErr := s.options.Store.UpdateProviderExtra(ctx, providerID, req.Extra); extraErr != nil {
 			extraKeys := make([]string, 0, len(req.Extra))

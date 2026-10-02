@@ -68,7 +68,7 @@ func NewQoderCompatibleHandler(backend QoderCompatibleBackend, concurrency *Conc
 func (h *QoderCompatibleHandler) Messages(c *gin.Context)  { h.handle(c, QoderMessages) }
 func (h *QoderCompatibleHandler) Responses(c *gin.Context) { h.handle(c, QoderResponses) }
 
-// ChatCompletions 提供手写装配入口；生产 Chat 使用 Execute 契约。
+// ChatCompletions 提供手动装配入口，生产 Chat 调用 Execute。
 func (h *QoderCompatibleHandler) ChatCompletions(c *gin.Context) { h.handle(c, QoderChat) }
 
 func (h *QoderCompatibleHandler) errorResponse(c *gin.Context, status int, kind, message string, endpoint QoderEndpoint) {

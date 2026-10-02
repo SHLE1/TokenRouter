@@ -24,7 +24,7 @@ type TempUnschedCache interface {
 	DeleteTempUnsched(ctx context.Context, providerID int64) error
 }
 
-// OpenAIAPIKeyHealthCache 保留原滚动失败窗口端口。
+// OpenAIAPIKeyHealthCache 提供 API Key 滚动失败窗口的读写操作。
 // OpenAIAPIKeyHealthCache is an optional TempUnschedCache extension used to
 // aggregate pool API-key failures across gateway instances.
 type OpenAIAPIKeyHealthCache interface {

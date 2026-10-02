@@ -59,7 +59,7 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// balanceReader 仅将真实数据库余额投影给 billing，不参与结算写入。
+// balanceReader 从数据库读取余额并返回给 billing。
 type balanceReader struct{ db *sql.DB }
 
 func (r balanceReader) GetByID(ctx context.Context, id int64) (*billing.UserSummary, error) {
@@ -68,7 +68,7 @@ func (r balanceReader) GetByID(ctx context.Context, id int64) (*billing.UserSumm
 	return u, err
 }
 
-// TestQoderHTTPStorageChain 使用真实 PostgreSQL/Redis、原完成 worker 和本地供应商 HTTP。
+// TestQoderHTTPStorageChain 使用 PostgreSQL、Redis、完成记录 worker 和本地供应商 HTTP。
 func TestQoderHTTPStorageChain(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := context.Background()
@@ -87,7 +87,7 @@ func TestQoderHTTPStorageChain(t *testing.T) {
 		require.NoError(t, concur.StopContext(stopCtx))
 	})
 
-	// 等待阶段仍使用真实 Redis 计数；取消、写失败及二次权益拒绝均不能进入供应商。
+	// 等待阶段使用 Redis 计数，取消、写入失败或再次权益检查被拒绝时，请求在调用供应商前结束。
 	for _, kind := range []string{"wait-cancel", "wait-heartbeat-failure", "wait-billing-recheck"} {
 		t.Run(kind, func(t *testing.T) {
 			const id int64 = 990099
@@ -240,7 +240,7 @@ func TestQoderHTTPStorageChain(t *testing.T) {
 				})
 			}
 
-			// 使用固定 Execute；HTTP 只投影认证和报文，依赖不在每请求内重组。
+			// HTTP 使用固定的 Execute 函数，认证数据和请求报文按请求传入。
 			runtime := &storageQoderRuntime{}
 			runtime.prepare = func(callCtx context.Context, request gateway.Request) (gateway.Request, error) {
 				grp, err := groups.GetByID(callCtx, group.ID)
@@ -355,7 +355,7 @@ func TestQoderHTTPStorageChain(t *testing.T) {
 			case <-time.After(10 * time.Second):
 				t.Fatal("completion did not finish")
 			}
-			// 重放完成动作仅验证持久化幂等，不第二次调用供应商。
+			// 重放完成操作检查持久化幂等，供应商调用次数保持为一。
 			complete(ctx, last)
 			select {
 			case err := <-done:
@@ -387,7 +387,7 @@ func TestQoderHTTPStorageChain(t *testing.T) {
 	}
 }
 
-// storageQoderRuntime 仅替换供应商与依赖取得；执行、租约、真实资金及分析存储均走新生产模块。
+// storageQoderRuntime 提供供应商与依赖的测试实现，执行、租约、资金和分析记录使用生产模块。
 type storageQoderRuntime struct {
 	prepare        func(context.Context, gateway.Request) (gateway.Request, error)
 	check          func(context.Context) error

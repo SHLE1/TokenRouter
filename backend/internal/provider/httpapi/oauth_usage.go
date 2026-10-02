@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// OAuthUsageHandler 保留主动/被动、批量、统计和 ETag HTTP 契约。
+// OAuthUsageHandler 提供主动和被动用量查询、批量查询、统计及 ETag 响应。
 type OAuthUsageHandler struct {
 	core  *provider.OAuthUsageService
 	stats *provider.LocalUsageStatistics

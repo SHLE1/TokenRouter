@@ -709,7 +709,7 @@ const targetMode = computed(() => props.target?.mode ?? 'selected')
 const targetPreviewCount = computed(() => props.target?.previewCount ?? props.providerIds.length)
 const targetSelectedPlatforms = computed(() => props.target?.selectedPlatforms ?? props.selectedPlatforms)
 const targetSelectedTypes = computed(() => props.target?.selectedTypes ?? props.selectedTypes)
-// Grok 快捷端点仅在所选提供商全部为 grok 平台时展示（其他平台不显示）
+// 所选提供商全部属于 grok 平台时展示快捷端点。
 const allTargetsGrok = computed(
   () =>
     targetSelectedPlatforms.value.length > 0 &&
@@ -910,7 +910,7 @@ const openaiPassthroughEnabled = ref(false)
 // OpenAI OAuth namespace 工具摊平兼容开关，缺省关闭即原样保留。
 const openaiFlattenNamespacesEnabled = ref(false)
 const codexImageToolMode = ref<CodexImageToolMode>('inherit')
-// 批量修改默认不触碰 continuation，避免未勾选时覆盖目标提供商已有设置。
+// 勾选 continuation 后才提交该字段，未勾选时保留提供商的当前设置。
 const openAIResponsesContinuationSupported = ref(false)
 const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
 const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
@@ -1163,7 +1163,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
   }
 
   if (enableProxy.value) {
-    // 后端期望 proxy_id: 0 表示清除代理，而不是 null
+    // 后端用 proxy_id: 0 表示清除代理。
     updates.proxy_id = proxyId.value === null ? 0 : proxyId.value
   }
 
@@ -1272,7 +1272,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
   if (enableCodexCLIOnly.value) {
     const extra = ensureExtra()
     extra.openai_oauth_client_policy = openAIOAuthClientPolicy.value
-    // 兼容旧后端/旧提供商字段；非 codex_only 时显式写 false，避免 JSONB merge 留下旧 true。
+    // 兼容 codex_cli_only 字段，非 codex_only 策略写入 false 以覆盖 JSONB 中的 true。
     extra.codex_cli_only = openAIOAuthClientPolicy.value === 'codex_only'
     if (openAIOAuthClientPolicy.value !== 'codex_only') {
       extra.codex_cli_only_allowed_clients = []
@@ -1313,7 +1313,7 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     extra.enable_tls_fingerprint = tlsFingerprintEnabled.value
     extra.tls_fingerprint_profile_id = tlsFingerprintEnabled.value ? tlsFingerprintProfileId.value : 0
     if (allOpenAIOAuth.value) {
-      // 0 表示清除提供商上的 TLS 路由器，避免批量关闭后旧路由器继续生效。
+      // 批量关闭 TLS 指纹时写入 0，清除提供商的 TLS 路由器。
       extra.tls_fingerprint_router_id = tlsFingerprintEnabled.value ? (tlsFingerprintRouterId.value ?? 0) : 0
     }
   }

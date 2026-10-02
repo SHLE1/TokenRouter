@@ -35,7 +35,7 @@ func (p *RoutePlanner) PlanRoute(ctx context.Context, group *routing.Group, id *
 	return RoutePlanForMapping(ctx, group, id, requested, mapping)
 }
 
-// RoutePlanForMapping 保留请求分组回退、ID 复核和协议投影，不新增查询或 Key 改写。
+// RoutePlanForMapping 取得请求分组、复核分组 ID，并构造协议路线。
 func RoutePlanForMapping(ctx context.Context, group *routing.Group, groupID *int64, requested string, mapping routing.GroupMappingResult) routing.RoutePlan {
 	if group == nil {
 		group, _ = requeststate.GroupFromContext(ctx)

@@ -206,7 +206,7 @@ func TestWithWindowCostPrefetch_BatchReadAndContextReuse(t *testing.T) {
 		WindowPrefetchAvailable: true,
 	}, nil)
 
-	// 原无效提供商值不产生预取命中；原生状态以缺失提供商表达同一回源边界。
+	// 预取结果中缺少提供商时，重新读取提供商。
 
 	outCtx := svc.withWindowCostPrefetch(context.Background(), providers)
 	require.NotNil(t, outCtx)

@@ -284,7 +284,7 @@ const rowClass = computed(() =>
     : 'px-6 py-5'
 )
 const emailBound = computed(() => getBindingStatus('email'))
-// 公开设置缺失时按关闭处理，避免旧缓存短暂显示换绑入口。
+// 公开设置缺失时关闭换绑入口。
 const userEmailChangeEnabled = computed(
   () => appStore.cachedPublicSettings?.user_email_change_enabled === true
 )

@@ -4,7 +4,7 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// NormalizeRecordedOpenAIEffortForModel 保留实际模型对 max 的支持边界。
+// NormalizeRecordedOpenAIEffortForModel 按实际模型的 max 支持情况归一化记录值。
 func NormalizeRecordedOpenAIEffortForModel(raw string, model string) string {
 	value := protocolopenai.NormalizeRecordedReasoningEffort(raw)
 	switch value {

@@ -20,7 +20,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// newGenericSelectionForTest 仅组装已有原生能力和配置投影，保持各场景的显式零值。
+// newGenericSelectionForTest 构造通用选择器，使用各测试传入的配置值。
 func newGenericSelectionForTest(deps GenericDependencies, cfg *config.Config) *Generic {
 	if deps.Groups == nil {
 		deps.Groups = selectionFixtureGroups{}
@@ -58,7 +58,7 @@ func selectionWindowForTest(cache billing.WindowCostCache, source usage.UsageLog
 	return billing.NewWindowCostGuard(cache, gatewaytestkit.WindowCosts(source), billing.WindowCostGuardOptions{Now: time.Now, Stats: billing.SharedWindowCostMetrics(), Log: func(string, ...any) {}, Debug: func(string, ...any) {}})
 }
 
-// newGeminiSelectionForTest 将原场景直接接入 Gemini 原生选择器。
+// newGeminiSelectionForTest 构造测试使用的 Gemini 选择器。
 func newGeminiSelectionForTest(deps GeminiDependencies, cfg *config.Config) *Gemini {
 	if deps.Groups == nil {
 		deps.Groups = selectionFixtureGroups{}
@@ -69,7 +69,7 @@ func newGeminiSelectionForTest(deps GeminiDependencies, cfg *config.Config) *Gem
 	return NewGemini(deps, selectionOptionsForTest(cfg))
 }
 
-// newCompatibleSelectionForTest 只注入原生参数，不初始化供应商执行器。
+// newCompatibleSelectionForTest 为兼容选择器注入测试参数。
 func newCompatibleSelectionForTest(deps CompatibleDependencies, cfg *config.Config) *Compatible {
 	if deps.Groups == nil {
 		deps.Groups = selectionFixtureGroups{}
@@ -100,7 +100,7 @@ func selectionFixtureGroupID(ctx context.Context) *int64 {
 	return &id
 }
 
-// prepareSelectionFixtureProvider 显式声明算法夹具的模型范围，专门的模型能力测试直接构造提供商。
+// prepareSelectionFixtureProvider 为调度算法测试配置模型范围。
 func prepareSelectionFixtureProvider(ctx context.Context, value *gatewayprovider.ExecutionProvider, groupID *int64) {
 	if value == nil {
 		return

@@ -2,5 +2,5 @@ package provider
 
 import "github.com/TokenFlux/TokenRouter/internal/identity"
 
-// OIDCOptions 是身份契约的兼容名称。
+// OIDCOptions 是 identity.OIDCOAuthOptions 的类型别名。
 type OIDCOptions = identity.OIDCOAuthOptions

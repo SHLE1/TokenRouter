@@ -40,7 +40,7 @@ func MergeQoderRefreshCredentials(oldCredentials, newCredentials map[string]any,
 	newCredentials["site"] = string(site)
 	newCredentials["refresh_mode"] = refreshMode
 	if site == "cn" {
-		// 合并旧凭据后再次清理，避免刷新把历史随机机器字段带回国内提供商。
+		// 合并凭据后再次清理历史随机机器字段，使国内提供商使用对应站点的身份字段。
 		delete(newCredentials, "machine_token")
 		delete(newCredentials, "machine_type")
 	}

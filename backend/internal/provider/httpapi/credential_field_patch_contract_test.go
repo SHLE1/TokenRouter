@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 模拟预读后发生 token 轮换和普通配置修改，批量改一个字段不能回写旧快照。
+// 在预读后轮换 token 并修改普通配置，检查批量字段更新保持这些并发修改。
 type credentialFieldRaceAdmin struct {
 	ProviderManagement
 	current provider.Record

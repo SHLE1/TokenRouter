@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestExecutionProviderPreservesNativeGraphAndIsolation 验证执行目标只持有原生图；复制边界保留根关联，并隔离外部凭据 map。
+// TestExecutionProviderPreservesNativeGraphAndIsolation 检查执行目标复制是否保留根关联，并复制外部凭据 map。
 func TestExecutionProviderPreservesNativeGraphAndIsolation(t *testing.T) {
 	source := &provider.Record{ID: 1, Credentials: map[string]any{"access_token": "original"}}
 	source.ProviderGroups = []provider.GroupMembership{{ProviderID: 1, GroupID: 3, Provider: source}}

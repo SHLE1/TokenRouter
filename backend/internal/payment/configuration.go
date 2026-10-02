@@ -182,7 +182,7 @@ type TestProviderDraftRequest struct {
 	Config      map[string]string `json:"config"`
 }
 
-// ProviderDraftTestResult 只暴露连通性结果，不返回上游响应或敏感配置。
+// ProviderDraftTestResult 包含支付渠道的连通性测试结果。
 type ProviderDraftTestResult struct {
 	Reachable bool `json:"reachable"`
 }
@@ -406,7 +406,7 @@ func (s *ConfigService) UpdatePaymentConfig(ctx context.Context, req UpdatePayme
 	return s.settingRepo.SetMultiple(ctx, values)
 }
 
-// PreparePaymentConfig 校验并投影支付设置，供独立入口和综合原子更新共同使用。
+// PreparePaymentConfig 校验支付设置并生成待保存值，供独立入口和综合更新调用。
 func PreparePaymentConfig(req UpdatePaymentConfigRequest) (map[string]string, error) {
 	if req.BalanceRechargeMultiplier != nil {
 		if math.IsNaN(*req.BalanceRechargeMultiplier) || math.IsInf(*req.BalanceRechargeMultiplier, 0) || *req.BalanceRechargeMultiplier <= 0 {

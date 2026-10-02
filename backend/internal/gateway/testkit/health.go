@@ -11,7 +11,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// HealthInput 只组合原生健康测试依赖，不能执行业务规则或复制缓存。
+// HealthInput 保存健康测试所需的依赖。
 type HealthInput struct {
 	Store   gatewayadapter.ExecutionProviderStore
 	Cache   provider.TempUnschedCache

@@ -184,5 +184,5 @@ func NormalizeHeaderOverrideEntry(name, value string) (string, string, error) {
 	return lowerName, value, nil
 }
 
-// ValidHeaderName 只验证 HTTP token 语法，不附加提供商权限或覆写禁止项。
+// ValidHeaderName 校验 HTTP token 语法，提供商权限和覆写限制由调用方另行检查。
 func ValidHeaderName(name string) bool { return httpguts.ValidHeaderFieldName(name) }

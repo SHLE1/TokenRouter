@@ -8,7 +8,7 @@ import {
 
 type TranslateFn = (key: string, params?: Record<string, unknown>) => string
 
-// 分组和共享价格配置共用完整价卡转换，避免新增字段只在其中一个管理页面保存。
+// 分组和共享价格配置共用价卡字段转换。
 export function pricingEntryFromAPI(entry: ModelPricingEntry): PricingFormEntry {
   return {
     models: [...(entry.models || [])],

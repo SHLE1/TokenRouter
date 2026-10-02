@@ -74,7 +74,7 @@ type AnthropicContentBlock struct {
 	IsError   bool            `json:"is_error,omitempty"`
 }
 
-// MarshalJSON 保留 text/thinking 块里的空字符串字段，避免流式 content_block_start 丢失协议要求的键。
+// MarshalJSON 输出 text/thinking 块中的空字符串字段，content_block_start 要求这些键存在。
 func (b AnthropicContentBlock) MarshalJSON() ([]byte, error) {
 	type anthropicContentBlock AnthropicContentBlock
 

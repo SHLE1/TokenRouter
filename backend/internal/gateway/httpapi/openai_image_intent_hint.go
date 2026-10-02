@@ -10,7 +10,7 @@ const openAIImageIntentHintContextKey = "openai_image_intent_hint"
 
 type ImageIntentClassifier func(endpoint string, requestedModel string, body []byte) bool
 
-// SetOpenAIImageIntentHint 只写入请求级 canonical 判定，不记录 attempt-local 结果。
+// SetOpenAIImageIntentHint 保存请求级 canonical 生图判定。
 func SetOpenAIImageIntentHint(c *gin.Context, imageIntent bool) {
 	if c == nil || GetOpenAIClientTransport(c) != OpenAIClientTransportHTTP {
 		return
@@ -55,7 +55,7 @@ func ResolveOpenAIPassthroughImageIntent(
 ) bool {
 	imageIntent := ResolveOpenAIImageIntentHint(c, canonicalRequestedModel, canonicalBody, classify)
 	if attemptInvalidated {
-		// strip/compact 改写只重算当前 attempt，不得把变换后的结果写回请求级 canonical hint。
+		// strip/compact 改写后重新计算当前尝试的意图，请求级 canonical hint 保持原样。
 		imageIntent = classify(media.OpenAIResponsesEndpoint, attemptRequestedModel, attemptBody)
 	}
 	return imageIntent

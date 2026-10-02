@@ -2,7 +2,7 @@ package protocol
 
 import "testing"
 
-// TestApplyCacheTTLOverrideContract 验证同时锁定桶值和旧返回语义，避免把补明细误报为 TTL 改写。
+// TestApplyCacheTTLOverrideContract 检查各 TTL 分桶的值，补齐明细时返回值仍为 false。
 func TestApplyCacheTTLOverrideContract(t *testing.T) {
 	tests := []struct {
 		name, target          string

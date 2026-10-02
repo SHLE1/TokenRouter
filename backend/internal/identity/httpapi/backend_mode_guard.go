@@ -1,9 +1,8 @@
 package httpapi
 
 import (
-	"strings"
-
 	"context"
+	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
@@ -94,5 +93,5 @@ func BackendModeAuthGuard(settingService BackendModeReader) gin.HandlerFunc {
 	}
 }
 
-// BackendModeReader 只读取已有运行状态，HTTP 不持有具体设置服务。
+// BackendModeReader 查询 Backend 模式是否启用。
 type BackendModeReader interface{ IsBackendModeEnabled(context.Context) bool }

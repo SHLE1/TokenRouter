@@ -7,14 +7,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 )
 
-// AdminReadSettings 只包含本模块在综合管理页的展示投影。
+// AdminReadSettings 保存综合管理页展示的提供商设置。
 type AdminReadSettings struct {
 	ProviderQuotaNotifyEmails    []contact.Entry
 	ProviderQuotaNotifyEnabled   bool
 	ProviderSchedulingThresholds map[string]int
 }
 
-// ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
+// ReadAdminSettings 从同一批持久化数据解析展示值，并处理字段缺省值。
 func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
 	result := &AdminReadSettings{}
 

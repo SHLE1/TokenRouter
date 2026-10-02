@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/migrations"
 )
 
-// ApplyMigrations 仅执行迁移，不创建服务或后台任务。
+// ApplyMigrations 执行数据库迁移。
 func ApplyMigrations(ctx context.Context, db *sql.DB) error {
 	return postgresinfra.ApplyMigrations(ctx, db, migrations.FS)
 }

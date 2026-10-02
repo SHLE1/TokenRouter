@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
 )
 
-// DecodeOpenAIRequestBody 保留数字精度与原错误前缀，不读写 HTTP 上下文。
+// DecodeOpenAIRequestBody 解码请求体，保留数字精度并为错误添加解析前缀。
 func DecodeOpenAIRequestBody(body []byte) (map[string]any, error) {
 	var request map[string]any
 	if err := wirejson.DecodeUseNumber(body, &request); err != nil {

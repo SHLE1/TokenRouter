@@ -35,7 +35,7 @@ describe('useModelWhitelist', () => {
   })
 
   it('openai 预设映射包含 GPT-6 Astra', () => {
-    // 裸 GPT-5.6 不再作为快捷映射项，只提供具体产品。
+    // 快捷映射使用具体产品名称。
     expect(getPresetMappingsByPlatform('openai').some((mapping) => mapping.from === 'gpt-5.6' || mapping.to === 'gpt-5.6')).toBe(false)
     expect(getPresetMappingsByPlatform('openai')).toEqual(expect.arrayContaining([
       expect.objectContaining({

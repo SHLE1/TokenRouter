@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// Target 把已读取的提供商封装为一次测试句柄，公开信息不暴露凭据。
+// Target 将选中的提供商封装为单次测试组件，公开字段返回脱敏数据。
 func (s *QoderProviderTest) Target(value *provider.Record) provider.TestTarget {
 	return qoderTestTarget{executor: s, record: value}
 }

@@ -55,14 +55,11 @@ func OllamaCloudUsageDurations(settings *OllamaCloudUsageSettings) (debounce, ma
 		time.Duration(normalized.IntervalMinutes) * time.Minute
 }
 
-// OllamaCloudUsageIsAutoRefreshDue 判断已启用自动刷新的分组现在是否应刷新。
-// groupLastUsedAt 必须是精确 api_key 分组的 MAX(last_used_at)，避免共享身份的
-// 多平台提供商遗漏活动。
-//
-// 成功时，请求必须晚于 fetched_at，dueAt = min(lastUsed+debounce, fetchedAt+maxWait)。
-// 失败时，请求必须晚于 last_attempt_at，活动到期时间使用相同的 min 公式；
-// 随后 dueAt = max(activityDue, next_refresh_at)，确保 Retry-After 或指数退避优先。
-// 快照缺失或无效时按首次刷新处理。
+// OllamaCloudUsageIsAutoRefreshDue 判断已启用自动刷新的分组是否到期。
+// groupLastUsedAt 取同一 api_key 分组内全部平台提供商的 MAX(last_used_at)。
+// 成功后按 fetched_at 之后的请求活动计算 min(lastUsed+debounce, fetchedAt+maxWait)。
+// 失败后按 last_attempt_at 之后的活动计算相同的最小值，再与 next_refresh_at 取较晚时间。
+// Retry-After 和指数退避因此生效，快照缺失或无效时按首次刷新处理。
 func OllamaCloudUsageIsAutoRefreshDue(
 	snapshot *OllamaCloudUsageSnapshot,
 	groupLastUsedAt *time.Time,
@@ -101,9 +98,8 @@ func OllamaCloudUsageAutoRefreshDueAt(
 		}
 		lastUsed := groupLastUsedAt.UTC()
 		dueAt := ollamaEarlierTime(lastUsed.Add(debounce), fetchedAt.Add(maxWait))
-		// 保留两次成功抓取之间原有的硬下限。成功路径已不再读取 next_refresh_at，
-		// 而 NextOllamaCloudUsageDelay 原本通过该字段应用 OllamaCloudUsageMinIntervalMinutes；
-		// 若无此限制，间隔略大于防抖期的请求流量会让分组上游抓取频率远高于既有下限。
+		// 两次成功抓取的间隔至少为 OllamaCloudUsageMinIntervalMinutes，
+		// 防抖期较短时，抓取频率仍受这个下限约束。
 		if floor := fetchedAt.Add(OllamaCloudUsageMinFetchInterval); dueAt.Before(floor) {
 			return floor, true
 		}
@@ -182,7 +178,7 @@ func ollamaEarlierTime(a, b time.Time) time.Time {
 	return b
 }
 
-// DecodeOllamaCloudUsageSettings 只解析原 JSON 和默认值，不读取存储。
+// DecodeOllamaCloudUsageSettings 从 JSON 解析设置并补齐默认值。
 func DecodeOllamaCloudUsageSettings(raw string) (*OllamaCloudUsageSettings, error) {
 	defaults := DefaultOllamaCloudUsageSettings()
 	if strings.TrimSpace(raw) == "" {
@@ -208,7 +204,7 @@ func EncodeOllamaCloudUsageSettings(settings *OllamaCloudUsageSettings) (string,
 		return "", infraerrors.BadRequest("INVALID_OLLAMA_CLOUD_USAGE_SETTINGS", "settings cannot be nil")
 	}
 	if settings.DebounceMinutes == 0 {
-		// 旧客户端省略 debounce_minutes 时沿用安全默认值。
+		// 请求省略 debounce_minutes 时使用默认值。
 		settings.DebounceMinutes = OllamaCloudUsageDefaultDebounceMinutes
 	}
 	if settings.IntervalMinutes < OllamaCloudUsageMinIntervalMinutes || settings.IntervalMinutes > OllamaCloudUsageMaxIntervalMinutes {

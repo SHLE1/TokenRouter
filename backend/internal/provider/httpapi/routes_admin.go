@@ -98,7 +98,7 @@ type ProviderRouteEndpoints struct {
 	UpstreamUsage       *UpstreamUsageHandler
 }
 
-// RegisterProviderRoutes 注册提供商管理路径；诊断注册由 scheduler 注入，保持原位置。
+// RegisterProviderRoutes 注册提供商管理路由，诊断路由由 scheduler 注入。
 func RegisterProviderRoutes(admin *gin.RouterGroup, endpoints ProviderRouteEndpoints, stepUp gin.HandlerFunc, registerDiagnostics func(*gin.RouterGroup)) {
 	providers := admin.Group("/providers")
 	{
@@ -143,7 +143,7 @@ func RegisterProviderRoutes(admin *gin.RouterGroup, endpoints ProviderRouteEndpo
 		providers.GET("/:id/models", endpoints.ProviderManagement.GetAvailableModels)
 		providers.POST("/:id/models/sync-upstream", endpoints.ProviderManagement.SyncUpstreamModels)
 		providers.POST("/batch", endpoints.ProviderManagement.BatchCreate)
-		// 提供商导出泄露上游凭证原文——要求 step-up 2FA
+		// 提供商导出包含上游凭据原文，需要通过 step-up 二次验证。
 		providers.GET("/data", stepUp, endpoints.ProviderArchive.ExportData)
 		providers.POST("/data", endpoints.ProviderArchive.ImportData)
 		providers.POST("/batch-update-credentials", endpoints.ProviderManagement.BatchUpdateCredentials)

@@ -357,8 +357,7 @@ func TestResponsesToChatCompletions_AllTokenDetailsPassThrough(t *testing.T) {
 }
 
 func TestResponsesToChatCompletions_NoReasoningTokensWhenZero(t *testing.T) {
-	// 非推理模型不会返回 reasoning_tokens。映射必须整体省略
-	// completion_tokens_details，而不是输出零值字段，避免污染普通响应。
+	// 非推理模型缺少 reasoning_tokens 时，输出省略 completion_tokens_details。
 	resp := &ResponsesResponse{
 		ID:     "resp_no_reasoning",
 		Status: "completed",
@@ -447,7 +446,7 @@ func TestResponsesEventToChatChunks_ToolCallDelta(t *testing.T) {
 	state.Model = "gpt-4o"
 	state.SentRole = true
 
-	// response.output_item.added (function_call) — output_index=1 (e.g. after a message item at 0)
+	// function_call 的 output_item.added 使用 output_index=1，索引 0 可留给 message。
 	chunks := ResponsesEventToChatChunks(&ResponsesStreamEvent{
 		Type:        "response.output_item.added",
 		OutputIndex: 1,
@@ -465,7 +464,7 @@ func TestResponsesEventToChatChunks_ToolCallDelta(t *testing.T) {
 	require.NotNil(t, tc.Index)
 	assert.Equal(t, 0, *tc.Index)
 
-	// response.function_call_arguments.delta — uses output_index (NOT call_id) to find tool
+	// function_call_arguments.delta 根据 output_index 查找工具调用。
 	chunks = ResponsesEventToChatChunks(&ResponsesStreamEvent{
 		Type:        "response.function_call_arguments.delta",
 		OutputIndex: 1, // matches the output_index from output_item.added above
@@ -749,7 +748,7 @@ func TestFinalizeResponsesChatStream_AfterCompleted(t *testing.T) {
 	}, state)
 	require.NotEmpty(t, chunks) // finish + usage chunks
 
-	// Now FinalizeResponsesChatStream should return nil — already finalized.
+	// 流已结束，再次 FinalizeResponsesChatStream 返回 nil。
 	assert.Nil(t, FinalizeResponsesChatStream(state))
 }
 
@@ -1004,7 +1003,7 @@ func TestBufferedResponseAccumulator_NoSupplementWhenOutputExists(t *testing.T) 
 func TestBufferedResponseAccumulator_EmptyDeltas(t *testing.T) {
 	acc := NewBufferedResponseAccumulator()
 
-	// Process events with empty delta — should not accumulate
+	// 空 delta 应保持累计内容为空。
 	acc.ProcessEvent(&ResponsesStreamEvent{Type: "response.output_text.delta", Delta: ""})
 	acc.ProcessEvent(&ResponsesStreamEvent{Type: "response.created"})
 

@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-// KeyLimits 只执行当前 Key 的原有时间及额度判断，不暴露凭据。
+// KeyLimits 检查当前 Key 的有效期和额度。
 type KeyLimits interface {
 	IsExpired() bool
 	IsQuotaExhausted() bool

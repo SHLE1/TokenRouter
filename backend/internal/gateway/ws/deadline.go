@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// TextFrame 保留 WebSocket 文本帧枚举，不依赖具体网络库。
+// TextFrame 是 WebSocket 文本帧的类型编号。
 const TextFrame = 1
 
 // FrameConn 提供同步读写和关闭，具体协议连接属于 Adapter。
@@ -20,8 +20,10 @@ type FrameConn interface {
 	Close() error
 }
 
-var ErrFirstOutputTimeout = errors.New("openai websocket passthrough first output timeout")
-var ErrActiveTurnTimeout = errors.New("openai websocket passthrough active turn read timeout")
+var (
+	ErrFirstOutputTimeout = errors.New("openai websocket passthrough first output timeout")
+	ErrActiveTurnTimeout  = errors.New("openai websocket passthrough active turn read timeout")
+)
 
 type deadlinePhase uint8
 
@@ -303,7 +305,7 @@ func IsTerminalOutput(payload []byte) bool {
 	}
 }
 
-// NewDeadlineConn 逐会话构造首语义输出和活跃读预算，不在空闲 turn 期间计时。
+// NewDeadlineConn 为会话设置首内容输出和活跃读取超时，turn 空闲时暂停计时。
 func NewDeadlineConn(inner FrameConn, activeReadTimeout time.Duration, resolve func([]byte) Deadline, closedError error) *DeadlineConn {
 	return &DeadlineConn{inner: inner, activeReadTimeout: activeReadTimeout, resolveDeadline: resolve, closedError: closedError, deadlineChanged: make(chan struct{}, 1)}
 }

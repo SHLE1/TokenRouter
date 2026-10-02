@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path'
 
 import tailwindConfig from '../../tailwind.config.js'
 
-// 固定全站圆角契约：工具类一律经 var() 引用 :root 变量,数值只在 style.css 维护一份。
+// 圆角工具类通过 var() 引用 :root 变量，数值在 style.css 中维护。
 const styleCss = readFileSync(
   resolve(dirname(fileURLToPath(import.meta.url)), '../style.css'),
   'utf8'

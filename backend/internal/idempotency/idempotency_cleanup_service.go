@@ -2,10 +2,9 @@ package idempotency
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
-
-	"fmt"
 )
 
 // IdempotencyCleanupService 定期清理已过期的幂等记录，避免表无限增长。
@@ -24,7 +23,7 @@ type IdempotencyCleanupService struct {
 	stopCh    chan struct{}
 }
 
-// CleanupOptions 由 app 从启动配置投影。
+// CleanupOptions 包含幂等记录清理的周期、批量大小和观察器。
 type CleanupOptions struct {
 	Observer Observer
 	Interval time.Duration

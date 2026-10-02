@@ -1,6 +1,6 @@
 package payment
 
-// AdminReadSettings 只包含本模块在综合管理页的展示投影。
+// AdminReadSettings 包含支付方式的展示开关和来源。
 type AdminReadSettings struct {
 	PaymentVisibleMethodAlipayEnabled bool
 	PaymentVisibleMethodAlipaySource  string
@@ -8,9 +8,8 @@ type AdminReadSettings struct {
 	PaymentVisibleMethodWxpaySource   string
 }
 
-// ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
+// ReadAdminSettings 从传入的设置值解析支付方式的展示开关和来源。
 func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
-
 	result := &AdminReadSettings{}
 
 	result.PaymentVisibleMethodAlipaySource = NormalizeVisibleMethodSource("alipay", settings[SettingPaymentVisibleMethodAlipaySource])

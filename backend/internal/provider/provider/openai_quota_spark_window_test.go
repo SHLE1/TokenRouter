@@ -155,7 +155,7 @@ type stubQuotaHTTPResponse struct {
 	body   string
 }
 
-// newQuotaRedirectingUpstream 将配额请求重定向到本地测试服务，同时保留真实请求路径与请求头。
+// newQuotaRedirectingUpstream 将配额请求发到本地测试服务，路径与请求头保持请求值。
 func newQuotaRedirectingUpstream(t *testing.T, srv *httptest.Server) *stubQuotaHTTPUpstream {
 	t.Helper()
 	target, err := url.Parse(srv.URL)
@@ -188,7 +188,7 @@ func TestResetCreditShadowRejected(t *testing.T) {
 	_, err := svc.ResetCredit(context.Background(), 200)
 	require.ErrorIs(t, err, providercore.ErrSparkShadowResetNotSupported,
 		"shadow ResetCredit should return ErrSparkShadowResetNotSupported, got: %v", err)
-	// 必须是结构化 409(而非裸 error→500)。
+	// 返回结构化 409 响应。
 	require.Equal(t, http.StatusConflict, httpx.ErrorCode(err),
 		"shadow ResetCredit 应映射为 409 Conflict 而非 500")
 }
@@ -339,7 +339,7 @@ func TestPrepareProviderShadowResolve(t *testing.T) {
 	}
 	repo := &stubQuotaProviderRepo{providers: map[int64]*providercore.Record{200: shadow, 100: parent}}
 
-	// stubTokenCache 为母提供商 cache key 提供 fake token（走缓存命中路径，无需真实刷新）
+	// stubTokenCache 为母提供商缓存键返回测试 token，请求命中缓存。
 	tokenCache := &stubQuotaTokenCache{tokens: map[string]string{
 		providercore.OpenAITokenCacheKey(parent): "fake-access-token",
 	}}
@@ -551,7 +551,7 @@ func TestCachePostResetSnapshot(t *testing.T) {
 	require.Equal(t, 0.0, repo.extraUpdates[100]["codex_7d_used_percent"])
 }
 
-// TestResetCreditGetByIDError_FailsClosed 验证守卫「失败关闭」语义：
+// TestResetCreditGetByIDError_FailsClosed 检查读取提供商失败后终止重置流程：
 // 当守卫的 GetByID 发生瞬时错误时，ResetCredit 必须立即返回该错误，
 // 不得旁路进入 prepareProvider 的上游准备流程（否则影子提供商会借 resolve 路径操作母提供商）。
 //
@@ -562,7 +562,7 @@ func TestResetCreditGetByIDError_FailsClosed(t *testing.T) {
 	// 空 map：GetByID(200) 返回 "provider 200 not found"
 	repo := &stubQuotaProviderRepo{providers: map[int64]*providercore.Record{}}
 	// tokenProvider / httpUpstream 故意为 nil：
-	// 若代码泄漏到 prepareProvider，会因配置检查而报 "not configured" 而非 "provider not found"。
+	// 此处检查 provider not found，若继续执行 prepareProvider 则会得到 not configured。
 	svc := newQuotaForTest(stubQuotaAdminService{repo: repo}, nil, nil, nil, nil)
 
 	_, err := svc.ResetCredit(context.Background(), 200)

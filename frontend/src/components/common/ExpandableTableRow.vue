@@ -12,7 +12,7 @@
 import { ref, watch } from 'vue'
 import Collapse from './Collapse.vue'
 
-// 表格保持 tr/td 结构，收起完成后隐藏空行，避免残留分隔线和行高。
+// 表格使用 tr/td 结构，收起完成后隐藏空行及其分隔线。
 const props = defineProps<{ open: boolean; colspan: number }>()
 const present = ref(props.open)
 watch(() => props.open, (open) => { if (open) present.value = true }, { flush: 'sync' })

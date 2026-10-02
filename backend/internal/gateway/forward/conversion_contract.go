@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 )
 
-// ConversionInput 固化本次平台类型，凭据由受控端口按原时机取得。
+// ConversionInput 保存本次平台类型，执行时通过凭据读取函数取得授权信息。
 type ConversionInput struct{ OAuth bool }
 
-// ErrorDecision 是健康策略的决定投影，不把提供商实体传入核心。
+// ErrorDecision 保存健康策略的处理结果。
 type ErrorDecision struct{ Generic, Failover, RetrySameProvider bool }
 
-// ConversionPorts 将网络和提供商能力限制为单步操作；转换和失败顺序由核心拥有。
+// ConversionPorts 提供网络请求和提供商检查的单步操作，转换流程决定调用及错误处理顺序。
 type ConversionPorts interface {
 	NormalizeResponses([]byte) ([]byte, bool, error)
 	ResolveModel(context.Context, string) string

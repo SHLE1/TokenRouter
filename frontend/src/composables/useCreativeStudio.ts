@@ -1,7 +1,8 @@
 /**
- * 创作台核心状态机
- * 职责：模型目录、参数选择与持久恢复、创建 run（幂等重试）、轮询收割输出、历史关联本地素材、画布桥接。
- * 源图 / mask 不再经状态机管理：由视图在点击生成时从画布收集（选中的图片 + 画笔 mask）。
+ * 创作台任务与素材状态
+ * 管理模型目录和参数选择，保存并恢复参数，创建 run（支持幂等重试）。
+ * 轮询任务输出，将历史记录关联到本地素材，并调用视图提供的画布操作。
+ * 点击生成时，视图从画布收集源图和 mask（选中的图片与画笔 mask）。
  * 轮询定时器在 composable 内注册 onBeforeUnmount 清理。
  */
 
@@ -68,13 +69,13 @@ function truncatePrompt(value: string, maxChars = DEFAULT_CREATIVE_CAPABILITIES.
   return Array.from(value).slice(0, maxChars).join('')
 }
 
-// 所有进行中任务共享一次列表轮询；生图通常耗时 1–3 分钟，无需前置快速轮询。
+// 所有进行中任务共享一次列表轮询，生图通常耗时 1 到 3 分钟。
 const POLL_INTERVAL = 3000
 
 // 画布桥接：视图注册后，收割成功的输出自动放上画布，历史里的输出可一键导入画布
 export interface CreativeCanvasBridge {
   // 收割成功（save + ack 后）把输出图片放到画布
-  // 返回 Promise 时，收割流程会等待当前图片完成上板再处理下一张，避免并发争用画布位置。
+  // 返回 Promise 时，等待当前图片放上画布后再处理下一张，按顺序分配画布位置。
   placeOutput(asset: { blob: Blob; runId: string; outputIndex: number }): void | Promise<void>
   // 把历史里的本地输出素材放到画布（与自动上板同一入口）
   importToCanvas(blob: Blob, runId: string, outputIndex: number): void | Promise<void>
@@ -123,7 +124,7 @@ export function useCreativeStudio() {
   // 浏览器工作区代际：清空或其它标签页旋转工作区后，旧异步请求不得回写状态。
   let workspaceGeneration = 0
   let workspaceId: string | null = null
-  // 设置恢复完成前不写入默认值，避免异步恢复把旧记录覆盖掉
+  // 设置恢复完成后才写入默认值，已有记录先从存储恢复。
   let settingsHydrated = false
   let settingsSaveTimer: ReturnType<typeof setTimeout> | null = null
   let settingsRevision = 0
@@ -131,7 +132,7 @@ export function useCreativeStudio() {
   // 设置写入串行化，保证快速输入时最后一次快照不会被旧写入覆盖
   let settingsWriteChain: Promise<void> = Promise.resolve()
 
-  // 丢弃当前工作区的页面状态与轮询，避免本地身份不可用时继续展示旧历史。
+  // 本地身份不可用时，清除当前工作区的页面状态并停止轮询。
   function resetWorkspaceState(): void {
     stopPolling()
     clearPollingTimer()
@@ -163,7 +164,7 @@ export function useCreativeStudio() {
 
   const maxReferenceImages = computed(() => Math.max(1, selectedOption.value?.max_reference_images ?? 1))
 
-  // 估算费用直接使用模型目录返回的档位价格，避免创作台与模型广场价格口径不一致。
+  // 估算费用使用模型目录返回的档位价格，与模型广场相同。
   const estimatedCost = computed(() => {
     const option = selectedOption.value
     if (!option) return null
@@ -293,7 +294,7 @@ export function useCreativeStudio() {
     }
   }
 
-  // 设置变化防抖持久化，避免提示词逐字输入产生大量 IndexedDB 事务
+  // 设置变化后防抖保存，将连续输入提示词产生的 IndexedDB 写入合并。
   function scheduleSelectionSettingsSave(): void {
     if (!settingsHydrated) return
     settingsDirty = true
@@ -347,7 +348,7 @@ export function useCreativeStudio() {
     const next = getCreativeWorkspaceId()
     if (workspaceId && workspaceId !== next) {
       workspaceGeneration++
-      // 工作区变化会让进行中的历史请求失效，避免旧浏览器列表覆盖新工作区状态。
+      // 工作区变化时使进行中的历史请求失效，以新工作区的查询结果更新状态。
       historyRefreshGeneration++
       resetWorkspaceState()
     }
@@ -509,9 +510,9 @@ export function useCreativeStudio() {
   // 只记录需要追踪的 run 与上板意图，实际状态由同一次列表请求批量同步。
   const pollStates = new Map<string, PollState>()
   let pollTimer: ReturnType<typeof setTimeout> | null = null
-  // 所有收割流程共用一个队列，避免多个任务同时完成时重复下载或覆盖本地索引。
+  // 所有输出收集流程共用队列，按顺序下载并更新本地索引。
   let harvestQueue: Promise<void> = Promise.resolve()
-  // 历史刷新采用最新请求胜出，避免旧请求覆盖较新的任务与本地素材索引。
+  // 历史刷新使用最新请求的结果更新任务与本地素材索引。
   let historyRefreshGeneration = 0
 
   function updatePollingState(): void {
@@ -552,9 +553,9 @@ export function useCreativeStudio() {
   }
 
   interface HarvestOptions {
-    // 当前任务完成时自动放上画布；历史恢复只保存本地，不重复上板。
+    // 当前任务完成时自动放上画布，历史恢复时保存到本地。
     placeOnCanvas?: boolean
-    // 历史刷新传入工作副本，避免旧请求直接覆盖当前索引。
+    // 历史刷新在工作副本中整理数据，请求完成后再合并索引。
     assets?: Map<string, LocalAsset>
     missing?: Set<string>
     isCurrent?: () => boolean
@@ -649,7 +650,7 @@ export function useCreativeStudio() {
         }
         missing.delete(key)
       } catch (e) {
-        // 单个输出 transient 取回或本地保存失败只标记 missing，不中断其它输出。
+        // 单个输出 transient 取回或本地保存失败时标记 missing，然后继续处理其它输出。
         console.error(`Failed to harvest creative output ${key}:`, e)
         if (e instanceof LocalStoreQuotaError) {
           error.value = t('creative.error.quotaExceeded')
@@ -658,7 +659,7 @@ export function useCreativeStudio() {
       }
     }
     if (!options.assets) {
-      // 合并而非直接替换，避免并发收割时后完成的任务覆盖先完成任务的本地索引。
+      // 合并本地索引，使并发任务收集到的素材都能保存。
       const mergedAssets = new Map(outputAssetMap.value)
       for (const [key, asset] of assets) mergedAssets.set(key, asset)
       outputAssetMap.value = mergedAssets
@@ -693,7 +694,7 @@ export function useCreativeStudio() {
       requestWorkspaceId = readWorkspaceId()
       requestWorkspaceGeneration = workspaceGeneration
       const page = await getCreativeRuns(requestWorkspaceId, 1, 20)
-      // 活动接口覆盖全部 queued/running/settlement 状态，避免历史页只取最近 20 条导致任务失联。
+      // 活动接口返回全部 queued/running/settlement 任务，历史页的最近 20 条记录可能缺少仍在进行的任务。
       // 旧版测试替身或旧后端没有该接口时仍保留历史接口行为。
       const activeByID = new Map<string, CreativeRun>()
       let activeFetchComplete = false
@@ -789,7 +790,7 @@ export function useCreativeStudio() {
         }
       }
       if (generation !== historyRefreshGeneration || !isWorkspaceCurrent(requestWorkspaceId, requestWorkspaceGeneration)) return
-      // 合并历史快照期间终态收割刚保存的素材，避免旧快照覆盖最新内存索引。
+      // 合并历史快照时一并加入任务结束后刚保存的素材，内存索引保留这些新条目。
       for (const [key, asset] of outputAssetMap.value) {
         if (!map.has(key)) map.set(key, asset)
       }
@@ -824,7 +825,7 @@ export function useCreativeStudio() {
   async function clearLocalData(): Promise<void> {
     stopPolling()
     clearPollingTimer()
-    // 使清空过程中仍在进行的历史请求失效，避免旧素材重新写回内存。
+    // 清空时使进行中的历史请求失效，素材列表保持清空状态。
     historyRefreshGeneration++
     workspaceGeneration++
     try {
@@ -852,7 +853,7 @@ export function useCreativeStudio() {
     return extractErrorMessage(e) || t(fallbackKey)
   }
 
-  // 组件卸载时清理轮询定时器，避免内存泄漏与野回调
+  // 组件卸载时清理轮询定时器，结束周期性回调。
   onBeforeUnmount(() => {
     stopPolling()
     clearPollingTimer()

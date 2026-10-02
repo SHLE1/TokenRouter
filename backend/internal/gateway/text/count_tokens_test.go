@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// countFixture 用真实循环检查无槽尝试、排除与释放数量，端口不提供扣费能力。
+// countFixture 检查计数循环中的无槽尝试、提供商排除和资源释放次数。
 type countFixture struct {
 	ctx                          context.Context
 	outcomes                     []*AttemptFailure

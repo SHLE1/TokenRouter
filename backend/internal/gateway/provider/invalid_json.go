@@ -12,7 +12,7 @@ import (
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 )
 
-// invalidJSONObservation 只接入现有健康命令和错误构造，不保存第二份策略。
+// invalidJSONObservation 将 JSON 解析失败交给健康策略处理并构造转发错误。
 type invalidJSONObservation struct {
 	rateLimit *provideradapter.UpstreamHealth
 

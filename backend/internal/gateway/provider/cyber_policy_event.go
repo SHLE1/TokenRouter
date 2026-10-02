@@ -7,7 +7,7 @@ import (
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// ParseOpenAICyberPolicyEvent 复用供应商识别规则，保留原正文截断和已观测用量。
+// ParseOpenAICyberPolicyEvent 识别供应商安全策略事件，记录截断后的正文和已观测用量。
 func ParseOpenAICyberPolicyEvent(payload []byte, upstreamStatus int, usage *openai.ForwardUsage) *moderationflow.Mark {
 	hit, code, message := upstreamopenai.DetectOpenAICyberPolicy(payload)
 	if !hit {

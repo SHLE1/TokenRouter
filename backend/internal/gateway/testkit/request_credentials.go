@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// RequestCredentials 只组合测试提供的原生端口，不复制刷新、互斥或故障分类实现。
+// RequestCredentials 组合测试提供的凭据读取和刷新接口。
 func RequestCredentials(store gatewayadapter.ExecutionProviderStore, source *provider.OpenAIExecutionCredentials, tokens *provider.GrokTokenSource, blocks *provider.RuntimeBlockState) *gatewayadapter.RequestCredentials {
 	if blocks == nil {
 		blocks = provider.NewRuntimeBlockState(time.Now)

@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 )
 
-// SnapshotLogWriter 隔离存储调用的可变记录；同步兜底再次取得同一输入的独立副本。
+// SnapshotLogWriter 为每次存储调用复制记录，转为同步写入时重新复制同一输入。
 func SnapshotLogWriter(repo LogWriter) LogWriter {
 	if repo == nil {
 		return nil

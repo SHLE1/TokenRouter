@@ -241,10 +241,10 @@ const resolveKey = (item: T, index: number): string | number => {
 const testIdFor = (suffix: string) =>
   props.testId ? `${props.testId}-${suffix}` : undefined
 
-// 退出中的行仍占着位置，全部退出后才显示空态，避免空态与淡出的行同时出现。
+// 退出中的行继续占位，全部退出后显示空态。
 const leavingCount = ref(0)
 
-// 末尾的行没有后续行可以补位，留在文档流中淡出，避免下方内容立即上移并与之重叠。
+// 末尾行留在文档流中淡出，动画结束后下方内容上移。
 const onBeforeLeave = (element: Element) => {
   leavingCount.value += 1
   prepareListLeave(element)
@@ -258,7 +258,7 @@ const onLeaveDone = (element: Element) => {
   element.classList.remove('rule-list-leave-in-flow')
 }
 
-// 只有点击添加按钮产生的新行会获得焦点，预设和导入追加的行不抢焦点。
+// 点击添加按钮后聚焦新行，预设和导入追加行时保持当前焦点。
 let pendingFocus = false
 
 const requestAdd = async () => {

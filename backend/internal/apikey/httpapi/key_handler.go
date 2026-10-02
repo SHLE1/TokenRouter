@@ -37,12 +37,12 @@ func NewAPIKeyHandler[G any](keys *apikey.APIKeyService, present func(*routing.G
 	return &APIKeyHandler[G]{apiKeyService: keys, presentGroup: present}
 }
 
-// SetGroupModelsReader 只为已授权的控制台分组提供目录，不改变 Key 的运行时权限。
+// SetGroupModelsReader 设置已授权控制台分组的模型目录读取函数。
 func (h *APIKeyHandler[G]) SetGroupModelsReader(read func(context.Context, int64) ([]string, map[string][]protocol.ProtocolID)) {
 	h.groupModels = read
 }
 
-// SetGroupPresentation 只丰富已授权控制台查询的展示值，不写入认证或调度快照。
+// SetGroupPresentation 设置已授权控制台查询的分组展示函数。
 func (h *APIKeyHandler[G]) SetGroupPresentation(present func(context.Context, *routing.Group, *accessview.GroupCapacitySummary) *G) {
 	h.groupPresentation = present
 }

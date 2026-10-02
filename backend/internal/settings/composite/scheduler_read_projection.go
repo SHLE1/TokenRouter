@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/scheduler"
 
-// ApplySchedulerAdminReadSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplySchedulerAdminReadSettings 将调度读取结果写入综合快照。
 func (s *Snapshot) ApplySchedulerAdminReadSettings(value *scheduler.AdminReadSettings) {
 	s.AdvancedSchedulerEWMAErrorRateAlpha = value.AdvancedSchedulerEWMAErrorRateAlpha
 	s.AdvancedSchedulerEWMATTFTAlpha = value.AdvancedSchedulerEWMATTFTAlpha

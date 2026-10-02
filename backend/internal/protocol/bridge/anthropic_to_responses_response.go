@@ -91,10 +91,8 @@ func AnthropicToResponsesResponse(runtime Runtime, resp *AnthropicResponse) *Res
 		out.IncompleteDetails = &ResponsesIncompleteDetails{Reason: "max_output_tokens"}
 	}
 
-	// Usage
-	// Anthropic 的 input_tokens 不含 cache_read/cache_creation，而 OpenAI
-	// Responses 的 input_tokens 是包含缓存 token 的总量。转换时补回这些 token，
-	// 确保下游看到 OpenAI 语义。
+	// Anthropic 的 input_tokens 表示未缓存输入，OpenAI Responses 的 input_tokens 表示总输入。
+	// 转换时把 cache_read 和 cache_creation 加回 input_tokens。
 	totalInputTokens := resp.Usage.InputTokens +
 		resp.Usage.CacheReadInputTokens +
 		resp.Usage.CacheCreationInputTokens
@@ -159,8 +157,7 @@ type AnthropicEventToResponsesState struct {
 	// 累积所有已关闭输出项，供终止事件返回完整结果。
 	Outputs []ResponsesOutput
 
-	// message_start / message_delta 中的 Usage。这里的 InputTokens 遵循
-	// Anthropic 语义（不含缓存 token）；输出 OpenAI Responses usage 时再补回。
+	// message_start 和 message_delta 的 InputTokens 为未缓存输入，输出 Responses usage 时加回缓存 token。
 	InputTokens              int
 	OutputTokens             int
 	CacheReadInputTokens     int
@@ -263,14 +260,9 @@ func anthToResHandleContentBlockStart(runtime Runtime, evt *AnthropicStreamEvent
 
 	switch evt.ContentBlock.Type {
 	case "thinking":
-		// 开新 item 前必须先关掉在开的那个，与下面的 tool_use 分支一致。
-		// 一个 message item 在它的 text 块 content_block_stop 时是刻意保持打开的
-		// （同一 item 里可能还有后续 text 块），所以 thinking 块到来时它仍然开着：
-		// 不关就直接被 CurrentItemType/CurrentItemID 覆盖，累积在 CurrentContent
-		// 里的助手文本既不会进 state.Outputs，也拿不到 output_item.done，
-		// response.completed 于是只带 reasoning——客户端看到的是「成功但无输出」。
-		// 交错思考（interleaved-thinking，本仓库在 anthropic-beta 透传里明确支持）
-		// 会稳定产生 text → thinking 这个顺序。
+		// 开始 thinking item 前先关闭当前 item。message 的 text 块结束后仍保持 item 打开，以接收后续 text 块。
+		// 若直接覆盖 CurrentItemType 和 CurrentItemID，CurrentContent 中的文本会丢失，completed 仅剩 reasoning。
+		// interleaved-thinking 会产生先 text 后 thinking 的顺序，网关支持该 beta。
 		events = append(events, closeCurrentResponsesItem(state)...)
 
 		state.CurrentItemID = generateItemID(runtime)
@@ -288,9 +280,8 @@ func anthToResHandleContentBlockStart(runtime Runtime, evt *AnthropicStreamEvent
 	case "text":
 		// If we don't have an open message item, open one
 		if state.CurrentItemType != "message" {
-			// 走到这里时 CurrentItemType 只可能是 ""（前一个 reasoning/function_call
-			// 已在自己的 content_block_stop 里关闭）；保留这次关闭是为了让三个分支
-			// 的「开新 item 前先关旧的」保持同一条不变式，而不是留一个仅 text 例外。
+			// 前一个 reasoning 或 function_call 已在 content_block_stop 时关闭，此时 CurrentItemType 为空。
+			// text、thinking 和 tool_use 分支都在打开新 item 前执行关闭。
 			events = append(events, closeCurrentResponsesItem(state)...)
 
 			state.CurrentItemID = generateItemID(runtime)
@@ -428,12 +419,9 @@ func anthToResHandleContentBlockStop(evt *AnthropicStreamEvent, state *Anthropic
 		state.TextAccum = ""
 		contentIndex := state.ContentIndex
 		state.CurrentContent = append(state.CurrentContent, ResponsesContentPart{Type: "output_text", Text: text})
-		// 关掉一个 part 就推进 content_index：上面那句注释说的「item 保持打开，
-		// 因为后面可能还有块」正是这里的触发条件。不推进的话，同一 item 里第二个
-		// text 块会再发一次 content_part.added(content_index=0)，与第一个 part 撞在
-		// 同一下标上——SDK 的累积式 stream helper 按 content[content_index] 写入，
-		// 后一个 part 直接覆盖前一个，可见文本丢失。
-		// 只在这里推进：新 item 的 content_index 由 closeCurrentResponsesItem 归 0。
+		// 关闭 part 后递增 content_index，让同一 item 中的后续 text 块使用新下标。
+		// SDK 按 content[content_index] 累积，重复下标会覆盖此前的可见文本。
+		// 新 item 的 content_index 由 closeCurrentResponsesItem 重置为 0。
 		state.ContentIndex++
 		return []ResponsesStreamEvent{
 			makeResponsesEvent(state, "response.output_text.done", &ResponsesStreamEvent{
@@ -500,7 +488,7 @@ func closeCurrentResponsesItem(state *AnthropicEventToResponsesState) []Response
 		return nil
 	}
 
-	// 组装完整输出项，确保 output_item.done 与终止事件都能携带实际内容。
+	// 组装完整输出项，交给 output_item.done 和终止事件输出。
 	item := ResponsesOutput{
 		Type:   state.CurrentItemType,
 		ID:     state.CurrentItemID,
@@ -568,8 +556,7 @@ func makeResponsesCompletedEvent(
 	seq := state.SequenceNumber
 	state.SequenceNumber++
 
-	// Anthropic 的 input_tokens 不含 cache_read/cache_creation；这里补回缓存 token，
-	// 以匹配 OpenAI Responses 中 input_tokens 表示总量的语义。
+	// Anthropic 的 input_tokens 为未缓存输入，此处加回缓存 token 后输出 Responses 的输入总量。
 	totalInputTokens := state.InputTokens + state.CacheReadInputTokens + state.CacheCreationInputTokens
 	usage := &ResponsesUsage{
 		InputTokens:              totalInputTokens,

@@ -15,25 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSparkShadowIntegration 是 spark-shadow 功能的端到端集成测试。
-//
-// 覆盖三个核心属性：
-//
-//  1. 凭据轮换读透（脱钩命门）——母提供商 access_token 轮换后，影子通过
-//     resolveCredentialProvider / GetAccessToken 立即反映新值，零脱钩。
-//
-//  2. 路由不变量——路由资格由 IsModelSupported 决定（model_mapping 配置）；
-//     影子配了 spark mapping 则接受 spark、拒非 spark；普通提供商配了 spark 同样可接 spark。
-//
-//  3. 母提供商健康度联动——母不可调度（Status=error 或 Schedulable=false）
-//     时，parentHealthyForShadow 对影子返回 false。
-//
-// 复用的接缝：
-//   - newStubCredRepo（credential_shadow_test.go，同属 unit 集合）
-//   - gateway/provider.CredentialProvider
-//   - provider.OpenAIExecutionCredentials.Resolve（token 源缺省时读取原凭据）
-//   - 路由资格由 IsModelSupported 决定（spark_routing.go 已移除类型门）
-//   - parentHealthyForShadow（spark_routing.go）
+// TestSparkShadowIntegration 检查 Spark 影子的令牌读取、模型资格和母提供商健康限制。
+// 母提供商轮换令牌后，影子读取新值。模型资格由 model_mapping 决定。
+// 母提供商 Status=error 时影子不可用，手动暂停或全局限流时影子仍可使用其凭据。
 func TestSparkShadowIntegration(t *testing.T) {
 	ctx := context.Background()
 	pid := int64(100)
@@ -51,7 +35,7 @@ func TestSparkShadowIntegration(t *testing.T) {
 			},
 		},
 	}
-	// 影子提供商：不持凭据（与生产语义一致），QuotaDimensionSpark 标记 spark 维度。
+	// 影子提供商通过母提供商读取凭据，QuotaDimensionSpark 标记 spark 维度。
 	shadow := &ExecutionProvider{
 		Record: provider.Record{
 			LoadLocation: time.LoadLocation, ID: 200,
@@ -64,7 +48,7 @@ func TestSparkShadowIntegration(t *testing.T) {
 		},
 	}
 
-	// repo：stubCredRepo（credential_shadow_test.go）保存原生执行目标指针，
+	// repo：stubCredRepo（credential_shadow_test.go）保存执行目标指针，
 	// Credentials map 变更直接可见，无需重建 stub。
 	repo := newStubCredRepo(parent)
 	credentials := &provider.OpenAIExecutionCredentials{Parent: func(ctx context.Context, id int64) (*provider.Record, error) {
@@ -97,7 +81,7 @@ func TestSparkShadowIntegration(t *testing.T) {
 	})
 
 	t.Run("get_access_token_e2e_reads_through_T3", func(t *testing.T) {
-		// 端到端：经原生凭据源 Resolve 验证读透。
+		// 经凭据源 Resolve 检查影子读取到的轮换后令牌。
 		// openAITokenProvider=nil → 降级到直接读 provider.GetOpenAIAccessToken()。
 		parent.Record.Credentials["access_token"] = "T3"
 		token, tokenType, err := credentials.Resolve(ctx, ExecutionRecord(shadow))

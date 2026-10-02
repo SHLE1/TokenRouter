@@ -53,7 +53,7 @@ func blockedRules() *controlledRules {
 	return &controlledRules{current: fixtureRule(), entered: make(chan struct{}), resume: make(chan struct{}), block: true}
 }
 
-// TestRuleUpdateCannotBeOverwrittenByOlderLoad 验证旧回源和管理写入只能依次发布，不能在禁用完成后恢复旧规则。
+// TestRuleUpdateCannotBeOverwrittenByOlderLoad 检查回源和管理写入按顺序发布，禁用后的缓存保持最新规则。
 func TestRuleUpdateCannotBeOverwrittenByOlderLoad(t *testing.T) {
 	repo := blockedRules()
 	svc := NewErrorPassthroughService(repo, nil)

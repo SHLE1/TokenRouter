@@ -46,7 +46,7 @@ func TestModelAttributesUseFinalModelsWithoutChangingRoutes(t *testing.T) {
 	require.Equal(t, 1, *result["public-alias"].OutputLimit)
 	require.False(t, *result["public-alias"].ToolCall)
 	require.True(t, result["public-alias"].RouteDifferences)
-	// 精确规则只覆盖输出上限，不叠加同档案的通配规则。
+	// 命中精确规则时使用其输出上限，同档案的通配规则跳过。
 	result, err = service.ResolveModels(context.Background(), 1, []RequestableModel{{ID: "single", UpstreamModels: []string{"upstream-a"}}})
 	require.NoError(t, err)
 	require.True(t, *result["single"].ToolCall)

@@ -26,7 +26,7 @@ const mountTable = (props = {}) => {
 const headerKeys = (wrapper: VueWrapper) => wrapper.findAll('th[data-column-key]')
   .map(header => header.attributes('data-column-key'))
 
-// 使用实际拖拽事件验证表头和单元格，避免只验证内部数组。
+// 通过拖拽事件检查表头与单元格的顺序。
 const dragColumn = async (wrapper: VueWrapper, source: string, target: string, side: 'before' | 'after') => {
   const handle = wrapper.get(`th[data-column-key="${source}"] button.column-drag-handle`)
   const targetHeader = wrapper.get(`th[data-column-key="${target}"]`)

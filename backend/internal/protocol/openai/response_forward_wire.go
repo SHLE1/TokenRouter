@@ -76,7 +76,7 @@ func ReplaceModelInSSELine(line, fromModel, toModel string) string {
 		return line
 	}
 
-	// 使用 gjson 精确检查 model 字段，避免全量 JSON 反序列化
+	// 使用 gjson 读取 model 字段。
 	if m := gjson.Get(data, "model"); m.Exists() && m.Str == fromModel {
 		newData, err := sjson.Set(data, "model", toModel)
 		if err != nil {
@@ -97,8 +97,8 @@ func ReplaceModelInSSELine(line, fromModel, toModel string) string {
 	return line
 }
 
-// NormalizeOpenAIResponsesFunctionCallArguments 修正部分上游会把完整 arguments
-// 字符串重复拼接两次的坏事件，避免 Codex 客户端收到无法解析的工具参数。
+// NormalizeOpenAIResponsesFunctionCallArguments 修正 arguments 字符串重复拼接两次的事件，
+// 重复拼接会使 Codex 无法解析工具参数。
 func NormalizeOpenAIResponsesFunctionCallArguments(data []byte) ([]byte, bool) {
 	if len(bytes.TrimSpace(data)) == 0 || !bytes.Contains(data, []byte(`"arguments"`)) {
 		return data, false
@@ -228,8 +228,7 @@ func ExtractOpenAIUsageFromJSONBytes(body []byte) (ForwardUsage, bool) {
 	}
 	// 部分 OpenAI 兼容上游（例如 Cline API）会将标准响应包在 data 字段中：
 	// {"data":{"choices": [...], "usage": {...}}, "success":true}。
-	// 按优先级先保留原有路径，再尝试兼容层 data 包装，
-	// 避免同步请求能正常返回但用量被静默记录为 0。
+	// 优先读取 usage 和 response.usage，再尝试兼容层 data 包装中的用量。
 	candidates := []struct {
 		usagePath      string
 		imageUsagePath string
@@ -248,8 +247,8 @@ func ExtractOpenAIUsageFromJSONBytes(body []byte) (ForwardUsage, bool) {
 	return ForwardUsage{}, false
 }
 
-// OpenAIResponsesCompletedEventIsEmpty 判断 Responses 终态是否既无用量、错误，也无输出项。
-// 同时检查此前累计的用量，避免把 usage 位于更早事件的合法响应误判为静默拒绝。
+// OpenAIResponsesCompletedEventIsEmpty 判断终态和此前事件是否都缺少用量、错误和输出。
+// usage 可能仅出现在更早的事件中，因此同时检查累计用量。
 func OpenAIResponsesCompletedEventIsEmpty(data []byte, usage *ForwardUsage) bool {
 	if len(data) == 0 || !gjson.ValidBytes(data) {
 		return false
@@ -514,7 +513,7 @@ func ResponsesOutputHasCompactionItem(response []byte) bool {
 }
 
 // FindRawCompactionItemFromSSE 从原始 SSE 事件流中提取第一个 compaction 类
-// item 的 raw JSON：output_item.done 优先，output_item.added 兜底。
+// item 使用 raw JSON，优先取 output_item.done，缺失时取 output_item.added。
 func FindRawCompactionItemFromSSE(bodyText string) (json.RawMessage, bool) {
 	var found json.RawMessage
 	pick := func(eventType string) {
@@ -598,7 +597,7 @@ func FirstPositiveGJSONInt(values ...gjson.Result) int {
 	return 0
 }
 
-// BoundedJSONNonNegativeInt 解析整数形式的 JSON 指数记法，同时避免对上游可控指数使用任意精度解析器。
+// BoundedJSONNonNegativeInt 在数值范围内解析 JSON 指数记法表示的非负整数。
 func BoundedJSONNonNegativeInt(value gjson.Result) (int, bool) {
 	if !value.Exists() || value.Type != gjson.Number {
 		return 0, false
@@ -778,7 +777,7 @@ func EffectiveOpenAISSEEventType(payload []byte, eventType string) string {
 }
 
 // ParseSSEUsageBytesWithType 兼容带 event 类型的用量解析入口。
-// 旧实现没有 event 参数，因此先复用原有解析器，保持已有字段合并语义。
+// 先解析 data 中的用量，再根据 event 判定是否按终态用量覆盖。
 func ParseSSEUsageBytesWithType(data []byte, eventType string, usage *ForwardUsage) bool {
 	if usage == nil || len(data) == 0 || bytes.Equal(bytes.TrimSpace(data), []byte("[DONE]")) {
 		return false
@@ -789,7 +788,7 @@ func ParseSSEUsageBytesWithType(data []byte, eventType string, usage *ForwardUsa
 	}
 	if OpenAIStreamEventTypeIsTerminal(EffectiveOpenAISSEEventType(data, eventType)) {
 		// 某些兼容上游会在 completed 事件附带全零占位 usage；该占位不能
-		// 覆盖此前已收到的真实用量。终态只在至少有一个非零字段时生效。
+		// 覆盖此前已收到的用量。终态至少有一个非零字段时才覆盖。
 		if OpenAIUsageHasTokens(&parsedUsage) {
 			*usage = parsedUsage
 		}
@@ -805,7 +804,7 @@ func OpenAIUsageHasTokens(usage *ForwardUsage) bool {
 }
 
 func ReplaceModelInResponseBody(body []byte, fromModel, toModel string) []byte {
-	// 使用 gjson/sjson 精确替换 model 字段，避免全量 JSON 反序列化
+	// 使用 gjson/sjson 替换 model 字段。
 	if m := gjson.GetBytes(body, "model"); m.Exists() && m.Str == fromModel {
 		newBody, err := sjson.SetBytes(body, "model", toModel)
 		if err != nil {

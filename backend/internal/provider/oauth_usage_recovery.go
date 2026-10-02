@@ -15,7 +15,7 @@ type UsageRecoveryWriter interface {
 	ClearUsageErrorIfUnchanged(context.Context, UsageRecoveryVersion) (bool, error)
 }
 
-// RecoverUsageProviderError 保留原可恢复错误集合，只有对应的条件写入成功才更新返回投影。
+// RecoverUsageProviderError 在可恢复错误的条件写入成功后更新返回数据。
 func RecoverUsageProviderError(ctx context.Context, value *Record, writer UsageRecoveryWriter) (bool, error) {
 	if value == nil || value.Status != StatusError {
 		return false, nil

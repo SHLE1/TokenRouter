@@ -101,7 +101,7 @@ func refundAudit(ctx context.Context, client *dbent.Client, id int64, action str
 }
 
 // lockedRefundOrder 锁内核对时间值，避免测试 SQLite 的时间文本格式参与版本比较。
-// 生产 PostgreSQL 始终使用行锁；SQLite 仅用于非并发契约测试。
+// PostgreSQL 查询使用行锁，SQLite 查询供非并发测试使用。
 func lockedRefundOrder(ctx context.Context, client *dbent.Client, id int64) (*dbent.PaymentOrder, error) {
 	return client.PaymentOrder.Query().Where(paymentorder.IDEQ(id)).Where(func(q *sql.Selector) {
 		if q.Dialect() != "sqlite3" {
@@ -419,7 +419,7 @@ func (s *RefundStore) PendingDetail(ctx context.Context, id int64) (payment.Refu
 	return d, nil
 }
 
-// AppendObservation 仅供普通渠道过程审计，调用者保留原尽力错误处理。
+// AppendObservation 追加渠道过程审计记录，返回写入错误供调用方处理。
 func (s *RefundStore) AppendObservation(ctx context.Context, id int64, action, operator string, detail map[string]any) error {
 	data, err := json.Marshal(detail)
 	if err != nil {
@@ -429,7 +429,7 @@ func (s *RefundStore) AppendObservation(ctx context.Context, id int64, action, o
 	return err
 }
 
-// RequestRefund 保留原申请状态条件和尽力审计边界，未执行任何资金操作。
+// RequestRefund 将用户已完成的余额订单更新为申请退款，资金退还由后续流程执行。
 func (s *RefundStore) RequestRefund(ctx context.Context, id, userID int64, amount float64, reason string, now time.Time, by string) (int, error) {
 	return s.client.PaymentOrder.Update().Where(paymentorder.IDEQ(id), paymentorder.UserIDEQ(userID), paymentorder.StatusEQ(payment.OrderStatusCompleted), paymentorder.OrderTypeEQ(payment.OrderTypeBalance)).SetStatus(payment.OrderStatusRefundRequested).SetRefundRequestedAt(now).SetRefundRequestReason(reason).SetRefundRequestedBy(by).SetRefundAmount(amount).Save(ctx)
 }
@@ -451,7 +451,7 @@ func matchPendingRefundIdentity(ctx context.Context, client *dbent.Client, id in
 }
 
 // validRefundDeduction 恢复记录必须表达一致的扣减事实；旧 pending 可省略类型，但不能省略扣减选择。
-// 旧格式显式不扣减时保留其优先级，旧金额字段可能仍保存请求值而非实际扣减。
+// 旧格式声明跳过扣减时优先采用该标记，金额字段可能记录的是请求金额。
 func validRefundDeduction(d payment.RefundPendingDetail, legacy bool) bool {
 	if d.SubscriptionID < 0 || !validRefundAmount(d.BalanceDeducted) || d.SubDaysDeducted < 0 {
 		return false

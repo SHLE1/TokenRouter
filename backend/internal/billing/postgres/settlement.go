@@ -94,7 +94,7 @@ func (r *SettlementStore) applyOnce(ctx context.Context, cmd *billing.UsageBilli
 
 // lockUsageBillingUser 先串行化付款用户写入，再访问订阅；NO KEY UPDATE 与日志外键的 KEY SHARE 兼容。
 func lockUsageBillingUser(ctx context.Context, tx *sql.Tx, userID int64) error {
-	// 提供商额度维护测试和内部任务允许只携带 ProviderID；没有付款用户时不存在本次锁环。
+	// 提供商额度维护测试和内部任务可仅传 ProviderID，没有付款用户时跳过用户锁。
 	if userID <= 0 {
 		return nil
 	}
@@ -1008,15 +1008,15 @@ func allocateUsageBillingSubscriptions(ctx context.Context, tx *sql.Tx, cmd *bil
 	return plan.Remaining, plan.SubscriptionAmount, plan.Allocations, nil
 }
 
-// usageBillingUsesBaseAmount 将存储值投影给 billing 的唯一规则。
+// usageBillingUsesBaseAmount 调用 billing 判断结算是否使用基础金额。
 func usageBillingUsesBaseAmount(cmd *billing.UsageBillingCommand) bool {
 	return billing.UsesBaseAmount(cmd)
 }
 
-// usageBillingNonNegativeRate 将存储值投影给 billing 的唯一规则。
+// usageBillingNonNegativeRate 调用 billing 规范化非负倍率。
 func usageBillingNonNegativeRate(rate float64) float64 { return billing.NonNegativeRate(rate) }
 
-// normalizeUsageBillingSubscriptionRow 将存储值投影给 billing 的唯一规则。
+// normalizeUsageBillingSubscriptionRow 按 billing 的窗口规则规范化订阅行。
 func normalizeUsageBillingSubscriptionRow(row usageBillingSubscriptionRow, now time.Time) usageBillingSubscriptionRow {
 	normalized := billing.NormalizeSettlementSubscription(settlementSubscriptionSnapshot(row), now)
 	row.DailyWindowStart = nullTimePtr(normalized.DailyWindowStart)
@@ -1028,12 +1028,12 @@ func normalizeUsageBillingSubscriptionRow(row usageBillingSubscriptionRow, now t
 	return row
 }
 
-// windowRemaining 将存储值投影给 billing 的唯一规则。
+// windowRemaining 将可空额度转换为指针，交给 billing 计算窗口剩余额度。
 func windowRemaining(limit sql.NullFloat64, used float64) *float64 {
 	return billing.RemainingWindowAmount(usageBillingNullableFloat64Ptr(limit), used)
 }
 
-// usageBillingSubscriptionAvailable 将存储值投影给 billing 的唯一规则。
+// usageBillingSubscriptionAvailable 调用 billing 计算订阅可用额度。
 func usageBillingSubscriptionAvailable(unlimitedAmount float64, values ...*float64) float64 {
 	return billing.SubscriptionAvailableAmount(unlimitedAmount, values...)
 }
@@ -1480,7 +1480,7 @@ func userExistsForBilling(ctx context.Context, tx *sql.Tx, userID int64) (bool, 
 }
 
 func incrementUsageBillingAPIKeyQuota(ctx context.Context, tx *sql.Tx, apiKeyID int64, amount float64) (bool, error) {
-	// 已放行请求必须累计到原 Key；软删除只撤销后续准入，不撤销已产生的费用。
+	// 已放行请求的费用累计到对应 Key，软删除后的 Key 拒绝后续请求。
 	// 配额列与余额列共享 8 位金额刻度，派生金额也必须在 SQL 前量化。
 	amount = billing.QuantizeUsageBillingAmount(amount)
 	var exhausted bool
@@ -1632,7 +1632,7 @@ func incrementUsageBillingProviderQuota(ctx context.Context, tx *sql.Tx, provide
 	return &state, nil
 }
 
-// settlementSubscriptionSnapshot 只转换 SQL 空值和现有 JSON，不进行资格或金额计算。
+// settlementSubscriptionSnapshot 将 SQL 空值和 JSON 转成结算用的订阅快照。
 func settlementSubscriptionSnapshot(row usageBillingSubscriptionRow) billing.SettlementSubscription {
 	return billing.SettlementSubscription{ID: row.ID, PlanID: row.PlanID, StartsAt: row.StartsAt, ExpiresAt: row.ExpiresAt, DailyWindowStart: usageBillingNullableTimePtr(row.DailyWindowStart), WeeklyWindowStart: usageBillingNullableTimePtr(row.WeeklyWindowStart), MonthlyWindowStart: usageBillingNullableTimePtr(row.MonthlyWindowStart), DailyLimitUSD: usageBillingNullableFloat64Ptr(row.DailyLimitUSD), WeeklyLimitUSD: usageBillingNullableFloat64Ptr(row.WeeklyLimitUSD), MonthlyLimitUSD: usageBillingNullableFloat64Ptr(row.MonthlyLimitUSD), DailyUsageUSD: row.DailyUsageUSD, WeeklyUsageUSD: row.WeeklyUsageUSD, MonthlyUsageUSD: row.MonthlyUsageUSD, PlanGroupRateMultipliers: parseInt64Float64JSONMap(row.PlanGroupRateMultipliersRaw)}
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/google/wire"
 )
 
-// moduleStorageProviders 按所有者构造存储，原事务参与者继续使用同一连接。
+// moduleStorageProviders 按模块构造存储，事务参与者使用同一个数据库连接。
 var moduleStorageProviders = wire.NewSet(
 	provideCreativeQueue,
 	provideCreativeTransientStore,

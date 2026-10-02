@@ -52,7 +52,7 @@ function makeProvider(overrides: Partial<Provider>): Provider {
 }
 
 describe('ProviderStatusIndicator', () => {
-  // Sonnet 5 限流状态应保持紧凑，避免完整模型名撑开提供商状态区域。
+  // Sonnet 5 限流状态显示短别名。
   it('Claude Sonnet 5 模型限流时显示短别名', () => {
     const wrapper = mount(ProviderStatusIndicator, {
       props: {

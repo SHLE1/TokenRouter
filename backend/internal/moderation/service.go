@@ -367,7 +367,7 @@ type ContentModerationCheckInput struct {
 	Protocol      string
 	Body          []byte
 	// NoMediaRetention 为 true 时进入“无媒体留存”模式（创作台等敏感场景）：
-	// 只保留输入 hash、分类、分数、决策等元数据，不保存正文摘录、输入项与媒体快照。
+	// 日志保存输入 hash、分类、分数和决策等元数据，正文摘录、输入项与媒体快照留空。
 	NoMediaRetention bool
 }
 
@@ -2759,7 +2759,7 @@ func (s *ContentModerationService) resolveModerationProxyURL(ctx context.Context
 	}
 	proxyURL := proxy.URL
 	if previous == nil || previous.proxyID != proxyID || previous.url != proxyURL {
-		// 日志只记录无凭据地址，不能输出完整代理 URL。
+		// 日志记录代理的无凭据地址。
 		slog.Info("content_moderation.proxy_enabled",
 			"proxy_id", proxyID,
 			"proxy_name", proxy.Name,

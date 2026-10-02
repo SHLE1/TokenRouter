@@ -135,7 +135,7 @@ func TestAdvancedSchedulerUsesRoutingModelAndKeepsRequestedModel(t *testing.T) {
 	require.True(t, scheduler.isProviderRequestCompatible(context.Background(), provider, req))
 }
 
-// TestOpenAIHTTPPassthroughKeepsExplicitModelScope 验证 OAuth 归一化和自动透传都按真实上游模型限制。
+// TestOpenAIHTTPPassthroughKeepsExplicitModelScope 检查 OAuth 归一化和自动透传是否按上游模型限制候选。
 
 // TestOpenAIHTTPPassthroughKeepsExplicitModelScope 验证自动透传提供商不会被保留的旧白名单误拒绝。
 func TestOpenAIHTTPPassthroughKeepsExplicitModelScope(t *testing.T) {

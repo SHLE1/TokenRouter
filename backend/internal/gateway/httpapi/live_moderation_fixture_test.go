@@ -71,7 +71,7 @@ func (s *liveModerationSettings) GetMultiple(_ context.Context, keys []string) (
 	return out, nil
 }
 
-// liveModerationLogs 保留原场景无历史违规的输入，不模拟审核裁决。
+// liveModerationLogs 为测试提供无历史违规记录的查询结果。
 type liveModerationLogs struct {
 	moderation.ContentModerationRepository
 }

@@ -46,7 +46,7 @@ func (s *Generic) SelectProviderWithLoadAwareness(ctx context.Context, groupID *
 }
 
 // ReportAdvancedProviderScheduleResult 将通用网关转发结果写入高级调度运行时反馈。
-// 只有实际由高级调度器选出的请求才会更新统计，基础调度器保持原有行为。
+// 高级调度器选出的请求更新统计。
 func (s *Generic) ReportAdvancedProviderScheduleResult(selection *gatewayprovider.SelectionResult, providerID int64, success bool, result *forwardcore.MessagesResult) {
 	if s == nil || selection == nil || !selection.AdvancedScheduler || providerID <= 0 {
 		return
@@ -358,7 +358,7 @@ func (s *Generic) isProviderSchedulableForRPM(ctx context.Context, provider *gat
 // IncrementProviderRPM increments the RPM counter for the given provider.
 // 已知 TOCTOU 竞态：调度时读取 RPM 计数与此处递增之间存在时间窗口，
 // 高并发下可能短暂超出 RPM 限制。这是与 WindowCost 一致的 soft-limit
-// 设计权衡——可接受的少量超额优于加锁带来的延迟和复杂度。
+// 并发检查允许少量超额，以减少加锁延迟。
 func (s *Generic) IncrementProviderRPM(ctx context.Context, id int64) error {
 	return schedulercore.IncrementProviderRPM(ctx, s.rpmCache, id)
 }
@@ -699,7 +699,7 @@ func (s *Generic) NewSessionAttempts() *schedulercore.SessionAttempts {
 	)
 }
 
-// TrackSessionAttempt 只投影原提供商会话参数，最终状态由执行入口传入。
+// TrackSessionAttempt 根据提供商和会话参数登记本次尝试。
 func (s *Generic) TrackSessionAttempt(attempts *schedulercore.SessionAttempts, provider *gatewayprovider.ExecutionProvider, session string) {
 	attempts.Track(schedulerSessionBinding(provider, session))
 }

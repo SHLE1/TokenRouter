@@ -20,7 +20,6 @@ import (
 )
 
 // =====================
-// 保留原有测试
 // =====================
 
 func TestGeminiOAuthService_GenerateAuthURL_RedirectURIStrategy(t *testing.T) {
@@ -842,7 +841,7 @@ func TestGeminiOAuthService_RefreshProviderToken_CodeAssist_NoProjectID_AutoDete
 	}
 
 	svc := newGeminiAuthorizationForTest(&mockGeminiProxyRepo{}, client, codeAssist, nil, &geminicli.OAuthConfig{
-		// 提供商用例只验证发现失败的原回退，网络解析由平台本地 HTTP 契约覆盖。
+		// 此处检查发现失败时的回退，平台本地 HTTP 测试覆盖网络响应解析。
 	})
 
 	svc.Options.FetchProject = func(context.Context, string, string) (string, error) {
@@ -898,7 +897,7 @@ func TestGeminiOAuthService_RefreshProviderToken_CodeAssist_NoProjectID_FailsEmp
 	}
 
 	svc := newGeminiAuthorizationForTest(&mockGeminiProxyRepo{}, client, codeAssist, nil, &geminicli.OAuthConfig{
-		// 提供商用例只验证发现失败的原回退，网络解析由平台本地 HTTP 契约覆盖。
+		// 此处检查发现失败时的回退，平台本地 HTTP 测试覆盖网络响应解析。
 	})
 
 	svc.Options.FetchProject = func(context.Context, string, string) (string, error) {
@@ -998,7 +997,7 @@ func TestGeminiOAuthService_RefreshProviderToken_GoogleOne_NoTierID_DefaultsFree
 		t.Fatalf("RefreshProviderToken 返回错误: %v", err)
 	}
 	// FetchGoogleOneTier 会被调用但 oauthClient（此处 mock）不实现 Drive API，
-	// svc.FetchGoogleOneTier 使用真实 DriveClient 会失败，最终回退到默认值。
+	// svc.FetchGoogleOneTier 的 DriveClient 查询失败，随后使用默认值。
 	// 由于没有 tier_id 且 FetchGoogleOneTier 失败，应默认为 google_one_free
 	if info.TierID != providercore.GeminiTierGoogleOneFree {
 		t.Fatalf("TierID 应为默认 free: got=%q", info.TierID)

@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// batchImageAccessPorts 仅投影旧认证上下文，任务 Adapter 不导入旧聚合服务。
+// batchImageAccessPorts 从认证上下文读取批量图片任务需要的 Key、订阅和会话 ID。
 func batchImageAccessPorts() httpapi.AccessPorts {
 	return httpapi.AccessPorts{Key: func(c *gin.Context) (*apikey.APIKey, bool) {
 		k, ok := keyhttp.GetAPIKeyFromContext(c)

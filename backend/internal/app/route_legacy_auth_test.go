@@ -16,8 +16,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterAuthRoutes 注册认证相关路由
-// 认证路由的主体、会话和权限边界由对应工程文档维护。
+// RegisterAuthRoutes 注册认证路由。
+// 身份、会话和权限检查的说明见下方文档。
 // @project-doc docs/domains/identity_and_tenancy.md#authentication_boundaries
 func RegisterAuthRoutes(
 	v1 *gin.RouterGroup,
@@ -40,7 +40,7 @@ func RegisterAuthRoutes(
 	identityhttp.RegisterSessionRoutes(v1, h.Auth, guards)
 }
 
-// legacyBackendModeReader 保留原可空具体参数的语义，避免 typed nil 被当作有效端口。
+// legacyBackendModeReader 将 nil 指针转换为 nil 接口。
 func legacyBackendModeReader(s *admission.BackendMode) identityhttp.BackendModeReader {
 	if s == nil {
 		return nil

@@ -11,7 +11,7 @@ const responseFailureEffectsKey = "gateway_response_failure_effects"
 
 var responseFailureEffectsInit sync.Mutex
 
-// responseFailureEffects 只发布请求自己的状态，未登记时读取不创建状态。
+// responseFailureEffects 返回当前请求登记的状态，未登记时返回空值。
 func responseFailureEffects(c *gin.Context, create bool) *requeststate.ResponseFailureEffects {
 	if c == nil {
 		return nil
@@ -35,11 +35,13 @@ func responseFailureEffects(c *gin.Context, create bool) *requeststate.ResponseF
 	c.Set(responseFailureEffectsKey, s)
 	return s
 }
+
 func MarkOpenAIResponseFailureEffects(c *gin.Context, status int, disabled bool) {
 	if c != nil {
 		responseFailureEffects(c, true).Store(status, disabled)
 	}
 }
+
 func consumeOpenAIResponseFailureEffects(c *gin.Context) (int, bool, bool) {
 	return responseFailureEffects(c, false).Consume()
 }

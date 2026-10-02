@@ -19,7 +19,7 @@ const (
 
 var codexInviteResetEmailPattern = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 
-// CodexInviteClient 为本次提供商操作提供平台报文交换，不持有提供商仓储。
+// CodexInviteClient 为本次邀请操作提供平台请求接口。
 type CodexInviteClient interface {
 	GetJSON(context.Context, string, map[string]string) (map[string]any, error)
 	PostJSON(context.Context, string, map[string]any) (map[string]any, error)
@@ -69,7 +69,7 @@ func (s *CodexInviteResetService) postJSON(ctx context.Context, value *codexInvi
 	return value.client.PostJSON(ctx, path, body)
 }
 
-// codexInviteResetInviteState 保存邀请子链路的稳定结果，避免邀请错误影响重置次数查询。
+// codexInviteResetInviteState 保存邀请操作结果，重置次数查询单独返回结果。
 type codexInviteResetInviteState struct {
 	eligibility        map[string]any
 	rules              map[string]any
@@ -147,7 +147,7 @@ func (s *CodexInviteResetService) getInviteState(ctx context.Context, providerCt
 		rules = nil
 	}
 
-	// 上游资格校验错误只转换为稳定状态，不把 422 等原始验证信息透出给管理端。
+	// 上游资格校验错误转换为管理端使用的状态值。
 	return codexInviteResetInviteState{
 		eligibility:        eligibility,
 		rules:              rules,

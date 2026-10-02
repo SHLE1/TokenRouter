@@ -20,7 +20,7 @@ type RetryCooldownOptions struct {
 	LookupError func(int64, error)
 }
 
-// RetryCooldown 处理重试耗尽后的旧兼容冷却，不持有计数或缓存。
+// RetryCooldown 在重试耗尽后应用兼容冷却规则。
 type RetryCooldown struct {
 	store   RetryCooldownStore
 	options RetryCooldownOptions

@@ -189,7 +189,7 @@ onBeforeUnmount(() => {
     document.body.style.overflow = ''
   }
   // 若卸载发生在离场动画途中（如切回首页门面），after-leave 不会触发，
-  // 队列会停在已关闭状态；仅在弹窗已关闭时补推一次，展示中的弹窗不抢下一条。
+  // 队列会停在已关闭状态。此时补推下一条，仍有弹窗展示时继续等待关闭。
   if (!props.preview && !announcementStore.currentPopup) {
     announcementStore.onPopupClosed()
   }
@@ -197,8 +197,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* 过渡配方用全局 pop-fade(数值与原 scoped 拷贝逐字一致),reduced-motion 也由全局收敛。 */
-/* 滚动条沿用中性色，避免正文区域出现额外强调色。 */
+/* 使用全局 pop-fade 过渡，全局样式同时处理减少动态效果。 */
+/* 滚动条使用中性色。 */
 .announcement-popup-scrollbar::-webkit-scrollbar {
   width: 8px;
 }

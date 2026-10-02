@@ -63,7 +63,7 @@ func TestOpenAIAgentIdentityPassthroughKeepsSessionAndPromptCacheHeaders(t *test
 	require.NoError(t, err)
 	require.Contains(t, string(requestBody), `"prompt_cache_key":"cache-agent"`)
 
-	// 认证模式不能改变会话隔离或提示缓存语义，因此与相同 OAuth 请求对照而非固定实现哈希。
+	// 与相同 OAuth 请求对照，检查认证模式下的会话隔离和提示缓存结果。
 	oauthProvider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 26,
@@ -188,7 +188,7 @@ func TestOpenAIAgentIdentityTaskInvalidRetriesExactlyOnce(t *testing.T) {
 	require.NotEqual(t, upstream.requests[0].Header.Get("Authorization"), upstream.requests[1].Header.Get("Authorization"))
 	require.Equal(t, "task-new", decodeAgentAssertionTask(t, upstream.requests[1].Header.Get("Authorization")))
 
-	// 连续两次 task 失效也只能重试一次，避免恢复路径无限循环。
+	// 连续两次 task 失效时，在一次重试后返回错误。
 	upstream.responses = []*http.Response{
 		{StatusCode: http.StatusUnauthorized, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"error":{"code":"invalid_task_id"}}`))},
 		{StatusCode: http.StatusUnauthorized, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"error":{"code":"invalid_task_id"}}`))},
@@ -201,7 +201,7 @@ func TestOpenAIAgentIdentityTaskInvalidRetriesExactlyOnce(t *testing.T) {
 	require.Equal(t, 2, registerCalls)
 	require.Len(t, upstream.requests, 4)
 
-	// 透传路径复用相同的单次 task 恢复契约。
+	// 透传路径在 task 失效时同样重试一次。
 	provider.Record.Extra = map[string]any{"openai_passthrough": true}
 	provider.Record.Credentials["task_id"] = "task-old-passthrough"
 	upstream.responses = []*http.Response{

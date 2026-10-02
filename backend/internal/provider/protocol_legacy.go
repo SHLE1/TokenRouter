@@ -110,7 +110,7 @@ func PreserveProtocolCredentials(existing, incoming map[string]any) map[string]a
 
 // MigrateLegacyProtocolCredentials 在统一集合保存后保留旧端点并移除旧配置字段。
 func MigrateLegacyProtocolCredentials(provider *Record) {
-	// 固定 CN 端点迁入分协议地址，避免移除旧选项后改变自定义 base_url 的含义。
+	// 将 CN 固定协议的 base_url 复制到对应协议地址，供协议集合配置使用。
 	if provider.IsCNProvider() {
 		legacy := provider.GetCredential("api_protocol")
 		if legacy != "" && legacy != APIProtocolAdaptive {

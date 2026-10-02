@@ -180,7 +180,7 @@ const toggleMoreMenu = () => {
   moreMenuOpen.value = true
 }
 
-// 菜单动作先关闭浮层，避免确认弹窗打开后仍残留透明遮罩。
+// 菜单动作先关闭浮层，再显示确认弹窗。
 const runMenuAction = (action: MenuAction) => {
   closeMoreMenu()
   if (action === 'reset-status') emit('reset-status')

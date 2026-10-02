@@ -89,7 +89,7 @@ func TestShouldCoolOpenAIImagesToolForError(t *testing.T) {
 	}
 }
 
-// TestHandleOpenAIImagesOAuthResponseError_TextFallbackDoesNotCoolProvider 验证主复现：文字兜底判据不得写提供商级冷却。
+// TestHandleOpenAIImagesOAuthResponseError_TextFallbackDoesNotCoolProvider 验证仅返回文字时提供商冷却状态保持原样。
 func TestHandleOpenAIImagesOAuthResponseError_TextFallbackDoesNotCoolProvider(t *testing.T) {
 	c, _ := newImagesCooldownContext(t)
 	repo := &countingModelRateLimitRepo{}
@@ -107,7 +107,7 @@ func TestHandleOpenAIImagesOAuthResponseError_TextFallbackDoesNotCoolProvider(t 
 
 	require.Zero(t, repo.calls, "模型闲聊不构成提供商级证据，不得写 30 分钟冷却")
 
-	// 换号行为必须原样保留：本 PR 只撤销提供商状态写入，不动 failover。
+	// 仅返回文字时仍触发换号。
 	var failover *forwardcore.UpstreamFailoverError
 	require.True(t, errors.As(err, &failover), "仍应触发换号，got %T", err)
 }
@@ -135,7 +135,7 @@ func TestHandleOpenAIImagesOAuthResponseError_StructuredUnavailableStillCoolsPro
 	require.Equal(t, []string{providercore.OpenAIImageGenerationRateLimitKey}, repo.scopes)
 }
 
-// TestOpenAIImagesTextFallback_MarksSynthesizedVerdicts 验证标记必须打在文字兜底的两个入口上，且不影响违规拦截分支的判定。
+// TestOpenAIImagesTextFallback_MarksSynthesizedVerdicts 验证两个文字响应入口添加合成判定标记，违规拦截分支保持自身判定。
 func TestOpenAIImagesTextFallback_MarksSynthesizedVerdicts(t *testing.T) {
 	t.Run("plain_text_reply_is_synthesized", func(t *testing.T) {
 		err := openai.OpenAIImagesTextFallbackErrorForText("Here's a polished image prompt for your request.")
@@ -161,7 +161,7 @@ func TestOpenAIImagesTextFallback_MarksSynthesizedVerdicts(t *testing.T) {
 		require.Equal(t, "content_policy_violation", err.Code)
 		require.Equal(t, http.StatusBadRequest, err.StatusCode)
 		// 该分支本来就不走冷却（Code 不匹配），标记与否都不改变行为；
-		// 断言它没有被顺手打标，避免语义漂移。
+		// 违规拦截结果的合成判定标记为 false。
 		require.False(t, err.SynthesizedFromModelText)
 	})
 
@@ -171,7 +171,7 @@ func TestOpenAIImagesTextFallback_MarksSynthesizedVerdicts(t *testing.T) {
 }
 
 // TestOpenAIImagesTextFallback_RemainsRetryableAndThusCascades 验证级联的前提条件：该错误确实是可重试的，所以会带着"已写冷却"的副作用换号。
-// 这条用例把前提钉死，避免以后有人把 502 改成非重试后误以为本修复多余。
+// 此用例检查 502 的重试资格。
 func TestOpenAIImagesTextFallback_RemainsRetryableAndThusCascades(t *testing.T) {
 	err := openai.OpenAIImagesTextFallbackErrorForText("Here's a polished image prompt for your request.")
 	require.NotNil(t, err)

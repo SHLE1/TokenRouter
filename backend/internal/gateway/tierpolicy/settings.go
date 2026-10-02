@@ -9,23 +9,16 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// OpenAI Fast Policy 策略常量
-// OpenAI 的 "fast 模式" 通过请求体中的 service_tier 字段识别：
-//   - "priority"（客户端可传 "fast"，归一化为 "priority"）：fast 模式
-//   - "ultrafast"：Codex/API 的 Ultrafast 档位
-//   - "flex"：低优先级模式
-//   - 省略：normal 默认
-//
-// 本策略复用 BetaPolicyAction*/BetaPolicyScope* 常量语义，只是匹配键从
-// anthropic-beta header 换成 body 的 service_tier 字段。
+// OpenAI Fast Policy 根据请求体的 service_tier 匹配策略。
+// priority 表示 Fast，客户端的 fast 会转换为 priority；ultrafast 为独立档位；flex 表示低优先级；省略时使用默认档位。
+// 策略动作和适用提供商类型使用 BetaPolicyAction 和 BetaPolicyScope 的取值。
 const (
 	OpenAIFastTierAny       = "all"                               // 匹配任意已识别的 service_tier
 	OpenAIFastTierPriority  = protocolopenai.ServiceTierPriority  // 仅匹配 fast（priority）
 	OpenAIFastTierUltrafast = protocolopenai.ServiceTierUltrafast // 仅匹配 ultrafast
 	OpenAIFastTierFlex      = protocolopenai.ServiceTierFlex      // 仅匹配 flex
 
-	// OpenAIFastPolicyActionForcePriority 会保留 service_tier 字段并强制写成
-	// priority，用于把 flex/auto/default/scale 等已识别 tier 收敛为 fast。
+	// OpenAIFastPolicyActionForcePriority 将已识别的 service_tier（如 flex、auto、default、scale）写为 priority。
 	OpenAIFastPolicyActionForcePriority = "force_priority"
 	// Ultra Fast 共用既有作用域和模型回退规则。
 	OpenAIFastPolicyActionForceUltrafast = "force_ultrafast"
@@ -48,7 +41,7 @@ type OpenAIFastPolicySettings struct {
 	Rules []OpenAIFastPolicyRule `json:"rules"`
 }
 
-// Default 保留无规则时的上游档位语义。
+// Default 返回空规则策略，上游档位按请求传递。
 func Default() *OpenAIFastPolicySettings {
 	return &OpenAIFastPolicySettings{Rules: []OpenAIFastPolicyRule{}}
 }

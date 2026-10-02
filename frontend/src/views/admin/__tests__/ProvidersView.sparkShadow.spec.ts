@@ -181,7 +181,7 @@ describe('admin ProvidersView — 外审 F2:spark 影子创建接线', () => {
     menu.vm.$emit('create-spark-shadow', { id: 42, name: 'parent-acc' })
     await flushPromises()
 
-    // 不再用原生 confirm,改用应用内 ConfirmDialog:先弹出,点确认才调 API
+    // 用户在 ConfirmDialog 中确认后调用 API。
     const dialog = wrapper.findAllComponents(ConfirmDialog).find(d => d.props('show'))
     expect(dialog).toBeTruthy()
     dialog?.vm.$emit('confirm')

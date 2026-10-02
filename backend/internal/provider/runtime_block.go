@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// RuntimeBlockFallback 和 RuntimeRetryWindow 保留原内存停调及同提供商恢复预算。
+// RuntimeBlockFallback 和 RuntimeRetryWindow 分别控制内存停调与同提供商重试预算。
 const (
 	RuntimeBlockFallback = 2 * time.Minute
 	RuntimeRetryWindow   = 2 * time.Minute
@@ -24,7 +24,7 @@ type RuntimeBlockState struct {
 	now                           func() time.Time
 }
 
-// NewRuntimeBlockState 只创建运行状态；时钟由装配显式传入，不启动后台任务。
+// NewRuntimeBlockState 使用装配传入的时钟创建运行状态。
 func NewRuntimeBlockState(now func() time.Time) *RuntimeBlockState {
 	if now == nil {
 		now = time.Now
@@ -43,7 +43,7 @@ func (s *RuntimeBlockState) Block(id int64, until time.Time, reason string) {
 	_, _ = s.blockLocked(id, until, reason)
 }
 
-// BlockProviderScheduling 保留平台适用边界，其他平台不会新增本地停调状态。
+// BlockProviderScheduling 对支持的平台设置内存停调。
 func (s *RuntimeBlockState) BlockProviderScheduling(value *Record, until time.Time, reason string) {
 	if value == nil || (value.Platform != PlatformOpenAI && value.Platform != PlatformGrok) {
 		return
@@ -69,7 +69,7 @@ func (s *RuntimeBlockState) RetryWindowActive(providerID int64) bool {
 	return now.Before(startedAt.Add(RuntimeRetryWindow))
 }
 
-// RetryDeadline 只读取已建立窗口，不在查询截止时间时创建状态。
+// RetryDeadline 返回已有重试窗口的截止时间，窗口缺失时返回零值。
 func (s *RuntimeBlockState) RetryDeadline(providerID int64) time.Time {
 	if s == nil {
 		return time.Time{}
@@ -130,7 +130,7 @@ func (s *RuntimeBlockState) blockLocked(providerID int64, until time.Time, _ str
 	}
 }
 
-// ClearProviderSchedulingBlock 清除当前运行状态及恢复预算，同时推进显式清理代次。
+// ClearProviderSchedulingBlock 清除运行阻断和恢复预算，并递增清理代次。
 func (s *RuntimeBlockState) ClearProviderSchedulingBlock(providerID int64) {
 	if s == nil || providerID <= 0 {
 		return
@@ -209,7 +209,7 @@ func (s *RuntimeBlockState) Blocked(providerID int64, identity func() string) bo
 	return false
 }
 
-// BlockRollback 返回只撤销本次暂定状态的回滚，不覆盖继任者。
+// BlockRollback 返回本次暂定状态的撤销函数，执行时检查状态仍属于本次操作。
 func (s *RuntimeBlockState) BlockRollback(providerID int64, until time.Time, reason string) func() {
 	if s == nil {
 		return func() {}

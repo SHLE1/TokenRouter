@@ -57,7 +57,7 @@ export function useQuotaNotifyState() {
     }
   }
 
-  // setField 供表单组件逐项回写通知阈值，避免子组件直接修改共享状态。
+  // 表单组件通过 setField 逐项回写共享状态中的通知阈值。
   function setField(
     dim: QuotaNotifyDim,
     field: keyof QuotaNotifyDimState,

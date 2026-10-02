@@ -11,11 +11,9 @@ import (
 // 同时避免输出完整用户请求体。
 const parseFailureSnippetLen = 256
 
-// LogRequestBodyParseFailure 记录 JSON 解析或校验失败的真实原因。客户端仍收到固定
-// 错误文案，服务端日志仅记录底层错误、字节偏移、长度和转义后的首尾片段，
-// 便于区分非法 JSON、截断请求体和被提前消费的请求体。
-//
-// 使用 gjson.ValidBytes 直接校验的调用点可以传入 nil，此时从 body 推导诊断错误。
+// LogRequestBodyParseFailure 记录 JSON 解析或校验错误，客户端收到固定错误文案。
+// 日志包含底层错误、字节偏移、长度和转义后的首尾片段，用于区分非法 JSON、截断和正文已被消费的情况。
+// 使用 gjson.ValidBytes 校验的调用方可传 nil，函数从 body 推导诊断错误。
 func LogRequestBodyParseFailure(reqLog *zap.Logger, body []byte, err error) {
 	if reqLog == nil {
 		return
@@ -42,7 +40,7 @@ func LogRequestBodyParseFailure(reqLog *zap.Logger, body []byte, err error) {
 	reqLog.Warn("parse request body failed", fields...)
 }
 
-// SanitizeBodySnippet 转义控制字符和非法 UTF-8，确保片段始终是可打印的单行日志。
+// SanitizeBodySnippet 转义控制字符和非法 UTF-8，返回可打印的单行日志片段。
 func SanitizeBodySnippet(b []byte) string {
 	return strconv.Quote(string(b))
 }

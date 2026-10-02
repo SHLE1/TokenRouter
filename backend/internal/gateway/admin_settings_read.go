@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 )
 
-// AdminReadSettings 只包含本模块在综合管理页的展示投影。
+// AdminReadSettings 保存网关设置在综合管理页中的展示字段。
 type AdminReadSettings struct {
 	AntigravityUserAgentVersion            string
 	BackendModeEnabled                     bool
@@ -32,7 +32,7 @@ type AdminReadSettings struct {
 	UserPromptReplacementConfig            *promptpolicy.UserPromptReplacementConfig
 }
 
-// ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
+// ReadAdminSettings 将传入的持久化值解析为管理页设置，缺省字段使用默认值。
 func ReadAdminSettings(settings map[string]string, rules AdminSettingsRules) *AdminReadSettings {
 	result := &AdminReadSettings{}
 	result.BackendModeEnabled = settings[SettingKeyBackendModeEnabled] == "true"
@@ -82,7 +82,7 @@ func ReadAdminSettings(settings map[string]string, rules AdminSettingsRules) *Ad
 	return result
 }
 
-// parseAdminPromptConfig 复用请求提示词策略的唯一解析与诊断。
+// parseAdminPromptConfig 调用提示词策略的解析和诊断函数。
 func parseAdminPromptConfig(raw string) *promptpolicy.UserPromptReplacementConfig {
 	return promptpolicy.ParseConfig(raw, slog.Warn)
 }

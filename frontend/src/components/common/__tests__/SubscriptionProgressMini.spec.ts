@@ -48,7 +48,7 @@ describe('SubscriptionProgressMini', () => {
   })
 
   it('在订阅弹层展示精确到分钟的本地到期时间', async () => {
-    // 使用不带时区偏移的本地时间，避免测试环境时区改变期望值。
+    // 测试时间使用无时区偏移的本地时间。
     const expiresAt = '2026-08-08T10:33:45'
     mockGetActiveSubscriptions.mockResolvedValue([
       {

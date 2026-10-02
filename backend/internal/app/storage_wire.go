@@ -8,7 +8,7 @@ import (
 	"github.com/google/wire"
 )
 
-// storageProviders 将通用设置接口绑定到同一个 Store，避免旧接口投影复制运行状态。
+// storageProviders 将通用设置读取接口绑定到共享 Store。
 var storageProviders = wire.NewSet(
 	provideSQLDB,
 	provideSettingsStore,

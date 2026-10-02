@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// CredentialInput 是构建 session 所需的显式秘密投影，禁止用于公开响应。
+// CredentialInput 保存构建 session 所需的凭据，公开响应需要排除这些字段。
 type CredentialInput struct {
 	Name               string
 	Pat                string
@@ -72,7 +72,7 @@ type (
 	OrganizationTagsGetter func(context.Context, string, string) (*OrganizationTags, error)
 )
 
-// SessionBuilder 无缓存或后台状态，Doer 是按本次提供商投影生成的传输入口。
+// SessionBuilder 通过凭据交换构建会话，Doer 使用本次提供商的传输配置。
 type SessionBuilder struct {
 	ExchangePAT   PATExchanger
 	ExchangeCNPAT CNPATExchanger

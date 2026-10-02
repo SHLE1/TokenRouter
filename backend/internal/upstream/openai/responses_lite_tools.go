@@ -25,9 +25,9 @@ func newOpenAIResponsesLiteValidationError(param, format string, args ...any) er
 	return &ResponsesLiteValidationError{param: param, message: fmt.Sprintf(format, args...)}
 }
 
-// normalizeOpenAIResponsesLiteTools 应用 Responses Lite 请求契约：reasoning 必须覆盖所有轮次，
-// 顶层并行工具调用必须关闭，私有 namespace 声明则移入 input.additional_tools 容器。其它顶层
-// 工具必须属于 Lite 接口支持的有限集合；拒绝不支持的 hosted 工具是有意为之，静默丢弃会改变客户端请求语义。
+// normalizeOpenAIResponsesLiteTools 整理 Responses Lite 请求：reasoning 覆盖所有轮次，
+// 关闭顶层并行工具调用，并把私有 namespace 声明移入 input.additional_tools。
+// 不受支持的 hosted 工具返回错误，静默丢弃会改变客户端要求执行的工具。
 func normalizeOpenAIResponsesLiteTools(reqBody map[string]any) (bool, error) {
 	if reqBody == nil {
 		return false, nil

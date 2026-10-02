@@ -7,7 +7,8 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// CompatOutputMeaning 仅读取本模块一次写出的完整帧；前导、usage 和空 delta 不计为首语义输出。
+// CompatOutputMeaning 从本模块写出的完整帧中识别内容输出和终止事件。
+// 文本、推理和工具调用计为内容输出。
 func CompatOutputMeaning(frame []byte) (bool, bool) {
 	for _, line := range bytes.Split(frame, []byte("\n")) {
 		if !bytes.HasPrefix(line, []byte("data:")) {
@@ -43,7 +44,7 @@ func CompatOutputMeaning(frame []byte) (bool, bool) {
 	return false, false
 }
 
-// CompatJSONHasContent 只辨认完成报文里的内容；协议元数据和空数组不算语义输出。
+// CompatJSONHasContent 检查完成报文是否包含文本、推理、拒绝信息或工具调用。
 func CompatJSONHasContent(data []byte) bool {
 	if anthropic.ObserveMessage(string(data)).Semantic {
 		return true

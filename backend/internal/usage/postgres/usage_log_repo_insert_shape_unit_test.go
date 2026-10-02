@@ -117,7 +117,7 @@ func TestUsageLogStaticInsertShape_PlaceholdersMatchArgTypes(t *testing.T) {
 }
 
 // TestPrepareUsageLogInsert_UpstreamRequestIDArgWiring 把 upstream_request_id 钉在
-// session_id 之前，与参数类型表保持同位；缺失时落 NULL 而不是空串。
+// session_id 之前，与参数类型表位置一致，缺失值写入 NULL。
 func TestPrepareUsageLogInsert_UpstreamRequestIDArgWiring(t *testing.T) {
 	upstreamRequestID := "req_upstream_123"
 	prepared := prepareUsageLogInsert(&usage.UsageLog{

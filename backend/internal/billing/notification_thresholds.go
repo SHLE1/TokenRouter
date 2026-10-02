@@ -7,11 +7,12 @@ func BalanceThreshold(threshold float64, kind string, recharged float64) float64
 	}
 	return threshold
 }
+
 func CrossedDownward(oldValue, newValue, threshold float64) bool {
 	return oldValue >= threshold && newValue < threshold
 }
 
-// EffectiveBalanceThreshold 只处理额度规则，配置读取与通知发送由外层投影。
+// EffectiveBalanceThreshold 按通知开关、用户阈值和充值金额计算余额提醒阈值。
 func EffectiveBalanceThreshold(globalEnabled bool, globalThreshold float64, userThreshold *float64, kind string, recharged float64) (float64, bool) {
 	if !globalEnabled {
 		return 0, false
@@ -48,6 +49,7 @@ func (d QuotaNotifyDimension) UsageThreshold() float64 {
 	}
 	return d.Limit - d.Threshold
 }
+
 func (d QuotaNotifyDimension) Crossing(cost float64) (float64, bool) {
 	if !d.Enabled || d.Threshold <= 0 {
 		return 0, false

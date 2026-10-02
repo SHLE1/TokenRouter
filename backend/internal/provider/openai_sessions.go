@@ -70,7 +70,7 @@ func (s *OpenAISessionStore) Delete(sessionID string) {
 	delete(s.sessions, sessionID)
 }
 
-// Start 显式启动当前会话实例的清理循环。
+// Start 启动当前会话实例的清理循环。
 func (s *OpenAISessionStore) Start() {
 	s.runtimeMu.Lock()
 	defer s.runtimeMu.Unlock()

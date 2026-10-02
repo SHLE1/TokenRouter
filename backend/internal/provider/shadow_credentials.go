@@ -1,7 +1,7 @@
 package provider
 
 // sparkShadowAllowedCredentialKeys 是 spark 影子提供商唯一可写的凭据键集合(仅模型映射)。
-// 校验(isAllowed)与 sanitize 共用此单一来源,避免两处独立硬编码列表漂移。
+// 凭据校验与清理共用此列表。
 var sparkShadowAllowedCredentialKeys = map[string]struct{}{
 	"model_mapping":         {},
 	"compact_model_mapping": {},

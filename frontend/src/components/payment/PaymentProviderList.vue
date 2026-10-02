@@ -130,7 +130,7 @@ watch(() => props.providers, (val) => {
 function normalizeProvider(provider: ProviderInstance): ProviderInstance {
   return {
     ...provider,
-    // 兼容旧后端把空 supported_types 序列化成 null 的情况，避免单条坏数据中断整行渲染。
+    // 将接口返回的 null supported_types 转为空数组后渲染。
     supported_types: Array.isArray(provider.supported_types) ? provider.supported_types : [],
   }
 }

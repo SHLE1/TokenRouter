@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// pickerEngine 仅供选择适配器组合原生评分、计数及反馈，不承接请求重试。
+// pickerEngine 包含候选评分、计数和反馈操作。
 type pickerEngine interface {
 	Select(context.Context, schedulercore.PlatformSelectionInput) (*gatewayadapter.SelectionResult, schedulercore.PlatformDecision, error)
 	ReportResult(int64, bool, *int, ...policy.FeedbackConfig)
@@ -18,7 +18,7 @@ type pickerEngine interface {
 	SnapshotMetrics() schedulercore.PlatformMetricsSnapshot
 }
 
-// requestRoutingModel 保留未显式提供提供商层模型时的客户端模型回退。
+// requestRoutingModel 返回提供商层模型，未提供时使用客户端模型。
 func requestRoutingModel(input schedulercore.PlatformSelectionInput) string {
 	if model := strings.TrimSpace(input.RoutingModel); model != "" {
 		return model
@@ -26,7 +26,7 @@ func requestRoutingModel(input schedulercore.PlatformSelectionInput) string {
 	return input.RequestedModel
 }
 
-// cloneSelectionInput 保留原单次选择入口对排除集合的独立副本。
+// cloneSelectionInput 复制本次选择输入和排除集合。
 func cloneSelectionInput(input schedulercore.PlatformSelectionInput) schedulercore.PlatformSelectionInput {
 	input.ExcludedIDs = maps.Clone(input.ExcludedIDs)
 	return input

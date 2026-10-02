@@ -20,7 +20,8 @@ type GeminiToAnthropicResponseProcessor struct {
 
 // NewGeminiToAnthropicResponseProcessor 创建非流式响应处理器
 func NewGeminiToAnthropicResponseProcessor(runtime GeminiConversionRuntime) *GeminiToAnthropicResponseProcessor {
-	return &GeminiToAnthropicResponseProcessor{runtime: runtime,
+	return &GeminiToAnthropicResponseProcessor{
+		runtime:       runtime,
 		contentBlocks: make([]ClaudeContentItem, 0),
 	}
 }
@@ -306,7 +307,7 @@ func buildGroundingText(grounding *GeminiGroundingMetadata) string {
 	return builder.String()
 }
 
-// GeminiConversionRuntime 由平台提供原有 ID 生成器，转换状态机不读取随机源。
+// GeminiConversionRuntime 使用平台传入的 ID 生成函数。
 type GeminiConversionRuntime struct {
 	RandomID  func() string
 	MessageID func() string
@@ -318,6 +319,7 @@ func (p *GeminiToAnthropicResponseProcessor) TakeDiagnostics() []string {
 	p.diagnostics = nil
 	return out
 }
+
 func (p *GeminiToAnthropicResponseProcessor) addDiagnostic(format string, args ...any) {
 	p.diagnostics = append(p.diagnostics, fmt.Sprintf(format, args...))
 }

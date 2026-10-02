@@ -10,13 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 这一组守住的是「首个可见输出之前下游不再静默」这条性质。
-//
-// 透传路径的 pendingLines 会把 response.created / response.in_progress 全部扣住，
-// 于是首个可见输出之前下游一个字节都收不到，连 HTTP 响应头都不会提交。推理模型
-// 思考数百秒时，中间层代理会按空闲超时把连接判死。Forward 路径早就用心跳解决了
-// 这个问题（见 openai_gateway_response_handling.go 中 lastDownstreamWriteAt 的注释），
-// 透传路径漏了。
+// 透传路径在首个协议输出前发送心跳。
+// pendingLines 暂存 response.created 和 response.in_progress，推理等待数百秒时，心跳使中间代理保持连接。
 
 func newPassthroughKeepaliveTestContext(t *testing.T) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
@@ -29,8 +24,7 @@ func newPassthroughKeepaliveTestContext(t *testing.T) (*gin.Context, *httptest.R
 	return c, rec
 }
 
-// TestStartOpenAISSEKeepalive_WorksWithoutCompactMarker 验证startOpenAISSEKeepalive 必须在【没有】compact 标记时也能启动 ——
-// 否则普通透传请求依旧静默。
+// TestStartOpenAISSEKeepalive_WorksWithoutCompactMarker 验证普通透传请求在缺少 compact 标记时也会启动心跳。
 func TestStartOpenAISSEKeepalive_WorksWithoutCompactMarker(t *testing.T) {
 	c, rec := newPassthroughKeepaliveTestContext(t)
 
@@ -53,9 +47,7 @@ func TestStartOpenAISSEKeepalive_WorksWithoutCompactMarker(t *testing.T) {
 	require.Contains(t, rec.Body.String(), ": keepalive\n\n")
 }
 
-// TestPassthroughKeepaliveDoesNotBlockPreOutputFailover 验证🔴 最要紧的一条:心跳字节【不得】把请求判成「已向客户端写出语义响应」，
-// 否则上游 429/5xx 时不再换号 —— 这正是 #3887 加固的那条不变量，
-// 透传路径的 pre-output failover 完全依赖它。
+// TestPassthroughKeepaliveDoesNotBlockPreOutputFailover 验证首个协议输出前发送心跳后，上游 429/5xx 仍可换号（#3887）。
 func TestPassthroughKeepaliveDoesNotBlockPreOutputFailover(t *testing.T) {
 	c, rec := newPassthroughKeepaliveTestContext(t)
 	stop := StartOpenAISSEKeepalive(c, keepaliveTestInterval)
@@ -67,13 +59,13 @@ func TestPassthroughKeepaliveDoesNotBlockPreOutputFailover(t *testing.T) {
 	// 只有心跳字节时,仍应判定为「尚未向客户端输出」。
 	require.False(t, OpenAIStreamClientOutputStarted(c, false), "心跳字节不构成语义输出,pre-output failover 必须仍然可用")
 
-	// 写出一条真实事件之后,判定才翻转。
+	// 写出一条协议事件后，已输出判定变为 true。
 	_, err := c.Writer.Write([]byte("data: {\"type\":\"response.output_text.delta\"}\n\n"))
 	require.NoError(t, err)
 	require.True(t, OpenAIStreamClientOutputStarted(c, false), "真实语义输出之后应当判定为已输出")
 }
 
-// TestPassthroughKeepaliveStopsBeforeHandingOverWriter 验证停拍之后不得再有心跳字节写出 —— 主循环接管 ResponseWriter 的前提。
+// TestPassthroughKeepaliveStopsBeforeHandingOverWriter 验证心跳停止后字节数保持稳定，主循环随后接管 ResponseWriter。
 func TestPassthroughKeepaliveStopsBeforeHandingOverWriter(t *testing.T) {
 	c, rec := newPassthroughKeepaliveTestContext(t)
 	stop := StartOpenAISSEKeepalive(c, keepaliveTestInterval)

@@ -263,7 +263,7 @@ const pointDelta = (currentValue: number | null, previousValue: number | null | 
 
 const formatPercent = (value: number | null): string => (value === null ? '—' : `${value.toFixed(1)}%`)
 
-// 小额消费保留 4 位小数，避免显示成 0.00。
+// 小额消费显示 4 位小数。
 const formatCostTotal = (value: number): string => formatBalanceAmount(value, { fractionDigits: value >= 1 ? 2 : 4 })
 
 // metricValueOf 取某个时段在指定指标下的值，命中率没有输入时为 null。
@@ -274,7 +274,7 @@ const metricValueOf = (point: TrendDataPoint, key: UsageMetric): number | null =
   return point.requests
 }
 
-// 指标卡数字从旧值滚动到新值；请求数滚动过程中取整，避免出现小数。
+// 指标卡数字从旧值滚动到新值，请求数在动画中取整。
 const animatedRequests = useCountUp(() => totals.value.requests, COUNT_UP_MS)
 const animatedTokens = useCountUp(() => totals.value.tokens, COUNT_UP_MS)
 const animatedCost = useCountUp(() => totals.value.cost, COUNT_UP_MS)
@@ -350,7 +350,7 @@ const openBucketIndex = computed(() => (
   activeRange.value.endAt.getTime() > Date.now() && current.value.length > 1 ? current.value.length - 1 : null
 ))
 
-// 未结束的末段画成虚线，避免把还在累计的数据误读成下跌。
+// 尚在累计的末段使用虚线标记。
 const segmentStyle = {
   borderDash: (context: ScriptableLineSegmentContext) => (
     context.p1DataIndex === openBucketIndex.value ? OPEN_SEGMENT_DASH : undefined
@@ -633,7 +633,7 @@ const cancelReveal = () => {
   revealFrame = 0
 }
 
-// playReveal 从左向右重新描线，每帧只重绘不重新布局。
+// playReveal 从左向右描线，各帧沿用当前布局重绘。
 const playReveal = () => {
   cancelReveal()
   if (reducedMotion.value === 'reduce' || typeof requestAnimationFrame !== 'function') {

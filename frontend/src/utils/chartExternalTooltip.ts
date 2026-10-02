@@ -22,7 +22,7 @@ type ExternalTooltipContext = {
   tooltip: TooltipModel<ChartType>
 }
 
-// 保留图表锚点与浮层的相对位置；滚动只平移，不重新贴边或播放移动动画。
+// 记录图表锚点与浮层的相对位置，滚动时立即按该位置平移浮层。
 let activeTooltip: (ExternalTooltipContext & { canvasLeft: number; canvasTop: number }) | null = null
 
 function onOutsideInteraction(event: Event): void {
@@ -34,7 +34,7 @@ function onOutsideInteraction(event: Event): void {
 function dismissExternalTooltip(): void {
   const chart = activeTooltip?.chart
   hideExternalTooltip()
-  // 同时清除 Chart.js 活跃点，避免后续重绘把用户已关闭的提示重新显示。
+  // 同时清除 Chart.js 活跃点，后续重绘时提示保持关闭。
   chart?.setActiveElements?.([])
   chart?.tooltip?.setActiveElements([], { x: 0, y: 0 })
   chart?.update?.('none')
@@ -127,7 +127,7 @@ const getTooltipParts = (element: HTMLDivElement): TooltipParts => {
 }
 
 const getTooltipElement = (canvas: HTMLCanvasElement): HTMLDivElement => {
-  // 普通图表浮层低于侧栏（40）和顶栏（50）；弹窗图表归属自己的遮罩层，避免被遮罩盖住。
+  // 普通图表浮层低于侧栏（40）和顶栏（50），弹窗图表浮层位于所属遮罩层上方。
   const host = canvas.closest<HTMLElement>('.modal-overlay') ?? document.body
   const existing = document.getElementById(TOOLTIP_ID)
   if (existing instanceof HTMLDivElement) {

@@ -14,8 +14,10 @@ import (
 
 var ErrSessionPreempted = errors.New("openai ws session preempted by newer request")
 
-const preemptOwnerTTL = 2 * time.Hour
-const preemptWatchInterval = 2 * time.Second
+const (
+	preemptOwnerTTL      = 2 * time.Hour
+	preemptWatchInterval = 2 * time.Second
+)
 
 // PreemptKey 保留分组、Key 和会话三个隔离维度。
 type PreemptKey struct {
@@ -30,7 +32,7 @@ type PreemptState interface {
 	DeleteSessionConn(int64, string)
 }
 
-// Preemption 复用唯一注册表及原缓存，不创建第二份会话或监听器。
+// Preemption 使用传入的注册表和缓存处理会话抢占。
 type Preemption struct {
 	Registry     *PreemptRegistry
 	Cache        session.OpenAIWSSessionPreemptionCache
@@ -111,6 +113,7 @@ func (s *Preemption) Begin(ctx context.Context, key PreemptKey) (context.Context
 		cancel(nil)
 	}, true, preemptedPrevious
 }
+
 func (s *Preemption) Claim(ctx context.Context, key PreemptKey, ownerToken string) (string, bool) {
 	cache := s.Cache
 	if cache == nil || strings.TrimSpace(ownerToken) == "" {

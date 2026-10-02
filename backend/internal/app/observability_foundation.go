@@ -43,7 +43,7 @@ func provideSystemLogSink(repo ops.OpsRepository) *ops.OpsSystemLogSink {
 	}})
 }
 
-// provideAuditRedactor 从实际所有者投影敏感字段，审计消费者直接共享此实例。
+// provideAuditRedactor 汇集各模块的敏感字段，供审计使用方共享脱敏规则。
 func provideAuditRedactor() *audit.Redactor {
 	keys := append([]string(nil), provider.SensitiveCredentialKeys...)
 	for _, fields := range payment.ConfigProviderSensitiveConfigFields {

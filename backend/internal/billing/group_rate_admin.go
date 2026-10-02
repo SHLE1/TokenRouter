@@ -7,7 +7,7 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// GroupRateAdmin 保留原专属倍率与 RPM 配置写入、校验和提交后失效。
+// GroupRateAdmin 校验并写入用户专属倍率和 RPM，提交后使认证缓存失效。
 type GroupRateAdmin struct {
 	userGroupRateRepo    UserGroupRateRepository
 	authCacheInvalidator interface{ InvalidateAuthCacheByGroupID(context.Context, int64) }

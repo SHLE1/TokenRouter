@@ -12,7 +12,7 @@ type TransportFailure struct {
 	Persistent bool
 }
 
-// ClassifyTransportFailure 保留原 errno、DNS 和代理文本匹配的顺序与范围。
+// ClassifyTransportFailure 按 errno、DNS 和代理错误文本分类传输故障。
 func ClassifyTransportFailure(err error) TransportFailure {
 	if err == nil {
 		return TransportFailure{}

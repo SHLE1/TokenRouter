@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// ClaudeTokenRefresher 将原有资格与凭据合并接到统一刷新协调器。
+// ClaudeTokenRefresher 为统一刷新协调器提供 Claude 凭据资格检查和合并操作。
 type ClaudeTokenRefresher struct {
 	Authorization *ClaudeAuthorization
 }
@@ -32,7 +32,7 @@ func (r *ClaudeTokenRefresher) Refresh(ctx context.Context, value *Record) (map[
 // 两者的 access_token 均为短期令牌（expires_in=28800，即 8h），到期都需刷新；
 // setup-token 之前被排除会导致其 access_token 过期后请求 401。
 // 此处与手动刷新入口（provider.IsOAuth()）保持一致，实际是否刷新由 NeedsRefresh
-// 基于 expires_at 门控，并在分布式锁保护下执行，不会造成过度刷新。
+// 按 expires_at 判断刷新资格，在分布式锁内执行交换。
 func CanRefreshClaude(provider *Record) bool {
 	return provider.Platform == PlatformAnthropic && provider.IsOAuth()
 }
@@ -48,7 +48,7 @@ func NeedsRefreshClaude(provider *Record, refreshWindow time.Duration) bool {
 }
 
 // RefreshClaudeCredentials Refresh 执行token刷新
-// 保留原有credentials中的所有字段，只更新token相关字段
+// 将 token 字段合并进 credentials，其余字段保持当前值。
 func RefreshClaudeCredentials(ctx context.Context, provider *Record, exchange func(context.Context, *Record) (*ClaudeTokenInfo, error)) (map[string]any, error) {
 	tokenInfo, err := exchange(ctx, provider)
 	if err != nil {

@@ -70,7 +70,7 @@ func ExplicitOpenAISessionID(c *gin.Context, body []byte) string {
 	return sessionID
 }
 
-// ExplicitOpenAIRequestSessionID 按客户端显式会话信号读取身份，选定提供商后再应用其平台约束。
+// ExplicitOpenAIRequestSessionID 从客户端会话字段读取身份，选定提供商后应用平台约束。
 func ExplicitOpenAIRequestSessionID(c *gin.Context, body []byte) string {
 	if c == nil {
 		return ""
@@ -89,7 +89,7 @@ func ExplicitOpenAIRequestSessionID(c *gin.Context, body []byte) string {
 	return sessionID
 }
 
-// GenerateExplicitOpenAISessionHash 只采用显式会话信号，图片等无状态入口不使用内容回退。
+// GenerateExplicitOpenAISessionHash 根据客户端会话字段生成 hash，字段缺失时返回空值。
 func GenerateExplicitOpenAISessionHash(c *gin.Context, body []byte) string {
 	sessionID := ExplicitOpenAIRequestSessionID(c, body)
 	if sessionID == "" {
@@ -128,7 +128,7 @@ func GenerateOpenAISessionHash(c *gin.Context, body []byte) string {
 
 // GenerateOpenAISessionHashWithFallback 先按常规信号生成会话哈希；
 // 当未携带 session_id/conversation_id/prompt_cache_key 时，使用 fallbackSeed 生成稳定哈希。
-// 该方法用于 WS ingress，避免会话信号缺失时发生跨提供商漂移。
+// 该方法为 WS ingress 补充会话标识，使后续请求继续使用绑定的提供商。
 func GenerateOpenAISessionHashWithFallback(c *gin.Context, body []byte, fallbackSeed string) string {
 	sessionHash := GenerateOpenAISessionHash(c, body)
 	if sessionHash != "" {
@@ -145,8 +145,8 @@ func GenerateOpenAISessionHashWithFallback(c *gin.Context, body []byte, fallback
 	return currentHash
 }
 
-// ClaudeCodeSessionIDFromHeader 解析 Claude Code 会话头，用于消息协议的粘性路由。
-// 该入口与仅用于用量日志的 ExtractClientSessionID 分离，避免改变其他协议的会话语义。
+// ClaudeCodeSessionIDFromHeader 解析 Claude Code 会话头，用于 Messages 粘性路由。
+// ExtractClientSessionID 用于用量日志。
 func ClaudeCodeSessionIDFromHeader(c *gin.Context) string {
 	if c == nil || c.Request == nil {
 		return ""
@@ -161,7 +161,7 @@ func ExtractClientSessionID(c *gin.Context) string {
 	return gatewaysession.ExtractClientSessionID(c.GetHeader, clientSessionIDHeaders, IsGrokRequestContext(c))
 }
 
-// IsGrokRequestContext 使用已选提供商、强制路由或显式 Grok 会话头，不推断分组平台。
+// IsGrokRequestContext 根据已选提供商、强制路由或 Grok 会话头判断请求平台。
 func IsGrokRequestContext(c *gin.Context) bool {
 	if c == nil {
 		return false

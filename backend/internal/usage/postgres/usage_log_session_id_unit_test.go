@@ -59,7 +59,7 @@ func TestPrepareUsageLogInsert_SessionIDArgWiring(t *testing.T) {
 }
 
 // TestPrepareUsageLogInsert_SessionIDNullWhenAbsent 验证缺失的会话标识会持久化为
-// SQL NULL，而不是空字符串。
+// SQL NULL。
 func TestPrepareUsageLogInsert_SessionIDNullWhenAbsent(t *testing.T) {
 	prepared := prepareUsageLogInsert(newSessionIDUsageLog(nil))
 	sessionArg := prepared.args[len(prepared.args)-7]

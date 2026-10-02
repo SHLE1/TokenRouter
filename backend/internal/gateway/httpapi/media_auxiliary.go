@@ -31,7 +31,7 @@ type RealtimeHTTPExecution interface {
 	CompleteRealtime(context.Context, provider.ProviderSnapshot, string, time.Duration)
 }
 
-// AuxiliaryHTTPPorts 只补充辅助入口独有的装配，不暴露供应商或存储实现。
+// AuxiliaryHTTPPorts 提供辅助 HTTP 入口的依赖。
 type AuxiliaryHTTPPorts interface {
 	MediaHTTPPorts
 	HTTPTransport(*gin.Context)
@@ -47,7 +47,7 @@ type AuxiliaryHTTPPorts interface {
 	RealtimeDialTimeout() time.Duration
 }
 
-// AuxiliaryHandler 直接拥有 Embeddings、AlphaSearch、Voice 与 Realtime 的 HTTP 契约。
+// AuxiliaryHandler 处理 Embeddings、AlphaSearch、Voice 和 Realtime 的 HTTP 请求。
 type AuxiliaryHandler struct {
 	requestLifetime
 

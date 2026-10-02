@@ -49,7 +49,7 @@ func (p identityAdminKeys) List(ctx context.Context, id int64, page, size int, s
 	return out, pagination.Total, nil
 }
 
-// provideIdentityAdmin 固定同连接参与工厂，成功提交前不发布失效。
+// provideIdentityAdmin 绑定同连接事务参与工厂，提交成功后发布缓存失效通知。
 func provideIdentityAdmin(client *dbent.Client, users *identitypostgres.UserStore, keys *keypostgres.KeyStore, groups *routingpostgres.GroupStore, rates billing.UserGroupRateRepository, rpm scheduler.UserRPMCache, settings *identityAuthSettings, subs identity.DefaultSubscriptionAssigner, balances billing.BalanceAdjuster, records *billing.RedeemAdmin, invalidator apikey.APIKeyAuthCacheInvalidator, cache *billing.Eligibility, affiliates *promotion.AffiliateService, tasks *lifecycle.Tasks) *identity.UserAdmin {
 	observe := identity.Observer{Log: logging.LegacyPrintf}
 	transactions := &identitypostgres.AdminMutations{Client: client, Users: users, Keys: keys, KeysInTx: func(tx *dbent.Tx) identity.AdminKeyParticipant { return keys.LifecycleInTx(tx) }, Observer: observe}

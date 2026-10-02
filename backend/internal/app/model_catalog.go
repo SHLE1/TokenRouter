@@ -8,8 +8,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 )
 
-// provideModelCatalogService 从同一份 bootstrap 配置投影技术参数，构造期间不启动任务。
-// 初始化、周期更新和停止继续由既有 ModelCatalogInitialization/ModelCatalogService hook 唯一管理。
+// provideModelCatalogService 从 bootstrap 配置提取模型目录服务的参数。
+// ModelCatalogInitialization 和 ModelCatalogService hook 分别负责初始化及周期更新的启停。
 func provideModelCatalogService(cfg *config.Config, remote provider.RemoteClient) (*provider.Service, error) {
 	options := provider.Options{
 		DataDir:               cfg.Pricing.DataDir,
@@ -25,7 +25,7 @@ func provideModelCatalogService(cfg *config.Config, remote provider.RemoteClient
 	return provider.NewService(options, remote), nil
 }
 
-// provideModelCatalogRemoteClient 沿用更新代理及显式直连回退配置。
+// provideModelCatalogRemoteClient 配置更新代理和直连回退开关。
 func provideModelCatalogRemoteClient(cfg *config.Config) provider.RemoteClient {
 	return provider.NewRemoteClient(cfg.Update.ProxyURL, cfg.Security.ProxyFallback.AllowDirectOnError)
 }

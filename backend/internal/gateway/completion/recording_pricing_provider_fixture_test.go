@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 )
 
-// modelCatalogFixture 显式构造尚未启动的目录输入，不复制任何生产算法或运行状态。
+// modelCatalogFixture 构造尚未启动的模型目录，供测试使用。
 type modelCatalogFixture struct {
 	pricingData map[string]*pricing.CatalogModelPricing
 }

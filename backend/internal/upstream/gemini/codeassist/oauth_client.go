@@ -15,7 +15,7 @@ type OAuthClient struct {
 	Config   func() OAuthConfig
 }
 
-// NewOAuthClient 本身不启动任务，配置由装配投影。
+// NewOAuthClient 使用调用方提供的配置读取函数创建 OAuth 客户端。
 func NewOAuthClient(config func() OAuthConfig) *OAuthClient {
 	return &OAuthClient{TokenURL: TokenURL, Config: config}
 }

@@ -108,7 +108,7 @@ func TestGetUserErrorRequestDetail_OwnershipEnforced(t *testing.T) {
 	if got != nil {
 		t.Fatalf("expected nil detail for unauthorized access, got %+v", got)
 	}
-	// 验证错误为 NotFound(不暴露存在性)
+	// 其他用户的错误记录返回 NotFound。
 	if !apperror.IsNotFound(err) {
 		t.Fatalf("expected NotFound error, got: %v", err)
 	}

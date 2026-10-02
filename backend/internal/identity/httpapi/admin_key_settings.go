@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AdminKeySettingsHandler 仅处理管理员凭据设置，不拥有通用身份或系统设置聚合。
+// AdminKeySettingsHandler 处理管理员凭据设置。
 type AdminKeySettingsHandler struct{ settingService *identity.RuntimeSettings }
 
 // NewAdminKeySettingsHandler 接入同一身份设置实例。

@@ -530,7 +530,7 @@ describe('PaymentView subscription confirmation amounts', () => {
     expect(text).toContain(convertedPrice)
     expect(text).toContain(convertedOriginalPrice)
     expect(text).not.toContain(formatPaymentAmount(9.99, 'CNY'))
-    // 换算必须使用订阅汇率（×7.15），而不是余额倍率（÷0.14 = 71.36）
+    // 订阅金额按汇率 ×7.15 换算。
     expect(text).not.toContain(formatPaymentAmount(71.36, 'CNY'))
     expect(wrapper.findAll('button').some(button => button.text().includes(convertedPrice))).toBe(true)
   })

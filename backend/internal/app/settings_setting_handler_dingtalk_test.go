@@ -36,8 +36,8 @@ func baseValidDingTalkBody() map[string]any {
 	}
 }
 
-// TestSettingsPUT_DingTalk_V3_InternalOnlyAllowsEmptyCorpID 验证方案 A：
-// internal_only + internal_corp_id="" 应通过校验（→ 200），不再是 400。
+// TestSettingsPUT_DingTalk_V3_InternalOnlyAllowsEmptyCorpID 检查 internal_only 策略下
+// internal_corp_id 为空时保存成功并返回 200。
 func TestSettingsPUT_DingTalk_V3_InternalOnlyAllowsEmptyCorpID(t *testing.T) {
 	handler, _ := newDingTalkSettingsHandler()
 
@@ -58,7 +58,7 @@ func TestSettingsPUT_DingTalk_V3_InternalOnlyAllowsEmptyCorpID(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
-// TestSettingsPUT_DingTalk_HappyPath_None 验证 none policy → 200
+// TestSettingsPUT_DingTalk_HappyPath_None 检查 none 策略下保存返回 200。
 func TestSettingsPUT_DingTalk_HappyPath_None(t *testing.T) {
 	handler, _ := newDingTalkSettingsHandler()
 
@@ -83,7 +83,7 @@ func TestSettingsPUT_DingTalk_HappyPath_None(t *testing.T) {
 	require.Equal(t, true, data["dingtalk_connect_enabled"])
 }
 
-// TestSettingsPUT_DingTalk_HappyPath_InternalOnly_WithCorpID 验证 internal_only + corp_id → 200
+// TestSettingsPUT_DingTalk_HappyPath_InternalOnly_WithCorpID 检查 internal_only 策略提供 corp_id 时返回 200。
 func TestSettingsPUT_DingTalk_HappyPath_InternalOnly_WithCorpID(t *testing.T) {
 	handler, _ := newDingTalkSettingsHandler()
 
@@ -105,7 +105,7 @@ func TestSettingsPUT_DingTalk_HappyPath_InternalOnly_WithCorpID(t *testing.T) {
 }
 
 // TestSettingsPUT_DingTalk_BypassRegistration_RoundTrip 验证 bypass_registration 字段 save+load。
-// 必须用 policy=internal_only：bypass 仅在该 policy 下生效，其它 policy 写入层会 coerce 为 false。
+// bypass_registration 在 internal_only 策略下生效，其他策略写入 false。
 func TestSettingsPUT_DingTalk_BypassRegistration_RoundTrip(t *testing.T) {
 	handler, _ := newDingTalkSettingsHandler()
 
@@ -131,9 +131,9 @@ func TestSettingsPUT_DingTalk_BypassRegistration_RoundTrip(t *testing.T) {
 	require.Equal(t, true, data["dingtalk_connect_bypass_registration"])
 }
 
-// TestSettingsPUT_DingTalk_Disabled_SkipsValidation 验证 disabled 时跳过 corp 校验 → 200。
-// 用 enabled=true 时必然触发"Client ID is required when enabled"的空 client_id 作为
-// 哨兵——只要 enabled=false 仍能 200 就证明跳过了。
+// TestSettingsPUT_DingTalk_Disabled_SkipsValidation 检查禁用钉钉时跳过企业信息校验并返回 200。
+// 测试将 client_id 留空，启用时该输入会返回 Client ID is required when enabled，
+// 禁用时保存成功。
 func TestSettingsPUT_DingTalk_Disabled_SkipsValidation(t *testing.T) {
 	handler, _ := newDingTalkSettingsHandler()
 
@@ -216,9 +216,9 @@ func TestSettingsPUT_DingTalk_SyncFlags_PolicyNone_CoercedToFalse(t *testing.T) 
 	require.Equal(t, false, data["dingtalk_connect_sync_dept"], "sync_dept must be coerced to false when policy=none")
 }
 
-// TestSettingsPUT_DingTalk_StaleWhitelist_CoercedToNone 验证升级兼容：
-// admin 直接把 corp_restriction_policy=whitelist 提交（前端 UI 已无此选项，但 API 仍可命中）
-// 不应导致 400 失败，应该被静默 coerce 为 none 后通过校验。
+// TestSettingsPUT_DingTalk_StaleWhitelist_CoercedToNone 检查兼容的 whitelist 输入：
+// 管理员通过 API 提交 corp_restriction_policy=whitelist 时，
+// 服务端将其转换为 none 后保存。
 func TestSettingsPUT_DingTalk_StaleWhitelist_CoercedToNone(t *testing.T) {
 	handler, repo := newDingTalkSettingsHandler()
 
@@ -286,7 +286,7 @@ func TestSettingsPUT_DingTalk_SyncAttrKey_RoundTrip(t *testing.T) {
 
 		body := baseValidDingTalkBody()
 		body["dingtalk_connect_corp_restriction_policy"] = "internal_only"
-		// 不传 attr key → 写入层 fallback 到默认值
+		// 省略 attr key 时，写入层使用默认值。
 		body["dingtalk_connect_sync_corp_email_attr_key"] = ""
 		body["dingtalk_connect_sync_display_name_attr_key"] = ""
 		body["dingtalk_connect_sync_dept_attr_key"] = ""

@@ -1064,7 +1064,7 @@ func TestQoderGatewayReadsWrappedSSEUpstreamError(t *testing.T) {
 	require.Equal(t, "Qoder upstream error 101: Signature invalid", apiErr.Error())
 }
 
-// qoderFixtureValue 明确验证解码夹具的类型，保留原字段断言失败语义。
+// qoderFixtureValue 检查解码夹具的类型，类型不符时终止测试。
 func qoderFixtureValue[T any](t *testing.T, raw any) T {
 	t.Helper()
 	value, ok := raw.(T)

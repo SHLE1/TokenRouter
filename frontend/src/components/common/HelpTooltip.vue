@@ -7,7 +7,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, wa
 const props = withDefaults(defineProps<{
   content?: string
   trigger?: 'hover' | 'click' | 'both' | 'manual'
-  // 手动提示由调用方控制，外部关闭时同步状态，避免下次提交无法重新打开。
+  // 手动提示跟随调用方状态，外部关闭后同步状态以供下次提交打开。
   open?: boolean
   tooltipId?: string
   placement?: 'top' | 'bottom'
@@ -200,7 +200,7 @@ onBeforeUnmount(() => {
       />
     </slot>
 
-    <!-- 挂载到 body，避免被弹窗的 overflow 裁剪 -->
+    <!-- 提示挂载到 body，脱离弹窗的 overflow 裁剪区域。 -->
     <Teleport to="body">
       <!-- before: 伪元素向下延伸一段透明区域，盖住提示框与触发图标之间的空隙，让指针能连续移入提示框。 -->
       <MotionTransition name="fade" persisted>
@@ -222,7 +222,7 @@ onBeforeUnmount(() => {
           }"
           @mouseleave="onTooltipLeave"
         >
-          <!-- 滚动只发生在内容层，避免小箭头伸出边框被 overflow 裁剪或挤出滚动条。 -->
+          <!-- 内容层独立滚动，小箭头位于滚动区域外。 -->
           <div class="relative max-h-[calc(100vh-1.5rem)] overflow-y-auto p-3 text-xs leading-relaxed">
             <button
               v-if="clickEnabled() && closable"

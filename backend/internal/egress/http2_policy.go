@@ -160,7 +160,7 @@ func (s *openAIHTTP2FallbackState) recordFailure(now time.Time, threshold int, w
 	return true, s.fallbackUntil
 }
 
-// TransportRequest 只携带一次出站执行需要的技术和策略投影。
+// TransportRequest 包含本次出站请求的传输参数和策略。
 type TransportRequest struct {
 	TLSProfile                                            *TLSFingerprintProfile
 	Headers                                               map[string]string
@@ -175,7 +175,7 @@ type TransportRequest struct {
 	Now                                                   time.Time
 }
 
-// Plan 生成实际连接池消费的策略，TLS 能力不足时保留原 HTTP/1 降级。
+// Plan 生成连接池使用的策略，TLS 能力不足时回退到 HTTP/1。
 func (p *TransportPolicy) Plan(request TransportRequest) EgressPolicy {
 	mode := p.Resolve(request.Profile, request.ProxyKey, request.ProxyScheme, request.HTTP2, request.Now)
 	if request.HasTLSProfile && mode == TransportOpenAIH2 && !request.TLSSupportsHTTP2 {

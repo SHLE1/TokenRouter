@@ -17,7 +17,7 @@ func creativeLegacyObserve(event string, values ...any) {
 	logging.L().Warn(event, fields...)
 }
 
-// creativeFundingProjection 仅绑定原生资金替身，不复制预占或捕获规则。
+// creativeFundingProjection 为创作台资金操作绑定测试存储和日志函数。
 func creativeFundingProjection(store creative.FundingStore) creative.Funding {
 	return creative.Funding{Store: store, Observe: creativeLegacyObserve}
 }

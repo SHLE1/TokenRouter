@@ -72,7 +72,7 @@ func NormalizeGroupAvailabilityProbeConfig(cfg GroupAvailabilityProbeConfig) (Gr
 	return cfg, nil
 }
 
-// NormalizeGroupAvailabilityProbeConfigForAdminWrite 将管理端输入错误转换为稳定的 HTTP 400 契约。
+// NormalizeGroupAvailabilityProbeConfigForAdminWrite 规范化探测配置，将输入错误转换为 HTTP 400。
 func NormalizeGroupAvailabilityProbeConfigForAdminWrite(cfg GroupAvailabilityProbeConfig) (GroupAvailabilityProbeConfig, error) {
 	normalized, err := NormalizeGroupAvailabilityProbeConfig(cfg)
 	if err != nil {

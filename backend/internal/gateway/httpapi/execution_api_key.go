@@ -5,7 +5,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// GetExecutionAPIKey 读取既有认证投影，不改变入口的鉴权和正文读取顺序。
+// GetExecutionAPIKey 从请求上下文读取已认证的 API Key。
 func GetExecutionAPIKey(c interface{ Get(string) (any, bool) }) *apikey.APIKey {
 	if c == nil {
 		return nil
@@ -19,7 +19,7 @@ func GetExecutionAPIKey(c interface{ Get(string) (any, bool) }) *apikey.APIKey {
 }
 
 func OpenAIClientPolicyForbiddenMessage(result providercore.CodexClientRestrictionDetectionResult) string {
-	// 按策略返回更明确的拒绝原因，同时保留旧 codex_cli_only 测试和客户端提示语义。
+	// 按客户端策略返回拒绝原因。
 	if result.Policy == providercore.OpenAIOAuthClientPolicyCodexOnly {
 		return "This provider only allows Codex official clients"
 	}

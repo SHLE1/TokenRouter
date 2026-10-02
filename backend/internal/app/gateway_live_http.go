@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// provideLiveHTTP 直接构造原生 Handler，共享原资金、并发和审核实例。
+// provideLiveHTTP 构造 Live Handler，共享资金、并发和审核实例。
 func provideLiveHTTP(source *gatewayhttp.OpenAILiveExecutor, funding *admission.FundingAdmission, concurrency *scheduler.ConcurrencyService, moderator *moderation.ContentModerationService, activity *gatewayRequestActivity) *gatewayhttp.LiveHandler {
 	ports := gatewayhttp.LivePorts{Slots: concurrency}
 	if source != nil {

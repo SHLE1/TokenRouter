@@ -95,7 +95,7 @@ func TestOpsCaptureWriter_NilInnerWriter_NoPanic(t *testing.T) {
 }
 
 // TestOpsCaptureWriter_CompactKeepaliveRestoresOriginalWriter 验证 compact 心跳停止后
-// 会恢复 Ops 中间件 writer，使外层中间件仍能读取真实响应状态。
+// 恢复 Ops 中间件 writer，供外层中间件读取响应状态。
 func TestOpsCaptureWriter_CompactKeepaliveRestoresOriginalWriter(t *testing.T) {
 	router := gin.New()
 	outerStatus := -1

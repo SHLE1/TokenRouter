@@ -1,6 +1,6 @@
 package egress
 
-// 代理状态值沿用原存储格式。
+// StatusActive 和 StatusExpired 是持久化的代理状态值。
 const (
 	StatusActive  = "active"
 	StatusExpired = "expired"

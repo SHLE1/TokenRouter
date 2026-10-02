@@ -9,13 +9,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// QoderHealthStore 只提供请求错误原有的限流与短暂过载写入。
+// QoderHealthStore 提供限流和短暂过载的写入操作。
 type QoderHealthStore interface {
 	SetRateLimited(context.Context, int64, time.Time) error
 	SetOverloaded(context.Context, int64, time.Time) error
 }
 
-// ObserveQoderUpstreamError 保留脱离请求取消的五秒写入预算及尽力失败语义。
+// ObserveQoderUpstreamError 使用独立的五秒预算尝试保存错误状态。
 func ObserveQoderUpstreamError(ctx context.Context, providerID int64, store QoderHealthStore, err error) {
 	if store == nil || err == nil {
 		return

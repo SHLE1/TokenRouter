@@ -82,7 +82,7 @@ func TestNextBackoff_InitialValueGrows(t *testing.T) {
 }
 
 func TestNextBackoff_ConvergesToMaxBackoff(t *testing.T) {
-	// 从初始值开始，经过多次退避后应收敛到 MaxBackoff 附近
+	// 从初始值反复退避后，等待间隔应接近 MaxBackoff。
 	current := InitialBackoff
 	for i := 0; i < 20; i++ {
 		current = NextBackoff(current)

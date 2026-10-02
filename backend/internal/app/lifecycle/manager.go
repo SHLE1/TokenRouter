@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-// Hook 由组合根登记。数字越小越早启动或停止；同一停止层只放互不依赖的任务。
+// Hook 由 app 登记，数字越小越早启动或停止，同一停止层的任务彼此独立。
 // 没有 Start 的 Hook 表示已经取得的资源，即使应用构造失败也需要回收。
 type Hook struct {
 	Name       string
@@ -24,8 +24,8 @@ type entry struct {
 	active bool
 }
 
-// Manager 的登记由单个组合根完成；启停后不能再注册新的应用拥有者。
-// 动态资源应由已经登记的拥有者管理，避免请求路径反向依赖生命周期实现。
+// Manager 接收 app 在启停前登记的资源和任务。
+// 动态资源由已登记的组件管理。
 type Manager struct {
 	mu        sync.Mutex
 	entries   []*entry
@@ -39,7 +39,7 @@ type Manager struct {
 	report    Reporter
 }
 
-// Reporter 记录真实启停结果；只有 Stop 返回后才发送 stopped 事件。
+// Reporter 记录启停结果，Stop 返回后才发送 stopped 事件。
 type Reporter func(name, event string, err error)
 
 // New 创建尚未启动的生命周期管理器。
@@ -128,7 +128,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop 按依赖层停止。超时后不再关闭仍被未完成任务使用的下一层资源。
+// Stop 按依赖层停止，超时后仍被未完成任务使用的资源保持打开。
 func (m *Manager) Stop(ctx context.Context) error {
 	return m.stop(ctx, false)
 }
@@ -172,7 +172,7 @@ func (m *Manager) stop(ctx context.Context, rollback bool) error {
 
 func stopEntries(ctx context.Context, entries []*entry, rollback bool, report Reporter) error {
 	if rollback {
-		// 资源先取得，worker 后启动；同类按原登记的逆序处理。
+		// 资源先取得，worker 后启动，同类资源按登记的逆序回收。
 		sort.SliceStable(entries, func(i, j int) bool {
 			return entries[i].hook.StartOrder < entries[j].hook.StartOrder
 		})
@@ -215,7 +215,7 @@ func stopEntries(ctx context.Context, entries []*entry, rollback bool, report Re
 					if r.err != nil {
 						event = "stop_failed"
 					}
-					// 日志输出也可能阻塞，不能绕过整个停止阶段的预算。
+					// 日志输出的等待时间也计入整个停止阶段的预算。
 					reported := make(chan struct{})
 					go func() { report(r.name, event, r.err); close(reported) }()
 					select {

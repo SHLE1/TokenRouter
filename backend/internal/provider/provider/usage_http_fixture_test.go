@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// newUsageContractService 原消费者契约只装配一个原生查询实例，HTTP 替身保留请求与取消断言。
+// newUsageContractService 为 HTTP 测试构造用量查询实例，传输替身记录请求和取消。
 func newUsageContractService(reader provider.UpstreamUsageReader, transport interface {
 	DoWithTLS(*http.Request, string, int64, int, *tlsfingerprint.Profile) (*http.Response, error)
 }, policy egress.UsageURLPolicy,

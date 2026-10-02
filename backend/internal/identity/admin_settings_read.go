@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/authconfig"
 )
 
-// AdminReadSettings 保留管理展示需要的凭据配置标志，公开端点使用单独的安全投影。
+// AdminReadSettings 包含身份管理设置和凭据是否已配置的标志，公开端点使用 PublicAuthSettings。
 type AdminReadSettings struct {
 	AdminSettings
 	AliyunCaptchaAccessKeySecretConfigured bool
@@ -26,7 +26,7 @@ type AdminReadSettings struct {
 	WeChatConnectOpenAppSecretConfigured   bool
 }
 
-// ReadAdminSettings 只解释同一批已读设置，保留各 provider 原有缺省及显式空值差异。
+// ReadAdminSettings 解析传入的身份设置，按各提供方规则处理缺省和空值。
 func (s *OAuthSettings) ReadAdminSettings(settings map[string]string, defaultConcurrency func() int) *AdminReadSettings {
 	emailVerifyEnabled := settings[SettingKeyEmailVerifyEnabled] == "true"
 	result := &AdminReadSettings{}

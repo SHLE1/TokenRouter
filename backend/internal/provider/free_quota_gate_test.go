@@ -95,7 +95,7 @@ func TestFilterGrokFreeQuotaProvidersStatsFailureFailsOpen(t *testing.T) {
 		return repo.calls >= 1
 	}, 2*time.Second, 10*time.Millisecond)
 	waitGrokFreeQuotaTestGate(t, scheduler.gate)
-	// 负缓存条目使后续热点调用保持失败开放，同时避免频繁刷新。
+	// 负缓存命中时继续放行，缓存有效期内复用查询失败的结果。
 	filtered = scheduler.filterGrokFreeQuotaProviders(context.Background(), providers)
 	require.Equal(t, []int64{1}, providerIDs(filtered))
 	require.Equal(t, 1, repo.calls)
@@ -205,7 +205,7 @@ func TestGrokFreeQuotaGateIsSchedulerOnlyAdminPathUnfiltered(t *testing.T) {
 func TestSweepGrokFreeQuotaGateCacheDropsStaleEntries(t *testing.T) {
 	now := time.Now().UTC()
 	cacheTTL := 5 * time.Second
-	// maxAge 下限为 grokFreeQuotaGateCacheMinSweepAge，而不是 cacheTTL 的 20 倍。
+	// maxAge 的下限为 grokFreeQuotaGateCacheMinSweepAge。
 	var cache sync.Map
 	cache.Store(int64(1), grokFreeQuotaGateCacheEntry{tokens: 10, checkedAt: now, known: true})
 	cache.Store(int64(2), grokFreeQuotaGateCacheEntry{tokens: 20, checkedAt: now.Add(-time.Minute), known: true})
@@ -237,7 +237,7 @@ func TestFilterGrokFreeQuotaProvidersEvictsDepartedProviders(t *testing.T) {
 	}}
 	runtime := newQuotaTestRuntime(repo)
 	cache := &runtime.gate.cache
-	// 提供商 99 很久以前参与过调度，当前不再出现在任何批次中。
+	// 提供商 99 曾参与调度，当前批次已将其排除。
 	// 查询其他提供商后，其条目不得继续保留。
 	cache.Store(int64(99), grokFreeQuotaGateCacheEntry{tokens: 5, checkedAt: time.Now().UTC().Add(-2 * time.Hour), known: true})
 
@@ -263,7 +263,7 @@ func providerIDs(providers []Record) []int64 {
 	return ids
 }
 
-// 夹具只将提供商资格投影给真实门禁，并按原顺序还原结果。
+// 夹具将提供商资格传给免费额度检查器，并按输入顺序返回结果。
 type quotaTestRuntime struct{ gate *FreeQuotaGate }
 
 func newQuotaTestRuntime(repo *grokFreeQuotaUsageRepoStub) *quotaTestRuntime {
@@ -294,7 +294,7 @@ func (r *quotaTestRuntime) filterGrokFreeQuotaProviders(_ context.Context, value
 	return result
 }
 
-// waitGrokFreeQuotaTestGate 修改缓存前等待原生刷新退出，避免测试自身与后台状态竞争。
+// waitGrokFreeQuotaTestGate 等待后台刷新退出后再修改测试缓存。
 func waitGrokFreeQuotaTestGate(t *testing.T, gate *FreeQuotaGate) {
 	t.Helper()
 	require.Eventually(t, func() bool {

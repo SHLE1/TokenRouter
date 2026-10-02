@@ -15,7 +15,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// Created 只返回公共响应和选中提供商标识，不携带凭据或旧提供商实体。
+// Created 保存公共响应和选中提供商的标识。
 type Created struct {
 	SDP        []byte
 	CallID     string
@@ -23,7 +23,7 @@ type Created struct {
 	ProviderID int64
 }
 
-// CreateTarget 提供一次选号的模型投影、客户端资格和供应商交换。
+// CreateTarget 提供本次选择的模型数据、客户端资格和供应商请求操作。
 type CreateTarget interface {
 	ResolveModel(context.Context, string) (string, string, error)
 	AllowsClient(context.Context, session.LiveCallIdentity) bool
@@ -39,7 +39,7 @@ type Candidate struct {
 	Target      CreateTarget
 }
 
-// CreatePorts 注入凭据、选路和观测能力，不包含资金或提供商业务实体。
+// CreatePorts 提供凭据、选路和观测操作。
 type CreatePorts interface {
 	PrepareAttestation(context.Context) (string, string, error)
 	Select(context.Context, *int64, string, map[int64]struct{}) (*Candidate, error)
@@ -216,7 +216,7 @@ func (s *Creator) Create(
 	return nil, session.ErrLiveUnavailable
 }
 
-// cloneModelMapping 保留旧入口将 nil 映射序列化为空对象的行为。
+// cloneModelMapping 复制模型映射，nil 输入转换为空对象。
 func cloneModelMapping(mapping map[string]string) map[string]string {
 	result := make(map[string]string, len(mapping))
 	maps.Copy(result, mapping)

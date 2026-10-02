@@ -40,8 +40,7 @@ func TestSanitizeOpenAIResponsesToolParameterTypes_TopLevelFunctionTool(t *testi
 	require.Equal(t, "Reply with OK.", gjson.GetBytes(sanitized, "input").String())
 }
 
-// TestSanitizeOpenAIResponsesToolParameterTypes_ValidSchemaUntouched 验证合法 Schema 必须原样返回：changed=false 且字节不变，避免无谓重写打散
-// prompt cache 前缀。
+// TestSanitizeOpenAIResponsesToolParameterTypes_ValidSchemaUntouched 检查合法 Schema 返回 changed=false 和原字节，保留 prompt cache 前缀。
 func TestSanitizeOpenAIResponsesToolParameterTypes_ValidSchemaUntouched(t *testing.T) {
 	body := []byte(`{"tools":[{"type":"function","name":"ok","parameters":{"type":"object","properties":{}}}]}`)
 
@@ -52,7 +51,7 @@ func TestSanitizeOpenAIResponsesToolParameterTypes_ValidSchemaUntouched(t *testi
 	require.Equal(t, string(body), string(sanitized))
 }
 
-// TestSanitizeOpenAIResponsesToolParameterTypes_MissingTypeNotInvented 验证缺失 type 的 Schema 本身合法（等价于不约束），不得补写——补写会收窄客户端语义。
+// TestSanitizeOpenAIResponsesToolParameterTypes_MissingTypeNotInvented 检查缺失 type 的 Schema 保持原样，缺失表示允许任意类型。
 func TestSanitizeOpenAIResponsesToolParameterTypes_MissingTypeNotInvented(t *testing.T) {
 	body := []byte(`{"tools":[{"type":"function","name":"ok","parameters":{"properties":{}}}]}`)
 
@@ -286,7 +285,7 @@ func TestSanitizeOpenAIResponsesToolParameterTypes_MalformedShapesAreNoOps(t *te
 	}
 }
 
-// TestSanitizeOpenAIResponsesToolParameterTypes_DepthGuard 验证递归深度守卫：超深嵌套只做截断，不递归到栈溢出，也不报错。
+// TestSanitizeOpenAIResponsesToolParameterTypes_DepthGuard 检查超深嵌套在深度上限处停止处理并成功返回。
 func TestSanitizeOpenAIResponsesToolParameterTypes_DepthGuard(t *testing.T) {
 	tool := map[string]any{"type": "function", "name": "deep", "parameters": map[string]any{"type": nil}}
 	for i := 0; i < 12; i++ {
@@ -301,7 +300,7 @@ func TestSanitizeOpenAIResponsesToolParameterTypes_DepthGuard(t *testing.T) {
 	})
 }
 
-// TestSanitizeOpenAIResponsesToolParameterTypes_OutputStaysValidJSON 验证输出必须是合法 JSON，且除目标字段外与输入等价。
+// TestSanitizeOpenAIResponsesToolParameterTypes_OutputStaysValidJSON 检查输出为合法 JSON，目标字段之外的内容与输入相同。
 func TestSanitizeOpenAIResponsesToolParameterTypes_OutputStaysValidJSON(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.5","tool_choice":"none","store":false,"tools":[{"type":"function","name":"automation_update","parameters":{"type":null,"properties":{}}}]}`)
 
@@ -317,7 +316,7 @@ func TestSanitizeOpenAIResponsesToolParameterTypes_OutputStaysValidJSON(t *testi
 }
 
 // TestSanitizeOpenAIResponsesToolParameterTypes_DoesNotMutateInputBody 验证输入 body 是调用方持有的缓冲区（Forward 里 canonicalImageIntentBody 与它同源），
-// 净化必须返回新切片，绝不能就地改写。
+// 净化返回新切片，输入切片保留原字节。
 func TestSanitizeOpenAIResponsesToolParameterTypes_DoesNotMutateInputBody(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.6-sol","tools":[{"type":"function","name":"a","parameters":{"type":null}}]}`)
 	original := append([]byte(nil), body...)
@@ -490,7 +489,7 @@ func buildToolSchemaNullTypeBody(t *testing.T, hits int) []byte {
 	return body
 }
 
-// TestSanitizeOpenAIResponsesToolParameterTypes_RewriteCountIndependentOfHits 验证复杂度守卫：重写次数必须与命中数无关。
+// TestSanitizeOpenAIResponsesToolParameterTypes_RewriteCountIndependentOfHits 检查命中数增加时，重写次数保持固定。
 //
 // 逐个 sjson.SetBytes 的写法每命中一处就重扫并全量拷贝一次文档，命中 N 处即 N 次
 // 全量拷贝；/v1/responses 的 body 上限是 gateway.max_body_size（默认 256MB），

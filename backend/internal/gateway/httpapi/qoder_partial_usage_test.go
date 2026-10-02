@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// TestQoderPartialUsageOnError 验证联合验证 Qoder 的真实输出、已观测 usage 与失败结果。
+// TestQoderPartialUsageOnError 检查 Qoder 失败时的输出和已观测 usage。
 func TestQoderPartialUsageOnError(t *testing.T) {
 	body := qoderWrappedSSELineForTest(t, map[string]any{"choices": []any{map[string]any{"delta": map[string]any{"content": "served"}}}}) + qoderWrappedSSELineForTest(t, map[string]any{"usage": map[string]any{"prompt_tokens": 12, "completion_tokens": 3, "total_tokens": 15}}) + qoderWrappedErrorSSELineForTest(t, 502, map[string]any{"code": "500", "message": "local fixture upstream failure"})
 	writers := map[string]func(context.Context, *gin.Context, *http.Response) (*qoder.QoderStreamResult, error){

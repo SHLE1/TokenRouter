@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// NormalizeNativeProtocols 在显式候选投影上校验并按目录排序，空集合保持为空。
+// NormalizeNativeProtocols 校验候选提供商的协议并按目录排序，空集合保持为空。
 func NormalizeNativeProtocols(provider ProviderProtocols) ([]ProtocolID, error) {
 	options := NativeProtocolOptions(provider.Platform, provider.Type, provider.AuthMode)
 	seen := make(map[ProtocolID]bool)
@@ -24,7 +24,7 @@ func NormalizeNativeProtocols(provider ProviderProtocols) ([]ProtocolID, error) 
 	return normalized, nil
 }
 
-// ValidateProtocolFallbacks 只接受已有的一跳转换边，不执行隐式多级搜索。
+// ValidateProtocolFallbacks 检查每个回退是否存在对应的单步转换。
 func ValidateProtocolFallbacks(_ string, fallbacks map[ProtocolID][]ProtocolID) error {
 	for source, targets := range fallbacks {
 		if !slices.Contains(canonicalGroupClientProtocols, source) {

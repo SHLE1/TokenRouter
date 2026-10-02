@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider/httpapi/dto"
 )
 
-// RuntimePresenter 只执行管理 DTO 与母提供商展示投影；查询和阈值由提供商用例处理。
+// RuntimePresenter 将运行数据和母提供商信息转换为管理 DTO，查询和阈值计算由提供商用例执行。
 type RuntimePresenter struct {
 	status  *provider.RuntimeStatusReader
 	parents interface {
@@ -50,7 +50,7 @@ func EnrichShadowParentInfo(items []ProviderWithConcurrency, parents map[int64]*
 	}
 }
 
-// EnrichShadowParents 收集本批影子行的母提供商 ID、一次批量解析（避免 N+1），再回填。
+// EnrichShadowParents 收集本批影子的母提供商 ID，批量查询后回填展示数据。
 // 解析失败时不报错（parent_* 留空，降级）。
 func (p *RuntimePresenter) EnrichShadowParents(ctx context.Context, items []ProviderWithConcurrency) {
 	seen := make(map[int64]struct{})
@@ -79,7 +79,7 @@ func (p *RuntimePresenter) EnrichShadowParents(ctx context.Context, items []Prov
 	EnrichShadowParentInfo(items, pmap)
 }
 
-// Project 只转换已取得的运行观察，不增加查询或改变列表批量语义。
+// Project 将已读取的运行状态转换为管理展示字段。
 func (p *RuntimePresenter) Project(state provider.RuntimeStatus) ProviderWithConcurrency {
 	item := ProviderWithConcurrency{Provider: dto.ProviderFromRecord(state.Record), CurrentConcurrency: state.CurrentConcurrency, CurrentWindowCost: state.CurrentWindowCost, ActiveSessions: state.ActiveSessions, CurrentRPM: state.CurrentRPM, SchedulerScore: state.SchedulerScore, SchedulerScores: state.SchedulerScores}
 	if item.Provider == nil {

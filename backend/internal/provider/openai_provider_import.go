@@ -64,7 +64,7 @@ func (s *OpenAIProviderImport) RefreshProvider(ctx context.Context, providerID i
 		return nil, &OpenAIProviderInputError{Message: "Cannot refresh non-OAuth provider credentials"}
 	}
 
-	// spark 影子提供商凭据透传母提供商、自身恒空,刷新无意义;在调用上游前早拒,避免先打上游
+	// Spark 影子使用母提供商凭据，刷新请求需要指定母提供商。
 	// 再被凭据写守卫拦下的无谓副作用。
 	if provider.IsCredentialShadow() {
 		return nil, &OpenAIProviderInputError{Message: "Cannot refresh spark shadow provider; its credentials are managed by the parent provider"}
@@ -140,7 +140,7 @@ func (s *OpenAIProviderImport) CreateOAuthProvider(ctx context.Context, req Open
 
 	var extra map[string]any
 	if req.TLSFingerprintRouterID != nil && *req.TLSFingerprintRouterID > 0 {
-		// 保留提供商与 TLS Router 的绑定，确保后续后台 refresh token 也能使用同一套 token 指纹配置。
+		// 保持提供商与 TLS Router 的绑定，后台刷新使用同一套 token 指纹配置。
 		extra = map[string]any{
 			"tls_fingerprint_router_id": *req.TLSFingerprintRouterID,
 		}

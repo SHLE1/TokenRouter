@@ -2,7 +2,7 @@ package provider
 
 import "github.com/TokenFlux/TokenRouter/internal/provider"
 
-// ManagedRefreshCacheKey 保持管理、后台及请求入口共享原有平台命名空间。
+// ManagedRefreshCacheKey 为管理、后台和请求刷新返回同一平台命名空间的缓存键。
 func ManagedRefreshCacheKey(value *provider.Record) string {
 	if value.IsQoderCosy() {
 		return provider.QoderTokenCacheKey(value)

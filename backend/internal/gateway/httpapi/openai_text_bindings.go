@@ -24,7 +24,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// OpenAITextBindings 只绑定原生资源和明确用例端口，不持有旧聚合 Handler。
+// OpenAITextBindings 提供文本入口的资源和用例接口。
 type OpenAITextBindings struct {
 	ClientVersions      func(context.Context) (string, string)
 	ClientGroupFallback ClientGroupFallbackResolver
@@ -43,7 +43,7 @@ type OpenAITextBindings struct {
 }
 type openAITextHTTPBackend struct{ bindings OpenAITextBindings }
 
-// NewBoundOpenAITextHandler 将固定原生端口与唯一执行器组合为 HTTP 入口。
+// NewBoundOpenAITextHandler 将资源、用例接口和执行器绑定到 HTTP 入口。
 func NewBoundOpenAITextHandler(options OpenAITextOptions, bindings OpenAITextBindings, prompt MessagesPrompt, executor execution.Executor) *OpenAITextHandler {
 	return NewOpenAITextHandler(options, openAITextHTTPBackend{bindings}, prompt, executor)
 }
@@ -262,7 +262,7 @@ func (p openAITextHTTPBackend) EnsureFallback(c *gin.Context, started bool) bool
 	return DefaultOpenAIErrorOutput().EnsureFallback(c, started)
 }
 
-// openAITextModerationProtocol 审核的历史标识与协议 ID 不同，必须在边界显式投影。
+// openAITextModerationProtocol 将协议 ID 转换为审核使用的标识。
 func openAITextModerationProtocol(proto protocol.ProtocolID) string {
 	switch proto {
 	case protocol.ProtocolAnthropicMessages:
@@ -274,12 +274,12 @@ func openAITextModerationProtocol(proto protocol.ProtocolID) string {
 	}
 }
 
-// MarkStreamFailure 与普通流错误分别保留 SLA 口径。
+// MarkStreamFailure 标记流失败，供 SLA 统计区分普通流错误。
 func (p openAITextHTTPBackend) MarkStreamFailure(c *gin.Context, kind, code, message string, status int) {
 	MarkOpsStreamFailure(c, kind, code, message, status)
 }
 
-// PrepareMessages 在选号之前绑定原生客户端资格，避免混合调度绕过 Claude Code 限制。
+// PrepareMessages 在选择提供商前检查客户端资格，混合调度也受 Claude Code 限制。
 func (p openAITextHTTPBackend) PrepareMessages(c *gin.Context, body []byte) error {
 	return PrepareMessageClientContext(c, body, p.bindings.ClientVersions)
 }

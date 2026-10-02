@@ -16,7 +16,7 @@ const (
 	OpenAI429QuotaReset
 )
 
-// OpenAIExhaustedWindow 保留 7d 优先、缺少重置仍视为耗尽的原语义。
+// OpenAIExhaustedWindow 优先判断 7d 窗口，缺少重置时间的满额窗口也视为耗尽。
 func OpenAIExhaustedWindow(snapshot *openaiprotocol.OpenAICodexUsageSnapshot, clock func() time.Time) (OpenAI429Disposition, *time.Time) {
 	if snapshot == nil {
 		return OpenAI429Transient, nil

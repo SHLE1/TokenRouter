@@ -30,7 +30,7 @@ export const FILTER_FIELD_KEY: InjectionKey<FilterFieldContext> = Symbol('filter
 
 const isBlank = (value: unknown) => value === null || value === undefined || value === ''
 
-// 只有第一项是空值或 'all' 时才把它当作“全部”，否则按空值判断，避免误把真实选项当成默认值。
+// 首项为空值或 all 时视为“全部”，其他情况用 null 表示空选项。
 export function resolveEmptyValue(firstOptionValue: unknown): unknown {
   return isBlank(firstOptionValue) || firstOptionValue === 'all' ? firstOptionValue : null
 }

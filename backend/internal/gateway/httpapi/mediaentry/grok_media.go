@@ -49,7 +49,7 @@ func (h *Runtime) resolveCompositeGrokVideoAPIKey(
 	return &selected, owner.ProviderID, nil
 }
 
-// grokMediaRequiredCapability 仅限制新的媒体生成请求，状态查询必须保持可路由。
+// grokMediaRequiredCapability 返回新媒体生成请求的能力限制，状态查询使用任务绑定路由。
 func grokMediaRequiredCapability(endpoint grok.GrokMediaEndpoint) providercore.OpenAIEndpointCapability {
 	if endpoint.IsGenerationRequest() {
 		return providercore.OpenAIEndpointCapabilityGrokMediaGeneration
@@ -198,7 +198,7 @@ func recordGrokMediaUsage(
 	})
 }
 
-// grokVideoObserver 保留原日志字段，完成资格与认领由 media 拥有。
+// grokVideoObserver 记录视频任务日志，media 判断完成资格并认领结算。
 type grokVideoObserver struct{ log *zap.Logger }
 
 func (o grokVideoObserver) ObserveVideo(n gatewaymedia.VideoNotice) {

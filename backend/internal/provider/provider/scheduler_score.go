@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// SchedulerScoreOptions 复用共享反馈与动态参数，投影不携带凭据进入评分核心。
+// SchedulerScoreOptions 绑定共享的调度反馈和动态参数。
 func SchedulerScoreOptions(concurrency *scheduler.ConcurrencyService, stats *scheduler.RuntimeStats, effective func(context.Context, *accessview.GroupConfig) policy.EffectiveSettings) provider.SchedulerScoreOptions {
 	out := provider.SchedulerScoreOptions{Warn: slog.Warn, Score: func(ctx context.Context, group *accessview.GroupConfig, values []*provider.Record, load map[int64]*provider.SchedulerLoad) map[int64]provider.ProviderSchedulerScore {
 		projected := make([]*scheduler.ScoreProvider, len(values))

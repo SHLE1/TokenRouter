@@ -16,7 +16,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// AsResponses 拥有请求转换、获取凭据和响应推进的原有顺序。
+// AsResponses 依次转换请求、取得凭据、调用上游并输出 Responses 响应。
 func AsResponses(ctx context.Context, p ConversionPorts, in ConversionInput, body []byte) (*Result, error) {
 	startTime := time.Now()
 
@@ -58,7 +58,7 @@ func AsResponses(ctx context.Context, p ConversionPorts, in ConversionInput, bod
 	if anthropicReq.OutputConfig != nil {
 		reasoningEffort = protocolcore.NormalizeClaudeOutputEffort(anthropicReq.OutputConfig.Effort)
 	}
-	// 国产模型没有显式 effort 档位时，thinking 启用后补默认展示值。
+	// 国产模型缺少请求 effort 时，thinking 开启后补入默认展示档位。
 	reasoningEffort = p.ThinkingFallback(reasoningEffort, body, mappedModel)
 	anthropicReq.Model = mappedModel
 
@@ -69,10 +69,8 @@ func AsResponses(ctx context.Context, p ConversionPorts, in ConversionInput, bod
 		return nil, fmt.Errorf("marshal anthropic request: %w", err)
 	}
 
-	// OpenAI Responses 协议进来的请求永远不是 Claude Code 客户端，所以对 OAuth 提供商
-	// 必须完整执行 /v1/messages 主路径上的伪装链路（system 重写 + normalize + metadata 注入），
-	// 否则会被 Anthropic 判为第三方应用并扣 extra usage。
-	// 见 applyClaudeCodeOAuthMimicryToBody 的 godoc。
+	// Responses 入口的 OAuth 转发执行与 Messages 相同的 system 改写、规范化和 metadata 注入。
+	// Anthropic 按客户端身份区分订阅额度和 extra usage，身份处理见 applyClaudeCodeOAuthMimicryToBody。
 	shouldMimicClaudeCode := in.OAuth
 
 	if shouldMimicClaudeCode {
@@ -128,7 +126,7 @@ func AsResponses(ctx context.Context, p ConversionPorts, in ConversionInput, bod
 	return result, handleErr
 }
 
-// AsChat 拥有请求转换、获取凭据和响应推进的原有顺序。
+// AsChat 依次转换请求、取得凭据、调用上游并输出 Chat 响应。
 func AsChat(ctx context.Context, p ConversionPorts, in ConversionInput, body []byte) (*Result, error) {
 	startTime := time.Now()
 
@@ -167,10 +165,8 @@ func AsChat(ctx context.Context, p ConversionPorts, in ConversionInput, body []b
 		return nil, fmt.Errorf("marshal anthropic request: %w", err)
 	}
 
-	// Chat Completions 协议进来的请求永远不是 Claude Code 客户端，所以对 OAuth 提供商
-	// 必须完整执行 /v1/messages 主路径上的伪装链路（system 重写 + normalize + metadata 注入），
-	// 否则会被 Anthropic 判为第三方应用并扣 extra usage。
-	// 见 applyClaudeCodeOAuthMimicryToBody 的 godoc。
+	// Chat Completions 入口的 OAuth 转发执行与 Messages 相同的 system 改写、规范化和 metadata 注入。
+	// Anthropic 按客户端身份区分订阅额度和 extra usage，身份处理见 applyClaudeCodeOAuthMimicryToBody。
 	shouldMimicClaudeCode := in.OAuth
 
 	if shouldMimicClaudeCode {
@@ -216,7 +212,7 @@ func AsChat(ctx context.Context, p ConversionPorts, in ConversionInput, body []b
 	if anthropicReq.OutputConfig != nil {
 		reasoningEffort = protocolcore.NormalizeClaudeOutputEffort(anthropicReq.OutputConfig.Effort)
 	}
-	// 国产模型没有显式 effort 档位时，thinking 启用后补默认展示值。
+	// 国产模型缺少请求 effort 时，thinking 开启后补入默认展示档位。
 	reasoningEffort = p.ThinkingFallback(reasoningEffort, body, mappedModel)
 
 	var result *Result

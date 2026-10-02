@@ -1644,7 +1644,7 @@ func (w *qoderFailingHTTPWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p)
 }
 
-// qoderFixtureValue 明确验证解码夹具的类型，保留原字段断言失败语义。
+// qoderFixtureValue 检查解码夹具的类型，类型不符时使断言失败。
 func qoderFixtureValue[T any](t *testing.T, raw any) T {
 	t.Helper()
 	value, ok := raw.(T)
@@ -1652,7 +1652,7 @@ func qoderFixtureValue[T any](t *testing.T, raw any) T {
 	return value
 }
 
-// qoderEventResponse 将事件夹具编码为真实上游报文，输出转换仍由生产流式入口执行。
+// qoderEventResponse 将事件夹具编码为上游报文，生产流式入口执行输出转换。
 func qoderEventResponse(t *testing.T, events []qoder.SSEEvent) *http.Response {
 	t.Helper()
 	var body strings.Builder
@@ -1694,7 +1694,7 @@ func qoderEventResponse(t *testing.T, events []qoder.SSEEvent) *http.Response {
 	return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body.String()))}
 }
 
-// writeQoderOpenAIEvents 通过真实响应解析和转换入口验证事件夹具。
+// writeQoderOpenAIEvents 将事件夹具交给响应解析和转换函数。
 func writeQoderOpenAIEvents(t *testing.T, c *upstream.OutputContext, model string, events []qoder.SSEEvent, mappers ...qoder.QoderToolNameMapper) error {
 	t.Helper()
 	options := []qoder.QoderOpenAIStreamResponseOption{qoder.QoderOpenAIStreamIncludeUsage(true)}

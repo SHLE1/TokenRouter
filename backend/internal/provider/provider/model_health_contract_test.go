@@ -353,14 +353,14 @@ func openAICodexPlanGatedOAuthProvider() *providercore.Record {
 	}
 }
 
-// newModelHealthObserver 测试直接组合生产观测入口；此处只提供固定依赖和请求输入投影。
+// newModelHealthObserver 为生产观测入口绑定测试依赖和请求输入。
 func newModelHealthObserver(repo *modelNotFoundProviderRepoStub) *UpstreamHealth {
 	core := providercore.NewHealthService(repo, nil, providercore.HealthOptions{})
 	models := &ModelHealth{Health: core, IsImageModel: media.IsGPTImageGenerationModel}
 	return &UpstreamHealth{Core: core, Models: models, Limits: &RateLimitObserver{Health: core}}
 }
 
-// healthTestObservation 保留旧请求意图的输入，观测用例接收显式字段且不反向读取 Context。
+// healthTestObservation 将测试请求的模型意图转换为观测字段。
 func healthTestObservation(ctx context.Context, status int, headers http.Header, body []byte, models ...string) HealthObservation {
 	input := HealthObservation{Status: status, Headers: headers, Body: body, ModelProvided: len(models) > 0, ImagesEndpoint: requeststate.OpenAIImagesEndpointFromContext(ctx)}
 	if len(models) > 0 {

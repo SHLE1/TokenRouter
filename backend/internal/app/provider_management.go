@@ -43,7 +43,7 @@ func provideProviderManagement(admin *provider.Admin, presenter *providerhttp.Ru
 	}})
 }
 
-// provideAdminModelCatalog 每次读取平台快照，不构造第二份目录缓存。
+// provideAdminModelCatalog 在每次查询时读取平台快照。
 func provideAdminModelCatalog() *routing.AdminCatalog {
 	return routing.NewAdminCatalog(routingprovider.AdminCatalogOptions())
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Agent 工具循环只审核模型调用后返回的工具结果，不重复审核发起工具调用的历史用户消息。
+// Agent 工具循环审核本轮模型调用返回的工具结果，提取时跳过历史用户消息。
 
 func TestExtractContentModerationInput_AnthropicAgentToolLoopExtractsToolResult(t *testing.T) {
 	body := []byte(`{

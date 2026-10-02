@@ -6,7 +6,7 @@ import (
 	"github.com/google/wire"
 )
 
-// 创作与批量任务的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
+// tasksAssemblyProviders 汇总 tasks 模块的 Wire provider。
 var tasksAssemblyProviders = wire.NewSet(
 	provideTaskActivity,
 	provideCreativePublic,

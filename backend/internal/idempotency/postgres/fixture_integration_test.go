@@ -17,7 +17,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-// idempotencyTestTx 保留原逐测试回滚边界，在隔离 PostgreSQL 应用真实迁移。
+// idempotencyTestTx 在隔离 PostgreSQL 中应用迁移，并为每个测试创建结束时回滚的事务。
 func idempotencyTestTx(t *testing.T) *sql.Tx {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)

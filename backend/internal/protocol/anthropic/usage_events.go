@@ -85,10 +85,8 @@ func ParseSSEUsagePassthrough(data string, usage *protocol.TokenUsage) {
 		}
 	}
 
-	// Kimi 的 Anthropic 兼容流对 input_tokens 有两种含义：message_start 报告完整
-	// prompt 输入，message_delta 只报告未缓存输入；prompt_tokens 在两类事件中都
-	// 是总量。这里归一化为 protocol.TokenUsage 的互斥计费桶，避免从已是未缓存值的输入中
-	// 再次扣除缓存 token。
+	// Kimi 的 Anthropic 兼容流在 message_start 中用 input_tokens 表示总输入，在 message_delta 中表示未缓存输入。
+	// prompt_tokens 在两类事件中都表示总量，此处据此转换为 TokenUsage 中各自独立的计费桶。
 	usageNode := parsed.Get("usage")
 	if parsed.Get("type").String() == "message_start" {
 		usageNode = parsed.Get("message.usage")

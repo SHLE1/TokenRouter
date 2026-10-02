@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ProviderReportOptions 提供详细用量的只读投影，HTTP 不接触仓储。
+// ProviderReportOptions 提供详细用量查询函数。
 type ProviderReportOptions struct {
 	Now        func() time.Time
 	StartOfDay func(time.Time) time.Time
@@ -28,7 +28,7 @@ func (h *ManagementHandler) GetStats(c *gin.Context) {
 		return
 	}
 
-	// 保留 1—90 天的请求范围与默认 30 天。
+	// 请求范围为 1 到 90 天，默认 30 天。
 	days := 30
 	if daysStr := c.Query("days"); daysStr != "" {
 		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 && d <= 90 {

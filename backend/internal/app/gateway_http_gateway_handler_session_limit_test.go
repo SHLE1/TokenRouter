@@ -37,7 +37,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 记录真实 handler 链路对会话缓存的操作，不在测试中重写成功/失败的释放判断。
+// 记录 handler 对会话缓存的操作，释放判断由调度和请求完成处理执行。
 type gatewaySessionLimitCacheStub struct {
 	testutil.StubSessionLimitCache
 	registered   map[int64][]string
@@ -83,7 +83,7 @@ func gatewaySessionResponse(status int, stream bool) *http.Response {
 	return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": {contentType}}, Body: io.NopCloser(strings.NewReader(body))}
 }
 
-// newGatewaySessionLimitFixture 使用真实调度、Forward 和 handler 收尾，只替换外部上游、Redis 与账单依赖。
+// newGatewaySessionLimitFixture 使用调度、Forward 和 handler 的完成处理，外部上游、Redis 和账单依赖使用替身。
 func newGatewaySessionLimitFixture(t *testing.T, providerType string, failover bool, upstream *gatewaySessionUpstreamStub) (*messageEndpointsFixture, *apikey.APIKey, *gatewaySessionLimitCacheStub) {
 	t.Helper()
 	groupID := int64(11)

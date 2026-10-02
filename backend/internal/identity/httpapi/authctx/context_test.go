@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestPrincipalOwnsLegacyProjection 防止旧 Gin 展示字段成为第二份可变认证来源。
+// TestPrincipalOwnsLegacyProjection 检查认证主体与 Gin 展示字段使用独立数据。
 func TestPrincipalOwnsLegacyProjection(t *testing.T) {
 	c, _ := gin.CreateTestContext(nil)
 	principal := identity.Principal{UserID: 7, Role: "user", SessionID: "session-1", CredentialKind: "jwt"}

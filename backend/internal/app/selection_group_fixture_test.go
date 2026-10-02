@@ -8,7 +8,7 @@ import (
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 )
 
-// selectionGroupFixture 给旧的单平台仓储替身补齐批量平台查询与关系投影，选号仍执行生产策略。
+// selectionGroupFixture 为单平台存储替身提供批量平台查询和分组关系，选号使用生产策略。
 // 源记录已有分组时原样保留，防止掩盖组外提供商拒绝测试。
 type selectionGroupFixture struct {
 	gatewayadapter.ExecutionProviderStore

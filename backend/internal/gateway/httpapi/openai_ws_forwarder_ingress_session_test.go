@@ -1286,7 +1286,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	require.Equal(t, "resp_passthrough_turn_1", gjson.GetBytes(event, "response.id").String())
 	require.Equal(t, "client-turn-1", gjson.GetBytes(event, "response.model").String())
 
-	// 首轮仍在流式输出时更新下一轮会话模型，首轮终态必须继续使用自己的 R/C/U 快照。
+	// 首轮流式输出期间更新下一轮模型，首轮终态使用首轮的 R/C/U 快照。
 	sessionWriteCtx, cancelSessionWrite := context.WithTimeout(context.Background(), 3*time.Second)
 	err = clientConn.Write(sessionWriteCtx, coderws.MessageText, []byte(`{"type":"session.update","session":{"model":"client-turn-2"}}`))
 	cancelSessionWrite()
@@ -1315,8 +1315,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 
 	select {
 	case serverErr := <-serverErrCh:
-		// After normal client close, the server goroutine may receive the close frame
-		// as an error — this is expected behavior, not a test failure.
+		// 客户端正常关闭后，服务端 goroutine 可能以错误形式收到关闭帧，测试接受该结果。
 		if serverErr != nil {
 			require.Contains(t, serverErr.Error(), "StatusNormalClosure",
 				"server error should only be a normal close frame, got: %v", serverErr)
@@ -1353,7 +1352,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	require.Len(t, upstreamConn.writes, 3, "passthrough 模式应转发两轮 response.create 和一次 session.update")
 	require.Equal(t, "upstream-turn-1", fmt.Sprint(upstreamConn.writes[0]["model"]))
 	require.Equal(t, false, upstreamConn.writes[0]["parallel_tool_calls"])
-	// session.update 必须保留对象结构，并把第二轮请求模型替换为上游模型。
+	// session.update 保留对象结构，并将第二轮请求模型替换为上游模型。
 	secondTurnSession, ok := upstreamConn.writes[1]["session"].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, "upstream-turn-2", fmt.Sprint(secondTurnSession["model"]))
@@ -4323,7 +4322,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	firstTurn := readMessage()
 	require.Equal(t, "resp_turn_prev_once_1", gjson.GetBytes(firstTurn, "response.id").String())
 
-	// duplicate previous_response_id: 恢复重试时应删除所有重复键，避免再次 previous_response_not_found。
+	// 恢复重试删除全部重复的 previous_response_id 键，否则会再次触发 previous_response_not_found。
 	writeMessage(`{"type":"response.create","model":"gpt-5.1","stream":false,"previous_response_id":"resp_turn_prev_once_1","input":[],"previous_response_id":"resp_turn_prev_duplicate"}`)
 	secondTurn := readMessage()
 	require.Equal(t, "resp_turn_prev_once_2", gjson.GetBytes(secondTurn, "response.id").String())

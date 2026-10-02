@@ -19,8 +19,8 @@ func (a ProtocolTarget) GetOpenAIBaseURL() string {
 	return a.OpenAIBaseURL(a.IsAdaptiveAPIProtocol())
 }
 
-// GetAPIProtocol 为原有平台适配器提供协议变体：请求副本使用已解析目标，
-// 统一提供商的地址/维护流程使用分协议模式，旧对象继续保留历史读取默认值。
+// GetAPIProtocol 返回供应商协议变体，请求副本使用已解析的目标，
+// 配置了协议集合的提供商使用分协议模式，历史数据使用对应的读取默认值。
 func (a ProtocolTarget) GetAPIProtocol() string {
 	if a.Record != nil && a.Protocol != "" {
 		switch a.Protocol {
@@ -37,7 +37,7 @@ func (a ProtocolTarget) GetAPIProtocol() string {
 }
 
 // UsesNativeCNResponses 报告当前提供商是否应按原生 Responses 协议转发
-// （显式 responses，或 adaptive 且平台具备原生端点）。
+// （配置为 responses，或 adaptive 且平台具备对应端点）。
 func (a ProtocolTarget) UsesNativeCNResponses() bool {
 	if a.Record == nil || !a.SupportsNativeCNResponses() {
 		return false

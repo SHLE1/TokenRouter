@@ -34,7 +34,7 @@ func TestBuildContentModerationInputTeamKeyUsesActorAndKeepsBillingAttribution(t
 	require.Equal(t, "member@example.com", input.UserEmail)
 	require.Equal(t, int64(101), input.BillingUserID)
 	require.Equal(t, teamID, *input.TeamID)
-	// 风控快照必须复制团队 ID，不能与认证对象共享可变指针。
+	// 风控快照复制团队 ID，使用独立指针。
 	require.NotSame(t, apiKey.TeamID, input.TeamID)
 }
 

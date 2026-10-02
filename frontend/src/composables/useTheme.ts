@@ -75,7 +75,7 @@ export function setThemeMode(mode: ThemeMode) {
   const nextIsDark = resolveIsDark(mode)
   if (nextIsDark === isDark.value) return
   suspendThemeTransitions()
-  // 整体直接切换主题，避免不同组件按各自时长产生拖尾。
+  // 整体直接切换主题，使各组件同时更新颜色。
   applyTheme(nextIsDark)
 }
 

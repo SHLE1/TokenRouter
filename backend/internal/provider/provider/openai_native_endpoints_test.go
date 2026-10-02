@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOpenAIPrivacyUsesNativeAccountSettingsEndpoint 验证默认端点属于第三方协议；捕获生产 Options 发出的请求，不访问真实供应商。
+// TestOpenAIPrivacyUsesNativeAccountSettingsEndpoint 捕获生产 Options 发出的请求，检查隐私设置默认端点。
 func TestOpenAIPrivacyUsesNativeAccountSettingsEndpoint(t *testing.T) {
 	client := req.C()
 	var requests []*http.Request

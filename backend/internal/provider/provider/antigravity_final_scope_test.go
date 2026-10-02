@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAntigravityFinalModelChecksWhitelistAfterThinking 验证thinking 变换只改变最终名称，不重新读取映射表跳到另一个模型。
+// TestAntigravityFinalModelChecksWhitelistAfterThinking 检查 thinking 后缀作用于最终名称，映射在此前执行一次。
 func TestAntigravityFinalModelChecksWhitelistAfterThinking(t *testing.T) {
 	enabled := true
 	disabled := false

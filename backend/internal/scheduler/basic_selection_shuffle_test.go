@@ -97,9 +97,9 @@ func TestShuffleWithinSortGroups_MixedGroups(t *testing.T) {
 	earlier := now.Add(-1 * time.Hour)
 	sameAsNow := time.Unix(now.Unix(), 0)
 
-	// 组1: Priority=1, LoadRate=10, LastUsedAt=earlier (ID 1)  — 单元素组
-	// 组2: Priority=1, LoadRate=20, LastUsedAt=now (ID 2, 3)   — 双元素组
-	// 组3: Priority=2, LoadRate=10, LastUsedAt=earlier (ID 4)  — 单元素组
+	// 组1: Priority=1, LoadRate=10, LastUsedAt=earlier (ID 1)，单元素组
+	// 组2: Priority=1, LoadRate=20, LastUsedAt=now (ID 2, 3)，双元素组
+	// 组3: Priority=2, LoadRate=10, LastUsedAt=earlier (ID 4)，单元素组
 	providers := []BasicCandidate{
 		{Provider: &BasicProvider{ID: 1, Priority: 1, LastUsedAt: &earlier}, Load: &ProviderLoadInfo{LoadRate: 10}},
 		{Provider: &BasicProvider{ID: 2, Priority: 1, LastUsedAt: &now}, Load: &ProviderLoadInfo{LoadRate: 20}},

@@ -112,7 +112,7 @@ func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, 
 	}
 }
 
-// prepareOpenAIHTTPEncryptedRetry 按已有解码缓存读取并剥离一次密文，不改变 JSON 数字及缓存复用语义。
+// prepareOpenAIHTTPEncryptedRetry 从解码缓存读取并剥离一次密文，保留 JSON 数字精度并复用缓存。
 func prepareOpenAIHTTPEncryptedRetry(body []byte, decode func([]byte) (map[string]any, error)) ([]byte, bool, error) {
 	decoded, err := decode(body)
 	if err != nil {

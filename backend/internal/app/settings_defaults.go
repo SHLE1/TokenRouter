@@ -25,7 +25,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// provideOAuthSettings 只投影认证所需启动字段，核心不会接收完整配置。
+// provideOAuthSettings 从启动配置提取认证需要的字段，交给 OAuth 设置读取器。
 func provideOAuthSettings(store *settings.Store, cfg *config.Config) *identity.OAuthSettings {
 	var defaults *identity.OAuthSettingsDefaults
 	if cfg != nil {
@@ -34,7 +34,7 @@ func provideOAuthSettings(store *settings.Store, cfg *config.Config) *identity.O
 	return identity.NewOAuthSettings(store, defaults, identityprovider.ResolveSettingsOIDCMetadata)
 }
 
-// provideGrantSettings 直接绑定 billing 的只读套餐查询，不经过支付聚合。
+// provideGrantSettings 为注册赠送设置绑定 billing 套餐查询。
 func provideGrantSettings(store *settings.Store, cfg *config.Config, plans *billing.Plans) *identity.GrantSettings {
 	options := identity.GrantSettingsOptions{ValidatePlans: func(ctx context.Context, items []identity.DefaultSubscriptionSetting) error {
 		return identity.ValidateDefaultSubscriptionPlans(ctx, items, plans.GetPlan)
@@ -46,12 +46,12 @@ func provideGrantSettings(store *settings.Store, cfg *config.Config, plans *bill
 	return identity.NewGrantSettings(store, options)
 }
 
-// provideForwardedSettings 将启动可信代理配置与唯一运行状态投影给 server。
+// provideForwardedSettings 将启动配置中的可信代理和共享运行状态传给 server。
 func provideForwardedSettings(store *settings.Store, cfg *config.Config) *runtimeconfig.ForwardedSettings {
 	return runtimeconfig.NewForwardedSettings(store, runtimeconfig.ForwardedSettingsOptions{InitialTrust: cfg.Security.TrustForwardedIPForAPIKeyACL, TrustedProxiesConfigured: cfg.Server.TrustedProxiesConfigured, Headers: func() []string { return cfg.ForwardedClientIPSettings().Headers }, Publish: cfg.SetForwardedClientIPSettings})
 }
 
-// provideSchedulerAdminDefaults 只投影调度所需进程值，规范化由 scheduler/policy 拥有。
+// provideSchedulerAdminDefaults 提取调度需要的进程配置，由 scheduler/policy 规范化。
 func provideSchedulerAdminDefaults(cfg *config.Config) *scheduler.AdminDefaults {
 	value := scheduler.DefaultAdminSettingsDefaults()
 	if cfg != nil {
@@ -65,19 +65,19 @@ func provideSchedulerAdminDefaults(cfg *config.Config) *scheduler.AdminDefaults 
 	return &value
 }
 
-// provideGatewayAdminRules 投影实际平台规则，不创建额外客户端或状态。
+// provideGatewayAdminRules 返回各平台的规则函数。
 func provideGatewayAdminRules() *gateway.AdminSettingsRules {
 	return &gateway.AdminSettingsRules{GrokDefaultTextModel: grok.DefaultTextModel, NormalizeUserAgentVersion: antigravity.NormalizeUserAgentVersion, ValidateClaudePromptBlocks: anthropic.ValidateClaudeOAuthSystemPromptBlocksConfig}
 }
 
-// provideGatewaySettings 直接构造唯一运行实例，平台默认值只做结构投影。
+// provideGatewaySettings 将平台默认值转换为配置参数，构造网关运行设置实例。
 func provideGatewaySettings(store *settings.Store) *gateway.RuntimeSettings {
 	return gateway.NewRuntimeSettings(store, settings.ErrSettingNotFound, func() *gateway.BetaPolicySettings {
 		return gatewayprovider.GatewayBetaPolicy(anthropic.DefaultBetaPolicySettings())
 	}, gateway.ClientSettingsOptions{NormalizeUserAgentVersion: antigravity.NormalizeUserAgentVersion, DefaultUserAgentVersion: antigravity.GetDefaultUserAgentVersion})
 }
 
-// provideQuotaSettings 将共享 JSON 的 Ops 解释投影给提供商，不复制缓存或使用旧 SettingsService。
+// provideQuotaSettings 通过 Ops 读取共享 JSON 中的配额设置，传给提供商模块。
 func provideQuotaSettings(store *settings.Store) *provider.QuotaSettingsCache {
 	return provider.NewQuotaSettingsCache(store, settings.ErrSettingNotFound, ops.ParseRuntimeQuotaAutoPauseSettings)
 }

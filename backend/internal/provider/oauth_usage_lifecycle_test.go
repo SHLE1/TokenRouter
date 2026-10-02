@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 用真实核心和 flight 验证：调用方取消不影响共享查询，资源停止仍能取消并等待它。
+// 查询组件和 singleflight 共用一次查询，调用方取消后查询继续，停止操作会取消并等待查询结束。
 type oauthUsageLifecycleReader struct {
 	OAuthUsageReader
 	reads atomic.Int32

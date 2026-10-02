@@ -33,7 +33,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Bindings 固定 WS 入站与每轮单步端口，不拥有 relay、提供商重试或共享缓存。
+// Bindings 绑定 WS 入站和每轮执行接口。
 type Bindings struct {
 	Common       openaiattempt.Bindings
 	Dependencies gatewayhttp.OpenAIDependencies
@@ -55,7 +55,7 @@ type Bindings struct {
 	Relay           func(context.Context, *gin.Context, *coderws.Conn, *gatewayprovider.ExecutionProvider, string, []byte, *gatewayws.OpenAIIngressHooks) error
 }
 
-// New 仅组合 HTTP 升级与既有 WS 用例，不创建连接池或完成 worker。
+// New 将 HTTP 升级接口与 WS 用例绑定。
 func New(options gatewayhttp.ResponsesWSOptions, b Bindings) *gatewayhttp.ResponsesWSHandler {
 	return gatewayhttp.NewResponsesWSHandler(options, openAIWSHTTPBackend{bindings: b}, b.Common.Support.Concurrency)
 }
@@ -240,7 +240,7 @@ func (p *openAIWSEntryAdapter) Eligibility(ctx context.Context) error {
 	return p.bindings.CheckFunding(ctx, p.key, p.subscription, "", false)
 }
 
-// AuthorizeTurn 使用当前身份和订阅检查下一轮，已放行轮次仍使用原有完成快照。
+// AuthorizeTurn 使用当前身份和订阅检查下一轮，已放行轮次使用各自的完成快照。
 func (p *openAIWSEntryAdapter) AuthorizeTurn(ctx context.Context) error {
 	if p.bindings.Keys == nil || p.bindings.CheckFunding == nil {
 		return apikey.ErrAuthenticationStopped
@@ -392,7 +392,7 @@ func (p *openAIWSEntryAdapter) SubmitCompletion(result *gatewayws.ForwardResult,
 	p.bindings.Common.Support.Submission.SubmitImages(p.c, images, task)
 }
 
-// openAIWSEntryTarget 将选中提供商的单步能力投影给核心，不持有 turn 或 failover 循环。
+// openAIWSEntryTarget 向 WS 流程提供所选提供商的逐步执行接口。
 type openAIWSEntryTarget struct {
 	root      *openAIWSEntryAdapter
 	provider  *gatewayprovider.ExecutionProvider

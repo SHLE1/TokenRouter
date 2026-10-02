@@ -9,8 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// QoderRequestRefresh 复用唯一提供商刷新协调器及会话缓存，拥有请求失败后的回读和失效顺序。
-// 它不启动后台任务，也不创建额外锁或缓存。
+// QoderRequestRefresh 共用提供商刷新协调器和会话缓存，在请求失败后回读凭据并清理失效会话。
 type QoderRequestRefresh struct {
 	Store        provider.RefreshRepository
 	Tokens       *QoderTokenProvider
@@ -54,9 +53,8 @@ func (s *QoderRequestRefresh) RefreshProviderSession(ctx context.Context, value 
 		return nil, err
 	}
 
-	// 如果另一个 worker 正在刷新（LockHeld=true），等待 DB 中出现已轮换凭证。
-	// 不能只 sleep 后返回当前提供商：锁持有者可能尚未写回新 token，
-	// handler 随后会用同一份 stale credentials 立即重试并再次 401。
+	// 另一个 worker 正在刷新（LockHeld=true）时，等待数据库中出现轮换后的凭据。
+	// 使用刷新前的凭据重试会再次得到 401。
 	if result != nil && result.LockHeld {
 		return s.waitForQoderLockedRefresh(ctx, value, failedCredentialsHash)
 	}

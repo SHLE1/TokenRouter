@@ -298,7 +298,7 @@ func (r *RealtimeRuntime) ReleaseIP(clientIP string) {
 	r.wsConnCountByIP[clientIP] = current - 1
 }
 
-// Stop 由组合根在 HTTP 请求完成后取消延迟停机并等待按需刷新退出。
+// Stop 在 HTTP 请求完成后由 app 调用，取消延迟停机并等待按需刷新退出。
 func (r *RealtimeRuntime) Stop() {
 	r.qpsWSIdleStopMu.Lock()
 	r.qpsWSRuntimeClosed = true

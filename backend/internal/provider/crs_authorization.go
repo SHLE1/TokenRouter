@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// CRSAuthorization 保留导入后各平台的凭据补全顺序，不持有缓存或新的刷新锁。
+// CRSAuthorization 按平台补全导入凭据。
 type CRSAuthorization struct {
 	Claude *ClaudeAuthorization
 	OpenAI *OpenAIAuthorization

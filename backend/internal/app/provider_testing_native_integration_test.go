@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 只替换供应商传输，提供商读取、平台目标与 SSE 输出均使用真实装配。
+// 供应商传输使用替身，提供商读取、平台目标和 SSE 输出使用应用装配。
 type nativeProviderTestTransport struct {
 	body     string
 	requests []*http.Request

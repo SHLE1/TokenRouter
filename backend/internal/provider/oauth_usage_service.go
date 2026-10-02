@@ -156,7 +156,7 @@ func (s *OAuthUsageService) GetUsageForProvider(ctx context.Context, provider *R
 			if cache, ok := cached.(*OAuthAPIUsageCache); ok && cache != nil && cache.Identity == identity {
 				age := s.options.Now().Sub(cache.Timestamp)
 				if cache.Err != nil && age < OAuthUsageAPIErrorCacheTTL {
-					// 负缓存命中：返回缓存的错误，避免重试风暴
+					// 负缓存命中时返回缓存的错误。
 					return nil, cache.Err
 				}
 				if cache.Response != nil && age < OAuthUsageAPICacheTTL {
@@ -167,7 +167,7 @@ func (s *OAuthUsageService) GetUsageForProvider(ctx context.Context, provider *R
 
 		// 2. 如果没有有效缓存，通过 singleflight 从 API 获取（防止并发击穿）
 		if apiResp == nil {
-			// 随机延迟：打散多提供商并发请求，避免同一时刻大量相同 TLS 指纹请求
+			// 随机延迟使批量请求分散发送，同一 TLS 指纹的请求错开发出。
 			// 触发上游反滥用检测。延迟范围 0~800ms，仅在缓存未命中时生效。
 			jitter := time.Duration(s.options.Jitter(int64(OAuthUsageAPIQueryMaxJitter)))
 			select {
@@ -232,7 +232,7 @@ func (s *OAuthUsageService) GetUsageForProvider(ctx context.Context, provider *R
 		s.SyncActiveToPassive(ctx, provider, usage)
 
 		// 6. 上游 usage API 目前不一定下发 Fable 7d 窗口；缺失时回填被动采样
-		// （7d_oi 响应头）的数据，避免主动查询后 7d F 进度条丢失。
+		// （7d_oi 响应头）的数据，7d F 进度条据此展示。
 		if usage.SevenDayFable == nil {
 			usage.SevenDayFable = BuildPassiveUsageWindow(provider.Extra, "passive_usage_7d_oi_utilization", "passive_usage_7d_oi_reset", s.options.Now)
 		}
@@ -254,7 +254,7 @@ func (s *OAuthUsageService) GetUsageForProvider(ctx context.Context, provider *R
 }
 
 // GetUsage 获取提供商使用量
-// OAuth提供商: 调用Anthropic API获取真实数据（需要profile scope），API响应缓存10分钟，窗口统计缓存1分钟
+// OAuth 提供商通过 Anthropic API 查询用量（需要 profile scope），API 响应缓存十分钟，窗口统计缓存一分钟。
 // Setup Token提供商: 根据session_window推算5h窗口，7d数据不可用（没有profile scope）
 // API Key提供商: 不支持usage查询
 func (s *OAuthUsageService) GetUsage(ctx context.Context, providerID int64, force ...bool) (*UsageInfo, error) {

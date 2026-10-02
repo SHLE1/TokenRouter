@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// WithManagedRefresh 在同一刷新锁和拥有者内执行显式管理流程；锁内重新读取，保留原独立提交顺序。
+// WithManagedRefresh 使用共享刷新锁执行管理员流程，锁内重读记录，各写入步骤分别提交。
 func (api *OAuthRefreshAPI) WithManagedRefresh(ctx context.Context, observed *Record, key string, apply func(context.Context, *Record) (*Record, string, error)) (*Record, string, error) {
 	if err := ValidateManagedRefreshTarget(observed); err != nil {
 		return nil, "", err

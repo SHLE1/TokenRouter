@@ -34,9 +34,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 目标：严格验证“antigravity 提供商通过 /v1/messages 提供 Claude 服务时”，
+// Antigravity 提供商通过 /v1/messages 提供 Claude 服务时，
 // 当提供商 credentials.intercept_warmup_requests=true 且请求为 Warmup 时，
-// 后端会在转发上游前直接拦截并返回 mock 响应（不依赖上游）。
+// 后端在转发上游前拦截请求并返回 mock 响应。
 
 type fakeSchedulerCache struct {
 	providers []*gatewayprovider.ExecutionProvider
@@ -338,7 +338,7 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityProvider_MixedSchedul
 
 	require.Equal(t, 200, rec.Code)
 
-	// 断言：确实选中了 antigravity 提供商（不是纯函数测试，而是从 Handler 里验证调度结果）
+	// 检查 Handler 选中的提供商为 antigravity。
 	selected, ok := c.Get(gatewayhttp.OpsProviderIDKey)
 	require.True(t, ok)
 	require.Equal(t, providerID, selected)

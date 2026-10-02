@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestGrokProbeResultDoesNotExposeSharedValues 验证共享 flight 的每次返回必须隔离额度指针、Header 和本地统计。
+// TestGrokProbeResultDoesNotExposeSharedValues 检查共享查询的各次返回值分别复制额度、Header 和本地统计。
 func TestGrokProbeResultDoesNotExposeSharedValues(t *testing.T) {
 	limit, retry := int64(20), 9
 	source := &provider.GrokQuotaProbeResult{Snapshot: &xai.QuotaSnapshot{

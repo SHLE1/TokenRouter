@@ -27,7 +27,7 @@ func ToTLSProfile(p *egress.TLSFingerprintProfile) *tlsfingerprint.Profile {
 	}
 }
 
-// FromTLSProfile 将已选技术指纹转成独立策略输入，保留原 Name、空切片和所有身份字段。
+// FromTLSProfile 将 TLS 指纹转换为策略输入，复制 Name、空切片和身份字段。
 func FromTLSProfile(p *tlsfingerprint.Profile) *egress.TLSFingerprintProfile {
 	if p == nil {
 		return nil

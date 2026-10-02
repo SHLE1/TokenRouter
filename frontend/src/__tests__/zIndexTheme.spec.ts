@@ -6,8 +6,8 @@ import { dirname, resolve } from 'node:path'
 import tailwindConfig from '../../tailwind.config.js'
 import { Z_INDEX } from '../constants/overlay'
 
-// 锁定浮层层级三轨同源:style.css :root 变量承载唯一数值,tailwind zIndex 扩展只做 var() 引用,
-// constants/overlay.ts 的 Z_INDEX 供 JS 内联场景镜像。改层级必须三处同步。
+// style.css 的 :root 变量定义浮层层级，Tailwind zIndex 通过 var() 引用，
+// constants/overlay.ts 的 Z_INDEX 供 JS 内联使用。测试检查三处取值一致。
 const styleCss = readFileSync(
   resolve(dirname(fileURLToPath(import.meta.url)), '../style.css'),
   'utf8'

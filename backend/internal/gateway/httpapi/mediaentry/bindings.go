@@ -28,13 +28,13 @@ import (
 	"go.uber.org/zap"
 )
 
-// Options 保留原静态切号与非流图片心跳预算。
+// Options 配置提供商切换次数和非流式图片心跳预算。
 type Options struct {
 	MaxSwitches    int
 	ImageKeepalive time.Duration
 }
 
-// PlatformPorts 只执行一次已选提供商的交换，循环与完成资格归 media。
+// PlatformPorts 执行一次已选提供商的请求，media 负责尝试循环和完成资格判断。
 type PlatformPorts struct {
 	SelectImages  func(context.Context, *int64, string, string, map[int64]struct{}, provider.OpenAIImagesCapability) (*gatewayadapter.SelectionResult, scheduler.PlatformDecision, error)
 	Images        func(context.Context, *gin.Context, *gatewayadapter.ExecutionProvider, []byte, *media.ImageRequest, string, ...egress.TLSFingerprintRouterMatchResult) (*forward.OpenAIResult, error)
@@ -50,7 +50,7 @@ type PlatformPorts struct {
 	ReportSwitch  func()
 }
 
-// Bindings 不读取配置或创建共享实例，按原入口保持可选额度端口的存在性。
+// Bindings 接收应用装配的共享实例和可选额度接口。
 type Bindings struct {
 	Common            openaiattempt.Bindings
 	Platform          PlatformPorts
@@ -65,7 +65,7 @@ type Bindings struct {
 	EligibilityProber gatewayadapter.GrokMediaEligibilityProber
 }
 
-// Runtime 仅持有构造期固定的端口，每次 HTTP 调用建立独立请求适配。
+// Runtime 保存构造时绑定的接口，每次 HTTP 调用创建独立请求适配器。
 type Runtime struct{ bindings Bindings }
 
 func New(b Bindings) *Runtime { return &Runtime{bindings: b} }

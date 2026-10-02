@@ -147,7 +147,7 @@ func (k *TeamKeys) DisableMemberInTx(ctx context.Context, tx *sql.Tx, teamID, us
 	return err
 }
 
-// DisableHistoricalMemberInTx 保留重新加入时旧 Membership Key 不自动恢复的边界。
+// DisableHistoricalMemberInTx 禁用成员重新加入前创建的团队 Key。
 func (k *TeamKeys) DisableHistoricalMemberInTx(ctx context.Context, tx *sql.Tx, teamID, userID int64, now time.Time) error {
 	_, err := tx.ExecContext(ctx, `UPDATE api_keys SET status = 'disabled', updated_at = $3 WHERE team_id = $1 AND user_id = $2 AND created_at < $3 AND deleted_at IS NULL`, teamID, userID, now)
 	return err

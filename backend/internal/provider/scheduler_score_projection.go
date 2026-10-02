@@ -21,7 +21,7 @@ type SchedulerLoad struct {
 	CurrentConcurrency, WaitingCount, LoadRate int
 }
 
-// SchedulerScoreOptions 不持有评分状态，执行端口复用 scheduler 的共享反馈实例。
+// SchedulerScoreOptions 提供评分参数和执行接口，执行时共用 scheduler 的反馈实例。
 type SchedulerScoreOptions struct {
 	Load  func(context.Context, []SchedulerLoadRequest) (map[int64]*SchedulerLoad, error)
 	Score func(context.Context, *accessview.GroupConfig, []*Record, map[int64]*SchedulerLoad) map[int64]ProviderSchedulerScore
@@ -136,7 +136,7 @@ func (h *SchedulerScoreView) buildAdvancedProviderSchedulerScores(
 	}
 
 	// 先取各分组池，再对"过滤池 ∪ 分组池"的提供商并集做一次负载批查，
-	// 避免每个池各查一次 Redis 的 N+1。
+	// 按批次查询 Redis，供各候选池共用。
 	groupIDList := make([]int64, 0, len(advancedGroups))
 	for groupID := range advancedGroups {
 		groupIDList = append(groupIDList, groupID)

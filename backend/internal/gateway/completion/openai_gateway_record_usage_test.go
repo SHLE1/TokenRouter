@@ -225,7 +225,7 @@ func TestOpenAIGatewayServiceRecordUsage_PeakRateAffectsTokenModeImageOutputToke
 	userRepo := &completiontestkit.UserStore{}
 	subRepo := &completiontestkit.SubscriptionStore{}
 	svc := newOpenAIRecordUsageServiceForTest(usageRepo, userRepo, subRepo, nil)
-	// 固定在峰值窗口内，避免测试在每天 23:59 的右开边界偶发失败。
+	// 测试时间固定在峰值窗口内，23:59 是窗口的右开端点。
 	svc.Options.Now = func() time.Time {
 		return time.Date(2026, 7, 1, 12, 0, 0, 0, time.Local)
 	}
@@ -939,7 +939,7 @@ func TestOpenAIGatewayServiceRecordUsage_LongContextBillingIgnoresLegacyProvider
 			billingRepo := requireOpenAIRecordUsageBillingRepoStub(t, svc)
 			require.Equal(t, 1, billingRepo.Calls)
 			require.InDelta(t, usageRepo.LastLog.ActualCost, billingRepo.LastCmd.BillableAmountUSD, 1e-10)
-			// 只有影子结算需要读取母提供商解析凭据；该读取不再用于长上下文开关判断。
+			// 影子结算读取母提供商解析凭据，长上下文开关由分组配置决定。
 			wantProviderRepoCalls := 0
 			if tt.provider.IsShadow() {
 				wantProviderRepoCalls = 1
@@ -949,8 +949,7 @@ func TestOpenAIGatewayServiceRecordUsage_LongContextBillingIgnoresLegacyProvider
 	}
 }
 
-// swapInOpenAILadderCatalog 给测试服务换上带 above_272k 阶梯字段的目录；
-// 静态兜底价已不再携带 OpenAI 长上下文规则。
+// swapInOpenAILadderCatalog 换入带 above_272k 阶梯字段的测试目录，OpenAI 长上下文规则从目录读取。
 func swapInOpenAILadderCatalog(t *testing.T, svc *completiontestkit.Recording) {
 	t.Helper()
 	cfg := &config.Config{}
@@ -959,7 +958,7 @@ func swapInOpenAILadderCatalog(t *testing.T, svc *completiontestkit.Recording) {
 }
 
 func TestOpenAIGatewayServiceRecordUsage_GroupControlsLongContextBilling(t *testing.T) {
-	// 分组开关是唯一外部策略来源；提供商 Extra 中的历史字段不再参与判断。
+	// 长上下文策略由分组开关决定。
 	tests := []struct {
 		name        string
 		groupEnable bool
@@ -1153,8 +1152,7 @@ func TestNormalizeOpenAIServiceTier(t *testing.T) {
 	})
 
 	t.Run("openai official tiers preserved", func(t *testing.T) {
-		// OpenAI 官方文档定义的合法 tier 值都应被透传保留，避免因白名单过窄
-		// 静默剥离客户端显式发送的合法字段。Codex 会发 priority/flex/ultrafast。
+		// 合法 service_tier 值原样保留，Codex 可发送 priority、flex 和 ultrafast。
 		for _, tier := range []string{"priority", "flex", "auto", "default", "scale", "ultrafast"} {
 			got := openai.NormalizeServiceTier(tier)
 			require.NotNil(t, got, "tier %q should not be normalized to nil", tier)
@@ -1248,7 +1246,7 @@ func TestOpenAIGatewayServiceRecordUsage_UsesRequestedModelAndUpstreamModelMetad
 	require.InDelta(t, usageRepo.LastLog.ActualCost, billingRepo.LastCmd.BillableAmountUSD, 1e-12)
 }
 
-// TestOpenAIGatewayServiceRecordUsage_PersistsRequestedReasoningEffort 验证显式请求档位与实际档位分开落库。
+// TestOpenAIGatewayServiceRecordUsage_PersistsRequestedReasoningEffort 检查请求档位与实际档位分别写入数据库。
 func TestOpenAIGatewayServiceRecordUsage_PersistsRequestedReasoningEffort(t *testing.T) {
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
 	userRepo := &completiontestkit.UserStore{}
@@ -1392,8 +1390,7 @@ func TestOpenAIGatewayServiceRecordUsage_GroupMappedDoesNotOverrideBillingModelW
 	svc := newOpenAIRecordUsageServiceForTest(usageRepo, userRepo, subRepo, nil)
 	usage := openai.ForwardUsage{InputTokens: 20, OutputTokens: 10}
 
-	// 分组未发生模型映射时，应使用 result.BillingModel 中记录的实际上游计费模型，
-	// 而不是未映射的原始请求模型。
+	// 分组未映射模型时，使用 result.BillingModel 中记录的上游计费模型。
 	expectedCost, err := svc.Dependencies.Calculator.CalculateCost("gpt-5.4", pricing.UsageTokens{
 		InputTokens:  20,
 		OutputTokens: 10,
@@ -2769,7 +2766,7 @@ func TestOpenAIGatewayServiceRecordUsage_FreeOpenAIFastChargesStandard(t *testin
 	require.InDelta(t, standardTotal*0.5, billingRepo.LastCmd.BillableAmountUSD, 1e-10)
 }
 
-// TestGroupBillsOpenAIFastAtStandardRequiresOpenAIProvider 锁定平台、提供商和档位三重边界。
+// TestGroupBillsOpenAIFastAtStandardRequiresOpenAIProvider 检查按标准价格结算 Fast 所需的平台、提供商和档位条件。
 func TestGroupBillsOpenAIFastAtStandardRequiresOpenAIProvider(t *testing.T) {
 	apiKey := &completion.KeySnapshot{Group: &completion.GroupSnapshot{FreeOpenAIFast: true, SupportsOpenAIFast: true}}
 
@@ -2808,7 +2805,7 @@ func TestOpenAIGatewayServiceRecordUsage_ServiceTierNeverRaisedByUpstreamRespons
 	require.InDelta(t, baseCost.TotalCost, usageRepo.LastLog.TotalCost, 1e-10)
 }
 
-// newOpenAIRecordUsageServiceForTest 记录测试保留原存储替身与缓存作用域，核心直接使用 completion.Recorder。
+// newOpenAIRecordUsageServiceForTest 用测试存储和缓存构造 completion.Recorder。
 func newOpenAIRecordUsageServiceForTest(logs usagecore.UsageLogRepository, _ identity.UserRepository, _ billing.UserSubscriptionRepository, rates billing.UserGroupRateRepository) *completiontestkit.Recording {
 	return completiontestkit.NewRecording(logs, &completiontestkit.SettlementStore{}, rates, true)
 }

@@ -663,7 +663,7 @@ const footerColumns = computed(() => {
   return [{ title: t('home.footer.quickLinks'), links: quickLinks }]
 })
 
-// 服务商图标滚动条:图标列表复制一份实现无缝循环
+// 服务商图标滚动条复制一份列表，首尾衔接循环。
 const homeMarqueeBrands = computed(() => {
   const brands = homeProviderVisuals.value.slice(0, 20)
   return [...brands, ...brands]
@@ -1226,7 +1226,7 @@ onUnmounted(() => {
   transform: translateY(70%);
 }
 
-/* 服务商图标无缝滚动条,两端用渐隐遮罩 */
+/* 服务商图标循环滚动条，两端使用渐隐遮罩。 */
 .home-marquee {
   -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
   mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);

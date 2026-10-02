@@ -13,7 +13,7 @@ type ModelPlatformRules struct {
 	OpenAIOAuthServable func(string) bool
 }
 
-// IsModelSupported 在显式白名单或默认目录中检查最终模型，提供商映射只执行一次。
+// IsModelSupported 在配置的白名单或默认目录中检查最终模型，提供商映射执行一次。
 func (a *Record) IsModelSupported(requestedModel string, defaults ModelMappingDefaults, rules ModelPlatformRules) bool {
 	if a == nil {
 		return false
@@ -38,7 +38,7 @@ func (a *Record) IsModelSupported(requestedModel string, defaults ModelMappingDe
 	return true
 }
 
-// FinalModelWhitelisted 不再执行提供商映射，避免把上游名称当作新的请求别名。
+// FinalModelWhitelisted 直接检查已映射的上游模型名是否在白名单中。
 func (a *Record) FinalModelWhitelisted(model string, defaults ModelMappingDefaults, rules ModelPlatformRules) bool {
 	if a == nil {
 		return false
@@ -134,7 +134,7 @@ func ResolveMappedModel(platform string, mapping map[string]string, requestedMod
 }
 
 // ModelInFinalWhitelist 检查最终上游模型是否命中白名单。
-// Gemini / Antigravity 仍复用既有归一化逻辑，避免 customtools 这类别名导致误判。
+// Gemini 和 Antigravity 使用模型归一化函数解析 customtools 等别名。
 func ModelInFinalWhitelist(platform, model string, whitelist map[string]struct{}, normalizeQoder func(string) string) bool {
 	if len(whitelist) == 0 {
 		return false

@@ -11,7 +11,7 @@ import (
 )
 
 // TestApplyCodexClientMetadata 验证 Codex 客户端元数据的注入。
-// gatewayprovider.ApplyCodexClientMetadata：用提供商真实 device_id 注入 installation 标识，幂等、不覆盖既有项、不伪造。
+// gatewayprovider.ApplyCodexClientMetadata：使用提供商的 device_id 补充缺失的 installation 标识，重复调用结果相同。
 func TestApplyCodexClientMetadata(t *testing.T) {
 	// 仅 OpenAI OAuth 提供商才有 device_id（GetOpenAIDeviceID 的门控）。
 	acc := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Extra: map[string]any{"openai_device_id": "dev-xyz"}}}

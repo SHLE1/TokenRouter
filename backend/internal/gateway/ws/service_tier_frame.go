@@ -13,27 +13,10 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// ApplyServiceTierFrame 针对单个 client -> upstream WebSocket
-// 帧评估 OpenAI fast policy，该帧的顶层 "type" 必须是 "response.create"。
-// 该函数镜像 HTTP 侧 applyOpenAIFastPolicyToBody 的契约，但作用于
-// Realtime/Responses WS payload：
-//
-//   - pass：保留 service_tier，并将 "fast" 等别名归一化为 "priority"
-//   - filter：返回删除顶层 service_tier 的副本
-//   - force_priority：保留 service_tier，并将其强制改写为 "priority"
-//   - block：返回 (frame, *OpenAIFastBlockedError)
-//
-// 所有帧先校验 Ultra；只有 "type" 字段严格等于 "response.create" 的帧
-// 会继续执行 fast policy 检查或修改。其它帧类型（包括空字符串）
-// 在通过 Ultra 校验后原样透传。OpenAI Realtime client-event 规范要求设置
-// "type"，因此空 type 被视为畸形帧，本层不拦截，由上游负责拒绝。
-//
-// service_tier 位于 response.create 顶层，与 Responses HTTP body 形态一致
-// （参见 openai_gateway_chat_completions.go:304、requeststate.ExtractOpenAIServiceTierFromBody
-// 以及 openai_ws_forwarder_ingress_session_test.go:402 的测试样例）。因此这里只需
-// 检查或剥离顶层字段；当前 schema 没有嵌套形式。
-//
-// 调用方负责传入用于上游请求的 model；该 helper 不会重新推导。
+// ApplyServiceTierFrame 对发往上游的 response.create 帧应用与 HTTP 相同的 OpenAI Fast 策略。
+// pass 保留档位并将 fast 规范化为 priority，filter 删除顶层 service_tier，force_priority 写入 priority，block 返回策略错误。
+// 所有帧先校验 Ultra，其他类型（包括空 type）通过该校验后原样转发，空 type 由上游拒绝。
+// service_tier 位于帧顶层，与 Responses HTTP 请求一致，调用方传入本轮上游模型。
 func ApplyServiceTierFrame(frame []byte, model string, input tierpolicy.DecisionInput) ([]byte, *tierpolicy.BlockedError, error) {
 	if len(frame) == 0 {
 		return frame, nil, nil
@@ -46,12 +29,7 @@ func ApplyServiceTierFrame(frame []byte, model string, input tierpolicy.Decision
 		return frame, nil, err
 	}
 	frameType := strings.TrimSpace(gjson.GetBytes(frame, "type").String())
-	// Strict match: only response.create is policy-checked. Empty / other
-	// types pass through untouched so we never accidentally strip fields
-	// from response.cancel, conversation.item.create, or any future
-	// client-event the spec adds. The Realtime spec requires "type" on
-	// every client event, so an empty type is malformed input — let the
-	// upstream reject it rather than guessing at our layer.
+	// response.create 执行 Fast 策略检查，其他事件原样转发。Realtime 要求 type，缺失时由上游拒绝。
 	if frameType != "response.create" {
 		return frame, nil, nil
 	}

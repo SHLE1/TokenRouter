@@ -30,7 +30,7 @@ func TestOpenAIForwardResultSucceededForScheduling_TerminalEvents(t *testing.T) 
 	}
 }
 
-// TestOpenAIResultReplayStaysOutsideJSON 验证恢复输入不是响应或计费事实；跨包读写不能使请求内容进入结果 JSON。
+// TestOpenAIResultReplayStaysOutsideJSON 检查恢复输入在跨包读写后仍被结果 JSON 序列化忽略。
 func TestOpenAIResultReplayStaysOutsideJSON(t *testing.T) {
 	result := &OpenAIResult{Model: "model-visible"}
 	result.SetWSReplayInput([]json.RawMessage{json.RawMessage(`{"prompt":"replay-private"}`)}, true)

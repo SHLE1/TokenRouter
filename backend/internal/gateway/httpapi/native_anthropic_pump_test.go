@@ -15,9 +15,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 国产供应商 Anthropic 协议转换路径的上游读间隔超时回归测试（B3）：
-// 上游挂住 SSE（不发数据也不断连）时，CC×anthropic / Responses×anthropic
-// 的读循环必须按 gateway.stream_data_interval_timeout 结束，而不是永久阻塞。
+// 这些测试检查国产供应商 Anthropic SSE 的读取间隔超时。
+// CC 和 Responses 转 Anthropic 后，上游既未发送数据也未断开时，读取按 gateway.stream_data_interval_timeout 结束。
 
 func newNativeAnthropicHangTestService(intervalSec int) *nativeAnthropicReaderFixture {
 	return &nativeAnthropicReaderFixture{output: &OpenAIResponseOutput{Options: OpenAIResponseOptions{Configured: true, StreamDataIntervalTimeout: intervalSec, MaxLineSize: openAIResponseDefaultMaxLineSize}}}
@@ -77,7 +76,6 @@ func toolAnthropicSSEStream() string {
 }
 
 func TestCCStreamingFromNativeAnthropic_HangTimesOut(t *testing.T) {
-
 	svc := newNativeAnthropicHangTestService(1)
 
 	rec := httptest.NewRecorder()
@@ -102,7 +100,6 @@ func TestCCStreamingFromNativeAnthropic_HangTimesOut(t *testing.T) {
 }
 
 func TestCCBufferedFromNativeAnthropic_HangTimesOut(t *testing.T) {
-
 	svc := newNativeAnthropicHangTestService(1)
 
 	rec := httptest.NewRecorder()
@@ -127,7 +124,6 @@ func TestCCBufferedFromNativeAnthropic_HangTimesOut(t *testing.T) {
 }
 
 func TestResponsesStreamingFromNativeAnthropic_HangTimesOut(t *testing.T) {
-
 	svc := newNativeAnthropicHangTestService(1)
 
 	rec := httptest.NewRecorder()
@@ -152,7 +148,6 @@ func TestResponsesStreamingFromNativeAnthropic_HangTimesOut(t *testing.T) {
 }
 
 func TestResponsesStreamingFromNativeAnthropicClientDisconnectDrainsUsage(t *testing.T) {
-
 	svc := newNativeAnthropicHangTestService(5)
 
 	rec := httptest.NewRecorder()
@@ -177,7 +172,6 @@ func TestResponsesStreamingFromNativeAnthropicClientDisconnectDrainsUsage(t *tes
 		time.Now(),
 		bridge.ResponsesClientToolMapping{},
 	)
-
 	if err != nil {
 		t.Fatalf("断开后排水不应失败：%v", err)
 	}
@@ -190,7 +184,6 @@ func TestResponsesStreamingFromNativeAnthropicClientDisconnectDrainsUsage(t *tes
 }
 
 func TestCCStreamingFromNativeAnthropic_HappyPathStillConverts(t *testing.T) {
-
 	svc := newNativeAnthropicHangTestService(5)
 
 	rec := httptest.NewRecorder()
@@ -221,7 +214,6 @@ func TestCCStreamingFromNativeAnthropic_HappyPathStillConverts(t *testing.T) {
 }
 
 func TestCCBufferedFromNativeAnthropic_HappyPathStillConverts(t *testing.T) {
-
 	svc := newNativeAnthropicHangTestService(5)
 
 	rec := httptest.NewRecorder()
@@ -252,7 +244,6 @@ func TestCCBufferedFromNativeAnthropic_HappyPathStillConverts(t *testing.T) {
 }
 
 func TestCCBufferedFromNativeAnthropic_ToolArgumentsAreValidJSON(t *testing.T) {
-
 	svc := newNativeAnthropicHangTestService(5)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -287,7 +278,6 @@ func TestCCBufferedFromNativeAnthropic_ToolArgumentsAreValidJSON(t *testing.T) {
 }
 
 func TestResponsesBufferedFromNativeAnthropic_ToolArgumentsAreValidJSON(t *testing.T) {
-
 	svc := newNativeAnthropicHangTestService(5)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)

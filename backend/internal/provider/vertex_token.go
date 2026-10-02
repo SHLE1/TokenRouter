@@ -23,7 +23,7 @@ func VertexServiceAccountCacheKey(providerID int64, email, keyID string, hasKey 
 
 const VertexLockWaitTime = 200 * time.Millisecond
 
-// VertexTokenOptions 固定一次请求的身份与交换端口；不复制缓存实例。
+// VertexTokenOptions 提供本次请求的身份和 token 交换接口。
 type VertexTokenOptions struct {
 	ProviderID int64
 	CacheKey   string

@@ -365,7 +365,7 @@ func (f *fakeGeminiBatchClient) DeleteFile(_ context.Context, _ string, fileName
 	return f.deleteErr
 }
 
-// newBatchProviderRegistryForTest 保留原默认两个 platform，直接使用唯一泛型注册表。
+// newBatchProviderRegistryForTest 创建包含 Gemini API 和 Vertex 的批量任务注册表。
 func newBatchProviderRegistryForTest() *batchimage.Registry[batchimageprovider.BatchImageProvider] {
 	return batchimage.NewRegistry[batchimageprovider.BatchImageProvider](batchimageprovider.NewGeminiAPIBatchImageProvider(nil), batchimageprovider.NewVertexBatchImageProvider(batchimageprovider.VertexBatchImageProviderOptions{}, nil, nil, nil))
 }

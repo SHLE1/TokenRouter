@@ -217,7 +217,7 @@ func TestWSResponseCreate_NonResponseCreateFrameUntouched(t *testing.T) {
 	svc := newWSFastPolicy(t, settings)
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	// response.cancel happens to carry a service_tier-shaped field — must not be touched.
+	// response.cancel 的 service_tier 字段保持原样。
 	frame := []byte(`{"type":"response.cancel","service_tier":"priority"}`)
 	updated, blocked, err := gatewayws.ApplyServiceTierFrame(frame, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
@@ -258,7 +258,7 @@ func TestWSResponseCreate_EmptyTypeFrameUntouched(t *testing.T) {
 	require.Equal(t, string(frame), string(updated))
 }
 
-// --- D5: passthrough wrapper FrameConn — capturedSessionModel fallback ---
+// D5：透传 FrameConn 使用 capturedSessionModel 补充模型。
 
 // fakePassthroughFrameConn replays a fixed sequence of client frames into the
 // policy-enforcing wrapper, then returns io.EOF. Captures all Write attempts
@@ -291,9 +291,8 @@ func (f *fakePassthroughFrameConn) Close() error {
 	return nil
 }
 
-// gpt55WhitelistFastPolicy 返回一份强制带 model whitelist 的策略，用于
-// 验证 capturedSessionModel fallback 的语义（默认配置没有规则，fallback
-// 路径无法被观察到）。
+// gpt55WhitelistFastPolicy 返回带模型白名单的策略，供 capturedSessionModel 回退测试使用。
+// 默认配置没有规则，无法观察模型回退后的策略结果。
 func gpt55WhitelistFastPolicy() *tierpolicy.OpenAIFastPolicySettings {
 	return &tierpolicy.OpenAIFastPolicySettings{
 		Rules: []tierpolicy.OpenAIFastPolicyRule{{
@@ -324,7 +323,7 @@ func TestPolicyEnforcingFrameConn_FollowupFrameWithoutModelUsesCapturedModel(t *
 	capturedSessionModel := openAIWSPassthroughPolicyModelForFrame(provider, firstFrame)
 	require.Equal(t, "gpt-5.5", capturedSessionModel)
 
-	// Follow-up frame deliberately omits "model" — Realtime allows this.
+	// Realtime 允许后续帧省略 model。
 	followupFrame := []byte(`{"type":"response.create","service_tier":"priority"}`)
 
 	inner := &fakePassthroughFrameConn{
@@ -388,7 +387,7 @@ func TestPolicyEnforcingFrameConn_WithoutCapturedFallbackPolicyMisses(t *testing
 	wrapper := &openAIWSPolicyEnforcingFrameConn{
 		inner: inner,
 		filter: func(msgType coderws.MessageType, payload []byte) ([]byte, *tierpolicy.BlockedError, error) {
-			// NO fallback — emulate the pre-fix behavior.
+			// 省略回退模型，检查空模型时的处理。
 			model := openAIWSPassthroughPolicyModelForFrame(provider, payload)
 			return gatewayws.ApplyServiceTierFrame(payload, model, svc.Input(context.Background(), provider, model))
 		},
@@ -401,11 +400,10 @@ func TestPolicyEnforcingFrameConn_WithoutCapturedFallbackPolicyMisses(t *testing
 		"sanity: without capturedSessionModel fallback the leak (D5) reproduces — confirms the fix is load-bearing")
 }
 
-// --- 入口端到端测试（显式 filter 路径） ---
+// 入口端到端测试：filter 策略。
 
-// TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream 连接真实的
-// ProxyResponsesWebSocketFromClient 入口会话管线和 captureConn 上游，验证
-// service_tier=fast 的客户端帧在写入上游前会被管理员显式策略归一化并过滤。
+// TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream 连接 ProxyResponsesWebSocketFromClient 与 captureConn 上游。
+// 测试检查 service_tier=fast 在上游写入前按管理员配置规范化并过滤。
 func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) {
 	options := &wsFixtureOptions{}
 	options.Request.URLPolicy.Enabled = false
@@ -627,12 +625,8 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 	require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.5","stream":false,"service_tier":"priority"}`)))
 	cancelWrite()
 
-	// C3 timing assertion: the FIRST frame the client reads must be the
-	// error event — not a close frame. coder/websocket@v1.8.14 Conn.Write is
-	// synchronous (writeFrame Flushes the bufio writer at write.go:307-311
-	// before returning) and the close handshake re-acquires the same
-	// writeFrameMu, so this ordering is enforced by the library itself; this
-	// assertion guards against future refactors that might break it.
+	// 客户端先读取 error 事件。coder/websocket@v1.8.14 的 Conn.Write 在 write.go:307-311 同步 Flush，
+	// 关闭握手再次取得同一 writeFrameMu，因此数据帧先于关闭帧写出。
 	readCtx, cancelRead := context.WithTimeout(context.Background(), 3*time.Second)
 	_, event, readErr := clientConn.Read(readCtx)
 	cancelRead()
@@ -644,9 +638,7 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 	require.NotEmpty(t, gjson.GetBytes(event, "event_id").String(), "event_id must be present so clients can correlate")
 	require.Contains(t, gjson.GetBytes(event, "error.message").String(), "ws priority blocked for testing")
 
-	// Next read must surface the close frame (as a CloseError). This
-	// asserts the [error event, close] ordering — i.e. the close did NOT
-	// race ahead of the data frame.
+	// 下一次读取返回 CloseError，检查 error 事件先于关闭帧。
 	readCtx2, cancelRead2 := context.WithTimeout(context.Background(), 3*time.Second)
 	_, _, secondReadErr := clientConn.Read(readCtx2)
 	cancelRead2()
@@ -656,8 +648,7 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 
 	select {
 	case serverErr := <-serverErrCh:
-		// Server returns an OpenAIWSClientCloseError — handler closes the WS;
-		// here we just assert it surfaced as the typed close error.
+		// 服务端返回 OpenAIWSClientCloseError，handler 据此关闭连接。此处检查错误类型。
 		require.Error(t, serverErr)
 		var closeErr *OpenAIWSClientCloseError
 		require.True(t, errors.As(serverErr, &closeErr), "block 应返回 OpenAIWSClientCloseError，得到 %T: %v", serverErr, serverErr)
@@ -675,12 +666,8 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 // --- HTTP-side gap-filling tests (already covered by existing tests but
 // requested to be split out explicitly) ---
 
-// TestApplyOpenAIFastPolicyToBody_BlockShortCircuitsUpstream confirms that
-// applyOpenAIFastPolicyToBody surfaces a *OpenAIFastBlockedError when the rule
-// action is "block", and that the body is left untouched. The caller (chat
-// completions / messages handlers) inspects this typed error and skips the
-// upstream HTTP call entirely — see openai_gateway_chat_completions.go:175 and
-// openai_gateway_messages.go:149.
+// TestApplyOpenAIFastPolicyToBody_BlockShortCircuitsUpstream 验证 block 规则返回 OpenAIFastBlockedError，请求体保持原样。
+// Chat Completions 和 Messages 调用方据此结束请求。
 func TestApplyOpenAIFastPolicyToBody_BlockShortCircuitsUpstream(t *testing.T) {
 	settings := &tierpolicy.OpenAIFastPolicySettings{
 		Rules: []tierpolicy.OpenAIFastPolicyRule{{
@@ -704,11 +691,8 @@ func TestApplyOpenAIFastPolicyToBody_BlockShortCircuitsUpstream(t *testing.T) {
 	require.Equal(t, string(body), string(updated), "block must not mutate body")
 }
 
-// TestForwardAsAnthropicMessages_BetaFastModePassesOpenAIFastPolicyByDefault
-// 验证 Anthropic 兼容入口链路：anthropic-beta: fast-mode -> BetaFastMode
-// 检测 -> 注入 ServiceTier="priority"（openai_gateway_messages.go:60）
-// -> 默认 OpenAI fast 策略透传。这里复用相同内部管线
-// （Anthropic -> Responses + BetaFastMode + policy），不启动真实上游 HTTP 服务。
+// TestForwardAsAnthropicMessages_BetaFastModePassesOpenAIFastPolicyByDefault 验证 Anthropic fast-mode 检测后设置 BetaFastMode，
+// 转换为 Responses 的 ServiceTier=priority，再按默认 Fast 策略透传。测试调用内部转换和策略函数。
 func TestForwardAsAnthropicMessages_BetaFastModePassesOpenAIFastPolicyByDefault(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
@@ -735,30 +719,24 @@ func TestForwardAsAnthropicMessages_BetaFastModePassesOpenAIFastPolicyByDefault(
 	upstreamBody, policyErr := tierpolicy.ApplyBody(responsesBody, svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, policyErr)
 
-	// 第 4 步：默认策略必须保留显式 fast/priority 请求。
+	// 默认策略保留请求指定的 fast/priority。
 	require.Equal(t, "priority", gjson.GetBytes(upstreamBody, "service_tier").String(),
 		"default policy should pass service_tier=priority through to upstream")
 }
 
 // --- Fix1: passthrough capturedSessionModel must follow session.update ---
 
-// TestPolicyEnforcingFrameConn_SessionUpdateRotatesCapturedModel covers the
-// fix1 bypass: client opens with a whitelist-miss model (gpt-4o → pass under
-// gpt-5.5 whitelist), rotates to gpt-5.5 via session.update, then sends
-// response.create without "model". Without the session.update sniffing the
-// follow-up frame would fall back to the stale gpt-4o capture and pass — the
-// fix updates capturedSessionModel from session.* events so the fallback now
-// resolves to gpt-5.5 and the policy filters service_tier.
+// TestPolicyEnforcingFrameConn_SessionUpdateRotatesCapturedModel 验证 session.update 更新 capturedSessionModel。
+// 客户端首帧使用白名单外的 gpt-4o，更新为 gpt-5.5 后，省略 model 的 response.create 继承 gpt-5.5，策略据此过滤 service_tier。
 func TestPolicyEnforcingFrameConn_SessionUpdateRotatesCapturedModel(t *testing.T) {
 	svc := newWSFastPolicy(t, gpt55WhitelistFastPolicy())
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	// Frame 1: response.create with whitelist-miss model — under default
-	// rule fallback=pass, service_tier stays.
+	// 首帧使用白名单外的模型，默认 fallback=pass 保留 service_tier。
 	first := []byte(`{"type":"response.create","model":"gpt-4o","service_tier":"priority"}`)
 	// Frame 2: session.update rotates the session model to gpt-5.5.
 	rotate := []byte(`{"type":"session.update","session":{"model":"gpt-5.5"}}`)
-	// Frame 3: response.create WITHOUT model — must inherit gpt-5.5.
+	// 第三帧省略 model，继承 gpt-5.5。
 	followup := []byte(`{"type":"response.create","service_tier":"priority"}`)
 
 	inner := &fakePassthroughFrameConn{reads: [][]byte{first, rotate, followup}}
@@ -789,8 +767,7 @@ func TestPolicyEnforcingFrameConn_SessionUpdateRotatesCapturedModel(t *testing.T
 	require.NoError(t, err)
 	require.Contains(t, string(payload1), `"service_tier"`, "frame1: gpt-4o miss whitelist → pass keeps service_tier")
 
-	// Frame 2: session.update — not response.create, untouched, but its
-	// side effect updates capturedSessionModel to gpt-5.5.
+	// 第二帧 session.update 原样透传，并将 capturedSessionModel 更新为 gpt-5.5。
 	_, payload2, err := wrapper.ReadFrame(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, string(rotate), string(payload2), "session.update frame is forwarded verbatim")
@@ -810,9 +787,7 @@ func TestPolicyEnforcingFrameConn_SessionUpdateRotatesCapturedModel(t *testing.T
 func TestPolicyModelFromSessionFrame_OnlySessionUpdate(t *testing.T) {
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	// session.created is a server→client event in the OpenAI Realtime
-	// protocol — clients never send it, so this filter (which only runs on
-	// the client→upstream direction) must ignore it even if it appears.
+	// session.created 是服务端发往客户端的事件，客户端上行过滤器忽略该事件。
 	created := []byte(`{"type":"session.created","session":{"model":"gpt-5.5"}}`)
 	require.Empty(t, openAIWSPassthroughPolicyModelFromSessionFrame(provider, created))
 
@@ -820,7 +795,7 @@ func TestPolicyModelFromSessionFrame_OnlySessionUpdate(t *testing.T) {
 	notSession := []byte(`{"type":"response.create","session":{"model":"gpt-9"}}`)
 	require.Empty(t, openAIWSPassthroughPolicyModelFromSessionFrame(provider, notSession))
 
-	// Missing session.model returns empty — caller keeps the old captured value.
+	// 缺少 session.model 时返回空字符串，调用方保留先前捕获的模型。
 	noModel := []byte(`{"type":"session.update","session":{"voice":"alloy"}}`)
 	require.Empty(t, openAIWSPassthroughPolicyModelFromSessionFrame(provider, noModel))
 }
@@ -886,15 +861,13 @@ func TestPassthroughBilling_PostFilterServiceTier(t *testing.T) {
 
 	raw := []byte(`{"type":"response.create","model":"gpt-5.5","service_tier":"priority"}`)
 
-	// Pre-filter sanity: extracting from the raw frame would (incorrectly,
-	// pre-fix) report "priority" — this is the very thing the adapter
-	// must NOT do anymore.
+	// 原始帧中的 priority 尚未过滤，计费值需要从过滤后的帧提取。
 	pre := requeststate.ExtractOpenAIServiceTierFromBody(raw)
 	require.NotNil(t, pre)
 	require.Equal(t, "priority", *pre,
 		"sanity: raw first frame carries priority that pre-fix billing would have reported")
 
-	// 应用显式策略过滤（gpt-5.5 + priority -> filter）。
+	// 应用 gpt-5.5 + priority -> filter 策略。
 	filtered, blocked, err := gatewayws.ApplyServiceTierFrame(raw, "gpt-5.5", svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)
 	require.Nil(t, blocked)
@@ -926,8 +899,7 @@ func TestApplyOpenAIFastPolicyToBody_NonStringServiceTier(t *testing.T) {
 	svc := newWSFastPolicy(t, tierpolicy.Default())
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	// Number — gjson .String() coerces to "1" which is not a recognized
-	// tier alias; normalize returns "" → policy no-ops.
+	// 数字 1 经 gjson.String() 转为字符串 “1”，规范化返回空字符串，策略跳过处理。
 	cases := [][]byte{
 		[]byte(`{"model":"gpt-5.5","service_tier":1}`),
 		[]byte(`{"model":"gpt-5.5","service_tier":null}`),
@@ -953,29 +925,16 @@ func TestApplyOpenAIFastPolicyToBody_NonStringServiceTier(t *testing.T) {
 	}
 }
 
-// TestPassthroughBilling_MultiTurnServiceTierFollowsFilteredFrames covers the
-// multi-turn passthrough billing regression: OpenAI Realtime / Responses WS
-// allows the client to ship a different service_tier on each response.create
-// frame (per-response field, see codex-rs/core/src/client.rs
-// build_responses_request which re-fills the field on every request). Before
-// the fix the adapter only captured service_tier from firstClientMessage so
-// turn 2/3 billing was wrong. After the fix the filter closure refreshes an
-// atomic.Pointer[string] on every successful response.create frame.
-//
-// 该测试固定四段语义契约：
-//   - 第 1 轮：service_tier=priority 命中显式 filter 规则，过滤后上游看不到 tier，
-//     计费值应为 nil。
-//   - 第 2 轮：service_tier=flex 透传（filter 规则只匹配 priority），计费值应更新为 "flex"。
-//   - 第 3 轮：response.create 不带 service_tier，上游会按默认 tier 处理；这里选择镜像该行为，
-//     将计费值覆盖为 nil，而不是沿用第 2 轮的 "flex"。
-//   - 非 response.create 帧（这里是 response.cancel）即使携带类似 service_tier 的字段，
-//     也不能覆盖计费指针。
+// TestPassthroughBilling_MultiTurnServiceTierFollowsFilteredFrames 验证计费使用每轮过滤后的 service_tier。
+// OpenAI Realtime / Responses WS 的 response.create 可逐轮指定 service_tier。Codex 的 build_responses_request 也会在每次请求中填写该字段。
+// 过滤器在每个成功的 response.create 后更新 atomic.Pointer[string]。
+// 第一轮 priority 命中过滤规则，计费值为 nil。第二轮 flex 透传，计费值为 flex。
+// 第三轮省略 service_tier，按默认层级处理，计费值为 nil。response.cancel 中的同名字段保持计费值原样。
 func TestPassthroughBilling_MultiTurnServiceTierFollowsFilteredFrames(t *testing.T) {
 	svc := newWSFastPolicy(t, openAIFastFilterPriorityPolicy())
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
 
-	// 镜像生产过滤闭包（openai_ws_v2_passthrough_adapter.go 的
-	// proxyResponsesWebSocketV2Passthrough），确保生产代码移除逐帧 Store 时测试会失败。
+	// 使用生产过滤闭包的逐帧 Store 行为，检查每轮计费值更新。
 	var requestServiceTierPtr atomic.Pointer[string]
 	capturedSessionModel := ""
 	filter := func(msgType coderws.MessageType, payload []byte) ([]byte, *tierpolicy.BlockedError, error) {

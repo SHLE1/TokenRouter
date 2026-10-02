@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// RequestMetadata 由网关入口投影，保留值缺失与显式空值的区别。
+// RequestMetadata 保存网关入口信息，并用 Set 字段区分未设置和空值。
 type RequestMetadata struct {
 	ForcePlatform      string
 	ForcePlatformSet   bool
@@ -17,14 +17,14 @@ func WithRequestMetadata(ctx context.Context, value RequestMetadata) context.Con
 	return context.WithValue(ctx, requestMetadataKey{}, value)
 }
 
-// WithForcePlatform 从已有投影派生新值，保留显式空平台与尚未设置的区别。
+// WithForcePlatform 在上下文中设置平台，同时标记该字段已设置。
 func WithForcePlatform(ctx context.Context, platform string) context.Context {
 	value := RequestMetadataFromContext(ctx)
 	value.ForcePlatform, value.ForcePlatformSet = platform, true
 	return WithRequestMetadata(ctx, value)
 }
 
-// WithInboundEndpoint 只记录已规范化入口，不读取请求体或重新执行鉴权。
+// WithInboundEndpoint 将调用方已规范化的入口保存到 context。
 func WithInboundEndpoint(ctx context.Context, endpoint string) context.Context {
 	value := RequestMetadataFromContext(ctx)
 	value.InboundEndpoint, value.InboundEndpointSet = endpoint, true

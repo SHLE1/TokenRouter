@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// CompatResponseResult 只携带供应商事实；计费模型仍由入站投影附加。
+// CompatResponseResult 记录上游响应，计费模型由入站处理器补充。
 type CompatResponseResult struct {
 	ReasoningEffort, ResolvedTier                *string
 	ResponseID                                   string
@@ -38,7 +38,7 @@ type ChatFailure struct {
 	Type, Message string
 }
 
-// ChatResponseOptions 只接收原提供商策略、输出和转换的显式端口。
+// ChatResponseOptions 配置 Chat 响应的读取、转换、输出和错误处理。
 type ChatResponseOptions struct {
 	Runtime                           bridge.Runtime
 	RequestContext                    context.Context
@@ -83,7 +83,7 @@ func NewCompatStreamHeaderWriter(c *upstream.OutputContext, headers http.Header,
 	}
 }
 
-// ReadChatBuffered 复用唯一 protocol 转换，保留原终态和错误返回时机。
+// ReadChatBuffered 收集 Responses 终态并转换为 Chat 响应。
 func ReadChatBuffered(resp *http.Response, c *upstream.OutputContext, options ChatResponseOptions, originalModel, upstreamModel string, startTime time.Time) (*CompatResponseResult, error) {
 	requestID := resp.Header.Get("x-request-id")
 
@@ -140,7 +140,7 @@ func ReadChatBuffered(resp *http.Response, c *upstream.OutputContext, options Ch
 	return result, nil
 }
 
-// ReadChatStreaming 复用唯一 protocol 转换，保留原终态和错误返回时机。
+// ReadChatStreaming 将 Responses 事件转换为 Chat 流，并收集用量。
 func ReadChatStreaming(resp *http.Response, c *upstream.OutputContext, options ChatResponseOptions, originalModel, upstreamModel string, startTime time.Time, requestBodyLen int) (*CompatResponseResult, error) {
 	requestID := resp.Header.Get("x-request-id")
 	writeStreamHeaders := NewCompatStreamHeaderWriter(c, resp.Header, options.Headers)

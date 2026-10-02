@@ -98,7 +98,7 @@ func (s *HealthService) ApplyFableQuotaWindow(ctx context.Context, provider *Rec
 	return true
 }
 
-// UpdateSessionWindow 根据成功响应观测更新五小时窗口，保留原独立写入顺序。
+// UpdateSessionWindow 根据成功响应依次独立写入五小时窗口字段。
 func (s *HealthService) UpdateSessionWindow(ctx context.Context, provider *Record, observation SessionWindowObservation) {
 	status := observation.Status
 	if status == "" {
@@ -110,7 +110,7 @@ func (s *HealthService) UpdateSessionWindow(ctx context.Context, provider *Recor
 	var windowStart, windowEnd *time.Time
 	needInitWindow := provider.SessionWindowEnd == nil || s.options.Now().After(*provider.SessionWindowEnd)
 
-	// 优先使用响应头中的真实重置时间（比预测更准确）
+	// 优先使用响应头中的重置时间。
 	if resetStr := observation.Reset; resetStr != "" {
 		if ts, err := strconv.ParseInt(resetStr, 10, 64); err == nil {
 			// 检测可能的毫秒时间戳（秒级约为 1e9，毫秒约为 1e12）
@@ -125,7 +125,7 @@ func (s *HealthService) UpdateSessionWindow(ctx context.Context, provider *Recor
 			if end.Before(minAllowed) || end.After(maxAllowed) {
 				s.options.Warn("provider_session_window_header_out_of_range", "provider_id", provider.ID, "raw_reset", resetStr, "parsed_end", end)
 			} else if needInitWindow || provider.SessionWindowEnd == nil || !end.Equal(*provider.SessionWindowEnd) {
-				// 窗口需要初始化，或者真实重置时间与已存储的不同，则更新
+				// 窗口未初始化或响应头的重置时间有变化时，更新窗口。
 				start := end.Add(-5 * time.Hour)
 				windowStart = &start
 				windowEnd = &end
@@ -136,7 +136,7 @@ func (s *HealthService) UpdateSessionWindow(ctx context.Context, provider *Recor
 		}
 	}
 
-	// 回退：如果没有真实重置时间且需要初始化窗口，使用预测
+	// 缺少响应头重置时间且窗口尚未初始化时，使用预测时间。
 	if windowEnd == nil && needInitWindow && (status == "allowed" || status == "allowed_warning") {
 		now := s.options.Now()
 		start := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, now.Location())
@@ -146,7 +146,7 @@ func (s *HealthService) UpdateSessionWindow(ctx context.Context, provider *Recor
 		s.options.Info("provider_session_window_initialized", "provider_id", provider.ID, "window_start", start, "window_end", end, "status", status)
 	}
 
-	// 窗口重置时清除旧的 utilization 和被动采样数据，避免残留上个窗口的数据
+	// 窗口重置时清除上一窗口的 utilization 和被动采样数据。
 	if windowEnd != nil && needInitWindow {
 		_ = s.options.SessionWindows.UpdateExtra(ctx, provider.ID, map[string]any{
 			"session_window_utilization":      nil,
@@ -173,7 +173,7 @@ func (s *HealthService) UpdateSessionWindow(ctx context.Context, provider *Recor
 	}
 }
 
-// SessionWindowStore 只提供观测字段写入，不接收业务配置或资金快照。
+// SessionWindowStore 提供会话窗口观测字段的写入接口。
 type SessionWindowStore interface {
 	UpdateSessionWindow(context.Context, int64, *time.Time, *time.Time, string) error
 	UpdateExtra(context.Context, int64, map[string]any) error
@@ -187,14 +187,14 @@ type QuotaWindowObservation struct {
 	Reason        string
 }
 
-// SessionWindowObservation 保留原响应字段与解析后的被动统计，不携带 HTTP 状态。
+// SessionWindowObservation 保存响应中的窗口字段和解析后的被动用量统计。
 type SessionWindowObservation struct {
 	Status  string
 	Reset   string
 	Passive map[string]any
 }
 
-// PersistPassiveUsage 保留无字段不写入及采样时取时的语义。
+// PersistPassiveUsage 在有采样字段时写入，采样时读取当前时间。
 func (s *HealthService) PersistPassiveUsage(ctx context.Context, value *Record, fields map[string]any) {
 	if len(fields) == 0 {
 		return

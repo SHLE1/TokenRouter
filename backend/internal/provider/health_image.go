@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// ApplyImageRateLimit 将 OpenAI 生图限流写入能力维度限流，而不是封禁整个提供商。
+// ApplyImageRateLimit 按图片能力记录 OpenAI 限流，其他能力保持当前状态。
 func (s *HealthService) ApplyImageRateLimit(ctx context.Context, provider *Record, statusCode int, observe func() (bool, time.Time)) bool {
 	if s == nil || provider == nil || s.providerRepo == nil {
 		return false
@@ -61,7 +61,7 @@ func (s *HealthService) ApplyImageCapabilityLoss(ctx context.Context, provider *
 	return true
 }
 
-// 图片能力状态继续沿用原缓存范围、原因和冷却时长。
+// 图片能力使用独立的缓存条目记录原因和冷却时间。
 const (
 	OpenAIImageRateLimitReason        = "openai_image_rate_limited"
 	OpenAIImageCapabilityLossReason   = "openai_image_capability_lost"

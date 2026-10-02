@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// RuntimeSettingsStore 保留原按入口读取时点，不引入新缓存。
+// RuntimeSettingsStore 按键读取路由设置。
 type RuntimeSettingsStore interface {
 	GetValue(context.Context, string) (string, error)
 }

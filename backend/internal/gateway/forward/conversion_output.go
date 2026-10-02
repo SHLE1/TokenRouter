@@ -18,7 +18,7 @@ import (
 // ResponsesBuffered 保留当前转换链的事件推进、用量与退出顺序。
 func ResponsesBuffered(in Response, out Output, originalModel, mappedModel string, reasoningEffort *string, startTime time.Time, clientToolMapping bridge.ResponsesClientToolMapping) (*Result, error) {
 	requestID := in.RequestID
-	// 每次转换独立采集原始模型声明，避免客户端别名覆盖上游事实。
+	// 每次转换单独记录上游模型声明，响应别名改写使用另一份数据。
 	var modelObserver protocol.ResponseModelObserver
 
 	scanner := in.Lines
@@ -104,11 +104,8 @@ func ResponsesBuffered(in Response, out Output, originalModel, mappedModel strin
 	responsesResp.Model = originalModel // Use original model name
 
 	out.CopyHeaders(in.Headers)
-	// 非流式响应必须是 application/json。上游被强制流式后会返回
-	// Content-Type: text/event-stream，经 WriteFilteredHeaders 透传后会污染
-	// 响应头；而 c.Data/c.JSON 走 Gin 的 writeContentType（仅当头不存在时才设置），
-	// 无法覆盖已存在的 SSE 头。这里显式 Set 强制改回 JSON，避免下游中间层
-	// （如 new-api）按 Content-Type 误判为流式。
+	// 非流式响应设置 Content-Type 为 application/json。上游强制流式响应的 text/event-stream 可能已被复制，
+	// Gin 的 c.Data/c.JSON 仅在响应头缺失时设置类型，此处直接 Set 覆盖，new-api 等下游据此按 JSON 处理。
 	out.BeginJSON()
 	if respBytes, err := json.Marshal(responsesResp); err == nil {
 		respBytes = out.ReverseTools(respBytes)
@@ -137,7 +134,7 @@ func ResponsesBuffered(in Response, out Output, originalModel, mappedModel strin
 // ResponsesStreaming 保留当前转换链的事件推进、用量与退出顺序。
 func ResponsesStreaming(in Response, out Output, originalModel, mappedModel string, reasoningEffort *string, startTime time.Time, clientToolMapping bridge.ResponsesClientToolMapping) (*Result, error) {
 	requestID := in.RequestID
-	// 每次转换独立采集原始模型声明，避免客户端别名覆盖上游事实。
+	// 每次转换单独记录上游模型声明，响应别名改写使用另一份数据。
 	var modelObserver protocol.ResponseModelObserver
 
 	out.CopyHeaders(in.Headers)
@@ -267,7 +264,7 @@ func ResponsesStreaming(in Response, out Output, originalModel, mappedModel stri
 // ChatBuffered 保留当前转换链的事件推进、用量与退出顺序。
 func ChatBuffered(in Response, out Output, originalModel, mappedModel string, reasoningEffort *string, startTime time.Time) (*Result, error) {
 	requestID := in.RequestID
-	// 每次转换独立采集原始模型声明，避免客户端别名覆盖上游事实。
+	// 每次转换单独记录上游模型声明，响应别名改写使用另一份数据。
 	var modelObserver protocol.ResponseModelObserver
 
 	scanner := in.Lines
@@ -351,11 +348,8 @@ func ChatBuffered(in Response, out Output, originalModel, mappedModel string, re
 	ccResp := bridge.ResponsesToChatCompletions(in.Runtime, responsesResp, originalModel)
 
 	out.CopyHeaders(in.Headers)
-	// 非流式响应必须是 application/json。上游被强制流式后会返回
-	// Content-Type: text/event-stream，经 WriteFilteredHeaders 透传后会污染
-	// 响应头；而 c.Data/c.JSON 走 Gin 的 writeContentType（仅当头不存在时才设置），
-	// 无法覆盖已存在的 SSE 头。这里显式 Set 强制改回 JSON，避免下游中间层
-	// （如 new-api）按 Content-Type 误判为流式。
+	// 非流式响应设置 Content-Type 为 application/json。上游强制流式响应的 text/event-stream 可能已被复制，
+	// Gin 的 c.Data/c.JSON 仅在响应头缺失时设置类型，此处直接 Set 覆盖，new-api 等下游据此按 JSON 处理。
 	out.BeginJSON()
 	if respBytes, err := json.Marshal(ccResp); err == nil {
 		respBytes = out.ReverseTools(respBytes)
@@ -380,7 +374,7 @@ func ChatBuffered(in Response, out Output, originalModel, mappedModel string, re
 // ChatStreaming 保留当前转换链的事件推进、用量与退出顺序。
 func ChatStreaming(in Response, out Output, originalModel, mappedModel string, reasoningEffort *string, startTime time.Time, includeUsage bool) (*Result, error) {
 	requestID := in.RequestID
-	// 每次转换独立采集原始模型声明，避免客户端别名覆盖上游事实。
+	// 每次转换单独记录上游模型声明，响应别名改写使用另一份数据。
 	var modelObserver protocol.ResponseModelObserver
 
 	out.CopyHeaders(in.Headers)

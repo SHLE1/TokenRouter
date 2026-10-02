@@ -118,7 +118,7 @@ const (
 	CodexClientRestrictionReasonMatchedGlobalAllowedClient = "global_allowed_client_matched"
 	// CodexClientRestrictionReasonNotMatchedUA 表示请求未命中官方客户端 UA 白名单。
 	CodexClientRestrictionReasonNotMatchedUA = "official_client_user_agent_not_matched"
-	// CodexClientRestrictionReasonForceCodexCLI 表示通过 ForceCodexCLI 配置兜底放行。
+	// CodexClientRestrictionReasonForceCodexCLI 表示通过 ForceCodexCLI 配置放行。
 	CodexClientRestrictionReasonForceCodexCLI = "force_codex_cli_enabled"
 	// CodexClientRestrictionReasonMatchedTLSRouter 表示请求命中提供商绑定的 TLS 路由器。
 	CodexClientRestrictionReasonMatchedTLSRouter = "tls_router_matched"

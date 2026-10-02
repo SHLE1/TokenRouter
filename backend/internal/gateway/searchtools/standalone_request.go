@@ -1,6 +1,6 @@
 package searchtools
 
-// StandaloneRequest 保留独立搜索入口的请求形状，平台构造器通过显式字段投影接入。
+// StandaloneRequest 保存独立搜索入口的请求字段，供平台构造器使用。
 type StandaloneRequest struct {
 	Query                    string   `json:"query"`
 	Input                    string   `json:"input"`

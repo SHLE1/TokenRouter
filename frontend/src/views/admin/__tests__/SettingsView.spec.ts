@@ -909,7 +909,7 @@ describe("admin SettingsView payment visible method controls", () => {
     try {
       await flushPromises();
       await openGatewayTab(wrapper);
-      // 使用真实组件验证注册与 Teleport，避免 stub 掩盖漏导入导致的内联渲染。
+      // 挂载 BaseDialog 检查组件注册与 Teleport 位置。
       expect(wrapper.findComponent(BaseDialog).exists()).toBe(true);
       expect(wrapper.find("basedialog").exists()).toBe(false);
       expect(wrapper.find(querySelector).exists()).toBe(false);

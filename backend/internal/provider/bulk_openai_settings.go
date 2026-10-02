@@ -21,7 +21,7 @@ func (s bulkOpenAISettings) any() bool {
 	return s.workloadCapabilities || s.textRouteMode || s.continuationSupported
 }
 
-// normalizeBulkOpenAISettings 严格校验批量配置，避免部分提供商写入无法路由的组合。
+// normalizeBulkOpenAISettings 校验批量配置，每个提供商的组合均需满足路由条件。
 // long-context 计费开关不属于 fork 的提供商配置，因此这里不会识别或生成该字段。
 func normalizeBulkOpenAISettings(input *BulkUpdateProvidersInput) (bulkOpenAISettings, error) {
 	var settings bulkOpenAISettings
@@ -79,7 +79,7 @@ func normalizeBulkOpenAISettings(input *BulkUpdateProvidersInput) (bulkOpenAISet
 		if input.Extra == nil {
 			input.Extra = make(map[string]any, 1)
 		}
-		// 仅保留 embeddings 时清除旧的强制文本路由，避免更新后提供商仍被选中转发文本请求。
+		// 仅启用 embeddings 时清除强制文本路由配置，提供商按嵌入能力参与选择。
 		input.Extra[ExtraKeyTextRouteMode] = string(TextRouteModePreserveClientProtocol)
 		settings.textRouteMode = true
 	}
@@ -199,7 +199,7 @@ func validateBulkOpenAIResponsesContinuationSupported(raw any) error {
 	return nil
 }
 
-// validateBulkOpenAISettingsTargets 在任何批量写入前检查所有目标，避免漏查 ID 或混入非 API Key。
+// validateBulkOpenAISettingsTargets 在批量写入前检查全部目标的 ID 和 API Key 类型。
 func validateBulkOpenAISettingsTargets(input *BulkUpdateProvidersInput, settings bulkOpenAISettings, targetsByID map[int64]*Record) error {
 	if input == nil || !settings.any() {
 		return nil

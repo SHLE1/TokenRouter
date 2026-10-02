@@ -93,8 +93,8 @@ type UserRepository interface {
 	UpdateBalance(ctx context.Context, id int64, amount float64) error
 	DeductBalance(ctx context.Context, id int64, amount float64) (float64, error)
 	// AdjustBalance 原子地把 delta 累加到余额上，并返回变更前后的值。结果为负时
-	// 拒绝写入并返回 ErrBalanceNegative。管理员的加/扣款必须走这里而不是
-	// "读余额→算新值→整行写回"，否则并发的计费扣款会被旧快照抹掉。
+	// 拒绝写入并返回 ErrBalanceNegative。管理员加扣款需要调用本方法。
+	// 先读余额再整行写回会用旧快照覆盖并发扣款。
 	AdjustBalance(ctx context.Context, id int64, delta float64) (BalanceChange, error)
 	// SetBalance 原子地把余额置为 value（value 必须 >= 0），返回变更前后的值。
 	SetBalance(ctx context.Context, id int64, value float64) (BalanceChange, error)

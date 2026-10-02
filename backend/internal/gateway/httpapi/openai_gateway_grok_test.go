@@ -1567,7 +1567,7 @@ func TestForwardGrokResponsesNonStreamingUsesCacheIdentityAndCachedUsage(t *test
 	identity := gjson.GetBytes(upstream.lastBody, "prompt_cache_key").String()
 	require.NotEmpty(t, identity)
 	require.Equal(t, identity, upstream.lastReq.Header.Get(GrokConversationIDHeader))
-	// 清理器会移除不受支持的客户端工具，但明确的工具意图仍必须阻止注入原生缓存路由工具。
+	// 客户端声明工具后，即使清理器移除该工具，也跳过缓存路由工具注入。
 	require.False(t, gjson.GetBytes(upstream.lastBody, "tools").Exists())
 	require.False(t, gjson.GetBytes(upstream.lastBody, "tool_choice").Exists())
 	require.Equal(t, "resp_grok_non_stream", gjson.Get(recorder.Body.String(), "id").String())
@@ -1576,7 +1576,7 @@ func TestForwardGrokResponsesNonStreamingUsesCacheIdentityAndCachedUsage(t *test
 	require.Equal(t, observedResetAt, repo.recoveryObservedReset)
 }
 
-// TestForwardGrokResponsesFreeFunctionToolsUseCacheCapableMixedRoute 验证原生 Responses 的 Free OAuth 函数工具请求必须在实际转发前补齐可缓存原生工具。
+// TestForwardGrokResponsesFreeFunctionToolsUseCacheCapableMixedRoute 验证 Responses Free OAuth 函数工具请求在转发前补齐可缓存的平台工具。
 func TestForwardGrokResponsesFreeFunctionToolsUseCacheCapableMixedRoute(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -1783,7 +1783,7 @@ func TestForwardAsChatCompletionsForGrokComposerBridgesImageInput(t *testing.T) 
 	require.NotNil(t, repo.updates[55]["grok_usage_snapshot"])
 }
 
-// TestForwardAsAnthropicForGrokUsesXAIResponses 验证Codex 身份恢复只能作用于 OpenAI OAuth，Grok Messages 必须保持自己的请求头和端点。
+// TestForwardAsAnthropicForGrokUsesXAIResponses 验证 Grok Messages 使用 Grok 请求头和端点，Codex 身份恢复用于 OpenAI OAuth。
 func TestForwardAsAnthropicForGrokUsesXAIResponses(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -1993,7 +1993,7 @@ func (r *grokPoolPolicyProviderRepo) SetModelRateLimit(_ context.Context, _ int6
 	return nil
 }
 
-// newGrokPoolPolicyGateway 构造接入真实通用错误策略的 Grok 网关测试实例。
+// newGrokPoolPolicyGateway 构造使用通用错误策略的 Grok 网关测试实例。
 func newGrokPoolPolicyGateway(provider *gatewayprovider.ExecutionProvider) (*OpenAIResponsesExecutor, *grokPoolPolicyProviderRepo) {
 	baseRepo := &grokFixtureProviders{
 		providersByID: map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},

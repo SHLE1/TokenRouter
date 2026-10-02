@@ -153,10 +153,8 @@ func TestOpenAIEnsureForwardErrorResponse_WritesFallbackWhenNotWritten(t *testin
 	assert.Equal(t, "Upstream request failed", errorObj["message"])
 }
 
-// TestOpenAIEnsureForwardErrorResponse_AppendsSSEAfterWritten 验证Writer 已写后 ensureForwardErrorResponse 必须仍然把错误信息以 SSE
-// 形式追加给客户端（streamStarted 强制 true）。
-// 这是 case B 修复：旧实现遇到 Writer.Written 直接 return false，
-// 客户端只能拿到 silent EOF；Codex CLI 报 "stream closed before response.completed"。
+// TestOpenAIEnsureForwardErrorResponse_AppendsSSEAfterWritten 验证 Writer 写入后追加 SSE 错误，并将 streamStarted 设为 true。
+// 缺少终止事件会使 Codex CLI 报 stream closed before response.completed。
 func TestOpenAIEnsureForwardErrorResponse_AppendsSSEAfterWritten(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -173,8 +171,7 @@ func TestOpenAIEnsureForwardErrorResponse_AppendsSSEAfterWritten(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "event: error\n")
 }
 
-// TestOpenAIEnsureForwardErrorResponse_ResponsesRouteAfterWrittenEmitsResponseFailed 验证case B 回归测试：/responses 路径，Writer 已被写过（模拟 ping flushed），
-// ensureForwardErrorResponse 必须发 response.failed，让 Codex 收到合规终止事件。
+// TestOpenAIEnsureForwardErrorResponse_ResponsesRouteAfterWrittenEmitsResponseFailed 验证 /responses 心跳 Flush 后，ensureForwardErrorResponse 写出 response.failed。
 func TestOpenAIEnsureForwardErrorResponse_ResponsesRouteAfterWrittenEmitsResponseFailed(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -204,7 +201,7 @@ func TestOpenAIEnsureForwardErrorResponse_CompactKeepaliveOnlyWritesResponseFail
 	before := gatewayhttp.OpenAICompactKeepaliveAdjustedWrittenSize(c)
 	require.Eventually(t, c.Writer.Written, time.Second, time.Millisecond)
 	require.Equal(t, before, gatewayhttp.OpenAICompactKeepaliveAdjustedWrittenSize(c))
-	// 模拟上游错误路径已设置 committed 标记，但未实际写出语义事件。
+	// 模拟设置 committed 标记后尚未写出协议事件的错误路径。
 	gatewayhttp.MarkResponseCommitted(c)
 
 	require.True(t, gatewayhttp.DefaultOpenAIErrorOutput().EnsureFallback(c, false))

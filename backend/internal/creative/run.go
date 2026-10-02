@@ -255,7 +255,7 @@ const (
 	CreativeRunOutboxCancelled CreativeRunOutboxStatus = "cancelled"
 )
 
-// CreativeRunOutbox 是创作台后台补偿动作的持久投影。
+// CreativeRunOutbox 保存创作台后台补偿动作的持久记录。
 type CreativeRunOutbox struct {
 	ID           int64
 	RunID        string
@@ -335,7 +335,7 @@ type CreativeRunRepository interface {
 
 // CreativeRunPayload 是保存在临时 Redis 存储中的任务载荷。
 // 只有这里和 worker 执行期间允许出现 prompt 明文与图片字节。
-// Sources/Mask 仅存在于 worker 内存态（json:"-"），不落 Redis：字节已由 input/mask 键单独保存。
+// Sources/Mask 是 worker 内存字段（json:"-"），图片字节在 Redis 的 input/mask 键中单独保存。
 type CreativeRunPayload struct {
 	RunID              string `json:"run_id"`
 	UserID             int64  `json:"user_id"`
@@ -451,7 +451,7 @@ type CreativeModelsResponse struct {
 	Data []CreativeModelPublic `json:"data"`
 }
 
-// CreativeCapabilitiesResponse 是创作台上传与文本校验的服务端限制契约。
+// CreativeCapabilitiesResponse 返回创作台上传和文本校验的服务端限制。
 type CreativeCapabilitiesResponse struct {
 	MaxPromptChars     int      `json:"max_prompt_chars"`
 	MaxAssetBytes      int64    `json:"max_asset_bytes"`

@@ -33,7 +33,7 @@ func clientFromContext(ctx context.Context, defaultClient *dbent.Client) *dbent.
 //
 // 这是 Repository 层的核心错误处理函数，确保数据库细节不会泄露到业务层。
 // 通过统一的错误翻译，业务层可以使用语义明确的错误类型（如 ErrUserNotFound）
-// 而不是依赖于特定数据库的错误（如 sql.ErrNoRows）。
+// sql.ErrNoRows 等数据库错误在此转换为业务错误。
 //
 // 参数：
 //   - err: 原始数据库错误
@@ -78,5 +78,5 @@ func isUniqueConstraintViolation(err error) bool {
 	return postgresinfra.IsUniqueConstraintViolation(err)
 }
 
-// isSQLNoRowsError 委托通用 SQL 错误识别，保留旧 upsert 语义。
+// isSQLNoRowsError 通过通用 SQL 错误检查判断记录是否缺失。
 func isSQLNoRowsError(err error) bool { return postgresinfra.IsNoRows(err) }

@@ -1775,7 +1775,7 @@ const keywordNotice = computed<KeywordNoticeView>(() => {
 const resultOptions = computed<SelectOption[]>(() => [
   { value: '', label: t('admin.riskControl.result.all') },
   { value: 'hit', label: t('admin.riskControl.result.hitNotBlocked') },
-  // 各类拦截使用独立查询值，避免普通拦截筛选混入哈希或关键词拦截。
+  // 普通、哈希和关键词拦截各用独立的筛选值。
   { value: 'block', label: t('admin.riskControl.result.blocked') },
   { value: 'keyword_block', label: t('admin.riskControl.result.keywordBlocked') },
   { value: 'hash_block', label: t('admin.riskControl.result.hashBlocked') },
@@ -1996,7 +1996,7 @@ const cyberDetailText = computed(() => {
   return cyberDetailRow.value.warning_text || '-'
 })
 
-// Cyber 告警详情单独展示用户提示词，避免只看到上游拒绝文本。
+// Cyber 告警详情分别展示用户提示词和上游拒绝文本。
 const cyberPromptText = computed(() => {
   if (!cyberDetailRow.value) return '-'
   return cyberDetailRow.value.prompt_excerpt || '-'
@@ -2169,7 +2169,7 @@ async function loadAll() {
       adminAPI.riskControl.getConfig(),
       adminAPI.groups.getAll(),
       adminAPI.riskControl.getStatus(),
-      // 代理列表加载失败只影响选择器，不阻塞风控页面其它功能。
+      // 代理列表加载失败时返回空列表，风控配置继续加载。
       adminAPI.proxies.getAll().catch(() => [] as Proxy[]),
     ])
     applyConfig(config)
@@ -2439,7 +2439,7 @@ async function loadDetailMedia(mediaItems: ContentModerationMedia[], version: nu
   mediaObjectURLs.value = urls
 }
 
-// 关闭详情时释放 Blob URL，避免多次复审累计占用浏览器内存。
+// 关闭详情时释放 Blob URL 及其占用的内存。
 function revokeDetailMediaURLs() {
   for (const value of Object.values(mediaObjectURLs.value)) {
     URL.revokeObjectURL(value)

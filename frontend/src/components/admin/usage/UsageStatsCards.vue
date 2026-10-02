@@ -1,5 +1,5 @@
 <template>
-  <!-- 卡片在移动端纵向排布（图标在上、文字占满卡宽），桌面端保持横向图标+文字，避免窄屏下数值与中文被折断 -->
+  <!-- 移动端卡片纵向排列图标和文字，文字占满卡宽，桌面端横向排列。 -->
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
     <div class="card p-4">
       <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
@@ -19,7 +19,7 @@
         <div class="min-w-0">
           <p class="text-xs font-medium text-gray-500">{{ t('usage.totalTokens') }}</p>
           <p class="mt-0.5 whitespace-nowrap text-lg font-bold tabular-nums lg:text-xl">{{ formatTokens(stats?.total_tokens || 0) }}</p>
-          <!-- 明细分段 nowrap，只能在分段处换行，避免窄屏下中文（如“缓存”）被从中间折断 -->
+          <!-- 各段明细保持同一行，段间可以换行。 -->
           <p class="mt-0.5 flex flex-wrap items-center gap-x-1 text-xs text-gray-500">
             <span class="whitespace-nowrap">{{ t('usage.in') }}: {{ formatTokens(stats?.total_input_tokens || 0) }}</span>
             <span>/</span>

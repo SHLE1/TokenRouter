@@ -300,7 +300,7 @@ func TestGrokImportProbeFailureLogDoesNotIncludeErrorMessage(t *testing.T) {
 	require.NotContains(t, logs.String(), "refresh-token-secret")
 }
 
-// 测试直接注入日志端口，生产核心不安装全局后端。
+// 测试注入日志记录函数。
 type grokImportProbeScheduler = GrokImportProbeScheduler
 
 func newGrokImportProbeScheduler(concurrency int, timeout time.Duration) *GrokImportProbeScheduler {

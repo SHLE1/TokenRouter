@@ -56,7 +56,7 @@ func TestResolveEasyPayReturnedRef(t *testing.T) {
 			ref:     "/api/pay/toapp/ORDER_ID",
 			want:    "http://pay.example.com/api/pay/toapp/ORDER_ID",
 		},
-		// —— 以下全部必须原样返回 ——
+		// 这些输入均按输入原样返回。
 		{
 			name:    "empty stays empty",
 			apiBase: apiBase,

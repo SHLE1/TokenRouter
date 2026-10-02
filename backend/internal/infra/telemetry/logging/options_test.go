@@ -59,7 +59,7 @@ func TestNormalizedOptions_InvalidFallback(t *testing.T) {
 	}
 	out := opts.normalized()
 	if out.Level != "trace" {
-		// normalized 仅做 trim/lower，不做校验；校验在 config 层。
+		// normalized 去除首尾空白并转为小写，config 层负责校验。
 		t.Fatalf("normalized level should preserve value for upstream validation, got %q", out.Level)
 	}
 	if !out.Output.ToStdout {

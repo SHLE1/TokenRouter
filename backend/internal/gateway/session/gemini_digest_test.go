@@ -394,7 +394,7 @@ func TestGenerateGeminiDigestSessionKey(t *testing.T) {
 		}
 	})
 
-	// 验证不同 uuid 产生不同 sessionKey（负载均衡核心逻辑）
+	// 不同 uuid 应生成不同 sessionKey。
 	t.Run("different uuid different key", func(t *testing.T) {
 		hash := "sameprefix123456"
 		uuid1 := "uuid0001-session-a"

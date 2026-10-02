@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// ClearRefreshCooldownIfUnchanged 沿用原单条清理和尽力 outbox，附加身份及原窗口比较。
+// ClearRefreshCooldownIfUnchanged 比较身份和冷却窗口后清理单条记录，再尝试发布 outbox。
 func (r *ProviderStore) ClearRefreshCooldownIfUnchanged(ctx context.Context, v provider.RefreshCooldownVersion) (bool, error) {
 	where, args, err := usageObservationPredicate(provider.UsageObservationVersion{CredentialVersion: v.CredentialVersion, ParentProviderID: v.ParentProviderID, QuotaDimension: v.QuotaDimension}, 4, false)
 	if err != nil {

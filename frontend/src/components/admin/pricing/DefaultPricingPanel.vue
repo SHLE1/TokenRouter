@@ -154,8 +154,8 @@ function priceLabel(key: string): string {
   return t(`admin.pricing.defaults.keys.${stripped}`, stripped)
 }
 
-// —— 弹窗价格开关：上下文（标准/长上下文）与模式（标准/Fast/Flex）相互独立 ——
-// 后端投影的 key 形如 long_fast_input（上下文前缀在前），两个开关组合出当前价格集。
+// 弹窗价格开关：上下文（标准/长上下文）与模式（标准/Fast/Flex）相互独立。
+// 后端返回的 key 形如 long_fast_input（上下文前缀在前），两个开关组合出当前价格集。
 
 type PricingContext = 'standard' | 'long_context' | number
 type PricingTier = 'standard' | 'fast' | 'flex'

@@ -223,8 +223,8 @@ func (s *GeminiProviderTest) buildCodeAssistRequest(ctx context.Context, accessT
 	return req, nil
 }
 
-// geminiTestPayload 构造测试报文，保留显式类型与旧模型判断。
-// 显式图片类型使用图片生成配置；未指定类型时保留旧模型名兼容判断。
+// geminiTestPayload 按测试类型或模型名构造报文。
+// 图片类型使用图片生成配置，省略类型时按模型名判断。
 func geminiTestPayload(modelID string, prompt string, testTypes ...string) []byte {
 	testType, explicitTestType := providercore.ProviderTestTypeFromArgs(testTypes...)
 	useImageTest := (explicitTestType && testType == providercore.ProviderTestTypeImage) ||
@@ -279,7 +279,7 @@ func geminiTestPayload(modelID string, prompt string, testTypes ...string) []byt
 	return bytes
 }
 
-// GeminiProviderTest 组合原生提供商凭据与平台测试，不持有业务服务或新客户端池。
+// GeminiProviderTest 为平台测试绑定提供商凭据和共享客户端。
 type GeminiProviderTest struct {
 	Tokens      *providercore.GeminiTokenSource
 	Transport   QoderTransport

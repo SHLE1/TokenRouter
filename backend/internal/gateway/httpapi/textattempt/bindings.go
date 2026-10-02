@@ -21,7 +21,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ForwardPorts 是平台单次执行边界；提供商切换循环仍唯一位于 gateway/text。
+// ForwardPorts 提供平台单次执行接口，gateway/text 负责切换提供商。
 type ForwardPorts struct {
 	AntigravityAvailable   bool
 	BedrockCompat          func(*gin.Context, []byte, string, *gatewaycapture.ExecutionProvider, *int64) []byte
@@ -77,7 +77,7 @@ type ForwardPorts struct {
 	WriteMappedClaudeError func(*gin.Context, *gatewaycapture.ExecutionProvider, int, string, []byte) error
 }
 
-// SelectionPorts 连接同一选择、会话及反馈拥有者，不创建第二份状态。
+// SelectionPorts 使用共享的提供商选择、会话与反馈服务。
 type SelectionPorts struct {
 	ProviderSwitched    func(*gatewaycapture.SelectionResult)
 	BindSticky          func(context.Context, *int64, string, int64) error

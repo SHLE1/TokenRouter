@@ -102,7 +102,7 @@ var (
 	_ batchimage.BatchImageDownloadPermit  = (*batchImageDownloadPermit)(nil)
 )
 
-// DownloadOptions 只投影原下载计数和 TTL 参数。
+// DownloadOptions 配置每用户下载并发数和最长下载时间。
 type DownloadOptions struct {
 	MaxDownloadConcurrencyPerUser int
 	MaxDownloadDurationSeconds    int

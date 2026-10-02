@@ -10,7 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// BucketLocks 复用原调度 Redis，不持有第二份锁表或新的缓存命名空间。
+// BucketLocks 使用调度 Redis 管理桶锁。
 type BucketLocks struct{ client *redis.Client }
 
 func NewBucketLocks(client *redis.Client) *BucketLocks { return &BucketLocks{client: client} }
@@ -22,7 +22,7 @@ end
 return 0
 `)
 
-// AcquireBucketLease 保持原 string key/TTL；锁值是不可解释的持有者令牌。
+// AcquireBucketLease 按给定字符串键和 TTL 取得锁，锁值是持有者令牌。
 func (s *BucketLocks) AcquireBucketLease(ctx context.Context, bucket scheduler.SchedulerBucket, ttl time.Duration) (*scheduler.BucketLease, bool, error) {
 	var token [16]byte
 	if _, err := rand.Read(token[:]); err != nil {

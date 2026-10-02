@@ -111,7 +111,7 @@ func TestChatCompletionsResponseToAnthropic_ReasoningOnlyFallback(t *testing.T) 
 	}
 
 	out := ChatCompletionsResponseToAnthropic(testRuntime(), resp, "claude-sonnet-4-20250514")
-	// 同时生成 thinking 和 text，后者使用 reasoning 作为可见文本兜底。
+	// 同时生成 thinking 和 text，缺少正文时将 reasoning 用作可见文本。
 	require.Len(t, out.Content, 2)
 	require.Equal(t, "thinking", out.Content[0].Type)
 	require.Equal(t, "I should think about this", out.Content[0].Thinking)
@@ -234,7 +234,7 @@ func TestChatCompletionsChunkToAnthropicEvents_ReasoningThenContent(t *testing.T
 	})
 
 	types := anthropicEventTypes(events)
-	// thinking block 必须先完整关闭，再开始 text block。
+	// thinking block 关闭后再开始 text block。
 	require.Equal(t, []string{
 		"message_start",
 		"content_block_start",
@@ -317,7 +317,7 @@ func TestChatCompletionsChunkToAnthropicEvents_EmptyStream(t *testing.T) {
 	})
 
 	types := anthropicEventTypes(events)
-	// 即使没有内容，也必须发出完整的消息开始、增量与停止事件。
+	// 空内容也发出消息开始、增量和停止事件。
 	require.Contains(t, types, "message_start")
 	require.Contains(t, types, "message_stop")
 }
@@ -352,7 +352,7 @@ func TestChatCompletionsChunkToAnthropicEvents_ParallelToolCalls(t *testing.T) {
 	require.Equal(t, assembledToolUse{ID: "call_1", Name: "tool_a", Input: `{"a":1}`}, tools[0])
 	require.Equal(t, assembledToolUse{ID: "call_2", Name: "tool_b", Input: `{"b":2}`}, tools[1])
 
-	// 每个 block 必须严格按 start、delta、stop 顺序闭合，禁止关闭后继续写 delta。
+	// 每个 block 按 start、delta、stop 顺序输出，stop 结束该块。
 	blockState := make(map[int]string)
 	for _, e := range events {
 		if e.Index == nil {
@@ -483,7 +483,7 @@ func TestDirectBridge_NonStreamingMatchesDoubleConversion(t *testing.T) {
 	responsesResp := ChatCompletionsResponseToResponses(testRuntime(), resp, "claude-sonnet-4-20250514", nil, nil, false, nil)
 	double := ResponsesToAnthropic(responsesResp, "claude-sonnet-4-20250514")
 
-	// 比较关键字段。
+	// 比较转换后的模型、内容和用量字段。
 	require.Equal(t, AnthropicStopReasonString(direct.StopReason), AnthropicStopReasonString(double.StopReason))
 	require.Equal(t, direct.Model, double.Model)
 	require.Len(t, direct.Content, len(double.Content))
@@ -502,7 +502,7 @@ func TestDirectBridge_NonStreamingMatchesDoubleConversion(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 边界场景
+// 空输入和分片交错场景。
 // ---------------------------------------------------------------------------
 
 func TestChatCompletionsToAnthropicStreamState_ToolCallNameArrivesLate(t *testing.T) {
@@ -514,7 +514,7 @@ func TestChatCompletionsToAnthropicStreamState_ToolCallNameArrivesLate(t *testin
 		`{"choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`,
 	})
 
-	// 延迟发布的 tool_use block 仍必须使用正确名称。
+	// 延迟发布的 tool_use block 使用上游返回的名称。
 	var toolName string
 	for _, e := range events {
 		if e.Type == "content_block_start" && e.ContentBlock != nil && e.ContentBlock.Type == "tool_use" {
@@ -525,7 +525,7 @@ func TestChatCompletionsToAnthropicStreamState_ToolCallNameArrivesLate(t *testin
 }
 
 func TestChatCompletionsToAnthropicStreamState_ToolCallIDAndNameArriveLate(t *testing.T) {
-	// 参数、名称和 ID 可以分别到达；最终必须使用上游迟到的 ID，而不是临时生成值。
+	// 参数、名称和 ID 可以分别到达，最终使用上游返回的 ID。
 	events := collectAnthropicStreamEvents(t, []string{
 		`{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"path\":"}}]}}]}`,
 		`{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"name":"Read","arguments":"\"README.md\","}}]}}]}`,
@@ -540,13 +540,14 @@ func TestChatCompletionsToAnthropicStreamState_ToolCallIDAndNameArriveLate(t *te
 	require.JSONEq(t, `{"path":"README.md"}`, tools[0].Input)
 }
 
-// assembleToolUseBlocks 按 Anthropic 客户端语义，从 start 中读取 ID/名称并拼接参数 delta。
+// assembledToolUse 保存重建后的工具调用 ID、名称和参数。
 type assembledToolUse struct {
 	ID    string
 	Name  string
 	Input string
 }
 
+// assembleToolUseBlocks 从 start 读取 ID 和名称并拼接参数 delta，模拟 Anthropic 客户端处理。
 func assembleToolUseBlocks(events []AnthropicStreamEvent) []assembledToolUse {
 	blockByIdx := map[int]int{} // Anthropic block index 到输出位置的映射。
 	var out []assembledToolUse
@@ -569,7 +570,7 @@ func assembleToolUseBlocks(events []AnthropicStreamEvent) []assembledToolUse {
 }
 
 func TestChatCompletionsToAnthropicStreamState_ToolCallArgsArriveBeforeName(t *testing.T) {
-	// 工具名前到达的参数片段必须在 content_block_start 时冲刷，确保客户端重建完整 JSON。
+	// 工具名之前到达的参数片段在 content_block_start 时输出，客户端据此重建完整 JSON。
 	events := collectAnthropicStreamEvents(t, []string{
 		`{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_early","function":{"arguments":"{\"city\":"}}]}}]}`,
 		`{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"SF\""}}]}}]}`,
@@ -608,7 +609,7 @@ func TestChatCompletionsToAnthropicStreamState_ToolCallNameNeverArrives(t *testi
 	require.Equal(t, "", tools[0].Name)
 	require.JSONEq(t, `{"a":1}`, tools[0].Input)
 
-	// block 生命周期必须配对，并在 message_stop 前结束。
+	// block 的开始和结束事件配对，结束事件位于 message_stop 前。
 	types := anthropicEventTypes(events)
 	require.Equal(t, []string{
 		"message_start",
@@ -680,7 +681,7 @@ func TestChatCompletionsResponseToAnthropic_GeneratesIDWhenMissing(t *testing.T)
 }
 
 func TestDirectBridge_NonStreamingMatchesDoubleConversion_EmptyChoices(t *testing.T) {
-	// 上游 200 但 choices 为空时仍须与旧桥一致地返回有效的 end_turn。
+	// 上游返回 200 且 choices 为空时，结果使用 end_turn。
 	resp := &ChatCompletionsResponse{ID: "chatcmpl-empty", Model: "deepseek-v4-pro"}
 
 	direct := ChatCompletionsResponseToAnthropic(testRuntime(), resp, "claude-sonnet-4-20250514")
@@ -693,7 +694,7 @@ func TestDirectBridge_NonStreamingMatchesDoubleConversion_EmptyChoices(t *testin
 }
 
 func TestChatCompletionsResponseToAnthropic_ContentFilterWithToolUse(t *testing.T) {
-	// content_filter 与未知 finish reason 都按旧桥从 blocks 推导 stop_reason。
+	// content_filter 与未知 finish reason 都从 blocks 推导 stop_reason。
 	resp := &ChatCompletionsResponse{
 		ID:    "chatcmpl-cf",
 		Model: "deepseek-v4-pro",

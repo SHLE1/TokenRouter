@@ -6,7 +6,7 @@ import (
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
-// 指纹缓存替身保留网关 Header 消费契约。
+// 指纹缓存替身提供网关构造 Header 时读取的数据。
 type stubIdentityCache struct {
 	fingerprint *claude.Fingerprint
 	setCalls    int

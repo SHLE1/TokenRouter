@@ -28,7 +28,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// provideAdminRouteMount 固定所属 HTTP 实例，只负责注册与跨模块投影。
+// provideAdminRouteMount 将管理员 HTTP 处理器和跨模块读取函数绑定到路由注册函数。
 func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerprintProfileHandler,
 	eAdminSchedulerDiagnostics *routescheduler.DiagnosticsHandler,
 	eAdminTLSFingerprintRouter *routeegress.TLSFingerprintRouterHandler,

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// recordStore 只记录真正结算调用，日志兜底不能再次经过资金端口。
+// recordStore 记录结算调用次数，用于检查日志重试时结算仍仅执行一次。
 type recordStore struct {
 	calls   int
 	err     error

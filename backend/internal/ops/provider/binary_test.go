@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// binaryFixtureClient 仅把受信资产请求映射到本地夹具，不访问真实发布资源。
+// binaryFixtureClient 将受信资产请求映射到本地测试夹具。
 type binaryFixtureClient struct {
 	url       string
 	downloads *[]string

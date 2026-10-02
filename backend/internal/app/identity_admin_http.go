@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// provideIdentityAdminHTTP 只投影 Key 展示和实时并发，管理规则由 identity 执行。
+// provideIdentityAdminHTTP 绑定 Key 展示和实时并发读取函数，用户管理规则由 identity 执行。
 func provideIdentityAdminHTTP(admin *identity.UserAdmin, keys *apikey.Admin, concurrency *scheduler.ConcurrencyService, totp *identity.TotpService, users *identity.UserService, settings *identity.RuntimeSettings) *identityhttp.AdminUserHandler[keydto.APIKey[routingdto.Group]] {
 	listKeys := func(ctx context.Context, id int64, page, size int, sortBy, order string) ([]keydto.APIKey[routingdto.Group], int64, error) {
 		rows, total, err := keys.GetUserAPIKeys(ctx, id, page, size, sortBy, order)

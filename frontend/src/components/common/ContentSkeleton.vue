@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import Skeleton from './Skeleton.vue'
 
 // @project-doc docs/architecture/frontend_ui_conventions.md#loading_feedback
-// 只承载内容占位；请求状态和外层卡片由调用方维护。
+// 组件展示内容占位，请求状态和外层卡片由调用方维护。
 withDefaults(defineProps<{
   variant?: 'list' | 'form' | 'detail' | 'article'
   rows?: number

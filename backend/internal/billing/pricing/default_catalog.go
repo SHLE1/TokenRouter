@@ -7,7 +7,7 @@ type DefaultPriceValue struct {
 	Unit  string   `json:"unit"`
 }
 
-// DefaultModelPrice 是管理员可查询的基础价投影，不包含分组和用户倍率。
+// DefaultModelPrice 是管理员查询的模型基础价，分组和用户倍率在报价时另行应用。
 type DefaultModelPrice struct {
 	Source                        string                 `json:"source,omitempty"`
 	PriceSources                  map[string]string      `json:"price_sources,omitempty"`

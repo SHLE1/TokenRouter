@@ -374,7 +374,7 @@ type (
 	CatalogModelPricing = purepricing.CatalogModelPricing
 )
 
-// Options 由 app 从一次加载的配置投影，provider 不接收 config 或业务实体。
+// Options 包含 app 在启动时读取的模型目录配置。
 type Options struct {
 	DataDir              string
 	RemoteURL            string
@@ -436,7 +436,7 @@ func NewServiceFromSnapshot(options Options, remote RemoteClient, snapshot Snaps
 	return s
 }
 
-// Wait 只等待已有更新任务退出，不发出停止信号；Stop 使用相同等待路径。
+// Wait 等待已启动的更新任务退出。Stop 发送停止信号后也使用该等待方法。
 func (s *Service) Wait() {
 	s.wg.Wait()
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider/transfer"
 )
 
-// CRSProviderStore 保留原同步配置、影子关系及凭据专用写入能力。
+// CRSProviderStore 提供同步配置、影子关系和凭据写入操作。
 type CRSProviderStore interface {
 	ShadowProxyStore
 	Create(context.Context, *Record) error
@@ -32,7 +32,7 @@ type CRSOptions struct {
 	Refresh func(context.Context, *Record) error
 }
 
-// CRSSync 拥有六类来源的逐项同步与预览，网络登录和供应商交换经端口提供。
+// CRSSync 按六类来源逐项同步和预览，通过接口执行网络登录与凭据交换。
 type CRSSync struct {
 	providerRepo CRSProviderStore
 	proxyRepo    CRSProxyStore
@@ -50,7 +50,7 @@ func NewCRSSync(providers CRSProviderStore, proxies CRSProxyStore, exporter CRSE
 	return &CRSSync{providers, proxies, exporter, options}
 }
 
-// refreshOAuthToken 导入已提交后才尝试刷新，失败保留原逐项成功计数。
+// refreshOAuthToken 在导入提交后尝试刷新，失败时该项仍计为导入成功。
 func (s *CRSSync) refreshOAuthToken(ctx context.Context, value *Record) {
 	if s.options.Refresh != nil {
 		_ = s.options.Refresh(ctx, value)
@@ -191,7 +191,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 		extra["crs_account_id"] = src.ID
 		extra["crs_kind"] = src.Kind
 		extra["crs_synced_at"] = now
-		// 从凭据投影组织与提供商 ID 到扩展信息。
+		// 从凭据读取组织和提供商 ID，写入扩展信息。
 		if orgUUID, ok := src.Credentials["org_uuid"]; ok {
 			extra["org_uuid"] = orgUUID
 		}
@@ -469,7 +469,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 		extra["crs_account_id"] = src.ID
 		extra["crs_kind"] = src.Kind
 		extra["crs_synced_at"] = now
-		// 将来源 crs_email 投影为 email。
+		// 将来源的 crs_email 写入 email。
 		if crsEmail, ok := src.Extra["crs_email"]; ok {
 			extra["email"] = crsEmail
 		}
@@ -553,7 +553,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 		s.refreshOAuthToken(ctx, existing)
 
 		// 母提供商的代理更新后同步到 Spark 影子，与管理编辑的继承规则一致。
-		// 母提供商已经更新成功，影子同步失败只记录告警，不回退条目状态。
+		// 母提供商更新已提交，影子同步失败时记录告警，该项保持成功。
 		if perr := PropagateProviderProxyToShadows(ctx, s.providerRepo, existing.ID, existing.ProxyID); perr != nil {
 			s.options.Warn("crs_sync_propagate_proxy_to_shadows_failed", "provider_id", existing.ID, "error", perr)
 		}
@@ -731,7 +731,7 @@ func (s *CRSSync) SyncFromCRS(ctx context.Context, input SyncFromCRSInput) (*Syn
 		if v, ok := credentials["token_type"].(string); !ok || strings.TrimSpace(v) == "" {
 			credentials["token_type"] = "Bearer"
 		}
-		// 到期值按原 Gemini 契约转换为 Unix 秒字符串。
+		// 按 Gemini 的格式将到期时间转换为 Unix 秒字符串。
 		if expiresAtStr, ok := credentials["expires_at"].(string); ok && strings.TrimSpace(expiresAtStr) != "" {
 			if t, err := time.Parse(time.RFC3339, expiresAtStr); err == nil {
 				credentials["expires_at"] = strconv.FormatInt(t.Unix(), 10)
@@ -1050,7 +1050,7 @@ func CRSCleanBaseURL(credentials map[string]any, suffixToRemove string) {
 	}
 }
 
-// CRSBuildSelectedSet 区分未发送与显式空集合：前者创建全部，后者不新建。
+// CRSBuildSelectedSet 在未发送集合时选择全部条目，空集合表示新建数量为零。
 func CRSBuildSelectedSet(ids []string) map[string]struct{} {
 	if ids == nil {
 		return nil

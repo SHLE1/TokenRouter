@@ -144,7 +144,7 @@ func TestExecuteStreamingProgressAndPartialFailure(t *testing.T) {
 					require.NoError(t, err)
 				}
 				require.Equal(t, "claude-runtime", result.UpstreamResponseModel)
-				// passthrough 对终态 error 保持原返回行为，不能借新接口改变旧策略。
+				// 终态出错时，已观测的用量和内容输出仍保存在结果中。
 				require.True(t, result.HasUsage)
 				require.True(t, result.Served)
 				require.NotNil(t, result.FirstTokenMs)

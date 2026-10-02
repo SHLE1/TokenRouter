@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// WriteThrottle 保留按提供商的快照写入间隔，不持有统计值或数据库连接。
+// WriteThrottle 按提供商限制快照写入间隔。
 type WriteThrottle struct {
 	minInterval time.Duration
 	mu          sync.Mutex

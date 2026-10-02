@@ -6,7 +6,7 @@ import (
 
 // OpenAIBaseURL 解析 OpenAI 协议族提供商的上游 base_url。
 // 适用 openai 与国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）；grok 走 GetGrokBaseURL，
-// 此处对 grok 返回 "" 以保持原有行为。
+// Grok 的默认地址由调用方解析，此处返回空字符串。
 func (a *Record) OpenAIBaseURL(adaptive bool) string {
 	if !a.IsOpenAI() && !a.IsCNProvider() {
 		return ""

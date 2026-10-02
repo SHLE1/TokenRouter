@@ -431,7 +431,7 @@ func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_Sticky
 
 		svc := newGeminiSelectionForTest(GeminiDependencies{Reads: Reads{Providers: repo, Groups: groupRepo}, Shared: Shared{Cache: cache}}, nil)
 
-		// 同组 Antigravity 提供商仍能服务当前模型，保留原有绑定。
+		// 同组 Antigravity 提供商可服务当前模型，继续使用会话绑定。
 		acc, err := svc.SelectProviderForModelWithExclusions(ctx, selectionFixtureGroupID(ctx), "session-123", "gemini-2.5-flash", nil)
 		require.NoError(t, err)
 		require.NotNil(t, acc)

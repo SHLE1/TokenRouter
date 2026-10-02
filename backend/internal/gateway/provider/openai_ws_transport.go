@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// ResolveOpenAIWSTransport 投影当前提供商资格，传输优先级由 egress 唯一裁决。
+// ResolveOpenAIWSTransport 将提供商资格传给 egress，取得 WebSocket 传输选择结果。
 func ResolveOpenAIWSTransport(value *provider.Record, options *egress.OpenAIWSOptions, defaultMode string) egress.OpenAIWSProtocolDecision {
 	input := egress.OpenAIWSProvider{}
 	if value != nil {

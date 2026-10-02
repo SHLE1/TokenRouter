@@ -18,12 +18,12 @@ func provideSettingsStore(client *ent.Client) *settings.Store {
 	return settings.New(settingspostgres.NewSettingRepository(client))
 }
 
-// provideIdempotencyRepository 使用应用已拥有的 SQL 连接，不创建额外连接池。
+// provideIdempotencyRepository 使用应用共享的 SQL 连接池构造幂等存储。
 func provideIdempotencyRepository(db *sql.DB) idempotency.IdempotencyRepository {
 	return idempotencypostgres.NewIdempotencyRepository(db)
 }
 
-// provideSQLDB 取得 Ent 已拥有的连接池，关闭仍由原资源拥有者负责。
+// provideSQLDB 返回 Ent 的连接池，连接池随 Ent 关闭。
 func provideSQLDB(client *ent.Client) (*sql.DB, error) {
 	if client == nil {
 		return nil, errors.New("nil ent client")

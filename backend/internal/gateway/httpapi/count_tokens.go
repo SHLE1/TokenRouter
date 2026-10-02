@@ -114,7 +114,7 @@ func (h *CountTokensHandler) CountTokens(c *gin.Context) {
 		return
 	}
 	body = parsedReq.Body.Bytes()
-	// count_tokens 走 messages 严格校验时，复用已解析请求，避免二次反序列化。
+	// count_tokens 使用 messages 严格校验时，复用已解析的请求。
 	h.backend.BindClient(c, DetectClaudeCodeRequest(c, body, parsedReq, false))
 	apiKey, err = resolveClientGroupForRequest(c, h.backend, apiKey, protocol.ProtocolAnthropicMessages)
 	if err != nil {

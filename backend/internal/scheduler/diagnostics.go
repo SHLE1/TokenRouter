@@ -1,6 +1,6 @@
 package scheduler
 
-// Diagnostics 由装配注入唯一日志后端，核心不安装或持有技术日志实例。
+// Diagnostics 接收 app 提供的日志回调。
 type Diagnostics struct {
 	Event func(level, event string, fields ...any)
 	Logf  func(scope, format string, args ...any)

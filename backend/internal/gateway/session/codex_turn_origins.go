@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// CodexTurnOrigins 只记录不透明回合状态的签发提供商，不保存状态值或凭据。
+// CodexTurnOrigins 根据回合状态的摘要记录签发提供商。
 // HTTP 暂存头真正提交后才登记，提供商切换时据此判断是否移除回带值。
 type CodexTurnOrigins struct {
 	origins sync.Map
@@ -25,7 +25,7 @@ func NewCodexTurnOrigins(now func() time.Time) *CodexTurnOrigins {
 	return &CodexTurnOrigins{now: now}
 }
 
-// Record 沿用写入时的 TTL，每 256 次登记清扫一次过期记录。
+// Record 按写入时的 TTL 保存归属，每 256 次登记清扫一次过期记录。
 func (s *CodexTurnOrigins) Record(seed string, id int64, ttl time.Duration) {
 	if s == nil || seed == "" || id <= 0 {
 		return

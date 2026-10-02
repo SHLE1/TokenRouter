@@ -30,7 +30,7 @@ export interface FloatingPanelOptions {
 }
 
 /**
- * 计算挂载到 body 的浮层位置，避免触发按钮靠近视口边缘时浮层被挤到屏幕外。
+ * 计算挂载到 body 的浮层位置，触发按钮靠近视口边缘时将浮层限制在屏幕内。
  */
 export const getFloatingPanelPosition = (
   triggerRect: Pick<DOMRect, 'top' | 'right' | 'bottom'> & { width?: number; left?: number },
@@ -57,7 +57,7 @@ export const getFloatingPanelPosition = (
     ? viewportPadding
     : Math.max(viewportPadding, Math.min(rawLeft, viewportWidth - width - viewportPadding))
 
-  // 固定高度菜单:只做整体翻转与顶缘夹取,不收缩高度。
+  // 固定高度菜单按指定高度整体翻转，并将顶缘限制在视口内。
   if (options.fixedHeight !== undefined) {
     const fixedHeight = options.fixedHeight
     const spaceBelowFixed = viewportHeight - triggerRect.bottom - gap - viewportPadding

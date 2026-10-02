@@ -7,7 +7,7 @@ import (
 	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// tokenRepositoryReader 只投影测试提供商，刷新规则仍由提供商模块执行。
+// tokenRepositoryReader 适配测试提供商数据，提供商模块执行刷新规则。
 type tokenRepositoryReader struct {
 	source gatewayprovider.ExecutionProviderStore
 }

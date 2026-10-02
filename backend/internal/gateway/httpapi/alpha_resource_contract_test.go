@@ -25,7 +25,7 @@ type alphaResponseBody struct {
 
 func (b *alphaResponseBody) Close() error { b.closes++; return b.ReadCloser.Close() }
 
-// TestAlphaSearchFailoverClosesOriginalResponse 验证可重试错误必须在写入响应前返回给 handler，以便切换提供商。
+// TestAlphaSearchFailoverClosesOriginalResponse 验证可重试错误在写出响应前返回 handler，供其切换提供商。
 func TestAlphaSearchFailoverClosesOriginalResponse(t *testing.T) {
 	body := []byte(`{"id":"search-session","model":"gpt-5.6-sol","commands":{}}`)
 	recorder := httptest.NewRecorder()

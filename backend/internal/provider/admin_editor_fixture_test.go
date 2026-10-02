@@ -9,7 +9,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// newProviderEditorForTest 保留旧编辑入口的时间、指纹种子与平台凭据校验注入。
+// newProviderEditorForTest 为编辑夹具注入时钟、指纹种子和平台凭据校验函数。
 func newProviderEditorForTest(repo providercore.AdminStore, groupPorts ...providercore.AdminGroups) *providercore.Admin {
 	var groups providercore.AdminGroups
 	if len(groupPorts) > 0 {

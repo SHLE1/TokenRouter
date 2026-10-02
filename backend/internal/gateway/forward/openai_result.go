@@ -13,7 +13,7 @@ import (
 type OpenAIResult struct {
 	// UpstreamResponseModel 是协议转换前的上游模型声明；空值表示未声明。
 	UpstreamResponseModel string
-	// NativeUsage 保留非 OpenAI 执行器的互斥输入桶，避免桥接后重复扣减缓存。
+	// NativeUsage 保存非 OpenAI 执行器各自独立的输入分桶，桥接结果直接使用这些值。
 	NativeUsage *protocolcore.TokenUsage
 	RequestID   string
 	ResponseID  string
@@ -31,8 +31,7 @@ type OpenAIResult struct {
 	UpstreamModel string
 	// UpstreamResponseServiceTier 是上游响应声明的实际服务档位，供计费只降档使用。
 	UpstreamResponseServiceTier string
-	// UpstreamEndpoint 是该请求实际使用的上游 API 路径，避免同一下游协议可选择
-	// 多个上游端点时只能依赖推断。
+	// UpstreamEndpoint 记录本次使用的上游 API 路径，同一下游协议可以选择多个上游端点。
 	UpstreamEndpoint string
 	// ServiceTier is the final tier sent upstream after policy rewriting.
 	// The upstream response declaration remains separate above and is reconciled
@@ -45,7 +44,7 @@ type OpenAIResult struct {
 	Stream                   bool
 	OpenAIWSMode             bool
 	// UpstreamTerminalEvent 记录 Responses WebSocket 请求观测到的规范化终止事件；
-	// 空值保持旧调用方和非 WebSocket 请求的成功语义。
+	// 空值表示成功，适用于非 WebSocket 调用。
 	UpstreamTerminalEvent string
 	ResponseHeaders       map[string][]string
 	Duration              time.Duration
@@ -78,7 +77,7 @@ type OpenAIResult struct {
 }
 
 // SucceededForScheduling 判断转发结果能否作为上游调度成功，并清除模型级短暂状态。
-// 零值继续保持现有非 WebSocket 调用方的成功语义。
+// 零值表示非 WebSocket 调用成功。
 func (r *OpenAIResult) SucceededForScheduling() bool {
 	if r == nil || !r.OpenAIWSMode || r.UpstreamTerminalEvent == "" {
 		return true
@@ -91,7 +90,7 @@ func (r *OpenAIResult) SucceededForScheduling() bool {
 	}
 }
 
-// SetWSReplayInput 保存本轮已经规范化的恢复输入，沿用调用方取得快照的时点。
+// SetWSReplayInput 保存调用方为本轮取得的规范化恢复输入快照。
 func (r *OpenAIResult) SetWSReplayInput(input []json.RawMessage, exists bool) {
 	r.wsReplayInput = input
 	r.wsReplayInputExists = exists
@@ -107,7 +106,7 @@ func (r *OpenAIResult) SetWSProviderFailoverReplayInput(input []json.RawMessage)
 	r.wsProviderFailoverReplayInput = input
 }
 
-// WSProviderFailoverReplayInput 供当前轮恢复边界读取；不进入 JSON 或完成计费投影。
+// WSProviderFailoverReplayInput 返回当前轮恢复所需的重放输入。
 func (r *OpenAIResult) WSProviderFailoverReplayInput() []json.RawMessage {
 	return r.wsProviderFailoverReplayInput
 }

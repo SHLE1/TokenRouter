@@ -398,7 +398,7 @@ onUnmounted(() => {
   }
 }
 
-/* 桌面目录折叠实际宽度；窄屏抽屉只改变位移，不挤压正文。 */
+/* 桌面目录通过宽度折叠，窄屏抽屉通过位移显隐，正文宽度保持不变。 */
 .toc-enter-active,
 .toc-leave-active {
   transition: width var(--motion-layout) var(--motion-ease),
@@ -411,7 +411,7 @@ onUnmounted(() => {
   min-width: 0;
   opacity: 0;
 }
-/* BREAKPOINT_SM 减 1，与目录原有窄屏定位一致。 */
+/* 窄屏目录的断点取 BREAKPOINT_SM 减 1。 */
 @media (max-width: 639px) {
   .toc-enter-active,
   .toc-leave-active {

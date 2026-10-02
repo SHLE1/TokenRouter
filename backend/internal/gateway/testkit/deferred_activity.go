@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 网关行为从最终写入端口核对，避免测试穿透队列内部表示。
+// deferredActivityRepository 记录最终的存储写入，供测试检查网关行为。
 type deferredActivityRepository struct {
 	updates sync.Map
 }

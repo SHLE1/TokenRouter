@@ -10,7 +10,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// newResponseOutputForTest 只构造响应组件的真实依赖，不创建旧网关、选号或完成队列。
+// newResponseOutputForTest 构造响应组件使用的依赖。
 func newResponseOutputForTest(options OpenAIResponseOptions) *OpenAIResponseOutput {
 	if options.ReadLimit == 0 {
 		options.ReadLimit = 64 << 20

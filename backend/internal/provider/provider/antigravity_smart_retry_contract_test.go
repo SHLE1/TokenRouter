@@ -1003,7 +1003,7 @@ func TestHandleSmartRetry_ShortDelay_NonStickySession_FailedRetry_NoDeleteSessio
 }
 
 // TestHandleSmartRetry_ShortDelay_StickySession_FailedRetry_NilCache_NoPanic
-// 边界：cache 为 nil 时不应 panic
+// cache 为 nil 时返回空结果。
 
 func TestHandleSmartRetry_ShortDelay_StickySession_FailedRetry_NilCache_NoPanic(t *testing.T) {
 	failRespBody := `{
@@ -1148,7 +1148,7 @@ func TestHandleSmartRetry_ShortDelay_StickySession_SuccessRetry_NoDeleteSession(
 	require.Len(t, cache.deleteCalls, 0, "should NOT call DeleteSessionProviderID on successful retry")
 }
 
-// 长延迟路径（情况1）应立即清除 sticky 绑定，避免下一次请求继续命中已限流提供商。
+// 长延迟分支立即清除 sticky 绑定，后续请求重新选择提供商。
 
 func TestHandleSmartRetry_LongDelay_StickySession_ClearsSession(t *testing.T) {
 	repo := &antigravityRetryStoreFixture{}
@@ -1451,7 +1451,7 @@ func TestAntigravityRetryLoop_SmartRetryFailed_StickySession_SwitchErrorPropagat
 	require.Equal(t, "sticky-loop-test", cache.deleteCalls[0].sessionHash)
 }
 
-// newAntigravityRetryFixture 夹具只装配生产重试与窄健康端口，不重建旧网关。
+// newAntigravityRetryFixture 组合平台重试组件和健康状态接口。
 func newAntigravityRetryFixture() *AntigravityRetry {
 	noop := func(string, ...any) {}
 	return &AntigravityRetry{

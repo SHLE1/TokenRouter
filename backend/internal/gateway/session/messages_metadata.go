@@ -8,13 +8,9 @@ import (
 )
 
 func MessagesMetadataSession(claudeSessionID, sessionHash, promptCacheKey, reqModel string, body []byte) (string, string) {
-	// Anthropic metadata.user_id 只作为提供商粘性信号。上游 GPT/Codex 缓存键
-	// 交给 ForwardAsAnthropic 从 cache_control 或完整消息 digest 派生，避免
-	// 固定 metadata key 压住后续 turn 的缓存滚动。
-	//
-	// Claude Code 的 X-Claude-Code-Session-Id 是比 body content fallback 更稳定的
-	// 会话边界，但它只用于本地提供商粘性；不要把它提升为 prompt_cache_key 或上游
-	// session_id，否则会改变现有 Messages→Codex 缓存滚动语义。
+	// Anthropic metadata.user_id 和 X-Claude-Code-Session-Id 用于本地提供商粘性，后者比内容摘要更稳定。
+	// 上游 GPT/Codex 的 prompt_cache_key 和 session_id 由 ForwardAsAnthropic 根据 cache_control 或完整消息摘要派生，
+	// 使后续 turn 的缓存键随内容滚动。
 	if promptCacheKey == "" {
 		if claudeSessionID != "" {
 			return currentSessionHash(claudeSessionID), promptCacheKey
@@ -30,7 +26,7 @@ func MessagesMetadataSession(claudeSessionID, sessionHash, promptCacheKey, reqMo
 	return sessionHash, promptCacheKey
 }
 
-// currentSessionHash 复用调度唯一哈希编码。
+// currentSessionHash 按调度会话的格式计算哈希。
 func currentSessionHash(seed string) string {
 	current, _ := scheduler.DeriveSessionHashes(seed)
 	return current

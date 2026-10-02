@@ -105,8 +105,8 @@ func BuildParts(content json.RawMessage, toolIDToName map[string]string, allowDu
 				Thought: true,
 			}
 			// signature 处理：
-			// - Claude 模型（allowDummyThought=false）：必须是上游返回的真实 signature（dummy 视为缺失）
-			// - Gemini 模型（allowDummyThought=true）：优先透传真实 signature，缺失时使用 dummy signature
+			// - Claude 模型（allowDummyThought=false）使用上游返回的 signature，dummy 按缺失处理。
+			// - Gemini 模型（allowDummyThought=true）优先使用上游 signature，缺失时使用 dummy signature。
 			if block.Signature != "" && (allowDummyThought || block.Signature != DummyThoughtSignature) {
 				part.ThoughtSignature = block.Signature
 			} else if !allowDummyThought {
@@ -146,8 +146,8 @@ func BuildParts(content json.RawMessage, toolIDToName map[string]string, allowDu
 				},
 			}
 			// tool_use 的 signature 处理：
-			// - Claude 模型（allowDummyThought=false）：必须是上游返回的真实 signature（dummy 视为缺失）
-			// - Gemini 模型（allowDummyThought=true）：优先透传真实 signature，缺失时使用 dummy signature
+			// - Claude 模型（allowDummyThought=false）使用上游返回的 signature，dummy 按缺失处理。
+			// - Gemini 模型（allowDummyThought=true）优先使用上游 signature，缺失时使用 dummy signature。
 			if block.Signature != "" && (allowDummyThought || block.Signature != DummyThoughtSignature) {
 				part.ThoughtSignature = block.Signature
 			} else if allowDummyThought {

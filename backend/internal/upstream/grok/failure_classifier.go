@@ -12,7 +12,7 @@ import (
 )
 
 // GrokUpstreamFailureClass 用于决定临时停调冷却与响应提交前的提供商切换。
-// 分类优先分析响应体，使代理改写状态码后免费额度耗尽和空输出语义仍能优先命中。
+// 分类优先分析响应体，以识别代理改写状态码后的免费额度耗尽和空输出错误。
 type GrokUpstreamFailureClass string
 
 const (
@@ -38,7 +38,7 @@ type GrokUpstreamFailureDecision struct {
 	ShouldCooldown bool
 	// ShouldFailover 表示应在终止响应写入前尝试其它提供商；内容策略拒绝由独立路径处理。
 	ShouldFailover bool
-	// BlockModel 只用于已知模型的空输出；免费额度耗尽默认冷却提供商而非单个模型。
+	// 已知模型的空输出使用 BlockModel，免费额度耗尽默认冷却提供商。
 	BlockModel   bool
 	Reason       string
 	TokensActual *int64
@@ -164,7 +164,7 @@ func ClassifyGrokUpstreamFailure(statusCode int, responseBody []byte, requestedM
 		}
 	}
 
-	// 不含免费额度语义的普通限流。
+	// 未命中免费额度耗尽的普通限流。
 	if statusCode == http.StatusTooManyRequests || IsGrokRateLimitText(low) {
 		return GrokUpstreamFailureDecision{
 			Class: GrokFailureRateLimit,
@@ -204,7 +204,7 @@ func ClassifyGrokUpstreamFailure(statusCode int, responseBody []byte, requestedM
 func GrokUpstreamErrorCorpus(statusCode int, responseBody []byte) (text, code, low string) {
 	_ = statusCode // 分类器已单独持有传输状态，此处语料只分析响应体。
 	raw := strings.TrimSpace(string(responseBody))
-	// 移除 upstream status 前缀，使免费额度和账单语义可直接识别。
+	// 移除 upstream status 前缀后匹配免费额度和账单错误。
 	if _, unwrappedBody, ok := UnwrapGrokUpstreamErrorText(raw); ok {
 		raw = unwrappedBody
 	}

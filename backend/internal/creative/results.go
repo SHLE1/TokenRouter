@@ -283,7 +283,7 @@ func (s *Results) SucceedRun(ctx context.Context, runID string, providerID int64
 	return s.GetRunPublic(ctx, runID)
 }
 
-// CreativeDelivery 仅投影兼容依赖，不保留另一份结果状态。
+// CreativeDelivery 使用当前 Results 的存储、时钟和 TTL 构造结果交付器。
 func (s *Results) CreativeDelivery() ResultDelivery {
 	outcomes, _ := s.Repo.(ProviderOutcomeStore)
 	return ResultDelivery{Now: s.Now, Repo: s.Repo, Outcomes: outcomes, Store: s.TransientStore, TTL: s.TransientTTL}

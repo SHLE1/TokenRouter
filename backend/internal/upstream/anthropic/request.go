@@ -89,8 +89,7 @@ func BuildRequest(ctx context.Context, body []byte, token, tokenType, modelID st
 	// === 计算最终 anthropic-beta header（先于 body sanitize）===
 	//
 	// 顺序约束：
-	//   1) 算 finalBeta（纯函数，不依赖 req.Header；mimicry 路径会忽略客户端 beta，
-	//      与原“OAuth + mimicClaudeCode 跳过白名单透传”行为对齐）
+	//   1) 计算 finalBeta，mimicry 路径使用伪装 beta 集合
 	//   2) 按 finalBeta 做能力维度 body sanitize（如 context-management beta 缺失 →
 	//      strip body.context_management，与 Bedrock 路径对称）
 	//   3) NewRequest（body 至此最终敲定；新版 CLI 已取消 cch 签名字段）

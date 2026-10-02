@@ -44,9 +44,8 @@ const (
 	OpsStreamErrorsKey = "ops_stream_errors"
 	OpsStreamTurnKey   = "ops_stream_turn"
 
-	// 客户端侧配置限制仍应进入 ops_error_logs，但要从 SLA/错误率口径中排除。
-	// ResponseCommittedKey 由 handleErrorResponse 系列函数在写完 HTTP 错误响应后设置。
-	// ensureForwardErrorResponse 检查此 key，为 true 时跳过兜底写入，避免在已完成的 JSON 后追加 SSE。
+	// 客户端配置限制写入 ops_error_logs，SLA 和错误率统计排除此类失败。
+	// handleErrorResponse 写完错误响应后设置 ResponseCommittedKey，ensureForwardErrorResponse 据此结束输出。
 	ResponseCommittedKey = "response_committed"
 
 	OpsClientBusinessLimitedKey                           = "ops_client_business_limited"
@@ -167,8 +166,7 @@ type OpsStreamError struct {
 	// IntendedStatus 是流若未固化本应返回的 HTTP 状态码（如并发限流的 429）。
 	// 默认仅用于错误分级；CountTowardsSLA=true 时也作为 Ops 的逻辑状态码。
 	IntendedStatus int
-	// CountTowardsSLA 表示虽然 wire 状态已固化为 200，请求在应用语义上仍然失败，
-	// Ops 应使用 IntendedStatus 计入错误率/SLA。
+	// CountTowardsSLA 表示 HTTP 状态已提交为 200 后发生请求失败，Ops 按 IntendedStatus 统计错误率和 SLA。
 	CountTowardsSLA bool
 	// Turn identifies a WebSocket turn. HTTP/SSE requests leave it at zero.
 	Turn int
@@ -198,9 +196,8 @@ func BeginOpsStreamTurn(c *gin.Context, turn int) {
 	c.Set(OpsUpstreamErrorDetailKey, "")
 }
 
-// MarkOpsStreamError 记录一次就地 SSE 错误，供 ops 日志采集。
-// 采用「首个标记生效」策略：同一请求若先后补发多帧（如上游透传错误后又追加通用兜底帧），
-// 保留最先记录的根因错误，而不是被后续的 "Upstream request failed" 覆盖。
+// MarkOpsStreamError 记录流内 SSE 错误，供 Ops 日志采集。
+// 同一请求发送多帧错误时保存首个标记，后续通用 Upstream request failed 保留该标记。
 func MarkOpsStreamError(c *gin.Context, errType, message string, intendedStatus int) {
 	markOpsStreamError(c, OpsStreamError{
 		ErrType:        errType,

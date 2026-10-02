@@ -60,7 +60,7 @@ func PrepareRankingSettings(value UsageRankingSettings) (UsageRankingSettings, m
 	}
 }
 
-// SettingsParticipant 接收已经按原存在性合并的展示投影；不修改分析或资金事实。
+// SettingsParticipant 准备用量排行和用户错误记录的展示设置。
 func SettingsParticipant() settings.Participant {
 	fields := []string{"usage_ranking_limit", "usage_ranking_enabled", "usage_ranking_sort_by", "usage_ranking_show_total_tokens", "usage_ranking_show_requests", "usage_ranking_show_actual_cost", "allow_user_view_error_requests"}
 	keys := []string{SettingKeyUsageRankingLimit, SettingKeyUsageRankingEnabled, SettingKeyUsageRankingSortBy, SettingKeyUsageRankingShowTotalTokens, SettingKeyUsageRankingShowRequests, SettingKeyUsageRankingShowActualCost, SettingKeyAllowUserViewErrorRequests}

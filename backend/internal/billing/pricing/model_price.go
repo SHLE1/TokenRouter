@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// ResolveModelPricing 将完整目录报价投影为独立计费值。
+// ResolveModelPricing 将目录报价转换为模型计费单价。
 func ResolveModelPricing(model string, catalogPrice *CatalogModelPricing) (*ModelPricing, error) {
 	// 标准化模型名称（转小写）
 	model = strings.ToLower(model)

@@ -2,10 +2,10 @@ package anthropic
 
 import (
 	"encoding/json"
-) // StripThinkingFromClaudeRequest converts thinking blocks to text blocks in a Claude Messages request.
+)
 
-// StripThinkingFromClaudeRequest 将思考内容转成文本，避免签名校验失败。
-// 无法转成文本的 redacted_thinking 块会被删除，同时禁用顶层 thinking，避免上游思考模式的结构约束。
+// StripThinkingFromClaudeRequest 将思考内容转成文本，删除无法转成文本的 redacted_thinking 块，并禁用顶层 thinking。
+// 该报文供思考签名校验失败后的重试使用。
 func StripThinkingFromClaudeRequest(req *ClaudeRequest) (bool, error) {
 	if req == nil {
 		return false, nil

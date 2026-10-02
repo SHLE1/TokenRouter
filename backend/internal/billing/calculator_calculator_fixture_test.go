@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 )
 
-// newCalculator 测试只投影配置，不保存第二份计算器状态。
+// newCalculator 将测试配置和目录传给计价器。
 func newCalculator(cfg *config.Config, catalog *provider.Service) *billing.Calculator {
 	return newCalculatorWithPrices(cfg, catalog, nil)
 }

@@ -13,7 +13,7 @@ import (
 
 const BackendModeKey = "backend_mode_enabled"
 
-// BackendModeReader 只读取网关准入开关，不接收整个设置服务。
+// BackendModeReader 读取网关后端模式开关。
 type BackendModeReader interface {
 	GetValue(context.Context, string) (string, error)
 }
@@ -23,7 +23,7 @@ type backendModeSnapshot struct {
 	expires time.Time
 }
 
-// BackendMode 持有唯一实例的开关快照；管理发布与回源发布使用相同代次屏障。
+// BackendMode 缓存开关快照，管理写入和回源发布共用版本检查。
 type BackendMode struct {
 	reader     BackendModeReader
 	warn       func(string, ...any)
@@ -85,5 +85,5 @@ func (m *BackendMode) Enabled(ctx context.Context) bool {
 	return cached != nil && cached.enabled
 }
 
-// IsBackendModeEnabled 满足身份 HTTP 的窄读取契约，复用同一缓存。
+// IsBackendModeEnabled 为身份 HTTP 入口读取缓存中的后端模式开关。
 func (m *BackendMode) IsBackendModeEnabled(ctx context.Context) bool { return m.Enabled(ctx) }

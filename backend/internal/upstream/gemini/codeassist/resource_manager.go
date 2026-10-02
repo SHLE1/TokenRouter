@@ -22,7 +22,7 @@ type googleCloudProjectsResponse struct {
 	Projects []googleCloudProject `json:"projects"`
 }
 
-// ResourceManagerOptions 仅用于装配受控技术端点与客户端，默认仍使用原公网校验策略。
+// ResourceManagerOptions 配置端点和客户端，默认客户端校验公网地址。
 type ResourceManagerOptions struct {
 	Endpoint string
 	Client   func(httpclient.Options) (*http.Client, error)

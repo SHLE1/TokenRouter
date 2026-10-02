@@ -30,7 +30,7 @@ func TestOpenAIWSTerminalEvent_ResponseFailedRecordsModelTransient(t *testing.T)
 }
 
 // TestOpenAIWSTerminalFailureReturnsExplicitPolicyDecision 验证 response.failed
-// 不只写提供商状态，还把显式策略结果返回给写客户端事件的调用方。
+// 写入提供商状态后，将策略结果返回给客户端事件写入方。
 func TestOpenAIWSTerminalFailureReturnsExplicitPolicyDecision(t *testing.T) {
 	svc := newWSFixture(wsFixtureInputs{})
 	repo := &openAIWSPolicyRepo{}
@@ -60,8 +60,7 @@ func TestOpenAIWSTerminalFailureReturnsExplicitPolicyDecision(t *testing.T) {
 	require.Equal(t, 1, repo.setErrorCalls)
 }
 
-// TestOpenAIWSTerminalContentPolicyBypassesProviderPolicy 验证内容安全拒绝
-// 即使被语义映射为 502，也不会误命中提供商自定义错误码。
+// TestOpenAIWSTerminalContentPolicyBypassesProviderPolicy 验证内容安全拒绝即使映射为 502，也会跳过提供商自定义错误码策略。
 func TestOpenAIWSTerminalContentPolicyBypassesProviderPolicy(t *testing.T) {
 	svc := newWSFixture(wsFixtureInputs{})
 	repo := &openAIWSPolicyRepo{}
@@ -137,8 +136,7 @@ func TestOpenAIWSDial5xxRecordsModelTransient(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 }
 
-// TestOpenAIWSPoolModeErrorUsesConfiguredRetry 验证原生 WebSocket 错误也使用
-// 池模式统一决策，不再写入默认模型瞬态冷却。
+// TestOpenAIWSPoolModeErrorUsesConfiguredRetry 验证 WebSocket 错误使用池模式重试规则，模型的默认瞬态冷却状态保持原样。
 func TestOpenAIWSPoolModeErrorUsesConfiguredRetry(t *testing.T) {
 	svc := newWSFixture(wsFixtureInputs{})
 	setWSFixtureHealth(svc, newUpstreamHealthForTest(transientCooldownProviderRepo{}, &wsFixtureOptions{}, nil, providercore.HealthOptions{}, nil))
@@ -164,7 +162,7 @@ func TestOpenAIWSPoolModeErrorUsesConfiguredRetry(t *testing.T) {
 	require.False(t, wsFixtureModelBlocked(svc, provider, "gpt-5.5"))
 }
 
-// openAIWSPolicyRepo 记录 WebSocket 显式策略触发的提供商错误写入。
+// openAIWSPolicyRepo 记录 WebSocket 配置策略触发的提供商错误写入。
 type openAIWSPolicyRepo struct {
 	transientCooldownProviderRepo
 	setErrorCalls int
@@ -176,7 +174,7 @@ func (r *openAIWSPolicyRepo) SetError(context.Context, int64, string) error {
 }
 
 // TestOpenAIWSCustomNonFailoverStatusStopsScheduling 验证 WebSocket 派生出的
-// 非默认故障转移状态也执行管理员显式策略，并禁止同提供商重试。
+// 非默认故障转移状态按管理员配置执行策略，同提供商重试标记为 false。
 func TestOpenAIWSCustomNonFailoverStatusStopsScheduling(t *testing.T) {
 	svc := newWSFixture(wsFixtureInputs{})
 	repo := &openAIWSPolicyRepo{}

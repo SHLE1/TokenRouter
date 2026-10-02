@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// ResponsesRequestOptions 不持有提供商/config，动态身份在原取得位置通过窄端口读取。
+// ResponsesRequestOptions 配置 Responses 请求的地址和回调，身份信息在构造请求时读取。
 type ResponsesRequestOptions struct {
 	URL                                                                                     string
 	ForwardHeaders                                                                          func() http.Header
@@ -28,7 +28,7 @@ type ResponsesRequestOptions struct {
 	RoutingHint, Diagnostics                                                                func(http.Header, []byte)
 }
 
-// BuildResponsesRequest 只构造当前请求，不创建客户端、不选择提供商或重试。
+// BuildResponsesRequest 根据请求选项构造 Responses HTTP 请求。
 func BuildResponsesRequest(ctx context.Context, body []byte, promptCacheKey string, options ResponsesRequestOptions) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, "POST", options.URL, bytes.NewReader(body))
 	if err != nil {
@@ -36,7 +36,7 @@ func BuildResponsesRequest(ctx context.Context, body []byte, promptCacheKey stri
 	}
 	req = req.WithContext(upstream.WithHTTPUpstreamProfile(req.Context(), upstream.HTTPUpstreamProfileOpenAI))
 
-	// Agent Identity 在这里为当前请求生成新 assertion，其它认证模式继续使用原有 Bearer 语义。
+	// Agent Identity 为当前请求生成 assertion，其它认证模式使用 Bearer token。
 	authHeaders, err := options.Authenticate(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("build openai authentication headers: %w", err)

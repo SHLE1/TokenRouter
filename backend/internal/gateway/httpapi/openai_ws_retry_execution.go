@@ -79,7 +79,7 @@ func classifyOpenAIWSReconnectReason(err error) (string, bool) {
 	}
 
 	if warning, ok := forwardcore.WarningFromError(err); ok && gatewayprovider.OpenAIUpstreamWarningIsCyber(warning) {
-		// 已收到上游 terminal 风控拒绝，重试只会覆盖原始拒绝原因。
+		// 已收到上游 terminal 风控拒绝，返回该拒绝原因。
 		return reason, false
 	}
 

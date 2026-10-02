@@ -445,7 +445,7 @@ func GetRequestTierPriceByContext(resolved *ResolvedPricing, totalContextTokens 
 	return price
 }
 
-// GetRequestTierPriceByContextValue 只匹配未声明标签的上下文区间，不能借用其他尺寸的单价。
+// GetRequestTierPriceByContextValue 匹配未设置标签的上下文区间。
 func GetRequestTierPriceByContextValue(resolved *ResolvedPricing, totalContextTokens int) (float64, bool) {
 	if resolved == nil {
 		return 0, false

@@ -9,7 +9,7 @@ import (
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
-// provideProviderDeferred 固定同一个提供商存储与时间轮，构造无定时任务副作用。
+// provideProviderDeferred 为延迟写入绑定提供商存储和时间轮。
 func provideProviderDeferred(store *providerpostgres.ProviderStore, wheel *timingwheel.Wheel) *provider.DeferredService {
 	return provider.NewDeferredService(store, wheel, provider.DeferredOptions{Interval: 10 * time.Second, Now: time.Now, Observe: log.Printf})
 }

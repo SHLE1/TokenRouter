@@ -11,7 +11,7 @@ import (
 	sitedto "github.com/TokenFlux/TokenRouter/internal/site/httpapi/dto"
 )
 
-// SystemSettings 保留现有 HTTP JSON 字段与省略语义。
+// SystemSettings 是系统设置的 HTTP JSON 数据。
 type SystemSettings struct {
 	RegistrationEnabled                 bool                             `json:"registration_enabled"`
 	EmailVerifyEnabled                  bool                             `json:"email_verify_enabled"`

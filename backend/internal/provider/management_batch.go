@@ -189,7 +189,7 @@ func (s *ManagementBatch) Refresh(ctx context.Context, providerIDs []int64) (*Ma
 		}
 	}
 
-	// 注意：所有 goroutine 必须 return nil，避免 errgroup cancel 其他并发任务
+	// 各 goroutine 将错误写入结果集后返回 nil，使其他任务继续执行。
 	for _, provider := range providers {
 		acc := provider // 闭包捕获
 		if acc == nil {
@@ -234,7 +234,7 @@ func (s *ManagementBatch) ClearError(ctx context.Context, providerIDs []int64) (
 	var successCount, failedCount int
 	var errors []ManagementBatchFailure
 
-	// 注意：所有 goroutine 必须 return nil，避免 errgroup cancel 其他并发任务
+	// 各 goroutine 将错误写入结果集后返回 nil，使其他任务继续执行。
 	for _, id := range providerIDs {
 		providerID := id // 闭包捕获
 		g.Go(func() error {

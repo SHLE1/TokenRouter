@@ -2,8 +2,8 @@ package bridge
 
 import "testing"
 
-// TestAnthropicEventToResponses_TextEmitsContentPart 验证每个文本分片先发送
-// content_part.added，再发送 output_text.delta，避免 SDK 累积流时索引空数组。
+// TestAnthropicEventToResponses_TextEmitsContentPart 检查每个文本分片先发送 content_part.added，再发送 output_text.delta。
+// SDK 在收到增量前需要先创建对应的内容项。
 func TestAnthropicEventToResponses_TextEmitsContentPart(t *testing.T) {
 	state := NewAnthropicEventToResponsesState(testRuntime())
 	state.Model = "claude-sonnet-4-5"
@@ -87,8 +87,7 @@ func TestAnthropicEventToResponses_DoneEventsCarryFullText(t *testing.T) {
 	}
 }
 
-// TestAnthropicEventToResponses_CompletedCarriesOutput 验证终止事件携带完整输出，
-// 供 SDK 与链路追踪组件直接重建最终响应。
+// TestAnthropicEventToResponses_CompletedCarriesOutput 检查终止事件携带完整输出，供 SDK 和追踪组件重建响应。
 func TestAnthropicEventToResponses_CompletedCarriesOutput(t *testing.T) {
 	state := NewAnthropicEventToResponsesState(testRuntime())
 	state.Model = "claude-sonnet-4-5"
@@ -172,19 +171,10 @@ func TestAnthropicEventToResponses_ToolCallCompletedCarriesArguments(t *testing.
 	}
 }
 
-// TestAnthropicEventToResponses_ThinkingAfterTextKeepsMessageOutput pins that a
-// thinking block arriving after a text block closes the open message item
-// instead of silently replacing it.
-//
-// Why: a message item is deliberately left open when its text block stops
-// (more text blocks may follow in the same item). content_block_start therefore
-// has to close whatever is open before starting a new item — tool_use already
-// did, thinking did not, so it overwrote CurrentItemType/CurrentItemID and the
-// accumulated CurrentContent never reached state.Outputs. response.completed
-// then carried only the reasoning item and the client saw a successful response
-// with no assistant text. Interleaved thinking (anthropic-beta
-// interleaved-thinking-2025-05-14, forwarded by this gateway) produces exactly
-// this text → thinking ordering.
+// TestAnthropicEventToResponses_ThinkingAfterTextKeepsMessageOutput 检查 text 后到达的 thinking 块先关闭 message item。
+// text 块结束后 message 仍可接收后续文本，thinking 到来时需要将累计文本写入 Outputs 和 output_item.done。
+// 直接替换 CurrentItemType/CurrentItemID 会使 completed 丢失助手文本。
+// 网关透传的 interleaved-thinking-2025-05-14 支持这种先 text 后 thinking 的顺序。
 func TestAnthropicEventToResponses_ThinkingAfterTextKeepsMessageOutput(t *testing.T) {
 	state := NewAnthropicEventToResponsesState(testRuntime())
 	state.Model = "claude-sonnet-4-5"

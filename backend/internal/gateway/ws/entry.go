@@ -91,7 +91,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 		p.Close(1008, decision.Message)
 		return
 	}
-	// 首帧已经完整可用，先检查显式会话及其派生会话是否被风控屏蔽，再建立上游连接。
+	// 取得完整首帧后先检查指定会话和派生会话的风控屏蔽，再连接上游。
 	if cyberBlockKey := p.BlockedSession(ctx, firstMessage); cyberBlockKey != "" {
 		p.BlockedError(ctx)
 		p.Close(1008, p.BlockedMessage())
@@ -99,14 +99,13 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 		return
 	}
 
-	// 首轮提供商选择必须按分组映射模型 G 判断生图能力，避免别名映射绕过 Responses 能力检查。
-	// 当前分组和分组映射结果进入独立计划，不改变原解析位置。
+	// 首轮按分组映射后的模型 G 检查生图能力，当前分组和映射结果保存为本次计划。
 	ctx, groupMappingWS := p.Plan(ctx, reqModel)
 	mappedFirstMessage, routingModelWS, _ := p.ImageIntent(reqModel, firstMessage, groupMappingWS)
 	imageIntent := p.ExplicitImage(routingModelWS, mappedFirstMessage)
 	initialSchedulingCtx := ctx
 	if imageIntent {
-		// 首轮提供商选择也要遵守显式生图请求的模型级限流。
+		// 首轮选择检查生图请求的模型级限流。
 		initialSchedulingCtx = p.ImageContext(initialSchedulingCtx)
 	}
 	if imageIntent && !p.ImagesAllowed() {
@@ -130,7 +129,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 			currentUserRelease = nil
 		}
 	}
-	// 必须尽早注册，确保任何 early return 都能释放已获取的并发槽位。
+	// 取得槽位后立即登记释放函数，提前返回时也会释放。
 	defer releaseTurnSlots()
 
 	userReleaseFunc, userAcquired, err := p.AcquireUser(ctx)
@@ -237,9 +236,8 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 		return ensureUserSlotHeld()
 	}
 
-	// 与 HTTP Responses 路径保持一致：生图意图请求要求提供商支持 Responses API（#4417）。
-	// WSv2 传输本身已隐含 Responses 支持，此处为防御性对齐。
-	// 首轮显式意图已按分组映射模型 G 判断，被动 namespace 不会误过滤提供商（#4476）。
+	// 生图请求要求提供商支持 Responses API，与 HTTP 入口相同（#4417）。
+	// WSv2 自身使用 Responses，首轮按分组模型 G 识别生图意图，被动 namespace 按普通请求处理（#4476）。
 	requiredCapability := imageIntent && requestPlatform == "openai"
 
 	for {
@@ -331,7 +329,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 
 		// 首帧保持客户端模型 R，由 service 层与后续 turn 一样逐轮执行 R -> G -> U。
 		wsFirstMessageForUsageFallback := append([]byte(nil), firstMessage...)
-		// 每轮通过现有鉴权缓存刷新策略；刷新失败时沿用最近一次有效值，避免瞬时故障中断长连接。
+		// 每轮从鉴权缓存刷新策略，读取失败时使用最近一次有效值。
 		var currentFastModePolicy atomic.Value
 		currentFastModePolicy.Store(apiKey.FastModePolicy)
 		maxReasoningEffort := ""
@@ -441,9 +439,9 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 				if turn == 1 {
 					return nil
 				}
-				// 防御式清理：避免异常路径下旧槽位覆盖导致泄漏。
+				// 覆盖槽位前先释放此前取得的槽位。
 				releaseTurnSlots()
-				// 非首轮 turn 需要重新抢占并发槽位，避免长连接空闲占槽。
+				// 后续 turn 各自申请并发槽，空闲期间释放槽位。
 				userReleaseFunc, userAcquired, err := p.AcquireUser(ctx)
 				if err != nil {
 					return p.CloseError(1011, "failed to acquire user concurrency slot", err)

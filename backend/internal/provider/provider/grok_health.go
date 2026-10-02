@@ -81,8 +81,8 @@ func (s *GrokHealth) StoreSnapshot(ctx context.Context, value *providercore.Reco
 	if s.Store != nil {
 		_ = s.Store.UpdateExtra(stateCtx, providerID, updates)
 	}
-	// 池模式上游本身负责在真实提供商池中切换，额度头只作为观测数据保留，不能反向
-	// 冷却本地这个聚合提供商。非池模式仍将错误响应或成功后耗尽的窗口写成真实限流。
+	// 池模式由上游切换提供商，本地保存额度观测。
+	// 非池模式将错误或成功响应中的耗尽窗口写入提供商限流。
 	if installRateLimit && hasActiveLimit && !value.IsPoolMode() {
 		s.RateLimit(stateCtx, value, resetAt, teamModel)
 	} else if recovery {

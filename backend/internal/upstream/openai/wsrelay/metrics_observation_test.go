@@ -7,7 +7,7 @@ func SnapshotMetrics() MetricsSnapshot {
 	}
 }
 
-// MetricsSnapshot 只投影实际记录的用量解析失败次数。
+// MetricsSnapshot 记录用量解析失败次数。
 type MetricsSnapshot struct {
 	UsageParseFailureTotal int64
 }

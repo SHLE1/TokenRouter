@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// ApplyOpenAIResponseHealth 固化请求范围与模型观测，保留默认状态处理的字段写回边界。
+// ApplyOpenAIResponseHealth 汇总请求类型、模型和响应信息，交给提供商健康策略处理。
 func ApplyOpenAIResponseHealth(ctx context.Context, health *provideradapter.OpenAIResponseHealth, target *ExecutionProvider, status int, headers http.Header, body []byte, suppressDefaultRateLimit bool, models ...string) provider.UpstreamErrorDecision {
 	return health.Apply(ctx, target.View(), provideradapter.OpenAIResponseHealthInput{
 		Observation:              HealthObservationFromContext(ctx, status, headers, body, models),

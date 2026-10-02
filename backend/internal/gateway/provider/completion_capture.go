@@ -62,7 +62,7 @@ func CompletionPayloadFingerprint(ctx context.Context, requestPayloadHash string
 	return completion.PayloadFingerprint(RequestIdentity(ctx, "", requestPayloadHash))
 }
 
-// OpenAICapture 提供同步捕获输入，保留 HTTP 与 WS turn 的原计费时刻。
+// OpenAICapture 包含同步捕获的输入和 HTTP 请求或 WS turn 的计费时刻。
 type OpenAICapture struct {
 	Result             *forwardcore.OpenAIResult
 	APIKey             *apikey.APIKey
@@ -108,7 +108,7 @@ type CyberCapture struct {
 	routing.PricingUsageFields
 }
 
-// CaptureMessages 在完成提交边界固化实际用量和主体，不持有原始请求体。
+// CaptureMessages 在提交完成记录时保存用量和付款主体快照。
 func CaptureMessages(ctx context.Context, in *MessagesCapture) *completion.Input {
 	if in == nil {
 		return nil
@@ -178,7 +178,7 @@ func RequestIdentity(ctx context.Context, upstream, payload string) completion.R
 	return out
 }
 
-// CaptureCyber 在请求提交时投影并冻结，异步任务不再持有旧实体。
+// CaptureCyber 在提交请求时复制安全策略事件和身份信息，供异步任务使用。
 func CaptureCyber(ctx context.Context, in CyberCapture) *completion.Input {
 	if in.APIKey == nil || in.APIKey.User == nil || in.Provider == nil || strings.TrimSpace(in.Model) == "" {
 		return nil

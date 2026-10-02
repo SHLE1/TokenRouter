@@ -61,7 +61,7 @@ func TestExecutionHintsMissingAndExplicitZero(t *testing.T) {
 	id, present := PrefetchedStickyGroupIDFromContext(ctx)
 	require.Zero(t, id)
 	require.True(t, present)
-	// 未提供 context 的兼容边界仍返回空值，不创建隐式请求。
+	// context 为 nil 时返回空值。
 	var missing context.Context
 	require.Zero(t, ExecutionHintsFromContext(missing))
 	require.Nil(t, WithThinkingEnabled(missing, true))

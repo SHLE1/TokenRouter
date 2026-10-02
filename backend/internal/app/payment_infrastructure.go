@@ -14,13 +14,12 @@ import (
 	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
 )
 
-// payment.EncryptionKey is a named type for the payment encryption key (AES-256, 32 bytes).
-// Using a named type avoids Wire ambiguity with other []byte parameters.
+// payment.EncryptionKey 是 AES-256 支付密钥类型，长度为 32 字节。
+// 独立类型供 Wire 区分其他 []byte 参数。
 
-// providePaymentEncryptionKey derives the payment encryption key from the TOTP encryption key in config.
-// When the key is empty, nil is returned (payment features that need encryption will be disabled).
-// When the key is non-empty but invalid (bad hex or wrong length), an error is returned
-// to prevent startup with a misconfigured encryption key.
+// providePaymentEncryptionKey 从配置中的 TOTP 加密密钥派生支付密钥。
+// 密钥为空时返回 nil，依赖加密的支付功能关闭。
+// 非空密钥的十六进制格式或长度无效时返回错误，应用启动失败。
 func providePaymentEncryptionKey(cfg *config.Config) (payment.EncryptionKey, error) {
 	if cfg == nil {
 		slog.Warn("payment encryption key not configured — encrypted payment config and resume signing will be unavailable")
@@ -33,13 +32,13 @@ func providePaymentEncryptionKey(cfg *config.Config) (payment.EncryptionKey, err
 	return key, err
 }
 
-// providePaymentRegistry creates an empty payment provider registry.
-// Providers are registered at runtime after application startup.
+// providePaymentRegistry 创建支付提供方注册表。
+// 应用启动后在运行期间登记提供方。
 func providePaymentRegistry() *payment.Registry {
 	return payment.NewRegistry()
 }
 
-// providePaymentLoadBalancer creates a DefaultLoadBalancer backed by the ent client.
+// providePaymentLoadBalancer 使用 Ent 客户端创建 DefaultLoadBalancer。
 func providePaymentLoadBalancer(store *paymentpostgres.InstanceStore, key payment.EncryptionKey) *payment.DefaultLoadBalancer {
 	return payment.NewDefaultLoadBalancer(store, []byte(key), payment.SelectionRuntime{Observe: paymentSelectionLog})
 }

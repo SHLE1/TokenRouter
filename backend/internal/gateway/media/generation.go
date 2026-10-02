@@ -62,7 +62,7 @@ type GenerationFailure struct {
 	SelectedID          int64
 }
 
-// GenerationPorts 对每个具体请求只持有明确能力，主循环不获取旧实体或 HTTP Writer。
+// GenerationPorts 提供当前生成请求的选择、执行和输出操作。
 type GenerationPorts interface {
 	SelectGeneration(context.Context, map[int64]struct{}) (GenerationSelection, bool, error)
 	ActivateGeneration(GenerationSelection)

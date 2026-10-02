@@ -14,7 +14,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// credentialReadStore 只提供这些凭据契约读取的提供商，其余未用端口不构造模拟服务。
+// credentialReadStore 提供凭据测试需要的提供商读取方法。
 type credentialReadStore struct {
 	gatewayprovider.ExecutionProviderStore
 	providersByID map[int64]*gatewayprovider.ExecutionProvider
@@ -63,7 +63,7 @@ func newRequestCredentialsFixture(store gatewayprovider.ExecutionProviderStore, 
 	return &gatewayhttp.RequestCredentialExecutor{Runtime: &gatewayprovider.RequestCredentials{Source: source, HasGrokTokenSource: tokens != nil, Recovery: recovery, Runtime: blocks}}
 }
 
-// 占锁夹具通过真实 Apply 停在读取阶段，测试无需开放恢复器的私有锁 API。
+// 占锁夹具调用 Apply，并在读取阶段阻塞。
 // 取消占锁操作后等待它退出，不执行任何条件写入。
 type (
 	credentialMutationHoldKey struct{}

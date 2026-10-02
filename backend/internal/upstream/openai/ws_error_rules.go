@@ -9,7 +9,7 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// ClassifyWSAcquireError 协议解析沿用原边界，不查询提供商或改变执行状态。
+// ClassifyWSAcquireError 根据握手状态码和错误内容分类连接获取失败。
 func ClassifyWSAcquireError(err error) string {
 	if err == nil {
 		return "acquire_conn"

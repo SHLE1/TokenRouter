@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 私有交换契约只记录实际输出和活动写入；完整 HTTP envelope 由公开入口测试覆盖。
+// privateHTTPBoundary 记录输出和活动写入，完整 HTTP 响应由公开入口测试覆盖。
 type privateHTTPBoundary struct {
 	HTTPBoundary
 	Request *http.Request
@@ -121,7 +121,7 @@ func newPrivateHealthFixture() *provideradapter.UpstreamHealth {
 	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{})
 }
 
-// passthroughFixture 参数只投影为原生输入，凭据校验和交换全部由待测实现执行。
+// passthroughFixture 构造透传输入，并调用待测实现执行凭据校验和请求交换。
 func passthroughFixture(runtime *Runtime, ctx context.Context, output HTTPBoundary, target *gatewayprovider.ExecutionProvider, body []byte, model, original string, stream bool, started time.Time) (*forwardcore.Result, error) {
 	return runtime.passthrough(ctx, output, target, forwardcore.APIKeyInput{Body: body, RequestModel: model, OriginalModel: original, RequestStream: stream, StartTime: started})
 }
@@ -172,7 +172,7 @@ func (u *anthropicHTTPUpstreamRecorder) DoWithTLS(req *http.Request, proxyURL st
 	return u.Do(req, proxyURL, providerID, providerConcurrency)
 }
 
-// 网关行为从最终写入端口核对，避免测试穿透队列内部表示。
+// deferredActivityRepository 记录最后使用时间的批量写入，供测试核对。
 type deferredActivityRepository struct {
 	updates sync.Map
 }

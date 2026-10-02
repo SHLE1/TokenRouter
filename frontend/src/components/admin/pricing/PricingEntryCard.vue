@@ -418,7 +418,7 @@ function emitField(field: keyof PricingFormEntry, value: string) {
   emit('update', { ...props.entry, ...(field === 'fast_multiplier' ? { fast_mode_multiplier: null } : {}), [field]: value === '' ? null : value })
 }
 
-// 服务层级倍率只适用于 token 计费，切换模式时清除隐藏字段，避免提交无效配置。
+// 服务层级倍率适用于 token 计费，切换模式时清除隐藏字段。
 function onBillingModeUpdate(billingMode: BillingMode) {
   emit('update', {
     ...props.entry,
@@ -465,7 +465,7 @@ function addMediaTier() {
 
 function updateInterval(idx: number, updated: IntervalFormEntry) {
   const intervals = [...(props.entry.intervals || [])]
-  // 编辑字段时保留行身份，避免重新挂载输入框。
+  // 原地更新行字段，输入框继续使用同一行对象。
   Object.assign(intervals[idx], updated)
   emit('update', { ...props.entry, intervals })
 }

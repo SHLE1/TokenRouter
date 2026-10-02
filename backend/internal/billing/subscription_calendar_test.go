@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSubscriptionCalendarBoundaries 保留日历日的 DST 边界，不把日额度改为固定 24 小时。
+// TestSubscriptionCalendarBoundaries 检查日额度按本地日历重置，覆盖 DST 切换日。
 func TestSubscriptionCalendarBoundaries(t *testing.T) {
 	location, err := time.LoadLocation("America/New_York")
 	require.NoError(t, err)

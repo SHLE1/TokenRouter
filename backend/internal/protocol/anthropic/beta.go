@@ -2,7 +2,7 @@ package anthropic
 
 // Beta header 常量
 //
-// 这里的常量对齐真实 Claude Code CLI 的最新流量（截至 2026-04）。
+// 这些常量来自 2026-04 观测到的 Claude Code CLI 流量。
 // 选型参考：与 Parrot (src/transform/cc_mimicry.py) 的 BETAS 保持一致，
 // 原因：Anthropic 上游会基于 anthropic-beta 的完整集合判定请求来源；
 // 缺少任何"官方 Claude Code 请求才会带"的 beta，都会被降级到第三方额度，
@@ -16,7 +16,7 @@ const (
 	BetaContext1M                = "context-1m-2025-08-07"
 	BetaFastMode                 = "fast-mode-2026-02-01"
 
-	// 新增（对齐官方 CLI 2.1.9x 以来的流量）
+	// CLI 2.1.9x 起的流量包含以下 beta。
 	BetaPromptCachingScope = "prompt-caching-scope-2026-01-05"
 	BetaEffort             = "effort-2025-11-24"
 	BetaRedactThinking     = "redact-thinking-2026-02-12"

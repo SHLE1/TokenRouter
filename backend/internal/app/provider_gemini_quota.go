@@ -15,7 +15,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// provideGeminiQuotaPolicy 分开静态配置投影与动态 settings 读取，不构造第二份策略缓存。
+// provideGeminiQuotaPolicy 绑定静态参数和动态设置读取器，共用配额设置缓存。
 func provideGeminiQuotaPolicy(cfg *config.Config, store *settings.Store) *provider.GeminiQuotaService {
 	tiers := make(map[string]provider.GeminiTierQuotaOverride, len(cfg.Gemini.Quota.Tiers))
 	for id, v := range cfg.Gemini.Quota.Tiers {
@@ -26,7 +26,7 @@ func provideGeminiQuotaPolicy(cfg *config.Config, store *settings.Store) *provid
 	}})
 }
 
-// provideGeminiPrecheck 保留洛杉矶日界与独立日统计缓存，不持有全量配置。
+// provideGeminiPrecheck 使用洛杉矶时区和独立的每日统计缓存。
 func provideGeminiPrecheck(policy *provider.GeminiQuotaService, usage usageerrors.UsageLogRepository) *provider.GeminiPrecheck {
 	location, err := time.LoadLocation("America/Los_Angeles")
 	if err != nil {

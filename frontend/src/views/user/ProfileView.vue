@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <!-- 宽屏下铺满主区，由资料卡内部分为左右两列，避免两侧大片留白 -->
+    <!-- 宽屏下资料卡铺满主区，卡内分为左右两列。 -->
     <div
       data-testid="profile-shell"
       class="mx-auto w-full min-w-0 max-w-screen-2xl"

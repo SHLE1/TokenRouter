@@ -13,8 +13,7 @@ type requestedReasoningEffortContextKey struct{}
 
 type openAIReasoningEffortPolicyContextKey struct{}
 
-// openAIReasoningEffortPolicy 保存请求级推理强度策略快照，避免异步转发期间
-// 读取到已经被调用方修改的分组切片。
+// openAIReasoningEffortPolicy 复制请求的推理强度策略，异步转发使用独立的分组切片。
 type openAIReasoningEffortPolicy struct {
 	maxEffort    string
 	overLimit    string

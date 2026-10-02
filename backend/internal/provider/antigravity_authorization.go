@@ -182,7 +182,7 @@ func (s *AntigravityAuthorization) exchangeCode(ctx context.Context, input *Anti
 		}
 	}
 
-	// 令牌刚获取，立即设置隐私（不依赖后续提供商创建流程）
+	// 取得 token 后立即设置隐私。
 	result.PrivacyMode = s.SetPrivacy(ctx, result.AccessToken, result.ProjectID, proxyURL)
 
 	return result, nil
@@ -318,7 +318,7 @@ func (s *AntigravityAuthorization) refreshProviderToken(ctx context.Context, pro
 		return nil, err
 	}
 
-	// 保留原有的 email
+	// 保持已有的 email。
 	existingEmail := strings.TrimSpace(provider.GetCredential("email"))
 	if existingEmail != "" {
 		tokenInfo.Email = existingEmail

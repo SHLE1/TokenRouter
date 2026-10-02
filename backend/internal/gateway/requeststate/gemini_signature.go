@@ -2,7 +2,7 @@ package requeststate
 
 import "bytes"
 
-// GeminiSignatureState 只属于一个请求，保留提供商切换与未知绑定的一次清理语义。
+// GeminiSignatureState 记录当前请求的签名清理状态，提供商切换或绑定未知时清理一次。
 type GeminiSignatureState struct {
 	BoundProviderID int64
 	cleanedUnknown  bool

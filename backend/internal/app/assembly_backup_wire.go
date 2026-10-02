@@ -6,7 +6,7 @@ import (
 	"github.com/google/wire"
 )
 
-// backup 模块的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
+// backupAssemblyProviders 汇总 backup 模块的 Wire provider。
 var backupAssemblyProviders = wire.NewSet(
 	provideBackup,
 	provideBackupHTTP,

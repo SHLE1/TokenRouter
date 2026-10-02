@@ -6,7 +6,7 @@ import (
 	"github.com/google/wire"
 )
 
-// settings 模块的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
+// settingsAssemblyProviders 汇总 settings 模块的 Wire provider。
 var settingsAssemblyProviders = wire.NewSet(
 	provideCompositeReadOptions,
 	providePreAggregationSettings,

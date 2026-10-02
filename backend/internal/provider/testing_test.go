@@ -45,7 +45,7 @@ func (s *testSinkStub) Emit(_ context.Context, event TestEvent) error {
 	return s.err
 }
 
-// TestTestingValidatesBeforeLoadAndPreservesMissingProvider 验证无效协议在读取提供商之前失败；提供商缺失仍只发送原通用错误，不提前提交 SSE Header。
+// TestTestingValidatesBeforeLoadAndPreservesMissingProvider 检查无效协议在读取前返回错误，提供商缺失时在提交 SSE Header 前返回通用错误。
 func TestTestingValidatesBeforeLoadAndPreservesMissingProvider(t *testing.T) {
 	loader := &testLoaderStub{err: errors.New("private database error")}
 	svc := NewTestService(loader, TestOptions{})
@@ -58,7 +58,7 @@ func TestTestingValidatesBeforeLoadAndPreservesMissingProvider(t *testing.T) {
 	require.Equal(t, "Provider not found", sink.emitted[1].Error)
 }
 
-// TestTestingDispatchesExplicitImageWithoutDuplicateLoad 验证显式图片优先于 Compact；请求只读取一次提供商，并将执行资格限定为安全投影。
+// TestTestingDispatchesExplicitImageWithoutDuplicateLoad 检查图片类型优先于 Compact，请求读取一次提供商并返回脱敏测试目标。
 func TestTestingDispatchesExplicitImageWithoutDuplicateLoad(t *testing.T) {
 	var got PreparedTestRequest
 	loader := &testLoaderStub{target: testTargetStub{info: TestTargetInfo{ProviderSnapshot: ProviderSnapshot{Platform: PlatformGemini, Type: ProviderTypeAPIKey}}, run: func(_ context.Context, req PreparedTestRequest, _ TestEventSink) error { got = req; return nil }}}
@@ -85,7 +85,7 @@ func TestTestingCancelsExecutionOnFirstWriteFailure(t *testing.T) {
 	require.Len(t, sink.emitted, 1)
 }
 
-// TestTestingBackgroundPreservesWireTextAndClock 验证后台直接收集事件，仍保留 JSON 字符修复、不可编码事件丢弃及最后一个错误覆盖语义。
+// TestTestingBackgroundPreservesWireTextAndClock 检查后台收集事件时修复 JSON 字符、丢弃编码失败的事件，并采用最后一个错误。
 func TestTestingBackgroundPreservesWireTextAndClock(t *testing.T) {
 	start := time.Date(2026, 9, 13, 0, 0, 0, 0, time.UTC)
 	clockCalls := 0
@@ -117,7 +117,7 @@ func TestTestingBackgroundPreservesWireTextAndClock(t *testing.T) {
 	require.Equal(t, "probe/1.0", loader.request.UserAgent)
 }
 
-// TestTestingRejectsProtocolOutsideProviderCapability 验证显式测试协议只能落在提供商可直连的端点上，图片测试忽略该字段。
+// TestTestingRejectsProtocolOutsideProviderCapability 检查文字测试使用提供商已启用的协议，图片测试按图片能力执行。
 func TestTestingRejectsProtocolOutsideProviderCapability(t *testing.T) {
 	cases := []struct {
 		name     string

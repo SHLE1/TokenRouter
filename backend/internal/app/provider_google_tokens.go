@@ -12,7 +12,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideGeminiTokens 组合原 project 查询、Vertex 交换及凭据字段持久化。
+// provideGeminiTokens 组合 project 查询、Vertex 凭据交换和凭据字段保存。
 func provideGeminiTokens(store *postgres.ProviderStore, cache provider.AccessTokenCache, authorization *provider.GeminiAuthorization, refresh *provider.OAuthRefreshAPI) *provider.GeminiTokenSource {
 	executor := &provider.GeminiTokenRefresher{Authorization: authorization, Key: provideradapter.GeminiTokenCacheKey}
 	return &provider.GeminiTokenSource{Options: provider.GeminiTokenOptions{
@@ -32,7 +32,7 @@ func provideGeminiTokens(store *postgres.ProviderStore, cache provider.AccessTok
 	}}
 }
 
-// provideAntigravityTokens 绑定唯一回填状态、原冷却缓存与刷新协调器。
+// provideAntigravityTokens 绑定共享的回填状态、冷却缓存和刷新协调器。
 func provideAntigravityTokens(store *postgres.ProviderStore, cache provider.AccessTokenCache, authorization *provider.AntigravityAuthorization, refresh *provider.OAuthRefreshAPI, cooldown provider.TempUnschedCache) *provider.AntigravityTokenSource {
 	executor := &provider.AntigravityRefreshRules{
 		RefreshProviderToken:     authorization.RefreshProviderToken,

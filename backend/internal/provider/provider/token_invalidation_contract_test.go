@@ -34,7 +34,7 @@ func TestCompositeTokenCacheInvalidator_QoderCosy(t *testing.T) {
 	require.False(t, cached, "qoder provider session cache should be invalidated too")
 }
 
-// qoderInvalidationCache 仅记录本契约实际使用的删除端口。
+// qoderInvalidationCache 记录测试调用的删除操作。
 type qoderInvalidationCache struct {
 	providercore.AccessTokenCache
 	deletedKeys []string

@@ -6,10 +6,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestIsOpenAIWSTokenEvent_TerminalEventsExcluded 覆盖 isOpenAIWSTokenEvent 的回归用例。
-// 重点验证终止事件（response.completed / response.done）不再被当作 token event，
-// 否则当上游没有可识别的 delta 时，firstTokenMs 会被填到终止时刻，
-// 等于把"总耗时"误报为"首 token 延迟"（issue #2651）。
+// TestIsOpenAIWSTokenEvent_TerminalEventsExcluded 检查终止事件返回 false。
+// 将 response.completed 或 response.done 计为 token 事件，会在缺少 delta 时
+// 把终止时刻写入 firstTokenMs，误报首 token 延迟（issue #2651）。
 func TestIsOpenAIWSTokenEvent_TerminalEventsExcluded(t *testing.T) {
 	cases := []struct {
 		name      string

@@ -22,7 +22,7 @@ func TestSettingsRejectedFastPolicyHasNoWrites(t *testing.T) {
 	require.Equal(t, "before", repo.values[site.SettingKeySiteName], "后段校验拒绝后不应保存站点名称")
 }
 
-// settingAtomicRepo 区分写入失败和提交后的回读失败，确保 HTTP 不掩盖持久化边界。
+// settingAtomicRepo 分别模拟写入失败和提交后回读失败，检查 HTTP 返回的持久化状态。
 type settingAtomicRepo struct {
 	*settingHandlerRepoStub
 	writes    int

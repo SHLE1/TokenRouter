@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// SetCNUsageDecisionCAS 只修改产生观测的提供商版本，避免旧余额结论暂停新凭据或清除其它停调。
+// SetCNUsageDecisionCAS 在提供商版本仍与观测时一致时更新额度处置状态。
 // 延续原单语句健康写入及其提交后尽力 outbox，不扩大为新的闭合事务。
 func (r *ProviderStore) SetCNUsageDecisionCAS(ctx context.Context, id int64, expected time.Time, until time.Time, reason string, clear bool) (bool, error) {
 	query := `UPDATE providers SET temp_unschedulable_until=$1,temp_unschedulable_reason=$2,updated_at=NOW()

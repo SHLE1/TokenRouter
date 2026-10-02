@@ -18,7 +18,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// TestGroupFallbackRebuildsPlanAndKeepsForcedPlatform 验证回退必须重新建立目标分组的模型和粘性计划，旧 Key 与旧映射不能被原地改写。
+// TestGroupFallbackRebuildsPlanAndKeepsForcedPlatform 验证回退重建目标分组的模型和粘性计划，原 Key 与映射保持原样。
 func TestGroupFallbackRebuildsPlanAndKeepsForcedPlatform(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	ctx := requeststate.WithClientProtocol(context.Background(), protocol.ProtocolAnthropicMessages)

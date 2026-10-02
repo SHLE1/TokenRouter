@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// GeminiHTTPBindings 只包含会话和路径资格读取，不持有平台或旧网关服务。
+// GeminiHTTPBindings 提供会话读取和路径资格检查。
 type GeminiHTTPBindings struct {
 	SafeModelSegment func(string) bool
 	FindSession      func(context.Context, int64, string, string) (string, int64, string, bool)
@@ -28,7 +28,7 @@ type geminiNativeHTTPBackend struct {
 	gemini GeminiHTTPBindings
 }
 
-// NewBoundGeminiNativeHandler 组合共享 HTTP 行为与 Gemini 的明确读取端口。
+// NewBoundGeminiNativeHandler 绑定 HTTP 处理和 Gemini 数据读取接口。
 func NewBoundGeminiNativeHandler(options GeminiNativeOptions, bindings MessagesBindings, gemini GeminiHTTPBindings, prompt MessagesPrompt, concurrency *ConcurrencyHelper, newID func() string, executor execution.Executor) *GeminiNativeHandler {
 	return NewGeminiNativeHandler(options, geminiNativeHTTPBackend{messagesHTTPBackend{bindings}, gemini}, prompt, concurrency, newID, executor)
 }

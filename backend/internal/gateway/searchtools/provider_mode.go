@@ -8,7 +8,7 @@ const (
 	ModeDisabled = "disabled"
 )
 
-// ProviderPolicy 只携带工具启用裁决需要的提供商配置，不包含凭据或运行资源。
+// ProviderPolicy 保存判断工具是否启用所需的提供商配置。
 type ProviderPolicy struct {
 	ID       int64
 	Platform string

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 只实现本用例需要的缓存方法，断言真实租约释放完成先于停止成功。
+// runtimeSlotCache 用通道控制槽位释放，检查停止成功前已完成租约释放。
 type runtimeSlotCache struct {
 	ConcurrencyCache
 	acquired        bool
@@ -101,7 +101,7 @@ func TestSlotWaitObserverFailureDoesNotAcquire(t *testing.T) {
 	require.NoError(t, core.StopContext(context.Background()))
 }
 
-// TestUnlimitedSlotPreservesCallerCancellation 验证请求资源契约：无上限槽位沿用原立即放行，取消策略由外层 ReleaseMode 决定。
+// TestUnlimitedSlotPreservesCallerCancellation 检查无上限槽位立即放行，取消处理使用调用方的 ReleaseMode。
 func TestUnlimitedSlotPreservesCallerCancellation(t *testing.T) {
 	for _, user := range []bool{false, true} {
 		core := NewConcurrencyService(nil)

@@ -50,7 +50,7 @@ const (
 // ptrInt64 构造测试所需的可选分组 ID。
 func ptrInt64(value int64) *int64 { return &value }
 
-// retirementProviderSource 保留原平台夹具的过滤与可控数据库屏障。
+// retirementProviderSource 按平台过滤夹具，并通过屏障控制数据库查询完成时机。
 type retirementProviderSource struct {
 	SnapshotProviderSource
 	providers        []SnapshotProvider

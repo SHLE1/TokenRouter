@@ -49,8 +49,8 @@ func ForwardNativeMessages(ctx context.Context, body []byte, defaultMappedModel 
 	}
 
 	// 记录客户端请求的推理强度：优先 Claude 协议的 output_config.effort；
-	// 缺失且 thinking 已启用时，按国产 passback-required 模型兜底为 high
-	// （对齐 Anthropic 网关 gateway_handler 的记录语义，避免该路径长期落 NULL）。
+	// thinking 已启用且缺少 effort 时，为国产 passback-required 模型记录 high。
+	// Anthropic 网关的同类请求也使用此记录规则。
 	requestedReasoningEffort := protocol.NormalizeClaudeOutputEffort(gjson.GetBytes(body, "output_config.effort").String())
 	reasoningEffort := p.ThinkingFallback(
 		requestedReasoningEffort,
@@ -145,7 +145,7 @@ func ForwardNativeResponses(ctx context.Context, body []byte, defaultMappedModel
 		return nil, fmt.Errorf("convert responses to anthropic: %w", err)
 	}
 
-	// 4. Model mapping（OpenAI 网关统一入口的映射语义）
+	// 4. 应用 OpenAI 网关入口的模型映射。
 	billingModel := p.BillingModel(originalModel, defaultMappedModel)
 	upstreamModel := p.UpstreamModel(billingModel)
 	anthropicReq.Model = upstreamModel
@@ -245,7 +245,7 @@ func ForwardNativeChat(ctx context.Context, body []byte, defaultMappedModel stri
 		return nil, fmt.Errorf("convert responses to anthropic: %w", err)
 	}
 
-	// 3. Model mapping（OpenAI 网关统一入口的映射语义）
+	// 3. 应用 OpenAI 网关入口的模型映射。
 	billingModel := p.BillingModel(originalModel, defaultMappedModel)
 	upstreamModel := p.UpstreamModel(billingModel)
 	anthropicReq.Model = upstreamModel

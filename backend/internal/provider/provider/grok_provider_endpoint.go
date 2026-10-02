@@ -16,7 +16,7 @@ func GrokProviderBaseURL(value *provider.Record) string {
 	return GrokProviderBaseURLOr(value, grok.DefaultBaseURL)
 }
 
-// GrokProviderBaseURLOr 保留显式端点及调用方默认值的原优先级。
+// GrokProviderBaseURLOr 优先使用提供商配置的地址，缺省时使用调用方默认值。
 func GrokProviderBaseURLOr(value *provider.Record, fallback string) string {
 	if value == nil || !value.IsGrok() {
 		return ""

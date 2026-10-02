@@ -9,7 +9,7 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// StreamLease 是已经取得的上游连接租约，核心只执行当前 turn 的同步帧操作。
+// StreamLease 保存已取得的上游连接租约，供当前 turn 同步读写帧。
 type StreamLease interface {
 	ConnLease
 	WriteRequest(context.Context, []byte, time.Duration) error
@@ -48,7 +48,7 @@ type ReplayCollector interface {
 	Items() []json.RawMessage
 }
 
-// StreamPort 只提供单次 wire/提供商规则投影和输出；帧循环与重试窗口由 RelayTurn 控制。
+// StreamPort 提供单次协议解析、提供商规则和输出操作，RelayTurn 管理帧循环和重试时机。
 type StreamPort interface {
 	BeginObservation()
 	ObserveModel([]byte, string)

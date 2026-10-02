@@ -17,12 +17,11 @@ func (s *Recorder) WriteUsage(ctx context.Context, usageLog *UsageLog, logKey st
 	if writer, ok := s.logs.(BestEffortLogWriter); ok {
 		if err := writer.CreateBestEffort(usageCtx, usageLog); err != nil {
 			s.printf(logKey, "Create usage log failed: %v", err)
-			// 已结算或待对账的用量事实都必须尽力落库：dropped（批处理队列超时）同样走同步兜底，
-			// 否则会出现缺少 usage_log 的对账缺口；结算失败记录以 ActualCost=0 标识未实际扣费。
-			// 重复写入由 usage_logs 的 ON CONFLICT (request_id, api_key_id) DO NOTHING 防护。
+			// 队列超时丢弃的用量转为同步写入，已结算和待对账的请求都需要 usage_log。
+			// 结算失败记录用 ActualCost=0 表示未扣费，重复写入由 ON CONFLICT (request_id, api_key_id) DO NOTHING 处理。
 			fallbackCtx := usageCtx
 			if usageCtx.Err() != nil {
-				// usageCtx 已耗尽（best-effort 入队阻塞到期限）：换新的 detached 窗口，避免兜底必然失败。
+				// 入队等待已耗尽 usageCtx，使用新的独立超时窗口同步写入。
 				var fallbackCancel context.CancelFunc
 				fallbackCtx, fallbackCancel = detachedBillingContext(context.Background())
 				defer fallbackCancel()
@@ -39,7 +38,7 @@ func (s *Recorder) WriteUsage(ctx context.Context, usageLog *UsageLog, logKey st
 	}
 }
 
-// applyProviderStatsCost 保留原查价时机和提供商基础成本与用户实扣的独立性。
+// applyProviderStatsCost 查询价格并计算提供商基础成本，用户实扣金额单独计算。
 func (s *Recorder) applyProviderStatsCost(ctx context.Context, row *UsageLog, providerID, groupID int64, upstream, requested, mapped string, tokens UsageTokens) {
 	if upstream == "" {
 		upstream = requested

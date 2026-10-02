@@ -128,7 +128,7 @@ func TestOpsSystemLogSinkSuppressesRetriesDuringBackoff(t *testing.T) {
 		t.Fatalf("upstream calls during backoff = %d, want 1", got)
 	}
 
-	// 被抑制的批次记为 dropped，而不是 write_failed —— 没有尝试过就不算写失败。
+	// 被抑制的批次记为 dropped。write_failed 统计已尝试写入的失败批次。
 	health := sink.Health()
 	if health.DroppedCount == 0 {
 		t.Fatalf("dropped_count should grow while flushing is suppressed")

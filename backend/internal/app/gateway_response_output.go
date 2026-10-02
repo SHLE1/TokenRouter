@@ -17,7 +17,7 @@ func provideOpenAIResponseHealth(observer *provideradapter.UpstreamHealth, block
 	return &provideradapter.OpenAIResponseHealth{Health: observer, Runtime: blocks, ModelTransient: models, Deferred: deferred}
 }
 
-// provideOpenAIResponseOutput 只投影静态参数并绑定输出所需的固定端口。
+// provideOpenAIResponseOutput 为响应输出组件绑定静态参数和依赖接口。
 func provideOpenAIResponseOutput(cfg *config.Config, health *provideradapter.OpenAIResponseHealth, grok *provideradapter.GrokHealth, observer *provideradapter.UpstreamHealth, headers *egress.CompiledHeaderFilter, turns *gatewayhttp.CodexTurnStateHeaders, circuit *egress.ProxyStreamCircuit, readers *gatewayadapter.RuntimeReaders, responses session.OpenAIWSStateStore, choices *selection.Compatible, history *session.ReasoningHistory, identity *gatewayadapter.ExecutionAgentIdentity) *gatewayhttp.OpenAIResponseOutput {
 	output := &gatewayhttp.OpenAIResponseOutput{
 		Reasoning: history, Redact: identity.Redact, Health: health, GrokHealth: grok, Observer: observer, Headers: headers, Turns: turns,
@@ -48,7 +48,7 @@ func provideOpenAIResponseOutput(cfg *config.Config, health *provideradapter.Ope
 	return output
 }
 
-// provideReasoningHistory 只投影已有缓存的可选能力，不新建缓存或连接。
+// provideReasoningHistory 从已有缓存取得可选的推理历史读写接口。
 func provideReasoningHistory(cache session.GatewayCache) *session.ReasoningHistory {
 	store, _ := cache.(session.ReasoningContentCache)
 	return &session.ReasoningHistory{Cache: store, Warn: gatewayadapter.WarnReasoningCacheFailure}

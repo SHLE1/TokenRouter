@@ -502,9 +502,8 @@ func TestProxyLiveSidebandForwardsTextAndBinary(t *testing.T) {
 	require.ErrorIs(t, <-proxyResult, session.ErrLiveCallNotFound)
 }
 
-// TestLiveSessionEndedTreatsLeaseLossAsTerminal 锁定：租约续租失败（ErrLiveUnavailable）
-// 必须判为会话终结。RefreshLiveLease 的 Lua 在 leaseID 被 GC 后不会重新写入，若把它
-// 当临时错误交给 observer 重连，会话会空转到 ExpiresAt 且不计入任何并发限制。
+// TestLiveSessionEndedTreatsLeaseLossAsTerminal 验证 ErrLiveUnavailable 续租错误结束会话。
+// RefreshLiveLease 的 Lua 在 leaseID 被 GC 后保留缺失状态，继续重连会使会话在到期前脱离并发限制。
 func TestLiveSessionEndedTreatsLeaseLossAsTerminal(t *testing.T) {
 	cases := []struct {
 		name string
@@ -543,7 +542,7 @@ func TestWaitForLiveObserverRetryLeavesExpiryToLoopFinalize(t *testing.T) {
 	require.True(t, svc.liveRuntime().WaitForObserverRetry(context.Background(), record),
 		"过期判定必须留给循环顶部，否则不会写 usage log")
 
-	// 控制权已被他人接管时仍必须停止重试，避免与新控制者抢同一个 call。
+	// 控制权被接管后停止重试，同一个 call 交给新控制者处理。
 	require.NoError(t, store.SaveLiveCall(context.Background(), &session.LiveCallRecord{
 		CallID:     record.CallID,
 		CallHash:   record.CallHash,
@@ -571,7 +570,7 @@ func TestWaitForLiveObserverRetryTreatsStoreErrorAsRetryable(t *testing.T) {
 		"记录不存在时应停止重试")
 }
 
-// TestObserveLiveCallStoreOutageFallsBackToExpiryFinalize 验证observer 持续读不到 store 时，必须使用创建阶段快照在到期后释放租约并写 usage log。
+// TestObserveLiveCallStoreOutageFallsBackToExpiryFinalize 验证 observer 持续读不到 store 时，使用创建快照在到期后释放租约并写 usage log。
 func TestObserveLiveCallStoreOutageFallsBackToExpiryFinalize(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -636,7 +635,7 @@ func (r *liveTestBestEffortUsageRepo) CreateBestEffort(_ context.Context, _ *usa
 	return r.bestEffortErr
 }
 
-// TestFinalizeLiveCallUsageLogFallsBackToSyncCreate 验证Live finalize 的异步队列写入失败后必须同步落库，避免唯一一次记录机会被吞掉。
+// TestFinalizeLiveCallUsageLogFallsBackToSyncCreate 验证 Live finalize 异步队列写入失败后同步落库。
 func TestFinalizeLiveCallUsageLogFallsBackToSyncCreate(t *testing.T) {
 	record := &session.LiveCallRecord{
 		CallID:     "call_usage_fallback",
@@ -668,7 +667,7 @@ func TestFinalizeLiveCallUsageLogFallsBackToSyncCreate(t *testing.T) {
 	require.Equal(t, record.CallHash, usageRepo.logs[0].RequestID)
 }
 
-// TestStopLiveObserversPreservesRemoteCall 验证进程停止只结束本地观察，不得将远端会话提前结算或释放其租约。
+// TestStopLiveObserversPreservesRemoteCall 验证停止本地观察后，远端会话和租约继续有效，结算等待远端结束。
 func TestStopLiveObserversPreservesRemoteCall(t *testing.T) {
 	record := &session.LiveCallRecord{CallHash: "test-shutdown", Controller: session.LiveControllerPending, ExpiresAt: time.Now().Add(time.Hour)}
 	store := &liveTestStore{record: record, claimErr: errors.New("temporary store failure")}

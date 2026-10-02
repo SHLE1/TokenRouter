@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 在真实 CRS 同步入口交换令牌期间更新持久化凭据，确定性复现迟到刷新覆盖。
+// 在 CRS 交换 token 期间修改持久凭据，检查迟到结果的处理。
 type crsStaleCredentialRepo struct {
 	providercore.CRSProviderStore
 	current *providercore.Record

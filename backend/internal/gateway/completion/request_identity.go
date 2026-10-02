@@ -2,7 +2,7 @@ package completion
 
 import "strings"
 
-// RequestIdentity 在 HTTP 仍存活时提取上下文标识；核心不读取业务 context key。
+// RequestIdentity 在 HTTP 请求结束前提取上下文中的关联标识。
 type RequestIdentity struct{ Client, Local, Upstream, PayloadHash string }
 
 func ForcedRequestID(id string) bool {
@@ -27,6 +27,7 @@ func ResolveRequestID(in RequestIdentity, generate func() string) string {
 	}
 	return "generated:" + generate()
 }
+
 func PayloadFingerprint(in RequestIdentity) string {
 	if hash := strings.TrimSpace(in.PayloadHash); hash != "" {
 		return hash
@@ -39,12 +40,15 @@ func PayloadFingerprint(in RequestIdentity) string {
 	}
 	return ""
 }
+
 func StableAudioRequestID(id string, generate func() string) string {
 	return stableRequestID("grok_audio:", id, generate)
 }
+
 func StableRealtimeRequestID(id string, generate func() string) string {
 	return stableRequestID("grok_realtime:", id, generate)
 }
+
 func stableRequestID(prefix, id string, generate func() string) string {
 	id = strings.TrimSpace(id)
 	if strings.HasPrefix(id, prefix) {

@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 )
 
-// OllamaUsageFetchInput 仅用于受控的出站端口，不作为管理响应或普通日志字段。
+// OllamaUsageFetchInput 保存出站用量查询参数。
 type OllamaUsageFetchInput struct {
 	ProviderID  int64
 	Concurrency int

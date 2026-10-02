@@ -17,8 +17,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/modelmap"
 )
 
-// Record 是提供商用例内部的配置与运行记录；对外能力通过独立快照投影。
-// Credentials 不参与 JSON，普通日志只输出提供商 ID，避免泄露授权材料。
+// Record 保存提供商的配置和运行数据，对外调用使用对应的快照。
+// Credentials 使用 JSON 忽略标记，普通日志输出提供商 ID。
 type Record struct {
 	Proxy                   *egress.Proxy `json:"-"`
 	Groups                  []*accessview.GroupConfig
@@ -115,7 +115,7 @@ const (
 )
 
 // DefaultPoolModeRetryableStatusCodes 池模式下默认触发同提供商重试的状态码。
-// 未在 Provider.Credentials 中显式配置 pool_mode_retry_status_codes 时使用。
+// Provider.Credentials 缺少 pool_mode_retry_status_codes 时使用。
 var DefaultPoolModeRetryableStatusCodes = []int{401, 403, 429}
 
 const (
@@ -287,18 +287,11 @@ func (a *Record) IsSchedulable() bool {
 	return true
 }
 
-// IsCredentialUsableForShadow 报告本提供商(作为某 spark 影子的母提供商)的凭据/传输是否可被影子透传使用。
-//
-// 检查「凭据/提供商/传输可用性」:
-//   - 提供商 active(非禁用/删除);
-//   - OAuth token 未过期(AutoPauseOnExpired+ExpiresAt);
-//   - 未处于 TempUnschedulableUntil 冷却期 —— 对 OpenAI 提供商该字段由 401 鉴权失败 /
-//     token 刷新耗尽 / transport·proxy 故障写入(ratelimit/token_refresh/upstream_transport),
-//     都代表**共享凭据或传输通道坏死**;影子共享母 token+proxy,故母处于该冷却期时影子也不可用。
-//
-// **刻意排除** global 维度的限流/过载窗口(RateLimitResetAt / OverloadUntil)与母提供商自身的
-// 手动 Schedulable 开关:spark 影子拥有独立 spark 配额窗口,母提供商 global 429(走 RateLimitResetAt)
-// 不应连坐 spark(否则重新耦合影子架构本应解耦的两条 429 道)。nil receiver 返回 false。
+// IsCredentialUsableForShadow 判断母提供商的凭据和传输是否可供影子使用，nil 或非 active 提供商返回 false。
+// 开启到期暂停时，ExpiresAt 需要晚于当前时间；缺省 ExpiresAt 时跳过到期检查。
+// TempUnschedulableUntil 为空或当前时间已到达截止时刻时，临时冷却检查通过。
+// OpenAI 的 401、token 刷新耗尽及代理或传输故障会设置临时冷却，影子共用母提供商的 token 和代理。
+// 影子使用自己的 Spark 配额窗口和 Schedulable 开关，母提供商的全局限流与过载由其自身调度检查处理。
 func (a *Record) IsCredentialUsableForShadow() bool {
 	if a == nil || !a.IsActive() {
 		return false
@@ -381,7 +374,7 @@ func (a *Record) GeminiTierID() string {
 }
 
 // IsGeminiThirdPartyProvider 判断 Gemini API Key 是否通过第三方提供商接入。
-// 该标记只影响本地官方配额模拟，不改变 Gemini 请求的认证和转发协议。
+// 该标记用于本地官方配额模拟，Gemini 请求仍按提供商类型认证和转发。
 func (a *Record) IsGeminiThirdPartyProvider() bool {
 	if a == nil || a.Platform != PlatformGemini || a.Type != ProviderTypeAPIKey {
 		return false
@@ -745,7 +738,7 @@ func ResolveFinalModelWhitelist(platform string, credentials map[string]any, map
 }
 
 // GetOpenAICompactMode 返回管理员选择的旧版压缩开关。
-// 缺失配置保持默认开启；历史输入由提供商写入边界规范化。
+// 缺省为开启，写入时规范化历史输入。
 func (a *Record) GetOpenAICompactMode() string {
 	if a == nil || !a.IsOpenAI() {
 		return OpenAICompactModeForceOff
@@ -872,8 +865,7 @@ func (a *Record) IsCustomErrorCodesEnabled() bool {
 }
 
 // IsPoolMode 检查 API Key 提供商是否启用池模式。
-// 池模式默认不根据上游错误写本地调度状态；管理员显式错误策略仍然优先，
-// 只有配置的重试状态码会在同一提供商上重试。
+// 上游错误默认交给池处理，管理员配置的错误策略优先，配置的重试状态码可在同一提供商上重试。
 func (a *Record) IsPoolMode() bool {
 	if !a.IsAPIKeyOrBedrock() || a.Credentials == nil {
 		return false
@@ -938,9 +930,10 @@ func IsPoolModeRetryableStatus(statusCode int) bool {
 
 // GetPoolModeRetryStatusCodes 返回提供商自定义的池模式同提供商重试状态码列表。
 //
-// 返回值语义：
+// 返回值含义：
 //   - nil：未配置 → 调用方应回退到默认值 [401, 403, 429]
-//   - 长度为 0 的切片：管理员显式置空 → 关闭按状态码触发的同提供商重试
+//
+// - 长度为 0 的切片表示关闭按状态码触发的同提供商重试。
 //   - 非空切片：去重、过滤为合法 HTTP 状态码（100-599）后的覆盖列表
 func (a *Record) GetPoolModeRetryStatusCodes() []int {
 	if a == nil || a.Credentials == nil {
@@ -1193,8 +1186,7 @@ func (a *Record) DefaultCNProtocolBaseURL(protocol string) string {
 	return ""
 }
 
-// IsDefaultCNAnthropicBaseURL 只识别项目内置端点，避免把同 host 上的自定义中继
-// 路径误判为官方端点并替换掉管理员配置的路径前缀。
+// IsDefaultCNAnthropicBaseURL 判断地址是否为内置官方端点，同时比较主机和路径。
 func IsDefaultCNAnthropicBaseURL(baseURL string) bool {
 	normalized := strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	switch normalized {
@@ -1209,7 +1201,7 @@ func IsDefaultCNAnthropicBaseURL(baseURL string) bool {
 }
 
 // StripCNAnthropicPathSuffix 将自定义中继的 Anthropic 协议根转换为同一中继的
-// OpenAI 格式根；无法解析时保留原值，由调用链既有 URL 校验负责报错。
+// OpenAI 格式根，解析失败时返回输入值，由调用方的 URL 校验报告错误。
 func StripCNAnthropicPathSuffix(baseURL string) string {
 	trimmed := strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	parsed, err := url.Parse(trimmed)
@@ -1287,10 +1279,8 @@ func (a *Record) GetOpenAIApiKey() string {
 	return a.GetCredential("api_key")
 }
 
-// GetOpenAIProtocolAPIKey 返回 OpenAI 协议族 APIKey 提供商的密钥。
-// 覆盖 openai 原生提供商与国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）提供商，
-// 供转发鉴权、模型列表同步等协议族共用路径使用。注意 IsOpenAIApiKey 语义上
-// 仅指 openai 平台提供商，调度倍率/WS 能力门控继续以其为准，不受本方法影响。
+// GetOpenAIProtocolAPIKey 返回 OpenAI、Kimi、Zhipu 和 DeepSeek API Key 提供商的密钥。
+// 转发鉴权和模型同步共用此方法，调度倍率与 WS 准入通过 IsOpenAIApiKey 判断 OpenAI 平台资格。
 func (a *Record) GetOpenAIProtocolAPIKey() string {
 	if a == nil {
 		return ""
@@ -1384,7 +1374,7 @@ func (a *Record) OpenAIWorkloadCapabilitySet() (map[string]bool, bool) {
 		result[value] = true
 	}
 
-	// OAuth/SetupToken 的空容器视为历史未配置；API Key 空集合仍表示显式禁用。
+	// OAuth 和 SetupToken 的空容器按未配置处理，API Key 空集合表示禁用。
 	switch capabilities := raw.(type) {
 	case []any:
 		if len(capabilities) == 0 && a.IsOpenAIOAuthLike() {
@@ -1619,7 +1609,7 @@ func (a *Record) ResolveOpenAIResponsesWebSocketV2Mode(defaultMode string) strin
 	if mode, ok := resolveBoolMode("openai_ws_enabled"); ok {
 		return mode
 	}
-	// 兼容旧值：shared/dedicated 语义都归并到 ctx_pool。
+	// 兼容值 shared 和 dedicated 都转换为 ctx_pool。
 	if resolvedDefault == OpenAIWSIngressModeShared || resolvedDefault == OpenAIWSIngressModeDedicated {
 		return OpenAIWSIngressModeCtxPool
 	}
@@ -2224,7 +2214,7 @@ func (a *Record) IsQuotaExceeded() bool {
 // IsShadow 报告提供商是否为影子提供商（parent_provider_id 非空；当前唯一预设是 spark 维度）。
 func (a *Record) IsShadow() bool { return a != nil && a.ParentProviderID != nil }
 
-// IsCredentialShadow 语义别名，供「凭据消费者跳过影子」处使用（管理/后台 OAuth 路径）。
+// IsCredentialShadow 判断提供商是否为凭据影子，管理和后台授权据此跳过独立凭据操作。
 func (a *Record) IsCredentialShadow() bool { return a.IsShadow() }
 
 // QuotaDimensionOrDefault 返回提供商的用量维度，未设置时回退 "global"。
@@ -2235,7 +2225,7 @@ func (a *Record) QuotaDimensionOrDefault() string {
 	return a.QuotaDimension
 }
 
-// IsCNProvider 使用既有平台集合判断国产提供商类型。
+// IsCNProvider 判断平台是否属于国产供应商集合。
 func IsCNProvider(platform string) bool {
 	switch platform {
 	case PlatformKimi, PlatformZhipu, PlatformDeepseek:

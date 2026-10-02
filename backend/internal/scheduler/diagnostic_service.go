@@ -16,49 +16,49 @@ import (
 // AdvancedSchedulerScoreCalculationVersion 标识诊断公式的兼容版本。
 const AdvancedSchedulerScoreCalculationVersion = "v1"
 
-// AdvancedSchedulerScoreDiagnosticRequest 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticRequest 是评分诊断的请求参数。
 type AdvancedSchedulerScoreDiagnosticRequest = policy.AdvancedSchedulerScoreDiagnosticRequest
 
-// AdvancedSchedulerScoreDiagnosticProvider 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticProvider 是诊断返回的提供商摘要。
 type AdvancedSchedulerScoreDiagnosticProvider = policy.AdvancedSchedulerScoreDiagnosticProvider
 
-// AdvancedSchedulerScoreDiagnosticGroup 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticGroup 是诊断返回的分组摘要。
 type AdvancedSchedulerScoreDiagnosticGroup = policy.AdvancedSchedulerScoreDiagnosticGroup
 
-// AdvancedSchedulerScoreDiagnosticGroupSummary 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticGroupSummary 是分组 Tab 展示的资格和分数。
 type AdvancedSchedulerScoreDiagnosticGroupSummary = policy.AdvancedSchedulerScoreDiagnosticGroupSummary
 
-// AdvancedSchedulerScoreDiagnosticResponse 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticResponse 是评分诊断的响应。
 type AdvancedSchedulerScoreDiagnosticResponse = policy.AdvancedSchedulerScoreDiagnosticResponse
 
-// AdvancedSchedulerScoreDiagnosticContext 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticContext 是本次评分的模型和粘性场景。
 type AdvancedSchedulerScoreDiagnosticContext = policy.AdvancedSchedulerScoreDiagnosticContext
 
-// AdvancedSchedulerScoreDiagnosticDetail 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticDetail 是单个分组的评分详情。
 type AdvancedSchedulerScoreDiagnosticDetail = policy.AdvancedSchedulerScoreDiagnosticDetail
 
-// AdvancedSchedulerScoreDiagnosticCandidatePool 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticCandidatePool 汇总过滤后的候选和 Top-K 数据。
 type AdvancedSchedulerScoreDiagnosticCandidatePool = policy.AdvancedSchedulerScoreDiagnosticCandidatePool
 
-// AdvancedSchedulerScoreDiagnosticRanges 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticRanges 记录候选池的归一化范围。
 type AdvancedSchedulerScoreDiagnosticRanges = policy.AdvancedSchedulerScoreDiagnosticRanges
 
-// AdvancedSchedulerScoreDiagnosticCandidate 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticCandidate 是用于展示排名的候选摘要。
 type AdvancedSchedulerScoreDiagnosticCandidate = policy.AdvancedSchedulerScoreDiagnosticCandidate
 
-// AdvancedSchedulerScoreDiagnosticScore 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticScore 记录目标提供商的分数和选择概率。
 type AdvancedSchedulerScoreDiagnosticScore = policy.AdvancedSchedulerScoreDiagnosticScore
 
-// AdvancedSchedulerScoreDiagnosticMetric 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticMetric 记录单项指标的数值、权重和贡献。
 type AdvancedSchedulerScoreDiagnosticMetric = policy.AdvancedSchedulerScoreDiagnosticMetric
 
-// AdvancedSchedulerScoreDiagnosticSetting 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticSetting 记录生效配置值及来源。
 type AdvancedSchedulerScoreDiagnosticSetting = policy.AdvancedSchedulerScoreDiagnosticSetting
 
-// AdvancedSchedulerScoreDiagnosticPolicySignal 保留原诊断值入口。
+// AdvancedSchedulerScoreDiagnosticPolicySignal 记录策略和硬约束的状态。
 type AdvancedSchedulerScoreDiagnosticPolicySignal = policy.AdvancedSchedulerScoreDiagnosticPolicySignal
 
-// DiagnosticProvider 仅含评分与展示字段。ProjectionID 是本次读取的临时关联号，不携带凭据或写能力。
+// DiagnosticProvider 保存评分与展示字段，ProjectionID 是本次读取的临时关联号。
 type DiagnosticProvider struct {
 	ProjectionID                                                                         uint64
 	ID                                                                                   int64
@@ -91,7 +91,7 @@ type DiagnosticSource interface {
 	ListSchedulableProvidersForAdvancedSchedulerScore(context.Context, *int64, string) ([]DiagnosticProvider, error)
 }
 
-// DiagnosticPorts 只允许读取平台资格、预取观测和已共享的反馈，不暴露槽位、粘性或写入。
+// DiagnosticPorts 提供平台资格、预取观测和共享反馈的读取函数。
 type DiagnosticPorts struct {
 	Effective func(context.Context, *DiagnosticGroup) (policy.EffectiveSettings, policy.RuntimeSettings)
 	Prepare   func(context.Context, *DiagnosticGroup, []DiagnosticProvider) context.Context
@@ -327,8 +327,8 @@ func summaryFromDiagnosticDetail(detail *AdvancedSchedulerScoreDiagnosticDetail)
 	return summary
 }
 
-// buildGroupSummary 只计算分组 Tab 所需的资格和最终分数。
-// 它刻意不读取完整分组提供商清单、不组装指标或策略解释，避免首次打开诊断弹窗时放大读取负载。
+// buildGroupSummary 计算分组 Tab 所需的资格和最终分数。
+// 提供商清单、指标和策略解释在请求详情时读取，减少首次打开诊断弹窗的读取量。
 func (s *DiagnosticService) buildGroupSummary(
 	ctx context.Context,
 	target *DiagnosticProvider,
@@ -408,7 +408,7 @@ func (s *DiagnosticService) buildDetail(
 		stats = s.ports.Stats()
 	}
 	eligibilityRequest := request
-	// 硬粘性逃逸后，生产调度会按普通候选执行费用与 RPM 门禁；诊断必须使用相同语义。
+	// 硬粘性逃逸后，诊断与生产调度都按普通候选检查费用和 RPM。
 	if !effective.StickyWeightedEnabled && request.StickyProviderID > 0 {
 		if _, _, _, escaped := ShouldEscapeSticky(stats, request.StickyProviderID, effective.StickyEscape); escaped {
 			eligibilityRequest.StickyProviderID = 0

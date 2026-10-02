@@ -106,7 +106,7 @@ const chipClass = computed(() => isTooltip.value ? 'bg-white/5 dark:bg-dark-800'
 const checkClass = computed(() => isTooltip.value ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400')
 const modalityTone = computed(() => isTooltip.value ? 'inverse' : 'auto')
 
-// 只渲染已知模态，避免上游新增取值时找不到对应图标。
+// 按已知模态渲染图标，未知取值跳过。
 const inputModalities = computed(() => knownModalities(props.attributes.input_modalities))
 const outputModalities = computed(() => knownModalities(props.attributes.output_modalities))
 

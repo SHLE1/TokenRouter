@@ -71,7 +71,7 @@ func (h *OpenAITextHandler) ChatCompletions(c *gin.Context) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 		return
 	}
-	// 用户提示词替换必须早于模型解析、内容审计和会话 hash，确保后续链路看到同一份请求体。
+	// 在模型解析、内容审计和会话 hash 计算前替换用户提示词，后续步骤共用改写后的请求体。
 	body = h.prompt.ApplyUserPromptReplacementToBody(c.Request.Context(), body, "chat_completions")
 
 	modelResult := gjson.GetBytes(body, "model")
@@ -101,7 +101,7 @@ func (h *OpenAITextHandler) ChatCompletions(c *gin.Context) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
 		return
 	}
-	// Chat Completions 的端点能力以分组映射模型 G 为准，客户端模型 R 仍用于日志和错误语义。
+	// Chat Completions 按分组映射模型 G 检查端点能力，日志和错误消息使用客户端模型 R。
 	// 当前分组和分组映射结果进入独立计划，不改变原解析位置。
 	groupMappingRoutePlan := h.backend.Plan(c.Request.Context(), apiKey, reqModel)
 	groupMapping := groupMappingRoutePlan.Mapping()

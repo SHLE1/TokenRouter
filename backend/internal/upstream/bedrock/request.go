@@ -71,7 +71,7 @@ func IsLikelyBedrockModelID(modelID string) bool {
 	return IsRegionalBedrockModelID(lower)
 }
 
-// ResolveBedrockModelID 为调度与模型目录提供同一条区域解析边界。
+// ResolveBedrockModelID 为调度与模型目录解析区域对应的模型 ID。
 func ResolveBedrockModelID(provider *RouteInput, requestedModel string) (string, bool) {
 	route, err := ResolveBedrockModelRoute(provider, requestedModel)
 	return route.ModelID, err == nil
@@ -122,7 +122,7 @@ func PrepareBedrockRequestBodyWithTokens(body []byte, modelID string, betaTokens
 		return nil, fmt.Errorf("inject anthropic_version: %w", err)
 	}
 
-	// 注入 anthropic_beta（Bedrock Invoke 通过请求体传递 beta 头，而非 HTTP 头）
+	// 将 beta 标记写入 Bedrock 请求体的 anthropic_beta 字段。
 	// 1. 从客户端 anthropic-beta header 解析
 	// 2. 根据请求体内容自动补齐必要的 beta token
 	//    参考 litellm: AnthropicModelInfo.get_anthropic_beta_list() + _get_tool_search_beta_header_for_bedrock()

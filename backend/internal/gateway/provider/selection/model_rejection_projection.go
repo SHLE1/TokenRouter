@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// modelRejectionSources 只投影旧候选的原读取端口；过滤、聚合及错误归 routing。
+// modelRejectionSources 将候选提供商转换为 routing 的模型拒绝判断输入。
 func modelRejectionSources(providers []gatewayprovider.ExecutionProvider) []routing.ModelRejectionSource {
 	sources := make([]routing.ModelRejectionSource, len(providers))
 	for i := range providers {

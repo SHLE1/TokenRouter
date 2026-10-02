@@ -466,12 +466,12 @@ func TestGrokTokenProviderRejectsIneligibleSelectedProviderBeforeWarmCache(t *te
 	}
 }
 
-// newGrokTokenSourceForTest 直接组合原生提供商读取、缓存和令牌策略。
+// newGrokTokenSourceForTest 组合提供商读取、缓存和 token 策略。
 func newGrokTokenSourceForTest(repo providercore.RefreshRepository, cache providercore.AccessTokenCache) *providercore.GrokTokenSource {
 	return &providercore.GrokTokenSource{Repository: repo, Cache: cache, Policy: providercore.GrokProviderRefreshPolicy()}
 }
 
-// bindGrokRefreshForTest 只注入已有协调器，不复制锁、刷新或持久化算法。
+// bindGrokRefreshForTest 注入共享刷新协调器，锁和持久化由协调器管理。
 func bindGrokRefreshForTest(source *providercore.GrokTokenSource, refresh *providercore.OAuthRefreshAPI, executor providercore.OAuthRefreshExecutor) {
 	source.Refresh = func(ctx context.Context, value *providercore.Record, window time.Duration) (*providercore.OAuthRefreshResult, error) {
 		return refresh.RefreshIfNeeded(ctx, value, executor, window)

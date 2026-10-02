@@ -80,7 +80,7 @@ func TestIsProviderInGroup(t *testing.T) {
 			&gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 9, ProviderGroups: []providercore.GroupMembership{{GroupID: 300}, {GroupID: 400}}}},
 			&groupID100, false,
 		},
-		// 防御性边界
+		// 提供商或分组 ID 为 nil 的场景。
 		{
 			"nil_provider_nil_groupID",
 			nil,
@@ -106,7 +106,7 @@ func TestIsProviderInGroup(t *testing.T) {
 // ============================================================================
 
 // groupAwareMockProviderRepo 嵌入 mockProviderRepoForPlatform，覆写分组隔离相关方法。
-// allProviders 存储所有提供商，分组查询方法按 ProviderGroups 字段进行真实过滤。
+// allProviders 保存所有提供商，分组查询按 ProviderGroups 字段过滤。
 type groupAwareMockProviderRepo struct {
 	*mockProviderRepoForPlatform
 	allProviders []gatewayprovider.
@@ -301,7 +301,7 @@ func TestGroupIsolation_GroupedKey_ShouldOnlyScheduleMatchingGroupProviders(t *t
 }
 
 // ============================================================================
-// 显式分组边界回归。
+// 测试请求分组对候选范围的限制。
 // ============================================================================
 
 func TestGroupIsolation_RequiresExplicitGroup(t *testing.T) {
@@ -344,7 +344,7 @@ func TestGroupIsolation_RejectsImplicitGroupedProvider(t *testing.T) {
 	// groupID=nil 时，即使有已分组提供商也不允许调度。
 	ctx := context.Background()
 
-	// 只有已分组提供商也不能替调用者推断目标分组。
+	// 调用方需要指定目标分组，提供商的分组关系用于筛选候选。
 	providers := []gatewayprovider.ExecutionProvider{
 		{Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Priority: 1, Status: billing.StatusActive, Schedulable: true,

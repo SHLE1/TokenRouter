@@ -94,7 +94,7 @@ func (d SoftDeleteMixin) Interceptors() []ent.Interceptor {
 
 // Hooks 返回变更钩子列表。
 // 钩子会拦截 DELETE 操作，将其转换为 UPDATE SET deleted_at = NOW()。
-// 这样删除操作实际上只是标记记录为已删除，而不是真正删除。
+// 删除操作将记录标记为已删除，数据仍保存在表中。
 func (d SoftDeleteMixin) Hooks() []ent.Hook {
 	return []ent.Hook{
 		func(next ent.Mutator) ent.Mutator {

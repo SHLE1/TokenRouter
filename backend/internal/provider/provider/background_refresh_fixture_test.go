@@ -9,7 +9,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// backgroundAttemptOptions 只绑定替身端口，实际周期、尝试和成功清理由原生组件执行。
+// backgroundAttemptOptions 为后台刷新绑定替身接口，周期、尝试和成功后的清理使用生产组件。
 func backgroundAttemptOptions(repo providercore.CredentialUpdateStore, tuning *providercore.RefreshTuning) providercore.RefreshAttempts {
 	post := &providercore.RefreshPostActions{
 		Now: time.Now, Info: slog.Info, Warn: slog.Warn, Debug: slog.Debug,

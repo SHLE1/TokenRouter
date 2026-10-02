@@ -139,7 +139,7 @@ type schedulerTestConcurrencyCache struct {
 	releasedIDs     *[]int64
 }
 
-// noSlotSchedulerTestConcurrencyCache 在辅助选择错误触碰真实并发槽时立即暴露问题。
+// noSlotSchedulerTestConcurrencyCache 在辅助选择操作并发槽时使测试失败。
 type noSlotSchedulerTestConcurrencyCache struct {
 	schedulerTestConcurrencyCache
 	acquireCalls int
@@ -766,7 +766,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_ResponsesCapabilityExc
 			Status: billing.StatusActive, Schedulable: true, Concurrency: 1, Priority: 0,
 		},
 	}
-	// 更高优先级但管理员仅允许 Chat——若门控失效会被优先选中。
+	// 此提供商优先级更高且仅允许 Chat，能力检查失效时会被优先选中。
 	unsupported := gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 37002, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey,
@@ -1655,7 +1655,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_SkipsQuarantinedShared
 	require.Equal(t, int64(469803), selection.Provider.Record.ID)
 }
 
-// TestOpenAIGatewayService_SelectProviderWithScheduler_FailsOpenWhenAllProxiesQuarantined 验证所有可调度提供商都位于隔离代理后时，隔离必须降级为偏好而不是清空容量。
+// TestOpenAIGatewayService_SelectProviderWithScheduler_FailsOpenWhenAllProxiesQuarantined 检查所有候选的代理均被隔离时，是否放宽隔离限制继续选择。
 func TestOpenAIGatewayService_SelectProviderWithScheduler_FailsOpenWhenAllProxiesQuarantined(t *testing.T) {
 	proxyID := int64(5056)
 	providers := []gatewayprovider.ExecutionProvider{
@@ -1686,7 +1686,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_FailsOpenWhenAllProxie
 		"fail-open 只影响本次调度，不应清除隔离状态")
 }
 
-// TestOpenAIGatewayService_SelectProviderWithSchedulerForRouting_FailsOpenWhenAllProxiesQuarantined 验证fork 的显式 routingModel 入口也必须经过同一 fail-open 二次调度。
+// TestOpenAIGatewayService_SelectProviderWithSchedulerForRouting_FailsOpenWhenAllProxiesQuarantined 检查指定 routingModel 的入口是否执行 fail-open 二次调度。
 func TestOpenAIGatewayService_SelectProviderWithSchedulerForRouting_FailsOpenWhenAllProxiesQuarantined(t *testing.T) {
 	proxyID := int64(5057)
 	provider := gatewayprovider.ExecutionProvider{Record: providercore.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 505701, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true, Concurrency: 1, ProxyID: &proxyID}}
@@ -1870,12 +1870,12 @@ func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_UsesGlobalDef
 	require.Equal(t, int64(35402), provider.Record.ID)
 }
 
-// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_PerProviderDisableOverridesGlobalDefault 验证回归保护：提供商级显式禁用标记应在存在全局默认阈值时让提供商豁免自动暂停。
+// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_PerProviderDisableOverridesGlobalDefault 检查提供商禁用自动暂停时，是否覆盖全局阈值。
 // 否则“阈值留空”会静默回退到全局默认值，管理员无法单独白名单某个提供商。
 func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_PerProviderDisableOverridesGlobalDefault(t *testing.T) {
 	ctx := gatewayprovider.WithQuotaAutoPauseSettings(context.Background(), ops.OpsOpenAIProviderQuotaAutoPauseSettings{DefaultThreshold5h: 0.95})
 	// 提供商用量很高且没有提供商级阈值（通常会回退到全局默认并被暂停），
-	// 但这里设置了显式禁用标记。
+	// 此提供商配置了禁用自动暂停标记。
 	primary := gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 35701,
@@ -1998,9 +1998,8 @@ func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_FreshUsageWin
 	require.Equal(t, int64(35602), provider.Record.ID)
 }
 
-// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_StaleUsageSnapshotSkipsPause_Issue2994 验证Issue #2994：曾被回滚的 #2918 反转逻辑会把提供商写成虚高的 used%，从而被调度排除；
-// 暂停提供商又收不到流量刷新快照。快照超过陈旧边界时必须允许一次请求，让真实响应头自愈，
-// 且不依赖当前窗口的 reset 时间。
+// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_StaleUsageSnapshotSkipsPause_Issue2994 检查过期用量快照是否允许探测请求。
+// 提供商停调后缺少流量刷新快照，允许请求可用响应头更新用量。快照有效期按观测时间判断。
 func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_StaleUsageSnapshotSkipsPause_Issue2994(t *testing.T) {
 	ctx := context.Background()
 	primary := gatewayprovider.ExecutionProvider{
@@ -2034,8 +2033,8 @@ func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_StaleUsageSna
 	require.Equal(t, int64(35701), provider.Record.ID)
 }
 
-// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_FreshExhaustedSnapshotStillPauses_Issue2994 验证Issue #2994 保护：真实耗尽且快照刚刷新的提供商仍然必须自动暂停。
-// 陈旧快照自愈逻辑不能让真实 99% used 的提供商绕过暂停。
+// TestOpenAIGatewayService_SelectProviderForModelWithExclusions_FreshExhaustedSnapshotStillPauses_Issue2994 检查快照刚刷新且配额耗尽时是否自动暂停提供商。
+// 快照仍在有效期内且已用 99% 时继续执行暂停。
 func TestOpenAIGatewayService_SelectProviderForModelWithExclusions_FreshExhaustedSnapshotStillPauses_Issue2994(t *testing.T) {
 	ctx := context.Background()
 	primary := gatewayprovider.ExecutionProvider{
@@ -3741,7 +3740,7 @@ func TestDefaultOpenAIProviderScheduler_IsProviderTransportCompatible_Branches(t
 	require.True(t, scheduler.isProviderTransportCompatible(provider, egress.OpenAIUpstreamTransportResponsesWebsocketV2Ingress))
 
 	cfg.Gateway.OpenAIWS.ModeRouterV2Enabled = true
-	// 启动选项现在是值投影；路由模式场景重新装配，不依赖修改外部配置指针。
+	// Options 按值传入，路由模式测试需要重新构造选择器。
 	scheduler.service = newCompatibleSelectionForTest(CompatibleDependencies{}, cfg)
 	provider.Record.Extra["openai_apikey_responses_websockets_v2_mode"] = providercore.OpenAIWSIngressModeHTTPBridge
 	require.False(t, scheduler.isProviderTransportCompatible(provider, egress.OpenAIUpstreamTransportResponsesWebsocketV2))
@@ -3884,7 +3883,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_SubscriptionPriorityWa
 		"gpt-5.1",
 		nil, egress.OpenAIUpstreamTransportAny, true,
 	)
-	// 常规池无可用候选时，忙碌的订阅提供商应产生等待计划，而不是直接返回 no available providers。
+	// 常规池无候选时，为忙碌的订阅提供商生成等待计划。
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Provider)

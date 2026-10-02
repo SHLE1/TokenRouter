@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 导入和后台共享真实协调器；存储替身只实现同一身份的条件写入。
+// 导入和后台共用刷新协调器，存储替身模拟同身份条件写入。
 type importRefreshStore struct {
 	mu            sync.Mutex
 	current       *Record

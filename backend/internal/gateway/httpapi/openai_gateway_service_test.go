@@ -241,7 +241,7 @@ func TestExtractOpenAIUsage_CapturesImageInputTokens(t *testing.T) {
 	require.Equal(t, 439, usage.OutputTokens)
 	require.Equal(t, 439, usage.ImageOutputTokens)
 
-	// prompt_tokens_details 回退路径（部分上游用 prompt_tokens 口径）。
+	// 部分上游使用 prompt_tokens，此处测试 prompt_tokens_details 的回退读取。
 	promptStyle := []byte(`{"usage":{"prompt_tokens":100,"prompt_tokens_details":{"image_tokens":80}}}`)
 	pu, ok := protocolopenai.ExtractOpenAIUsageFromJSONBytes(promptStyle)
 	require.True(t, ok)
@@ -547,7 +547,7 @@ func TestOpenAIStreamingResponseFailedCapacityBeforeOutputReturnsFailover(t *tes
 		Header: http.Header{"X-Request-Id": []string{"rid-capacity"}},
 	}
 
-	// 池模式的瞬态容量错误即使未显式配置 502，也应在同一提供商上受限重试。
+	// 池模式未配置 502 时，瞬态容量错误也在同一提供商上有限次重试。
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 1,
@@ -2094,7 +2094,7 @@ func TestHandleNonStreamingResponse_OAuthJSONBodyWithDataEventTextKeepsJSONUsage
 	require.NotNil(t, result)
 	require.Equal(t, 11, result.Usage.InputTokens)
 	require.Equal(t, 22, result.Usage.OutputTokens)
-	// 响应必须保持原始 JSON，不能经 SSE 路径改写或丢失用量。
+	// 响应原样返回 JSON，包含上游用量。
 	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 	require.Equal(t, "resp_oauth_compact", gjson.Get(rec.Body.String(), "id").String())
 	require.Equal(t, int64(33), gjson.Get(rec.Body.String(), "usage.total_tokens").Int())

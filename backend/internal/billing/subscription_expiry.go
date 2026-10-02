@@ -42,7 +42,7 @@ type ExpirySettings interface {
 }
 type ExpiryLease func(context.Context, string, string, time.Duration) (func(), bool)
 
-// ExpiryOptions 保留原周期、取时点和锁策略，构造时不启动后台工作。
+// ExpiryOptions 配置订阅过期任务的周期、时钟和锁。后台任务由 Start 启动。
 type ExpiryOptions struct {
 	Interval time.Duration
 	Owner    string

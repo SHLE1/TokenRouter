@@ -250,7 +250,7 @@ func TestGrokOAuthURLPolicy(t *testing.T) {
 
 	t.Run("unsafe override switch does not relax the operator allowlist for custom hosts", func(t *testing.T) {
 		// XAI_ALLOW_UNSAFE_URL_OVERRIDES 会放宽受信任主机校验，但自定义 OAuth 转发主机
-		// 仍必须受运营方白名单约束，避免 bearer token 被发送到任意主机。
+		// 仍按运营方白名单选择转发目标，bearer token 随请求发送到该目标。
 		t.Setenv(xai.EnvAllowUnsafeURLOverrides, "true")
 		cfg := &config.Config{}
 		cfg.Security.URLAllowlist.Enabled = true
@@ -268,7 +268,7 @@ func TestGrokOAuthURLPolicy(t *testing.T) {
 		_, err := provideGrokRoutes(cfg, nil).Responses(custom, false)
 		require.EqualError(t, err, "invalid base url: base URL rejected by URL security policy")
 
-		// 即使白名单严格限制自定义主机，官方网关仍应正常解析。
+		// 白名单限制自定义主机时，官方网关照常解析。
 		official := &gatewayprovider.ExecutionProvider{
 			Record: providercore.Record{
 				LoadLocation: time.LoadLocation, Platform: capability.PlatformGrok,

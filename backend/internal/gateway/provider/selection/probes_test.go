@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// probePricingStore 让探针回归只读取分组策略，不依赖价格存储。
+// probePricingStore 为探针测试提供分组策略读取方法。
 type probePricingStore struct {
 	routing.PricingConfigRepository
 }

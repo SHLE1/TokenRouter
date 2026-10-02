@@ -22,7 +22,7 @@ func newSubscriptionServiceForTest(repo billing.UserSubscriptionRepository) *bil
 	return billing.NewSubscriptionService(subscriptionSelectionGroupFixture{}, repo, billingpostgres.NewSubscriptionMutations(nil), subscriptionClockFixture())
 }
 
-// subscriptionClockFixture 保留原 service 测试进程的 UTC 约定，改为实例注入而不写 time.Local。
+// subscriptionClockFixture 返回使用 UTC 的测试时钟和日期对象。
 func subscriptionClockFixture() billing.DateRuntime {
 	calendar := timezone.NewCalendar(time.UTC)
 	return billing.DateRuntime{Now: func() time.Time { return time.Now().UTC() }, Calendar: &calendar}

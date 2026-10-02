@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// newOAuthSettingsFixture 直接验证装配的静态配置投影与身份模块动态读取。
+// newOAuthSettingsFixture 构造 OAuth 设置夹具，静态配置由 app 提供，动态设置由身份模块读取。
 func newOAuthSettingsFixture(repo settings.Repository, cfg *config.Config) *identity.OAuthSettings {
 	return provideOAuthSettings(settings.New(repo), cfg)
 }

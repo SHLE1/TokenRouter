@@ -23,7 +23,7 @@ func provideSitePublic(store *settings.Store, oauth *identity.OAuthSettings, cfg
 	return p
 }
 
-// provideSiteDisplay 保留前端地址回退的按需读取，名称只查询原单键。
+// provideSiteDisplay 按需读取前端回退地址，站点名称通过单键查询取得。
 func provideSiteDisplay(store *settings.Store, cfg *config.Config) *site.DisplaySettings {
 	return site.NewDisplaySettings(store, func() string { return cfg.Server.FrontendURL })
 }

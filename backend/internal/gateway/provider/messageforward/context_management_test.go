@@ -99,7 +99,7 @@ func readUpstreamBodyForTest(t *testing.T, req *http.Request) []byte {
 func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_StripsContextManagementWhenClientHeaderMissingBeta(t *testing.T) {
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
-	// 客户端仅带 oauth beta，不带 context-management-2025-06-27
+	// 客户端 beta 列表为 oauth。
 	c.Request.Header.Set("Anthropic-Beta", "oauth-2025-04-20")
 
 	body := []byte(`{"model":"claude-haiku-4-5","context_management":{"edits":[{"type":"clear_thinking_20251015"}]},"messages":[]}`)

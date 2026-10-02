@@ -38,7 +38,7 @@ func (r *MemberUsageStore) ResetMemberUsage(ctx context.Context, teamID, userID 
 	return nil
 }
 
-// MemberUsageStore 仅写消费累计与窗口，不改变成员角色及限额配置。
+// MemberUsageStore 写入成员的消费累计和窗口。
 type MemberUsageStore struct {
 	db       *sql.DB
 	calendar *timezone.Calendar

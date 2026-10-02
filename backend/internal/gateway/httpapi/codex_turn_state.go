@@ -94,7 +94,7 @@ func (s *CodexTurnStateHeaders) Commit(c *gin.Context, target *gatewayadapter.Ex
 	s.note(c, target)
 }
 
-// Guard 只删除已知来自另一提供商的状态，未知、同提供商与过期记录不阻止回放。
+// Guard 删除已知来自另一提供商的状态。未知、同提供商与过期记录允许回放。
 func (s *CodexTurnStateHeaders) Guard(c *gin.Context, target *gatewayadapter.ExecutionProvider, headers http.Header) {
 	if s == nil || headers == nil || target == nil || strings.TrimSpace(headers.Get(CodexTurnStateHeader)) == "" {
 		return

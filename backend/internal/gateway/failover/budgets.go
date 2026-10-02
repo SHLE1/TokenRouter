@@ -7,10 +7,10 @@ const (
 	FirstOutputTimeoutMaxSwitches = 1
 )
 
-// OAuth429State 只属于本请求，Grok 的后续尝试不能跨请求共享。
+// OAuth429State 保存当前请求内 Grok 后续尝试的 429 状态。
 type OAuth429State struct{ grokFollowupPending bool }
 
-// OAuth429Provider 是调用方已确定的认证类别投影，不读取凭据。
+// OAuth429Provider 保存调用方确定的提供商认证类别。
 type OAuth429Provider struct{ OpenAI, Grok bool }
 
 // StopOAuth429 保留 OpenAI 和 Grok 不同的后续预算及无状态兼容路径。
@@ -36,7 +36,7 @@ func StopOAuth429(provider OAuth429Provider, status, failedSwitches int, state *
 	return failedSwitches >= OAuth429MaxProviderAttempts
 }
 
-// FirstOutputExhausted 只累计已有首输出恢复资格，不把普通错误计入该预算。
+// FirstOutputExhausted 累计符合首输出恢复条件的错误，判断是否耗尽预算。
 func FirstOutputExhausted(eligible bool, switches *int) bool {
 	if !eligible || switches == nil {
 		return false

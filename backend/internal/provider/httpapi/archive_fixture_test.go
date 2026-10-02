@@ -86,7 +86,7 @@ func (s *archiveHTTPFixture) UpdateProxy(ctx context.Context, id int64, input *e
 	return &proxy, nil
 }
 
-// archiveHTTPFixture 组合提供商与代理的窄测试端口，保留导入参数和列表查询观察。
+// archiveHTTPFixture 组合提供商和代理测试接口，记录导入参数及列表查询。
 type archiveHTTPFixture struct {
 	*managementMutationFixture
 	egress.ProxyAdministrator

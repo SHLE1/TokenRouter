@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// usageObservationPredicate 使用当前字段作原子比较，不新增版本列或事务 context。
+// usageObservationPredicate 使用当前身份字段构造原子比较条件。
 func usageObservationPredicate(v provider.UsageObservationVersion, offset int, health bool) (string, []any, error) {
 	credentials := v.Credentials
 	if credentials == nil {
@@ -45,7 +45,7 @@ func (r *ProviderStore) ClearUsageRateLimitIfUnchanged(ctx context.Context, v pr
 	return r.updateUsageRateLimit(ctx, v, nil)
 }
 
-// updateUsageRateLimit 保留原独立健康写入及提交后尽力事件；清除还需匹配原窗口，避免清掉新停调。
+// updateUsageRateLimit 独立写入健康状态，提交后尝试发布事件，清除限流前检查窗口仍与读取时一致。
 func (r *ProviderStore) updateUsageRateLimit(ctx context.Context, v provider.UsageObservationVersion, reset *time.Time) (bool, error) {
 	now := r.options.Now()
 	set := "rate_limited_at=NULL,rate_limit_reset_at=NULL,overload_until=NULL,updated_at=$2"

@@ -11,7 +11,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideManagedRefresh 绑定原生提供商用例与唯一刷新协调器，构造不执行交换。
+// provideManagedRefresh 为提供商凭据刷新绑定业务用例和共享协调器。
 func provideManagedRefresh(admin *provider.Admin, privacy *provider.PrivacyService, coordinator *provider.OAuthRefreshAPI, transport httpclient.UpstreamTransport, profiles *egressprovider.TLSProfiles, claude *provider.ClaudeAuthorization, openai *provider.OpenAIAuthorization, gemini *provider.GeminiAuthorization, ag *provider.AntigravityAuthorization, grok provider.GrokRefreshTokenService, invalidator provider.TokenCacheInvalidator) *provider.ManagedRefreshService {
 	qoder := provideradapter.NewQoderTokenRefresher(provideradapter.QoderRefreshOptions{Transport: transport, Profiles: profiles})
 	source := &provider.ManualCredentialExchange{Claude: claude, OpenAI: openai, Gemini: gemini, Antigravity: ag, Grok: grok, Qoder: qoder.Refresh}

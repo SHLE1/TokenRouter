@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// TestFixedMessagesOpenUsesBoundDependenciesAndExplicitState 验证固定生产适配只复用构造期依赖，不把旧聚合 handler 放进请求会话。
+// TestFixedMessagesOpenUsesBoundDependenciesAndExplicitState 验证请求会话使用构造时绑定的依赖和传入状态。
 func TestFixedMessagesOpenUsesBoundDependenciesAndExplicitState(t *testing.T) {
 	dependencies := &messageExecutionDependencies{}
 	runtime := &Runtime{dependencies: dependencies}

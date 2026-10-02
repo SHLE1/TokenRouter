@@ -85,7 +85,7 @@ func (g *RefreshConcurrencyGate) Acquire(ctx context.Context) (func(), error) {
 	}
 }
 
-// InFlight 返回当前占用，不暴露计数信道或允许外部释放槽位。
+// InFlight 返回当前占用的槽位数。
 func (g *RefreshConcurrencyGate) InFlight() int {
 	if g == nil {
 		return 0

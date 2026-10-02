@@ -9,7 +9,7 @@ import (
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 )
 
-// ProjectWSResult 显式投影本次 WS turn 的已观测结果与恢复输入。
+// ProjectWSResult 整理本次 WS turn 的观测结果和恢复输入。
 func ProjectWSResult(r *forwardcore.OpenAIResult) *gatewayws.ForwardResult {
 	if r == nil {
 		return nil
@@ -58,7 +58,7 @@ func ProjectWSResult(r *forwardcore.OpenAIResult) *gatewayws.ForwardResult {
 	return out
 }
 
-// ForwardResultFromWS 为完成与健康端口保留原 HTTP 结果形状，不执行计算规则。
+// ForwardResultFromWS 将 WS 结果转换为完成记录和健康观测使用的 HTTP 结果格式。
 func ForwardResultFromWS(r *gatewayws.ForwardResult) *forwardcore.OpenAIResult {
 	if r == nil {
 		return nil

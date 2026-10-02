@@ -22,7 +22,7 @@ const (
 	SettingKeyStreamTimeoutSettings                        = "stream_timeout_settings"
 )
 
-// RuntimeSettingsStore 仅提供提供商配置的键值存取，不暴露数据库或旧业务。
+// RuntimeSettingsStore 提供提供商配置的键值读写操作。
 type RuntimeSettingsStore interface {
 	GetValue(context.Context, string) (string, error)
 	Set(context.Context, string, string) error
@@ -42,12 +42,12 @@ func NewRuntimeSettings(repo RuntimeSettingsStore, notFound error) *RuntimeSetti
 	return &RuntimeSettings{settingRepo: repo, notFound: notFound}
 }
 
-// OpenAIImagesOAuthUnavailableCooldownSettings 由提供商健康设置拥有，保留旧 JSON 形状。
+// OpenAIImagesOAuthUnavailableCooldownSettings 保存 OAuth 图片不可用时的冷却设置。
 type OpenAIImagesOAuthUnavailableCooldownSettings struct {
 	CooldownMinutes int `json:"cooldown_minutes"`
 }
 
-// OpenAIAPIKeyHealthBreakerSettings 由提供商健康设置拥有，保留旧 JSON 形状。
+// OpenAIAPIKeyHealthBreakerSettings 保存 OpenAI API Key 失败熔断设置。
 type OpenAIAPIKeyHealthBreakerSettings struct {
 	Enabled          bool `json:"enabled"`
 	WindowMinutes    int  `json:"window_minutes"`
@@ -55,7 +55,7 @@ type OpenAIAPIKeyHealthBreakerSettings struct {
 	CooldownMinutes  int  `json:"cooldown_minutes"`
 }
 
-// DefaultStreamTimeoutSettings 沿用原内置默认值。
+// DefaultStreamTimeoutSettings 返回内置的流超时设置。
 func DefaultStreamTimeoutSettings() *StreamTimeoutSettings {
 	return &StreamTimeoutSettings{
 		Enabled:                false,
@@ -66,7 +66,7 @@ func DefaultStreamTimeoutSettings() *StreamTimeoutSettings {
 	}
 }
 
-// DefaultOverloadCooldownSettings 沿用原内置默认值。
+// DefaultOverloadCooldownSettings 返回内置的过载冷却设置。
 func DefaultOverloadCooldownSettings() *OverloadCooldownSettings {
 	return &OverloadCooldownSettings{
 		Enabled:         true,
@@ -74,12 +74,12 @@ func DefaultOverloadCooldownSettings() *OverloadCooldownSettings {
 	}
 }
 
-// DefaultOpenAIImagesOAuthUnavailableCooldownSettings 沿用原内置默认值。
+// DefaultOpenAIImagesOAuthUnavailableCooldownSettings 返回内置的 OAuth 图片冷却设置。
 func DefaultOpenAIImagesOAuthUnavailableCooldownSettings() *OpenAIImagesOAuthUnavailableCooldownSettings {
 	return &OpenAIImagesOAuthUnavailableCooldownSettings{CooldownMinutes: OpenAIImagesOAuthUnavailableDefaultCooldownMinutes}
 }
 
-// DefaultOpenAIAPIKeyHealthBreakerSettings 沿用原内置默认值。
+// DefaultOpenAIAPIKeyHealthBreakerSettings 返回内置的 API Key 熔断设置。
 func DefaultOpenAIAPIKeyHealthBreakerSettings() *OpenAIAPIKeyHealthBreakerSettings {
 	return &OpenAIAPIKeyHealthBreakerSettings{
 		Enabled:          false,
@@ -89,10 +89,10 @@ func DefaultOpenAIAPIKeyHealthBreakerSettings() *OpenAIAPIKeyHealthBreakerSettin
 	}
 }
 
-// OpenAIImagesOAuthUnavailableDefaultCooldownMinutes 保持原分钟边界。
+// OpenAIImagesOAuthUnavailableDefaultCooldownMinutes 是默认冷却分钟数。
 const OpenAIImagesOAuthUnavailableDefaultCooldownMinutes = 30
 
-// OpenAIImagesOAuthUnavailableMaxCooldownMinutes 保持原分钟边界。
+// OpenAIImagesOAuthUnavailableMaxCooldownMinutes 是最大冷却分钟数。
 const (
 	OpenAIImagesOAuthUnavailableMaxCooldownMinutes = 120
 	openAIAPIKeyHealthBreakerSettingsCacheTTL      = 30 * time.Second

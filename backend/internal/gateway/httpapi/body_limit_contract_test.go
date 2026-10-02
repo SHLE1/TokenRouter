@@ -15,7 +15,6 @@ import (
 )
 
 func TestRequestBodyLimitTooLarge(t *testing.T) {
-
 	limit := int64(16)
 	router := gin.New()
 	router.Use(middleware.RequestBodyLimit(limit))
@@ -54,6 +53,6 @@ func TestReadLenientJSONRequestBodyWithPreallocUsesGatewayLimit(t *testing.T) {
 	_, err := gatewayhttp.ReadLenientJSONRequestBodyWithPrealloc(req, limit)
 	var maxErr *http.MaxBytesError
 	require.True(t, errors.As(err, &maxErr))
-	// 归一化膨胀后必须继续使用网关配置的上限。
+	// 归一化后的正文大小受网关配置的上限约束。
 	require.Equal(t, limit, maxErr.Limit)
 }

@@ -2,7 +2,7 @@ package provider
 
 import "context"
 
-// DetachStreamUpstreamContext 上游取消策略保留各入口原有的脱离时点。
+// DetachStreamUpstreamContext 将流式上游请求与客户端取消信号分离。
 func DetachStreamUpstreamContext(ctx context.Context, stream bool) (context.Context, context.CancelFunc) {
 	if ctx == nil {
 		return context.Background(), func() {}

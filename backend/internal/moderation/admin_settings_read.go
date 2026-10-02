@@ -5,16 +5,15 @@ import (
 	"strings"
 )
 
-// AdminReadSettings 只包含本模块在综合管理页的展示投影。
+// AdminReadSettings 包含风险控制和 Cyber 会话封禁设置。
 type AdminReadSettings struct {
 	CyberSessionBlockEnabled    bool
 	CyberSessionBlockTTLSeconds int
 	RiskControlEnabled          bool
 }
 
-// ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
+// ReadAdminSettings 从传入的设置值解析风险控制和 Cyber 会话封禁设置。
 func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
-
 	result := &AdminReadSettings{}
 	result.RiskControlEnabled = settings[SettingKeyRiskControlEnabled] == "true"
 	result.CyberSessionBlockEnabled = settings[SettingKeyCyberSessionBlockEnabled] == "true"

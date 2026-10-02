@@ -29,7 +29,7 @@ func ParseVertexServiceAccountKey(value *provider.Record) (*google.ServiceAccoun
 	return vertex.ParseVertexServiceAccountJSON(raw)
 }
 
-// vertexServiceAccountProxyURL 保留显式代理绑定的判断顺序。
+// vertexServiceAccountProxyURL 按提供商的代理绑定读取代理地址。
 func vertexServiceAccountProxyURL(value *provider.Record) string {
 	if value == nil || value.ProxyID == nil || value.Proxy == nil {
 		return ""
@@ -37,7 +37,7 @@ func vertexServiceAccountProxyURL(value *provider.Record) string {
 	return value.Proxy.URL()
 }
 
-// VertexServiceAccountCacheKey 保留无提供商及未解析密钥的旧键形状。
+// VertexServiceAccountCacheKey 在提供商或已解析密钥缺失时返回对应的缓存键。
 func VertexServiceAccountCacheKey(value *provider.Record, key *google.ServiceAccountKey) string {
 	var id int64
 	if value != nil {

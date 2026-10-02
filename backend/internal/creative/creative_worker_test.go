@@ -356,7 +356,7 @@ func TestCreativeWorkerCancelBeforeExecute(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, result.Terminal)
 	require.Equal(t, 0, f.exec.calls)
-	// 任务在入队前已释放预占：worker 只幂等清理，不重复释放。
+	// 任务在入队前已释放预占，worker 执行幂等清理。
 	require.Equal(t, 0, f.billing.releaseN)
 }
 

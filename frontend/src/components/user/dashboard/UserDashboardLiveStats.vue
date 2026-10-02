@@ -55,7 +55,7 @@ const animatedTodayCost = useCountUp(() => stats.value?.today_actual_cost ?? 0, 
 // formatLatency 不足 1 秒显示毫秒，否则显示秒。
 const formatLatency = (ms: number): string => (ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(2)}s`)
 
-// formatCost 小额消费保留 4 位小数，避免显示成 0.00。
+// formatCost 将小额消费显示为 4 位小数。
 const formatCost = (value: number): string => formatBalanceAmount(value, { fractionDigits: value >= 1 ? 2 : 4 })
 
 // 取数失败时数值显示破折号，不弹出错误。

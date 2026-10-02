@@ -5,7 +5,7 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 )
 
-// ResolveTransport 按原时机投影当前提供商和启动配置，传输规则只有原生实现。
+// ResolveTransport 根据当前提供商和启动配置调用 egress 的传输选择规则。
 func (s *Compatible) ResolveTransport(value *gatewayprovider.ExecutionProvider) egress.OpenAIWSProtocolDecision {
 	view := gatewayprovider.ExecutionProtocolRecord(value)
 	if view !=

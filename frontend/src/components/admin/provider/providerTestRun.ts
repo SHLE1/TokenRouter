@@ -98,7 +98,7 @@ export async function executeProviderTest(options: {
   const markFirstToken = () => {
     if (run.firstTokenMs == null) run.firstTokenMs = elapsed()
   }
-  // 只处理第一次结束事件，后端在错误后补发的完成事件不再改写结果。
+  // 第一次结束事件确定测试结果，后端可能在错误后补发完成事件。
   const finish = (status: 'success' | 'error', message = '') => {
     if (run.status !== 'connecting') return
     run.status = status
@@ -157,7 +157,7 @@ export async function executeProviderTest(options: {
   addLine(t('admin.providers.startingTestForProvider', { name: options.providerName }), 'info')
 
   try {
-    // SSE 测试接口用 POST，只能走 fetch，必须显式套用配置的 API base。
+    // SSE 测试接口通过 fetch 发送 POST 请求，地址使用配置的 API base。
     const response = await fetch(buildApiUrl(`/admin/providers/${options.providerId}/test`), {
       method: 'POST',
       headers: {
@@ -197,7 +197,7 @@ export async function executeProviderTest(options: {
       }
     }
 
-    // 连接提前结束且没有完成事件时按失败处理，避免状态停在测试中。
+    // 连接在完成事件前结束时将测试状态设为失败。
     finish('error', t('admin.providers.testDialog.streamEnded'))
     return true
   } catch (error: unknown) {

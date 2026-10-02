@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 )
 
-// CountPorts 只提供无槽选择、单次计数与失败清理；不存在资金提交或完成任务入口。
+// CountPorts 提供无槽选择、单次 token 计数和失败清理。
 type CountPorts interface {
 	Context() context.Context
 	Select(map[int64]struct{}) (Selection, error)

@@ -207,7 +207,7 @@ func TestSelectByLRU(t *testing.T) {
 		}
 		result := SelectByLRU(providers, true)
 		require.NotNil(t, result)
-		// 有不同 LastUsedAt 时，按时间选择最早的，不受 preferOAuth 影响
+		// LastUsedAt 不同时，选择时间最早的提供商。
 		require.Equal(t, int64(1), result.Provider.ID)
 	})
 }
@@ -218,7 +218,7 @@ func TestLayeredFilterIntegration(t *testing.T) {
 	muchEarlier := now.Add(-2 * time.Hour)
 
 	t.Run("full layered selection", func(t *testing.T) {
-		// 模拟真实场景：多个提供商，不同优先级、负载率、最后使用时间
+		// 候选提供商具有不同的优先级、负载率和最后使用时间。
 		providers := []BasicCandidate{
 			// 优先级 1，负载 50%
 			{Provider: &BasicProvider{ID: 1, Priority: 1, LastUsedAt: &now}, Load: &ProviderLoadInfo{LoadRate: 50}},

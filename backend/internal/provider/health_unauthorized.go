@@ -42,7 +42,7 @@ func (s *HealthService) ApplyUnauthorized(ctx context.Context, provider *Record,
 		s.ApplyAuthenticationFailure(ctx, authProvider, msg)
 		return true
 	}
-	// OAuth 提供商在 401 错误时临时不可调度（给 token 刷新窗口）；非 OAuth 提供商保持原有 SetError 行为。
+	// OAuth 提供商收到 401 后临时停调，等待 token 刷新，其他类型调用 SetError。
 	if authProvider.Type == capability.ProviderTypeOAuth {
 		// 1. 失效缓存
 		if s.options.InvalidateUnauthorizedToken != nil {
@@ -51,7 +51,7 @@ func (s *HealthService) ApplyUnauthorized(ctx context.Context, provider *Record,
 			}
 		}
 		// 缺少 refresh_token 的 OAuth 提供商无法在冷却期内自愈（后台刷新服务也会跳过），
-		// 直接走 SetError 永久禁用，避免冷却结束后再被选中产生一发无意义的 502。
+		// 调用 SetError 禁用该提供商，后续调度将其排除。
 		if strings.TrimSpace(authProvider.GetCredential("refresh_token")) == "" {
 			msg := "Authentication failed (401): refresh_token missing, cannot recover"
 			if observation.Message != "" {
@@ -60,15 +60,9 @@ func (s *HealthService) ApplyUnauthorized(ctx context.Context, provider *Record,
 			s.ApplyAuthenticationFailure(ctx, authProvider, msg)
 			return true
 		}
-		// 2. 临时不可调度，替代 SetError（保持 status=active 让刷新服务能拾取）
-		// 注意：此处不再写回 provider.Credentials/expires_at。
-		// 原实现使用请求开始时的 provider 快照整列覆盖 credentials JSONB（见
-		// persistProviderCredentials → providerRepository.UpdateCredentials → SetCredentials），
-		// 在另一个 worker 刚刷新完 refresh_token 的窄窗口内会把新 refresh_token 回滚为旧值，
-		// 导致下一周期用旧 refresh_token 调上游拿到 invalid_grant 后，
-		// tryRecoverFromRefreshRace 重读 DB 发现 currentRT == usedRT 也救不回来，提供商被错误 disable。
-		// 这里仅依赖 InvalidateToken + SetTempUnschedulable 让提供商在冷却期内不被调度，
-		// 冷却结束后由 token_provider 的 NeedsRefresh / token_refresh_service 走带分布式锁的正路刷新。
+		// 临时停调时保持 status=active，刷新任务仍可认领该提供商。
+		// 此处使 token 缓存失效，凭据更新由刷新协调器在分布式锁内完成。
+		// 请求开始时的凭据可能已过期，整列写回会覆盖并发刷新得到的 refresh_token。
 		msg := "Authentication failed (401): invalid or expired credentials"
 		if observation.Message != "" {
 			msg = "OAuth 401: " + observation.Message

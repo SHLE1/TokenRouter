@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// selectRoutes 基础单平台与混合选择使用同一独立投影，保留原粘性及优先级/最近使用顺序。
+// selectRoutes 为基础单平台和混合平台选择提供候选，按粘性、优先级和最近使用时间选择。
 func (s *GenericSelector) selectRoutes(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*FlowProvider, error) {
 	// 优先检查 context 中的强制平台（/antigravity 路由）
 	var platform string
@@ -38,8 +38,7 @@ func (s *GenericSelector) selectRoutes(ctx context.Context, groupID *int64, sess
 		platform = ""
 	}
 
-	// count_tokens 与可用性探测不占并发槽，但高级分组仍必须复用与主请求相同的
-	// 最终分组、硬过滤和评分逻辑，不能退回基础排序。
+	// count_tokens 与可用性探测使用无槽选择。高级分组与主请求共用最终分组、硬过滤和评分规则。
 	if resolvedGroup != nil && resolvedGroup.UsesAdvancedScheduler() {
 		selection, err := s.Select(WithSelectOnly(ctx), SelectionInput{GroupID: groupID, SessionHash: sessionHash, RequestedModel: requestedModel, ExcludedIDs: excludedIDs})
 		if err != nil {
@@ -77,7 +76,7 @@ func (s *GenericSelector) SelectPlatform(ctx context.Context, groupID *int64, se
 	if groupID != nil && s.ports.ReadGroup != nil {
 		schedGroup, _ = s.ports.ReadGroup(ctx, *groupID)
 	}
-	// upstream 依据必须覆盖路由、粘性和普通候选的全部旧版选择分支。
+	// 路由、粘性和普通候选分支都使用 upstream 模型依据。
 	needsUpstreamCheck := s.ports.NeedsUpstreamGroupRestrictionCheck(ctx, groupID)
 	isUpstreamAllowed := func(provider *FlowProvider) bool {
 		return !needsUpstreamCheck || !s.ports.IsUpstreamModelRestrictedByGroup(ctx, *groupID, provider, requestedModel)

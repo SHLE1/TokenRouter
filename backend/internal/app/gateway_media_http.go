@@ -19,7 +19,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// provideMediaRuntime 固定既有单次执行与任务拥有者，构造不查询、不启动后台资源。
+// provideMediaRuntime 为媒体执行绑定单次调用组件和应用任务跟踪器。
 func provideMediaRuntime(
 	source *gatewayhttp.OpenAIResponsesExecutor, credentials *gatewayhttp.RequestCredentialExecutor,
 	keys *apikey.APIKeyService,
@@ -44,7 +44,7 @@ func provideAuxiliaryHTTP(runtime *mediaentry.Runtime, activity *gatewayRequestA
 	return result
 }
 
-// mediaBindings 只组合既有能力及静态选项，视频拥有者按原时点取得。
+// mediaBindings 组合执行组件和静态参数，在调用时取得视频组件。
 func mediaBindings(
 	source *gatewayhttp.OpenAIResponsesExecutor, credentials *gatewayhttp.RequestCredentialExecutor,
 	keys *apikey.APIKeyService,
@@ -106,7 +106,7 @@ func mediaBindings(
 	return b
 }
 
-// provideGrokVideoTasks 使用现有缓存的可选计费能力，不创建第二份缓存。
+// provideGrokVideoTasks 从共享缓存取得可选的计费接口。
 func provideGrokVideoTasks(cache session.GatewayCache, cfg *config.Config) *media.VideoTasks {
 	billing, _ := cache.(session.GrokVideoBillingCache)
 	var options media.VideoOptions

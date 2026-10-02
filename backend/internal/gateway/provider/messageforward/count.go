@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 )
 
-// countAttempt 复用请求准备端口，只额外保存本次计数请求句柄。
+// countAttempt 保存计数请求句柄并复用请求准备操作。
 type countAttempt struct {
 	*attempt
 	request    *http.Request
@@ -38,7 +38,7 @@ func (a *countAttempt) BuildCount(ctx context.Context, body []byte, model string
 }
 
 func (a *countAttempt) SendCount(ctx context.Context, passthrough bool) (*forwardcore.ExchangeResponse, error) {
-	// 代理只在首发前解析；签名重试保留原快照，TLS Profile 仍逐次读取。
+	// 首次发送前解析代理，签名重试复用该值，每次重试读取 TLS Profile。
 	if !a.proxyReady {
 		a.proxyReady = true
 		if a.provider.Record.ProxyID != nil && a.provider.Record.Proxy != nil && (passthrough || !a.provider.View().IsCustomBaseURLEnabled() || a.provider.View().GetCustomBaseURL() == "") {

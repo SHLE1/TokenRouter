@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// provideOpsObservationAccess 只投影观测身份；已加载的失败 Key 不成为鉴权主体。
+// provideOpsObservationAccess 返回观测所需的身份数据，失败 Key 用于错误记录。
 func provideOpsObservationAccess() gatewayhttp.OpsObservationAccess {
 	return gatewayhttp.OpsObservationAccess{
 		APIKey: func(c *gin.Context) *apikey.APIKey {

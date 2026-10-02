@@ -17,7 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// HTTPInput 只携带已完成分组及提供商处理的请求快照，不包含业务实体或凭据。
+// HTTPInput 包含完成分组和提供商处理后的请求快照。
 type HTTPInput struct {
 	Body, LineageEntryBody                                     []byte
 	ProviderID                                                 int64
@@ -61,13 +61,13 @@ type Result struct {
 	ImageOutputSizes                                                []string
 }
 
-// CompactFailure 是流读取器返回的恢复信号投影，不持有原错误的业务对象。
+// CompactFailure 保存流读取器返回的压缩恢复信号。
 type CompactFailure struct {
 	Message string
 	Payload []byte
 }
 
-// HTTPOptions 的端口仅处理一次外部操作或值转换；恢复次数和重试顺序由 RunHTTP 唯一拥有。
+// HTTPOptions 包含 HTTP 交换和响应处理函数，RunHTTP 决定恢复次数和重试顺序。
 type HTTPOptions struct {
 	Exchange              openai.HTTPExchangeOptions
 	Sink                  upstream.OutputSink
@@ -159,14 +159,14 @@ func RunHTTP(ctx context.Context, input HTTPInput, o HTTPOptions) (*Result, erro
 				continue
 			}
 			if o.ShouldFailover(resp.StatusCode, message, payload) {
-				// 健康动作端口返回 nil 表示原策略要求通用错误，仍在本响应上执行原错误适配。
+				// 健康处理返回 nil 时，将本次响应转换为通用错误。
 				if err := o.HTTPFailover(resp, payload, message, upstreamModel); err != nil {
 					return nil, err
 				}
 			}
 			return nil, o.ErrorResponse(resp, body, input.BillingModel)
 		}
-		// 延迟关闭保留原多次 compact 尝试的生命周期；每个闭包绑定本次响应。
+		// 每次 compact 尝试的响应分别由闭包捕获，在函数返回时关闭。
 		defer func() { _ = resp.Body.Close() }()
 		o.WrapResponseBody(resp)
 		tier := o.ExtractServiceTier(body)

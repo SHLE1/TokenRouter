@@ -163,7 +163,7 @@ func (h *CyberHandler) Meta(c *gin.Context, key *apikey.APIKey, provider *modera
 	return meta
 }
 
-// ClearCyberTurnState 保持 WS turn 收尾清理顺序，标记存储由单步端口清除。
+// ClearCyberTurnState 在 WS turn 结束时通过接口清除标记。
 func ClearCyberTurnState(c *gin.Context, clearMark func(*gin.Context)) {
 	if c == nil {
 		return

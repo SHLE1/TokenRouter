@@ -20,7 +20,7 @@ const (
 	SettingKeyProviderQuotaNotifyEmails  = "provider_quota_notify_emails"
 )
 
-// PrepareAdminSettings 不执行处置或发送通知，保留旧邮箱序列化和 nil 阈值语义。
+// PrepareAdminSettings 准备管理设置的写入值，邮箱按设置格式序列化，nil 阈值按缺省值处理。
 func PrepareAdminSettings(value AdminSettings) (map[string]string, error) {
 	values := map[string]string{SettingKeyProviderQuotaNotifyEnabled: strconv.FormatBool(value.ProviderQuotaNotifyEnabled), SettingKeyProviderQuotaNotifyEmails: contact.MarshalNotifyEmails(value.ProviderQuotaNotifyEmails)}
 	if value.ProviderSchedulingThresholds != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestStopWaitsForSynchronousOverflow 验证停止必须包含已经进入同步兜底的任务，而不只等待 pond 队列。
+// TestStopWaitsForSynchronousOverflow 检查停止同时等待 pond 队列和已转为同步执行的溢出任务。
 func TestStopWaitsForSynchronousOverflow(t *testing.T) {
 	pool := NewUsageRecordWorkerPoolWithOptions(UsageRecordWorkerPoolOptions{WorkerCount: 1, QueueSize: 1, TaskTimeout: time.Second, OverflowPolicy: "sync"})
 	first, releaseQueue := make(chan struct{}), make(chan struct{})

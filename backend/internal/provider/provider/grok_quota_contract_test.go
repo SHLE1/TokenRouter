@@ -575,7 +575,7 @@ func TestGrokQuotaServiceQueryQuotaFreeFallsBackToGrok45(t *testing.T) {
 	t.Parallel()
 
 	provider := healthyGrokQuotaOAuthProvider(51)
-	// 有效模型缓存避免后台目录请求干扰账单与主动额度请求的次数断言。
+	// 使用有效模型缓存，使账单与主动额度请求的次数可单独断言。
 	provider.Extra = map[string]any{providercore.GrokObservedModelsExtraKey: map[string]any{
 		"models": []string{"grok-4.5"}, "fetched_at": time.Now().UTC().Format(time.RFC3339),
 	}}
@@ -624,7 +624,7 @@ func TestGrokQuotaServiceQueryQuotaPaidBillingSkipsActiveProbe(t *testing.T) {
 	t.Parallel()
 
 	provider := healthyGrokQuotaOAuthProvider(52)
-	// 本用例只检查账单与主动额度请求；有效模型缓存隔离原有后台目录同步。
+	// 本用例通过有效模型缓存跳过后台目录同步，单独检查账单与主动额度请求。
 	provider.Extra = map[string]any{providercore.GrokObservedModelsExtraKey: map[string]any{
 		"models": []string{"grok-4.5"}, "fetched_at": time.Now().UTC().Format(time.RFC3339),
 	}}
@@ -970,7 +970,7 @@ func TestGrokQuotaServiceResetQuotaUnsupported(t *testing.T) {
 	require.Equal(t, "GROK_QUOTA_RESET_UNSUPPORTED", apperror.Reason(err))
 }
 
-// newGrokQuotaFixture 夹具只组合生产构造器与窄存储、传输替身，不重建旧聚合服务。
+// newGrokQuotaFixture 使用生产构造函数，存储和传输通过替身提供。
 func newGrokQuotaFixture(store GrokQuotaStore, proxy *grokQuotaProxyRepo, token *providercore.GrokTokenSource, transport interface {
 	Do(*http.Request, string, int64, int) (*http.Response, error)
 }, validator xai.BaseURLValidator, readers ...providercore.LocalUsageStats,
@@ -989,7 +989,7 @@ func newGrokQuotaFixture(store GrokQuotaStore, proxy *grokQuotaProxyRepo, token 
 	return NewGrokQuota(store, token, requests, stats)
 }
 
-// 读取边界与原适配器一样返回独立记录，写入断言保留在存储替身。
+// 查询返回独立记录，存储替身记录写入操作供断言使用。
 type grokQuotaReadStore struct {
 	providersByID map[int64]*providercore.Record
 	getByIDCalls  int

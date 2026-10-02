@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 验证实际会话注销数量和资源释放次数，不依赖内部集合实现。
+// sessionAttemptCache 记录会话注销数量和资源释放次数。
 type sessionAttemptCache struct {
 	SessionLimitCache
 	unregistered []int64

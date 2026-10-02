@@ -8,7 +8,7 @@ import (
 	cryptoinfra "github.com/TokenFlux/TokenRouter/internal/infra/crypto"
 )
 
-// AESEncryptor 保持旧接口的具体类型身份。
+// AESEncryptor 是基础设施包 AES 加密器的类型别名。
 type AESEncryptor = cryptoinfra.AESEncryptor
 
 func NewAESEncryptor(cfg *config.Config) (*AESEncryptor, error) {

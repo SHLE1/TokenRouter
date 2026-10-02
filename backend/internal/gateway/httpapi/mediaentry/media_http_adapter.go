@@ -24,7 +24,7 @@ import (
 
 type mediaHTTPAdapter struct{ h *Runtime }
 
-// MediaHTTPHandler 可由父组合根直接绑定媒体路由，旧公开方法也委托同一实现。
+// MediaHTTPHandler 提供应用装配使用的媒体路由处理器。
 func (h *Runtime) MediaHTTPHandler() *gatewayhttp.MediaHandler {
 	return gatewayhttp.NewMediaHandler(mediaHTTPAdapter{h})
 }

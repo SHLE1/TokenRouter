@@ -75,7 +75,7 @@
         </div>
       </section>
 
-      <!-- 最近活动：分隔线列表，行内不再嵌套卡片，避免窄屏内边距层层叠加。 -->
+      <!-- 最近活动用分隔线划分列表项，使窄屏行内容共用一层内边距。 -->
       <section
         data-testid="redeem-history"
         class="card flex min-w-0 flex-col overflow-hidden lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:min-h-0"
@@ -87,7 +87,7 @@
         </div>
 
         <div class="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-          <!-- 首次加载显示骨架；翻页时保留当前列表并降低透明度，避免内容闪烁。 -->
+          <!-- 首次加载显示骨架，翻页时当前列表降低透明度并保持占位。 -->
           <ContentSkeleton v-if="loadingHistory && history.length === 0" variant="list" :rows="4" class="p-6" />
 
           <ul
@@ -244,7 +244,7 @@ const celebration = ref<{ sequence: number; title: string; detail: string } | nu
 let celebrationSequence = 0
 let disposed = false
 
-// 兑换历史按固定页容量分页，宽屏下列表在卡内滚动，页面本身不再增高。
+// 兑换历史按固定页容量分页，宽屏下页面高度固定，列表在卡内滚动。
 const HISTORY_PAGE_SIZE = 10
 const history = ref<RedeemHistoryItem[]>([])
 const historyPage = ref(1)
@@ -408,7 +408,7 @@ const handleRedeem = async () => {
       appStore.showWarning(t('redeem.dataRefreshFailed'))
     }
   } finally {
-    // 提交状态只跟随请求，不等待庆祝动画或成功信息的保留时长。
+    // 提交状态随请求结束而清除，庆祝动画和成功信息按各自的时长展示。
     submitting.value = false
     await nextTick()
     // 禁用控件可能让焦点落到 body；用户已移到其他控件时不抢回焦点。

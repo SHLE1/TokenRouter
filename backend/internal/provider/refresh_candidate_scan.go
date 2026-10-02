@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-// OAuthRefreshCandidatePager 沿用原有界分页与原始 ID 游标，不退回无界扫描。
+// OAuthRefreshCandidatePager 按页面大小和记录 ID 游标扫描刷新候选。
 type OAuthRefreshCandidatePager interface {
 	ListOAuthRefreshCandidatePage(context.Context, OAuthRefreshPageOptions) (*OAuthRefreshCandidatePage, error)
 }
 
-// RefreshScanOptions 为单轮配置投影与观察端口，不包含具体配置或供应商客户端。
+// RefreshScanOptions 提供单轮扫描的配置值和记录函数。
 type RefreshScanOptions struct {
 	Timeout                  time.Duration
 	PageSize                 int

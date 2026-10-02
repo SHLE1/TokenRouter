@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// selectBasicOnlyRoutes 基础平台选择保留自己的 LRU、粘性溢出和复核顺序，不合并高级调度策略。
+// selectBasicOnlyRoutes 按基础调度的 LRU、粘性溢出和复核顺序选择提供商。
 func (s *PlatformSelector) selectBasicOnlyRoutes(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyProviderID int64, requiredCapability provider.OpenAIEndpointCapability) (*FlowProvider, error) {
 	platform = strings.TrimSpace(platform)
 	if s.ports.CheckPricing(ctx, groupID, requestedModel) {
@@ -71,14 +71,12 @@ func (s *PlatformSelector) tryBasicSticky(ctx context.Context, groupID *int64, p
 	}
 
 	// 检查提供商是否需要清理粘性会话
-	// Check if sticky session should be cleared
 	if s.ports.ClearSticky(provider, routingModel) || !s.ports.MatchesGroup(provider, groupID) {
 		_ = s.ports.DeleteSticky(ctx, groupID, sessionHash)
 		return nil
 	}
 
 	// 验证提供商是否可用于当前请求
-	// Verify provider is usable for current request
 	if !s.ports.BasicEligible(ctx, provider, platform, routingModel, false, requiredCapability) {
 		return nil
 	}
@@ -120,7 +118,7 @@ func (s *PlatformSelector) SelectBestBasic(ctx context.Context, groupID *int64, 
 		acc := &providers[i]
 
 		// 跳过被排除的提供商
-		// Skip excluded providers
+		// 跳过已排除的提供商。
 		if _, excluded := excludedIDs[acc.ID]; excluded {
 			continue
 		}
@@ -159,7 +157,6 @@ func (s *PlatformSelector) SelectBestBasic(ctx context.Context, groupID *int64, 
 
 func (s *PlatformSelector) isBetterBasic(candidate, current *FlowProvider) bool {
 	// 优先级更高（数值更小）
-	// Higher priority (lower value)
 	if candidate.Priority < current.Priority {
 		return true
 	}
@@ -168,7 +165,6 @@ func (s *PlatformSelector) isBetterBasic(candidate, current *FlowProvider) bool 
 	}
 
 	// 同优先级，比较最后使用时间
-	// Same priority, compare last used time
 	switch {
 	case candidate.LastUsedAt == nil && current.LastUsedAt != nil:
 		// candidate 从未使用，优先
@@ -257,7 +253,7 @@ func (s *PlatformSelector) selectBasicRoutes(ctx context.Context, groupID *int64
 	}
 
 	// 粘性提供商的有界等待队列已满时，第二层可以为当前请求临时借用其它提供商；
-	// 该容量溢出只对单次请求有效，不能把整段会话的持久绑定迁移到冷缓存提供商。
+	// 容量溢出的提供商供本次请求使用，会话持久绑定仍指向此前的提供商。
 	stickySpillover := false
 	if sessionHash != "" {
 		providerID := stickyProviderID
@@ -547,7 +543,7 @@ func (s *PlatformSelector) prioritizeBasicCompact(providers []*FlowProvider) []*
 	return append(enabled, disabled...)
 }
 
-// SelectBasicOnly 只选择并补全提供商，不取得请求槽或注册会话。
+// SelectBasicOnly 选择并补全提供商，供无需占槽和注册会话的入口调用。
 func (s *PlatformSelector) SelectBasicOnly(ctx context.Context, input PlatformSelectionInput) (*FlowProvider, error) {
 	return s.selectBasicOnlyRoutes(ctx, input.GroupID, input.Platform, input.SessionHash, input.RequestedModel, input.RoutingModel, input.ExcludedIDs, input.RequireCompact, input.StickyProviderID, input.RequiredCapability)
 }

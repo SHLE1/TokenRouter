@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache/codec"
 )
 
-// responseSelectionOptions 保留原 WSv2 夹具的显式开关和零值等待配置。
+// responseSelectionOptions 配置 WSv2 测试开关，并将等待参数设为零。
 func responseSelectionOptions() Options {
 	return Options{
 		WS: &egress.OpenAIWSOptions{Enabled: true, OAuthEnabled: true, APIKeyEnabled: true, ResponsesWebsocketsV2: true},
@@ -28,7 +28,7 @@ func responseSelectionParameters() *scheduler.Parameters {
 	return scheduler.NewParameters(scheduler.NewSettingsRuntime(scheduler.Diagnostics{}), nil, diagnosticParameterDefaults(&config.Config{}))
 }
 
-// selectPreviousResponseForTest 组合原入口的上下文及模型投影，不为私有合同扩大生产 API。
+// selectPreviousResponseForTest 构造上下文和模型输入，调用上一响应的提供商选择方法。
 func selectPreviousResponseForTest(s *Compatible, ctx context.Context, group *int64, previous, model string, excluded map[int64]struct{}, compact bool) (*gatewayadapter.SelectionResult, error) {
 	ctx = s.withCandidatePolicy(ctx, group, "")
 	ctx = s.withOpenAIGroupPrivacyRequirement(ctx, group)
@@ -140,7 +140,7 @@ func (c selectionConcurrencyFixture) GetProvidersLoadBatch(ctx context.Context, 
 	return out, nil
 }
 
-// selectionSnapshotFixture 经真实快照读取器解码，数据库重检仍读取另一份新状态。
+// selectionSnapshotFixture 提供待解码的快照，数据库复核读取独立记录。
 type selectionSnapshotFixture struct {
 	scheduler.SnapshotCache
 	providersByID map[int64]*gatewayadapter.ExecutionProvider
@@ -179,7 +179,7 @@ func (r groupAwareStubOpenAIProviderRepo) ListSchedulableUngroupedByPlatform(ctx
 	return result, nil
 }
 
-// codex 配额读取合同保留写入哨兵，任何原不应发生的持久化仍使断言失败。
+// Codex 配额读取测试通过写入哨兵检查意外的持久化操作。
 type openAICodexExtraListRepo struct {
 	selectionProviderFixture
 	rateLimitCh chan time.Time
@@ -192,7 +192,7 @@ func (r *openAICodexExtraListRepo) SetRateLimited(_ context.Context, _ int64, at
 	return nil
 }
 
-// hydrationProviderSource 保留原回源错误，不自行模拟补全成功或失败。
+// hydrationProviderSource 将回源读取错误交给提供商补全流程。
 type hydrationProviderSource struct {
 	scheduler.SnapshotProviderSource
 	source Providers

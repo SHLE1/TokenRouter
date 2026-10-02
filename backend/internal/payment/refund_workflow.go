@@ -44,7 +44,7 @@ func (s *RefundWorkflow) compensateFailure(ctx context.Context, p *RefundPlan, r
 	return &RefundResult{Warning: "gateway failed: " + cause.Error() + ", rolled back"}, nil
 }
 
-// QueryAndFinalizeRefund 只查询已发生的渠道操作，不重发退款。
+// QueryAndFinalizeRefund 查询已提交退款的渠道结果并完成本地结算。
 func (s *RefundWorkflow) QueryAndFinalizeRefund(ctx context.Context, id int64) (*RefundResult, error) {
 	order, err := s.store.Order(ctx, id)
 	if err != nil {

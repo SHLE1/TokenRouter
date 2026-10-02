@@ -6,7 +6,7 @@ import (
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 )
 
-// provideCompactExecutor 投影静态配置，恢复过程不读取完整应用配置。
+// provideCompactExecutor 为上下文恢复执行器提供所需的静态参数。
 func provideCompactExecutor(cfg *config.Config) *gatewayhttp.CompactExecutor {
 	value := &gatewayhttp.CompactExecutor{}
 	if cfg != nil {

@@ -24,7 +24,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// 未实现的端口若被意外调用会立即失败，确保拒绝路径不进入调度或存储。
+// 拒绝路径调用未实现的调度或存储接口时，测试失败。
 type prefaceBackend struct {
 	CompatibleTextBackend
 	key       *apikey.APIKey
@@ -188,7 +188,7 @@ func TestCompatiblePrefacePassesRequestLeaseAndOriginalModel(t *testing.T) {
 	}
 }
 
-// Gemini 与兼容入口的审核顺序不同，单独实现端口避免套用兼容链。
+// Gemini 使用独立的审核接口实现，按自己的顺序调用。
 type geminiPrefaceBackend struct {
 	GeminiNativeBackend
 	base  *prefaceBackend

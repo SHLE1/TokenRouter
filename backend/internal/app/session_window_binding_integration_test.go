@@ -13,7 +13,7 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// TestSessionAndWindowCachesKeepIndependentState 验证拆分端口后，应用仍使用原键与独立数据面。
+// TestSessionAndWindowCachesKeepIndependentState 检查会话与窗口缓存使用各自的键，数据彼此独立。
 func TestSessionAndWindowCachesKeepIndependentState(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

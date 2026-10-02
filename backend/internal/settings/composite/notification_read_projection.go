@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/notification"
 
-// ApplyNotificationAdminReadSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyNotificationAdminReadSettings 将邮件读取结果写入综合快照。
 func (s *Snapshot) ApplyNotificationAdminReadSettings(value *notification.AdminReadSettings) {
 	s.SMTPFrom = value.SMTPFrom
 	s.SMTPFromName = value.SMTPFromName

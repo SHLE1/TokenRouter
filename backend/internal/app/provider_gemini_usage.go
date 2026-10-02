@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// projectGeminiModelUsage 明确选择提供商成本，不能使用用户实际扣费字段。
+// projectGeminiModelUsage 读取提供商成本字段。
 func projectGeminiModelUsage(rows []usage.ModelStat) []provider.GeminiModelUsage {
 	if rows == nil {
 		return nil
@@ -32,7 +32,7 @@ type providerGeminiUsageBatchReader struct {
 	provider.GeminiUsageTotalsBatchReader
 }
 
-// newProviderGeminiUsageReader 保留批量读取能力和原查询参数，不复制统计缓存。
+// newProviderGeminiUsageReader 绑定批量用量查询及查询参数。
 func newProviderGeminiUsageReader(source usage.UsageLogRepository) provider.GeminiQuotaUsageReader {
 	if source == nil {
 		return nil

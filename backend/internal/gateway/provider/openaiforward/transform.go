@@ -264,15 +264,15 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		if codexResult.Modified {
 			markDecodedModified()
 		}
-		// 指纹收敛 ID 只在本次 Forward 内共享，避免跨提供商 failover 复用 Gin context 中的旧值。
-		// 带真实 device_id 时补齐 client_metadata 安装标识，与真实 Codex 对齐（compact 形态不同，跳过）。
+		// 本次 Forward 使用独立的指纹 ID，failover 后按新提供商重新取得。
+		// 提供商带有 device_id 时补齐 client_metadata 的安装标识，compact 请求跳过此步骤。
 		if !isCompactRequest && p.ClientMetadata(decoded) {
 			markDecodedModified()
 		}
 		if currentClientPromptCacheKey, ok := decoded["prompt_cache_key"].(string); ok {
 			clientPromptCacheKey = currentClientPromptCacheKey
 		}
-		// 提供商命名空间与指纹收敛独立：保留客户端身份数量，但不能在换号后跨 OAuth 凭据复用。
+		// 按提供商划分客户端身份的命名空间，换 OAuth 凭据后重新派生身份。
 		if !isCompactRequest && p.ProviderIdentity(decoded) {
 			markDecodedModified()
 		}
@@ -292,10 +292,10 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 			upstreamModel = codexResult.NormalizedModel
 		}
 		if strings.TrimSpace(clientPromptCacheKey) != "" {
-			// 报文已包含提供商隔离值；此处保留原始值，保证 Header 构造只派生命名空间一次。
+			// 请求体已包含提供商隔离值，Header 构造使用此处保存的原始值派生命名空间。
 			promptCacheKey = clientPromptCacheKey
 		} else if currentPromptCacheKey, ok := decoded["prompt_cache_key"].(string); ok && currentPromptCacheKey != "" {
-			// 客户端未提供键时，保留指纹收敛注入的既有默认值。
+			// 客户端未提供键时，使用指纹处理注入的默认值。
 			promptCacheKey = currentPromptCacheKey
 		} else if codexResult.PromptCacheKey != "" {
 			promptCacheKey = codexResult.PromptCacheKey
@@ -311,7 +311,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		if maxOutputTokens.Exists() {
 			switch profile.Platform {
 			case "openai", "deepseek":
-				// 先保留 Responses 原生输出上限；仅当选中上游明确拒绝时，才在下方有界 HTTP 重试中移除。
+				// 先发送 Responses 输出上限，上游拒绝时在有限次数的 HTTP 重试中移除。
 			case "anthropic":
 				decoded, decodeErr := ensureReqBody()
 				if decodeErr != nil {
@@ -387,7 +387,7 @@ func TransformRequest(ctx context.Context, prepared *Prelude, profile Profile, p
 		}
 	}
 	if reqBody != nil {
-		// 保留原完整对象的补丁同步时点，不截断客户端或工具文本。
+		// 将本次完整对象的修改同步到请求体，客户端和工具文本原样保留。
 		if _, decodeErr := ensureReqBody(); decodeErr != nil {
 			return nil, decodeErr
 		}

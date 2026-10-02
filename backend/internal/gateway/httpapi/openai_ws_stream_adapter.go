@@ -22,7 +22,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// wsStreamAdapter 投影单次帧解析和提供商健康规则，不拥有读取循环、重试或完成时序。
+// wsStreamAdapter 解析单次帧并应用提供商健康规则。
 type wsStreamAdapter struct {
 	*wsPassthroughAdapter
 	observer    *forwardcore.ResponseObserver

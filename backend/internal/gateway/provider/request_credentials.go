@@ -11,7 +11,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// RequestCredentials 保留普通凭据读取与 Grok 请求级恢复的原顺序，固定依赖由 app 注入。
+// RequestCredentials 读取执行凭据并处理 Grok 请求级凭据恢复，app 注入依赖。
 type RequestCredentials struct {
 	Source             *providercore.OpenAIExecutionCredentials
 	HasGrokTokenSource bool
@@ -158,7 +158,7 @@ func credentialFailover(output CredentialObserver, provider *ExecutionProvider, 
 	}
 }
 
-// credentialMutation 只投影存储意图，网关的范围、动作和客户端文案不进入提供商核心。
+// credentialMutation 将凭据失败分类转换为提供商存储需要的更新条件。
 func credentialMutation(class forwardcore.GrokCredentialFailure) providercore.GrokCredentialMutation {
 	return providercore.GrokCredentialMutation{
 		Permanent:     class.Permanent,

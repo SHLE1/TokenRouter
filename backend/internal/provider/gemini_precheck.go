@@ -108,9 +108,9 @@ func (s *GeminiPrecheck) PreCheckUsage(ctx context.Context, provider *Record, re
 
 			if used >= limit {
 				resetAt := GeminiDailyResetTime(now, s.options.Location)
-				// 保留预检与真实上游限流的边界：
+				// 日额度预检使用本地统计，
 				// 本地预检只减少上游 429。
-				// 不写提供商限流，rate_limit_reset_at 仍只反映真实上游 429。
+				// rate_limit_reset_at 记录上游返回 429 时的重置时间。
 				s.options.Info("gemini_precheck_daily_quota_reached", "provider_id", provider.ID, "used", used, "limit", limit, "reset_at", resetAt)
 				return false, nil
 			}

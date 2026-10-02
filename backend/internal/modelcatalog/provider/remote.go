@@ -33,7 +33,7 @@ func (c *remoteClientError) FetchCatalog(_ context.Context, _, _ string) ([]byte
 //   - true：回退到直连（仅限管理员显式开启）
 func NewRemoteClient(proxyURL string, allowDirectOnProxyError bool) RemoteClient {
 	// 安全说明：httpclient.GetClient 的错误链（url.Parse / proxyutil）不含明文代理凭据，
-	// 但仍通过 slog 仅在服务端日志记录，不会暴露给 HTTP 响应。
+	// 此信息通过 slog 写入服务端日志。
 	sharedClient, err := httpclient.GetClient(httpclient.Options{
 		Timeout:  30 * time.Second,
 		ProxyURL: proxyURL,

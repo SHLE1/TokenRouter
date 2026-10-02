@@ -121,10 +121,8 @@ func (h *OpsHandler) GetErrorLogs(c *gin.Context) {
 	// buildOpsErrorLogsWhere 以 COALESCE(requested_model, model) 比对。
 	filter.Model = strings.TrimSpace(c.Query("model"))
 
-	// 请求错误语义:client-visible status>=400 守卫恒生效（未设
-	// IncludeRecoveredUpstream 时 phase=upstream 不再绕过守卫），故
-	// phase=upstream 作为普通过滤条件保留——此前这里清空该值，导致
-	// 错误类型下拉选「上游」等于不过滤。
+	// 默认筛选客户端可见状态码大于等于 400 的请求，phase=upstream 另按普通条件过滤。
+	// 查看已恢复的上游错误需要开启 IncludeRecoveredUpstream。
 
 	// 分类(用户侧粗分类码)→ phase/type ANY 条件,与用户端 /usage/errors 同一映射;
 	// 未知分类返回空切片 = 不过滤。与 phase 参数可同时设置(AND 语义)。
@@ -250,10 +248,8 @@ func (h *OpsHandler) ListRequestErrors(c *gin.Context) {
 	// buildOpsErrorLogsWhere 以 COALESCE(requested_model, model) 比对。
 	filter.Model = strings.TrimSpace(c.Query("model"))
 
-	// 请求错误语义:client-visible status>=400 守卫恒生效（未设
-	// IncludeRecoveredUpstream 时 phase=upstream 不再绕过守卫），故
-	// phase=upstream 作为普通过滤条件保留——此前这里清空该值，导致
-	// 错误类型下拉选「上游」等于不过滤。
+	// 默认筛选客户端可见状态码大于等于 400 的请求，phase=upstream 另按普通条件过滤。
+	// 查看已恢复的上游错误需要开启 IncludeRecoveredUpstream。
 
 	// 分类(用户侧粗分类码)→ phase/type ANY 条件,与用户端 /usage/errors 同一映射;
 	// 未知分类返回空切片 = 不过滤。与 phase 参数可同时设置(AND 语义)。

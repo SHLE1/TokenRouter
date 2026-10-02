@@ -7,8 +7,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 )
 
-// ResponseTools 持有请求与 WS 当前 turn 的工具恢复信息；会话更新单独保存。
-// 已发布的映射只读，后续 turn 用新映射替换，避免改动正在输出的 turn。
+// ResponseTools 保存请求和 WebSocket 当前 turn 的工具恢复信息，会话更新单独保存。
+// 已发布的映射按只读使用，后续 turn 替换为新映射，输出中的 turn 继续使用自己的映射。
 type ResponseTools struct {
 	mu                        sync.RWMutex
 	openai, grok              bridge.ResponsesClientToolMapping
@@ -35,6 +35,7 @@ func (s *ResponseTools) ClientMapping(grok bool) bridge.ResponsesClientToolMappi
 	}
 	return s.openai
 }
+
 func (s *ResponseTools) SetClientMapping(grok bool, mapping bridge.ResponsesClientToolMapping) {
 	if s == nil {
 		return
@@ -47,6 +48,7 @@ func (s *ResponseTools) SetClientMapping(grok bool, mapping bridge.ResponsesClie
 		s.openai = mapping
 	}
 }
+
 func (s *ResponseTools) Namespaces() map[string]bridge.ResponsesNamespaceName {
 	if s == nil {
 		return nil
@@ -55,6 +57,7 @@ func (s *ResponseTools) Namespaces() map[string]bridge.ResponsesNamespaceName {
 	defer s.mu.RUnlock()
 	return s.namespaces
 }
+
 func (s *ResponseTools) SetNamespaces(names map[string]bridge.ResponsesNamespaceName) {
 	if s == nil {
 		return
@@ -63,6 +66,7 @@ func (s *ResponseTools) SetNamespaces(names map[string]bridge.ResponsesNamespace
 	s.namespaces = names
 	s.mu.Unlock()
 }
+
 func (s *ResponseTools) CodexNames(session bool) map[string]string {
 	if s == nil {
 		return nil
@@ -74,6 +78,7 @@ func (s *ResponseTools) CodexNames(session bool) map[string]string {
 	}
 	return s.activeNames
 }
+
 func (s *ResponseTools) SetCodexNames(session bool, reverse map[string]string) {
 	if s == nil {
 		return
@@ -90,6 +95,7 @@ func (s *ResponseTools) SetCodexNames(session bool, reverse map[string]string) {
 		s.activeNames = copyMap
 	}
 }
+
 func (s *ResponseTools) Bridge() (WSBridgeTools, bool) {
 	if s == nil {
 		return WSBridgeTools{}, false
@@ -98,6 +104,7 @@ func (s *ResponseTools) Bridge() (WSBridgeTools, bool) {
 	defer s.mu.RUnlock()
 	return s.bridgeState, s.bridgePresent
 }
+
 func (s *ResponseTools) SetBridge(state WSBridgeTools) {
 	if s == nil {
 		return

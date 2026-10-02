@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// gatewayCompatibilitySnapshot 只投影共享粘性计数，已退役的metadata计数保持零。
+// gatewayCompatibilitySnapshot 返回共享粘性会话计数，metadata 计数为零。
 func gatewayCompatibilitySnapshot(shared *schedulerSharedState) gatewayhttp.CompatibilityLogSnapshot {
 	if shared == nil || shared.Sticky == nil {
 		return gatewayhttp.CompatibilityLogSnapshot{}
@@ -20,7 +20,7 @@ func gatewayCompatibilitySnapshot(shared *schedulerSharedState) gatewayhttp.Comp
 	return gatewayhttp.CompatibilityLogSnapshot{ReadTotal: total, ReadHit: hit, DualWrite: dual, ReadHitRate: rate}
 }
 
-// stopOpenAI429 仅把凭据资格投影给唯一重试预算规则。
+// stopOpenAI429 将凭据资格传给重试预算规则。
 func stopOpenAI429(value *gatewayadapter.ExecutionProvider, status, switches int, state *failover.OAuth429State) bool {
 	return failover.StopOAuth429(failover.OAuth429Provider{OpenAI: value != nil && value.View().IsOpenAIOAuthLike(), Grok: value != nil && value.Record.Platform == capability.PlatformGrok && value.Record.Type == capability.ProviderTypeOAuth}, status, switches, state)
 }

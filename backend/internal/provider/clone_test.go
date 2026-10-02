@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCloneValuesPreservesShapesAndIsolation 验证复制必须保留载荷和值类型，不能把共享前缀的不同长度切片误认为同一容器。
+// TestCloneValuesPreservesShapesAndIsolation 检查复制保留载荷和值类型，共享前缀但长度不同的切片各自复制。
 func TestCloneValuesPreservesShapesAndIsolation(t *testing.T) {
 	nested := []any{map[string]any{"number": json.Number("1.123456789")}, "second"}
 	values := map[string]any{"short": nested[:1], "long": nested, "nil": []any(nil), "empty": []any{}, "raw": json.RawMessage(`{"ok":true}`)}
@@ -82,7 +82,7 @@ func TestCloneValuesCopiesNormalizedProtocolIDs(t *testing.T) {
 	}
 }
 
-// TestCopyRecordIntoKeepsRootAndSupportsSameRecord 验证原地应用必须保留根自引用；地址稳定使既有方法绑定继续读取更新后的记录。
+// TestCopyRecordIntoKeepsRootAndSupportsSameRecord 检查原地复制保持根对象自引用，已绑定的方法读取更新后的记录。
 func TestCopyRecordIntoKeepsRootAndSupportsSameRecord(t *testing.T) {
 	source := &Record{ID: 1, Credentials: map[string]any{"token": "source"}}
 	source.ProviderGroups = []GroupMembership{{Provider: source}}

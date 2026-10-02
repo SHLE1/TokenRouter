@@ -17,9 +17,8 @@ func SetActualOpenAIUpstreamEndpoint(c *gin.Context, endpoint string) {
 	}
 }
 
-// ClearActualOpenAIUpstreamEndpoint 清理当前转发尝试记录的端点。
-// Handler 会在提供商 failover 尝试间复用同一个 Gin context，因此每次尝试
-// 都必须从无残留状态开始。
+// ClearActualOpenAIUpstreamEndpoint 清除当前转发尝试记录的端点。
+// Gin context 在提供商尝试间复用，每次转发前清理上一次的端点。
 func ClearActualOpenAIUpstreamEndpoint(c *gin.Context) {
 	if c == nil {
 		return

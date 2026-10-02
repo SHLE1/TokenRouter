@@ -12,7 +12,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// OpenAIFailoverPolicy 只计算当前提供商的恢复资格与截止时间，不执行请求或切换循环。
+// OpenAIFailoverPolicy 计算当前提供商的恢复资格与截止时间。
 type OpenAIFailoverPolicy struct {
 	Health *provideradapter.OpenAIResponseHealth
 }
@@ -176,7 +176,7 @@ func OpenAICapacityShedClientMessage(upstreamMsg string, body []byte) string {
 	return "Upstream service is temporarily overloaded, please retry later"
 }
 
-// OpenAISemantic429Headers 仅把明确的 Spark 窗口头用于流内语义限流。
+// OpenAISemantic429Headers 为 Spark OAuth 请求的流内限流处理提供响应头。
 func OpenAISemantic429Headers(target *ExecutionProvider, model string, headers http.Header) http.Header {
 	if IsCodexSparkModel(model) && target != nil && target.View().IsOpenAIOAuthLike() {
 		return headers

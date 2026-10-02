@@ -295,7 +295,7 @@ watch(
 </template>
 
 <style>
-/* 触发器基线类更名后沿用紧凑参数(py-1.5/px-3/text-xs)。 */
+/* 触发器使用紧凑尺寸（py-1.5/px-3/text-xs）。 */
 .compact-select .input-trigger {
   @apply py-1.5 px-3 text-xs rounded-control;
 }

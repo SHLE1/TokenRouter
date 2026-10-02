@@ -65,7 +65,7 @@ func TestDefaultHeadersUserAgentMatchesCLIVersion(t *testing.T) {
 	}
 }
 
-// TestCLIVersionDefaultsToBuiltinPin 验证没有配置覆盖时，CLIVersion() 必须等于内置基线——保证本 PR 对既有部署零行为变化。
+// TestCLIVersionDefaultsToBuiltinPin 检查未配置覆盖时 CLIVersion() 返回内置版本。
 func TestCLIVersionDefaultsToBuiltinPin(t *testing.T) {
 	if got := CLIVersion(); got != CLICurrentVersion {
 		t.Fatalf("CLIVersion() = %q, want built-in pin %q (测试进程未设置 %s)", got, CLICurrentVersion, CLIVersionEnv)

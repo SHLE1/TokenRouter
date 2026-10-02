@@ -63,10 +63,7 @@ func TestSparkRoutingByModel(t *testing.T) {
 	})
 
 	t.Run("empty_model_shadow_is_eligible_under_a2", func(t *testing.T) {
-		// 有意的纯 A2 行为(用户裁决 2026-06-30)：空 model 请求不经模型门过滤
-		// （isProviderRequestCompatible 的 `req.RequestedModel != ""` 短路），故影子与普通提供商
-		// 一样成为候选。旧类型门曾在空 model 时排除影子(opt-in)，该 opt-in 已随类型门移除——
-		// routing 路径不再有任何类型判断。此测试锁定该决策，防被未来改动静默改回。
+		// model 为空时跳过模型过滤，影子和普通提供商都可成为候选。
 		pid := int64(100)
 		parent := &gatewayprovider.ExecutionProvider{Record: provider.Record{Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 100, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive, Schedulable: true}}
 		shadow := &gatewayprovider.ExecutionProvider{Record: provider.Record{
@@ -139,7 +136,7 @@ func TestParentHealthSchedulerIntegration(t *testing.T) {
 	})
 
 	t.Run("manual_schedulable_false_parent_does_not_reject_shadow", func(t *testing.T) {
-		// F1 决策 A:母提供商手动暂停(Schedulable=false)不传播到影子 —— 凭据仍可用,影子应被接受。
+		// 母提供商手动暂停（Schedulable=false）后凭据仍可用，影子仍可被选中。
 		manualPausedParent := &gatewayprovider.ExecutionProvider{
 			Record: provider.Record{
 				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 78100,

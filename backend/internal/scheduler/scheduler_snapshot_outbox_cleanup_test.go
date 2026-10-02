@@ -515,8 +515,7 @@ func TestSchedulerSnapshotServiceCheckOutboxLagBacklogRetryDoesNotBypassNewLagTh
 	svc.outboxRebuildRetryAt = time.Now().Add(-time.Second)
 	svc.lagMu.Unlock()
 
-	// backlog 恢复时 lag 刚进入降级；过期的 backlog 重试不得使首次
-	// lag 观测跳过失败次数门槛。
+	// backlog 恢复后，首次 lag 降级观测从自己的失败次数门槛开始计数。
 	repo.rows = []int64{1}
 	repo.events[0].CreatedAt = time.Now().Add(-time.Hour)
 	svc.checkOutboxLag(context.Background(), 0)
@@ -550,8 +549,7 @@ func TestSchedulerSnapshotServiceCheckOutboxLagLagRetryDoesNotDelayOrEscalateNew
 		t.Fatalf("expected the lag degradation to attempt one rebuild, got %d", cache.listBucketCalls)
 	}
 
-	// lag 恢复时 backlog 刚进入降级；它必须立即开始，且首次失败必须使用
-	// 基础重试代数，不能继承 lag 的计数。
+	// lag 恢复时 backlog 刚进入降级，立即开始重建，首次失败使用基础重试代数。
 	repo.events[0].CreatedAt = time.Now()
 	repo.rows = []int64{100}
 	svc.checkOutboxLag(context.Background(), 0)
@@ -589,7 +587,7 @@ func TestSchedulerSnapshotServiceCheckOutboxLagBacklogRetrySurvivesUnknownBacklo
 		t.Fatalf("expected a future backlog retry, got %s", retryAt)
 	}
 
-	// MaxID 临时失败表示 backlog 健康状态未知，而非已恢复。
+	// MaxID 临时失败时，backlog 健康状态保持未知。
 	repo.maxIDErr = errors.New("max id unavailable")
 	svc.checkOutboxLag(context.Background(), 0)
 	svc.lagMu.Lock()
@@ -638,8 +636,7 @@ func TestSchedulerSnapshotServiceCheckOutboxLagPreemptsUnknownBacklogRetryAtThre
 	repo.maxIDErr = errors.New("max id unavailable")
 	repo.events[0].CreatedAt = time.Now().Add(-time.Hour)
 
-	// 已知的 lag 降级必须独立于当前 backlog 冷却期继续累积，并且只有
-	// 达到自身门槛后才能抢占它。
+	// lag 降级观测独立于 backlog 冷却期累积，达到自身门槛后触发重建。
 	for observation := 1; observation <= 2; observation++ {
 		svc.checkOutboxLag(context.Background(), 0)
 		if cache.listBucketCalls != 1 {
@@ -796,8 +793,7 @@ func TestSchedulerSnapshotServiceEmptyPollDoesNotReleaseRunningRebuild(t *testin
 		t.Fatal("first rebuild did not start")
 	}
 
-	// 空批次能证明 episode/retry 状态已恢复，但不得释放仍在运行的
-	// 重建任务所有权。
+	// 空批次恢复 episode/retry 状态，运行中的重建任务仍持有执行名额。
 	svc.pollOutbox()
 
 	secondDone := make(chan struct{})

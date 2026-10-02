@@ -91,7 +91,7 @@ func (r usageBatchRecordFixture) GetByIDs(_ context.Context, ids []int64) ([]*Re
 	return result, nil
 }
 
-// 保留原空统计夹具，主被动展示由生产组件执行。
+// 夹具返回空统计，主动与被动用量展示由生产组件执行。
 type usageBatchStatisticsFixture struct{}
 
 func (usageBatchStatisticsFixture) GetProviderWindowStats(context.Context, int64, time.Time) (*WindowStats, error) {

@@ -7,7 +7,7 @@ import (
 	coderws "github.com/coder/websocket"
 )
 
-// WSClientFrames 只转换网络库的帧与关闭枚举，不实施 turn 或重试规则。
+// WSClientFrames 转换网络库的帧和关闭枚举。
 type WSClientFrames struct{ Conn *coderws.Conn }
 
 var _ gatewayws.ClientSocket = WSClientFrames{}
@@ -17,7 +17,7 @@ func (c WSClientFrames) Read(ctx context.Context) (int, []byte, error) {
 	return int(typ), body, err
 }
 
-// Write 同步反馈网络写入结果，供原生入站执行器保持原关闭与取消边界。
+// Write 同步返回网络写入结果，入站执行器据此处理关闭和取消。
 func (c WSClientFrames) Write(ctx context.Context, typ int, body []byte) error {
 	return c.Conn.Write(ctx, coderws.MessageType(typ), body)
 }

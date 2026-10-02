@@ -394,7 +394,7 @@ func TestBatchImageSettlementService_CostExceedsHoldExhaustsAndReleases(t *testi
 		require.ErrorIs(t, err, batchimage.ErrBatchImageSettlementCostExceedsHold)
 		require.Equal(t, batchimage.BatchImageJobStatusSettling, repo.jobs[job.BatchID].Status)
 	}
-	// 达到上限：必须走耗尽出口释放冻结并转 failed，而不是无限 requeue。
+	// 达到重试上限后释放冻结并转为 failed。
 	_, err := svc.Settle(context.Background(), job.BatchID)
 	require.ErrorIs(t, err, batchimage.ErrBatchImageSettlementBillingFailed)
 	require.Equal(t, batchimage.BatchImageJobStatusFailed, repo.jobs[job.BatchID].Status)
@@ -433,7 +433,7 @@ func TestBatchImageSettlementService_InvalidCountsExhaustsAndReleases(t *testing
 func TestReleaseBatchImageBalanceHold_TreatsFingerprintConflictAsReleased(t *testing.T) {
 	job := testSettlingBatchImageJob("imgbatch_release_conflict")
 	// 历史版本用 manifestHash 释放过一次：同一 request id 再以 RequestHash
-	// 释放会命中指纹冲突。资金已归还，必须视为幂等成功而非毒消息。
+	// 释放会命中指纹冲突，资金已归还时按幂等成功处理。
 	billing := &fakeBatchImageBillingRepo{releaseErr: billingcore.ErrUsageBillingRequestConflict}
 	err := (batchimage.Funding{Store: billing}).Release(context.Background(), job, "request-hash")
 	require.NoError(t, err)

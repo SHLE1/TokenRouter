@@ -129,7 +129,7 @@ func (p *OpenAIProbePolicy) ApplyUserAgent(ctx context.Context, value *provider.
 	}
 }
 
-// applyBrowserUserAgent 只处理原浏览器 UA 回退，不应用其他客户端改写。
+// applyBrowserUserAgent 为浏览器 UA 填入回退值。
 func (p *OpenAIProbePolicy) applyBrowserUserAgent(ctx context.Context, value *provider.Record, req *http.Request) {
 	if req == nil || value == nil || !value.IsOAuth() || !openai.IsBrowserUserAgent(req.Header.Get("user-agent")) {
 		return

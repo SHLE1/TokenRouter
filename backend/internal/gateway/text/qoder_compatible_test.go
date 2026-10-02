@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// qoderCompatibleFixture 检查不同输出边界下的尝试数与完成资格，不改变平台错误分类。
+// qoderCompatibleFixture 检查不同响应提交状态下的尝试次数和完成资格。
 type qoderCompatibleFixture struct {
 	results                                                               []QoderCompatibleOutcome
 	refresh                                                               QoderRefreshResult

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// testCalendar 为原日期契约提供独立时区，不改动其他测试的进程状态。
+// testCalendar 为测试创建指定时区的日期对象。
 func testCalendar(t *testing.T, name string) Calendar {
 	t.Helper()
 	location, err := time.LoadLocation(name)

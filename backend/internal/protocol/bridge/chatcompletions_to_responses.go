@@ -40,7 +40,7 @@ func ChatCompletionsToResponses(req *ChatCompletionsRequest, options RequestOpti
 		ParallelToolCalls: req.ParallelToolCalls,
 	}
 
-	// 是否移除采样参数由旧入口按原型号规则显式选择。
+	// 调用方根据模型规则指定是否移除采样参数。
 	if !options.DropSampling {
 		out.Temperature = req.Temperature
 		out.TopP = req.TopP
@@ -85,7 +85,7 @@ func ChatCompletionsToResponses(req *ChatCompletionsRequest, options RequestOpti
 		out.Tools = convertChatToolsToResponses(req.Tools, req.Functions)
 	}
 
-	// tool_choice: already compatible format — pass through directly.
+	// tool_choice 已兼容目标格式，原样传递。
 	// Legacy function_call needs mapping.
 	if len(req.ToolChoice) > 0 {
 		out.ToolChoice = req.ToolChoice
@@ -490,7 +490,7 @@ func defaultStrictFalse(src *bool) *bool {
 //	"none" → "none"
 //	{"name":"X"} → {"type":"function","name":"X"}
 func convertChatFunctionCallToToolChoice(raw json.RawMessage) (json.RawMessage, error) {
-	// Try string first ("auto", "none", etc.) — pass through as-is.
+	// 优先尝试 auto、none 等字符串形式，解析成功后原样传递。
 	var s string
 	if err := json.Unmarshal(raw, &s); err == nil {
 		return json.Marshal(s)

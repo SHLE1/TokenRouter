@@ -40,5 +40,5 @@ func OAuthLinuxDoSyntheticEmail(subject string) string {
 	return "linuxdo-" + subject + LinuxDoConnectSyntheticEmailDomain
 }
 
-// OAuthLinuxDoMaxSubjectLength 保留合成邮箱本地部分的原长度边界。
+// OAuthLinuxDoMaxSubjectLength 限制合成邮箱本地部分使用的主体长度。
 const OAuthLinuxDoMaxSubjectLength = 64 - len("linuxdo-")

@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-// RefreshAttemptGate 是实际交换前的准入端口，不能提前消耗锁等待阶段的配额。
+// RefreshAttemptGate 在即将交换凭据时检查准入并占用配额。
 type RefreshAttemptGate interface {
 	Acquire(context.Context) (func(), error)
 }
@@ -104,7 +104,7 @@ func (p *RefreshProviderState) RecordResult(err error) {
 		return
 	}
 	if p.nonRetryable != nil && p.nonRetryable(err) {
-		// 永久提供商凭据错误只影响该提供商，不代表整个平台不健康。
+		// 永久凭据错误按单个提供商处理，该平台的其他提供商继续刷新。
 		p.consecutiveFailures = 0
 		return
 	}

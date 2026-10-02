@@ -16,7 +16,7 @@ import (
 // UsageLog 定义使用日志实体的 schema。
 //
 // 使用日志记录每次 API 调用的详细信息，包括 token 使用量、成本计算等。
-// 这是一个只追加的表，不支持更新和删除。
+// UsageLog 用于追加用量记录。
 type UsageLog struct {
 	ent.Schema
 }

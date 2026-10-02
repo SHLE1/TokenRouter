@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// provideGatewayRuntimeReaders 只绑定现有唯一读取器，不提前读取请求动态设置。
+// provideGatewayRuntimeReaders 绑定共享读取器，动态设置在请求期间读取。
 func provideGatewayRuntimeReaders(store *settings.Store, gatewayRuntime *gateway.RuntimeSettings, providerRuntime *provider.RuntimeSettings, quota *provider.QuotaSettingsCache, routingRuntime *routing.RuntimeSettings, moderationRuntime *moderation.RuntimeSettings, searchRuntime *search.ConfigService) *gatewayprovider.RuntimeReaders {
 	antigravity.SetUserAgentVersionResolver(gatewayRuntime.GetAntigravityUserAgentVersion)
 	openai.SetCodexCanonicalUserAgentResolver(func() string { return gatewayRuntime.GetOpenAICodexUserAgent(context.Background()) })
@@ -22,7 +22,7 @@ func provideGatewayRuntimeReaders(store *settings.Store, gatewayRuntime *gateway
 	return readers
 }
 
-// provideModerationSettings 延续网关 cyber 热路径的独立缓存作用域与唯一生产实例。
+// provideModerationSettings 为网关审核绑定独立的设置缓存。
 func provideModerationSettings(store *settings.Store) *moderation.RuntimeSettings {
 	return moderation.NewRuntimeSettings(store, settings.ErrSettingNotFound)
 }

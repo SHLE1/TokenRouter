@@ -20,7 +20,7 @@ type UserMsgQueueCache interface {
 	GetLastCompletedMs(ctx context.Context, providerID int64) (int64, error)
 	// GetCurrentTimeMs 获取 Redis 服务器当前时间（毫秒），与 ReleaseLock 记录的时间源一致
 	GetCurrentTimeMs(ctx context.Context) (int64, error)
-	// ReconcileExpiredLockCandidates 处理锁索引中的到期候选，按真实 PTTL 清理或刷新索引
+	// ReconcileExpiredLockCandidates 处理锁索引中的到期候选，按 Redis 返回的 PTTL 清理或刷新索引。
 	ReconcileExpiredLockCandidates(ctx context.Context, maxCount int) (cleaned int, err error)
 }
 
@@ -31,7 +31,7 @@ type QueueLockResult struct {
 }
 
 // UserMessageQueueService 用户消息串行队列服务
-// 对真实用户消息实施提供商级串行化 + RPM 自适应延迟
+// 用户消息按提供商串行执行，并根据 RPM 调整发送间隔。
 type UserMessageQueueService struct {
 	runtime     WorkerRuntime
 	diagnostics Diagnostics
@@ -101,7 +101,7 @@ func (s *UserMessageQueueService) Release(ctx context.Context, providerID int64,
 }
 
 // EnforceDelay 根据 RPM 负载执行自适应延迟
-// 使用 Redis TIME 确保与 releaseLockScript 记录的时间源一致
+// 时间取自 Redis TIME，与 releaseLockScript 使用同一个时间源。
 func (s *UserMessageQueueService) EnforceDelay(ctx context.Context, providerID int64, baseRPM int) error {
 	operation, done, err := s.runtime.Enter(ctx, "EnforceDelay")
 	if err != nil {
@@ -113,7 +113,7 @@ func (s *UserMessageQueueService) EnforceDelay(ctx context.Context, providerID i
 		return nil
 	}
 
-	// 先检查历史记录：没有历史则无需延迟，避免不必要的 RPM 查询
+	// 先检查历史记录，没有历史时立即返回零延迟。
 	lastMs, err := s.cache.GetLastCompletedMs(ctx, providerID)
 	if err != nil {
 		s.diagnostics.printf("service.umq", "GetLastCompletedMs failed for provider %d: %v", providerID, err)
@@ -128,7 +128,7 @@ func (s *UserMessageQueueService) EnforceDelay(ctx context.Context, providerID i
 		return nil
 	}
 
-	// 获取 Redis 当前时间（与 lastMs 同源，避免时钟偏差）
+	// 当前时间与 lastMs 都取自 Redis。
 	nowMs, err := s.cache.GetCurrentTimeMs(ctx)
 	if err != nil {
 		s.diagnostics.printf("service.umq", "GetCurrentTimeMs failed: %v", err)
@@ -161,7 +161,7 @@ func (s *UserMessageQueueService) EnforceDelay(ctx context.Context, providerID i
 // ratio < 0.5  → MinDelay
 // 0.5 ≤ ratio < 0.8 → 线性插值 MinDelay..MaxDelay
 // ratio ≥ 0.8 → MaxDelay
-// 返回值包含 ±15% 随机抖动（anti-detection + 避免惊群效应）
+// 返回值加入 ±15% 的随机抖动，分散请求时间并减少固定间隔特征。
 func (s *UserMessageQueueService) CalculateRPMAwareDelay(ctx context.Context, providerID int64, baseRPM int) time.Duration {
 	minDelay := time.Duration(s.cfg.MinDelayMs) * time.Millisecond
 	maxDelay := time.Duration(s.cfg.MaxDelayMs) * time.Millisecond
@@ -205,7 +205,7 @@ func (s *UserMessageQueueService) CalculateRPMAwareDelay(ctx context.Context, pr
 	return applyJitter(baseDelay, 0.15)
 }
 
-// StartCleanupWorker 保持首个完整周期后清理，任务受统一取消和停止等待约束。
+// StartCleanupWorker 在首个周期结束后开始清理，停止时取消任务并等待退出。
 func (s *UserMessageQueueService) StartCleanupWorker(interval time.Duration) {
 	if s == nil || s.cache == nil || interval <= 0 {
 		return
@@ -255,7 +255,7 @@ func generateUMQRequestID() string {
 	return hex.EncodeToString(b)
 }
 
-// MessageQueueOptions 仅包含该用例使用的静态时间参数，不读取全局配置。
+// MessageQueueOptions 保存消息队列的静态时间参数。
 type MessageQueueOptions struct {
 	LockTTLMs  int
 	MinDelayMs int

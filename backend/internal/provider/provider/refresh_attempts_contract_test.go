@@ -1228,7 +1228,7 @@ func TestPathA_AlreadyRefreshed(t *testing.T) {
 	noRefreshNeeded := &tokenRefresherStub{
 		credentials: map[string]any{"access_token": "token"},
 	}
-	// 覆盖 NeedsRefresh 行为 — 我们需要一个新的 stub 类型
+	// 使用单独的 stub 实现 NeedsRefresh。
 	alwaysFreshStub := &alwaysFreshRefresherStub{}
 
 	err := service.Attempts.Run(context.Background(), provider, noRefreshNeeded, alwaysFreshStub, time.Hour, nil)

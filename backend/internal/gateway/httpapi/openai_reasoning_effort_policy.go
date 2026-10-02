@@ -14,7 +14,7 @@ import (
 )
 
 // ReasoningEffortPolicyForRequest 返回请求目标平台对应的分组策略。
-// 复合 Key 已由鉴权中间件投影到具体分组，这里不重新引入旧的复合平台解析层。
+// 鉴权中间件已为复合 Key 选定分组，此处读取该分组。
 func ReasoningEffortPolicyForRequest(c *gin.Context, apiKey *apikey.APIKey, platform string) (string, []routing.ReasoningEffortMapping, string, bool) {
 	if apiKey == nil || apiKey.Group == nil || selectedOpsPlatform(c) != platform {
 		return "", nil, "", false
@@ -71,8 +71,8 @@ func ApplyAnthropicReasoningEffortPolicyForRequest(c *gin.Context, apiKey *apike
 	return requeststate.ApplyOpenAIReasoningEffortPolicy(body, maxEffort, mappings, overLimit)
 }
 
-// BindOpenAIReasoningEffortPolicyForMessagesRequest 只为显式 output_config.effort
-// 绑定策略，避免桥接器为缺省请求补出的 medium 被错误地当作客户端请求。
+// BindOpenAIReasoningEffortPolicyForMessagesRequest 为客户端填写的 output_config.effort 绑定策略。
+// 字段缺省时跳过绑定，桥接器补充的 medium 按默认值处理。
 func BindOpenAIReasoningEffortPolicyForMessagesRequest(c *gin.Context, apiKey *apikey.APIKey, body []byte) {
 	if c == nil || c.Request == nil {
 		return

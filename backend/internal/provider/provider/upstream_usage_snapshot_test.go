@@ -36,7 +36,7 @@ func TestUpstreamUsageSingleflightResultIsolation(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal("等待方未读取身份")
 	}
-	// 与原有独立取消夹具相同，预读完成后让等待方进入 singleflight。
+	// 预读完成后让等待方进入 singleflight，检查各调用方的独立取消。
 	time.Sleep(20 * time.Millisecond)
 	close(upstream.release)
 	first, second := <-results, <-results

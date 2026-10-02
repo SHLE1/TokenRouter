@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCompletionCaptureKeepsTurnTimeAndIndependentInputs 验证原生捕获在提交时读取输入，提交后不会再随请求对象、档位或价卡变化。
+// TestCompletionCaptureKeepsTurnTimeAndIndependentInputs 检查提交时捕获的输入是否独立于后续请求对象、档位和价卡的修改。
 func TestCompletionCaptureKeepsTurnTimeAndIndependentInputs(t *testing.T) {
 	multiplier := 1.5
 	groupID := int64(17)

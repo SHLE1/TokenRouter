@@ -31,7 +31,7 @@ type OAuthUsageTransport struct {
 	fallback     sync.Mutex
 }
 
-// ensureTask 兼容调用方逐步退出后仍由技术端口持有后备锁，组合根不承载锁策略。
+// ensureTask 优先调用注入的任务函数，缺省时用实例内的互斥锁执行 task 创建。
 func (s *OAuthUsageTransport) ensureTask(ctx context.Context, value *provider.Record, expected string) error {
 	if s.EnsureTask != nil {
 		return s.EnsureTask(ctx, value, expected)
@@ -48,7 +48,7 @@ func (s *OAuthUsageTransport) profile(value *provider.Record) *tlsfingerprint.Pr
 	return s.Profiles.ResolveRequestTLS(egress.TLSSelection{Enabled: value.IsTLSFingerprintEnabled(), DirectProfileID: value.GetTLSFingerprintProfileID()})
 }
 
-// ProbeOpenAI 保持原探针 Header 顺序、十五秒预算和共享上游池选择。
+// ProbeOpenAI 使用共享上游池和十五秒预算发送探测请求，并按平台规则设置 Header。
 func (s *OAuthUsageTransport) ProbeOpenAI(ctx context.Context, value *provider.Record) (map[string]any, error) {
 	if value == nil || !value.IsOAuth() {
 		return nil, nil
@@ -140,7 +140,7 @@ func ExtractOpenAIUsageUpdates(response *http.Response, now time.Time) (map[stri
 	return nil, nil
 }
 
-// ClaudeUsageClient 只接收供应商技术输入，不读取提供商状态或缓存。
+// ClaudeUsageClient 接收供应商用量查询需要的请求参数。
 type ClaudeUsageClient interface {
 	FetchUsageWithOptions(context.Context, *anthropic.UsageFetchOptions) (*provider.ClaudeUsageResponse, error)
 }

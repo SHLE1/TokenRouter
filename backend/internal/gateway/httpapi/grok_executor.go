@@ -38,7 +38,7 @@ func (s *GrokExecutor) TLSProfile(target *gatewayadapter.ExecutionProvider, matc
 	return s.TLS.ResolveRequestTLS(gatewayadapter.ExecutionTLSSelection(target, matches))
 }
 
-// BuildResponsesRequest 在原调用位置选择动态默认地址，并只转发允许的请求头。
+// BuildResponsesRequest 在调用时选择动态默认地址，并转发允许的请求头。
 func (s *GrokExecutor) BuildResponsesRequest(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, token, identity string, runtimeDefault bool) (*http.Request, error) {
 	targetURL, err := s.Routes.Responses(target, runtimeDefault)
 	if err != nil {

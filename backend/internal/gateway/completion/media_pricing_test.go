@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// imageTokenCatalog 只为指定图片型号提供实际 token 报价，不提供按张价格。
+// imageTokenCatalog 为指定图片型号提供按 token 计费的测试价格。
 type imageTokenCatalog struct{}
 
 func (imageTokenCatalog) GetModelPricing(model string) *pricing.CatalogModelPricing {

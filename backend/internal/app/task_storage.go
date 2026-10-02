@@ -11,7 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// provideCreativeQueue 只投影队列技术配置，保持旧键名与租约预算。
+// provideCreativeQueue 根据队列配置构造创作台队列，并设置键名和租约时间。
 func provideCreativeQueue(client *redis.Client, cfg *config.Config) creative.CreativeRunQueue {
 	if cfg == nil {
 		return creativeredis.NewCreativeQueue(client, nil)
@@ -37,7 +37,7 @@ func provideCreativeTransientStore(client *redis.Client, cfg *config.Config) cre
 	})
 }
 
-// provideBatchQueue 保留原秒值到时长的换算及缺省配置行为。
+// provideBatchQueue 将秒数配置转换为时长，缺省时使用默认队列参数。
 func provideBatchQueue(client *redis.Client, cfg *config.Config) batchimage.BatchImageQueue {
 	if cfg == nil {
 		return batchredis.NewBatchImageQueue(client, nil)
@@ -53,7 +53,7 @@ func provideBatchQueue(client *redis.Client, cfg *config.Config) batchimage.Batc
 	})
 }
 
-// provideBatchDownloadLimiter 只投影用户下载并发和时长，不另建计数状态。
+// provideBatchDownloadLimiter 为共享下载限制器提供用户并发数和租约时长。
 func provideBatchDownloadLimiter(client *redis.Client, cfg *config.Config) batchimage.BatchImageDownloadLimiter {
 	if cfg == nil {
 		return batchredis.NewBatchImageDownloadLimiter(client, nil)

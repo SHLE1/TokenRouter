@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// delayedBackendReadFixture 只阻塞旧回源；综合管理读取仍通过原批量端口完成。
+// delayedBackendReadFixture 阻塞先发起的回源请求，综合管理查询使用批量读取接口。
 type delayedBackendReadFixture struct {
 	*settingHandlerRepoStub
 	entered, release chan struct{}
@@ -31,7 +31,7 @@ func (r *delayedBackendReadFixture) GetValue(ctx context.Context, key string) (s
 	return r.settingHandlerRepoStub.GetValue(ctx, key)
 }
 
-// TestSettingUpdateLateBackendModeLoad 使用真实综合 HTTP 和应用器，旧回源不能覆盖成功管理发布。
+// TestSettingUpdateLateBackendModeLoad 检查综合 HTTP 保存并发布设置后，先前发起的回源结果被丢弃。
 func TestSettingUpdateLateBackendModeLoad(t *testing.T) {
 	repo := &delayedBackendReadFixture{settingHandlerRepoStub: &settingHandlerRepoStub{values: map[string]string{}}, entered: make(chan struct{}), release: make(chan struct{})}
 	store := settings.New(repo)

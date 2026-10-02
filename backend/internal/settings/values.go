@@ -2,7 +2,7 @@ package settings
 
 import "strings"
 
-// StringOrDefault 保留旧非空字符串回退语义，不进行额外裁剪。
+// StringOrDefault 返回键对应的非空字符串，缺键或空串时返回 fallback，空白字符按输入保留。
 func StringOrDefault(values map[string]string, key, fallback string) string {
 	if value, ok := values[key]; ok && value != "" {
 		return value

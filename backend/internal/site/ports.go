@@ -50,15 +50,17 @@ type AnnouncementReadRepository interface {
 	CountByAnnouncementID(ctx context.Context, announcementID int64) (int64, error)
 }
 
-// UserSnapshot 仅投影公告展示及资格所需的用户字段。
+// UserSnapshot 包含公告展示和访问资格判断所需的用户字段。
 type UserSnapshot struct {
 	ID       int64
 	Email    string
 	Username string
 	Balance  float64
 }
-type UserListFilters struct{ Search string }
-type SubscriptionSnapshot struct{ PlanID int64 }
+type (
+	UserListFilters      struct{ Search string }
+	SubscriptionSnapshot struct{ PlanID int64 }
+)
 
 // UserReader 和 SubscriptionReader 由 app 绑定旧能力，核心不认识旧实体。
 type UserReader interface {

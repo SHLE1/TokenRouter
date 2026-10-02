@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GeminiExecutor 在路由边界创建同步输出，所有协议入口复用同一原生准备器。
+// GeminiExecutor 为每个 HTTP 请求创建同步输出，各协议入口共用 Gemini 请求准备器。
 type GeminiExecutor struct{ Runtime *googleforward.Gemini }
 
 func (s *GeminiExecutor) Forward(ctx context.Context, c *gin.Context, a *gatewayadapter.ExecutionProvider, body []byte) (*forward.MessagesResult, error) {
@@ -29,7 +29,7 @@ func (s *GeminiExecutor) ForwardAsChatCompletions(ctx context.Context, c *gin.Co
 	return s.Runtime.ForwardAsChatCompletions(ctx, NewGoogleBoundary(c, s.Runtime.Options, false), a, body)
 }
 
-// AntigravityExecutor 保留旧路由的协议入口，HTTP 错误和输出均由当前边界持有。
+// AntigravityExecutor 提供 Antigravity 协议入口并处理 HTTP 输出和错误。
 type AntigravityExecutor struct{ Runtime *googleforward.Antigravity }
 
 func (s *AntigravityExecutor) Forward(ctx context.Context, c *gin.Context, a *gatewayadapter.ExecutionProvider, body []byte, sticky bool) (*forward.MessagesResult, error) {

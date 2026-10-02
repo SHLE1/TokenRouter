@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 预检 fixture 只暴露选择与计数，不可能通过测试路径调用资金完成器。
+// inputTokenFixture 提供计数预检测试中的选择和计数操作。
 type inputTokenFixture struct {
 	ctx                 context.Context
 	results             []*AttemptFailure

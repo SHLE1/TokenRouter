@@ -151,7 +151,7 @@ func (s *OpenAIWebSocketExecutor) shouldBridgeOpenAIWSPassthroughFirstMessage(pr
 		i = skipOpenAIWSJSONValue(payload, i)
 
 		key := ""
-		// 关键字段解码后最多约 20 字节；限制编码长度可避免分配攻击者构造的超长键。
+		// 这些字段解码后最多约 20 字节，检查编码长度后再分配键的内存。
 		if keyEnd-keyStart <= 128 {
 			_ = json.Unmarshal(payload[keyStart:keyEnd], &key)
 		}
@@ -492,8 +492,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 			return nil, fmt.Errorf("adapt %s client tools: %w", openAIWSHTTPBridgeToolUpstreamName(provider), err)
 		}
 		if provider.Record.Platform == capability.PlatformGrok && !grokExplicitToolsField && !grokExplicitToolIntent && len(inheritedLoweredTools) > 0 && grok.HasGrokResponsesToolIntent(body) {
-			// 本轮省略 tools 时，缓存路由也必须看到继承后的有效声明，
-			// 否则会把客户端函数误判为无工具请求。
+			// 本轮省略 tools 时，缓存路由使用继承后的声明识别客户端函数。
 			grokIntentSourceBody = append(grokIntentSourceBody[:0], body...)
 		}
 		loweredTools := inheritedState.LoweredTools
@@ -523,7 +522,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 		billingModel = gatewayprovider.ExecutionModelPolicy(provider).Mapped(routingModel)
 		mappedModel = gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(billingModel)
 	}
-	// 只有客户端明确提供模型时才回写下游，避免默认模型被替换成空字符串。
+	// 客户端提供模型时回写该值，缺省时保留默认模型。
 	needModelReplace := routingModel != "" && mappedModel != "" && mappedModel != originalModel
 	var mappedModelBytes []byte
 	if needModelReplace {
@@ -848,7 +847,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 
 		var upstreamEventErr error
 		if officialOpenAIResponses && bareErrorPending && (eventType == "response.completed" || eventType == "response.done") {
-			// 成功终态优先于此前可恢复的裸错误，避免合成失败并保留旧副作用。
+			// 成功终态覆盖此前可恢复的裸错误，并清除该错误的副作用状态。
 			bareErrorPending = false
 			bareErrorPayload = nil
 			bareErrorMessage = ""
@@ -896,7 +895,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 				(turn == 1 || statusCode == http.StatusTooManyRequests) {
 				retrySame := requestScopedCapacity || terminalPolicy.Decision.RetryableOnSameProvider(gatewayprovider.ExecutionErrorPolicy(provider), statusCode)
 				if !requestScopedCapacity {
-					// 终止事件策略已在上方执行；交给错误构造器消费一次性状态，避免重复写入模型限流。
+					// 终止事件策略已执行，错误构造器消费其一次性状态，模型限流写入一次。
 					MarkOpenAIResponseFailureEffects(c, statusCode, terminalPolicy.Decision.StopScheduling)
 				}
 				return nil, s.Output.NewStreamPolicyFailureWithModel(c, provider, true, resp.Header.Get("x-request-id"), resp.Header, statusCode, upstreamMessage, errMessage, retrySame, mappedModel)
@@ -951,8 +950,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 			if !requestScopedError && provider.Record.Platform == capability.PlatformOpenAI &&
 				(policyStatus == http.StatusUnauthorized || policyStatus == http.StatusTooManyRequests || policyStatus == 529 ||
 					(policyStatus == http.StatusForbidden && upstreamopenai.OpenAIStream403ProviderFailure(upstreamMessage, errMessage))) {
-				// error 与 response.failed 可能成对出现；前者已经执行提供商副作用时，
-				// 后者只负责客户端事件，不得再次写入限流状态。
+				// error 和 response.failed 成对出现时，前者执行提供商状态更新，后者写出客户端事件，限流状态更新一次。
 				failureProviderSideEffectsApplied = true
 			}
 			if decision.ShouldReturnGenericError() && !requestScopedCapacity {

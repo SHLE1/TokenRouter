@@ -22,15 +22,9 @@ type clientFrameConn struct {
 	restoreToolNames     func([]byte) []byte
 }
 
-// policyFrameConn wraps a client-side FrameConn and runs
-// every client→upstream frame through the OpenAI Fast Policy. It is the
-// passthrough-relay equivalent of the parseClientPayload integration in the
-// ingress session path. filter returns:
-//   - newPayload, nil, nil: forward the (possibly mutated) payload
-//   - _, *PolicyBlocked, nil: block — the wrapper sends an error
-//     event via onBlock and surfaces a transport-level error so the relay
-//     stops reading from the client.
-//   - _, _, err: a transport error other than block.
+// policyFrameConn 包装客户端 FrameConn，每个发往上游的帧先通过 OpenAI Fast 策略。
+// filter 返回新 payload 时转发，返回 PolicyBlocked 时通过 onBlock 发送错误事件并终止 relay 读取，
+// 其他错误按传输错误返回。入站会话通过 parseClientPayload 执行同类检查。
 type policyFrameConn struct {
 	closeError  func(int, string, error) error
 	closedError error
@@ -114,6 +108,7 @@ func (c *clientFrameConn) markTurnStarted() {
 		TurnActivity{Waiting: &c.waitingForNextTurn, Started: c.interTurnStarted}.MarkStarted()
 	}
 }
+
 func (c *clientFrameConn) markTurnCompleted() {
 	if c != nil {
 		TurnActivity{Waiting: &c.waitingForNextTurn, Started: c.interTurnStarted}.MarkCompleted()
@@ -141,9 +136,8 @@ func (c *clientFrameConn) WriteFrame(ctx context.Context, msgType int, payload [
 			payload = c.restoreToolNames(payload)
 		}
 	}
-	// 控制面取消必须由读路径发送带原因的关闭帧；若直接继承父取消，coder/websocket
-	// 可能在当前帧已经到达客户端但 Write 尚未返回时硬关 TCP。这里保留原 deadline，
-	// 仅让已经开始的写入完成，再由关闭握手统一结束连接。
+	// 控制取消后，读路径发送带原因的关闭帧。写入使用原截止时间完成当前帧，再由关闭握手结束连接。
+	// 若写入直接继承父取消，coder/websocket 可能在帧已到达客户端、Write 尚未返回时关闭 TCP。
 	writeCtx := context.WithoutCancel(ctx)
 	if deadline, ok := ctx.Deadline(); ok {
 		var cancel context.CancelFunc
@@ -167,7 +161,7 @@ func NewPolicyFrames(inner FrameConn, filter func(int, []byte) ([]byte, *PolicyB
 	return &policyFrameConn{inner: inner, filter: filter, writeFilter: writeFilter, onBlock: onBlock, closeError: closeError, closedError: closedError}
 }
 
-// TurnActivity 保留终态提交与下一轮空闲等待的同一个原子标记。
+// TurnActivity 通过同一个原子标记协调终态提交和下一轮空闲等待。
 type TurnActivity struct {
 	Waiting *atomic.Bool
 	Started chan struct{}

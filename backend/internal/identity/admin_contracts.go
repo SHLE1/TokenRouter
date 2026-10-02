@@ -106,7 +106,7 @@ type UserGroupRPMStatus struct {
 	Source    string `json:"source"` // "group" | "override"
 }
 
-// UserAdmin 持有用户管理所需窄端口；分组与 Key 只读投影不携带旧服务实例。
+// UserAdmin 通过 AdminDependencies 访问用户存储、分组和 Key 查询。
 type (
 	UserAdmin         struct{ AdminDependencies }
 	AdminDependencies struct {

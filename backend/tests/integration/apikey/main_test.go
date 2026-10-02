@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// TestMain 保留原存储测试进程的 UTC 日期边界，在执行测试前完成初始化。
+// TestMain 在运行存储测试前将进程时区设为 UTC。
 func TestMain(m *testing.M) {
 	time.Local = time.UTC
 	os.Exit(m.Run())

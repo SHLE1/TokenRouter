@@ -41,9 +41,8 @@ func (r *capacityShedProviderRepoStub) GetByID(_ context.Context, id int64) (*ga
 	return &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: id, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}}, nil
 }
 
-// 上游容量降载是请求级信号：故障因素（客户端身份、模型容量）与提供商无关，
-// 同提供商重试用尽后不得把提供商临时摘掉——否则一个被降载的请求会顺着 failover
-// 把整池提供商逐个封禁，而每个提供商都会以同一个错误失败。
+// 容量降载表示客户端身份或模型容量受限。同提供商重试耗尽后，提供商可调度状态保持原样。
+// 为此类请求设置提供商冷却会使换号依次封禁整个池，而各提供商仍返回同一错误。
 
 // TestStreamFailedEventCapacityShedRetriesOnSameProvider 验证非池模式提供商同样要先在同提供商重试：换号不改变降载因素。
 func TestStreamFailedEventCapacityShedRetriesOnSameProvider(t *testing.T) {
@@ -55,7 +54,7 @@ func TestStreamFailedEventCapacityShedRetriesOnSameProvider(t *testing.T) {
 		require.True(t, gatewayprovider.OpenAIStreamFailureRetryable(nonPool, payload, "overloaded"), code)
 	}
 
-	// 非降载的 failed 事件在非池模式下仍不做同提供商重试，避免放大改动面。
+	// 非池模式下，非降载 failed 事件的同提供商重试标记为 false。
 	other := []byte(`{"type":"response.failed","response":{"error":{"code":"server_error"}}}`)
 	require.False(t, openai.IsOpenAIUpstreamCapacityShedEvent(other))
 	require.False(t, gatewayprovider.OpenAIStreamFailureRetryable(nonPool, other, "boom"))
@@ -86,9 +85,8 @@ func TestOpenAIHTTPCapacityShedIsRequestScopedForOAuthProviders(t *testing.T) {
 	require.Zero(t, repo.tempUnschedCalls)
 }
 
-// TestOpenAIStreamErrorFrameDoesNotStartClientOutput 验证上游降载的真实序列是「event: error → event: response.failed」。error 帧不算
-// 客户端输出：若把它当首输出 flush，clientOutputStarted 被固化，随后的 failed
-// 事件就进不了 pre-output failover 分支，只能把致命错误原样转发给客户端。
+// TestOpenAIStreamErrorFrameDoesNotStartClientOutput 验证降载的 error 帧暂存到 response.failed 到达后再处理。
+// 提前 Flush error 会设置 clientOutputStarted，使后续 failed 无法进入 pre-output failover。
 func TestOpenAIStreamErrorFrameDoesNotStartClientOutput(t *testing.T) {
 	cases := []struct {
 		data      string
@@ -180,8 +178,8 @@ func TestOpenAIStreamMetadataPreambleAndMessageOnlyOverloadFailOver(t *testing.T
 	}
 }
 
-// TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver 验证回归用例（真实上游降载序列）：created → in_progress → error 帧 → response.failed。
-// 期望仍然走 pre-output failover（同提供商重试 + 请求级瞬时标记），且不向客户端写出任何字节。
+// TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver 覆盖 created、in_progress、error、response.failed 的降载序列。
+// 预期执行同提供商重试并记录请求级瞬时标记，客户端输出为空。
 func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *testing.T) {
 	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
@@ -219,9 +217,8 @@ func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *test
 	require.Empty(t, rec.Body.String())
 }
 
-// TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient 验证流中途（已有真实输出）降载时无法再 failover，此时必须把降载码改写为客户端
-// 可重试的 server_error 再通过唯一 response.failed 终态转发——Codex 对
-// server_is_overloaded/slow_down 判致命并终止会话，对其余错误码执行内置退避重试。
+// TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient 验证开始输出后发生降载时，返回一个 response.failed，错误码为 server_error。
+// Codex 对该码执行退避重试，对 server_is_overloaded / slow_down 则终止会话。
 func TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient(t *testing.T) {
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
@@ -269,8 +266,8 @@ func TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient(t *testing.T) 
 	require.True(t, logSink.ContainsFieldValue("upstream_request_id", "rid-shed-after-output"))
 }
 
-// TestSanitizeOpenAICapacityShedErrorCodeForClient 验证helper 单测：只有降载码被改写，其余错误码（尤其 rate_limit_exceeded，客户端
-// 依赖其原码解析重试延时）必须原样保留。
+// TestSanitizeOpenAICapacityShedErrorCodeForClient 验证降载码改写，其他错误码原样返回。
+// 客户端使用 rate_limit_exceeded 等错误码解析重试延时。
 func TestSanitizeOpenAICapacityShedErrorCodeForClient(t *testing.T) {
 	cases := []struct {
 		name        string
@@ -334,7 +331,7 @@ func TestSanitizeOpenAICapacityShedErrorCodeForClient(t *testing.T) {
 	}
 }
 
-// 只转换读取投影，后续冷却调用同一原生存储替身。
+// 转换读取数据后，冷却操作使用同一存储替身。
 type capacityRetryStore struct{ *capacityShedProviderRepoStub }
 
 func (s capacityRetryStore) GetByID(ctx context.Context, id int64) (*providercore.Record, error) {

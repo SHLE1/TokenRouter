@@ -14,8 +14,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// streamSelectionDiagnosticSource 为真实流执行后的下一次选择提供可调度查询投影。
-// 流夹具原本只提供传输字段；诊断 API 所需的分组与活动状态只补在查询副本中。
+// streamSelectionDiagnosticSource 为流执行后的下一次提供商选择提供调度查询数据。
+// 诊断查询副本包含分组和活动状态，流夹具保存传输字段。
 type streamSelectionDiagnosticSource struct {
 	value gatewayprovider.ExecutionProvider
 	group routing.Group

@@ -45,7 +45,7 @@ var (
 	openAIMissingUsageTotal           atomic.Uint64
 )
 
-// SuccessMissingUsage 记录成功响应缺失 usage 的低频诊断，避免影响请求路径。
+// SuccessMissingUsage 按低频采样记录成功响应缺少 usage 的诊断信息。
 func SuccessMissingUsage(ctx context.Context, providerID int64, status int, usage *openai.ForwardUsage, terminalEvent string, clientDisconnected bool) {
 	if status < 200 || status >= 300 || usage != nil && (usage.InputTokens > 0 || usage.OutputTokens > 0 || usage.ImageOutputTokens > 0) {
 		return

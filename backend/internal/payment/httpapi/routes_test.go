@@ -32,7 +32,7 @@ func TestPaymentRoutesDoNotExposeAIChannels(t *testing.T) {
 	require.True(t, registered[http.MethodPost+" /api/v1/admin/payment/providers/test"])
 }
 
-// routePlansStub 仅用于注册表测试，不构造套餐业务依赖。
+// routePlansStub 为路由注册测试提供套餐处理方法。
 type routePlansStub struct{}
 
 func (*routePlansStub) GetPlans(*gin.Context)   {}

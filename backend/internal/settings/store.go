@@ -49,7 +49,7 @@ type Store struct {
 	legacyCallback func()
 }
 
-// New 复用已装配的 Store，避免旧接口投影产生第二套通知或版本状态。
+// New 在 repo 为 Store 时返回该实例，否则为 repo 创建 Store。
 func New(repo Repository) *Store {
 	if store, ok := repo.(*Store); ok {
 		return store
@@ -75,7 +75,7 @@ func (s *Store) SetMultiple(ctx context.Context, values map[string]string) error
 func (s *Store) GetAll(ctx context.Context) (map[string]string, error) { return s.repo.GetAll(ctx) }
 func (s *Store) Delete(ctx context.Context, key string) error          { return s.repo.Delete(ctx, key) }
 
-// SetVersion 只设置原有应用版本字段，不生成数据版本号。
+// SetVersion 设置应用版本。
 func (s *Store) SetVersion(version string) {
 	s.mu.Lock()
 	s.version = version
@@ -88,7 +88,7 @@ func (s *Store) Version() string {
 	return s.version
 }
 
-// SetOnUpdateCallback 保留旧单回调的替换语义。
+// SetOnUpdateCallback 替换当前的单个更新回调。
 func (s *Store) SetOnUpdateCallback(fn func()) {
 	s.mu.Lock()
 	s.legacyCallback = fn

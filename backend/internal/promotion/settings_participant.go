@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// AdminSettings 只表达推广资格与比例配置，不包含用户、订单或资金操作。
+// AdminSettings 包含推广资格开关和返利比例配置。
 type AdminSettings struct {
 	PromoCodeEnabled             bool    `json:"promo_code_enabled"`
 	InvitationCodeEnabled        bool    `json:"invitation_code_enabled"`
@@ -57,7 +57,7 @@ func PrepareAdminSettings(value AdminSettings) (AdminSettings, map[string]string
 	}
 }
 
-// SettingsParticipant 只持久化实际投影的字段，保持省略与显式零值区别。
+// SettingsParticipant 准备请求中提供的推广字段，省略字段时保留已存值。
 func SettingsParticipant() settings.Participant {
 	fields := []string{"promo_code_enabled", "invitation_code_enabled", "affiliate_enabled", "affiliate_rebate_rate", "affiliate_rebate_freeze_hours", "affiliate_rebate_duration_days", "affiliate_rebate_per_invitee_cap", "affiliate_admin_recharge_enabled"}
 	keys := []string{SettingKeyPromoCodeEnabled, SettingKeyInvitationCodeEnabled, SettingKeyAffiliateEnabled, SettingKeyAffiliateRebateRate, SettingKeyAffiliateRebateFreezeHours, SettingKeyAffiliateRebateDurationDays, SettingKeyAffiliateRebatePerInviteeCap, SettingKeyAffiliateAdminRechargeEnabled}

@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// DecisionInput 固定平台和分组投影；设置和价格能力按原判断顺序惰性读取。
+// DecisionInput 保存平台和分组，按评估顺序按需读取设置和价格能力。
 type DecisionInput struct {
 	Model            string
 	GroupPolicy      string
@@ -33,8 +33,8 @@ func IsAcceleratedTier(tier string) bool {
 	return tier == OpenAIFastTierPriority || tier == OpenAIFastTierUltrafast
 }
 
-// Resolve 统一解析系统策略与单 Key 策略。
-// 系统先裁决原始 tier；Key 改写后再裁决一次，避免 force_on 绕过系统 filter/block。
+// Resolve 解析系统策略和单 Key 策略。
+// 先对请求档位应用系统策略，Key 改写后再次应用系统策略，使 filter/block 对 force_on 结果也生效。
 func Resolve(input DecisionInput, rawTier string, hasField bool) Decision {
 	normTier := openai.ServiceTierValue(rawTier)
 	groupPolicy := input.GroupPolicy
@@ -84,7 +84,7 @@ func Resolve(input DecisionInput, rawTier string, hasField bool) Decision {
 	case apikey.APIKeyFastModePolicyForceOn:
 		keyPolicyApplicable = input.ForceOnSupported()
 	case apikey.APIKeyFastModePolicyForceOff:
-		// 强制关闭只净化真正代表 Fast 的 priority，不依赖定价文件中的能力标记。
+		// 强制关闭时清除 priority，其他档位保持原值。
 		keyPolicyApplicable = input.OpenAI
 	}
 	candidateChanged := false
@@ -119,13 +119,9 @@ func Resolve(input DecisionInput, rawTier string, hasField bool) Decision {
 	return Decision{}
 }
 
-// ApplyBody 对原始请求体应用系统策略和单 Key Fast 策略。
-//
-// Rationale for normalize-on-pass: chat-completions / messages 入口在调用本
-// 函数之前已经通过 normalizeResponsesBodyServiceTier 把 service_tier 归一化
-// 到了上游可识别值；passthrough（OpenAI 自动透传） / native /responses 等
-// 入口没有这一前置步骤，pass 路径下若不在此处归一化，"fast" 就会被原样
-// 透传到 OpenAI 上游导致 400/拒绝。把归一化收敛到本函数，所有入口行为一致。
+// ApplyBody 对请求体应用系统和单 Key Fast 策略，并规范化 service_tier。
+// Chat 和 Messages 入口此前已规范化，透传和 Responses 入口由此处完成。
+// fast 需要转换为 priority，上游直接收到 fast 会返回 400。
 func ApplyBody(body []byte, input DecisionInput) ([]byte, error) {
 	if len(body) == 0 {
 		return body, nil

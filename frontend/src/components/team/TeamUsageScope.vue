@@ -175,7 +175,7 @@ const loadUsage = async () => {
 const handlePageChange = async (nextPage: number) => { page.value = nextPage; await loadUsage() }
 const handlePageSizeChange = async (nextPageSize: number) => { pageSize.value = nextPageSize; page.value = 1; await loadUsage() }
 
-// 团队模式独立加载团队上下文，避免读取或展示 Owner 的个人资产详情。
+// 团队模式单独读取当前团队上下文。
 onMounted(async () => {
   try {
     context.value = await teamAPI.current()

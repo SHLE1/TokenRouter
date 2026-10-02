@@ -29,7 +29,7 @@ type CircuitBreakerOptions struct {
 	HalfOpenRequests    int
 }
 
-// BalanceReader 仅返回权益快照，不允许通过普通实体更新余额。
+// BalanceReader 查询用户权益快照，余额更新使用原子写入接口。
 type BalanceReader interface {
 	GetByID(context.Context, int64) (*UserSummary, error)
 }
@@ -37,7 +37,7 @@ type APIKeyRateLimitLoader interface {
 	GetRateLimitData(context.Context, int64) (*APIKeyRateLimitData, error)
 }
 
-// KeySnapshot 只携带消费准入字段，不包含凭据与认证状态。
+// KeySnapshot 包含 Key 的消费准入字段。
 type KeySnapshot struct {
 	ID          int64
 	BillingMode string
@@ -61,10 +61,10 @@ func effectiveKeyBillingMode(k *KeySnapshot) string {
 	return mode
 }
 
-// GroupSnapshot 仅标识最终消费分组，不能承担路由策略。
+// GroupSnapshot 标识最终消费分组。
 type GroupSnapshot struct{ ID int64 }
 
-// CheckInput 固化资金准入所需投影。
+// CheckInput 包含付款人、Key 和分组的资金准入数据。
 type CheckInput struct {
 	Payer        *UserSummary
 	Key          *KeySnapshot

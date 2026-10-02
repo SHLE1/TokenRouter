@@ -18,7 +18,7 @@ import (
 	coderws "github.com/coder/websocket"
 )
 
-// livePorts 仅把现有依赖和展示值投影给纯 Live 编排。
+// livePorts 为 Live 请求流程提供依赖和展示值。
 type livePorts struct{ service *OpenAILiveExecutor }
 
 func (p livePorts) Store() (session.LiveCallStore, error) { return p.service.liveStore() }
@@ -56,7 +56,7 @@ func (p livePorts) RecordZeroUsage(ctx context.Context, record *session.LiveCall
 	}
 	// TODO(billing): Live 当前只记录零费用用量，尚未进入标准计费管道；若后续按时长
 	// 或 token 计费，应在这里接入统一扣费逻辑并补充余额与订阅模式回归测试。
-	// Live finalize 只有一次落库机会，复用批量写入与同步 Create 兜底，避免队列故障吞掉记录。
+	// Live finalize 批量写入失败时同步调用 Create 保存结算记录。
 	p.service.Usage.WriteUsage(context.Background(), &usage.UsageLog{
 		UserID:            actorUserID,
 		BillingUserID:     record.UserID,
@@ -82,7 +82,7 @@ func (p livePorts) RecordZeroUsage(ctx context.Context, record *session.LiveCall
 	}, "service.openai_live")
 }
 
-// liveTarget 保留提供商执行凭据和平台拨号，核心只能使用受控帧接口。
+// liveTarget 管理提供商凭据和平台拨号，向 Live 流程提供帧接口。
 type liveTarget struct {
 	service  *OpenAILiveExecutor
 	record   *session.LiveCallRecord
@@ -101,7 +101,7 @@ func (t liveTarget) Rewrite(ctx context.Context, payload []byte) ([]byte, string
 	return t.service.rewriteLiveSidebandClientPayload(ctx, t.record, t.provider, payload)
 }
 
-// liveUpstreamFrames 只转换帧枚举和正常关闭错误，底层连接由 Live 编排关闭。
+// liveUpstreamFrames 转换帧枚举和正常关闭错误，连接由 Live 流程关闭。
 type liveUpstreamFrames struct{ openai.LiveFrameConn }
 
 func (c liveUpstreamFrames) ReadFrame(ctx context.Context) (int, []byte, error) {

@@ -35,8 +35,8 @@ func (s *OpenAIRequests) ChatURL(provider *gatewayprovider.ExecutionProvider) (s
 	return httpclient.BuildOpenAIEndpointURL(validatedURL, "/v1/chat/completions"), nil
 }
 
-// ChatFallbackTarget 解析两条 CC 回退路径共用的提供商凭证与上游端点
-// Grok 沿用自己的 OAuth/API Key 认证和 CLI 端点。
+// ChatFallbackTarget 为两条 Chat Completions 回退路径解析提供商凭据和端点。
+// Grok 使用 Grok OAuth/API Key 认证和 CLI 端点。
 func (s *OpenAIRequests) ChatFallbackTarget(ctx context.Context, provider *gatewayprovider.ExecutionProvider) (apiKey string, targetURL string, err error) {
 	if provider.View().IsGrok() {
 		apiKey, _, err = s.Credentials.Resolve(ctx, gatewayprovider.ExecutionRecord(provider))
@@ -111,7 +111,7 @@ func (s *OpenAIRequests) AnthropicURL(provider *gatewayprovider.ExecutionProvide
 	return forward.NativeAnthropicTargetURL(provider.Record.ID, gatewayprovider.ExecutionProtocolTarget(provider).GetAnthropicProtocolBaseURL(), s.ValidateBaseURL)
 }
 
-// BuildAnthropic 只投影本次请求 Header 与提供商策略。
+// BuildAnthropic 从当前请求 Header 和提供商策略构造请求。
 func (s *OpenAIRequests) BuildAnthropic(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte, apiKey, targetURL string) (*http.Request, []byte, error) {
 	var headers http.Header
 	if c != nil && c.Request != nil {

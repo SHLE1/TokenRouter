@@ -98,7 +98,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const uid = useId()
 
-// 前端只展示后端已注册的固定适配器，不接受任意请求模板或脚本配置。
+// 前端提供后端已注册适配器的固定选项。
 const adapterOptions = computed<SelectOption[]>(() => [
   { value: 'sub2api', label: t('admin.providers.upstreamUsage.adapters.sub2api') },
   { value: 'new_api', label: t('admin.providers.upstreamUsage.adapters.newApi') },

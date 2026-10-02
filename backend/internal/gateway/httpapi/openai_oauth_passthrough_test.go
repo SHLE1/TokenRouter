@@ -356,7 +356,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_StreamKeepsToolNameAndBodyNormali
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
 
-	// 1) 透传 OAuth 请求体与旧链路关键行为保持一致：store=false + stream=true。
+	// 透传 OAuth 请求体设置 store=false 和 stream=true。
 	require.Equal(t, false, gjson.GetBytes(upstream.lastBody, "store").Bool())
 	require.Equal(t, true, gjson.GetBytes(upstream.lastBody, "stream").Bool())
 	require.Equal(t, "local-test-instructions", strings.TrimSpace(gjson.GetBytes(upstream.lastBody, "instructions").String()))
@@ -1660,8 +1660,8 @@ func TestOpenAIGatewayService_OAuthPassthrough_BrowserUAUsesConfiguredCodexUA(t 
 	require.Equal(t, "codex-tui", upstream.lastReq.Header.Get("originator"))
 }
 
-// TestOpenAIGatewayService_OAuthPassthrough_CodexTuiIdentityPreservedAndPaired 验证回归（issue #3901）：codex-tui 等官方 UA 在透传模式下必须逐字保留，且 originator
-// 由最终 UA 推导配套，避免身份首段错配被上游返回 404。
+// TestOpenAIGatewayService_OAuthPassthrough_CodexTuiIdentityPreservedAndPaired 验证透传保留 codex-tui 等官方 UA，并从最终 UA 推导 originator。
+// 身份首段不匹配会触发上游 404（#3901）。
 func TestOpenAIGatewayService_OAuthPassthrough_CodexTuiIdentityPreservedAndPaired(t *testing.T) {
 	const tuiUA = "codex-tui/0.140.2 (Mac OS X 14.0; arm64) iTerm (codex-tui; 0.140.2)"
 

@@ -303,7 +303,7 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_RejectsNonImageModel(t *te
 	require.ErrorContains(t, err, `images endpoint requires an image model, got "gpt-5.4"`)
 }
 
-// TestOpenAIGatewayServiceParseOpenAIImagesRequestForRouting 延后模型校验，确保分组模型别名能先完成 R -> G。
+// TestOpenAIGatewayServiceParseOpenAIImagesRequestForRouting 验证模型校验前先完成分组别名映射 R -> G。
 func TestOpenAIGatewayServiceParseOpenAIImagesRequestForRouting(t *testing.T) {
 	body := []byte(`{"model":"draw-alias","prompt":"draw a cat"}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewReader(body))
@@ -946,7 +946,7 @@ func TestOpenAIImagesOAuthBodyReadErrorsNotMisclassified(t *testing.T) {
 	}
 }
 
-// TestOpenAIImagesOAuthTransportErrorAfterDownstreamWriteDoesNotFailover 验证首个真实下游字节后不再换号。
+// TestOpenAIImagesOAuthTransportErrorAfterDownstreamWriteDoesNotFailover 验证下游开始输出后出现传输错误时停止换号。
 func TestOpenAIImagesOAuthTransportErrorAfterDownstreamWriteDoesNotFailover(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -971,7 +971,7 @@ func TestOpenAIImagesOAuthTransportErrorAfterDownstreamWriteDoesNotFailover(t *t
 	require.Equal(t, "retry_exhausted_failover", events[0].Kind)
 }
 
-// TestShouldClassifyOpenAIUpstreamStreamReadErrorTransportStrings 验证常见传输错误和取消边界。
+// TestShouldClassifyOpenAIUpstreamStreamReadErrorTransportStrings 验证传输错误与取消错误的分类。
 func TestShouldClassifyOpenAIUpstreamStreamReadErrorTransportStrings(t *testing.T) {
 	for _, message := range []string{"unexpected EOF", "connection reset by peer", "broken pipe", "use of closed network connection"} {
 		t.Run(message, func(t *testing.T) {

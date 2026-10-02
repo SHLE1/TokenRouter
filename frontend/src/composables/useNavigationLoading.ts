@@ -58,7 +58,7 @@ export function useNavigationLoadingState() {
   return navigationLoadingInstance
 }
 
-/** 清理单例，避免测试之间共享导航状态。 */
+/** 清理单例，让各测试独立初始化导航状态。 */
 export function _resetNavigationLoadingInstance(): void {
   navigationLoadingInstance?.resetState()
   navigationLoadingInstance = null

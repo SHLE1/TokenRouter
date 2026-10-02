@@ -350,7 +350,7 @@ const updateDropdownLeft = () => {
   if (!triggerRect.value) return
   const dropdownWidth = dropdownRef.value?.offsetWidth
     || Math.min(Math.max(triggerRect.value.width, 200), Math.max(200, window.innerWidth - 32))
-  // 按实际菜单宽度回拉，避免窄屏时选项文字被裁到视口外。
+  // 根据菜单实际宽度调整横坐标，使菜单位于视口内。
   dropdownLeft.value = clampDropdownLeft(triggerRect.value.left, dropdownWidth)
 }
 

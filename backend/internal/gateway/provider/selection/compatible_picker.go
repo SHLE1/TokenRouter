@@ -254,7 +254,7 @@ func (s *Compatible) SelectProviderWithScheduler(
 
 // SelectProviderWithSchedulerForCapability 按能力要求调度提供商。
 // previousResponseCanMove 表示首包 input 可自行重建工具续链，previous_response_id 允许跨提供商迁移
-// （粘性加权模式下改为加权偏好而非硬粘连）。
+// （开启粘性加权时，绑定提供商获得评分加成）。
 func (s *Compatible) SelectProviderWithSchedulerForCapability(
 	ctx context.Context,
 	groupID *int64,
@@ -440,7 +440,7 @@ func (s *Compatible) resolveOpenAISchedulerGroup(ctx context.Context, groupID *i
 
 // withOpenAIGroupPrivacyRequirement 在一次调度请求内缓存分组隐私资格，避免重试重复查询。
 func (s *Compatible) withOpenAIGroupPrivacyRequirement(ctx context.Context, groupID *int64) context.Context {
-	// 保留原入口对有效 context 的要求。
+	// 父 context 为 nil 时 panic。
 	if ctx == nil {
 		panic("cannot create context from nil parent")
 	}
@@ -451,7 +451,7 @@ func (s *Compatible) withOpenAIGroupPrivacyRequirement(ctx context.Context, grou
 }
 
 func (s *Compatible) openAIGroupRequiresPrivacySet(ctx context.Context, groupID *int64) bool {
-	// 保留原入口对有效 context 的要求。
+	// 父 context 为 nil 时 panic。
 	if ctx == nil {
 		panic("nil context")
 	}
@@ -820,7 +820,7 @@ func (s *Compatible) SessionStickyTTL() time.Duration {
 	return time.Hour
 }
 
-// selectBySessionHash 基础回退只委托同一粘性核心，不维护第二条绑定或等待策略。
+// selectBySessionHash 调用共享粘性选择器执行基础调度回退。
 func (s *compatiblePicker) selectBySessionHash(ctx context.Context, req schedulercore.PlatformSelectionInput) (*gatewayprovider.SelectionResult, bool, error) {
 	core, scope := s.platformSelector()
 	value, escaped, err := core.SelectBySessionHash(ctx, cloneSelectionInput(req))

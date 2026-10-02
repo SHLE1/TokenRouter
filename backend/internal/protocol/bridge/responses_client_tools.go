@@ -142,8 +142,7 @@ func AdaptResponsesClientTools(req map[string]any) (ResponsesClientToolMapping, 
 	return adapter, changed, nil
 }
 
-// stripResponsesDeferredToolFlags 在最终声明列表不再包含其所需的内置
-// tool_search 时移除 defer_loading 标志。
+// stripResponsesDeferredToolFlags 在最终声明列表缺少 tool_search 时移除 defer_loading 标志。
 func stripResponsesDeferredToolFlags(tools []any) bool {
 	if hasResponsesToolSearchDeclaration(tools) {
 		return false
@@ -163,7 +162,7 @@ func stripResponsesDeferredToolFlags(tools []any) bool {
 }
 
 // AdaptResponsesClientToolsWithInheritedMapping 处理省略 tools 声明的后续请求。
-// 显式存在 tools（包括空数组或无效值）时，声明会替换继承映射并走普通适配流程。
+// tools 字段存在时（包括空数组或无效值），用本次声明替换继承映射后执行普通适配。
 func AdaptResponsesClientToolsWithInheritedMapping(
 	req map[string]any,
 	inherited ResponsesClientToolMapping,
@@ -303,7 +302,7 @@ func responsesToolCallItemIDPrefix(itemType string) string {
 }
 
 // retypedResponsesToolCallItemID 在工具调用类型变化时保留 ID 后缀并替换已知前缀。
-// 未知前缀不做猜测，避免破坏供应商自定义 ID。
+// 未知前缀的供应商 ID 原样保留。
 func retypedResponsesToolCallItemID(id, itemType string) string {
 	want := responsesToolCallItemIDPrefix(itemType)
 	if want == "" || id == "" || strings.HasPrefix(id, want) {

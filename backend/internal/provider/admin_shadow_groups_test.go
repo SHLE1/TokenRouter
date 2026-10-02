@@ -52,7 +52,7 @@ func TestCreateShadowDoesNotBindDefaultGroup(t *testing.T) {
 }
 
 // TestCreateShadow_InheritsParentGroups 验证未指定 group_ids 时
-// 影子继承母提供商当前分组(而非仅 openai-default),以便母在自定义组时影子也可路由。
+// 影子继承母提供商当前分组，因此也可在母提供商的自定义组中路由。
 func TestCreateShadow_InheritsParentGroups(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()
@@ -96,7 +96,7 @@ func (s *sparkShadowValidatingGroupRepoStub) ExistsByIDs(_ context.Context, ids 
 	return out, nil
 }
 
-// TestCreateShadow_InvalidGroupRejectedNoOrphan 验证显式无效分组应在
+// TestCreateShadow_InvalidGroupRejectedNoOrphan 检查无效分组在
 // 创建前被拒,不留孤儿影子。
 func TestCreateShadow_InvalidGroupRejectedNoOrphan(t *testing.T) {
 	ctx := context.Background()
@@ -211,7 +211,7 @@ func TestBulkUpdateProviders_RejectsProxyChangeOnShadow(t *testing.T) {
 	require.Equal(t, parentProxy, *repo.providers[shadow.ID].ProxyID, "影子 proxy 必须保持继承母提供商")
 }
 
-// shadowGroupsFixture 保留原分组查询及校验路径，只投影提供商需要的字段。
+// shadowGroupsFixture 通过分组查询和校验返回提供商需要的字段。
 type shadowGroupsFixture struct{ routing.GroupRepository }
 
 func (g shadowGroupsFixture) GetGroup(ctx context.Context, id int64) (*providercore.GroupReference, error) {

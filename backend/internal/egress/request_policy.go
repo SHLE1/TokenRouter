@@ -1,7 +1,7 @@
 package egress
 
-// RequestPolicyInput 只提供当前层已决定的出站值，不查询提供商、配置、DNS 或存储。
-// Header 在原构建时机应用，TLS 和重定向在获取客户端前投影，不能把这些时机合并。
+// RequestPolicyInput 包含调用方已解析的出站参数。
+// Header 在构造请求时应用，TLS 和重定向参数在获取客户端前确定。
 type RequestPolicyInput struct {
 	ProxyURL                                              string
 	TLSProfile                                            *TLSFingerprintProfile
@@ -14,7 +14,7 @@ func RequestPolicy(input RequestPolicyInput) EgressPolicy {
 	return EgressPolicy{ProxyURL: input.ProxyURL, TLSProfile: CloneTLSFingerprintProfile(input.TLSProfile), Headers: ResolveHeaderOverrides(input.Headers), ValidateResolvedIP: input.ValidateResolvedIP, PublicHostsOnly: input.PublicHostsOnly, DisableRedirects: input.DisableRedirects}
 }
 
-// RequiresHostValidation 保留全局最小策略与请求级公网下载限制的叠加语义。
+// RequiresHostValidation 在全局 IP 校验或请求级公网限制启用时返回 true。
 func (p EgressPolicy) RequiresHostValidation() bool { return p.ValidateResolvedIP || p.PublicHostsOnly }
 
 // String 与 GoString 不把代理认证或 Header 值写入普通诊断日志。

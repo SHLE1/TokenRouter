@@ -978,7 +978,7 @@ func buildContentModerationCyberWhere(filter moderation.ContentModerationCyberWa
 	return where, args
 }
 
-// UserParticipation 由组合根注入，同一 SQL Tx 的身份参与操作不得独立提交。
+// UserStatusTx 在调用方的 SQL 事务中锁定和禁用用户，提交由调用方负责。
 type UserStatusTx interface {
 	LockUser(context.Context, int64) (string, bool, error)
 	SetDisabled(context.Context, int64) (bool, error)

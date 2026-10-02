@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/bedrock"
 )
 
-// PrepareBedrockCompatibility 保留分组映射后的清理位置和 Header 原地更新行为。
+// PrepareBedrockCompatibility 在分组映射后清理请求体，并原地更新 Header。
 func (r *Runtime) PrepareBedrockCompatibility(ctx context.Context, headers http.Header, body []byte, model string, target *gatewayadapter.ExecutionProvider, groupID *int64) []byte {
 	if groupID == nil || r.dependencies.GroupPolicies == nil {
 		return body

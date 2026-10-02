@@ -84,7 +84,7 @@ func TestApplyGrokTLSProfileHeadersAlwaysUsesCLIUserAgent(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("User-Agent", "grok-native/1.0")
 
-	// 当前 Profile 仅包含 TLS 信息，不存在 Originator 或 UserAgent HTTP 字段。
+	// 当前 Profile 保存 TLS 信息。Originator 和 UserAgent 由 HTTP 请求头提供。
 	xai.ApplyDefaultGrokUpstreamHeaders(req)
 
 	require.Equal(t, xai.CLIUserAgent(xai.CLIClientVersion), req.Header.Get("User-Agent"))

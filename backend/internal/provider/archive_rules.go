@@ -95,10 +95,10 @@ func ValidateArchiveProvider(item transfer.DataProvider) error {
 	return nil
 }
 
-// ArchiveIdentityHints 是供应商解码后的最小投影，不能用于认证或授权。
+// ArchiveIdentityHints 保存供应商解码出的导入提示，身份认证使用单独的验证流程。
 type ArchiveIdentityHints struct{ Email, PlanType, ChatGPTAccountID, ChatGPTUserID, OrganizationID string }
 
-// ArchiveIDToken 只选择原 OpenAI OAuth 导入的可选身份提示，不扩展其它导入入口。
+// ArchiveIDToken 提取 OpenAI OAuth 导入的可选身份提示。
 func ArchiveIDToken(item *transfer.DataProvider) string {
 	if item == nil || item.Credentials == nil || strings.ToLower(strings.TrimSpace(item.Platform)) != PlatformOpenAI || strings.ToLower(strings.TrimSpace(item.Type)) != ProviderTypeOAuth {
 		return ""
@@ -110,7 +110,7 @@ func ArchiveIDToken(item *transfer.DataProvider) string {
 	return token
 }
 
-// FillArchiveIdentity 只填原先缺失的字符串，不覆盖显式提供商信息或增加 token 验证策略。
+// FillArchiveIdentity 补齐缺失的字符串字段，已有非空值保持不变。
 func FillArchiveIdentity(item *transfer.DataProvider, hints *ArchiveIdentityHints) {
 	if item == nil || hints == nil || item.Credentials == nil {
 		return

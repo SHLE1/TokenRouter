@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// ExtractOpenAIReasoningEffortFromBody 只记录请求体显式携带的推理档位。
+// ExtractOpenAIReasoningEffortFromBody 读取请求体指定的推理档位。
 func ExtractOpenAIReasoningEffortFromBody(body []byte) *string {
 	reasoningEffort := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String())
 	if reasoningEffort == "" {
@@ -26,8 +26,7 @@ func ExtractOpenAIReasoningEffortFromBody(body []byte) *string {
 	return nil
 }
 
-// CanonicalRequestedReasoningEffort 提取策略改写前客户端请求的推理档位。
-// 包括显式 none；缺失字段时不从模型名推导。
+// CanonicalRequestedReasoningEffort 读取策略改写前的请求推理档位，包括 none，字段缺失时返回空字符串。
 func CanonicalRequestedReasoningEffort(body []byte) *string {
 	raw := strings.TrimSpace(gjson.GetBytes(body, "reasoning.effort").String())
 	if raw == "" {
@@ -65,7 +64,7 @@ func ExtractOpenAIServiceTierFromBody(body []byte) *string {
 	return openai.NormalizeServiceTier(gjson.GetBytes(body, "service_tier").String())
 }
 
-// ExtractOpenAIReasoningEffort 从 map 请求体读取显式推理档位。
+// ExtractOpenAIReasoningEffort 从 map 请求体读取指定的推理档位。
 func ExtractOpenAIReasoningEffort(reqBody map[string]any) *string {
 	if value, present := openai.GetOpenAIReasoningEffortFromReqBody(reqBody); present {
 		if value == "" {

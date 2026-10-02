@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// provideUnifiedTextExecutor 固定注入已有执行器，跨平台切号不创建第二套连接或资源池。
+// provideUnifiedTextExecutor 注入共享的执行器，跨平台切换提供商时复用连接和资源池。
 func provideUnifiedTextExecutor(openai *httpapi.OpenAIResponsesExecutor, anthropic *httpapi.MessagesExecutor, gemini *httpapi.GeminiExecutor, antigravity *httpapi.AntigravityExecutor, qoder *gatewayadapter.QoderRuntime, refresh *provideradapter.QoderRequestRefresh, queue *scheduler.UserMessageQueueService, cfg *config.Config) *httpapi.UnifiedTextExecutor {
 	executor := &httpapi.UnifiedTextExecutor{OpenAI: openai, Anthropic: anthropic, Gemini: gemini, Antigravity: antigravity, Qoder: qoder, QoderRefresh: refresh}
 	if cfg != nil {

@@ -17,8 +17,7 @@ func HasBillableGrokChatUsage(usage openai.ForwardUsage) bool {
 }
 
 // RequiresBillableGrokChatUsage 根据实际提供商平台和最终模型身份识别 Grok 流量。
-// Grok 可由通用 OpenAI 兼容提供商承载，因此不能只检查 provider.Platform；同时不使用
-// 未映射的客户端模型，避免 Grok 命名别名映射到非 Grok 上游时被误判。
+// 通用 OpenAI 兼容提供商也可调用 Grok，因此同时检查提供商平台和映射后的上游模型。
 func RequiresBillableGrokChatUsage(provider *ExecutionProvider, models ...string) bool {
 	if provider != nil && provider.Record.Platform == capability.PlatformGrok {
 		return true

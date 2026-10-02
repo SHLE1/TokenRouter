@@ -22,7 +22,7 @@ export interface IntervalFormEntry {
 export interface PricingFormEntry {
   models: string[]
   billing_mode: BillingMode
-  // 空值保留“未配置”语义，0 表示显式免费。
+  // 空值表示“未配置”，0 表示免费。
   price_multiplier: number | string | null
   // OpenAI Fast 模式按最终普通价格收取的倍率。
   fast_mode_multiplier: number | string | null
@@ -312,7 +312,7 @@ export function findModelConflict(models: string[]): [string, string] | null {
 
 /** 校验区间列表的合法性，返回错误消息；通过则返回 null
  *
- * mode 决定区间语义：
+ * mode 决定区间的匹配方式：
  * - token：区间是上下文 token 数分段 (min, max]，不能重叠，无上限段必须放最后
  * - per_request / image / video：区间是按 tier_label 分层（1K/2K/4K、分辨率等），后端按 label
  *   匹配，不依赖 min/max，因此跳过重叠 / “无上限区间必须最后”校验

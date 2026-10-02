@@ -31,7 +31,7 @@ import (
 	schedulerpostgres "github.com/TokenFlux/TokenRouter/internal/scheduler/postgres"
 )
 
-// provideRoutingGroupStore 为新旧读取入口持有唯一存储及同连接参与工厂。
+// provideRoutingGroupStore 为分组读取入口构造共享存储和同连接事务参与工厂。
 func provideRoutingGroupStore(client *dbent.Client, db *sql.DB) *routingpostgres.GroupStore {
 	return routingpostgres.NewGroupStore(client, db, routingpostgres.GroupStoreOptions{
 		Providers: func(exec postgresinfra.Executor) routingpostgres.GroupLinkParticipant {

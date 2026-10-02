@@ -34,7 +34,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// provideSecretEncryptor 以下构造函数将基础设施参数和模块接口绑定到应用依赖图。
+// provideSecretEncryptor 使用启动配置创建 AES 加密器。
 func provideSecretEncryptor(cfg *config.Config) (identitysettings.SecretEncryptor, error) {
 	return bootstrap.NewAESEncryptor(cfg)
 }
@@ -49,7 +49,7 @@ func provideApplication(server *http.Server, manager *lifecycle.Manager, _ *runt
 	return &Application{Server: server, lifecycle: manager}
 }
 
-// installBackgroundTasks 登记唯一任务拥有者，由各消费者显式接收，不安装全局绑定。
+// installBackgroundTasks 登记共享的后台任务跟踪器，并注入各使用方。
 func installBackgroundTasks(manager *lifecycle.Manager) *lifecycle.Tasks {
 	tasks := lifecycle.NewTasks()
 	manager.Register(lifecycle.Hook{Name: "ApplicationBackgroundTasks", StartOrder: 932, StopOrder: 68, Stop: tasks.Stop})
@@ -87,7 +87,7 @@ func provideGatewayRouteMiddleware(apiKeyAuth keyhttp.APIKeyAuthMiddleware, apiK
 	}
 }
 
-// provideGroupAssignmentGuard 只绑定原生 Key 投影和旧 Ops 观察端口，规则由 gateway/httpapi 拥有。
+// provideGroupAssignmentGuard 为分组检查绑定 Key 读取和 Ops 记录函数，检查规则由 gateway/httpapi 实现。
 func provideGroupAssignmentGuard(writer func(*gin.Context, int, string)) gin.HandlerFunc {
 	return gatewayhttp.RequireGroupAssignment(gatewayhttp.GroupAssignmentOptions{Access: gatewayhttp.EffectiveGroupAssignment, WriteError: writer, Rejected: func(c *gin.Context) {
 		gatewayhttp.MarkOpsClientBusinessLimited(c, gatewayhttp.OpsClientBusinessLimitedReasonAPIKeyGroupUnassigned)

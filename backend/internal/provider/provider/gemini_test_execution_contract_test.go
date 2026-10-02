@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 本夹具只记录实际传输与同步事件，执行使用原生目标句柄。
+// 夹具记录传输请求和同步事件，执行使用平台测试组件。
 type geminiTestTransportFixture struct {
 	request *http.Request
 	body    string

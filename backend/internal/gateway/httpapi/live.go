@@ -239,7 +239,7 @@ func liveEnabledForAPIKey(apiKey *LiveAPIKey) bool {
 		apiKey.Group.AllowLive
 }
 
-// LiveAPIKey 是 HTTP 准入需要的只读投影，不持有旧身份或路由实体。
+// LiveAPIKey 是 HTTP 准入使用的只读 Key 数据。
 type LiveAPIKey struct {
 	ID           int64
 	UserID       int64
@@ -258,7 +258,7 @@ type LiveSubject struct {
 type LiveSubscription struct{ ID int64 }
 
 // LiveHTTPPorts 将认证、审核和资金准入绑定到应用唯一实例。
-// 方法不会保存 Gin Context，异步执行只接收已固化的会话记录。
+// 异步执行接收会话记录的快照。
 type LiveHTTPPorts interface {
 	APIKey(*gin.Context) (*LiveAPIKey, bool)
 	Subject(*gin.Context) (LiveSubject, bool)
@@ -284,7 +284,7 @@ type LiveHandler struct {
 
 func NewLiveHandler(ports LiveHTTPPorts) *LiveHandler { return &LiveHandler{ports: ports} }
 
-// cloneLiveModelMapping 保留旧 HTTP 身份投影的空对象语义。
+// cloneLiveModelMapping 复制模型映射，输入为空时返回空映射。
 func cloneLiveModelMapping(mapping map[string]string) map[string]string {
 	result := make(map[string]string, len(mapping))
 	maps.Copy(result, mapping)

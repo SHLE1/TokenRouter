@@ -475,7 +475,7 @@ func (s *RedeemService) GetUserHistory(ctx context.Context, userID int64, page, 
 	return codes, result.Total, nil
 }
 
-// 不支持负向原子权益的兼容仓储保留原错误文本。
+// 以下错误表示仓储缺少原子调整余额或并发额度的能力。
 var (
 	ErrRedeemBalanceUnsupported     = errors.New("user repository does not support atomic redeem balance adjustments")
 	ErrRedeemConcurrencyUnsupported = errors.New("user repository does not support atomic redeem concurrency adjustments")

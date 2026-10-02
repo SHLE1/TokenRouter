@@ -5,10 +5,11 @@ import (
 	"strings"
 )
 
-// ReadBalanceUnitName 保留原单键读取、去空白和 USD 故障默认值。
+// ReadBalanceUnitName 按键读取余额单位并去除空白，读取失败时返回 USD。
 func ReadBalanceUnitName(ctx context.Context, store interface {
 	GetValue(context.Context, string) (string, error)
-}) string {
+},
+) string {
 	value, err := store.GetValue(ctx, SettingKeyBalanceUnitName)
 	if err != nil {
 		return "USD"

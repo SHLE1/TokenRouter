@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOpenAIMessagesExecutionAdapterPreservesNilFailover 验证指针错误转接口必须保留 nil，否则确定性 400 会在写响应前被误当成故障转移。
+// TestOpenAIMessagesExecutionAdapterPreservesNilFailover 验证指针错误转接口后仍为 nil，确定性 400 据此写出响应。
 func TestOpenAIMessagesExecutionAdapterPreservesNilFailover(t *testing.T) {
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)

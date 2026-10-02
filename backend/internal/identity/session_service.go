@@ -258,7 +258,7 @@ func (s *SessionService) GenerateRefreshToken(ctx context.Context, user *User, f
 	}
 	rawToken := RefreshTokenPrefix + hex.EncodeToString(tokenBytes)
 
-	// 计算Token哈希（存储哈希而非原始Token）
+	// 计算用于存储的 Token 哈希。
 	tokenHash := HashToken(rawToken)
 
 	// 如果没有提供familyID，生成新的

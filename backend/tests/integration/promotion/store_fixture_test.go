@@ -32,7 +32,7 @@ func testEntClient(t *testing.T) *dbent.Client {
 	return client
 }
 
-// testEntTx 保留原用例的外层事务与回滚顺序。
+// testEntTx 为测试创建 Ent 事务，测试结束时回滚。
 func testEntTx(t *testing.T) *dbent.Tx {
 	t.Helper()
 	client := testEntClient(t)
@@ -42,7 +42,7 @@ func testEntTx(t *testing.T) *dbent.Tx {
 	return tx
 }
 
-// mustCreateUser 仅写入原有测试数据，不执行注册、赠送或通知。
+// mustCreateUser 将用户夹具写入数据库。
 func mustCreateUser(t *testing.T, client *dbent.Client, u *identity.User) *identity.User {
 	t.Helper()
 	ctx := context.Background()

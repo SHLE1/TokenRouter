@@ -16,7 +16,7 @@ import './style.css'
 function initIOSViewportZoomFix() {
   // iOS Safari 在输入框字号小于 16px 时聚焦会自动放大页面，且失焦后不会恢复。
   // 限制 maximum-scale 可阻止该行为；iOS 10+ 用户仍可双指手动缩放，不影响可访问性。
-  // 仅在 iOS 设备上注入，避免影响 Android Chrome 的手动缩放能力。
+  // iOS 设备注入视口修正，Android Chrome 使用浏览器的手动缩放。
   if (!isIOSDevice()) return
 
   const viewport = document.querySelector('meta[name="viewport"]')
@@ -28,7 +28,7 @@ function initIOSViewportZoomFix() {
 }
 
 async function bootstrap() {
-  // 挂载前先应用主题，避免首屏出现明暗模式闪烁。
+  // 挂载前应用主题，首屏按所选明暗模式渲染。
   initTheme()
   initIOSViewportZoomFix()
 
@@ -52,7 +52,7 @@ async function bootstrap() {
   app.use(router)
   app.use(i18n)
 
-  // 等待路由器完成初始导航后再挂载，避免竞态条件导致的空白渲染
+  // 路由初始导航完成后挂载应用。
   await router.isReady()
   app.mount('#app')
 }

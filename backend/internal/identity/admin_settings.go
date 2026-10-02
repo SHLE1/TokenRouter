@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// AdminSettings 仅包含身份领域的管理配置，不接收完整系统设置。
+// AdminSettings 包含身份认证的管理配置。
 type AdminSettings struct {
 	AliyunCaptchaAccessKeyID               string   `json:"aliyun_captcha_access_key_id"`
 	AliyunCaptchaAccessKeySecret           string   `json:"aliyun_captcha_access_key_secret"`
@@ -120,7 +120,7 @@ const (
 	SettingKeyTurnstileSiteKey                       = "turnstile_site_key"
 )
 
-// PrepareAdminSettings 复用原规范化及密钥保留顺序，只生成值，不执行存储或认证副作用。
+// PrepareAdminSettings 规范化身份设置并生成待保存值，空密钥按保留已存值处理。
 func PrepareAdminSettings(settings *AdminSettings) (map[string]string, error) {
 	updates := make(map[string]string)
 	normalizedWhitelist, err := NormalizeRegistrationEmailSuffixWhitelist(settings.RegistrationEmailSuffixWhitelist)

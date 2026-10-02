@@ -39,7 +39,7 @@ func provideResponsesWSHTTP(
 	return result
 }
 
-// responsesWSOptions 保留入站连接与首帧的原静态默认值。
+// responsesWSOptions 返回入站连接和首帧的静态配置及默认值。
 func responsesWSOptions(cfg *config.Config) gatewayhttp.ResponsesWSOptions {
 	options := gatewayhttp.ResponsesWSOptions{
 		MaxProviderSwitches: 3,
@@ -55,7 +55,7 @@ func responsesWSOptions(cfg *config.Config) gatewayhttp.ResponsesWSOptions {
 	return options
 }
 
-// responsesWSBindings 仅接入已有共享状态及每轮单步端口。
+// responsesWSBindings 绑定共享状态和每轮单次执行函数。
 func responsesWSBindings(source *gatewayhttp.OpenAIWebSocketExecutor, credentials *gatewayhttp.RequestCredentialExecutor, funding *admission.FundingAdmission, keys *apikey.APIKeyService, common openaiattempt.Bindings, prompt *promptpolicy.Service, blocks *session.CyberBlocks, choices *selection.Compatible, planner *gatewayprovider.RoutePlanner, subscriptions admission.SubscriptionReader) wsentry.Bindings {
 	b := wsentry.Bindings{
 		Common:        common,

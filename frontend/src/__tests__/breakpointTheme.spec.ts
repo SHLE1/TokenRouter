@@ -15,8 +15,8 @@ import {
   TABLE_DESKTOP_MIN_WIDTH
 } from '../constants/layout'
 
-// 锁定 JS 断点常量与 Tailwind 默认 screens 的对齐契约:constants/layout.ts 是 JS 侧唯一来源,
-// Tailwind 不得自定义 screens,否则两边的 sm/md/lg 会静默分叉。
+// JS 从 constants/layout.ts 读取断点，CSS 使用 Tailwind 默认 screens。
+// 自定义 screens 会让两处 sm/md/lg 的取值出现分歧。
 describe('响应式断点契约', () => {
   it('sm/md/lg 与 Tailwind 默认 screens 对齐(640/768/1024)', () => {
     expect(BREAKPOINT_SM).toBe(640)

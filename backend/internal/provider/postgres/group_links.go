@@ -8,7 +8,7 @@ import (
 	"github.com/lib/pq"
 )
 
-// GroupLinks 只在调用方连接维护提供商关联，不拥有提交或失效。
+// GroupLinks 在调用方连接中维护提供商关联，调用方负责提交和缓存失效。
 type GroupLinks struct{ exec postgresinfra.Executor }
 
 func GroupLinksInTx(exec postgresinfra.Executor) GroupLinks { return GroupLinks{exec: exec} }

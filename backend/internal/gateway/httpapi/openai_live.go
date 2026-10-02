@@ -81,7 +81,7 @@ func (s *OpenAILiveExecutor) liveMaxSessionDuration() time.Duration {
 	return defaultLiveMaxSessionDuration
 }
 
-// Create 将选择与技术端口交给唯一 Live 创建用例。
+// Create 将提供商选择和连接接口传给 Live 创建用例。
 func (s *OpenAILiveExecutor) Create(ctx context.Context, request *session.LiveCallRequest, identity session.LiveCallIdentity, userMaxConcurrency int) (*gatewaylive.Created, error) {
 	ports := &liveCreatePorts{service: s}
 	created, err := gatewaylive.NewCreator(s.liveRuntime(), ports, s.liveMaxSessionDuration()).Create(ctx, request, identity, userMaxConcurrency)
@@ -293,7 +293,7 @@ func (s *OpenAILiveExecutor) liveRuntime() *gatewaylive.Service {
 	return gatewaylive.New(livePorts{service: s}, s.Options.ObserverRetryInterval, openai.WSMessageReadLimitBytes)
 }
 
-// Proxy 把 HTTP WebSocket 投影为帧端口，编排由 gateway/live 唯一持有。
+// Proxy 将 HTTP WebSocket 转换为帧接口，交给 gateway/live 执行。
 func (s *OpenAILiveExecutor) Proxy(ctx context.Context, record *session.LiveCallRecord, downstream *coderws.Conn) error {
 	if downstream == nil {
 		return session.ErrLiveCallNotFound
@@ -305,7 +305,7 @@ func (s *OpenAILiveExecutor) observeLiveCall(record *session.LiveCallRecord) {
 	s.liveRuntime().Observe(record)
 }
 
-// liveObserverState 投影原应用的唯一技术登记，不复制取消表或等待计数。
+// liveObserverState 访问应用共享的观察者登记。
 func (s *OpenAILiveExecutor) liveObserverState() gatewaylive.ObserverState {
 	return gatewaylive.ObserverState{Mutex: &s.liveObserverMu, Stopped: &s.liveObserverStopped, Cancels: &s.liveObserverCancels, Wait: &s.liveObserverWG}
 }

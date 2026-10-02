@@ -107,7 +107,7 @@ func provideUsageDashboard(store *usagepg.Store, agg usage.DashboardAggregationR
 	return s
 }
 
-// provideUsageDashboardCache 只投影原前缀，复用唯一 Redis 客户端。
+// provideUsageDashboardCache 使用仪表盘缓存前缀和共享 Redis 客户端。
 func provideUsageDashboardCache(r *redis.Client, cfg *config.Config) usage.DashboardStatsCache {
 	prefix := "tokenrouter:"
 	if cfg != nil {

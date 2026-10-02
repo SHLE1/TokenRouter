@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// provideUserRouteMount 固定所属 HTTP 实例，只负责注册与跨模块投影。
+// provideUserRouteMount 将用户 HTTP 处理器和跨模块读取函数绑定到路由注册函数。
 func provideUserRouteMount(
 	eUserPromotion *promotionhttp.UserHandler,
 	eSubscription *billinghttp.SubscriptionHandler,

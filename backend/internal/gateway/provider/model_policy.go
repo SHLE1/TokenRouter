@@ -19,7 +19,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
-// ModelPolicy 只组合提供商的模型配置与当次不可变路线，不持有查询、缓存或执行资源。
+// ModelPolicy 包含提供商模型配置和本次请求的路线。
 // Route 独立于 Record，不能进入持久化提供商或调度快照。
 type ModelPolicy struct {
 	Record *provider.Record
@@ -30,7 +30,7 @@ func (p ModelPolicy) protocolTarget() provider.ProtocolTarget {
 	return provider.ProtocolTarget{Record: p.Record, Protocol: p.Route.Protocol()}
 }
 
-// Mapped 保留原调用点读取模型配置以及一跳映射。
+// Mapped 读取提供商模型配置并执行一跳映射。
 func (p ModelPolicy) Mapped(model string) string {
 	if p.Record == nil {
 		return model
@@ -65,7 +65,7 @@ func (p ModelPolicy) NormalizeOpenAI(model string) string {
 	return strings.TrimSpace(model)
 }
 
-// RawChat 先使用已解析协议，再保留各平台原协议缺省。
+// RawChat 优先使用已解析协议，缺省时按平台判断 Chat 转发方式。
 func (p ModelPolicy) RawChat() bool {
 	if p.Record != nil && p.Route.Protocol() != "" {
 		return p.Route.Protocol() == protocol.ProtocolOpenAIChatCompletions
@@ -170,7 +170,7 @@ func modelThinking(ctx context.Context) *bool {
 	return nil
 }
 
-// Supports 只检查已经过分组映射的模型，不再执行分组映射。
+// Supports 检查已完成分组映射的模型是否受提供商支持。
 func (p ModelPolicy) Supports(ctx context.Context, model string) bool {
 	value := p.Record
 	if value == nil {
@@ -233,7 +233,7 @@ func (p ModelPolicy) UpstreamModel(ctx context.Context, requested string) string
 	return model
 }
 
-// LimitKeys 保留平台模型别名及图片、Fable、Gemini 共享窗口的原顺序。
+// LimitKeys 返回模型别名及图片、Fable、Gemini 共享限流窗口的查询键。
 func (p ModelPolicy) LimitKeys(ctx context.Context, requested string) []string {
 	value := p.Record
 	if value == nil {

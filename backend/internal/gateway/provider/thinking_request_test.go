@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// ============ Gemini 原生格式解析测试 ============
+// Gemini 格式解析测试。
 
 func TestFilterThinkingBlocks(t *testing.T) {
 	containsThinkingBlock := func(body []byte) bool {
@@ -412,9 +412,9 @@ func TestFilterSignatureSensitiveBlocksForRetry_DowngradesTools(t *testing.T) {
 
 // ============ Group 6b: context_management.edits 清理测试 ============
 
-// removeThinkingDependentContextStrategies — 边界用例
+// removeThinkingDependentContextStrategies 的特殊输入测试。
 
-// FilterThinkingBlocksForRetry — 包含 context_management 的场景
+// FilterThinkingBlocksForRetry 处理 context_management 的测试。
 
 func TestFilterThinkingBlocksForRetry_RemovesClearThinkingStrategy_FastPath(t *testing.T) {
 	// 快速路径：messages 中无 thinking 块，仅有顶层 thinking 字段
@@ -487,7 +487,7 @@ func TestFilterThinkingBlocksForRetry_NoContextManagement_Unaffected(t *testing.
 	require.False(t, hasCM)
 }
 
-// FilterSignatureSensitiveBlocksForRetry — 包含 context_management 的场景
+// FilterSignatureSensitiveBlocksForRetry 处理 context_management 的测试。
 
 func TestFilterSignatureSensitiveBlocksForRetry_RemovesClearThinkingStrategy(t *testing.T) {
 	input := []byte(`{
@@ -570,7 +570,7 @@ func TestFilterSignatureSensitiveBlocksForRetry_NoThinkingField_ContextManagemen
 
 // ============ Group 7: ParseGatewayRequest 补充单元测试 ============
 
-// Task 7.3 — Gemini 协议分支测试
+// Gemini 协议分支测试。
 // 已有测试覆盖：
 // - TestParseGatewayRequest_GeminiSystemInstruction: 正常 systemInstruction+contents
 // - TestParseGatewayRequest_GeminiNoContents: 缺失 contents

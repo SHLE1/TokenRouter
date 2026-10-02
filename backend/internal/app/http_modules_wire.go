@@ -9,7 +9,7 @@ import (
 	"github.com/google/wire"
 )
 
-// nativeHTTPProviders 只组合原生 HTTP 构造器，各用例保持原唯一实例。
+// nativeHTTPProviders 汇总 HTTP 构造器，各入口共用已装配的用例实例。
 var nativeHTTPProviders = wire.NewSet(
 	billinghttp.NewPlanHandler,
 	billinghttp.NewRedeemHandler,

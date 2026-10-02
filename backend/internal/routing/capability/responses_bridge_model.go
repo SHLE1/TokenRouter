@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// ResponsesBridgeSupportsMaxEffort 这些型号判定保留旧文本桥接的独立语义，不扩大原生能力或复用管理员映射策略。
+// ResponsesBridgeSupportsMaxEffort 判断文本桥接是否支持指定型号的 max effort。
 func ResponsesBridgeSupportsMaxEffort(model string) bool {
 	return isResponsesBridgeModelAtLeastVersion(model, 5, 6)
 }
@@ -61,7 +61,7 @@ func parseResponsesBridgeModelVersion(model string) (major int, minor int, ok bo
 }
 
 func normalizeResponsesBridgeModel(model string) string {
-	// 桥接只判断能力，不把这个投影写回请求模型。
+	// 模型名归一化结果供桥接能力判断使用，请求模型保持输入值。
 	return strings.ToLower(LastOpenAIModelSegment(model))
 }
 

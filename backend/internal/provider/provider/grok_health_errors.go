@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// GrokHealthInput 显式携带当前尝试的模型与技术观测，不读取网关 context 参数。
+// GrokHealthInput 保存当前尝试的模型和观测数据。
 type GrokHealthInput struct {
 	Observation     HealthObservation
 	Models          []string
@@ -29,7 +29,7 @@ func firstGrokHealthModel(models []string) string {
 	return strings.TrimSpace(models[0])
 }
 
-// ObserveError 保留显式策略、精确模型状态、配额及默认冷却的原先后顺序。
+// ObserveError 依次处理配置策略、模型状态、配额和默认冷却。
 func (s *GrokHealth) ObserveError(ctx context.Context, value *providercore.Record, input GrokHealthInput) providercore.UpstreamErrorDecision {
 	statusCode, headers, responseBody := input.Observation.Status, input.Observation.Headers, input.Observation.Body
 	canonicalModel := input.Models
@@ -62,7 +62,7 @@ func (s *GrokHealth) ObserveError(ctx context.Context, value *providercore.Recor
 		quotaModel = input.QuotaModel
 	}
 	providercore.StampGrokQuotaPlan(providercore.CloneRecord(value), quotaSnapshot, quotaModel, grok.ResolveGrokTextResponsesModelID, grok.ApplyGrok45ResponsesPlanSignal)
-	// 模型容量 429 属于请求压力，只保存额度观测，不安装提供商级限流状态。
+	// 模型容量 429 按请求压力处理，保存额度观测，提供商限流状态保持不变。
 	snapshotFailure := grok.ClassifyGrokUpstreamFailure(statusCode, responseBody, quotaModel)
 	s.StoreSnapshot(stateCtx, value, quotaSnapshot, snapshotFailure.Class != grok.GrokFailureModelCapacity, input.TeamModel)
 
@@ -105,7 +105,7 @@ func (s *GrokHealth) ObserveError(ctx context.Context, value *providercore.Recor
 	}
 
 	// Grok API Key 的 5xx 与 OpenAI API Key 共用提供商+最终模型的瞬态冷却；
-	// OAuth 和模型未知的请求继续沿用提供商级退避，避免扩大既有行为变化。
+	// OAuth 提供商和模型未知的请求按提供商级规则退避。
 	model := firstGrokHealthModel(canonicalModel)
 	if model == "" {
 		model = quotaModel
@@ -116,7 +116,7 @@ func (s *GrokHealth) ObserveError(ctx context.Context, value *providercore.Recor
 		return decision
 	}
 
-	// 响应体中的免费额度、账单、空输出和容量语义优先于通用状态码处理。
+	// 响应体中的免费额度、账单、空输出和容量错误优先于通用状态码处理。
 	failure := grok.ClassifyGrokUpstreamFailure(statusCode, responseBody, model)
 	if failure.ShouldCooldown && failure.Class != grok.GrokFailureNone && failure.Class != grok.GrokFailureRateLimit {
 		if failure.Class == grok.GrokFailureFreeUsage {
@@ -143,7 +143,7 @@ func (s *GrokHealth) ObserveError(ctx context.Context, value *providercore.Recor
 		decision.StopScheduling = true
 		return decision
 	case http.StatusPaymentRequired:
-		// 402 表示当前提供商计费不可用，短期排除以避免后续请求反复命中。
+		// 402 表示提供商计费不可用，此处将它短期停调。
 		s.TempUnschedule(stateCtx, value, 30*time.Minute, "grok payment required")
 		decision.StopScheduling = true
 		return decision
@@ -156,7 +156,7 @@ func (s *GrokHealth) ObserveError(ctx context.Context, value *providercore.Recor
 		decision.StopScheduling = true
 		return decision
 	case http.StatusMethodNotAllowed:
-		// 当前提供商不支持所选 Grok 端点，临时排除可避免粘性会话反复命中同一提供商。
+		// 提供商不支持所选 Grok 端点时，临时停调该提供商。
 		s.TempUnschedule(stateCtx, value, 30*time.Minute, "grok endpoint not supported (405)")
 		decision.StopScheduling = true
 		return decision
@@ -219,12 +219,12 @@ func (s *GrokHealth) ApplyFailure(
 		}
 		return true
 	case grok.GrokFailureRateLimit:
-		// 不含免费额度语义的纯 429 继续走 Retry-After 与额度请求头快照路径。
+		// 429 响应未表明免费额度耗尽时，按 Retry-After 和额度响应头处理。
 		return false
 	case grok.GrokFailureServer:
 		reason = "grok upstream temporary error"
 	case grok.GrokFailureCompatibility:
-		// 请求形状不兼容时只交给外层换号，不修改提供商健康状态。
+		// 请求格式不兼容时交给外层切换提供商，当前健康状态保持不变。
 		return true
 	default:
 		return false
@@ -245,7 +245,7 @@ func (s *GrokHealth) applyForbiddenPolicy(ctx context.Context, value *providerco
 	}
 
 	match := matches[0]
-	// 存储库可用时复用中心策略实现，以保持既有原因和缓存格式并避免重复写入。
+	// 存储可用时调用共享策略处理原因字段和缓存写入。
 	if s != nil && s.Health != nil &&
 		s.Health.Limits.Plans !=
 			nil {
@@ -266,7 +266,7 @@ func (s *GrokHealth) applyForbiddenPolicy(ctx context.Context, value *providerco
 	return true
 }
 
-// recordModelTransient 使用与选择器共享的提供商/模型状态，并保留原日志字段。
+// recordModelTransient 更新与选择器共用的提供商和模型状态，并记录日志。
 func (s *GrokHealth) recordModelTransient(value *providercore.Record, model string) {
 	if s.ModelTransient == nil || value == nil {
 		return

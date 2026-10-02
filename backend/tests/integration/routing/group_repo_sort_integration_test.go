@@ -13,7 +13,7 @@ import (
 
 // TestListWithProviderCountSort_AttachesActiveCount 验证通过 provider_count 排序时，
 // ActiveProviderCount 与 ProviderCount 都被正确附加到返回结果中，
-// 且排序基于 total 提供商数而非 active 提供商数。
+// 排序按提供商总数计算。
 func (s *GroupRepoSuite) TestListWithProviderCountSort_AttachesActiveCount() {
 	// 分组 A：total=2，active=1（包含 1 个 disabled 提供商）。
 	gA := &routing.Group{
@@ -74,7 +74,7 @@ func (s *GroupRepoSuite) TestListWithProviderCountSort_AttachesActiveCount() {
 	s.Assert().Equal(int64(1), cB.ProviderCount, "gB ProviderCount must be 1")
 	s.Assert().Equal(int64(1), cB.ActiveProviderCount, "gB ActiveProviderCount must be 1")
 
-	// 排序按 total 而不是 active：desc 下 gA(total=2) 必须排在 gB(total=1) 前面。
+	// 按 total 降序排列时，gA（total=2）排在 gB（total=1）前面。
 	indexByID := make(map[int64]int, len(groups))
 	for i, g := range groups {
 		indexByID[g.ID] = i

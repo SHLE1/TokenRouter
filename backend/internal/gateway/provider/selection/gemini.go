@@ -189,7 +189,7 @@ func (s *Gemini) eligibleGeminiProviders(
 	return eligible
 }
 
-// groupUsesAdvancedScheduler 只让最终分组显式选择高级模式；无分组路径保持基础调度。
+// groupUsesAdvancedScheduler 根据最终分组配置判断是否使用高级调度，无分组时返回 false。
 func (s *Gemini) groupUsesAdvancedScheduler(ctx context.Context, groupID *int64, hasForcePlatform bool) bool {
 	if s == nil || groupID == nil || *groupID <= 0 {
 		return false

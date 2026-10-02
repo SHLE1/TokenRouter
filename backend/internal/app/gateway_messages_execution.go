@@ -28,7 +28,7 @@ func provideGatewayRequestDebug(manager *lifecycle.Manager) *requestdebug.Trace 
 	return trace
 }
 
-// provideMessagesExecution 固定绑定 Messages、兼容转换和计数的原生依赖。
+// provideMessagesExecution 绑定 Messages 转发、兼容转换和 token 计数组件。
 // @project-doc docs/architecture/system_architecture.md#dependency_layers
 func provideMessagesExecution(credentials *provider.MessageCredentialSource, fingerprint *anthropic.RequestFingerprint, transport httpclient.UpstreamTransport, health *provideradapter.UpstreamHealth, tls *egressprovider.TLSProfiles, readers *gatewayadapter.RuntimeReaders, prices *billing.PriceResolver, search *searchtools.Emulator, activity *gatewayRequestActivity, debug *requestdebug.Trace, providers gatewayadapter.ExecutionProviderStore, deferred *provider.DeferredService, cfg *config.Config, filter *egress.CompiledHeaderFilter, modelConfigs *routing.PricingConfigService) *gatewayhttp.MessagesExecutor {
 	deps := messageforward.Dependencies{Credentials: credentials, Fingerprint: fingerprint, Transport: transport, Health: health, TLS: tls, Prices: prices, Search: search, ProviderState: providers, Deferred: deferred}
@@ -47,7 +47,7 @@ func provideMessagesExecution(credentials *provider.MessageCredentialSource, fin
 	return gatewayhttp.NewMessagesExecutor(messageforward.NewRuntime(deps, messageExecutionOptions(cfg)), filter)
 }
 
-// messageExecutionOptions 静态参数只在装配时投影，动态设置保留请求内的读取位置。
+// messageExecutionOptions 在装配时读取静态参数，动态设置在请求中读取。
 func messageExecutionOptions(cfg *config.Config) messageforward.Options {
 	options := messageforward.Options{ResponseReadLimit: config.DefaultUpstreamResponseReadMaxBytes}
 	if cfg == nil {

@@ -28,7 +28,7 @@
       </div>
     </div>
     <ChartSkeleton v-if="loading" variant="distribution" />
-    <!-- 桌面端顶部对齐，避免数据较少时表格被圆环图垂直居中。 -->
+    <!-- 桌面端表格与圆环图顶部对齐。 -->
     <div v-else-if="displayGroupStats.length > 0 && chartData" class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
       <div class="h-48 w-48 shrink-0">
         <Bar v-if="chartType === 'bar'" :data="chartData" :options="barOptions" />
@@ -135,7 +135,7 @@ const { t } = useI18n()
 const { balanceUnitSymbol, usdUnitSymbol } = useBalanceDisplay()
 
 type DistributionMetric = 'tokens' | 'actual_cost'
-// 图表形态：默认圆环；用户用量页传 bar（水平条形图），避免同页多个卡片都是圆环图。
+// 图表默认为圆环图，用户用量页使用水平条形图。
 type GroupChartType = 'doughnut' | 'bar'
 
 const props = withDefaults(defineProps<{
@@ -204,7 +204,7 @@ const displayGroupStats = computed(() => {
   return [...props.groupStats].sort((a, b) => toFiniteNumber(b[metricKey]) - toFiniteNumber(a[metricKey]))
 })
 
-// 图表标签与表格行保持一致：无分组（group_id=0）回退为「No Group」，而不是显示 0。
+// 图表标签与表格行保持一致：无分组（group_id=0）显示“No Group”。
 const groupLabel = (g: GroupStat): string =>
   g.group_name || (g.group_id > 0 ? String(g.group_id) : t('admin.dashboard.noGroup'))
 

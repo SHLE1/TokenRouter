@@ -9,12 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ──────────────────────────────────────────────────────────
-// Canonical inbound / upstream endpoint paths.
-// All normalization and derivation reference this single set
-// of constants — add new paths HERE when a new API surface
-// is introduced.
-// ──────────────────────────────────────────────────────────
+// 入站和上游端点路径常量，供路径规范化与推导使用。新增 API 路径时在此登记。
 
 const (
 	EndpointMessages             = "/v1/messages"
@@ -73,8 +68,7 @@ const (
 //	"/responses"                                    → EndpointResponses
 //	"/backend-api/codex/responses"                  → EndpointResponses
 //
-// 必须先检查 Compact，再检查根 Responses；否则作为前缀的 "/v1/responses"
-// 会先于 "/v1/responses/compact" 错误命中。
+// 先检查 Compact，再检查根 Responses，因为 /v1/responses 是 Compact 路径的前缀。
 func NormalizeInboundEndpoint(path string) string {
 	path = strings.TrimSpace(path)
 	switch {
@@ -120,18 +114,8 @@ func isResponsesInputTokensAliasPath(path string) bool {
 		isBareOrSubpathOf(trimmed, "/backend-api/codex/responses/input_tokens")
 }
 
-// isResponsesCompactAliasPath 判断路径是否为 Compact 客户端的裸路径或别名路径，
-// 即以 "/responses/compact" 或 "/backend-api/codex/responses/compact"
-// 为根的路径，或者位于这两个根路径下的任意子路径：
-//
-//   - "/responses/compact"（裸路径）
-//   - "/responses/compact/*subpath"（例如 "/responses/compact/detail"）
-//   - "/backend-api/codex/responses/compact"（Codex 直连路径）
-//   - "/backend-api/codex/responses/compact/*subpath"（例如
-//     "/backend-api/codex/responses/compact/detail"）
-//
-// 必须先于 isResponsesRootAliasPath 检查，因为 "/responses" 是
-// "/responses/compact" 的前缀。
+// isResponsesCompactAliasPath 匹配 /responses/compact、/backend-api/codex/responses/compact 及其子路径，例如 compact/detail。
+// 匹配顺序先于 isResponsesRootAliasPath，因为 /responses 是 Compact 路径的前缀。
 func isResponsesCompactAliasPath(path string) bool {
 	trimmed := strings.TrimRight(strings.TrimSpace(path), "/")
 	if trimmed == "" {
@@ -140,16 +124,8 @@ func isResponsesCompactAliasPath(path string) bool {
 	return isBareOrSubpathOf(trimmed, "/responses/compact") || isBareOrSubpathOf(trimmed, "/backend-api/codex/responses/compact")
 }
 
-// isResponsesRootAliasPath 判断路径是否为不带 "/v1/" 前缀的根 Responses
-// 裸路径或别名路径，或者这些路径下除 Compact 以外的子路径：
-//
-//   - "/responses"（顶级裸路径）
-//   - "/responses/*subpath"（除 Compact 外的任意子路径）
-//   - "/backend-api/codex/responses"（Codex 直连路径）
-//   - "/backend-api/codex/responses/*subpath"（除 Compact 外的任意子路径）
-//
-// 这里只识别顶级裸路径、Codex 直连路径及其子路径，不泛化到仅以
-// "/responses" 结尾的任意路径，例如无关的 "/foo/responses" 不能命中。
+// isResponsesRootAliasPath 匹配 /responses、/backend-api/codex/responses 及它们除 Compact 外的子路径。
+// 匹配从路径开头开始，/foo/responses 等其他前缀返回 false。
 func isResponsesRootAliasPath(path string) bool {
 	trimmed := strings.TrimRight(strings.TrimSpace(path), "/")
 	if trimmed == "" {
@@ -197,7 +173,7 @@ func DeriveUpstreamEndpoint(inbound, rawRequestPath, platform string) string {
 		return EndpointGeminiModels
 
 	case capability.PlatformAntigravity:
-		// Antigravity 提供商同时承载 Claude 与 Gemini。
+		// Antigravity 提供商支持 Claude 与 Gemini。
 		if inbound == EndpointGeminiModels {
 			return EndpointGeminiModels
 		}
@@ -256,14 +232,10 @@ func InboundEndpointMiddleware() gin.HandlerFunc {
 	}
 }
 
-// ──────────────────────────────────────────────────────────
-// Context helpers — used by handlers before building
-// RecordUsageInput 记录用量时使用的快照结构。
-// ──────────────────────────────────────────────────────────
+// 请求上下文辅助函数，供 handler 构造用量记录快照。
 
-// GetInboundEndpoint 返回 InboundEndpointMiddleware 保存的规范入站端点。
-// 中间件未运行时（例如测试场景），现场归一化 c.Request.URL.Path；真实请求路径
-// 优先于 c.FullPath()，避免通配路由模式把 "/v1/responses/compact" 错归为根端点。
+// GetInboundEndpoint 返回中间件保存的规范端点。
+// 中间件未运行时先规范化 c.Request.URL.Path，再使用 c.FullPath()，通配路由据此区分 Compact 和根端点。
 func GetInboundEndpoint(c *gin.Context) string {
 	if v, ok := c.Get(ctxKeyInboundEndpoint); ok {
 		if s, ok := v.(string); ok && s != "" {

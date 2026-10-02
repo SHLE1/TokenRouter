@@ -17,7 +17,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// provideCreativeExecutor 直接绑定任务核心和受控执行目标，不建立旧任务运行时或复制状态。
+// provideCreativeExecutor 为创作台绑定任务用例和执行目标。
 func provideCreativeExecutor(cfg *config.Config, groups creativeprovider.ExecutionGroups, targets *gatewayprovider.CreativeTargets, generic *selection.Generic, choices *selection.Compatible) *creative.Executor {
 	timeout := 5 * time.Minute
 	if cfg != nil && cfg.Creative.ExecuteTimeoutSeconds > 0 {

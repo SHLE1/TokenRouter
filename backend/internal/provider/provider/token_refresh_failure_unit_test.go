@@ -32,7 +32,7 @@ func (r *tokenRefreshProviderRepo) ApplyOAuthRefreshFailure(ctx context.Context,
 	return err == nil, err
 }
 
-// 旧观察替身复用相同计数，覆盖新凭据作用域发布入口，避免零调用断言因缺失端口而空通过。
+// 观察替身为凭据版本发布记录调用次数，供零调用断言检查。
 
 func (b *tokenRefreshRuntimeBlocker) PrepareRefreshFailure(int64) func(provider.RefreshFailureNotice) {
 	return func(provider.RefreshFailureNotice) { b.blockCalls++ }

@@ -22,7 +22,7 @@ type Response struct {
 	Lines      Lines
 }
 
-// Output 同步反馈写失败；核心只推进协议事件，不拥有 HTTP 状态或缓冲器。
+// Output 同步写入协议事件并返回写入错误，HTTP 状态和缓冲由适配器管理。
 type Output interface {
 	CopyHeaders(map[string][]string)
 	BeginJSON()

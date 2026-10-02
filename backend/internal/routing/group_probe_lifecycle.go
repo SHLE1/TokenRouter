@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-// ProbeSchedule 只提供按原 cron 日历调度和可等待停止，不拥有探测业务。
+// ProbeSchedule 按 cron 日历调度传入的探测函数，并提供停止等待。
 type ProbeSchedule interface {
 	Start(func()) error
 	Stop() context.Context
 }
 
-// ProbeExecutionResult 是执行器返回的结果投影，不携带提供商或 HTTP 上下文。
+// ProbeExecutionResult 包含探测状态、延迟和错误消息。
 type ProbeExecutionResult struct {
 	Status       string
 	LatencyMs    int64

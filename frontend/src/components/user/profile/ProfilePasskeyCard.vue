@@ -142,7 +142,7 @@ const showAddForm = ref(false)
 const newName = ref('')
 const credentials = ref<PasskeyCredentialSummary[]>([])
 
-// 只在后端启用且浏览器支持 WebAuthn 时读取凭据，避免无效请求与错误提示。
+// 后端启用 Passkey 且浏览器支持 WebAuthn 时读取凭据。
 async function loadCredentials(): Promise<void> {
   if (!props.enabled) {
     credentials.value = []

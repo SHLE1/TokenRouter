@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Restarter 只请求主循环关闭，进程退出与 supervisor 重启仍由入口负责。
+// Restarter 请求主循环关闭，入口负责进程退出，supervisor 负责重启。
 type Restarter struct {
 	mu       sync.Mutex
 	platform string
@@ -19,7 +19,7 @@ func NewRestarter(platform string, request func()) *Restarter {
 	return &Restarter{platform: platform, request: request}
 }
 
-// RequestRestart 保留原 500ms + 100ms 响应发送窗口，Linux 以外保持无操作。
+// RequestRestart 在 Linux 上安排 600ms 后请求关闭，为 HTTP 响应发送留出时间，其他平台直接返回。
 func (r *Restarter) RequestRestart() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

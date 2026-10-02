@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// LogAPIKeyHealthWarning 将核心健康事件传给原日志后端，不创建另一个 logger。
+// LogAPIKeyHealthWarning 将 API Key 健康事件写入应用日志。
 func LogAPIKeyHealthWarning(message string, fields ...any) {
 	attrs := make([]zap.Field, 0, len(fields)/2)
 	for i := 0; i+1 < len(fields); i += 2 {

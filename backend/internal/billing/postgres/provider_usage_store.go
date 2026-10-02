@@ -6,7 +6,7 @@ import (
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
 
-// ProviderUsageOptions 绑定原提交后事件和观察端口，不复制调度缓存。
+// ProviderUsageOptions 提供用量提交后的变更通知、同步和日志函数。
 type ProviderUsageOptions struct {
 	Changed func(context.Context, int64) error
 	Sync    func(context.Context, int64)

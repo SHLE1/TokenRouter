@@ -1,6 +1,6 @@
 package modelmap
 
-// ActionRule 只表达模型范围与对应动作，不携带平台或请求实体。
+// ActionRule 包含模型范围及对应动作。
 type ActionRule struct {
 	Action               string
 	ErrorMessage         string

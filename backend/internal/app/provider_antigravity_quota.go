@@ -9,7 +9,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideAntigravityQuota 保留模型读取边界与代理读取失败语义，直接绑定原生额度用例。
+// provideAntigravityQuota 为额度查询绑定模型响应读取上限和代理查询，代理缺失或读取失败时返回空地址与 false。
 func provideAntigravityQuota(cfg *config.Config, proxies egress.ProxyRepository) *provider.AntigravityQuota {
 	limit := resolveModelsListReadLimit(cfg)
 	options := provideradapter.AntigravityQuotaOptions(limit, func(ctx context.Context, id int64) (string, bool) {

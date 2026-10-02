@@ -19,7 +19,7 @@ func ImageIntent() gatewaymedia.ImageIntentPolicy {
 	})
 }
 
-// ImageIntentForPlatform 保留 Grok 对被动工具声明的例外，其余平台使用原声明语义。
+// ImageIntentForPlatform 根据平台解析图片意图，Grok 忽略被动工具声明。
 func ImageIntentForPlatform(endpoint, model string, body []byte, platform string) bool {
 	return ImageIntent().IsImageGenerationIntentForPlatform(endpoint, model, body, strings.EqualFold(strings.TrimSpace(platform), capability.PlatformGrok))
 }

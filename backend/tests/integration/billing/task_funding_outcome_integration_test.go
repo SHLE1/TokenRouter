@@ -86,7 +86,7 @@ func (p failingProjection) SaveReservation(ctx context.Context, balance float64,
 	return errors.New("test projection failure")
 }
 
-// TestTaskFundingProjectionRollback 验证同一资金事务中的任务投影失败，余额、任务快照与去重认领必须一起回滚。
+// TestTaskFundingProjectionRollback 检查任务记录写入失败时，余额、任务快照和去重认领一起回滚。
 func TestTaskFundingProjectionRollback(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)

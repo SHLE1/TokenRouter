@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// nativeAnthropicReaderFixture 只为原协议读取契约提供输出参数。
+// nativeAnthropicReaderFixture 为协议读取测试提供输出参数。
 type nativeAnthropicReaderFixture struct{ output *OpenAIResponseOutput }
 
 // handleCCBufferedFromNativeAnthropic 读取 Anthropic SSE 事件并组装完整响应，

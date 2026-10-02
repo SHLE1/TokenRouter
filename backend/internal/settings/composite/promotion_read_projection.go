@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/promotion"
 
-// ApplyPromotionAdminReadSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyPromotionAdminReadSettings 将推广读取结果写入综合快照。
 func (s *Snapshot) ApplyPromotionAdminReadSettings(value *promotion.AdminReadSettings) {
 	s.AdminRechargeRebateEnabled = value.AdminRechargeRebateEnabled
 	s.AffiliateEnabled = value.AffiliateEnabled

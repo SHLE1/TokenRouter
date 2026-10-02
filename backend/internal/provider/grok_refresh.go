@@ -12,11 +12,11 @@ import (
 // Grok 访问令牌通常约一小时有效，提前刷新可在请求路径缓存未命中时保持提供商池可用。
 const GrokTokenRefreshSkew = time.Hour
 
-// 错峰窗口：每个提供商的实际预热窗口减去一个确定性的偏移量，范围为
-// [0, GrokTokenRefreshJitterMax]，避免同批导入的提供商在同一轮刷新周期内集中刷新。
+// 每个提供商的预热窗口减去一个由稳定种子计算的偏移量，范围为 [0, GrokTokenRefreshJitterMax]。
+// 同批导入的提供商因此分散到不同刷新时间。
 const GrokTokenRefreshJitterMax = 3 * time.Minute
 
-// 设置下限，避免错峰偏移把刷新窗口缩短到失去作用。
+// 为刷新窗口设置下限，偏移后仍有时间完成刷新。
 const GrokTokenRefreshSkewMin = 30 * time.Minute
 
 type GrokTokenRefresher struct {
@@ -93,7 +93,7 @@ func (r *GrokTokenRefresher) Refresh(ctx context.Context, provider *Record) (map
 	return newCredentials, nil
 }
 
-// 刷新器只接受提供商拥有的令牌与凭据投影能力。
+// 刷新器接收提供商的 token 和凭据转换函数。
 type GrokRefreshTokenService interface {
 	RefreshProviderToken(context.Context, *Record) (*GrokTokenInfo, error)
 	BuildProviderCredentials(*GrokTokenInfo) map[string]any

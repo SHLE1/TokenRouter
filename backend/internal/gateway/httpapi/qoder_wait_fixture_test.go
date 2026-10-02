@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// 此文件只有既有并发存储端口的测试计数，不实现等待、计费或租约规则。
+// 本文件为并发存储测试记录调用次数。
 type helperConcurrencyCacheStub struct {
 	mu sync.Mutex
 

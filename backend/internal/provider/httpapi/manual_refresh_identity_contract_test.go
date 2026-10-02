@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManualRefreshDoesNotOverwriteNewAdministratorCredentials 验证模拟手动交换返回前管理员换凭据；旧交换结果必须让位，不能重新覆盖。
+// TestManualRefreshDoesNotOverwriteNewAdministratorCredentials 检查交换期间管理员重新授权后，迟到的手动刷新结果被丢弃。
 func TestManualRefreshDoesNotOverwriteNewAdministratorCredentials(t *testing.T) {
 	adminSvc := newManagementMutationFixture()
 	adminSvc.providers = []provider.Record{{ID: 977, Platform: capability.PlatformQoder, Type: capability.ProviderTypeCosy, Status: billing.StatusActive, Credentials: map[string]any{"refresh_token": "observed", "security_oauth_token": "old", "machine_id": "machine"}}}

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// RecoveryStore 仅提供健康恢复原有的独立写入；不扩大事务范围。
+// RecoveryStore 提供健康恢复的各项独立写入操作。
 type RecoveryStore interface {
 	GetByID(context.Context, int64) (*Record, error)
 	ClearError(context.Context, int64) error
@@ -16,7 +16,7 @@ type RecoveryStore interface {
 	ClearTempUnschedulable(context.Context, int64) error
 }
 
-// RecoveryOptions 投影原缓存、令牌与调度反馈，副作用仍遵循原成功顺序。
+// RecoveryOptions 提供缓存、token 和调度反馈函数，恢复成功后依次调用。
 type RecoveryOptions struct {
 	Now                  func() time.Time
 	Warn                 func(string, ...any)
@@ -70,7 +70,7 @@ func (s *RecoveryService) ClearRateLimit(ctx context.Context, providerID int64) 
 	if err := s.providerRepo.ClearModelRateLimits(ctx, providerID); err != nil {
 		return err
 	}
-	// 清除限流时一并清理临时不可调度状态，避免周限/窗口重置后仍被本地临时状态阻断。
+	// 清除限流时一并清除临时停调，周限或窗口重置后提供商可恢复调度。
 	if err := s.providerRepo.ClearTempUnschedulable(ctx, providerID); err != nil {
 		return err
 	}

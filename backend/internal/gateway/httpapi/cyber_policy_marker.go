@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// opsCyberPolicyKey 保留原 HTTP/WS turn 标记键；只记录已观测的供应商拒绝证据。
+// opsCyberPolicyKey 是 HTTP 和 WS turn 记录供应商拒绝证据的键。
 const opsCyberPolicyKey = "ops_cyber_policy"
 
 // MarkOpsCyberPolicy 保持首个标记生效，后续事件不覆盖原用量与失败状态。

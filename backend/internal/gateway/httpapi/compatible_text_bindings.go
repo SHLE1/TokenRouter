@@ -19,7 +19,7 @@ type compatibleTextHTTPBackend struct {
 	replace requeststate.ModelBodyReplacer
 }
 
-// NewBoundCompatibleTextHandler 共享 HTTP 端口，固定分组映射改写和唯一执行器。
+// NewBoundCompatibleTextHandler 绑定共享 HTTP 接口、分组映射改写和执行器。
 func NewBoundCompatibleTextHandler(options MessagesHTTPOptions, bindings MessagesBindings, replace requeststate.ModelBodyReplacer, prompt MessagesPrompt, concurrency *ConcurrencyHelper, executor execution.Executor) *CompatibleTextHandler {
 	return NewCompatibleTextHandler(options, compatibleTextHTTPBackend{messagesHTTPBackend{bindings}, replace}, prompt, concurrency, executor)
 }

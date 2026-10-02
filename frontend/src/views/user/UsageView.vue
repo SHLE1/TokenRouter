@@ -909,7 +909,7 @@ const loadFilterOptions = async () => {
   }
 }
 
-// Owner 使用聚合接口一次读取当前和历史成员，避免离队后图表总额与团队总额不一致。
+// Owner 通过聚合接口读取当前和历史成员，图表总额包含离队成员的用量。
 const loadTeamMemberUsage = async () => {
   if (!isTeamOwner.value) {
     teamMemberSeries.value = []

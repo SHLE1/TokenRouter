@@ -26,8 +26,8 @@ func CompatibleProviderEligible(ctx context.Context, provider *ExecutionProvider
 	return CompatibleEligibilityReason(ctx, provider, platform, requestedModel, requireCompact, requiredCapability) == ""
 }
 
-// CompatibleEligibilityReason 在保留旧布尔判定的同时返回首个拦截原因。
-// 负载批处理只使用该原因生成服务端无提供商诊断，不改变实际准入行为。
+// CompatibleEligibilityReason 返回兼容性判断结果和首个拦截原因。
+// 负载批处理根据拒绝原因生成服务端的无可用提供商诊断。
 // @project-doc docs/architecture/provider_scheduling_and_cache.md#advanced_scheduler_selection
 func CompatibleEligibilityReason(ctx context.Context, provider *ExecutionProvider, platform string, requestedModel string, requireCompact bool, requiredCapability providercore.OpenAIEndpointCapability) string {
 	platform = strings.TrimSpace(platform)
@@ -96,7 +96,7 @@ func OpenAIQuotaPause(ctx context.Context, provider *ExecutionProvider) (bool, p
 	return evaluateOpenAIQuotaPause(ctx, provider, time.Now())
 }
 
-// evaluateOpenAIQuotaPause 只投影执行目标与请求阈值，复用提供商模块的唯一裁决。
+// evaluateOpenAIQuotaPause 将提供商记录和请求阈值交给提供商模块判断自动暂停。
 func evaluateOpenAIQuotaPause(ctx context.Context, v *ExecutionProvider, now time.Time) (bool, providercore.QuotaAutoPauseDecision) {
 	if v == nil {
 		return false, providercore.QuotaAutoPauseDecision{}
@@ -122,12 +122,12 @@ func QuotaAutoPauseSettings(ctx context.Context) providercore.QuotaAutoPauseSett
 	return providercore.QuotaAutoPauseSettings{DefaultThreshold5h: hints.QuotaAutoPauseThreshold5h, DefaultThreshold7d: hints.QuotaAutoPauseThreshold7d}
 }
 
-// GrokQuotaPause 只投影执行目标，窗口规则由 provider 唯一拥有。
+// GrokQuotaPause 调用 provider 的 Grok 配额窗口规则。
 func GrokQuotaPause(value *ExecutionProvider) (bool, providercore.QuotaAutoPauseDecision) {
 	return providercore.EvaluateGrokQuotaAutoPause(ExecutionRecord(value), time.Now)
 }
 
-// SupportsRequestCapability 保留 WS、Compact 和普通 HTTP 的原协议资格顺序。
+// SupportsRequestCapability 依次检查 WS、Compact 和普通 HTTP 的协议资格。
 func SupportsRequestCapability(ctx context.Context, provider *ExecutionProvider, capability providercore.OpenAIEndpointCapability) bool {
 	if provider == nil {
 		return false

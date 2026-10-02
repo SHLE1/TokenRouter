@@ -32,7 +32,7 @@ func (s *GeminiErrorObserver) Observe(ctx context.Context, value *provider.Recor
 		return nil
 	}
 	// 池模式提供商保留在上游提供商池中，由请求级重试或切号消化 429；
-	// 管理员显式配置的自定义错误策略优先，命中时仍允许写入提供商状态。
+	// 管理员配置的自定义错误策略优先，命中时按策略更新提供商状态。
 	if value.IsPoolMode() && !value.IsCustomErrorCodesEnabled() {
 		return nil
 	}
@@ -76,7 +76,7 @@ func (s *GeminiErrorObserver) Observe(ctx context.Context, value *provider.Recor
 				ra = time.Unix(*ts, 0)
 				logging.LegacyPrintf("service.gemini_messages_compat", "[Gemini 429] Provider %d (API Key/AI Studio, type=%s) rate limited, reset at PST midnight (%v)", value.ID, value.Type, ra)
 			} else {
-				// 兜底：5 分钟
+				// 缺少重置时间时使用五分钟。
 				ra = time.Now().Add(5 * time.Minute)
 				logging.LegacyPrintf("service.gemini_messages_compat", "[Gemini 429] Provider %d rate limited, fallback to 5min", value.ID)
 			}

@@ -85,7 +85,7 @@ func (h *OpenAITextHandler) recoverAnthropicMessagesPanic(c *gin.Context, starte
 	}
 }
 
-// errorOutput 保留测试/专用 HTTP backend 的观测端口，算法与生产默认输出器相同。
+// errorOutput 为测试和专用 HTTP backend 提供观测接口，使用生产默认输出器的算法。
 func (h *OpenAITextHandler) errorOutput() OpenAIErrorOutput {
 	return OpenAIErrorOutput{stopCompact: h.backend.StopCompact, markStream: h.backend.MarkStream, markFailure: h.backend.MarkStreamFailure, metadata: h.backend.ErrorMetadata}
 }

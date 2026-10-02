@@ -28,7 +28,7 @@ type antigravityProbeBody struct {
 
 func (b *antigravityProbeBody) Close() error { b.closed = true; return nil }
 
-// 供应商响应使用本地流；数据库读取、令牌、重试绑定和 SSE 均使用真实组件。
+// 供应商响应使用本地流，数据库读取、令牌获取、重试和 SSE 处理使用生产组件。
 type antigravityProbeTransport struct {
 	requests  []*http.Request
 	bodies    []string

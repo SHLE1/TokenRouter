@@ -10,9 +10,10 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy" // FlowProvider 是一次选择使用的无凭据投影；关联号仅供外部当前调用的形状转接。
+	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
+// FlowProvider 保存本次选择使用的提供商数据，ProjectionID 供调用方关联执行目标。
 type FlowProvider struct {
 	Plan                                       *routing.CandidatePlan
 	ProjectionID                               uint64
@@ -56,7 +57,7 @@ type FlowOptions struct {
 	FallbackWaitTimeout, StickySessionWaitTimeout time.Duration
 }
 
-// GenericSelectionPorts 仅提供现存平台资格、路由投影和明确的提供商读写入口；选择规则归核心。
+// GenericSelectionPorts 提供平台资格检查、路由数据转换和提供商读写函数，选择顺序由 GenericSelector 决定。
 type GenericSelectionPorts struct {
 	ReadGroup                    func(context.Context, int64) (*FlowGroup, error)
 	ForcePlatform                func(context.Context) (string, bool)
@@ -99,7 +100,7 @@ type GenericSelectionPorts struct {
 	PrefetchedSticky                             func(context.Context, *int64) int64
 }
 
-// GenericSelector 无第二份缓存；依赖 app 已构造的唯一计数、粘性和反馈实例。
+// GenericSelector 使用 app 提供的计数、粘性缓存和反馈实例选择提供商。
 type GenericSelector struct {
 	ports              GenericSelectionPorts
 	cache              StickyCache
@@ -144,8 +145,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 	}
 	ctx = s.ports.WithGroupContext(ctx, group)
 	usesAdvancedScheduler := group != nil && group.UsesAdvancedScheduler()
-	// 高级调度开启粘性加权后，旧硬粘性不能抢在评分前返回；否则 session
-	// 粘性不会作为统一候选评分的一部分。关闭加权时保留原有硬粘性语义。
+	// 高级调度开启粘性加权后，会话粘性参与候选评分。关闭加权时优先尝试硬粘性绑定。
 	advancedStickyWeighted := usesAdvancedScheduler && s.ports.AdvancedSchedulerEffectiveSettingsForRequest(ctx, groupID).StickyWeightedEnabled
 
 	if s.ports.CheckGroupModelRestriction(ctx, groupID, requestedModel) {
@@ -201,8 +201,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 			derefGroupID(groupID), groupPlatform, requestedModel, shortFlowSessionHash(sessionHash), stickyProviderID, cfg.LoadBatchEnabled, s.concurrencyService != nil)
 	}
 
-	// 基础调度器保留原有无负载批路径。高级分组即使没有负载批服务，
-	// 也必须进入统一评分核心，并将缺失负载作为中性信号处理。
+	// 基础调度器在负载批查询不可用时走单次选择。高级分组仍执行评分，缺失负载按中性信号处理。
 	if !usesAdvancedScheduler && (s.concurrencyService == nil || !cfg.LoadBatchEnabled) {
 
 		localExcluded := make(map[int64]struct{})
@@ -282,7 +281,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 		_, excluded := excludedIDs[providerID]
 		return excluded
 	}
-	// upstream 依据必须逐提供商计算最终模型，所有负载感知选择入口共用同一过滤规则。
+	// 使用 upstream 模型时逐提供商计算最终模型，所有按负载选择的入口共用此过滤规则。
 	needsUpstreamCheck := s.ports.NeedsUpstreamGroupRestrictionCheck(ctx, groupID)
 	isUpstreamAllowed := func(provider *FlowProvider) bool {
 		return !needsUpstreamCheck || !s.ports.IsUpstreamModelRestrictedByGroup(ctx, *groupID, provider, requestedModel)
@@ -494,8 +493,8 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 			}
 
 			if len(routingAvailable) > 0 {
-				// 模型路由只负责提供硬约束候选；高级分组仍统一交给通用评分核心，
-				// 候选耗尽后不能再降级到基础排序。
+				// 模型路由提供符合硬约束的候选，高级分组将这些候选交给通用评分函数，
+				// 候选耗尽后返回无可用提供商。
 				if usesAdvancedScheduler {
 					if selection, ok, selectErr := s.TryAdvanced(ctx, groupID, sessionHash, routingAvailable); selectErr != nil {
 						return nil, selectErr
@@ -787,8 +786,7 @@ func (s *GenericSelector) Select(ctx context.Context, input SelectionInput) (*Fl
 			} else if ok {
 				return selection, nil
 			}
-			// 高级分组已完成自己的可用候选与等待计划选择；不可回退到基础排序，
-			// 否则会破坏分组明确选择高级调度器的语义。
+			// 高级分组已尝试候选和等待计划，耗尽后返回无可用提供商。
 			return nil, ErrNoAvailableProviders
 		}
 
@@ -859,7 +857,7 @@ func (s *GenericSelector) TryAdvancedWithoutLoad(
 		}
 		available = append(available, FlowLoad{
 			Provider: provider,
-			// 负载批查询失败时不伪造零负载，评分核心会使用中性因子。
+			// 负载批查询失败时，评分使用中性负载因子。
 			LoadInfo: nil,
 		})
 	}
@@ -1007,7 +1005,7 @@ func shortFlowSessionHash(sessionHash string) string {
 	return sessionHash[:8]
 }
 
-// SelectOnly 供辅助入口选择提供商，不创建请求槽或会话注册；原路由和资格查询顺序不变。
+// SelectOnly 按路由和资格检查顺序选择提供商，供无需占槽和注册会话的辅助入口调用。
 func (s *GenericSelector) SelectOnly(ctx context.Context, input SelectionInput) (*FlowProvider, error) {
 	return s.selectRoutes(WithSelectOnly(ctx), input.GroupID, input.SessionHash, input.RequestedModel, input.ExcludedIDs)
 }

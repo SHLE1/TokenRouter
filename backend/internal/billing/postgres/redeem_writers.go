@@ -16,7 +16,7 @@ type RedeemConcurrencyWriter interface {
 	ApplyRedeemConcurrencyAdjustment(context.Context, int64, int) error
 }
 
-// RedeemWriters 只转接同一事务 context，不创建事务或运行副作用。
+// RedeemWriters 将兑换写入操作转发到调用方传入的事务 context。
 type RedeemWriters struct {
 	Balances    RedeemBalanceWriter
 	Concurrency RedeemConcurrencyWriter

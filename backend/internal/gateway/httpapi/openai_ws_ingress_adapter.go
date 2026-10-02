@@ -128,7 +128,7 @@ func (l *wsIngressLease) PingWithTimeout(timeout time.Duration) error {
 	return l.lease.PingWithTimeout(timeout)
 }
 
-// wsReplayCodec 只委托供应商的唯一报文算法，所有重放条件和次数由网关核心决定。
+// wsReplayCodec 调用供应商报文算法，网关决定重放条件和次数。
 type wsReplayCodec struct{}
 
 func (wsReplayCodec) Extract(body []byte) ([]json.RawMessage, bool, error) {
@@ -199,7 +199,7 @@ func (wsReplayCodec) ClassifyPrevious(id string) string {
 	return wire.ClassifyOpenAIPreviousResponseIDKind(id)
 }
 
-// wsStrictTurn 只封装纯协议比较状态，不包含提供商、配置或 I/O。
+// wsStrictTurn 保存逐轮协议比较状态。
 type wsStrictTurn struct {
 	state *openai.WSPreviousTurnStrictState
 }

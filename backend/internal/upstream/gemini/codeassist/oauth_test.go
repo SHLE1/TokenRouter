@@ -304,7 +304,7 @@ func TestBuildAuthorizationURL_UsesBuiltinSecretFallback(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// EffectiveOAuthConfig 测试 - 原有测试
+// EffectiveOAuthConfig 测试
 // ---------------------------------------------------------------------------
 
 func TestEffectiveOAuthConfig_GoogleOne(t *testing.T) {
@@ -396,7 +396,6 @@ func TestEffectiveOAuthConfig_ScopeFiltering(t *testing.T) {
 	cfg, err := EffectiveOAuthConfig(OAuthConfig{
 		Scopes: "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.profile",
 	}, "google_one")
-
 	if err != nil {
 		t.Fatalf("EffectiveOAuthConfig() error = %v", err)
 	}
@@ -488,7 +487,7 @@ func TestEffectiveOAuthConfig_AIStudio_ScopeNormalization(t *testing.T) {
 		t.Fatalf("EffectiveOAuthConfig() error = %v", err)
 	}
 	if strings.Contains(cfg.Scopes, "auth/generative-language ") || strings.HasSuffix(cfg.Scopes, "auth/generative-language") {
-		// 确保不包含未归一化的旧 scope（仅 generative-language 而非 generative-language.retriever）
+		// 返回的 scope 包含归一化后的 generative-language.retriever。
 		parts := strings.Fields(cfg.Scopes)
 		for _, p := range parts {
 			if p == "https://www.googleapis.com/auth/generative-language" {
@@ -513,7 +512,7 @@ func TestEffectiveOAuthConfig_CommaSeparatedScopes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EffectiveOAuthConfig() error = %v", err)
 	}
-	// 应该用空格分隔，而非逗号
+	// scope 使用空格分隔。
 	if strings.Contains(cfg.Scopes, ",") {
 		t.Errorf("逗号分隔的 scopes 应被归一化为空格分隔，实际: %q", cfg.Scopes)
 	}

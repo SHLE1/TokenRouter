@@ -85,5 +85,5 @@ func ValidateCheckoutDaily(orders []*Order, amount, limit float64) error {
 	return nil
 }
 
-// RefundStringValue 供存储投影共享可空字段读取，不复制订单规则。
+// RefundStringValue 读取可空字符串，nil 返回空字符串。
 func RefundStringValue(v *string) string { return refundStringValue(v) }

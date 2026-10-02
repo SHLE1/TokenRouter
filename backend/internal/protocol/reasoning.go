@@ -16,12 +16,12 @@ func OpenAIReasoningEfforts() []string {
 	return []string{ReasoningMinimal, ReasoningLow, ReasoningMedium, ReasoningHigh, ReasoningXHigh, ReasoningMax}
 }
 
-// AnthropicReasoningEfforts 不包含 OpenAI 专用的 none/minimal。
+// AnthropicReasoningEfforts 列出 Anthropic 支持的推理档位。
 func AnthropicReasoningEfforts() []string {
 	return []string{ReasoningLow, ReasoningMedium, ReasoningHigh, ReasoningXHigh, ReasoningMax}
 }
 
-// OpenAIReasoningMappingValues 允许显式关闭推理，none 不参与上限排序。
+// OpenAIReasoningMappingValues 包含关闭推理的 none，其余值按推理上限排序。
 func OpenAIReasoningMappingValues() []string {
 	return append([]string{ReasoningNone}, OpenAIReasoningEfforts()...)
 }

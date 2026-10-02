@@ -167,7 +167,7 @@ func BuildInternalGeminiGenerationConfig(req *ClaudeRequest, options InternalGem
 			IncludeThoughts: true,
 		}
 
-		// - thinking.type=enabled：budget_tokens>0 用显式预算
+		// - thinking.type=enabled：budget_tokens>0 时使用该预算
 		// - thinking.type=adaptive：在 Antigravity 的高阶 Opus（4.6+）上覆写为 （24576）
 		budget := -1
 		if req.Thinking.BudgetTokens > 0 {
@@ -214,7 +214,7 @@ func BuildInternalGeminiGenerationConfig(req *ClaudeRequest, options InternalGem
 	return config, diagnostics
 }
 
-// EnsureMaxTokensGreaterThanBudget 确保 max_tokens > budget_tokens
+// EnsureMaxTokensGreaterThanBudget 将 max_tokens 调整到大于 budget_tokens。
 // Claude API 要求启用 thinking 时，max_tokens 必须大于 thinking.budget_tokens
 // 返回调整后的 maxTokens 和是否进行了调整
 func EnsureMaxTokensGreaterThanBudget(maxTokens, budgetTokens, padding int) (int, bool) {

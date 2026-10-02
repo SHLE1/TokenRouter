@@ -44,23 +44,21 @@ type GatewayCache interface {
 	// DeleteSessionProviderID 删除粘性会话绑定，用于提供商不可用时主动清理
 	// Delete sticky session binding, used to proactively clean up when provider becomes unavailable
 	DeleteSessionProviderID(ctx context.Context, groupID int64, sessionHash string) error
-	// SetSessionOwnerGroupID 首次记录显式会话所属分组；返回 true 表示本次写入成功。
+	// SetSessionOwnerGroupID 首次记录指定会话所属分组，写入成功时返回 true。
 	SetSessionOwnerGroupID(ctx context.Context, userID int64, source, sessionHash string, groupID int64, ttl time.Duration) (bool, error)
-	// GetSessionOwnerGroupID 读取显式会话首次归属分组。
+	// GetSessionOwnerGroupID 读取指定会话首次所属的分组。
 	GetSessionOwnerGroupID(ctx context.Context, userID int64, source, sessionHash string) (int64, error)
-	// RefreshSessionOwnerTTL 刷新显式会话归属记录的过期时间。
+	// RefreshSessionOwnerTTL 刷新指定会话归属记录的有效期。
 	RefreshSessionOwnerTTL(ctx context.Context, userID int64, source, sessionHash string, ttl time.Duration) error
 }
 
-// ReasoningContentCache 是 Responses→Chat 桥接使用的可选缓存能力。
-// 与 GatewayCache 分离，避免不需要 reasoning 回放的缓存实现被迫扩展接口。
+// ReasoningContentCache 为 Responses 转 Chat 提供可选的推理内容缓存。
 type ReasoningContentCache interface {
 	SetReasoningContent(ctx context.Context, itemID string, content string, ttl time.Duration) error
 	GetReasoningContent(ctx context.Context, itemID string) (string, error)
 }
 
-// GrokVideoBillingCache 为异步视频任务保存创建时定价快照，并跨实例防止轮询重复扣费。
-// 它保持为独立子接口，避免与 Grok 无关的缓存实现被迫提供这组能力。
+// GrokVideoBillingCache 保存异步视频任务创建时的价格快照，并通过跨实例计费标记防止轮询重复扣费。
 type GrokVideoBillingCache interface {
 	SetGrokVideoPendingBilling(ctx context.Context, key string, payload []byte, ttl time.Duration) error
 	GetGrokVideoPendingBilling(ctx context.Context, key string) ([]byte, error)

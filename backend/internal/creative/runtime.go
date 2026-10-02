@@ -2,11 +2,10 @@ package creative
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"fmt"
 )
 
 // DefaultCreativeWorkerCount 是创作台任务 worker 的默认并发数。
@@ -283,7 +282,7 @@ type RuntimeWorker interface {
 	BusyCount() int
 }
 
-// RuntimeOptions 由 app 投影静态开关、动态数量和两个恢复循环。
+// RuntimeOptions 包含 app 提供的启用开关、worker 数量读取函数和两个恢复循环。
 type RuntimeOptions struct {
 	Enabled     bool
 	WorkerCount func(context.Context) int

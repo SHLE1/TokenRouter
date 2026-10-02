@@ -15,7 +15,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
-// googleForwardOptions 投影原有响应、日志和目标限制，不读取运行时设置。
+// googleForwardOptions 从启动配置读取响应、日志和目标地址限制。
 func googleForwardOptions(cfg *config.Config) googleforward.Options {
 	limit := cfg.Gateway.UpstreamResponseReadMaxBytes
 	if limit <= 0 {
@@ -37,7 +37,7 @@ func googleForwardOptions(cfg *config.Config) googleforward.Options {
 	}
 }
 
-// provideGeminiForward 绑定唯一凭据、配额和健康观察；构造期间不发起请求。
+// provideGeminiForward 为 Gemini 转发绑定共享的凭据、配额检查和健康记录组件。
 func provideGeminiForward(store gatewayadapter.ExecutionProviderStore, tokens *provider.GeminiTokenSource, health *provideradapter.UpstreamHealth, precheck *provider.GeminiPrecheck, transport httpclient.UpstreamTransport, filter *egress.CompiledHeaderFilter, cfg *config.Config, activity *gatewayRequestActivity) *googleforward.Gemini {
 	daily := func() *int64 {
 		value := provider.GeminiDailyResetTime(time.Now(), geminiQuotaLocation()).Unix()
@@ -64,7 +64,7 @@ func provideGeminiExecutor(runtime *googleforward.Gemini) *gatewayhttp.GeminiExe
 	return &gatewayhttp.GeminiExecutor{Runtime: runtime}
 }
 
-// provideAntigravityForward 与提供商探测共享重试和健康实例，应用只投影动态读取端口。
+// provideAntigravityForward 绑定动态设置读取函数，并与提供商探测共享重试和健康状态组件。
 func provideAntigravityForward(store gatewayadapter.ExecutionProviderStore, tokens *provider.AntigravityTokenSource, retry *provideradapter.AntigravityRetry, observer *provideradapter.AntigravityErrorObserver, transport httpclient.UpstreamTransport, readers *gatewayadapter.RuntimeReaders, sticky session.GatewayCache, cfg *config.Config, activity *gatewayRequestActivity) *googleforward.Antigravity {
 	return &googleforward.Antigravity{
 		Options:   googleForwardOptions(cfg),

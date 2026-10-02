@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// AgentIdentityKey 只在执行边界解析私钥，保留原错误与字段校验顺序。
+// AgentIdentityKey 在执行时校验凭据字段并解析私钥。
 func AgentIdentityKey(value *provider.Record) (openai.AgentIdentityKey, error) {
 	if value == nil {
 		return openai.AgentIdentityKey{}, errors.New("agent identity provider is nil")

@@ -226,7 +226,7 @@ func EstimateSetupTokenUsage(provider *Record, now func() time.Time) *UsageInfo 
 			remaining = 0
 		}
 
-		// 优先使用响应头中存储的真实 utilization 值（0-1 小数，转为 0-100 百分比）
+		// 优先使用响应头记录的 utilization，将 0 到 1 的小数转换为百分比。
 		var utilization float64
 		var found bool
 		if stored, ok := provider.Extra["session_window_utilization"]; ok {
@@ -258,9 +258,8 @@ func EstimateSetupTokenUsage(provider *Record, now func() time.Time) *UsageInfo 
 			RemainingSeconds: remaining,
 		}
 
-		// 窗口已过期（resetAt 在 now 之前）→ 额度已重置，归零；
-		// 与 Codex 分支 BuildCodexUsageProgressFromExtra 保持一致，避免
-		// UI 在 active poll 没回写 SessionWindowEnd 时渲染矛盾状态。
+		// 窗口重置时间早于 now 时，利用率归零，与 BuildCodexUsageProgressFromExtra 的处理相同。
+		// 主动查询尚未回写 SessionWindowEnd 时，界面仍能展示已重置的额度。
 		if info.FiveHour.ResetsAt != nil && !now().Before(*info.FiveHour.ResetsAt) {
 			info.FiveHour.Utilization = 0
 			info.FiveHour.ResetsAt = nil
@@ -304,7 +303,7 @@ func BuildGeminiUsageProgress(used, limit int64, resetAt time.Time, tokens int64
 }
 
 // RecalcAntigravityRemainingSeconds 重新计算 Antigravity UsageInfo 中各窗口的 RemainingSeconds
-// 用于从缓存取出时更新倒计时，避免返回过时的剩余秒数
+// 从缓存取出时刷新剩余秒数。
 func RecalcAntigravityRemainingSeconds(info *UsageInfo, now func() time.Time) {
 	if info == nil {
 		return

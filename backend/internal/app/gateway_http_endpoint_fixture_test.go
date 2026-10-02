@@ -26,7 +26,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// gatewayHTTPFixtureInput 只描述测试提供的原生依赖和显式预算，不持有业务规则。
+// gatewayHTTPFixtureInput 保存测试传入的依赖和预算参数。
 type gatewayHTTPFixtureInput struct {
 	Credentials  *gatewayhttp.RequestCredentialExecutor
 	Availability *gatewayModelAvailability
@@ -49,7 +49,7 @@ type gatewayHTTPFixtureInput struct {
 	Recorder     *completion.Recorder
 }
 
-// gatewayHTTPEndpointsFixture 仅保存函数句柄；执行、输出、计费和资源状态均使用原生实现。
+// gatewayHTTPEndpointsFixture 保存处理函数，执行、输出、计费和资源状态使用生产组件。
 type gatewayHTTPEndpointsFixture struct {
 	Input                              *gatewayHTTPFixtureInput
 	Responses                          gin.HandlerFunc
@@ -84,9 +84,9 @@ func (w fixtureCyberOps) Enqueue(value *ops.OpsInsertErrorLogInput) {
 	w.queue.Enqueue(w.service, value)
 }
 
-// newGatewayHTTPEndpoints 在调用前投影测试可变输入，复用真实 app 绑定函数；资源指针始终相同。
+// newGatewayHTTPEndpoints 在调用前转换可变测试输入，通过 app 函数绑定共享资源。
 func newGatewayHTTPEndpoints(input gatewayHTTPFixtureInput) *gatewayHTTPEndpointsFixture {
-	// 准入拒绝测试的空 Source 仍只绑定空端口，不构造可执行上游。
+	// 准入拒绝测试使用空 Source，对应执行接口留空。
 	if input.Source != nil && input.Source.Text == nil {
 		input.Source.Text = &gatewayhttp.OpenAITextExecutor{Requests: &gatewayhttp.OpenAIRequests{}, CodexUsage: &provideradapter.CodexUsageObserver{}}
 		input.Source.Requests = input.Source.Text.Requests
@@ -194,5 +194,5 @@ func newGatewayHTTPEndpointsFromDeps(source *gatewayExecutionFixture, credential
 	return newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{Source: source, Credentials: credentials, Availability: availability, Choices: choices, Funding: funding, Keys: keys, Worker: worker, Rules: rules, Moderator: moderator, Ops: opsService, Config: cfg, Prompts: prompts, Concurrency: resources.Concurrency, Images: resources.Images, MaxSwitches: openAITextOptions(cfg).MaxSwitches})
 }
 
-// 类型断言检查测试后台端口与生产接口是否一致。
+// 类型断言检查测试后台任务接口与生产接口一致。
 var _ moderationflow.Tasks = fixtureCyberTasks{}

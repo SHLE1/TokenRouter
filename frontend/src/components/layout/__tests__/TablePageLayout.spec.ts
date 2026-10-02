@@ -23,7 +23,7 @@ describe('TablePageLayout responsive table scrolling', () => {
     const tableFrame = wrapper.get('.table-scroll-container')
     expect(tableFrame.get('[data-test="table-content"]').exists()).toBe(true)
     expect(tableFrame.get('.table-pagination-footer [data-test="pagination-content"]').exists()).toBe(true)
-    // 分页控件与全站 36px 基线一致,表格页脚不再压缩尺寸。
+    // 表格页脚的分页控件与全站 36px 基线一致。
     expect(componentSource).not.toContain('--pagination-control-height')
     expect(componentSource).toContain('table-pagination-footer')
     wrapper.unmount()

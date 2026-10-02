@@ -9,7 +9,7 @@ import (
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
-// provideProviderRefresh 为所有旧平台消费者绑定同一协调器与提供商条件写入实现。
+// provideProviderRefresh 为各平台绑定共享的刷新协调器和提供商条件写入实现。
 func provideProviderRefresh(store *providerpostgres.ProviderStore, cache provider.AccessTokenCache, manager *lifecycle.Manager) *provider.OAuthRefreshAPI {
 	coordinator := provider.NewOAuthRefreshAPI(store, cache, provider.RefreshOptions{
 		Now: time.Now, Warn: slog.Warn, Info: slog.Info, Error: slog.Error,

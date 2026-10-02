@@ -147,7 +147,7 @@ func TestStripEmptyChatToolCallIdentityFromSSELine_KeepsDataPrefix(t *testing.T)
 }
 
 // TestStripEmptyChatToolCallIdentity_DshClientMerge 模拟 dsh rc.2 adapter 的
-// 合并逻辑（字段存在——含空串——才覆盖）：sanitize 后合并，最终 id/name 必须
+// 合并逻辑（字段存在时覆盖，包括空串）：清理后再合并，最终 id/name 应
 // 仍是首包合法值，arguments 为各碎片拼接。
 func TestStripEmptyChatToolCallIdentity_DshClientMerge(t *testing.T) {
 	lines := []string{

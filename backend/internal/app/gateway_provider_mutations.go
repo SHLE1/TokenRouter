@@ -9,7 +9,7 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 )
 
-// UpdateConfiguration 只投影本次配置意图；事务、锁和资金字段保护由提供商存储执行。
+// UpdateConfiguration 将配置更新交给提供商存储，由存储处理事务、锁和资金字段保护。
 func (r *executionProviderStore) UpdateConfiguration(ctx context.Context, value *gatewayprovider.ExecutionProvider, change providercore.ConfigurationChange) error {
 	v := gatewayprovider.ExecutionRecord(value)
 	err := r.data.UpdateConfiguration(ctx, v, change)
@@ -17,7 +17,7 @@ func (r *executionProviderStore) UpdateConfiguration(ctx context.Context, value 
 	return err
 }
 
-// ApplyManagedRecoveryStep 委托唯一提供商存储，不在旧入口复制条件或提交规则。
+// ApplyManagedRecoveryStep 委托提供商存储执行恢复步骤。
 func (r *executionProviderStore) ApplyManagedRecoveryStep(ctx context.Context, step providercore.ManagedRecoveryStep, v providercore.ManagedRecoveryVersion) (bool, error) {
 	return r.data.ApplyManagedRecoveryStep(ctx, step, v)
 }
@@ -137,7 +137,7 @@ func (r *executionProviderStore) BulkUpdate(ctx context.Context, ids []int64, up
 	return r.data.BulkUpdate(ctx, ids, updates)
 }
 
-// UpdateUsageExtraIfUnchanged 用量观察结果通过提供商存储的条件操作写入，避免覆盖已变更的提供商身份。
+// UpdateUsageExtraIfUnchanged 在提供商身份匹配时，将用量观察结果写入存储。
 func (r *executionProviderStore) UpdateUsageExtraIfUnchanged(ctx context.Context, v providercore.UsageObservationVersion, updates map[string]any) (bool, error) {
 	return r.data.UpdateUsageExtraIfUnchanged(ctx, v, updates)
 }
@@ -150,7 +150,7 @@ func (r *executionProviderStore) ClearUsageRateLimitIfUnchanged(ctx context.Cont
 	return r.data.ClearUsageRateLimitIfUnchanged(ctx, v)
 }
 
-// ClearUsageErrorIfUnchanged 只转交提供商存储；原查询用例不得无条件恢复已变化身份。
+// ClearUsageErrorIfUnchanged 委托提供商存储检查身份并清除用量错误。
 func (r *executionProviderStore) ClearUsageErrorIfUnchanged(ctx context.Context, v providercore.UsageRecoveryVersion) (bool, error) {
 	return r.data.ClearUsageErrorIfUnchanged(ctx, v)
 }

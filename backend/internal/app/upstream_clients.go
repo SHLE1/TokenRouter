@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// provideClaudeUsageFetcher 适配既有共享 HTTP 池，不创建独立传输状态。
+// provideClaudeUsageFetcher 使用共享 HTTP 池查询 Claude 用量。
 func provideClaudeUsageFetcher(upstream httpclient.UpstreamTransport) provideradapter.ClaudeUsageClient {
 	if upstream == nil {
 		return anthropic.NewUsageClient(nil)
@@ -18,12 +18,12 @@ func provideClaudeUsageFetcher(upstream httpclient.UpstreamTransport) providerad
 	return anthropic.NewUsageClient(upstream.DoWithTLS)
 }
 
-// provideOpenAIOAuthClient 将原传输端口绑定到唯一平台实现。
+// provideOpenAIOAuthClient 为 OpenAI OAuth 客户端绑定传输接口。
 func provideOpenAIOAuthClient(upstream httpclient.UpstreamTransport) provideradapter.OpenAIOAuthClient {
 	return openai.NewOAuthClient(upstream)
 }
 
-// provideGeminiOAuthClient 保留调用时读取启动配置的原时点。
+// provideGeminiOAuthClient 为 Gemini OAuth 客户端绑定按调用读取的启动配置。
 func provideGeminiOAuthClient(cfg *config.Config) providerauth.GeminiOAuthClient {
 	return codeassist.NewOAuthClient(func() codeassist.OAuthConfig {
 		return codeassist.OAuthConfig{

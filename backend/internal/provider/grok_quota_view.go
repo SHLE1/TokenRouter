@@ -296,7 +296,7 @@ func (f GrokQuotaView) ApplyGrokBillingProgressWindows(usage *UsageInfo, billing
 	}
 }
 
-// StampGrokQuotaPlan 从当前提供商快照读取历史信号，避免原生解析器依赖提供商实体。
+// StampGrokQuotaPlan 从当前提供商快照读取历史档位信号。
 func StampGrokQuotaPlan(record *Record, snapshot *usageview.QuotaSnapshot, model string, resolveModel func(string, ...string) string, applySignal func(*usageview.QuotaSnapshot, *usageview.QuotaSnapshot)) {
 	if snapshot == nil {
 		return

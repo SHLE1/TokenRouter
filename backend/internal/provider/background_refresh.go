@@ -20,7 +20,7 @@ type RefreshRegistration struct {
 	Executor  OAuthRefreshExecutor
 }
 
-// BackgroundRefreshOptions 由 app 投影静态配置与平台端口；所有共享运行状态均属于本实例。
+// BackgroundRefreshOptions 接收 app 提供的静态配置和平台接口，刷新实例管理共享运行状态。
 type BackgroundRefreshOptions struct {
 	Tuning                   *RefreshTuning
 	Pager                    OAuthRefreshCandidatePager

@@ -32,7 +32,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// newGenericExecutionAndSelectionFixture 显式组合原执行入口与原生选择，不复制窗口或调度规则。
+// newGenericExecutionAndSelectionFixture 组合执行入口与选择器，窗口和调度规则使用生产实现。
 func newGenericExecutionAndSelectionFixture(
 	providerRepo gatewayprovider.ExecutionProviderStore,
 	groupRepo routing.GroupRepository, usageLogRepo usage.UsageLogRepository,
@@ -104,12 +104,12 @@ func newGenericExecutionAndSelectionFixture(
 	return source, choices, messages
 }
 
-// newEmptyGenericSelectionFixture 保留零值入口的缺省预算，不配置额外提供商或窗口来源。
+// newEmptyGenericSelectionFixture 使用默认预算构造执行入口，提供商和窗口来源留空。
 func newEmptyGenericSelectionFixture() *selection.Generic {
 	return selection.NewGeneric(selection.GenericDependencies{}, selection.DefaultOptions())
 }
 
-// 夹具只保存原生依赖，规则和状态由各模块的生产实现持有。
+// 夹具保存各模块的依赖，规则和状态由模块管理。
 type messageExecutionFixture struct {
 	Routes   *gatewayprovider.RoutePlanner
 	Cache    session.GatewayCache

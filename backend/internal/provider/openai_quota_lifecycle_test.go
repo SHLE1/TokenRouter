@@ -67,7 +67,7 @@ func TestOpenAIQuotaLifecycleCancelsAndWaits(t *testing.T) {
 	require.EqualValues(t, 1, reads.Load())
 }
 
-// TestOpenAIQuotaLifecycleReportsUnfinishedRequest 验证不配合取消的外部端口仍受停止等待预算约束，重复停止保留同一次未完成结果。
+// TestOpenAIQuotaLifecycleReportsUnfinishedRequest 检查外部查询忽略取消时按停止预算返回，后续停止调用返回同一次未完成结果。
 func TestOpenAIQuotaLifecycleReportsUnfinishedRequest(t *testing.T) {
 	client := &quotaLifecycleClient{entered: make(chan struct{}), release: make(chan struct{})}
 	service := NewOpenAIQuotaService(OpenAIQuotaOptions{

@@ -12,7 +12,7 @@ type RefreshRepository interface {
 	GetByID(context.Context, int64) (*Record, error)
 }
 
-// OAuthRefreshExecutor 是已选平台的交换端口，提供商核心不构造具体供应商客户端。
+// OAuthRefreshExecutor 是已选平台的凭据交换接口。
 type OAuthRefreshExecutor interface {
 	CanRefresh(*Record) bool
 	NeedsRefresh(*Record, time.Duration) bool
@@ -20,14 +20,14 @@ type OAuthRefreshExecutor interface {
 	CacheKey(*Record) string
 }
 
-// RefreshCache 沿用现有缓存键与锁语义，具体 Redis 实现由 app 绑定。
+// RefreshCache 提供刷新缓存和锁操作，由 app 绑定 Redis 实现。
 type RefreshCache interface {
 	AcquireRefreshLock(context.Context, string, time.Duration) (bool, error)
 	ReleaseRefreshLock(context.Context, string) error
 	DeleteAccessToken(context.Context, string) error
 }
 
-// RefreshPlatformPolicy 保留旧执行层的资格与错误分类，回调只接收独立的提供商值。
+// RefreshPlatformPolicy 判断刷新资格和错误类型，回调接收提供商数据副本。
 type RefreshPlatformPolicy struct {
 	Eligibility         func(*Record) error
 	MissingRefreshToken func() error

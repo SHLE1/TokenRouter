@@ -9,7 +9,7 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// HTTPForwardInput 固化当前请求的模型、图片计费投影与恢复上限。
+// HTTPForwardInput 保存当前请求的模型、图片计费数据和恢复次数上限。
 type HTTPForwardInput struct {
 	ProviderID                                       int64
 	ProviderType, UpstreamModel, BillingModel        string
@@ -97,9 +97,7 @@ func RunHTTPForward(ctx context.Context, wsReqBody map[string]any, in HTTPForwar
 		if wsInvalidEncryptedContentRecoveryTried {
 			return false
 		}
-		// 写入 lineage 后，同一失效密文在后续 turn 进场时被预剥离，不再重复
-		// 触发上游拒绝与重连。摘要取自进场形态的 body（密文项只可能来自
-		// 客户端进场请求，重复摘要幂等）。
+		// 后续 turn 根据 lineage 中的摘要提前移除失效密文。摘要来自入站请求中的密文项，重复登记保持相同结果。
 		invalidDigests := p.EncryptedDigests(in.LineageEntryBody)
 		removedReasoningItems := wire.TrimEncryptedReasoningItems(wsReqBody)
 		if !removedReasoningItems {

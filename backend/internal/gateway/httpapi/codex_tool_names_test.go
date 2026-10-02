@@ -293,7 +293,7 @@ func TestLegacyCodexPromptMarkers(t *testing.T) {
 	require.True(t, gatewayprovider.IsOpenAICompatMessagesBridgeBody([]byte(`{"input":[{"role":"developer","content":"<sub2api-claude-code-todo-guard>existing"}]}`)))
 }
 
-// TestCodexBrandRenamePreservesStableIDs 锁定升级前的派生结果，避免品牌修改造成身份漂移。
+// TestCodexBrandRenamePreservesStableIDs 验证品牌名称变化后，派生身份 ID 保持相同。
 func TestCodexBrandRenamePreservesStableIDs(t *testing.T) {
 	require.Equal(t, "d4c42b33-6e2b-4490-bbb7-24d247c0086c", openai.ResolveConvergedSessionID("fixture"))
 	require.Equal(t, "d7459669-7037-4803-8349-a74132ac7fee", openai.ResolveConvergedThreadID("fixture", "client"))

@@ -39,7 +39,7 @@ func CreativeSettlementRequestID(runID string) string {
 }
 
 // BuildHoldCommand 把任务元数据转换为计费预占命令。
-// 直接复用 billing.TaskFundsCommand（BatchID 填 runID），不复制计费 SQL。
+// 资金命令使用 billing.TaskFundsCommand，BatchID 填 runID。
 func BuildHoldCommand(run *CreativeRun, requestID string, actualBaseAmount float64) (*billing.TaskFundsCommand, error) {
 	if run == nil {
 		return nil, ErrCreativeBillingHoldFailed

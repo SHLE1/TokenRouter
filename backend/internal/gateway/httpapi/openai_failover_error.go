@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// OpenAIFailoverError 固化展示输入；原始响应只用于规则匹配，不返回给公开 JSON。
+// OpenAIFailoverError 保存错误展示数据，规则匹配使用原始响应，公开 JSON 使用展示字段。
 type OpenAIFailoverError struct {
 	Status, ClientStatus, CredentialStatus                                                          int
 	ClientMessage, CredentialMessage, TooLargeMessage, SilentMessage, CyberMessage, UpstreamMessage string

@@ -27,7 +27,7 @@ const (
 
 var (
 	// registerSessionScript 注册会话活动
-	// 使用 Redis TIME 命令获取服务器时间，避免多实例时钟不同步
+	// Redis TIME 提供各实例共用的服务器时间。
 	// KEYS[1] = session_limit:provider:{providerID}
 	// ARGV[1] = maxSessions
 	// ARGV[2] = idleTimeout（秒）
@@ -159,7 +159,7 @@ func NewSessionLimitCache(rdb *redis.Client, defaultIdleTimeoutMinutes int) sche
 		defaultIdleTimeoutMinutes = 5 // 默认 5 分钟
 	}
 
-	// 预加载 Lua 脚本到 Redis，避免 Pipeline 中出现 NOSCRIPT 错误
+	// Pipeline 使用前预加载 Lua 脚本，脚本缺失时 Pipeline 会返回 NOSCRIPT。
 	ctx := context.Background()
 	scripts := []*redis.Script{
 		registerSessionScript,

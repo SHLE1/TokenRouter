@@ -20,14 +20,16 @@ import (
 )
 
 // SystemHandler handles system-related operations
-// RestartRequester 只请求进程关闭，不授予 handler 直接退出进程的能力。
-type RestartRequester = maintenance.RestartRequester
-type SystemHandler struct {
-	idemhttp.Executor
+// RestartRequester 向进程发送关闭请求。
+type (
+	RestartRequester = maintenance.RestartRequester
+	SystemHandler    struct {
+		idemhttp.Executor
 
-	updateSvc  systemUpdateService
-	operations *maintenance.Operations
-}
+		updateSvc  systemUpdateService
+		operations *maintenance.Operations
+	}
+)
 
 type systemUpdateService interface {
 	CheckUpdate(ctx context.Context, force bool) (*ops.UpdateInfo, error)

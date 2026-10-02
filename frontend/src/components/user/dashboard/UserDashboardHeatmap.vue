@@ -290,7 +290,7 @@ const visibleDays = computed(() =>
 )
 
 // 月份标签：每周首格（周日）月份与上一列不同才显示；
-// 与上一个标签间隔不足 MIN_MONTH_LABEL_GAP 列时，用新月份替换掉旧标签（保近舍远），避免挨在一起
+// 相邻月份标签间距小于 MIN_MONTH_LABEL_GAP 列时保留较新的标签。
 const MIN_MONTH_LABEL_GAP = 3
 const monthItems = computed(() => {
   const items: { weekIndex: number; label: string }[] = []
@@ -424,7 +424,7 @@ const onCellHover = (day: HeatmapDay, event: Event) => {
 // tooltip 与卡片左右边缘保持的最小距离
 const TOOLTIP_EDGE_PX = 8
 
-// tooltipLeft 以格子中心为准，靠近卡片两侧时向内收，避免提示超出卡片和视口。
+// 提示以格子中心定位，靠近两侧时向卡片内调整。
 const tooltipLeft = computed(() => {
   const half = tooltipSize.value.width / 2
   const cardWidth = cardRef.value?.clientWidth ?? 0

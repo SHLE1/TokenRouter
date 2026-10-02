@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCreateOpenAIReqClient_Timeout120Seconds 验证原 OAuth 客户端超时契约保持不变。
+// TestCreateOpenAIReqClient_Timeout120Seconds 检查 OAuth 客户端超时为 120 秒。
 func TestCreateOpenAIReqClient_Timeout120Seconds(t *testing.T) {
 	client, err := openai.CreateOAuthReqClient("http://proxy.local:8080")
 	require.NoError(t, err)

@@ -16,7 +16,7 @@ type EmbeddingResult struct {
 	Duration                                      time.Duration
 }
 
-// EmbeddingOutcome 分离输出窗口与可切换错误，核心不读取 HTTP Writer。
+// EmbeddingOutcome 分别保存响应提交状态和可切换错误。
 type EmbeddingOutcome struct {
 	Result        *EmbeddingResult
 	Err           error
@@ -34,7 +34,7 @@ type EmbeddingEvent struct {
 	Elapsed                         time.Duration
 }
 
-// EmbeddingsPorts 是单请求端口；选取与等待使用同一已获得的选择，不能再次选号。
+// EmbeddingsPorts 提供单次请求的操作，等待阶段复用已选中的提供商。
 type EmbeddingsPorts interface {
 	SelectEmbedding(context.Context, map[int64]struct{}) (provider.ProviderSnapshot, bool, error)
 	AcquireEmbedding(context.Context, provider.ProviderSnapshot) (func(), bool)
@@ -46,7 +46,7 @@ type EmbeddingsPorts interface {
 	ClientGone() bool
 }
 
-// EmbeddingFailure 描述输出阶段，由 HTTP Adapter 保留原错误形状。
+// EmbeddingFailure 记录失败的输出阶段，由 HTTP 适配器生成协议错误。
 type EmbeddingFailure struct {
 	Stage    string
 	Err      error
@@ -54,7 +54,7 @@ type EmbeddingFailure struct {
 	Excluded int
 }
 
-// RunEmbeddings 唯一拥有 Embeddings 提供商尝试循环；不会在等待失败后另起一次请求。
+// RunEmbeddings 执行 Embeddings 提供商尝试循环，等待失败时结束当前请求。
 // 准入已按原顺序完成，返回前先释放提供商槽，成功后仅提交一次完成处理。
 func RunEmbeddings(ctx context.Context, body []byte, maxSwitches int, ports EmbeddingsPorts) *EmbeddingFailure {
 	if maxSwitches <= 0 {

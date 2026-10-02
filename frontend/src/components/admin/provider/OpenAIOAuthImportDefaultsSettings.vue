@@ -404,7 +404,7 @@ const parseJsonObject = (text: string, label: string): Record<string, unknown> =
 }
 
 const parseOptionalNumber = (value: NumberInputValue, label: string, integer: boolean): number | undefined => {
-  // number 输入框在运行时可能回传 number，这里统一转成文本后复用原有校验。
+  // number 输入框在运行时可能回传 number，先转成文本再校验。
   const trimmed = String(value).trim()
   if (!trimmed) {
     return undefined
@@ -568,7 +568,7 @@ const loadTLSFingerprintRouters = async () => {
     const routers = await adminAPI.tlsFingerprintRouters.list()
     tlsFingerprintRouters.value = routers.map((router) => ({ id: router.id, name: router.name }))
   } catch {
-    // 路由器列表加载失败时仅隐藏可选项，不影响保存其它默认配置。
+    // 路由器列表加载失败时清空可选项，其它默认配置仍可保存。
     tlsFingerprintRouters.value = []
   }
 }

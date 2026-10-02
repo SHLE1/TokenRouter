@@ -7,7 +7,7 @@ import (
 
 type guardianParentAffinityKey struct{}
 
-// GuardianParentAffinity 只含请求内会话散列，不含可公开或反向读取的提供商 ID。
+// GuardianParentAffinity 保存本次请求的父会话散列。
 type GuardianParentAffinity struct{ CurrentSessionHash, LegacySessionHash string }
 
 func WithGuardianParentAffinity(ctx context.Context, value GuardianParentAffinity) context.Context {

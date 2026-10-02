@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// provideMessageHTTPBindings 直接构造原生 HTTP；执行依赖的最后兼容装配单独保留。
+// provideMessageHTTPBindings 为消息 HTTP 入口绑定依赖，执行组件由单独的构造函数提供。
 func provideMessageHTTPBindings(
 	planner *gatewayprovider.RoutePlanner,
 	cache session.GatewayCache,
@@ -72,7 +72,7 @@ func provideMessageHTTPBindings(
 	return &messageHTTPBindings{options: options, bindings: bindings, prompt: prompts, concurrency: gatewayhttp.NewConcurrencyHelper(concurrency, gatewayhttp.SSEPingFormatClaude, ping)}
 }
 
-// messageHTTPBindings 共享原生模块端口与无状态 HTTP helper，不保存请求或业务缓存。
+// messageHTTPBindings 保存各模块接口和无状态 HTTP 辅助函数。
 type messageHTTPBindings struct {
 	options     gatewayhttp.MessagesHTTPOptions
 	bindings    gatewayhttp.MessagesBindings

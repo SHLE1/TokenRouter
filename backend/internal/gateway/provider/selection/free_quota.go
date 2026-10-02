@@ -16,7 +16,7 @@ func (s *compatiblePicker) filterGrokFreeQuotaProviders(_ context.Context, provi
 	return filterFreeQuotaProjection(gate, providers)
 }
 
-// loadFreeQuotaGate 只登记一个实例，构造未启动工作，因此竞争中未发布对象不需要清理。
+// loadFreeQuotaGate 通过 CAS 登记并复用一个门禁实例。
 func loadFreeQuotaGate(slot *atomic.Pointer[provider.FreeQuotaGate], factory func() *provider.FreeQuotaGate) *provider.FreeQuotaGate {
 	if gate := slot.Load(); gate != nil {
 		return gate
@@ -35,7 +35,7 @@ func (s *Generic) filterGrokFreeQuotaProvidersForGateway(_ context.Context, prov
 	return filterFreeQuotaProjection(s.freeQuotaGate, providers)
 }
 
-// filterFreeQuotaProjection 旧执行形状仅投影资格与结果，不拥有缓存或裁决算法。
+// filterFreeQuotaProjection 将执行提供商转换为门禁输入，再将筛选结果转换回来。
 func filterFreeQuotaProjection(gate *provider.FreeQuotaGate, providers []gatewayprovider.ExecutionProvider) []gatewayprovider.ExecutionProvider {
 	if gate == nil {
 		return providers

@@ -240,7 +240,7 @@ func TestAuthService_Register_EmailVerifyEnabledButServiceNotConfigured(t *testi
 		identity.SettingKeyEmailVerifyEnabled:  "true",
 	}, nil)
 
-	// 应返回服务不可用错误，而不是允许绕过验证
+	// 校验失败时返回服务不可用错误。
 	_, _, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "any-code", "", "", "")
 	require.ErrorIs(t, err, identity.ErrServiceUnavailable)
 }

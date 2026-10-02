@@ -1,8 +1,8 @@
 package pricing
 
-// CalculateCost 在纯输入上统一分发计费模式，保留负倍率及结果模式语义。
+// CalculateCost 按计费模式计算费用，负倍率按零处理，结果记录所用模式。
 func CalculateCost(resolved *ResolvedPricing, input CostInput) (*CostBreakdown, error) {
-	// 保存时强制 > 0；若仍有负数泄漏（缓存/迁移残留），按 0 处理避免按 1x 误扣。
+	// 保存时要求倍率大于 0，计费时将缓存或迁移数据中的负倍率按 0 处理。
 	if input.RateMultiplier < 0 {
 		input.RateMultiplier = 0
 	}

@@ -15,7 +15,7 @@
         </div>
       </div>
 
-      <!-- 标签与控件同一行；选项较少时用分段控件，OpenAI 等选项多的平台改用下拉框，避免换行。 -->
+      <!-- 标签与控件同排，少量选项用分段控件，OpenAI 等选项较多的平台用下拉框。 -->
       <div v-if="showMethodSelection" class="flex shrink-0 items-center gap-3">
         <label :for="`${uid}-method`" class="shrink-0 text-sm text-gray-500 dark:text-gray-400">
           {{ methodLabel || t('admin.providers.oauth.authMethod') }}
@@ -524,7 +524,7 @@ const methodOptions = computed(() => {
 })
 
 const uid = useId()
-// 步骤完成状态只用于视觉提示，不参与提交判断。
+// 步骤完成状态控制视觉提示。
 const hasGeneratedUrl = computed(() => !!props.authUrl || props.authSessions.length > 0)
 const hasAuthCode = computed(() => authCodeInput.value.trim() !== '')
 

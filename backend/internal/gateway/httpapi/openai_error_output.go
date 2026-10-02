@@ -41,10 +41,8 @@ func (h OpenAIErrorOutput) WriteStreamingErrorWithCode(
 		} else {
 			h.markStream(c, errType, message, status)
 		}
-		// /v1/responses 的严格 SDK（Codex CLI）要求终止事件必须属于
-		// response.completed/failed/incomplete/cancelled 集合。
-		// 通用 `event: error` 帧不被识别为终止事件，会导致
-		// "stream closed before response.completed"。
+		// Codex CLI 接受 response.completed、failed、incomplete 或 cancelled 终止事件。
+		// 通用 event:error 会触发 stream closed before response.completed。
 		if InboundIsResponses(c) {
 			if WriteResponsesFailedSSE(c, errType, code, message, ErrorRequestID(c), ErrorRequestModel(c)) {
 				return
@@ -88,7 +86,7 @@ type OpenAIErrorOutput struct {
 	metadata    func(*gin.Context) (string, string)
 }
 
-// DefaultOpenAIErrorOutput 供生产 HTTP/WS/媒体适配复用原有输出与观测顺序。
+// DefaultOpenAIErrorOutput 为 HTTP、WS 和媒体适配提供错误输出与观测。
 func DefaultOpenAIErrorOutput() OpenAIErrorOutput {
 	return OpenAIErrorOutput{stopCompact: StopOpenAICompactSSEKeepaliveCommitted, markStream: MarkOpsStreamError, markFailure: MarkOpsStreamFailure, metadata: func(c *gin.Context) (string, string) { return ErrorRequestID(c), ErrorRequestModel(c) }}
 }
@@ -96,14 +94,16 @@ func DefaultOpenAIErrorOutput() OpenAIErrorOutput {
 func (h OpenAIErrorOutput) WriteError(c *gin.Context, status int, kind, message string) {
 	writeOpenAIRequestError(c, status, kind, message, h.stopCompact, h.markStream, h.metadata)
 }
+
 func (h OpenAIErrorOutput) StreamError(c *gin.Context, status int, kind, message string, started bool) {
 	h.WriteStreamingErrorWithCode(c, status, kind, "", message, started, false)
 }
 
-// EnsureFallback 保留没有上游错误对象时的原兜底入口。
+// EnsureFallback 在缺少上游错误对象时补充错误响应。
 func (h OpenAIErrorOutput) EnsureFallback(c *gin.Context, started bool) bool {
 	return h.EnsureResponse(c, started, nil)
 }
+
 func (h OpenAIErrorOutput) WriteFailoverExhausted(c *gin.Context, failure *OpenAIFailoverError, started bool, rules ErrorRuleMatcher, hooks FailoverErrorHooks) {
 	WriteOpenAIFailoverExhausted(c, failure, started, rules, hooks, h.StreamError)
 }

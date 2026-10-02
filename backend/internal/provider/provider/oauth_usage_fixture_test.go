@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// 夹具仅组合真实用量核心与平台端口，不复制缓存、回源、恢复或写入算法。
+// 夹具组合用量查询组件和平台接口，查询与状态管理使用生产实现。
 type oauthUsageFixtureOptions struct {
 	providerRepo         provider.OAuthUsageReader
 	cache                *provider.OAuthUsageCache
@@ -73,7 +73,7 @@ func (r usageRecordFixture) GetByIDs(_ context.Context, ids []int64) ([]*provide
 	return result, nil
 }
 
-// UpdateUsageExtraIfUnchanged 原断言观察这三个写入端口，真实条件写与事务另由 PostgreSQL 契约覆盖。
+// UpdateUsageExtraIfUnchanged 记录三个写入操作，PostgreSQL 集成测试覆盖条件比较和事务。
 func (r *providerUsageCodexProbeRepo) UpdateUsageExtraIfUnchanged(ctx context.Context, version provider.UsageObservationVersion, updates map[string]any) (bool, error) {
 	return true, r.UpdateExtra(ctx, version.ID, updates)
 }

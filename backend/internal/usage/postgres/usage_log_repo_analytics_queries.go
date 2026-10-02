@@ -230,7 +230,7 @@ func (r *Store) getUsageTrendFromAnalytics(ctx context.Context, start, end time.
 
 func (r *Store) getModelStatsFromAnalytics(ctx context.Context, start, end time.Time, filters UsageLogFilters) ([]ModelStat, bool, error) {
 	if usage.NormalizeModelSource(filters.ModelFilterSource) != usage.ModelSourceRequested {
-		// 聚合表只有请求模型维度，上游模型和映射模型必须保留原始查询语义。
+		// 聚合表按请求模型统计，上游模型和映射模型的筛选回退到原始用量记录查询。
 		return nil, false, nil
 	}
 	query, ok, err := r.buildUsageAnalyticsQuery(ctx, filters, start, end, true)
@@ -574,7 +574,7 @@ func (r *Store) getUserBreakdownStatsFromAnalytics(ctx context.Context, start, e
 		query.where = appendUsageAnalyticsCondition(query.where, fmt.Sprintf("inbound_endpoint = $%d", len(query.args)))
 	}
 
-	// 排序字段仅从固定列表中选择，不拼接外部任意输入。
+	// 排序字段从固定列表中选择。
 	orderBy := "actual_cost"
 	switch dim.SortBy {
 	case "total_tokens", "input_tokens", "output_tokens", "cache_tokens", "requests", "cost", "actual_cost":

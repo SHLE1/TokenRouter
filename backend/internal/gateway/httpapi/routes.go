@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RouteEndpoints 只汇总网关所属的原生 HTTP 处理器与外部终端投影。
+// RouteEndpoints 汇总网关 HTTP 处理器和外部处理接口。
 type RouteEndpoints struct {
 	CountTokens            *CountTokensHandler
 	QoderCompatible        *QoderCompatibleHandler
@@ -105,7 +105,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		// 文本入口只固定客户端协议，平台执行在提供商选择后确定。
 		gateway.POST("/messages", messagesProtocolGate, func(c *gin.Context) { openAITextHTTP.Messages(c) })
 		// /v1/messages/count_tokens：OpenAI 桥接上游，Grok 本地估算，其余 Anthropic
-		// 兼容平台保留原处理路径。
+		// 兼容平台使用此处理器。
 		gateway.POST("/messages/count_tokens", countTokensProtocolGate, countTokensHandler)
 		gateway.GET("/models", modelsHTTP.Models)
 		gateway.GET("/usage", endpoints.PublicUsage)
@@ -150,8 +150,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		gateway.GET("/videos/:request_id", videoStatusHandler)
 		gateway.GET("/videos/:request_id/content", videoContentHandler)
 
-		// xAI Voice API 仅供 Grok 平台使用，包括 HTTP TTS/STT 和实时 WebSocket。
-		// 这些接口仅用于网关中继，不属于创作中心产品界面。
+		// xAI Voice API 由 Grok 平台中继，包含 HTTP TTS/STT 和实时 WebSocket。
 		voiceHandler := func(endpoint string) gin.HandlerFunc {
 			return func(c *gin.Context) {
 				auxiliaryHTTP.GrokVoice(c, endpoint)
@@ -194,7 +193,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		gemini.POST("/models/*modelAction", requireGeminiGenerateContentProtocol, geminiNativeHTTP.GeminiV1BetaModels)
 	}
 
-	// OpenAI Responses API（不带v1前缀的别名）— 提供商选定后按实际能力执行
+	// OpenAI Responses API 的无 v1 前缀别名，按所选提供商的能力执行。
 	responsesHandler := func(c *gin.Context) {
 		if IsOpenAIResponsesInputTokensRequestPath(c) {
 			responsesInputTokensHandler(c)
@@ -206,7 +205,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 	r.POST("/responses/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, guardResponsesSubpath(withGroupClientProtocol(wireprotocol.ProtocolOpenAIResponses, GroupClientProtocolErrorOpenAI, responsesHandler)))
 	r.POST("/alpha/search", textBodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, auxiliaryHTTP.AlphaSearch)
 	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, responsesWebSocketHandler)
-	// Codex 客户端会访问不带 v1 前缀的模型列表，保持与 /v1/models 相同的本地模型语义。
+	// Codex 客户端访问不带 v1 前缀的模型列表，返回与 /v1/models 相同的本地模型。
 	r.GET("/models", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, modelsHTTP.Models)
 	r.POST("/messages/count_tokens", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, countTokensProtocolGate, countTokensHandler)
 	r.GET(
@@ -229,7 +228,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 		codexDirect.POST("/alpha/search", textBodyLimit, auxiliaryHTTP.AlphaSearch)
 		codexDirect.GET("/responses", responsesWebSocketHandler)
 	}
-	// OpenAI Chat Completions API（不带v1前缀的别名）— 提供商选定后按实际能力执行
+	// OpenAI Chat Completions API 的无 v1 前缀别名，按所选提供商的能力执行。
 	r.POST("/chat/completions", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, chatCompletionsProtocolGate, func(c *gin.Context) { openAITextHTTP.ChatCompletions(c) })
 	r.POST("/embeddings", textBodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, func(c *gin.Context) { auxiliaryHTTP.Embeddings(c) })
 	r.POST("/images/generations", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, imagesHandler)
@@ -277,7 +276,7 @@ func RegisterGatewayRoutes(r *gin.Engine, endpoints RouteEndpoints, options Rout
 	// Antigravity 模型列表
 	r.GET("/antigravity/models", options.ForceAntigravity, options.APIKeyAuth, requireGroupAnthropic, requireExtendedProtocol, modelsHTTP.AntigravityModels)
 
-	// Antigravity 专用路由（仅使用 antigravity 提供商，不混合调度）
+	// Antigravity 专用路由选择 Antigravity 提供商。
 	antigravityV1 := r.Group("/antigravity/v1")
 	antigravityV1.Use(bodyLimit)
 	antigravityV1.Use(clientRequestID)

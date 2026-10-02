@@ -685,7 +685,7 @@ func TestAntigravityGatewayService_Forward_ModelRateLimitTriggersFailover(t *tes
 	require.Nil(t, result, "Forward should not return result when model rate limited")
 	require.NotNil(t, err, "Forward should return error")
 
-	// 核心验证：错误应该是 UpstreamFailoverError，而不是普通 502 错误
+	// 检查错误类型是否为 UpstreamFailoverError。
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger provider switch")
 	require.Equal(t, http.StatusServiceUnavailable, failoverErr.StatusCode)
@@ -752,7 +752,7 @@ func TestAntigravityGatewayService_ForwardGemini_ModelRateLimitTriggersFailover(
 	require.Nil(t, result, "ForwardGemini should not return result when model rate limited")
 	require.NotNil(t, err, "ForwardGemini should return error")
 
-	// 核心验证：错误应该是 UpstreamFailoverError，而不是普通 502 错误
+	// 检查错误类型是否为 UpstreamFailoverError。
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr, "error should be UpstreamFailoverError to trigger provider switch")
 	require.Equal(t, http.StatusServiceUnavailable, failoverErr.StatusCode)
@@ -1736,7 +1736,7 @@ func TestHandleClaudeStreamingResponse_ClientDisconnect(t *testing.T) {
 }
 
 // TestHandleClaudeStreamingResponse_EmptyStream
-// 验证：上游只返回无法解析的 SSE 行时，触发 UpstreamFailoverError 而不是向客户端发出残缺流
+// 上游返回的 SSE 行均无法解析时，返回 UpstreamFailoverError。
 func TestHandleClaudeStreamingResponse_EmptyStream(t *testing.T) {
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
@@ -1759,7 +1759,7 @@ func TestHandleClaudeStreamingResponse_EmptyStream(t *testing.T) {
 	_, err := googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{Output: gatewayhttp.NewGoogleBoundary(c, svc.Options, true)}).HandleClaudeStreamingResponse(upstream.NewOutputContext(gatewayhttp.NewGoogleBoundary(c, svc.Options, true).Sink()), resp, time.Now(), "claude-sonnet-4-5")
 	_ = pr.Close()
 
-	// 应当返回 UpstreamFailoverError 而非 nil，以便上层触发 failover
+	// 返回 UpstreamFailoverError，由上层触发 failover。
 	require.Error(t, err)
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)

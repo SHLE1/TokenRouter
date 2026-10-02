@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// AntigravityQuotaOptions 只绑定供应商交换与错误解析，配置和代理读取由组合根投影。
+// AntigravityQuotaOptions 绑定供应商查询和错误解析，app 传入配置与代理读取函数。
 func AntigravityQuotaOptions(limit int64, resolveProxy func(context.Context, int64) (string, bool)) provider.AntigravityQuotaOptions {
 	return provider.AntigravityQuotaOptions{
 		NewClient:    func(proxy string) (provider.AntigravityQuotaClient, error) { return antigravity.NewClient(proxy) },

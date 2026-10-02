@@ -34,7 +34,7 @@ func cnProviderTestCredentials(platform, mode, protocol string) map[string]any {
 	return credentials
 }
 
-// TestCNProviderCredentialValidationRejectsInvalid 保持非法组合的结构化错误边界。
+// TestCNProviderCredentialValidationRejectsInvalid 检查非法凭据组合返回结构化错误。
 func TestCNProviderCredentialValidationRejectsInvalid(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

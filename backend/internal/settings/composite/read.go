@@ -27,7 +27,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
-// ReadOptions 只提供所属模块值和当前运行快照，不接收完整配置。
+// ReadOptions 包含各模块的设置读取器和当前运行快照。
 type ReadOptions struct {
 	OAuth              *identity.OAuthSettings
 	Gateway            gateway.AdminSettingsRules
@@ -38,7 +38,7 @@ type ReadOptions struct {
 	PublishModel       func(string)
 }
 
-// Parse 将各领域的只读投影组合为管理快照，不增加存储查询。
+// Parse 将传入设置和各模块的解析结果组合为管理快照。
 func Parse(settings map[string]string, options ReadOptions) *Snapshot {
 	prior := options.Forwarded()
 	forwarded := runtimeconfig.ReadForwardedSettings(settings, prior)
@@ -65,7 +65,7 @@ func Parse(settings map[string]string, options ReadOptions) *Snapshot {
 
 	result.ApplySchedulerAdminReadSettings(scheduler.ReadAdminSettings(settings, options.Scheduler))
 
-	// 保留旧读取时发布动态默认模型的时点，具体平台由装配投影。
+	// 读取管理快照时，通过注入的函数发布动态默认模型。
 	if options.PublishModel != nil {
 		options.PublishModel(result.GrokDefaultTextModel)
 	}

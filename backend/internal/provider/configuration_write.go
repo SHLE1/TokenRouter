@@ -30,7 +30,7 @@ const (
 	ConfigQuotaDimension
 )
 
-// ConfigurationChange 保留显式编辑意图；隐去的敏感子键从锁内最新凭据继承。
+// ConfigurationChange 记录待修改的字段，省略的敏感子键从锁内最新凭据继承。
 type ConfigurationChange struct {
 	// ExtraPatch 是维护字段的原始增量，不能含预读快照。
 	ExtraPatch          map[string]any     `json:"-"`
@@ -47,7 +47,7 @@ type ConfigurationChange struct {
 	NormalizeProtocols bool
 }
 
-// ConfigurationWriter 是闭合配置操作；参与外层事务时仍使用原有连接。
+// ConfigurationWriter 执行配置更新，参与外层事务时使用同一个连接。
 type ConfigurationWriter interface {
 	UpdateConfiguration(context.Context, *Record, ConfigurationChange) error
 }
@@ -131,7 +131,7 @@ func ApplyConfigurationChange(current, desired *Record, change ConfigurationChan
 	}
 	out.Extra = CloneValues(out.Extra)
 	if change.Fields&ConfigCredentials != 0 && change.PreserveSensitive {
-		// desired 已经过平台校验，只替换调用方未提供的敏感键；不得回填旧快照中的秘密。
+		// desired 已通过平台校验，从锁内最新凭据补齐请求省略的敏感键。
 		for _, key := range SensitiveCredentialKeys {
 			if _, provided := change.CredentialInput[key]; provided {
 				continue
@@ -141,7 +141,7 @@ func ApplyConfigurationChange(current, desired *Record, change ConfigurationChan
 				out.Credentials[key] = CloneValues(map[string]any{key: v})[key]
 			}
 		}
-		// 锁内继承秘密后仍执行原清理边界，不能把数据库中的历史 SSO/密码残留重新带回。
+		// 继承密钥后清理历史 SSO 和密码字段。
 		out.Credentials = SanitizeStoredCredentials(out.Platform, out.Credentials)
 	}
 	if change.Fields&ConfigExtra != 0 {
@@ -214,7 +214,7 @@ var managedConfigurationExtraKeys = []string{
 	"cn_usage_monitor_snapshot", "model_rate_limits", "antigravity_quota_scopes", "antigravity_credits_overages",
 }
 
-// WriteConfiguration 优先使用配置写入端口；通用 Update 不支持带条件或字段补丁的写入。
+// WriteConfiguration 优先调用配置写入接口，通用 Update 仅支持整条记录更新。
 func WriteConfiguration(ctx context.Context, store interface {
 	Update(context.Context, *Record) error
 }, value *Record, change ConfigurationChange,
@@ -228,7 +228,7 @@ func WriteConfiguration(ctx context.Context, store interface {
 	return store.Update(ctx, value)
 }
 
-// CRSSyncConfiguration 保留同步入口显式拥有的字段，不写回其它管理及运行状态。
+// CRSSyncConfiguration 返回 CRS 同步负责更新的字段。
 func CRSSyncConfiguration(proxyProvided bool) ConfigurationChange {
 	change := ConfigurationChange{Fields: ConfigName | ConfigPlatform | ConfigType | ConfigCredentials | ConfigExtra | ConfigConcurrency | ConfigPriority | ConfigStatus | ConfigSchedulable}
 	if proxyProvided {

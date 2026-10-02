@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// MessagesResponseOptions 只复用相同端口类型，不复用 Chat 的提供商裁决或取消策略。
+// MessagesResponseOptions 在通用读取选项上补充 Messages 的失败和用量处理。
 type MessagesResponseOptions struct {
 	ChatResponseOptions
 	MessagesFailure       func([]byte, string, bool, bool) ChatFailure

@@ -13,7 +13,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// ModelResolver 只投影当前提供商与最终分组的模型链。
+// ModelResolver 解析当前提供商和最终分组的模型映射。
 type ModelResolver interface {
 	ResolveModel(context.Context, *int64, string) (string, string, error)
 }

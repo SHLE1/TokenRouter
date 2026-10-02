@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// provideGroupProbeRunner 注入原时区、实例租约标识和唯一执行器；cron 在生命周期 Start 才启动。
+// provideGroupProbeRunner 注入时区、实例租约标识和探测执行器，cron 在生命周期 Start 时启动。
 func provideGroupProbeRunner(repo routing.GroupAvailabilityProbeRepository, tests *provider.TestService, gateway *selection.Generic, openai *selection.Compatible, gemini *selection.Gemini, cfg *config.Config) *routing.GroupAvailabilityProbeRunnerService {
 	location := time.Local
 	if cfg != nil {

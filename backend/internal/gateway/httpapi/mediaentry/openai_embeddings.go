@@ -22,7 +22,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// embeddingRequestAdapter 只适配当前请求、已选提供商和 HTTP；尝试循环由 media 唯一拥有。
+// embeddingRequestAdapter 处理当前请求、已选提供商和 HTTP 输出，media 执行尝试循环。
 type embeddingRequestAdapter struct {
 	userID        int64
 	h             *Runtime
@@ -169,7 +169,7 @@ func (p *embeddingRequestAdapter) CompleteEmbedding(_ context.Context, _ provide
 	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(c, provider.Record.Platform)
 
 	clientSessionID := gatewayhttp.ExtractClientSessionID(c)
-	// 异步任务只读取此处固化的分组映射结果，不能再读取可变 HTTP Context。
+	// 异步任务使用此处捕获的分组映射快照。
 	pricingFields := p.groupMapping.ToUsageFields(p.reqModel, result.UpstreamModel)
 	subscription, reqModel, userID := p.subscription, p.reqModel, p.userID
 	completionInput := gatewaycapture.CaptureOpenAI(c.Request.Context(), &gatewaycapture.OpenAICapture{Result: result, APIKey: apiKey, User: apiKey.User, Provider: gatewaycapture.ExecutionCompletionRecord(provider), Subscription: subscription, InboundEndpoint: inboundEndpoint, UpstreamEndpoint: upstreamEndpoint, UserAgent: userAgent, IPAddress: clientIP, APIKeyService: h.bindings.Quota, ClientSessionID: clientSessionID, PricingUsageFields: pricingFields})

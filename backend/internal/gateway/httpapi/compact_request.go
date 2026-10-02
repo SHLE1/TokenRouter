@@ -37,9 +37,8 @@ func IsOpenAIRemoteCompactionV2Request(body []byte) bool {
 	return valid && stream && protocolopenai.HasCompactionTriggerInInput(body)
 }
 
-// normalizeOpenAIResponsesCompactRequest 保留 Codex remote compaction v2 原生的
-// 流式 /responses 链路；不满足原生 V2 wire 形状的 body-signal 请求仍提升到旧 compact 桥接链路。
-// 返回归一化后的 body；ok=false 表示错误响应已写出，调用方应直接 return。
+// normalizeOpenAIResponsesCompactRequest 对 Codex remote compaction v2 使用流式 /responses，其他 body-signal 形状使用 Compact 桥接。
+// 返回规范化后的正文，ok=false 表示错误已写出，调用方结束处理。
 func (h *OpenAITextHandler) normalizeOpenAIResponsesCompactRequest(c *gin.Context, reqLog *zap.Logger, body []byte) ([]byte, bool) {
 	isCompactRequest := IsOpenAIResponsesCompactPath(c)
 	if !isCompactRequest && IsBareOpenAIResponsesPath(c) && protocolopenai.HasCompactionTriggerInInput(body) {
@@ -49,7 +48,7 @@ func (h *OpenAITextHandler) normalizeOpenAIResponsesCompactRequest(c *gin.Contex
 			body = normalized
 		}
 		if IsOpenAIRemoteCompactionV2Request(body) {
-			// 原生 V2 必须在出站前保留协商能力，不能被路径保持逻辑吞掉。
+			// V2 请求在出站前保存协商标记，供请求头生成使用。
 			MarkOpenAINativeCompactionV2(c)
 			return body, true
 		}
@@ -104,8 +103,7 @@ func (h *OpenAITextHandler) LogRemoteCompactOutcome(c *gin.Context, startedAt ti
 	if status >= 200 && status < 300 {
 		outcome = "succeeded"
 	}
-	// compact 心跳提交后失败的 wire 状态码固化为 200，真实结局以流内错误
-	// 标记为准（response.failed 降级路径会 MarkOpsStreamError）。
+	// Compact 心跳已提交 200 时，Ops 通过 MarkOpsStreamError 记录 response.failed 表达的失败状态。
 	if outcome == "succeeded" && c != nil {
 		if _, hasStreamErr := GetOpsStreamError(c); hasStreamErr {
 			outcome = "failed"

@@ -1,6 +1,6 @@
 package provider
 
-// QoderRefreshCredentialsHash 只比较刷新身份字段，避免运行观测值干扰凭据竞争判断。
+// QoderRefreshCredentialsHash 计算刷新身份字段的哈希，供凭据竞争检查使用。
 func QoderRefreshCredentialsHash(credentials map[string]any) string {
 	if len(credentials) == 0 {
 		return QoderCredentialsHash(nil)

@@ -34,8 +34,8 @@ func NewGatewayCache(rdb *redis.Client) session.GatewayCache {
 // buildSessionKey 构建 session key，包含 groupID 实现分组隔离
 // 格式: sticky_session:{groupID}:{sessionHash}
 
-// buildSessionOwnerKey 构建显式会话归属 key，按用户和来源隔离避免跨用户误撞。
-// 格式: sticky_session_owner:{userID}:{source}:{sessionHash}
+// buildSessionOwnerKey 按用户和来源生成指定会话的归属键。
+// 格式为 sticky_session_owner:{userID}:{source}:{sessionHash}。
 
 func buildOpenAIResponsesSessionWindowKey(groupID int64, sessionHash string) string {
 	return fmt.Sprintf("%s%d:%s", openAIResponsesSessionWindowPrefix, groupID, sessionHash)
@@ -49,7 +49,7 @@ func buildOpenAIResponsesSessionWindowKey(groupID int64, sessionHash string) str
 // Called when the bound provider becomes unavailable (e.g., error status, disabled,
 // or unschedulable), allowing subsequent requests to select a new available provider.
 
-// SetSessionOwnerGroupID 仅在首次写入时绑定显式会话的分组归属。
+// SetSessionOwnerGroupID 在首次写入时记录指定会话所属的分组。
 
 var claimOpenAIResponsesSessionWindowScript = redis.NewScript(`
 local previous = redis.call('GET', KEYS[1])
@@ -217,12 +217,11 @@ var (
 
 const reasoningContentPrefix = "reasoning_content:"
 
-// reasoningContentDefaultTTL 是 reasoning 缓存的默认过期时间。Codex 会话可能
-// 跨多天恢复，取 7 天；调用方传入非正 TTL 时兜底。
+// reasoningContentDefaultTTL 是推理缓存的默认有效期，支持 Codex 会话在七天内恢复。
+// 调用方传入非正 TTL 时使用该值。
 const reasoningContentDefaultTTL = 7 * 24 * time.Hour
 
-// SetReasoningContent 按 reasoning item id 缓存 reasoning 全文。
-// itemID 或 content 为空时直接返回 nil（无可缓存内容，属正常情况而非错误）。
+// SetReasoningContent 按 reasoning item ID 缓存全文，itemID 或 content 为空时返回 nil。
 func (c *gatewayCache) SetReasoningContent(ctx context.Context, itemID string, content string, ttl time.Duration) error {
 	if c == nil || c.rdb == nil {
 		return errors.New("gateway cache unavailable")

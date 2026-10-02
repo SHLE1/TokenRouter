@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// GrokTierRules 提供平台声明的纯解析能力，不持有提供商或运行状态。
+// GrokTierRules 提供供应商档位解析函数。
 type GrokTierRules struct {
 	SubscriptionTierFromJWT   func(string) string
 	NormalizeSubscriptionTier func(string) string
@@ -38,7 +38,7 @@ func KnownGrokFreeProvider(provider *Record, rules GrokTierRules) bool {
 			paidSignal = true
 		}
 		// xAI 会故意为 Free 提供商返回空 plan，只有付费订阅才带 SuperGrok plan/月度限额。
-		// 因此，成功且没有付费信号的月度计费观测是 Free 的正向证据，而不是未知层级；
+		// 因此，成功且没有付费信号的月度账单按 Free 判断，
 		// 部分探测仍按关闭策略处理。
 		if strings.TrimSpace(billing.MonthlyUpdatedAt) != "" ||
 			(billing.StatusCode >= 200 && billing.StatusCode < 300 &&
@@ -67,8 +67,7 @@ func KnownGrokFreeProvider(provider *Record, rules GrokTierRules) bool {
 			paidSignal = true
 		}
 	}
-	// 明确的付费证据始终覆盖推断的 Free 信号，避免已升级但快照陈旧的提供商仍携带历史
-	// 200 万 Free token 限额而被误判。
+	// 付费证据优先于推断的 Free 档位，即使快照仍包含历史 200 万 Free token 限额，也按付费处理。
 	return !paidSignal && (freeSignal || inferredFreeSignal)
 }
 

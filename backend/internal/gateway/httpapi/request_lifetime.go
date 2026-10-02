@@ -6,13 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// requestLifetime 只引用组合根的统一屏障，不创建第二套计数或后台工作。
+// requestLifetime 引用应用的请求活动屏障。
 type requestLifetime struct{ enter func() (func(), error) }
 
 // BindRequestActivity 只在构造图完成、开放 HTTP 之前调用。
 func (r *requestLifetime) BindRequestActivity(enter func() (func(), error)) { r.enter = enter }
 
-// beginRequest 保留正常请求顺序；停止后的入口不再进入提供商尝试或提交完成任务。
+// beginRequest 登记请求活动，应用停止后拒绝请求。
 func (r *requestLifetime) beginRequest(c *gin.Context, format string) (func(), bool) {
 	if r.enter == nil {
 		return func() {}, true

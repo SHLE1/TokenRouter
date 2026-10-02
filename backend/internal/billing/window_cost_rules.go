@@ -2,7 +2,7 @@ package billing
 
 import "time"
 
-// WindowCostSchedulability 保留原费用窗口的三区数值与严格小于边界。
+// WindowCostSchedulability 表示可调度、仅粘性可用和不可调度三种费用窗口状态。
 type WindowCostSchedulability int
 
 const (
@@ -21,7 +21,7 @@ func CheckWindowCost(current, limit, reserve float64) WindowCostSchedulability {
 	return WindowCostNotSchedulable
 }
 
-// CurrentCostWindowStart 保留活动窗口及过期后按当前时区整点预测的取时语义。
+// CurrentCostWindowStart 返回活动窗口的起点，窗口过期后返回当前时区的整点。
 func CurrentCostWindowStart(start, end *time.Time, now time.Time) time.Time {
 	if start != nil && end != nil && now.Before(*end) {
 		return *start

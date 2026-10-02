@@ -86,10 +86,8 @@ func (s *OpenAIAuxiliary) ForwardAlphaSearch(
 	}
 	SetOpsUpstreamModel(c, upstreamModel)
 
-	// Codex Personal Access Token（at-...）目前可访问 ChatGPT Codex
-	// /responses，但会被 standalone /alpha/search 的 access enforcement
-	// 拒绝为 no_matching_rule。对 PAT 提供商使用等价的 hosted web_search
-	// Responses 路径兜底，避免把可用提供商误判为搜索不可用。
+	// Codex Personal Access Token（at-...）可访问 ChatGPT Codex /responses，standalone /alpha/search 会返回 no_matching_rule。
+	// PAT 提供商通过 Responses 的 hosted web_search 执行搜索。
 	if provider.View().IsOpenAIPersonalAccessToken() {
 		return s.forwardAlphaSearchViaResponsesWebSearch(ctx, c, provider, body, token, proxyURL, requestedModel, upstreamModel, tlsRouterMatch...)
 	}

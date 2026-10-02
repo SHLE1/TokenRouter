@@ -30,7 +30,7 @@ func TestResolveMemoryStatsCgroupUsageButUnlimitedFallsBackToHost(t *testing.T) 
 	require.NotNil(t, totalMB)
 	require.NotNil(t, pct)
 
-	// 三个值都必须来自宿主机，而不是 cgroup 容器值。
+	// 三个内存值均取自宿主机。
 	require.Equal(t, int64(16*1024), *usedMB, "used must be host used, not container used")
 	require.Equal(t, int64(24*1024), *totalMB, "total must be host total")
 	require.InDelta(t, 66.7, *pct, 0.05, "percent must be host-derived, not container/host mix")

@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-// GrokReauthWriter 仅写入原有软性重新认证标记。
+// GrokReauthWriter 写入 Grok 软性消费上限的重新认证标记。
 type GrokReauthWriter interface {
 	UpdateExtra(context.Context, int64, map[string]any) error
 }
 
-// ClearGrokNeedsReauth 保留独立五秒写入预算和尽力失败语义。
+// ClearGrokNeedsReauth 使用独立的五秒预算尝试清除重新认证标记。
 func ClearGrokNeedsReauth(ctx context.Context, writer GrokReauthWriter, id int64) {
 	if writer == nil || id <= 0 {
 		return

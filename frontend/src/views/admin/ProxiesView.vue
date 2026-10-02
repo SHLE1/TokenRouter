@@ -1688,7 +1688,7 @@ const addDaysToBase = (baseDateStr: string, n: number | null): string => {
   dt.setDate(dt.getDate() + days)
   return toLocalDateStr(dt)
 }
-// target 相对 base 的整天数(本地日历差,避免时区/时刻抖动)
+// 按本地日历计算 target 与 base 相差的整天数。
 const daysFromBase = (baseDateStr: string, targetDateStr: string): number | null => {
   if (!targetDateStr) return null
   const target = new Date(`${targetDateStr}T00:00:00`)

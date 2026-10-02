@@ -22,7 +22,7 @@ import (
 	usagepostgres "github.com/TokenFlux/TokenRouter/internal/usage/postgres"
 )
 
-// provideSelectionReads 只组合原有查询端口；快照与数据库的先后由选择用例保留。
+// provideSelectionReads 组合选择器的数据查询函数，选择用例决定快照与数据库的查询顺序。
 func provideSelectionReads(providers gatewayadapter.ExecutionProviderStore, groups routing.GroupRepository, snapshots selection.Snapshots) selection.Reads {
 	return selection.Reads{Providers: providers, Groups: groups, Snapshot: snapshots}
 }
@@ -39,7 +39,7 @@ func provideSelectionShared(cache session.GatewayCache, concurrency *scheduler.C
 	}
 }
 
-// selectionOptions 仅投影选择实际使用的启动配置，不用默认值覆写显式零值。
+// selectionOptions 从启动配置读取选择器参数，配置中的零值直接传给选择器。
 func selectionOptions(cfg *config.Config) selection.Options {
 	options := selection.DefaultOptions()
 	value := strings.ToLower(strings.TrimSpace(productEnv("DEBUG_MODEL_ROUTING")))
@@ -68,7 +68,7 @@ func provideSelectionModelTransient() *provider.ModelTransientState {
 	return provider.NewModelTransientState(0)
 }
 
-// provideSelectionProxyCircuit 保留原默认值和正数覆盖，执行观测与选号共用同一隔离状态。
+// provideSelectionProxyCircuit 用正数配置覆盖默认值，执行反馈与选择器共用代理隔离状态。
 func provideSelectionProxyCircuit(cfg *config.Config) *egress.ProxyStreamCircuit {
 	options := egress.DefaultProxyStreamCircuitSettings()
 	if cfg != nil {
@@ -126,7 +126,7 @@ func provideGeminiSelection(reads selection.Reads, shared selection.Shared, cfg 
 	return selection.NewGemini(selection.GeminiDependencies{Reads: reads, Shared: shared, QuotaPrecheck: quota}, selectionOptions(cfg))
 }
 
-// productEnv 优先读取新品牌变量；空值沿用未配置语义，显式零值不会回退。
+// productEnv 优先读取 TOKENROUTER 变量，值为空时尝试旧名称，零值按已配置处理。
 func productEnv(suffix string) string {
 	value := os.Getenv("TOKENROUTER_" + suffix)
 	if value != "" {

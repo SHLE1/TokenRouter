@@ -13,7 +13,7 @@ const layoutSource = readFileSync(layoutPath, 'utf8')
 
 describe('AppSidebar layout controls', () => {
   it('removes the footer controls and uses the narrower expanded width', () => {
-    // 同时约束侧栏和内容偏移，避免宽度修改后出现空白或遮挡。
+    // 同时检查侧栏宽度和内容偏移。
     expect(componentSource).not.toContain('@click="toggleTheme"')
     expect(componentSource).not.toContain('@click="toggleSidebar"')
     expect(componentSource).toContain("sidebarCollapsed ? 'w-[var(--sidebar-w-collapsed)]' : 'w-[var(--sidebar-w)]'")
@@ -101,7 +101,7 @@ describe('global header and sidebar hierarchy', () => {
   })
 
   it('fades the mobile overlay in and out', () => {
-    // 遮罩应渐进显示和隐藏，避免打开侧栏时页面突然变暗。
+    // 检查侧栏遮罩渐进显示和隐藏。
     // 遮罩与全站淡入配方共用时长，不在侧栏保留局部副本。
     expect(componentSource).toContain('<MotionTransition name="fade">')
     expect(styleSource).toContain('transition: opacity var(--motion-fast) var(--motion-ease);')
@@ -126,13 +126,13 @@ describe('AppSidebar admin personal menu', () => {
   })
 
   it('uses the public feature switch for team entries', () => {
-    // 普通用户与管理员入口必须复用同一功能判断，避免只隐藏其中一侧。
+    // 普通用户与管理员入口共用功能开关判断。
     expect(componentSource).toContain("const flagTeamAccess = () => appStore.cachedPublicSettings?.team_enabled !== false")
     expect(componentSource.match(/path: '\/admin\/teams'.*featureFlag: flagTeamAccess/g)).toHaveLength(1)
   })
 
   it('uses distinct icons for ranking, usage, team, and affiliate entries', () => {
-    // 普通用户菜单与管理员个人菜单使用相同映射，避免同组入口再次出现重复图标。
+    // 普通用户菜单与管理员个人菜单共用图标映射。
     expect(componentSource.match(/path: '\/usage-ranking'.*icon: 'ranking'/g)).toHaveLength(2)
     expect(componentSource.match(/path: '\/usage'.*icon: 'chart'/g)).toHaveLength(2)
     expect(componentSource.match(/path: '\/team'.*icon: 'users'/g)).toHaveLength(2)

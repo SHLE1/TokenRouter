@@ -96,5 +96,5 @@ type openAIUpstreamWarningError struct {
 	err     error
 }
 
-// 实际包装必须满足共享错误链契约。
+// openAIUpstreamWarningError 实现共享的上游警告接口。
 var _ forwardcore.UpstreamWarningCarrier = (*openAIUpstreamWarningError)(nil)

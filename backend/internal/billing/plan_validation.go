@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// NormalizePlanCurrency 只校验展示币种拼写，空值保留为空，不应用支付默认币种。
+// NormalizePlanCurrency 校验展示币种拼写，空值返回空字符串。
 func NormalizePlanCurrency(raw string) (string, error) {
 	currency := strings.ToUpper(strings.TrimSpace(raw))
 	if currency == "" {

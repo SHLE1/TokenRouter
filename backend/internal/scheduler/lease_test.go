@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestLeaseConcurrentReleaseOwnership 验证取消与显式完成竞争时，资源只归还一次，且后取得的提供商资源先于用户资源释放。
+// TestLeaseConcurrentReleaseOwnership 检查取消与请求完成竞争时资源归还一次，后取得的提供商资源先于用户资源释放。
 func TestLeaseConcurrentReleaseOwnership(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var order []string
@@ -36,7 +36,7 @@ func TestLeaseCompletionIgnoresClientCancellation(t *testing.T) {
 	require.EqualValues(t, 1, count.Load())
 }
 
-// TestLeaseRejectsLateResource 验证已结束请求不能接纳晚到资源，资源必须立即归还给原拥有者。
+// TestLeaseRejectsLateResource 检查请求结束后收到的资源被立即释放。
 func TestLeaseRejectsLateResource(t *testing.T) {
 	l := NewLease(context.Background(), ReleaseOnCompletion)
 	l.Release()

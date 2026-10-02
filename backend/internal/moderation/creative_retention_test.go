@@ -69,7 +69,7 @@ func newCreativeNoMediaRetentionModerationService(t *testing.T) (*ContentModerat
 }
 
 // TestContentModerationNoMediaRetention 实验组：
-// NoMediaRetention=true 时审核日志只保留元数据，不做媒体快照、不留正文摘录，但仍记录输入 hash。
+// NoMediaRetention=true 时日志保存元数据和输入 hash，媒体快照与正文摘录留空。
 func TestContentModerationNoMediaRetention(t *testing.T) {
 	svc, repo, hashCache, imageDataURL := newCreativeNoMediaRetentionModerationService(t)
 

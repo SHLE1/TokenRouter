@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMediaContentResponsePreservesRangeAndCommit 验证HTTP 投影只转发白名单下载头；提交标记必须先于第一块响应体。
+// TestMediaContentResponsePreservesRangeAndCommit 验证 HTTP 下载头按白名单转发，响应体写入前设置提交标记。
 func TestMediaContentResponsePreservesRangeAndCommit(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 原顺序及同一输入契约在健康规则所属核心验证；旧适配只转换模型。
+// 健康规则测试检查处理顺序和输入，适配器负责转换模型数据。
 type cnHealthFailureStore struct {
 	HealthStore
 	order *[]string

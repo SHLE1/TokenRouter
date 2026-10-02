@@ -728,10 +728,10 @@ func TestUserHandlerUnbindIdentityRevokesAllUserSessionsWhenAuthServiceConfigure
 
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, []int64{23}, refreshTokenCache.revokedUserIDs)
-	// 撤销依赖的是 refresh session 清理，而不是 token_version：users 表没有这一列
-	// （见 resolvedTokenVersion，实际值由 email+password_hash 指纹推导），
-	// 所以此前"自增 TokenVersion 再整行写回"不持久化任何东西，
-	// 却会用旧快照覆盖并发写入的列。这里断言用户行未被改写。
+	// 会话撤销通过 refresh session 清理完成。
+	// resolvedTokenVersion 从 email 和 password_hash 指纹推导 token_version，
+	// 内存中的 TokenVersion 无需写回 users 表。
+	// 此处检查会话清理后用户行保持不变。
 	require.Equal(t, int64(4), repo.user.TokenVersion)
 }
 
@@ -802,7 +802,7 @@ func TestUserHandlerBindEmailIdentityRejectsWrongCurrentPasswordForBoundEmail(t 
 		},
 	}
 	emailService := identitycore.NewEmailChallenges(emailCache, nil)
-	// 换绑主邮箱需要显式开启 user_email_change_enabled，否则会在校验密码前被 403 拦截。
+	// 换绑主邮箱需要开启 user_email_change_enabled，关闭时在校验密码前返回 403。
 	settingService := newUserBindingSettings(&userHandlerSettingRepoStub{values: map[string]string{
 		identitycore.SettingKeyUserEmailChangeEnabled: "true",
 	}}, cfg)
@@ -874,7 +874,7 @@ func TestUserHandlerStartIdentityBindingReturnsAuthorizeURL(t *testing.T) {
 	require.Contains(t, resp.Data.AuthorizeURL, "redirect=%2Fsettings%2Fprofile")
 }
 
-// ConsumeRefreshToken 与此桩始终未找到凭据的读取行为一致。
+// ConsumeRefreshToken 返回未找到凭据的结果，与此桩的读取结果一致。
 func (s *userHandlerRefreshTokenCacheStub) ConsumeRefreshToken(context.Context, string) (bool, error) {
 	return false, nil
 }

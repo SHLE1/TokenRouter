@@ -548,7 +548,7 @@ func (s *APIKeyService) KeyIncrementAPIKeyErrorCount(ctx context.Context, userID
 }
 
 // KeyCanUserBindGroup 检查用户是否可以绑定指定分组。
-// group 仅控制路由/访问权限，不再承载订阅语义。
+// group 控制路由和访问权限。
 func (s *APIKeyService) KeyCanUserBindGroup(ctx context.Context, user *User, group *routing.Group) bool {
 	return user.CanBindGroup(group.ID, group.IsExclusive)
 }
@@ -735,7 +735,7 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 		teamID = &id
 	}
 
-	// 结算配置依赖实际付款人；团队 Key 必须校验 Team Owner 的订阅而不是创建成员的订阅。
+	// 结算配置按实际付款人校验，团队 Key 使用 Team Owner 的订阅。
 	billingMode, preferredSubscriptionID, preferredSubscription, err := s.KeyResolveAPIKeyBillingConfiguration(
 		ctx,
 		user.ID,
@@ -1009,7 +1009,7 @@ func (s *APIKeyService) GetByID(ctx context.Context, id int64) (*APIKey, error) 
 		return nil, fmt.Errorf("get api key: %w", err)
 	}
 	if apiKey != nil && apiKey.ManagedBy != nil {
-		// 服务端托管的隐藏 Key（如创作台执行 Key）不暴露存在性。
+		// 服务端托管的隐藏 Key（如创作台执行 Key）返回 ErrAPIKeyNotFound。
 		return nil, fmt.Errorf("get api key: %w", ErrAPIKeyNotFound)
 	}
 	s.KeyCompileAPIKeyIPRules(apiKey)
@@ -1128,7 +1128,7 @@ func (s *APIKeyService) SelectCompositeGroupForRequest(ctx context.Context, apiK
 	return prepared, nil
 }
 
-// KeyApplyExplicitGroupFallback 仅使用管理员明确配置的不可用回退，不为未绑定 Key 猜测分组。
+// KeyApplyExplicitGroupFallback 应用管理员配置的不可用分组回退，未绑定 Key 保持未绑定状态。
 func (s *APIKeyService) KeyApplyExplicitGroupFallback(ctx context.Context, apiKey *APIKey) *APIKey {
 	if apiKey == nil || s.groupRepo == nil || apiKey.GroupID == nil || apiKey.Group == nil || !apiKey.FallbackWhenGroupUnavailable {
 		return apiKey
@@ -1145,7 +1145,7 @@ func (s *APIKeyService) KeyApplyExplicitGroupFallback(ctx context.Context, apiKe
 	if err != nil {
 		return apiKey
 	}
-	// 订阅和入口协议在认证后按最终组继续检查，不沿用原组的额度及模型计划。
+	// 认证后的订阅和入口协议检查使用最终分组的额度与模型计划。
 	return resolved
 }
 
@@ -1215,7 +1215,7 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 	// 原子递增，除非用户显式点了"重置"，否则这里不用快照把它们写回去。
 	var fields APIKeyUpdateFields
 	// 下面若干分支会顺带把 Status 改回 active（配额扩容、清除过期等），
-	// 所以用原始值比对来决定是否写 status，而不是只看 req.Status。
+	// 因此保存更新前的 status，写入时与最终值比较。
 	originalStatus := apiKey.Status
 	originalIsComposite := apiKey.IsComposite
 
@@ -1503,7 +1503,7 @@ func (s *APIKeyService) Delete(ctx context.Context, id int64, userID int64) erro
 		return fmt.Errorf("get api key: %w", err)
 	}
 	if existing != nil && existing.ManagedBy != nil {
-		// 服务端托管的隐藏 Key（如创作台执行 Key）禁止删除，且不暴露存在性。
+		// 删除服务端托管的隐藏 Key（如创作台执行 Key）时返回 ErrAPIKeyNotFound。
 		return fmt.Errorf("get api key: %w", ErrAPIKeyNotFound)
 	}
 
@@ -1561,7 +1561,7 @@ func (s *APIKeyService) CheckTeamMemberLimits(apiKey *APIKey) error {
 	return KeyCheckTeamMemberLimitSnapshot(apiKey.TeamMembership)
 }
 
-// KeyCheckTeamMemberLimitSnapshot 只决定 owner 豁免并投影资金字段，限额规则由 billing 拥有。
+// KeyCheckTeamMemberLimitSnapshot 跳过 owner 检查，其他成员的额度由 billing 校验。
 func KeyCheckTeamMemberLimitSnapshot(member *TeamMembership) error {
 	if member == nil || member.Role == TeamRoleOwner {
 		return nil
@@ -1621,7 +1621,7 @@ func (s *APIKeyService) IncrementUsage(ctx context.Context, keyID int64) error {
 }
 
 // GetAvailableGroups 获取用户有权限绑定的分组列表。
-// group 仅负责路由/提供商集合，不再承载订阅语义。
+// group 指定路由和提供商集合。
 func (s *APIKeyService) GetAvailableGroups(ctx context.Context, userID int64) ([]routing.Group, error) {
 	// 获取用户信息
 	user, err := s.userRepo.GetByID(ctx, userID)

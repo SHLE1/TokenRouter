@@ -328,7 +328,7 @@ func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingEdgeCases(t *test
 }
 
 // TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingPreservesOtherFields
-// 确保模型映射只替换 model，业务输入字段保持不变，生成参数仍按 count_tokens 规则清理。
+// 检查模型映射是否保持业务输入字段相同，并按 count_tokens 规则清理生成参数。
 
 func TestGatewayService_AnthropicAPIKeyPassthrough_ModelMappingPreservesOtherFields(t *testing.T) {
 	rec := httptest.NewRecorder()

@@ -21,10 +21,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// GatewayCompletionRecorders 对外发布两条已装配完成链，保留原倍率缓存作用域。
+// GatewayCompletionRecorders 包含两种完成记录器，各自使用独立的倍率缓存。
 type GatewayCompletionRecorders struct{ Forward, OpenAI *completion.Recorder }
 
-// ProvideGatewayCompletionRecorders 直接组合原生价格、资金、观测和提交后能力，不从旧网关取回实例。
+// ProvideGatewayCompletionRecorders 为完成记录器组合价格、资金、统计和提交后操作。
 func ProvideGatewayCompletionRecorders(
 	rates *gatewayBillingRates,
 	calculator *billing.Calculator,
@@ -82,7 +82,7 @@ func ProvideGatewayCompletionRecorders(
 	return GatewayCompletionRecorders{Forward: completion.NewRecorder(forward, options), OpenAI: completion.NewRecorder(openai, options)}
 }
 
-// completionProviders 只在影子统计需要时读取母提供商，不将凭据传给完成核心。
+// completionProviders 在统计影子提供商用量时读取母提供商，并返回完成记录需要的统计字段。
 type completionProviders struct {
 	store *providerpostgres.ProviderStore
 }
@@ -105,7 +105,7 @@ func (p completionHealth) ResetOpenAI403Counter(ctx context.Context, id int64) {
 	p.core.ResetForbiddenCounter(ctx, id)
 }
 
-// gatewayCommitEffects 两条完成链各自取得效果对象，后台任务继续交给同一应用拥有者。
+// gatewayCommitEffects 为两种完成流程分别创建提交后操作对象，后台任务由 app 统一跟踪。
 func gatewayCommitEffects(deferred *provider.DeferredService, eligibility *billing.Eligibility, notifications *billing.BalanceNotifyService, keys *apikey.APIKeyService, tasks *lifecycle.Tasks, cfg *config.Config) *completion.CommitEffects {
 	value := &completion.CommitEffects{
 		Activity: deferred,

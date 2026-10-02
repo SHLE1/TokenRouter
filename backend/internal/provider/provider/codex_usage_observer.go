@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// CodexUsageObserver 使用共享节流与后台任务端口保存已观测的全局额度头。
+// CodexUsageObserver 通过共享写入节流器和后台任务保存全局额度响应头。
 // 影子提供商资格仍由调用方在原位置判断。
 type CodexUsageObserver struct {
 	Store interface {

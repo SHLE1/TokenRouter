@@ -2,7 +2,7 @@ package routing
 
 import "context"
 
-// RequestableCatalogue 组合唯一短缓存与原提供商查询；自身不持有第二份缓存或计费实例。
+// RequestableCatalogue 组合模型列表缓存、提供商查询和可请求模型解析器。
 type RequestableCatalogue struct {
 	Models   *ModelList
 	Read     func(context.Context, *int64) ([]CatalogueProvider, error)

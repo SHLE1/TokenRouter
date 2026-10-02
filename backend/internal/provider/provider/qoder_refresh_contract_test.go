@@ -308,7 +308,7 @@ func TestQoderTokenRefresherUsesProviderDoer(t *testing.T) {
 	upstream := &qoderRefreshHTTPUpstreamStub{}
 	profiles := &egressprovider.TLSProfiles{}
 	refresher := NewQoderTokenRefresher(QoderRefreshOptions{Transport: upstream, Profiles: profiles})
-	// 原管理员构造转接的传输与 TLS 实例断言由实际原生刷新器承接。
+	// 此处检查刷新器使用的传输实例和 TLS 配置。
 	require.Same(t, upstream, refresher.options.Transport)
 	require.Same(t, profiles, refresher.options.Profiles)
 	proxyID := int64(9)

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 真实供应商解析配合本地固定响应，缓存 key 相同但凭据身份改变。
+// 固定本地供应商响应，使用相同缓存键检查凭据变化后的查询结果。
 type agUsageIdentityTransport struct{ calls atomic.Int32 }
 
 func (t *agUsageIdentityTransport) RoundTrip(r *http.Request) (*http.Response, error) {

@@ -139,7 +139,7 @@ import type {
   GroupRoutingProvider,
 } from './groupSettingsTypes'
 
-// 不复制规则对象，保证页面的搜索键和取消请求逻辑始终指向同一条规则。
+// 复用规则对象，页面的搜索键和取消请求逻辑通过对象身份定位同一条规则。
 const props = defineProps<{
   idPrefix: string
   enabled: boolean

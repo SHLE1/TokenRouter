@@ -8,7 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// ToolContinuationSignals 聚合工具续链相关信号，避免重复遍历 input。
+// ToolContinuationSignals 在一次遍历中收集工具续接所需的 input 信号。
 type ToolContinuationSignals struct {
 	HasFunctionCallOutput              bool
 	HasFunctionCallOutputMissingCallID bool
@@ -26,7 +26,7 @@ type FunctionCallOutputValidation struct {
 	HasItemReferenceForAllCallIDs      bool
 }
 
-// IsCodexToolCallContextItemType 判断 input item 是否是可承载 call_id 的工具调用上下文。
+// IsCodexToolCallContextItemType 判断 input item 是否是带 call_id 的工具调用上下文。
 func IsCodexToolCallContextItemType(typ string) bool {
 	switch strings.TrimSpace(typ) {
 	case "tool_call",
@@ -56,7 +56,7 @@ func IsCodexToolCallOutputItemType(typ string) bool {
 
 // NeedsToolContinuation 判定请求是否需要工具调用续链处理。
 // 满足以下任一信号即视为续链：previous_response_id、input 内包含工具输出/item_reference、
-// 或显式声明 tools/tool_choice。
+// 或声明 tools/tool_choice。
 func NeedsToolContinuation(reqBody map[string]any) bool {
 	if reqBody == nil {
 		return false
@@ -88,7 +88,7 @@ func NeedsToolContinuation(reqBody map[string]any) bool {
 }
 
 // AnalyzeToolContinuationSignals 单次遍历 input，提取工具输出/工具调用上下文/item_reference 相关信号。
-// 字段名保留 FunctionCallOutput 是为了兼容既有调用点；语义覆盖 Codex 的所有工具输出
+// FunctionCallOutput 字段覆盖 Codex 的所有工具输出
 // （function_call_output/tool_search_output/custom_tool_call_output/mcp_tool_call_output）。
 func AnalyzeToolContinuationSignals(reqBody map[string]any) ToolContinuationSignals {
 	signals := ToolContinuationSignals{}
@@ -158,13 +158,13 @@ func AnalyzeToolContinuationSignals(reqBody map[string]any) ToolContinuationSign
 	return signals
 }
 
-// ValidateFunctionCallOutputContextBytes 基于 raw JSON 校验工具输出续链，避免 handler 预校验阶段全量解码大 input。
+// ValidateFunctionCallOutputContextBytes 扫描 raw JSON 校验工具输出续接，供 handler 预校验使用。
 func ValidateFunctionCallOutputContextBytes(body []byte) FunctionCallOutputValidation {
 	result := FunctionCallOutputValidation{}
 	if len(body) == 0 {
 		return result
 	}
-	// handler 热路径只读扫描 input，避免 GetBytes 为大 Responses body 复制整段 JSON。
+	// handler 同步扫描 input，直接使用请求字节。
 	input := wirejson.ParseView(body).Get("input")
 	if !input.IsArray() {
 		return result
@@ -308,7 +308,7 @@ func AnalyzeToolCallOutputContextCoverageBytes(body []byte) ToolCallOutputContex
 // 1) 无工具输出直接返回
 // 2) 若已存在工具调用上下文则提前返回
 // 3) 仅在无工具上下文时才构建 call_id / item_reference 集合
-// 字段名保留 FunctionCallOutput 是为了兼容既有调用点；语义覆盖所有 Codex 工具输出。
+// FunctionCallOutput 字段覆盖所有 Codex 工具输出。
 func ValidateFunctionCallOutputContext(reqBody map[string]any) FunctionCallOutputValidation {
 	result := FunctionCallOutputValidation{}
 	if reqBody == nil {
@@ -385,7 +385,7 @@ func ValidateFunctionCallOutputContext(reqBody map[string]any) FunctionCallOutpu
 }
 
 // HasFunctionCallOutput 判断 input 是否包含任意 Codex 工具输出，用于触发续链校验。
-// 名称保留 function_call_output 是为了兼容既有调用点。
+// 此处同时处理 function_call_output 和其他 Codex 工具输出。
 func HasFunctionCallOutput(reqBody map[string]any) bool {
 	return AnalyzeToolContinuationSignals(reqBody).HasFunctionCallOutput
 }
@@ -434,7 +434,7 @@ func HasNonEmptyString(value any) bool {
 	return ok && strings.TrimSpace(stringValue) != ""
 }
 
-// HasToolsSignal 判断 tools 字段是否显式声明（存在且不为空）。
+// HasToolsSignal 判断 tools 字段是否存在且非空。
 func HasToolsSignal(reqBody map[string]any) bool {
 	raw, exists := reqBody["tools"]
 	if !exists || raw == nil {
@@ -446,7 +446,7 @@ func HasToolsSignal(reqBody map[string]any) bool {
 	return false
 }
 
-// HasToolChoiceSignal 判断 tool_choice 是否显式声明（非空或非 nil）。
+// HasToolChoiceSignal 判断 tool_choice 字段是否非空且非 nil。
 func HasToolChoiceSignal(reqBody map[string]any) bool {
 	raw, exists := reqBody["tool_choice"]
 	if !exists || raw == nil {

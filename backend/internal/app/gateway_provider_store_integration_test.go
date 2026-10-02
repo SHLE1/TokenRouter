@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestExecutionStoreUsesNativeStateAndOuterTransaction 验证转接只组合已有存储；资金字段保护和 Ent 事务仍由原生存储执行。
+// TestExecutionStoreUsesNativeStateAndOuterTransaction 检查执行入口使用提供商存储的资金字段保护，并加入外层 Ent 事务。
 func TestExecutionStoreUsesNativeStateAndOuterTransaction(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()
@@ -55,7 +55,7 @@ func TestExecutionStoreUsesNativeStateAndOuterTransaction(t *testing.T) {
 	txctx := dbent.NewTxContext(ctx, tx)
 	value.Record.Name = "uncommitted"
 	require.NoError(t, writer.UpdateConfiguration(txctx, value, provider.ConfigurationChange{Fields: provider.ConfigName}))
-	// 普通查询接口保持原独立读语义；由事务拥有者读取未提交写入以验证同连接参与。
+	// 普通查询使用独立连接，事务调用方通过参与接口读取尚未提交的数据。
 	within, err := tx.Client().Provider.Get(txctx, row.ID)
 	require.NoError(t, err)
 	require.Equal(t, "uncommitted", within.Name)

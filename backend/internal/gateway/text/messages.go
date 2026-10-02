@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// AttemptFailure 仅把原始错误与不可变重试投影一起传递，核心不解析供应商报文。
+// AttemptFailure 传递原始错误和重试参数，供应商报文由平台适配器解析。
 type AttemptFailure struct {
 	Cause  error
 	Policy *failover.FailureInfo
@@ -34,7 +34,7 @@ const (
 	FailurePromptTooLong
 )
 
-// Selection 只包含本次尝试的提供商视图和既有重试上限，不持有凭据。
+// Selection 保存本次尝试的提供商信息和重试上限。
 type Selection struct {
 	Plan         routing.CandidatePlan
 	PlanProvided bool
@@ -89,7 +89,7 @@ type MessagePorts interface {
 	TempUnscheduleRetryableError(context.Context, int64, *AttemptFailure)
 }
 
-// RunMessages 保留原有两层控制：请求只有一次分组回退，每个分组只有一套提供商尝试循环。
+// RunMessages 允许请求回退一次分组，并在每个分组内执行提供商尝试循环。
 func RunMessages(options MessageOptions, p MessagePorts) {
 	served := false
 	defer func() { p.Finish(served) }()

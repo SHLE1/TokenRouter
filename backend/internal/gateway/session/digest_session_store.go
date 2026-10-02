@@ -68,7 +68,7 @@ func buildNS(groupID int64, prefixHash string) string {
 	return strconv.FormatInt(groupID, 10) + ":" + prefixHash + "|"
 }
 
-// ExpireRuntimeCaches 由应用拥有的时间轮调用，保留原缓存到期清理频率。
+// ExpireRuntimeCaches 由应用时间轮定期调用，清理到期的运行缓存。
 func (s *DigestSessionStore) ExpireRuntimeCaches() {
 	if s != nil {
 		if s.cache != nil {

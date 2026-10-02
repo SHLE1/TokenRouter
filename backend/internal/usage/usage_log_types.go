@@ -304,7 +304,7 @@ type UsageLogFilters struct {
 	// RequestID 对 usage_logs.request_id 执行精确匹配。
 	RequestID string
 	Model     string
-	// ModelFilterSource 控制 Model 的匹配维度；为空时保留 usage_logs.model 原始语义。
+	// ModelFilterSource 控制 Model 的匹配维度，空值表示匹配 usage_logs.model。
 	ModelFilterSource string
 	RequestType       *int16
 	Stream            *bool

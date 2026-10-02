@@ -458,7 +458,7 @@ func (s *OpenAIWebSocketExecutor) forwardOpenAIWSV2(
 				}
 			}
 		}
-		// 拼接文档修复后仍不是完整 JSON 的事件不得进入解析或下游输出链路。
+		// 拼接修复后 JSON 仍不完整时，拒绝解析和下游输出。
 		if readErr == nil && !json.Valid(message) {
 			eventType, _, _ := protocolwire.ParseWSEventEnvelope(message)
 			if eventType == "" {
@@ -635,7 +635,7 @@ func (s *OpenAIWebSocketExecutor) forwardOpenAIWSV2(
 					errMessage,
 				)
 			}
-			// error 事件后连接不再可复用，避免回池后污染下一请求。
+			// 收到 error 事件后关闭连接，下一请求使用其他连接。
 			lease.MarkBroken()
 			if upstreamWarning != nil {
 				upstreamWarning.StatusCode = statusCode
@@ -659,7 +659,7 @@ func (s *OpenAIWebSocketExecutor) forwardOpenAIWSV2(
 			}
 			if !wroteDownstream && canFallback {
 				if gatewayprovider.OpenAIUpstreamWarningIsCyber(upstreamWarning) {
-					// 可 fallback 的 error 事件也可能是 cyber 风控拒绝，必须保留原始 warning 防止重试覆盖。
+					// 可 fallback 的 error 事件也可能包含 cyber 风控拒绝，保存原始 warning 供重试结束后使用。
 					return nil, ws.WrapFallback(fallbackReason, &openAIWSUpstreamWarningError{
 						warning: upstreamWarning,
 						err:     errors.New(errMsg),
@@ -732,8 +732,7 @@ func (s *OpenAIWebSocketExecutor) forwardOpenAIWSV2(
 
 		if isTerminalEvent {
 			upstreamTerminalEvent = terminalPolicy.TerminalEvent
-			// 终止事件必须是当前 WS 消息中的最后一个 JSON 文档；尾随文档不再写给已完成的
-			// 客户端请求，同时禁止复用语义不明确的上游连接。
+			// 终止事件后若仍有 JSON 文档，丢弃尾随文档并关闭上游连接。
 			cleanExit = len(pendingJSONDocuments) == 0
 			break
 		}
@@ -752,7 +751,7 @@ func (s *OpenAIWebSocketExecutor) forwardOpenAIWSV2(
 			)
 			if !wroteDownstream {
 				if upstreamWarning != nil {
-					// 非流式 terminal 事件可能只有顶层 error，没有 response 对象；错误回退时仍需保留原始风控信号。
+					// 非流式 terminal 可能只有顶层 error，错误回退时从该字段保留风控信号。
 					return nil, ws.WrapFallback("missing_final_response", &openAIWSUpstreamWarningError{
 						warning: upstreamWarning,
 						err:     errors.New("no terminal response payload"),

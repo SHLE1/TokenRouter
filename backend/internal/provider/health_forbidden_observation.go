@@ -38,7 +38,7 @@ func buildForbiddenErrorMessage(prefix string, upstreamMsg string, responseBody 
 // ApplyForbiddenObservation handle403 处理 403 Forbidden 错误
 // Antigravity 平台区分 validation/violation/generic 三种类型，均 SetError 永久禁用；
 // OpenAI 与国产平台提供商的 403 使用 HTML 豁免和累计冷却；
-// 其他平台保持原有 SetError 行为。
+// 其他平台调用 SetError。
 func (s *HealthService) ApplyForbiddenObservation(ctx context.Context, provider *Record, observation ForbiddenObservation) (shouldDisable bool) {
 	if provider.Platform == capability.PlatformAntigravity {
 		return s.handleAntigravity403(ctx, provider, observation)
@@ -52,7 +52,7 @@ func (s *HealthService) ApplyForbiddenObservation(ctx context.Context, provider 
 	if provider.Platform == capability.PlatformOpenAI || provider.IsCNProvider() {
 		return s.handleOpenAI403(ctx, provider, observation)
 	}
-	// 非 Antigravity 平台：保持原有行为
+	// 非 Antigravity 平台调用 SetError。
 	msg := buildForbiddenErrorMessage(
 		"Access forbidden (403):",
 		observation.Message,
@@ -65,7 +65,7 @@ func (s *HealthService) ApplyForbiddenObservation(ctx context.Context, provider 
 
 func (s *HealthService) handleOpenAI403(ctx context.Context, provider *Record, observation ForbiddenObservation) (shouldDisable bool) {
 	// 上游代理或 CDN 在请求到达 OpenAI API 前拦截时，可能返回 HTML 403，
-	// 这只能证明当前链路或端点被阻断，不能证明提供商凭据或权限失效。
+	// 响应表明当前请求被代理或端点拦截，提供商凭据和权限状态保持不变。
 	// 若继续计数或写提供商状态，同一个错误请求会在 failover 中逐个处罚提供商，
 	// 最终把整组提供商错误地下线。这里只跳过提供商处罚，保留调用方既有切号行为。
 	if observation.HTML {
@@ -120,7 +120,7 @@ func (s *HealthService) handleAntigravity403(ctx context.Context, provider *Reco
 		return true
 
 	default:
-		// 通用 403: 保持原有行为
+		// 通用 403 调用 SetError。
 		msg := buildForbiddenErrorMessage(
 			"Access forbidden (403):",
 			observation.Message,

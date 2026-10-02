@@ -30,7 +30,7 @@ type teamLinkedProviderRepoStub struct {
 	failSetError  map[int64]error
 }
 
-// ListByPlatform 镜像真实仓库语义：仅返回该平台的 active 提供商。
+// ListByPlatform 返回指定平台的 active 提供商。
 func (r *teamLinkedProviderRepoStub) ListByPlatform(ctx context.Context, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	r.listCalls++
 	if r.listErr != nil {

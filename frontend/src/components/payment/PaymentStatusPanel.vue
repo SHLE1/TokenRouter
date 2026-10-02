@@ -1,5 +1,5 @@
 <template>
-  <!-- 支付过程只有一列信息，限制宽度并居中，避免在宽屏下被拉得过长。 -->
+  <!-- 支付信息以单列居中展示，并限制宽度。 -->
   <div class="mx-auto w-full max-w-md">
     <!-- 终态：展示结果，由用户确认后返回 -->
 
@@ -420,7 +420,7 @@ async function pollStatus() {
   if (!props.orderId || outcome.value || pollInFlight) return
   pollInFlight = true
   try {
-    // Stripe 直接查上游；微信和支付宝当面付在本地仍 pending 时再节流补查，避免漏回调导致一直等待。
+    // Stripe 直接查询上游，微信和支付宝当面付在本地 pending 时节流补查，以补偿遗漏的回调。
     const upstreamOutTradeNo = isProcessing.value ? '' : upstreamVerificationOutTradeNo()
     let order = upstreamOutTradeNo && props.paymentType === 'stripe'
       ? await verifyOrderWithUpstream(upstreamOutTradeNo)

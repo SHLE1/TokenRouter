@@ -67,7 +67,7 @@ func TestPricingCatalogConfigAliases(t *testing.T) {
 	}
 }
 
-// TestPricingCatalogPackagedFallbackMigration 只迁移缺失的已知打包路径，不替换管理员现有文件。
+// TestPricingCatalogPackagedFallbackMigration 检查缺失的打包路径迁移，以及管理员已有文件的保留。
 func TestPricingCatalogPackagedFallbackMigration(t *testing.T) {
 	t.Chdir(t.TempDir())
 	old := "./resources/model-pricing/model_prices_and_context_window.json"

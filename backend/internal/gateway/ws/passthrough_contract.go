@@ -13,7 +13,7 @@ type ClientSocket interface {
 	Write(context.Context, int, []byte) error
 }
 
-// PolicyBlocked 保留客户端错误信息与原错误链，不引用旧策略实体。
+// PolicyBlocked 保存返回客户端的错误信息和上游错误链。
 type PolicyBlocked struct {
 	Message string
 	Cause   error
@@ -22,7 +22,7 @@ type PolicyBlocked struct {
 func (e *PolicyBlocked) Error() string { return e.Message }
 func (e *PolicyBlocked) Unwrap() error { return e.Cause }
 
-// DialResult 保存单次拨号观测，不向核心暴露底层客户端或认证参数。
+// DialResult 保存单次拨号的观测结果。
 type DialResult struct {
 	PreparationError bool
 	Conn             FrameConn
@@ -38,7 +38,7 @@ type PassthroughHooks struct {
 	OnUpstreamError      func(int, string, int, []byte, string)
 }
 
-// PassthroughPort 的每个方法至多执行一次平台原语，重试和 turn 编排在核心。
+// PassthroughPort 的每个方法执行一次平台操作，透传流程管理重试和 turn 顺序。
 type PassthroughPort interface {
 	UsageDecoder
 	IsLite([]byte) bool

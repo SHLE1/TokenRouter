@@ -35,7 +35,7 @@ func (t *Target) TargetID() int64 {
 func (t *Target) String() string   { return fmt.Sprintf("bedrock target provider=%d", t.TargetID()) }
 func (t *Target) GoString() string { return t.String() }
 
-// Executor 不持有提供商或运行时缓存；请求体为原调用方按本次 beta 投影准备的字节。
+// Executor 执行 Bedrock 请求，请求体由调用方按本次 beta 选项准备。
 type Executor struct{}
 
 func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink upstream.OutputSink) (result upstream.AttemptResult, failure error) {

@@ -188,7 +188,7 @@ func (s *Public) GetCapabilities(ctx context.Context) *CreativeCapabilitiesRespo
 // ListModels 返回当前用户可用的分组与图片模型组合。
 func (s *Public) ListModels(ctx context.Context, userID int64) (*CreativeModelsResponse, error) {
 	if !s.Enabled(ctx) {
-		// 开关关闭时返回空列表而非错误：前端据此展示"已停用"空态，而不是报错。
+		// 开关关闭时返回空列表，前端据此展示“已停用”空态。
 		return &CreativeModelsResponse{Data: make([]CreativeModelPublic, 0)}, nil
 	}
 	user, err := s.UserRepo.GetByID(ctx, userID)

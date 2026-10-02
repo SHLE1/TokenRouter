@@ -1,6 +1,6 @@
 package server
 
-// Options 只包含监听与 HTTP 协议参数；配置优先级由 app 完成投影。
+// Options 包含 app 按配置优先级解析后的监听和 HTTP 参数。
 type Options struct {
 	Address                  string
 	Mode                     string

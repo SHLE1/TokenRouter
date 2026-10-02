@@ -212,7 +212,7 @@ func TestClaudeTokenProvider_ProviderRepoGetError(t *testing.T) {
 
 	tokenSource := newClaudeRefreshSourceFixture(providerRepo, cache, oauthService)
 
-	// 原生产协调器读取失败时不交换，调用方按原策略回退已有令牌。
+	// 刷新协调器读取失败时，调用方使用已有 token。
 	token, err := tokenSource.GetAccessToken(context.Background(), provider)
 	require.NoError(t, err)
 	require.Equal(t, "old-token", token)

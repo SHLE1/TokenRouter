@@ -45,7 +45,7 @@ const resolveCcSwitchUsageUrl = (baseUrl: string): string => {
   }
 }
 
-// 固化导入时的用量端点，避免 CCS 中的 provider endpoint 被修改后影响用量统计。
+// 导入时固定用量端点，后续用量统计继续使用该地址。
 export function buildCcSwitchUsageScript(baseUrl: string, fallbackUnit: string): string {
   const usageUrlLiteral = toJsStringLiteral(resolveCcSwitchUsageUrl(baseUrl))
   const fallbackUnitLiteral = toJsStringLiteral(fallbackUnit)

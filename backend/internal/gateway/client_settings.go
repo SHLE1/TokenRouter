@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// ClientSettingsOptions 只接收平台原有纯校验与动态缺省读取，不安装第二份缓存。
+// ClientSettingsOptions 提供平台参数校验和动态默认值读取函数。
 type ClientSettingsOptions struct {
 	NormalizeUserAgentVersion func(string) string
 	DefaultUserAgentVersion   func() string
@@ -187,7 +187,7 @@ func (s *RuntimeSettings) IsOpenAIAllowClaudeCodeCodexPluginEnabled(ctx context.
 	return false
 }
 
-// PublishClientUserAgents 保留综合设置的原发布顺序和 TTL。
+// PublishClientUserAgents 按设置发布顺序更新客户端 UA 缓存和有效期。
 func (s *RuntimeSettings) PublishClientUserAgents(version, codex string) {
 	s.antigravityUAVersionSF.Forget("antigravity_user_agent_version")
 	antigravityUserAgentVersion := s.clientOptions.NormalizeUserAgentVersion(version)

@@ -9,8 +9,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// MessageRuntime 是构造时绑定的单步依赖集合；Open 仅建立本次状态，不组装业务回调。
-// 适配会话继续实现原 MessagePorts，唯一提供商循环仍由 RunMessages 拥有。
+// MessageRuntime 在构造时绑定执行依赖，Open 创建本次请求状态。
+// 适配会话实现 MessagePorts，RunMessages 执行提供商尝试循环。
 type MessageRuntime interface {
 	Open(context.Context, execution.Request, upstream.OutputSink) (MessagePorts, error)
 }
@@ -23,7 +23,7 @@ func NewMessagesExecutor(runtime MessageRuntime, messages, gemini MessageOptions
 	return &MessagesExecutor{runtime: runtime, messages: messages, gemini: gemini}
 }
 
-// Execute 接管本次执行及结果观测，HTTP 不再取得 ports 或调用 RunMessages。
+// Execute 执行本次文本请求并记录结果观测，供 HTTP 入口调用。
 func (e *MessagesExecutor) Execute(ctx context.Context, in execution.Request, sink upstream.OutputSink) (execution.ExecutionResult, error) {
 	ctx = requeststate.WithExecutionHints(ctx, in.Hints)
 	ctx = requeststate.WithRoutingState(ctx, in.Routing)

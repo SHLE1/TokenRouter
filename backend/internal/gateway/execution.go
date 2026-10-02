@@ -14,15 +14,14 @@ import (
 // RequestMetadata 是 HTTP 适配在执行前取得的值快照；不保留响应器或请求对象。
 type RequestMetadata = execution.RequestMetadata
 
-// FundingState 固化已经认证且完成复合选择的访问投影与指定权益。
+// FundingState 保存认证和复合选组完成后的访问数据及指定权益。
 // 资金算法和最终授权仍由 billing 执行。
 type FundingState = execution.FundingState
 
 // ExecutionResult 独立返回最后一次已执行尝试，即使该尝试同时失败也保留观测用量。
 type ExecutionResult = execution.ExecutionResult
 
-// QoderRuntime 在组合根绑定一次；HTTP 调用只提供请求值与同步输出端口。
-// 恢复和选择端口不拥有额外的提供商尝试循环。
+// QoderRuntime 由 app 构造并绑定选择、恢复和执行能力。HTTP 调用传入请求数据和同步输出回调。
 type QoderRuntime interface {
 	Prepare(context.Context, Request) (Request, error)
 	Check(context.Context, Request, bool) error
@@ -33,14 +32,14 @@ type QoderRuntime interface {
 	QueueFailure(string, error)
 }
 
-// ExecutionObserver 只同步报告 HTTP 观测和等待心跳，不交给异步完成任务。
+// ExecutionObserver 在请求处理中同步报告 HTTP 观测和等待心跳。
 type ExecutionObserver interface {
 	Prepared(Request)
 	Selected(provider.ProviderSnapshot)
 	Waiting(string) scheduler.WaitObserver
 }
 
-// NewQoderExecutor 将固定依赖接到唯一的既有尝试状态机。
+// NewQoderExecutor 绑定 Qoder 执行依赖和尝试流程。
 func NewQoderExecutor(maxProviders int, waitTimeout time.Duration, concurrency *scheduler.ConcurrencyService, runtime QoderRuntime) *QoderUseCase {
 	return &QoderUseCase{MaxProviders: maxProviders, WaitTimeout: waitTimeout, concurrency: concurrency, runtime: runtime}
 }

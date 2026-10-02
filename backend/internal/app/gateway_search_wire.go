@@ -4,5 +4,5 @@ package app
 
 import "github.com/google/wire"
 
-// 搜索能力单独成组，避免向旧聚合装配继续增加依赖。
+// gatewaySearchProviders 汇总搜索工具和 HTTP 入口的构造函数。
 var gatewaySearchProviders = wire.NewSet(ProvideGatewaySearchTools, ProvideGatewaySearchHTTP, provideGrokSearchExecutor)

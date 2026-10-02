@@ -8,7 +8,7 @@ import (
 	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 )
 
-// WriteAnthropicPassthroughHeaders 保留显式过滤器与默认双 Header 透传的区别。
+// WriteAnthropicPassthroughHeaders 使用传入的过滤器，缺省时透传 Content-Type 和 x-request-id。
 func WriteAnthropicPassthroughHeaders(dst, src http.Header, filter *egress.CompiledHeaderFilter) {
 	if dst == nil || src == nil {
 		return

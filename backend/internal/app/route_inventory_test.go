@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// routeInventoryValue 只构造 handler 接收者和无副作用中间件；测试不执行用例或访问存储。
+// routeInventoryValue 构造 handler 接收者和用于收集路由的中间件。
 func routeInventoryValue(kind reflect.Type, depth int) reflect.Value {
 	if kind.Kind() == reflect.Pointer {
 		value := reflect.New(kind.Elem())
@@ -123,7 +123,7 @@ func TestNativeRouteInventory(t *testing.T) {
 	sort.Strings(expected)
 	sort.Strings(actual)
 	require.Equal(t, expected, actual)
-	// 停机升级后不保留旧管理路由，避免脚本继续依赖旧接口。
+	// 已下线的管理路由返回 404，调用脚本需要使用当前接口。
 	for _, legacy := range []string{"/api/v1/admin/accounts", "/api/v1/admin/accounts/1", "/api/v1/admin/openai/accounts/1/quota"} {
 		rec := httptest.NewRecorder()
 		r.ServeHTTP(rec, httptest.NewRequest("GET", legacy, nil))
@@ -131,7 +131,7 @@ func TestNativeRouteInventory(t *testing.T) {
 	}
 }
 
-// inventoryJWT 以下具名中间件仅标记 app 注入的安全边界；捕获链后提前中止，不执行用例。
+// inventoryJWT 标记 app 注入的认证中间件，收集处理顺序后中止请求。
 func inventoryJWT(c *gin.Context)         { c.Next() }
 func inventoryAdmin(c *gin.Context)       { c.Next() }
 func inventoryAudit(c *gin.Context)       { c.Next() }

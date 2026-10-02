@@ -40,7 +40,7 @@ func OpenAIProviderScheduleModel(c *gin.Context, provider *gatewayprovider.Execu
 	return gatewayprovider.ExecutionModelPolicy(provider).OpenAIUpstream(forwardModel, requireCompact, false)
 }
 
-// AppendOpenAIProviderProxyLogFields 只追加可公开定位代理的字段，避免把代理凭据写入日志。
+// AppendOpenAIProviderProxyLogFields 追加可公开的代理定位字段。
 func AppendOpenAIProviderProxyLogFields(fields []zap.Field, provider *gatewayprovider.ExecutionProvider) []zap.Field {
 	if provider == nil {
 		return fields
@@ -59,7 +59,7 @@ func AppendOpenAIProviderProxyLogFields(fields []zap.Field, provider *gatewaypro
 	return fields
 }
 
-// HandleOpenAISelectionBusinessError 保持 OpenAI handler 调用侧语义清晰。
+// HandleOpenAISelectionBusinessError 将选组业务错误写为 OpenAI 响应。
 func (h *Support) HandleOpenAISelectionBusinessError(c *gin.Context, err error, streamStarted bool) bool {
 	return handleGroupSelectionBusinessError(c, err, streamStarted, func(status int, errType string, message string, streamStarted bool) {
 		gatewayhttp.DefaultOpenAIErrorOutput().StreamError(c, status, errType, message, streamStarted)
@@ -293,7 +293,7 @@ func EnsureOpenAIPoolModeSessionHash(sessionHash string, provider *gatewayprovid
 	if sessionHash != "" || provider == nil || !provider.View().IsPoolMode() {
 		return sessionHash
 	}
-	// 为当前请求生成一次性粘性会话键，确保同提供商重试不会重新负载均衡到其他提供商。
+	// 为当前请求生成粘性会话键，同提供商重试复用该提供商。
 	return "openai-pool-retry-" + uuid.NewString()
 }
 
@@ -320,12 +320,12 @@ func cyberSessionScopeKey(apiKeyID int64, c *gin.Context) string {
 	return gatewaysession.CyberSessionScopeKey(apiKeyID, strings.TrimSpace(clientip.GetClientIP(c)), c.GetHeader("User-Agent"))
 }
 
-// handleGroupSelectionBusinessError 只绑定原 Key 读取与平台展示目录。
+// handleGroupSelectionBusinessError 读取 Key 并使用平台目录生成业务错误响应。
 func handleGroupSelectionBusinessError(c *gin.Context, err error, started bool, write func(int, string, string, bool)) bool {
 	return gatewayhttp.WriteGroupSelectionBusinessError(c, err, started, keyhttp.GetAPIKeyFromContext, gatewayprovider.ModelDisplayCatalogue{}, write)
 }
 
-// Support 只持有同一请求资源与既有用例端口，供文本、WS 与媒体适配共享。
+// Support 为文本、WS 和媒体适配提供共享的请求资源和用例接口。
 type Support struct {
 	Concurrency *gatewayhttp.ConcurrencyHelper
 	Sticky      gatewayhttp.SlotStickyBinder

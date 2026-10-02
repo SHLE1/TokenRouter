@@ -12,13 +12,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ProviderSchedulerDiagnostics 使用无凭据的只读诊断投影，评分由 scheduler 执行。
+// ProviderSchedulerDiagnostics 读取诊断数据并调用 scheduler 计算评分。
 type ProviderSchedulerDiagnostics interface {
 	GetOverview(context.Context, int64) (*policy.AdvancedSchedulerScoreDiagnosticResponse, error)
 	GetDetail(context.Context, int64, policy.AdvancedSchedulerScoreDiagnosticRequest) (*policy.AdvancedSchedulerScoreDiagnosticResponse, error)
 }
 
-// DiagnosticsHandler 只接收评分用例，不依赖提供商管理聚合或存储。
+// DiagnosticsHandler 通过评分诊断用例处理 HTTP 请求。
 type DiagnosticsHandler struct{ diagnostics ProviderSchedulerDiagnostics }
 
 func NewDiagnosticsHandler(source ProviderSchedulerDiagnostics) *DiagnosticsHandler {

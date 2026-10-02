@@ -15,7 +15,7 @@ const (
 // ErrQoderRefreshInProgress 表示锁持有者尚未发布新凭据，不能重用失败凭据。
 var ErrQoderRefreshInProgress = errors.New("qoder refresh in progress")
 
-// WaitForQoderRefresh 先立即回读，再按原间隔等待锁持有者发布；不再交换令牌。
+// WaitForQoderRefresh 先立即读取，再按间隔等待锁持有者发布 token。
 // readChanged 在原存储中读取最新身份，返回已轮换与读取错误。
 func WaitForQoderRefresh(ctx context.Context, readChanged func(context.Context) (bool, error)) error {
 	waitCtx, cancel := context.WithTimeout(ctx, qoderRefreshLockWait)

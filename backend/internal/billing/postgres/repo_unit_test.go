@@ -156,7 +156,7 @@ func TestReserveUsageBillingBatchImageBilling_StrictSubscriptionRejectsPartialHo
 			1.0, 1.0, 1.0,
 			0.8, 0.8, 0.8, `{}`,
 		))
-	// 批量任务尚未提交上游，只能预占剩余额度，不能沿用普通请求的溢出欠费结算语义。
+	// 批量任务在提交上游前预占剩余额度，额度不足时返回错误。
 	mock.ExpectExec(`(?s)UPDATE user_subscriptions\s+SET.*WHERE id = \$7`).
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), 1.0, 1.0, 1.0, preferredID).
 		WillReturnResult(sqlmock.NewResult(0, 1))

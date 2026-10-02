@@ -16,7 +16,7 @@ func classifySelectionFailureError(err error, fallback noProviderErrorClassifica
 	return gatewayhttp.RefineSelectionError(err, fallback)
 }
 
-// classifyNoProviderError 旧 Key 只投影最终分组，诊断与 HTTP 映射由所属模块完成。
+// classifyNoProviderError 从 Key 取得最终分组，调用诊断和 HTTP 错误映射。
 func classifyNoProviderError(
 	ctx context.Context,
 	diag routing.ModelAvailabilityDiagnoser,

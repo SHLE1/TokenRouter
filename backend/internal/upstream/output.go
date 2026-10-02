@@ -8,13 +8,13 @@ import (
 
 // OutputHead 是输出适配器需要的响应元数据，Header 在传递时复制。
 type OutputHead struct {
-	// Committed 只用于带入既有 HTTP 提交状态，不决定本次 attempt 的重试。
+	// Committed 记录输出适配器当前的 HTTP 提交状态。
 	Committed bool
 	Status    int
 	Header    http.Header
 }
 
-// OutputEvent 是逐段输出；Flush 不建立异步队列，错误同步返回执行方。
+// OutputEvent 是一个输出片段，写入和刷新错误同步返回执行方。
 type OutputEvent struct {
 	Data           []byte
 	Flush          bool
@@ -29,10 +29,10 @@ type OutputSink interface {
 	Emit(OutputEvent) error
 }
 
-// OutputContext 只在一次转换中持有字节输出适配，不保存入站 HTTP 请求或业务上下文。
+// OutputContext 提供一次转换所需的字节输出接口。
 type OutputContext struct{ Writer OutputWriter }
 
-// OutputWriter 让现有逐段编解码器保持写入顺序；实际 I/O 仍只发生在注入的 sink。
+// OutputWriter 按编解码器的调用顺序，通过 sink 写出数据。
 type OutputWriter interface {
 	io.Writer
 	Header() http.Header
@@ -119,10 +119,10 @@ func (w *sinkWriter) Flush() {
 // Header 只修改待发元数据，实际响应仍由 OutputSink 写入。
 func (c *OutputContext) Header(key, value string) { c.Writer.Header().Set(key, value) }
 
-// WriteHeaderNow 保留旧输出器提交空响应头的时机，不额外 Flush。
+// WriteHeaderNow 通过 sink.Begin 提交响应头，刷新由 Flush 触发。
 func (w *sinkWriter) WriteHeaderNow() { _ = w.begin() }
 
-// Data 按既有 HTTP Data 规则设置缺省内容类型；无 body 状态只提交响应头。
+// Data 设置缺省内容类型并写出响应，无 body 状态提交响应头。
 func (c *OutputContext) Data(status int, contentType string, body []byte) {
 	if len(c.Writer.Header()["Content-Type"]) == 0 {
 		c.Writer.Header()["Content-Type"] = []string{contentType}
@@ -146,10 +146,10 @@ func (c *OutputContext) NextEvent(semantic, terminal bool) {
 	}
 }
 
-// Status 只设置后续输出状态，不提前提交 HTTP 响应。
+// Status 设置后续输出使用的状态码，响应在写入时提交。
 func (c *OutputContext) Status(status int) { c.Writer.WriteHeader(status) }
 
-// JSON 保留原 Data 的提交时机，实际字节输出仍通过 sink。
+// JSON 编码并通过 Data 输出响应，编码失败时提交状态码。
 func (c *OutputContext) JSON(status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
@@ -160,7 +160,7 @@ func (c *OutputContext) JSON(status int, value any) {
 	c.Data(status, "application/json; charset=utf-8", body)
 }
 
-// Err 只读取本次同步输出失败，不改变各平台的继续读取或取消策略。
+// Err 返回本次同步输出的错误，后续读取或取消由平台决定。
 func (c *OutputContext) Err() error {
 	if writer, ok := c.Writer.(*deferredOutputWriter); ok {
 		if writer.output == nil {

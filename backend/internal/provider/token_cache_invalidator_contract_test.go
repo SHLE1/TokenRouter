@@ -274,7 +274,7 @@ func TestCompositeTokenCacheInvalidator_DeleteError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 新行为：删除失败只记录日志，不返回错误
+			// 删除失败时记录日志，调用返回成功。
 			// 这是因为缓存失效失败不应影响主业务流程
 			err := invalidator.InvalidateToken(context.Background(), tt.provider)
 			require.NoError(t, err)
@@ -498,7 +498,7 @@ func TestCheckTokenVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// 原表格直接验证所属实现，不在测试中保留第二份版本比较算法。
+			// 表格测试直接调用 token 版本比较实现。
 			repo := tokenVersionReader{value: tt.latestProvider, err: tt.repoErr}
 			_, isStale := providercore.CheckTokenVersion(context.Background(), tt.provider, repo)
 			require.Equal(t, tt.expectedStale, isStale)

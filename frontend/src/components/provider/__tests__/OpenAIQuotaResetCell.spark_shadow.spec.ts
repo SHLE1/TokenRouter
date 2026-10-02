@@ -89,7 +89,7 @@ describe('OpenAIQuotaResetCell — fork 查询-only 语义', () => {
     expect(wrapper.text()).toContain('admin.providers.openaiQuotaReset.count2')
     expect(wrapper.text()).toContain('admin.providers.openaiQuotaReset.expiresAt')
     expect(wrapper.text()).toContain('+1')
-    // 第二个按钮仅用于展开到期明细，不是上游重置入口。
+    // 明细按钮用于展开到期信息。
     expect(wrapper.findAll('button')).toHaveLength(2)
     wrapper.unmount()
   })

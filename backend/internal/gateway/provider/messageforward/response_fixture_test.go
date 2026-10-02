@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// newResponseRuntimeFixture 响应契约组合真实的 HTTP 写入器、原生参数投影和平台读取器。
+// newResponseRuntimeFixture 组合 HTTP 写入器、测试参数和平台读取器。
 func newResponseRuntimeFixture(options *messageforward.Options, deps messageforward.Dependencies, _ *egress.CompiledHeaderFilter) *messageforward.Runtime {
 	value := messageforward.Options{ResponseReadLimit: 128 * 1024 * 1024}
 	if options != nil {

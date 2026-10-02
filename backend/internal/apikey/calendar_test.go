@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// dailyUsageCalendarCache 只接收日期计算涉及的计数与 TTL，不实现其他缓存行为。
+// dailyUsageCalendarCache 记录日期计算用到的计数和 TTL。
 type dailyUsageCalendarCache struct {
 	APIKeyCache
 	key string
@@ -21,6 +21,7 @@ func (c *dailyUsageCalendarCache) IncrementDailyUsage(_ context.Context, key str
 	c.key = key
 	return nil
 }
+
 func (c *dailyUsageCalendarCache) SetDailyUsageExpiry(_ context.Context, key string, ttl time.Duration) error {
 	if c.key != key {
 		return fmt.Errorf("expiry key differs from counter key")

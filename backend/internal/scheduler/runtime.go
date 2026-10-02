@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// RuntimeTask 声明一个初始任务或周期任务，构造不执行 Run。
+// RuntimeTask 声明初始任务或周期任务，Run 由 Start 调用。
 type RuntimeTask struct {
 	Name      string
 	Interval  time.Duration
@@ -76,7 +76,7 @@ func (r *WorkerRuntime) run(task RuntimeTask) {
 	if ctx.Err() != nil {
 		return
 	}
-	// 周期计时先于立即首轮建立，保持旧 outbox 长首轮后的 tick 时序。
+	// 先建立周期计时器再执行立即首轮，首轮耗时超过周期时下一次 tick 已可读取。
 	var ticks <-chan time.Time
 	if task.Interval > 0 {
 		ticker := time.NewTicker(task.Interval)
@@ -102,7 +102,7 @@ func (r *WorkerRuntime) run(task RuntimeTask) {
 	}
 }
 
-// StopContext 固定首次停止结果；超时不把尚未完成的任务报告为已经清理。
+// StopContext 保存首次停止结果，超时时报告尚未完成的任务。
 func (r *WorkerRuntime) StopContext(ctx context.Context) error {
 	r.stopOnce.Do(func() {
 		r.mu.Lock()

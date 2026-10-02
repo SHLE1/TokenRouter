@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// GrokRefreshSuccessWriter 是 Grok 上游凭据轮换的持久化边界。
+// GrokRefreshSuccessWriter 保存 Grok 轮换后的凭据。
 // 实现必须比较上游尝试使用的完整凭据和代理，并将成功更新与调度器失效事件原子发布。
 type GrokRefreshSuccessWriter interface {
 	UpdateGrokOAuthCredentialsIfUnchanged(
@@ -100,7 +100,7 @@ func (api *OAuthRefreshAPI) getLocalLock(cacheKey string) *RefreshLock {
 //  5. 设置 _token_version + 更新 DB
 //  6. 释放锁
 //
-// RefreshIfNeeded 保留旧调用的取消返回形状。
+// RefreshIfNeeded 检查刷新资格并执行交换，取消时返回取消错误。
 func (api *OAuthRefreshAPI) RefreshIfNeeded(ctx context.Context, value *Record, executor OAuthRefreshExecutor, window time.Duration) (*OAuthRefreshResult, error) {
 	return api.refreshIfNeeded(ctx, value, executor, window, false)
 }
@@ -143,7 +143,7 @@ func (api *OAuthRefreshAPI) refreshIfNeeded(
 	}
 	defer release()
 
-	// 2. 从 DB 重读最新 provider（锁保护下，确保使用最新的 refresh_token）
+	// 2. 在锁内从数据库读取提供商的最新 refresh_token。
 	freshProvider, err := api.providerRepo.GetByID(ctx, provider.ID)
 	if err != nil {
 		if requestPath {
@@ -160,7 +160,7 @@ func (api *OAuthRefreshAPI) refreshIfNeeded(
 	if freshProvider.ID != provider.ID {
 		return nil, fmt.Errorf("%w: provider identity mismatch", ErrRefreshProviderRereadFailed)
 	}
-	// 请求路径对状态变化安全失败；后台路径跳过已停用提供商，显式管理端刷新使用独立入口。
+	// 请求期间状态变化时返回错误，后台跳过停用提供商，管理员刷新使用单独入口。
 	if !freshProvider.IsActive() {
 		if requestPath {
 			return nil, fmt.Errorf("%w: provider is not active", ErrRefreshProviderStateChanged)
@@ -199,7 +199,7 @@ func (api *OAuthRefreshAPI) refreshIfNeeded(
 	}
 	newCredentials, refreshErr := executor.Refresh(ctx, freshProvider)
 	if ctxErr := ctx.Err(); ctxErr != nil {
-		// 上游实现可能忽略取消并延迟返回凭据，超过尝试或周期边界后不得持久化。
+		// 上游忽略取消并迟到返回时，尝试或刷新周期已结束则丢弃凭据。
 		if retainCancelledAttempt && !requestPath {
 			return &OAuthRefreshResult{Provider: attemptedProvider}, ctxErr
 		}
@@ -224,7 +224,7 @@ func (api *OAuthRefreshAPI) refreshIfNeeded(
 				}, nil
 			}
 		}
-		// 保留失败上游调用使用的精确提供商快照，使调用方只条件更新该凭据版本，避免隔离并发重新授权的提供商。
+		// 将交换失败时的提供商快照交给调用方，后续状态更新按该版本比较。
 		result := &OAuthRefreshResult{Provider: attemptedProvider}
 		if requestPath && attemptedProvider.Platform == PlatformGrok {
 			return result, api.options.Platform.SnapshotError(refreshErr, attemptedProvider)
@@ -234,7 +234,7 @@ func (api *OAuthRefreshAPI) refreshIfNeeded(
 
 	// 5. 设置版本号 + 更新 DB
 	if newCredentials != nil {
-		// 克隆 map 避免修改 executor.Refresh() 返回的共享 map
+		// 复制 executor.Refresh() 返回的 map 后再合并字段。
 		cloned := CloneValues(newCredentials)
 		cloned["_token_version"] = api.options.Now().UnixMilli()
 		newCredentials = cloned
@@ -281,7 +281,7 @@ func (api *OAuthRefreshAPI) refreshIfNeeded(
 				}
 				return nil, api.options.Platform.ContainmentError(fmt.Errorf("grok OAuth success persisted but durable provider state is unavailable: %w", readErr))
 			}
-			// CAS 只修改凭据；返回持久化后的最新行，避免并发管理或调度变更被旧快照覆盖。
+			// CAS 更新凭据并返回最新记录，其他管理和调度字段保持数据库当前值。
 			freshProvider = durableProvider
 		} else if !freshProvider.IsCredentialShadow() {
 			writer, ok := api.providerRepo.(CredentialRefreshWriter)
@@ -301,7 +301,7 @@ func (api *OAuthRefreshAPI) refreshIfNeeded(
 				if current == nil || current.ID != attemptedProvider.ID {
 					return nil, fmt.Errorf("%w: provider not found after credential comparison", ErrRefreshProviderStateChanged)
 				}
-				// 管理变更优先；只复核最新状态，不能为了取回本轮结果再次交换 token。
+				// 管理更新发生后返回最新状态，本次交换结果被丢弃。
 				if requestPath && (!current.IsActive() || !executor.CanRefresh(current)) {
 					return nil, fmt.Errorf("%w: provider changed during refresh", ErrRefreshProviderStateChanged)
 				}
@@ -346,7 +346,7 @@ func (api *OAuthRefreshAPI) loadGrokDurableProviderAfterPersist(parent context.C
 	ctx, cancel := context.WithTimeout(cleanupParent, defaultRefreshPostPersistCleanupTimeout)
 	defer cancel()
 
-	// 成功轮换可能撤销旧凭据对应的缓存 access token，即使父上下文刚被取消也要在提交边界删除。
+	// 成功轮换后，上游可能撤销缓存中的 access token，因此提交时使用独立预算删除缓存。
 	if api.tokenCache != nil {
 		if err := api.tokenCache.DeleteAccessToken(ctx, cacheKey); err != nil {
 			api.options.Warn("oauth_refresh_post_persist_cache_delete_failed",
@@ -406,7 +406,7 @@ func MergeCredentials(oldCreds, newCreds map[string]any) map[string]any {
 	return newCreds
 }
 
-// snapshotRefreshRecord 固定交换前身份；nil 凭据仍按旧快照语义归一为空对象。
+// snapshotRefreshRecord 固定交换前的身份，nil 凭据按空对象保存。
 func snapshotRefreshRecord(value *Record) *Record {
 	copy := CloneRecord(value)
 	if copy != nil && copy.Credentials == nil {

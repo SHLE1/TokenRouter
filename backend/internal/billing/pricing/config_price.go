@@ -1,11 +1,11 @@
 package pricing
 
-// ApplyConfigPrice 在独立副本上应用价卡覆盖，保留 nil 图片价和倍率语义。
+// ApplyConfigPrice 在价格副本上应用价卡覆盖，图片价格可为 nil。
 func ApplyConfigPrice(pricing *ModelPricing, configPricing *ModelPricingEntry) *ModelPricing {
 	if configPricing == nil {
 		return pricing
 	}
-	// 防止修改 目录中的共享价格
+	// 复制目录价格后应用覆盖值。
 	cloned := *pricing
 	pricing = &cloned
 	ApplyConfigTokenPriceOverrides(pricing, configPricing)

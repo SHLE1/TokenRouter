@@ -16,7 +16,7 @@ import { formatDateTime } from '../utils/opsFormatters'
 const { t } = useI18n()
 const appStore = useAppStore()
 
-// 与 DataTable 一致：< 1024px 切换为卡片视图，避免宽表在移动端被截断。
+// 告警事件在宽度小于 1024px 时使用卡片视图。
 const isDesktopViewport = useMediaQuery(TABLE_DESKTOP_MEDIA_QUERY)
 
 const PAGE_SIZE = 10

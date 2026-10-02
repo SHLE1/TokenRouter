@@ -112,7 +112,7 @@ func (s *Compatible) SelectProviderForTokenCount(
 }
 
 // noAvailableOpenAISelectionErrorForRoutingWithDetails 仅在通用无提供商错误中追加调度诊断；
-// compact 能力错误和 fork 的模型业务错误继续保留原有类型与消息。
+// compact 不可用时返回能力错误，模型受分组限制时返回模型拒绝错误。
 func noAvailableOpenAISelectionErrorForRoutingWithDetails(ctx context.Context, requestedModel string, routingModel string, compactBlocked bool, details string, providers ...[]gatewayprovider.ExecutionProvider) error {
 	if compactBlocked {
 		return schedulercore.ErrNoAvailableCompactProviders
@@ -132,7 +132,7 @@ func noAvailableOpenAISelectionErrorForRoutingWithDetails(ctx context.Context, r
 	return openAINoAvailableSelectionError{message: message}
 }
 
-// openAINoAvailableSelectionError 保留原有可读消息，同时支持 errors.Is 统一分类。
+// openAINoAvailableSelectionError 提供错误消息，并支持 errors.Is 分类。
 type openAINoAvailableSelectionError struct {
 	message string
 }
@@ -157,7 +157,7 @@ func (s *Compatible) selectProviderForModelWithExclusions(ctx context.Context, g
 	return s.selectProviderForModelWithExclusionsForRouting(ctx, groupID, platform, sessionHash, requestedModel, routingModel, excludedIDs, requireCompact, stickyProviderID, requiredCapability)
 }
 
-// selectProviderForModelWithExclusionsForRouting 使用已解析的提供商层模型执行旧版调度。
+// selectProviderForModelWithExclusionsForRouting 使用已解析的提供商层模型执行基础调度。
 func (s *Compatible) selectProviderForModelWithExclusionsForRouting(ctx context.Context, groupID *int64, platform string, sessionHash string, requestedModel string, routingModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyProviderID int64, requiredCapability providercore.OpenAIEndpointCapability) (*gatewayprovider.ExecutionProvider, error) {
 	resolvedCtx, _, groupErr := s.resolveOpenAISchedulerGroup(ctx, groupID)
 	if groupErr != nil {
@@ -372,7 +372,7 @@ func (s *Compatible) getSchedulableProvider(ctx context.Context, providerID int6
 	return provider, nil
 }
 
-// filterGrokFreeQuotaProvidersForOpenAI 为 OpenAI 兼容旧版选择路径应用与
+// filterGrokFreeQuotaProvidersForOpenAI 为 OpenAI 兼容基础选择路径应用与
 // 本地免费层软性限制与通用选择使用同一规则。
 func (s *Compatible) filterGrokFreeQuotaProvidersForOpenAI(ctx context.Context, providers []gatewayprovider.ExecutionProvider) []gatewayprovider.ExecutionProvider {
 	if s == nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// UpdateOAuthCredentialsIfUnchanged 旧后台用例替身补入实际条件写契约，保留原写入计数、失败注入和提交后取消断言。
+// UpdateOAuthCredentialsIfUnchanged 模拟条件写入，记录次数并支持注入失败和提交后取消。
 func (r *tokenRefreshProviderRepo) UpdateOAuthCredentialsIfUnchanged(ctx context.Context, version provider.CredentialVersion, credentials map[string]any) (bool, error) {
 	current := r.providersByID[version.ID]
 	if current == nil {

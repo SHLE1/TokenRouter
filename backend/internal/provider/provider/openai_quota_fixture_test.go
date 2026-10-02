@@ -19,7 +19,7 @@ type quotaReadFixture interface {
 	GetProvider(context.Context, int64) (*provider.Record, error)
 }
 
-// 夹具只组装真实用例与技术工厂，不实现查询、恢复或缓存算法。
+// 夹具组合额度用例和平台构造函数，查询、恢复与缓存使用生产实现。
 type quotaFixture struct {
 	*provider.OpenAIQuotaService
 	factory *OpenAIQuotaFactory

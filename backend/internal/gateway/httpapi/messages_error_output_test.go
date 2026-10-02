@@ -33,8 +33,8 @@ func TestGatewayEnsureForwardErrorResponse_WritesFallbackWhenNotWritten(t *testi
 	assert.Equal(t, "Upstream request failed", errorObj["message"])
 }
 
-// TestGatewayEnsureForwardErrorResponse_AppendsSSEAfterWritten 验证Writer 已写后 ensureForwardErrorResponse 必须把错误以 SSE 形式追加，
-// 而不是 silent EOF。非 /responses 路径走 legacy data:{"type":"error"} 分支。
+// TestGatewayEnsureForwardErrorResponse_AppendsSSEAfterWritten 验证已写入响应后追加 SSE 错误。
+// 非 /responses 路径使用 data:{"type":"error"} 格式。
 func TestGatewayEnsureForwardErrorResponse_AppendsSSEAfterWritten(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -124,9 +124,7 @@ func TestGatewayForwardErrorAlreadyCommunicated(t *testing.T) {
 		require.False(t, reported)
 	})
 
-	// apikey 场景核心回归：复刻 GatewayService.handleErrorResponse 的 case 400 ——
-	// 原样透传上游 JSON body 后返回 err。此时错误已经完整告知客户端，
-	// handler 不得再追加 data:{"type":"error"} 帧，否则响应被污染成「JSON + 一行 data:」。
+	// API Key 上游 400 的 JSON 正文透传后返回错误，客户端已收到完整错误响应，此时结束输出。
 	t.Run("upstream 400 json passthrough via c.Data", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -140,12 +138,11 @@ func TestGatewayForwardErrorAlreadyCommunicated(t *testing.T) {
 		require.True(t, reported)
 		body := w.Body.String()
 		assert.NotContains(t, body, `data: {"type":"error"`)
-		// 客户端只应收到上游那一份错误，没有被追加第二份。
+		// 客户端收到一次上游错误。
 		assert.Equal(t, 1, strings.Count(body, `"type":"error"`))
 	})
 
-	// 流式已开始（已 flush 真实 SSE 事件，不只是 ping）+ 上游中途 400：
-	// HTTP 200 已固化，仍需 handler 补协议级终止帧，故不算「已完整告知」。
+	// SSE 事件 Flush 后，上游返回 400 时 HTTP 状态仍为 200，handler 需要补充终止帧。
 	t.Run("streaming 400 mid-stream still needs fallback", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -159,7 +156,7 @@ func TestGatewayForwardErrorAlreadyCommunicated(t *testing.T) {
 		require.False(t, reported)
 	})
 
-	// 防御边界：err 为 nil 时永远不算「已告知」，避免在成功路径误吞兜底逻辑。
+	// err 为 nil 时返回“尚未告知”。
 	t.Run("nil error never reports communicated", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

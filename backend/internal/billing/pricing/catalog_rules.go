@@ -13,7 +13,7 @@ var (
 	// AboveTierPricePattern 匹配目录中的长上下文绝对价字段。
 	// 服务档后缀和 cache 侧字段不参与阈值及倍率折算。
 	AboveTierPricePattern = regexp.MustCompile(`^(input|output)_cost_per_token_above_(\d+)k_tokens$`)
-	// CacheTierPricePattern 匹配 cache 侧长上下文绝对价字段，用于数据契约告警。
+	// CacheTierPricePattern 匹配缓存长上下文单价字段，供价格数据校验告警使用。
 	// 组 1 为缓存基础价字段，组 2 为 1 小时缓存时长段，组 3 为服务档后缀。
 	CacheTierPricePattern = regexp.MustCompile(`^(cache_(?:creation|read)_input_token_cost)(_above_1hr)?_above_\d+k_tokens((?:_[a-z]+)?)$`)
 )
@@ -223,7 +223,7 @@ func BuildModelIdentityCandidates(model string) []string {
 }
 
 func NormalizeModelNameForPricing(model string) string {
-	// 这里只清理资源路径和名称写法，不移除档位或改成其它产品。
+	// 规范资源路径和名称写法，保留型号及档位。
 	model = strings.TrimSpace(model)
 	model = strings.TrimLeft(model, "/")
 	model = strings.TrimPrefix(model, "models/")

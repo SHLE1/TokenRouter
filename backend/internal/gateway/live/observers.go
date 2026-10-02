@@ -5,8 +5,7 @@ import (
 	"sync"
 )
 
-// ObserverState 是已有进程观察者登记的明确技术投影。
-// 四个字段必须来自同一拥有者；适配层只传引用，不创建第二份取消表或等待计数。
+// ObserverState 引用进程中的观察者登记状态，四个字段需要来自同一个管理实例。
 type ObserverState struct {
 	Mutex   *sync.Mutex
 	Stopped *bool
@@ -14,7 +13,7 @@ type ObserverState struct {
 	Wait    *sync.WaitGroup
 }
 
-// Begin 在同一屏障内登记观察者，停止后不再接收任务。
+// Begin 在同一锁内登记观察者和等待计数，停止后返回 false。
 func (s ObserverState) Begin(owner string) (context.Context, func(), bool) {
 	s.Mutex.Lock()
 	defer s.Mutex.Unlock()
@@ -36,7 +35,7 @@ func (s ObserverState) Begin(owner string) (context.Context, func(), bool) {
 	}, true
 }
 
-// Stop 取消本地观察循环，不删除远端会话；由应用剩余预算约束等待。
+// Stop 取消本地观察循环，并在应用剩余预算内等待结束。远端会话按自身生命周期结束。
 func (s ObserverState) Stop(ctx context.Context) error {
 	s.Mutex.Lock()
 	*s.Stopped = true

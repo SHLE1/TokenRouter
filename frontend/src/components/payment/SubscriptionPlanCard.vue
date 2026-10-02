@@ -151,7 +151,7 @@ const quotaItems = computed(() => {
     .map(item => ({ key: item.key, label: item.label, value: formatPlanQuota(item.limit) }))
 })
 
-// 统计块按周期数量均分整行，只配置一两个周期时不留空格子。
+// 统计块按配置的周期数量均分整行。
 const quotaGridClass = computed(() => {
   if (quotaItems.value.length === 1) return 'grid-cols-1'
   if (quotaItems.value.length === 2) return 'grid-cols-2'

@@ -180,7 +180,7 @@ func (h *OpenAIOAuthHandler) RefreshToken(c *gin.Context) {
 		}
 	}
 
-	// 未指定 client_id 时，根据请求路径平台自动设置默认值，避免 repository 层盲猜
+	// 未传 client_id 时，按请求路径的平台填入默认值。
 	clientID := strings.TrimSpace(req.ClientID)
 	if clientID == "" {
 		platform := oauthPlatformFromPath(c)

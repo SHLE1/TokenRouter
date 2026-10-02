@@ -31,13 +31,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ---------------------------------------------------------------------------
-// 全链路冒烟（miniredis + fake repo/executor）：
-// 创建 → 入队 → Reserve → 执行（fake provider）→ 成功结算 → 取内容 → ack → 再取失败。
-// 选择 unit 层而非 integration 的原因：现有 integration 框架依赖 docker 化的 PG/Redis，
-// 创作台仓储需要 ent+PG 才能实例化；本测试用原生 Redis 队列与 transient store（miniredis）
-// 交叉验证原生 Public/Results/worker 全链路；PG 事务由独立 integration 测试验证。
-// ---------------------------------------------------------------------------
+// 冒烟测试使用 miniredis 和仓储、执行器替身，覆盖创建、入队、Reserve、执行、
+// 结算、取内容、ack，以及确认后的再次读取失败。
+// Redis 队列与 transient store 使用生产实现，Public、Results 和 worker 共同执行。
+// 创作台 PostgreSQL 仓储依赖 Ent 与 PostgreSQL，其事务由使用 Docker 的集成测试检查。
 
 // smokeFakeRunRepo 是 CreativeRunRepository 的内存实现（仅实现本链路用到的方法）。
 type smokeFakeRunRepo struct {

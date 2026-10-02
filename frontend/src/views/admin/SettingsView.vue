@@ -4865,7 +4865,7 @@
                 class="space-y-5"
                 data-testid="gateway-forwarding-openai"
               >
-                <!-- OpenAI Responses 首 token 统计口径 -->
+                <!-- OpenAI Responses 首 token 计时方式 -->
                 <div>
                   <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {{ t("admin.settings.gatewayForwarding.openaiTTFTMode") }}
@@ -7984,7 +7984,7 @@ function localText(zh: string, en: string): string {
 
 const isZhLocale = computed(() => locale.value.startsWith("zh"));
 
-// 支付帮助固定指向本仓库维护的指南，避免继续引用已漂移的上游文档。
+// 支付帮助指向本仓库的支付配置指南。
 const paymentGuideHref =
   "https://github.com/TokenFlux/TokenRouter/blob/main/docs/guides/payments/configuration.md";
 
@@ -8172,7 +8172,7 @@ function handleGatewaySectionKeydown(
 
 const { copyToClipboard } = useClipboard();
 
-// 只滚动标签容器的横轴，避免 scrollIntoView 连带推动页面并让内容被吸顶导航遮挡。
+// 按横轴滚动标签容器，页面保持当前滚动位置。
 function scrollTabHorizontallyIntoView(
   container: HTMLElement | null,
   activeSelector: string,
@@ -8200,7 +8200,7 @@ function scrollTabHorizontallyIntoView(
   container.scrollLeft = nextScrollLeft;
 }
 
-// 切换标签后自动把选中项滚动到容器中央，避免横向滚动时贴边裁切。
+// 切换标签后将选中项滚动到容器中央。
 function scrollActiveSettingsTabIntoView() {
   void nextTick(() => {
     scrollTabHorizontallyIntoView(
@@ -8483,7 +8483,7 @@ function normalizeUserPromptReplacementType(
     : "static";
 }
 
-// 新增规则默认使用固定文本，避免管理员未配置动态参数时保存失败。
+// 新规则默认使用固定文本，可直接保存。
 function createUserPromptReplacementRule(): UserPromptReplacementRule {
   return {
     id: `rule-${Date.now()}`,
@@ -8876,7 +8876,7 @@ const creativeModelCandidates = ref<CreativeModelCandidate[]>([]);
 const creativeModelCandidatesLoading = ref(false);
 const creativeModelCandidatesError = ref(false);
 
-// 创作台 worker 使用情况：进入功能标签页时轮询运行时状态，离开时停止，避免后台空转。
+// 进入功能标签页时轮询创作台 worker 状态，离开后停止轮询。
 const creativeWorkerStatus = ref<CreativeWorkerStatus | null>(null);
 let creativeWorkerStatusTimer: number | null = null;
 
@@ -9059,7 +9059,7 @@ function normalizeCreativeModelSettingsForSave(): CreativeModelSetting[] | null 
     const candidate = creativeModelCandidates.value.find(
       (entry) => creativeModelSettingKey(entry) === creativeModelSettingKey({ group_id: groupID, model }),
     );
-    // 候选已知时只提交平台实际支持的能力，避免旧 Gemini inpaint 被重新写回。
+    // 按平台候选能力过滤提交值，已移除的 Gemini inpaint 会被过滤。
     const operations = creativeOperationChoices.filter(
       (operation) => item.operations.includes(operation) && (candidate?.operations.includes(operation) ?? true),
     );
@@ -9091,7 +9091,7 @@ async function loadCreativeModelCandidates() {
   }
 }
 
-// 排名依据必须始终显示，避免用户无法解释排行名次。
+// 显示用于排序的指标，供用户查看排名依据。
 function ensureUsageRankingSortMetricVisible() {
   switch (form.usage_ranking_sort_by) {
     case "requests":
@@ -9294,7 +9294,7 @@ function selectCaptchaProvider(provider: CaptchaProviderSelection): void {
 }
 
 // 天御中国站与国际站是两套独立提供商体系，控制台与文档入口不通用，
-// 按当前选择的站点给出对应链接，避免管理员在错误的控制台里找不到 CaptchaAppId。
+// 按所选站点提供控制台链接，供管理员查找 CaptchaAppId。
 const tencentCaptchaLinks = computed(() =>
   form.tencent_captcha_region === "intl"
     ? {
@@ -10707,7 +10707,7 @@ async function saveSettings() {
       );
       return;
     }
-    // Validate URL fields — novalidate disables browser-native checks, so we validate here
+    // 表单设置了 novalidate，URL 字段由此处校验。
     const isValidHttpUrl = (url: string): boolean => {
       if (!url) return true;
       try {
@@ -11852,7 +11852,7 @@ let providersLoadSeq = 0;
 function normalizePaymentProvider(provider: ProviderInstance): ProviderInstance {
   return {
     ...provider,
-    // 兼容旧后端把空 supported_types 序列化成 null 的情况，避免卡片和弹窗读取 includes 时抛错。
+    // 将接口返回的 null supported_types 转为空数组，供卡片和弹窗调用 includes。
     supported_types: Array.isArray(provider.supported_types)
       ? provider.supported_types
       : [],
@@ -11866,7 +11866,7 @@ function isProviderUpdating(providerId: number): boolean {
 }
 
 function setProviderUpdating(providerId: number, updating: boolean) {
-  // 同一个服务商的更新必须串行化，避免快速连点产生乱序 PATCH 和列表回写。
+  // 同一服务商的 PATCH 和列表回写依次执行。
   const next = new Set(providerUpdatingIds.value);
   if (updating) {
     next.add(providerId);
@@ -12014,7 +12014,7 @@ async function loadProviders() {
   providersLoading.value = true;
   try {
     const res = await adminAPI.payment.getProviders();
-    // 只接受最后一次加载结果，避免较慢的旧请求覆盖较新的服务商列表。
+    // 按请求序号接收最后一次加载的服务商列表。
     if (seq === providersLoadSeq) {
       providers.value = (res.data || []).map(normalizePaymentProvider);
     }
@@ -12151,7 +12151,7 @@ async function handleToggleType(provider: ProviderInstance, type: string) {
     const currentProvider =
       providers.value.find((item) => item.id === provider.id) ?? provider;
     if (currentProvider.provider_key === "stripe") {
-      // Stripe Checkout 的支付方式由 Stripe Dashboard 控制，管理端不再写入无效子方式。
+      // Stripe Checkout 的支付方式由 Stripe Dashboard 控制。
       return;
     }
     const supportedTypes = Array.isArray(currentProvider.supported_types)
@@ -12233,9 +12233,9 @@ onMounted(() => {
   loadProviders();
 });
 
-// bypass_registration 与身份同步三开关仅在 internal_only 模式下生效。切换 policy 到其它值时，
-// 立即把相关字段重置为 false，避免保存请求里残留旧值。后端 admin handler 与
-// 配置加载层都有 coerce 兜底，这里是交互层的同步而非安全防线。
+// bypass_registration 与三个身份同步开关在 internal_only 模式下生效。
+// policy 切到其它值时，将这四个字段重置为 false，保存请求随之更新。
+// 后端 admin handler 和配置加载层也会规范化这些值。
 watch(
   () => form.dingtalk_connect_corp_restriction_policy,
   (policy) => {
@@ -12258,7 +12258,7 @@ watch(
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset;
 }
 
-/* 网关页多出一行二级标签，胶囊外壳改用弹窗圆角，避免两行高度下两端过度收拢。 */
+/* 网关页有两行标签，外壳使用弹窗圆角。 */
 .settings-tabs-shell-stacked {
   @apply rounded-dialog;
 }
@@ -12337,7 +12337,7 @@ watch(
   @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap leading-none;
 }
 
-/* 网关二级标签与主标签共用吸顶容器，避免双层导航互相遮挡。 */
+/* 网关二级标签与主标签放在同一吸顶容器中。 */
 .gateway-section-tabs-scroll {
   @apply mt-1.5 overflow-x-auto border-t border-gray-100 pt-1.5 dark:border-dark-700;
   -ms-overflow-style: none;
@@ -12396,7 +12396,7 @@ watch(
 </style>
 
 <style>
-/* 暗色模式 Tab 覆盖必须放在非 scoped 样式块，避免生产构建丢弃后导致未激活 Tab 不可读。 */
+/* 暗色 Tab 样式放在非 scoped 块中，供生产构建保留。 */
 .dark .settings-tabs-shell {
   border-color: theme('borderColor.dark.600');
   background: rgb(15 15 16 / 0.86);

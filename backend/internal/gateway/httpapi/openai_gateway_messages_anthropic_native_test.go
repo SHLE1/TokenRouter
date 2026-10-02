@@ -18,10 +18,8 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// 国产供应商原生 Anthropic 直通路径（api_protocol=anthropic）的 reasoning_effort 记录。
-// 回归背景：该路径此前从不提取 Claude 协议的 output_config.effort，也不做
-// thinking-enabled 兜底，导致 kimi/zhipu/deepseek 平台分组的 /v1/messages 请求
-// usage_log.reasoning_effort 恒为 NULL。
+// 这些测试检查 api_protocol=anthropic 的国产供应商如何记录 reasoning_effort。
+// /v1/messages 使用 output_config.effort，启用 thinking 且未指定 effort 时使用对应模型的默认值。
 
 func nativeAnthropicTestProvider() *gatewayprovider.ExecutionProvider {
 	return &gatewayprovider.ExecutionProvider{
@@ -105,7 +103,7 @@ func TestNativeAnthropicPassthroughRecordsOutputConfigEffort(t *testing.T) {
 }
 
 func TestNativeAnthropicPassthroughThinkingEnabledFallback(t *testing.T) {
-	// 未显式传 effort，但 thinking 已启用：k3 属于 passback-required 白名单，应兜底记为 high。
+	// 启用 thinking 且省略 effort 时，passback-required 白名单中的 k3 使用 high。
 	body := []byte(`{"model":"k3","max_tokens":32,"stream":false,` +
 		`"thinking":{"type":"enabled","budget_tokens":1024},` +
 		`"messages":[{"role":"user","content":"hi"}]}`)
@@ -138,7 +136,7 @@ func TestNativeAnthropicPassthroughStreamRecordsEffort(t *testing.T) {
 }
 
 func TestNativeAnthropicPassthroughNoEffortStaysNil(t *testing.T) {
-	// 既无 output_config.effort 也未启用 thinking：保持 nil，不做语义注入。
+	// 省略 output_config.effort 且未启用 thinking 时，结果为 nil。
 	body := []byte(`{"model":"k3","max_tokens":32,"stream":false,` +
 		`"messages":[{"role":"user","content":"hi"}]}`)
 	upstream := &auxiliaryHTTPRecorder{resp: nativeAnthropicBufferedResponse()}

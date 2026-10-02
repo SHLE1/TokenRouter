@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// PlanEndpoints 是支付页面需要的套餐 HTTP 投影，由 billing 的处理器实现。
+// PlanEndpoints 是支付页面使用的套餐 HTTP 接口，由 billing 的处理器实现。
 type PlanEndpoints interface {
 	GetPlans(*gin.Context)
 	ListPlans(*gin.Context)

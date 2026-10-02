@@ -85,7 +85,7 @@ func TestUpstreamQueriesStopOwnsDetachedWork(t *testing.T) {
 	require.Equal(t, reads, r.reads.Load())
 }
 
-// TestUpstreamQueriesStopTimeoutRemainsFailure 验证不合作的供应商执行仍必须报告在途超时，迟到完成不得改写首次停止结果。
+// TestUpstreamQueriesStopTimeoutRemainsFailure 检查供应商忽略取消时报告超时，后续停止返回首次结果。
 func TestUpstreamQueriesStopTimeoutRemainsFailure(t *testing.T) {
 	s, _, e := newUsageQueryTest(t, true)
 	waiter := make(chan error, 1)
@@ -127,7 +127,7 @@ func TestUpstreamUsageResultCopiesAllValues(t *testing.T) {
 	require.Nil(t, CloneUpstreamUsageResult(&UpstreamUsageQueryResult{}).Balances)
 }
 
-// TestUpstreamQueriesNilCompatibility 验证缺失实例沿用原不可用错误和空指标，不因委托增加 panic。
+// TestUpstreamQueriesNilCompatibility 检查实例缺失时返回不可用错误和空指标。
 func TestUpstreamQueriesNilCompatibility(t *testing.T) {
 	var s *UpstreamUsageService
 	_, err := s.QueryProvider(context.Background(), 1)

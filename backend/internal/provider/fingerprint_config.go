@@ -12,13 +12,13 @@ type CodexFingerprintMode string
 
 const (
 	// CodexFingerprintOff 不做任何收敛，原样透传客户端标识。
-	// 这是默认值：收敛是显式 opt-in 的（见 GetCodexFingerprintMode）。
+	// 指纹模式默认关闭，管理员开启后生效。
 	CodexFingerprintOff CodexFingerprintMode = "off"
 	// CodexFingerprintDevice 仅收敛 installation_id 为提供商级恒定值。
 	// 上游看到 1 台设备 + 多会话（每用户各自的 session）。
 	CodexFingerprintDevice CodexFingerprintMode = "device"
 	// CodexFingerprintSession 收敛 installation_id + session_id，
-	// thread_id 按客户端原始 session-id 确定性派生（每个真实 Codex 会话一个独立线程）。
+	// thread_id 从客户端 session-id 派生，每个 Codex 会话对应独立线程。
 	// 上游看到 1 台设备 + 1 会话 + N 线程，最接近正常用户 spawn 子代理的模式。
 	CodexFingerprintSession CodexFingerprintMode = "session"
 	// CodexFingerprintFull 收敛所有标识：installation_id + session_id + thread_id。
@@ -62,7 +62,7 @@ func ShouldEnsureCodexFingerprintSeedForExtraUpdates(updates map[string]any) boo
 	return CodexFingerprintModeRequiresSeed(CodexFingerprintModeFromExtra(updates))
 }
 
-// GetCodexFingerprintMode 仅对 OAuth 类提供商读取原有指纹模式，其他提供商保持关闭。
+// GetCodexFingerprintMode 返回 OAuth 提供商的指纹模式，其他类型返回关闭。
 func (a *Record) GetCodexFingerprintMode() CodexFingerprintMode {
 	if a == nil || !a.IsOpenAIOAuthLike() {
 		return CodexFingerprintOff

@@ -2,7 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import Skeleton from './Skeleton.vue'
 
-// 骨架复用真实表头和列宽；调用方传入当前可见列数，避免条件列错位。
+// 骨架使用表头的列宽，调用方传入当前可见列数。
 withDefaults(defineProps<{
   columns: number
   rows?: number

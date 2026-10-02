@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// RoutingState 固化入口或当次尝试的分组、协议与模型计划，不持有共享缓存指针。
+// RoutingState 复制入口或当前尝试的分组、协议和模型计划。
 type RoutingState struct {
 	group          *routing.Group
 	plan           routing.RoutePlan
@@ -25,7 +25,7 @@ func RoutingStateFromContext(ctx context.Context) RoutingState {
 	return state
 }
 
-// WithRoutingState 只保存已构造的不可变值；身份与资金资格仍由原准入步骤决定。
+// WithRoutingState 保存已构造的路由状态，身份和资金资格由准入步骤检查。
 func WithRoutingState(ctx context.Context, state RoutingState) context.Context {
 	return context.WithValue(ctx, routingStateKey{}, state)
 }

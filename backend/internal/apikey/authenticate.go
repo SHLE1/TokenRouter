@@ -7,7 +7,7 @@ import (
 
 // @project-doc docs/architecture/gateway_request_lifecycle.md#apikey_authentication
 // AccessSnapshot 明确区分凭据所有者、付款用户与行为成员；资金来源由 billing 另行解析。
-// key 仅属于这次认证，不能反向写入 L1/L2 快照。
+// key 是本次认证的独立副本，L1/L2 保存各自的快照。
 type AccessSnapshot struct {
 	KeyID          int64
 	OwnerUserID    int64
@@ -18,7 +18,7 @@ type AccessSnapshot struct {
 	fastModePolicy string
 }
 
-// KeyView 为同一次请求的网关提供访问策略投影，不包含旧 service 实体。
+// KeyView 将认证快照转换为本次网关请求使用的 APIKey。
 func (a *AccessSnapshot) KeyView() *APIKey {
 	if a == nil {
 		return nil
@@ -59,7 +59,7 @@ func (e *AuthenticationFailure) Error() string {
 func (e *AuthenticationFailure) Unwrap() error { return e.Cause }
 
 // Authenticate 保留 Key/团队/成员限额/IP/付款用户的既有检查顺序。
-// 失败时若返回非空快照，它只供诊断使用，不代表通过认证。
+// 认证失败时，返回的非空快照用于诊断。调用方根据错误判断认证结果。
 // Key 过期与额度耗尽仍由之后的资金准入处理，非消费入口可以读取已有数据。
 func (s *APIKeyService) Authenticate(ctx context.Context, credential string, input AuthenticationInput) (*AccessSnapshot, error) {
 	key, err := s.GetByKey(ctx, credential)

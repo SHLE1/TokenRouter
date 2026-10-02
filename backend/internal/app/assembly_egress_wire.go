@@ -17,7 +17,7 @@ import (
 	"github.com/google/wire"
 )
 
-// egress 模块的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
+// egressAssemblyProviders 汇总 egress 模块的 Wire provider。
 var egressAssemblyProviders = wire.NewSet(
 	wire.Bind(new(provideradapter.OpenAITokenProfileResolver), new(*provider.TLSProfiles)),
 	wire.Bind(new(provideradapter.OpenAITokenRouterReader), new(*egress.TLSFingerprintRouterService)),

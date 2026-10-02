@@ -105,7 +105,7 @@ const HEADER_OVERRIDE_MAX_VALUE_LENGTH = 8192
 // eslint-disable-next-line no-control-regex
 const HEADER_VALUE_INVALID_PATTERN = /[\x00-\x08\x0a-\x1f\x7f]/
 
-/** 长度限制按 UTF-8 字节计（与后端 Go len() 对齐，避免多字节值前端放行后端 400） */
+/** 长度按 UTF-8 字节计算，与后端 Go len() 的检查一致。 */
 const HEADER_TEXT_ENCODER = new TextEncoder()
 function utf8ByteLength(value: string): number {
   return HEADER_TEXT_ENCODER.encode(value).length
@@ -206,9 +206,9 @@ export function serializeHeaderOverrideRows(rows: HeaderOverrideRow[]): string {
   return JSON.stringify(record, null, 2)
 }
 
-// ========== Grok 自定义转发地址（base_url 仅改写转发端点，凭证生命周期不受影响） ==========
+// Grok 自定义转发地址，base_url 指定转发端点，凭证使用授权和刷新端点。
 
-/** OAuth 提供商建号/刷新默认写入的 CLI 网关 host——只有它视同"未定制"。 */
+/** OAuth 提供商创建或刷新时写入的默认 CLI 网关 host，视为“未定制”地址。 */
 const GROK_DEFAULT_GATEWAY_HOST = 'cli-chat-proxy.grok.com'
 
 /**
@@ -346,7 +346,7 @@ export function defaultCNAdaptiveBaseUrls(
 
 // ===== 国产供应商用量单元格可见性（单一事实源） =====
 // CNProviderQuotaCell / CNProviderBalanceCell 与 ProviderUsageCell 的占位符判定
-// 共用，避免多处复制条件后一处改另一处漏改。
+// 共用同一组显示条件。
 
 export function cnQuotaCellVisible(platform: string, providerMode: string): boolean {
   return (platform === 'kimi' || platform === 'zhipu') && providerMode === 'coding'
@@ -415,8 +415,8 @@ export function readPlanType(credentials: Record<string, unknown> | undefined | 
 /**
  * 构建 plan_type 下拉选项：清空 + Plus/Pro/Free 预设。
  * 若当前值是某预设的别名（如 chatgptpro↔Pro），用当前的 canonical 值占据该
- * 标签位（保留 canonical，显示友好标签，避免重复项）；若是完全预设外的值
- * （如 team 或异常值），追加为一项，避免编辑时下拉丢失原值。
+ * 标签位（保留 canonical，显示友好标签并去重）；预设外的值
+ * （如 team 或异常值）追加为选项，编辑时可继续显示当前值。
  */
 export function buildPlanTypeOptions(current: string, clearLabel: string): PlanTypeOption[] {
   const cur = (current || '').trim()

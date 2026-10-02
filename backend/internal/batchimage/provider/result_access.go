@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// ResultProviders 只读取任务已经绑定的执行提供商，不参与重新选号。
+// ResultProviders 读取任务已绑定的执行提供商。
 type ResultProviders interface {
 	GetByID(context.Context, int64) (*provider.Record, error)
 }
@@ -81,7 +81,7 @@ func (b boundProvider) Cancel(ctx context.Context, job *batchimage.BatchImageJob
 	return b.platform.Cancel(ctx, job, provider.CloneRecord(b.provider))
 }
 
-// Process 沿用执行阶段的提供商资格检查，读取失败保留原错误。
+// Process 检查执行阶段的提供商资格，读取失败时返回查询错误。
 func (a ResultAccess) Process(ctx context.Context, job *batchimage.BatchImageJob) (batchimage.BoundProvider, error) {
 	selected, ok := a.Registry.Get(job.Platform)
 	if !ok || selected == nil {

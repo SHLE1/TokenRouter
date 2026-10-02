@@ -19,7 +19,7 @@ const SelectStub = defineComponent({
   name: 'PaginationSelectStub',
   props: ['modelValue', 'options'],
   setup(props) {
-    // 真实 Select 的 36px 由 .input 基线(min-h-9)提供,stub 以 h-9 顶替这一高度契约。
+    // Select 的 36px 来自 .input 的 min-h-9，stub 用 h-9 模拟该高度。
     return () => h('button', { class: 'select-trigger h-9' }, String(props.modelValue))
   }
 })
@@ -44,7 +44,7 @@ describe('36px control sizing', () => {
     expect(globalStyle).toContain('@apply inline-flex h-9 w-9 items-center justify-center rounded-control p-0;')
     expect(globalStyle).toContain('@apply w-full rounded-control px-4 py-1.5 text-sm;')
     expect(globalStyle).toContain('@apply flex h-9 items-center gap-3 rounded-control py-1.5;')
-    // 三个下拉触发器以模板组合 input input-trigger 共享 36px 基线,不再各自复制配方。
+    // 三个下拉触发器在模板中组合 input input-trigger，共用 36px 基线。
     expect(selectSource).toContain("'input input-trigger'")
     expect(proxySelectorSource).toContain("'input input-trigger'")
     expect(dateRangePickerSource).toContain("'input input-trigger'")
@@ -54,7 +54,7 @@ describe('36px control sizing', () => {
     // 弹层内的确认按钮直接使用共享按钮配方。
     expect(dateRangePickerSource).toContain('class="btn btn-primary btn-sm h-8"')
     expect(dateRangePickerSource).not.toContain('.date-picker-apply')
-    // 分页控件直接由模板里的 h-9 提供 36px 基线,不再有局部高度覆盖。
+    // 分页控件由模板中的 h-9 提供 36px 高度。
     expect(paginationSource).toContain('pagination-jump-button btn btn-ghost btn-sm h-9')
     expect(paginationSource).not.toContain('--pagination-control-height')
   })

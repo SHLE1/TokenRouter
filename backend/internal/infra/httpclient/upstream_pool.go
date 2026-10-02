@@ -45,7 +45,7 @@ type TransportProtocol struct {
 	DisableHTTP2 bool
 }
 
-// UpstreamRequestOptions 是一次执行使用的技术参数快照，不持有全局配置或业务实体。
+// UpstreamRequestOptions 保存本次出站请求的代理、连接隔离和传输参数。
 type UpstreamRequestOptions struct {
 	ProxyURL   string
 	ProviderID int64
@@ -109,7 +109,7 @@ func (s *UpstreamPool) Do(req *http.Request, opts UpstreamRequestOptions) (*http
 	return resp, nil
 }
 
-// UpstreamSettings 描述已解析的连接池与响应头超时，不持有配置或平台实体。
+// UpstreamSettings 包含已解析的连接池参数和响应头超时。
 type UpstreamSettings struct {
 	MaxIdleConns          int           // 最大空闲连接总数
 	MaxIdleConnsPerHost   int           // 每主机最大空闲连接数

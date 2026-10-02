@@ -12,8 +12,7 @@ func TestUpstreamResponseModelObserver_ObservesServiceTier(t *testing.T) {
 	t.Parallel()
 
 	observer := &ResponseObserver{}
-	// 上游约束：非终止且有类型的事件（response.created）回显的是请求档位而非
-	// 实际处理档位，忽略。
+	// response.created 等有类型的非终止事件回显请求档位，实际处理档位从终态读取。
 	observer.ObserveOpenAI([]byte(`{"type":"response.created","response":{"model":"gpt-5.5","service_tier":"flex"}}`), "response.created")
 	require.Empty(t, observer.ServiceTier())
 

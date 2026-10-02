@@ -143,7 +143,7 @@ func TestObserveGeminiImageOutputs_KeepsLargestChunk(t *testing.T) {
 	c.ObserveImagesForTest([]byte(geminiImageResponse(
 		`{"inlineData":{"mimeType":"image/png","data":"` + geminiTestPNG + `"}},` +
 			`{"inlineData":{"mimeType":"image/png","data":"` + geminiTestPNG + `"}}`)))
-	// 收尾 chunk 只带 usageMetadata，不能把已数到的张数抹掉。
+	// 仅含 usageMetadata 的收尾 chunk 保持已累计图片数。
 	c.ObserveImagesForTest([]byte(`{"usageMetadata":{"promptTokenCount":9}}`))
 
 	require.Equal(t, 2, c.Images)

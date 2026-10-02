@@ -26,7 +26,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-// TestSystemLockOwnership 验证系统锁只使用测试框架的隔离数据库，不接触生产数据。
+// TestSystemLockOwnership 使用测试框架的隔离数据库检查锁所有权。
 func TestSystemLockOwnership(t *testing.T) {
 	ctx := context.Background()
 	integrationDB := maintenanceDatabase(t)

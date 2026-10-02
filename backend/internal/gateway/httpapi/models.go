@@ -26,7 +26,7 @@ type ModelsBackend interface {
 	SafeModelSegment(string) bool
 }
 
-// GeminiModelReader 只允许对已选择的执行目标读取模型资源，不暴露提供商凭据。
+// GeminiModelReader 读取已选执行目标的模型资源。
 type GeminiModelReader interface {
 	Read(context.Context, string) (*ModelHTTPResponse, error)
 }
@@ -49,7 +49,7 @@ func NewModelsHandler(backend ModelsBackend, catalog ModelsCatalog) *ModelsHandl
 	return &ModelsHandler{backend: backend, catalog: catalog}
 }
 
-// customListEnabled 复用 routing 的分组规则，仅投影列表配置。
+// customListEnabled 从 routing 的分组规则读取自定义列表配置。
 func customListEnabled(g *routing.Group) bool {
 	if g == nil {
 		return false
@@ -88,11 +88,11 @@ func (h *ModelsHandler) Models(c *gin.Context) {
 		platform = forcedPlatform
 	}
 
-	// 统一按分组映射、提供商映射和分组白名单解析真实可请求模型。
+	// 按分组映射、提供商映射和分组白名单解析可请求模型。
 	resolution := h.backend.Resolve(c.Request.Context(), groupID, platform)
 	availableModels := routing.RequestableModelIDs(resolution.Models)
 	if apiKey != nil && apiKey.Group != nil && customListEnabled(apiKey.Group) {
-		// 自定义列表只能与已通过分组策略和提供商校验的模型取交集，不能重新加入被拒绝的模型。
+		// 自定义列表取已通过分组策略和提供商校验的模型交集。
 		availableModels = FilterModelsByCustomList(availableModels, nil, apiKey.Group.ModelsListConfig.Models)
 		availableModels = apikey.AppendAPIKeyModelAliases(availableModels, apiKey.ModelMapping)
 		h.WriteCustomModelsList(c, platform, availableModels)

@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// UpdateUsageSessionWindowEndIfUnchanged 保留原窗口更新的独立提交与尽力事件，不覆盖新身份或较新窗口。
+// UpdateUsageSessionWindowEndIfUnchanged 比较身份和窗口后独立提交更新，再尝试发布事件。
 func (r *ProviderStore) UpdateUsageSessionWindowEndIfUnchanged(ctx context.Context, v provider.UsageObservationVersion, observed *time.Time, end time.Time) (bool, error) {
 	where, values, err := usageObservationPredicate(v, 5, false)
 	if err != nil {

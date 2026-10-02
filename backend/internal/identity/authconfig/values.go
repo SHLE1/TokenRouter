@@ -1,6 +1,6 @@
 package authconfig
 
-// LinuxDoConnectConfig 是身份认证的独立配置值，保留原 mapstructure 标签。
+// LinuxDoConnectConfig 包含 LinuxDo 登录配置。
 type LinuxDoConnectConfig struct {
 	Enabled             bool   `mapstructure:"enabled"`
 	ClientID            string `mapstructure:"client_id"`
@@ -21,7 +21,7 @@ type LinuxDoConnectConfig struct {
 	UserInfoUsernamePath string `mapstructure:"userinfo_username_path"`
 }
 
-// WeChatConnectConfig 是身份认证的独立配置值，保留原 mapstructure 标签。
+// WeChatConnectConfig 包含微信登录配置。
 type WeChatConnectConfig struct {
 	Enabled             bool   `mapstructure:"enabled"`
 	AppID               string `mapstructure:"app_id"`
@@ -41,7 +41,7 @@ type WeChatConnectConfig struct {
 	FrontendRedirectURL string `mapstructure:"frontend_redirect_url"`
 }
 
-// OIDCConnectConfig 是身份认证的独立配置值，保留原 mapstructure 标签。
+// OIDCConnectConfig 包含 OIDC 登录配置。
 type OIDCConnectConfig struct {
 	Enabled                 bool   `mapstructure:"enabled"`
 	ProviderName            string `mapstructure:"provider_name"` // 显示名: "Keycloak" 等
@@ -72,7 +72,7 @@ type OIDCConnectConfig struct {
 	UserInfoUsernamePath string `mapstructure:"userinfo_username_path"`
 }
 
-// DingTalkConnectConfig 是身份认证的独立配置值，保留原 mapstructure 标签。
+// DingTalkConnectConfig 包含钉钉登录配置。
 type DingTalkConnectConfig struct {
 	Enabled             bool   `mapstructure:"enabled"`
 	ClientID            string `mapstructure:"client_id"`
@@ -114,7 +114,7 @@ type DingTalkConnectConfig struct {
 	AttributeSyncOverwritePolicy string   `mapstructure:"attribute_sync_overwrite_policy"`
 }
 
-// EmailOAuthProviderConfig 是身份认证的独立配置值，保留原 mapstructure 标签。
+// EmailOAuthProviderConfig 包含基于邮箱的 OAuth 提供方配置。
 type EmailOAuthProviderConfig struct {
 	Enabled             bool   `mapstructure:"enabled"`
 	ClientID            string `mapstructure:"client_id"`

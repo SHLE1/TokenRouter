@@ -42,7 +42,7 @@ func (f archiveProxiesFixture) ImportForProviderBinding(context.Context, []egres
 	return map[string]int64{"known": 7}, egress.ProxyImportResult{ProxyCreated: 1}, nil
 }
 
-// TestArchiveExportPreservesOrderAndIndependentSecrets 验证include_proxies 的报错仍发生在提供商读取和影子过滤之后；导出副本含显式备份凭据但不可回写来源。
+// TestArchiveExportPreservesOrderAndIndependentSecrets 检查 include_proxies 错误在提供商读取和影子过滤后返回，导出数据使用独立凭据副本。
 func TestArchiveExportPreservesOrderAndIndependentSecrets(t *testing.T) {
 	events := []string{}
 	mapping := map[string]any{"alias": "upstream"}
@@ -65,7 +65,7 @@ func TestArchiveExportPreservesOrderAndIndependentSecrets(t *testing.T) {
 	require.Equal(t, "upstream", mapping["alias"])
 }
 
-// TestArchiveImportRetainsPartialResultsAndLazyDefaults 验证代理部分已成功后才读取一次动态模板；提供商逐项失败保留原部分成功与输入隔离。
+// TestArchiveImportRetainsPartialResultsAndLazyDefaults 检查代理导入后读取一次动态模板，提供商逐项处理并返回部分成功结果，输入使用独立副本。
 func TestArchiveImportRetainsPartialResultsAndLazyDefaults(t *testing.T) {
 	events := []string{}
 	records := &archiveProvidersFixture{events: &events}

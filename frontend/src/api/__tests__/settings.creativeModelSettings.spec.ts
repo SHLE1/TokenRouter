@@ -1,4 +1,4 @@
-// 验证创作台模型候选读取与管理员设置提交的请求契约。
+// 检查创作台模型候选查询和管理员设置提交的请求格式。
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 

@@ -19,7 +19,7 @@ import (
 )
 
 // TestAuthPubSubReconnect 验证现有双实例发布订阅协议、真实断线重订阅及停止顺序。
-// 两个实例仅用于既有认证缓存兼容性，不扩大平台额度的单进程协调边界。
+// 两个实例用于检查认证缓存的发布订阅，平台额度仍由单进程协调。
 func TestAuthPubSubReconnect(t *testing.T) {
 	integrationDB, integrationEntClient := identityDatabase(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)

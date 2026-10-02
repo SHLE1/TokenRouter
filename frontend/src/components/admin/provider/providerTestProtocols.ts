@@ -1,10 +1,10 @@
 import type { Provider, ProtocolID } from '@/types'
 
-/** 连接测试可显式选择的协议，取值与后端 TestRequest.Protocol 一致。 */
+/** 连接测试可选择的协议，取值与后端 TestRequest.Protocol 一致。 */
 export type ProviderTestProtocol = 'responses' | 'chat_completions' | 'anthropic'
 
 export interface ProviderTestProtocolOption {
-  /** 固定端点没有可选值，请求中不携带 protocol。 */
+  /** 固定端点使用 native 选项，提交请求时省略 protocol。 */
   value: ProviderTestProtocol | 'native'
   label: string
   path: string
@@ -12,7 +12,7 @@ export interface ProviderTestProtocolOption {
 
 export interface ProviderTestProtocolPlan {
   options: ProviderTestProtocolOption[]
-  /** 只有一个端点时禁用选择，也不向后端发送协议。 */
+  /** 只有一个端点时禁用选择，请求省略 protocol。 */
   selectable: boolean
 }
 

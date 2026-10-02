@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// UsageDecoder 复用协议与网关策略的唯一档位解析，不读取提供商或配置。
+// UsageDecoder 调用协议和网关策略的档位解析函数。
 type UsageDecoder interface {
 	ServiceTier([]byte) *string
 	ReasoningEffort([]byte) *string
@@ -92,7 +92,7 @@ func RequestModelFromSessionFrame(payload []byte) string {
 	return strings.TrimSpace(gjson.GetBytes(payload, "session.model").String())
 }
 
-// LoadSessionRequestModel 对上下行提供同一原子读取入口，空值保持原回退语义。
+// LoadSessionRequestModel 原子读取上下行共用的会话请求模型，空值时使用回退模型。
 func (m *UsageMeta) LoadSessionRequestModel() string {
 	if m == nil {
 		return ""

@@ -57,7 +57,7 @@ func NewAnthropicLinePump(scanner *bufio.Scanner, interval time.Duration) *Anthr
 
 // Next 阻塞返回下一行。返回 io.EOF 表示上游正常收流；ErrAnthropicStreamIdle
 // 表示 interval 内无任何数据到达（计时从收到上一行时起算，事件处理耗时不算入，
-// 与 readOpenAICompatBufferedTerminal 的 resetTimeout 语义一致）。
+// 与 readOpenAICompatBufferedTerminal 的 resetTimeout 处理方式相同）。
 func (p *AnthropicLinePump) Next() (string, error) {
 	var timeoutCh <-chan time.Time
 	if p.timer != nil {

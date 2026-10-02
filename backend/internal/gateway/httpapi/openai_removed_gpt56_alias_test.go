@@ -20,7 +20,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// TestRemovedGPT56AliasAcrossGatewayProtocols 验证三种 HTTP 入口与 WS 模型解析只执行管理员显式映射，不再暗中添加裸型号到 Sol 的别名。
+// TestRemovedGPT56AliasAcrossGatewayProtocols 验证三种 HTTP 入口与 WS 模型解析按管理员配置映射，裸型号保持原名。
 func TestRemovedGPT56AliasAcrossGatewayProtocols(t *testing.T) {
 	for _, providerType := range []string{capability.ProviderTypeOAuth, capability.ProviderTypeAPIKey} {
 		for _, explicit := range []bool{false, true} {
@@ -30,7 +30,7 @@ func TestRemovedGPT56AliasAcrossGatewayProtocols(t *testing.T) {
 					name += "/explicit_mapping"
 				}
 				t.Run(name, func(t *testing.T) {
-					// 在上游边界返回固定错误，验证实际出站模型而不依赖响应转换细节。
+					// 上游返回固定错误，测试从出站请求读取模型名。
 					upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 						StatusCode: http.StatusBadRequest,
 						Header:     http.Header{"Content-Type": []string{"application/json"}},

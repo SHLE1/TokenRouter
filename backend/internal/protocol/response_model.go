@@ -6,7 +6,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// ResponseModelObserver 保存单次上游尝试或 WS turn 的原始模型声明，不参与计费。
+// ResponseModelObserver 保存单次上游尝试或 WS turn 的原始模型声明，供观测使用。
 type ResponseModelObserver struct {
 	first    string
 	terminal string

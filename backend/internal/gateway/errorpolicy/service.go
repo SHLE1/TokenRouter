@@ -57,7 +57,7 @@ type ErrorPassthroughService struct {
 	localCacheMu sync.RWMutex
 }
 
-// cachedPassthroughRule 预计算的规则缓存，避免运行时重复 ToLower
+// cachedPassthroughRule 缓存规则的小写字符串和集合，匹配时直接使用。
 type cachedPassthroughRule struct {
 	*ErrorPassthroughRule
 	lowerKeywords  []string         // 预计算的小写关键词
@@ -380,8 +380,7 @@ func (s *ErrorPassthroughService) refreshLocalCacheLocked(ctx context.Context) e
 	return s.reloadRulesFromDBLocked(ctx)
 }
 
-// reloadRulesFromDB 从数据库加载（repo.List 已按 priority 排序）
-// 注意：该方法会绕过 cache.Get，确保拿到数据库最新值。
+// reloadRulesFromDB 直接调用 repo.List 读取数据库中的当前规则，结果已按 priority 排序。
 func (s *ErrorPassthroughService) reloadRulesFromDB(ctx context.Context) error {
 	operation, done, err := s.beginOperation(ctx)
 	if err != nil {
@@ -408,13 +407,13 @@ func (s *ErrorPassthroughService) reloadRulesFromDBLocked(ctx context.Context) e
 		}
 	}
 
-	// 更新本地缓存（setLocalCache 内部会确保排序）
+	// 更新本地缓存，setLocalCache 按优先级排序。
 	s.setLocalCache(rules)
 
 	return nil
 }
 
-// setLocalCache 设置本地缓存，预计算小写值和 set 以避免运行时重复计算
+// setLocalCache 预先计算规则的小写字符串和集合后写入本地缓存。
 func (s *ErrorPassthroughService) setLocalCache(rules []*ErrorPassthroughRule) {
 	cached := make([]*cachedPassthroughRule, len(rules))
 	for i, r := range rules {
@@ -451,21 +450,21 @@ func (s *ErrorPassthroughService) setLocalCache(rules []*ErrorPassthroughRule) {
 	s.localCacheMu.Unlock()
 }
 
-// clearLocalCache 清空本地缓存，避免刷新失败时继续命中陈旧规则。
+// clearLocalCache 在刷新失败时清空本地缓存。
 func (s *ErrorPassthroughService) clearLocalCache() {
 	s.localCacheMu.Lock()
 	s.localCache = nil
 	s.localCacheMu.Unlock()
 }
 
-// newCacheRefreshContext 为写路径缓存同步创建独立上下文，避免受请求取消影响。
+// newCacheRefreshContext 为写入后的缓存同步创建独立 context，请求取消后同步仍可完成。
 func (s *ErrorPassthroughService) newCacheRefreshContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(s.runCtx, 3*time.Second)
 }
 
 // invalidateAndNotify 使缓存失效并通知其他实例
 func (s *ErrorPassthroughService) invalidateAndNotify(ctx context.Context) {
-	// 先失效缓存，避免后续刷新读到陈旧规则。
+	// 先使缓存失效，后续刷新读取数据库中的规则。
 	if s.cache != nil {
 		if err := s.cache.Invalidate(ctx); err != nil {
 			s.log("[ErrorPassthroughService] Failed to invalidate cache: %v", err)
@@ -475,7 +474,7 @@ func (s *ErrorPassthroughService) invalidateAndNotify(ctx context.Context) {
 	// 刷新本地缓存
 	if err := s.reloadRulesFromDBLocked(ctx); err != nil {
 		s.log("[ErrorPassthroughService] Failed to refresh local cache: %v", err)
-		// 刷新失败时清空本地缓存，避免继续使用陈旧规则。
+		// 刷新失败时清空本地缓存。
 		s.clearLocalCache()
 	}
 
@@ -610,7 +609,7 @@ func cloneRules(rules []*ErrorPassthroughRule) []*ErrorPassthroughRule {
 	return out
 }
 
-// CloneRules 供 Redis 边界保持相同的独立快照与 nil/空集合语义。
+// CloneRules 为 Redis 存取复制规则，区分 nil 和空集合。
 func CloneRules(rules []*ErrorPassthroughRule) []*ErrorPassthroughRule { return cloneRules(rules) }
 
 func (s *ErrorPassthroughService) log(message string, args ...any) {

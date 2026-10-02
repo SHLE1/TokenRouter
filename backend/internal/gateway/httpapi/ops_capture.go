@@ -36,7 +36,7 @@ const (
 	opsUpstreamModelKey = OpsUpstreamModelKey
 	opsRequestTypeKey   = "ops_request_type"
 
-	// 错误过滤匹配常量 — shouldSkipOpsErrorLog 和错误分类共用
+	// 错误过滤匹配常量由 shouldSkipOpsErrorLog 和错误分类共用。
 	opsErrContextCanceled             = "context canceled"
 	opsErrNoAvailableProviders        = "no available providers"
 	opsErrInvalidAPIKey               = "invalid_api_key"
@@ -107,7 +107,7 @@ func SetOpsSelectedProvider(c *gin.Context, providerID int64, platform ...string
 	}
 }
 
-// MarkOpsRoutingCapacityLimited 标记本次失败来自本地路由容量不足，用于 SLA 口径排除。
+// MarkOpsRoutingCapacityLimited 标记本地路由容量不足，SLA 统计排除此类失败。
 func MarkOpsRoutingCapacityLimited(c *gin.Context) {
 	if c == nil {
 		return
@@ -1695,7 +1695,7 @@ func resolveOpsPlatform(_ *apikey.APIKey, actual string) string {
 	return actual
 }
 
-// classifyOpsErrorLog 汇总上游错误上下文与本地路由标记，生成统一的 Ops 统计口径。
+// classifyOpsErrorLog 根据上游错误上下文和本地路由标记生成 Ops 错误分类。
 func classifyOpsErrorLog(c *gin.Context, errType, message, code string, status int) (phase string, isBusinessLimited bool, errorOwner string, errorSource string) {
 	return opscore.ClassifyRequestError(opscore.ErrorClassificationInput{
 		Type: errType, Message: message, Code: code, Status: status,
@@ -1729,7 +1729,7 @@ func isOpsUpstreamClientInvalidRequest(c *gin.Context, errType, code string, sta
 	}
 }
 
-// hasOpsUpstreamErrorContext 判断当前错误是否已有上游响应上下文，避免误判为本地认证或路由错误。
+// hasOpsUpstreamErrorContext 检查上游响应上下文，用于区分上游错误和本地认证、路由错误。
 func hasOpsUpstreamErrorContext(c *gin.Context) bool {
 	if c == nil {
 		return false

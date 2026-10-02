@@ -30,8 +30,7 @@ var CodexOfficialClientUserAgentPrefixes = []string{
 // 该值不能进入通用前缀列表，否则归一化会移除尾随空格并退化成裸 codex。
 const codexOfficialClientFamilyPrefix = "codex "
 
-// codexOfficialClientOriginators 定义 Codex 官方客户端家族 originator 精确集合。
-// 精确匹配可避免 evil-codex_cli、my_codex_thing 等伪造值绕过 codex_only。
+// codexOfficialClientOriginators 列出 Codex 客户端 originator 的精确匹配值，codex_only 据此拒绝 evil-codex_cli 等相似名称。
 var codexOfficialClientOriginators = map[string]bool{
 	"codex_cli_rs":          true,
 	"codex-tui":             true,
@@ -44,9 +43,8 @@ var codexOfficialClientOriginators = map[string]bool{
 	"codex_sdk_ts":          true,
 }
 
-// IsBrowserUserAgent 判断 User-Agent 是否来自浏览器（Chrome/Firefox/Safari/Edge/Opera 等）。
-// 所有现代浏览器的 UA 均以 "Mozilla/" 作为前缀，CLI 工具（codex/claude/curl/postman/python-requests 等）不会。
-// 该判定用于避免 Cloudflare 对浏览器型 UA 在 OpenAI 上游接口上触发 JS 质询。
+// IsBrowserUserAgent 根据 Mozilla/ 前缀识别 Chrome、Firefox、Safari、Edge、Opera 等浏览器 UA。
+// 该判断用于处理 OpenAI 上游接口对浏览器 UA 发出的 Cloudflare JavaScript 质询。
 func IsBrowserUserAgent(userAgent string) bool {
 	ua := strings.TrimSpace(userAgent)
 	if ua == "" {
@@ -64,14 +62,12 @@ func IsCodexCLIRequest(userAgent string) bool {
 	return matchCodexClientHeaderPrefixes(ua, CodexCLIUserAgentPrefixes)
 }
 
-// IsCodexOfficialClientRequest 判断 User-Agent 是否指向 Codex 官方客户端请求。
-// 宽松版保留历史 contains 兜底，供透传等兼容路径使用。
+// IsCodexOfficialClientRequest 检查 Codex 客户端 UA，兼容透传入口使用包含匹配作为后备条件。
 func IsCodexOfficialClientRequest(userAgent string) bool {
 	return isCodexOfficialClientRequest(userAgent, false)
 }
 
-// IsCodexOfficialClientRequestStrict 判断 User-Agent 是否严格指向 Codex 官方客户端请求。
-// strict 版只接受官方 UA 前缀或可信尾部兜底，专供 codex_only 访问限制使用。
+// IsCodexOfficialClientRequestStrict 按官方 UA 前缀或可信尾部识别 Codex 请求，供 codex_only 访问检查使用。
 func IsCodexOfficialClientRequestStrict(userAgent string) bool {
 	return isCodexOfficialClientRequest(userAgent, true)
 }
@@ -97,15 +93,10 @@ func isCodexOfficialClientRequest(userAgent string, strict bool) bool {
 	return false
 }
 
-// codexUATrailerName 从 codex-rs 形态 UA 的最后一个括号组提取 clientInfo.name。
-// CODEX_INTERNAL_ORIGINATOR_OVERRIDE 修改 UA 前缀（originator 段），但不修改尾部的
-// `(name; version)` 括号组——该组由 codex-rs engine 写入，保留真实 clientInfo.name。
-// 故从尾部提取 name 可以恢复被 override 的真实客户端标识（例如 cccc → codex-tui）。
-//
-// input 应为去首尾空格的 UA；本函数本身大小写无关，大小写由调用方按需处理
-// （isCodexOfficialClientRequest 传入已小写化的 UA 做匹配；PairCodexClientIdentity
-// 传入原始大小写以保留 originator 的真实大小写）。
-// 若无法解析则返回空字符串。
+// codexUATrailerName 从 codex-rs UA 的最后一个括号组提取 clientInfo.name。
+// CODEX_INTERNAL_ORIGINATOR_OVERRIDE 覆盖前缀，codex-rs engine 写入的 (name; version) 尾部仍保存客户端名称，
+// 例如 cccc 前缀下可提取 codex-tui。输入需要先去除两侧空白，解析失败时返回空字符串。
+// 函数按大小写无关方式解析，匹配调用方传入小写 UA，PairCodexClientIdentity 则传入原大小写以生成配套 originator。
 func codexUATrailerName(ua string) string {
 	last := strings.LastIndex(ua, "(")
 	if last < 0 {
@@ -123,8 +114,7 @@ func codexUATrailerName(ua string) string {
 	return inner
 }
 
-// IsCodexOfficialClientOriginator 判断 originator 是否指向 Codex 官方客户端请求。
-// 精确集合之外仅保留 `Codex ` 家族前缀，避免任意 codex_* 伪造值绕过。
+// IsCodexOfficialClientOriginator 接受精确列表中的 originator 和 Codex 空格前缀的客户端家族。
 func IsCodexOfficialClientOriginator(originator string) bool {
 	v := NormalizeCodexClientHeader(originator)
 	if v == "" {
@@ -159,7 +149,7 @@ func matchCodexClientHeaderPrefixes(value string, prefixes []string) bool {
 	return false
 }
 
-// matchCodexClientHeaderStrictPrefixes 仅进行前缀匹配，不使用 contains 历史兜底。
+// matchCodexClientHeaderStrictPrefixes 按官方 UA 前缀匹配。
 func matchCodexClientHeaderStrictPrefixes(value string, prefixes []string) bool {
 	for _, prefix := range prefixes {
 		normalizedPrefix := NormalizeCodexClientHeader(prefix)
@@ -173,17 +163,10 @@ func matchCodexClientHeaderStrictPrefixes(value string, prefixes []string) bool 
 	return false
 }
 
-// PairCodexClientIdentity 由最终出站 User-Agent 推导与其配套的 originator，必要时归一化
-// UA 首段，保证两者一致。上游 /backend-api/codex 会校验 originator 与 UA 首段（首个 '/'
-// 之前的 client 名）是否配套，错配（如 originator=codex_cli_rs + UA=codex-tui/...）一律
-// 404（issue #3901，2026-07 实测）。
-//
-// 推导优先级：
-//  1. UA 首段是官方 originator（精确集合或 `Codex ` 家族前缀）→ 直接配对，UA 原样保留；
-//  2. UA 尾部括号组 `(name; version)` 的 name 是官方 originator——CODEX_INTERNAL_ORIGINATOR_OVERRIDE
-//     只改 UA 前缀不改尾部（如 cccc/0.142.0 ... (codex-tui; 0.142.0)）→ 用尾部 name 重写
-//     UA 首段后配对，保留真实版本/OS/终端指纹；
-//  3. 均不命中 → ok=false，调用方应整体回退为默认官方身份。
+// PairCodexClientIdentity 从最终 User-Agent 推导配套 originator，必要时重写 UA 首段。
+// /backend-api/codex 检查 originator 和 UA 首个斜杠前的名称，错配会返回 404（issue #3901，2026-07 实测）。
+// 首段命中官方 originator 时直接配对并保留 UA；否则检查尾部 (name; version)，
+// 尾部命中时用 name 重写首段，保留版本、OS 和终端信息。两处均未命中时返回 ok=false，调用方使用默认官方身份。
 func PairCodexClientIdentity(userAgent string) (originator string, pairedUA string, ok bool) {
 	ua := strings.TrimSpace(userAgent)
 	slash := strings.IndexByte(ua, '/')
@@ -194,8 +177,7 @@ func PairCodexClientIdentity(userAgent string) (originator string, pairedUA stri
 		leading = canonicalizeCodexOriginator(leading)
 		return leading, leading + ua[slash:], true
 	}
-	// 传原始大小写 UA 提取 trailer，保留 `Codex ` 家族身份的真实大小写；含 '/' 的
-	// trailer 会破坏重写后 UA 首段与 originator 的一致性，直接拒绝。
+	// 按原大小写提取尾部，保留 Codex 家族的名称大小写。尾部含斜杠时拒绝，以保持 UA 首段和 originator 一致。
 	if trailer := codexUATrailerName(ua); trailer != "" && !strings.ContainsRune(trailer, '/') &&
 		isSaneCodexOriginator(trailer) && IsCodexOfficialClientOriginator(trailer) {
 		trailer = canonicalizeCodexOriginator(trailer)
@@ -207,8 +189,7 @@ func PairCodexClientIdentity(userAgent string) (originator string, pairedUA stri
 // codexOriginatorMaxLen 官方 clientInfo.name 均为短 ASCII 标识，远低于此上限。
 const codexOriginatorMaxLen = 64
 
-// isSaneCodexOriginator 拒绝超长或含不可打印/非 ASCII 字节的候选 originator，
-// 避免 `Codex ` 家族宽前缀把客户端可控的任意字节当作官方身份逐字转发给上游。
+// isSaneCodexOriginator 检查 originator 长度及 ASCII 可打印字符，供 Codex 家族前缀匹配后的校验使用。
 func isSaneCodexOriginator(name string) bool {
 	if name == "" || len(name) > codexOriginatorMaxLen {
 		return false

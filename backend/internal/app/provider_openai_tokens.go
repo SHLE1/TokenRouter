@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
-// provideOpenAITokens 绑定同一刷新协调器、缓存和指标，运行阻断端口在网关构造时接入。
+// provideOpenAITokens 绑定共享的刷新协调器、缓存和指标，网关构造时接入运行阻断检查。
 func provideOpenAITokens(store *postgres.ProviderStore, cache provider.AccessTokenCache, authorization *provider.OpenAIAuthorization, refresh *provider.OAuthRefreshAPI, blocks *provider.RuntimeBlockState) *provider.OpenAITokenSource {
 	executor := &provider.OpenAITokenRefresher{Authorization: authorization}
 	return &provider.OpenAITokenSource{
@@ -33,7 +33,7 @@ func provideOpenAITokens(store *postgres.ProviderStore, cache provider.AccessTok
 	}
 }
 
-// provideOpenAIExecutionCredentials 复用原持久读取和两种 token 源，不提前解析影子或读取凭据。
+// provideOpenAIExecutionCredentials 绑定持久存储读取函数及两种 token 源，凭据在执行时读取。
 func provideOpenAIExecutionCredentials(store *postgres.ProviderStore, openai *provider.OpenAITokenSource, grok *provider.GrokTokenSource) *provider.OpenAIExecutionCredentials {
 	out := &provider.OpenAIExecutionCredentials{}
 	if store != nil {

@@ -376,10 +376,8 @@ func proxyListOrder(params pagination.PaginationParams) []func(*entsql.Selector)
 	case "created_at":
 		field = proxy.FieldCreatedAt
 	case "expiry":
-		// expires_at 可空(NULL=永不过期)。不写显式 NULLS:
-		// dbent.Asc/Desc 不带 NULLS 子句,继承 PG 默认
-		// (ASC→NULLS LAST、DESC→NULLS FIRST),即 NULL 视为最晚——
-		// 升序垫底、降序置顶。
+		// expires_at 为 NULL 表示永不过期。dbent.Asc/Desc 使用 PostgreSQL 默认的 NULL 排序，
+		// 升序时 NULL 在最后，降序时在最前。
 		field = proxy.FieldExpiresAt
 	default:
 		field = proxy.FieldID
@@ -584,11 +582,10 @@ func (r *ProxyStore) ListAllForFallback(ctx context.Context) ([]egress.Proxy, er
 	return out, nil
 }
 
-// SweepExpiredProxies 扫描到期 active 代理，标记 expired 并按 fallback 策略改写绑定提供商的 proxy_id，
-// 最终触发 scheduler outbox 使 Redis 快照缓存失效。返回受影响的提供商行数。
-// 原子性边界：每个过期代理的「标记 expired + 改投提供商」在各自子事务内原子执行（见 sweepOneExpiredProxy）；
-// 全部代理处理完后若有提供商被改投，再统一 enqueue 一次 provider_bulk_changed 事件——该 enqueue 在子事务之外
-// （走 r.sql、失败仅记日志、由调度器周期性 full rebuild 兜底），故「改投 → 失效」整体并非原子。
+// SweepExpiredProxies 将到期的 active 代理标记为 expired，并按 fallback 策略更新提供商 proxy_id，返回受影响的提供商数。
+// 每个代理的标记和提供商更新由 sweepOneExpiredProxy 在单独的事务中提交。
+// 全部处理后通过 r.sql 发布一次 provider_bulk_changed 事件，使调度缓存失效。
+// 事件在这些事务之外发布，失败时记录日志，缓存由调度器周期性全量重建更新。
 func (r *ProxyStore) SweepExpiredProxies(ctx context.Context, now time.Time) (int64, error) {
 	// 快照读（事务前）：允许脏读不影响正确性，事务内已加锁写。
 	all, err := r.ListAllForFallback(ctx)

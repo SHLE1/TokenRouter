@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// CompatibilityLogSnapshot 只接收已有计数投影，不拥有第二份粘性统计。
+// CompatibilityLogSnapshot 接收兼容性统计计数。
 type CompatibilityLogSnapshot struct {
 	ReadTotal, ReadHit, DualWrite, MetadataTotal int64
 	ReadHitRate                                  float64

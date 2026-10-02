@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/routing"
 
-// ApplyRoutingAdminReadSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyRoutingAdminReadSettings 将路由读取结果写入综合快照。
 func (s *Snapshot) ApplyRoutingAdminReadSettings(value *routing.AdminReadSettings) {
 	s.EnableModelFallback = value.EnableModelFallback
 	s.FallbackModelAnthropic = value.FallbackModelAnthropic

@@ -526,7 +526,7 @@ const emit = defineEmits<{
 const loading = ref(false)
 const stats = ref<ProviderUsageStatsResponse | null>(null)
 
-// 响应式图表主题:切换暗色即刻重绘,不再一次性快照。
+// 图表使用响应式主题，切换深浅色时重新绘制。
 const { colors: chartColors } = useChartTheme()
 
 // Line chart data

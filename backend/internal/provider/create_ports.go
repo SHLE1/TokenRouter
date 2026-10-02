@@ -15,7 +15,7 @@ type AdminGroups interface {
 	GetGroup(context.Context, int64) (*GroupReference, error)
 }
 type CreateCredentialHooks struct {
-	// 平台端口保留 Qoder 站点切换与 PAT 校验的旧时序。
+	// 平台接口按 Qoder 站点切换和 PAT 校验的顺序执行。
 	Site         func(*Record) (string, error)
 	ValidateEdit func(context.Context, *Record, bool) error
 	Prepare      func(*Record)
@@ -27,7 +27,7 @@ type DuplicateStore interface {
 	CreateWithProviderGroups(context.Context, *Record, []GroupMembership) error
 }
 
-// ShadowProxyStore 保留原同步传播顺序，配置字段写权限继续收口。
+// ShadowProxyStore 按顺序将母提供商的代理配置同步给影子。
 type ShadowProxyStore interface {
 	ListShadowsByParent(context.Context, int64) ([]*Record, error)
 	Update(context.Context, *Record) error

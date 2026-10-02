@@ -166,7 +166,7 @@ func (s *GrokQuotaService) ProbeUsageDirect(ctx context.Context, providerID int6
 	return result, nil
 }
 
-// ProbeBilling 只调用 xAI billing 端点，提供商用量刷新使用该方法，避免打开提供商列表时消耗模型额度。
+// ProbeBilling 调用 xAI billing 端点，提供商用量展示通过该查询取得结果。
 func (s *GrokQuotaService) ProbeBilling(ctx context.Context, providerID int64) (*GrokQuotaProbeResult, error) {
 	return s.RunProbeFlight(ctx, "billing:"+strconv.FormatInt(providerID, 10), func(sharedCtx context.Context) (*GrokQuotaProbeResult, error) {
 		return s.ProbeBillingDirect(sharedCtx, providerID)

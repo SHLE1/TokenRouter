@@ -26,7 +26,7 @@ func PrepareAdminSettings(value AdminSettings) (AdminSettings, map[string]string
 	return value, values, nil
 }
 
-// SettingsParticipant 静态声明写入所有权，只准备已经投影的实际字段。
+// SettingsParticipant 声明团队开关的存储键，并准备请求中提供的设置。
 func SettingsParticipant() settings.Participant {
 	fields := []string{"team_enabled"}
 	keys := []string{SettingKeyTeamEnabled}

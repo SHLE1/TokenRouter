@@ -82,7 +82,7 @@ type grokSSOImportWorkerResult struct {
 func (h *GrokProviderImport) safeCreateProviderFromSSOToken(ctx context.Context, req GrokSSOToOAuthRequest, token string, index, total int) (result grokSSOImportWorkerResult) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			// panic 内容可能包含上游请求数据，只记录类型，避免把 SSO 令牌写入日志。
+			// panic 内容可能含 SSO token 等请求数据，此处记录 panic 值的类型。
 			h.Options.LogError("grok_sso_import_worker_panic", "index", index, "panic_type", fmt.Sprintf("%T", recovered))
 			result = grokSSOImportWorkerResult{
 				item: GrokSSOToOAuthItemResult{
@@ -148,12 +148,10 @@ func (h *GrokProviderImport) createProviderFromSSOToken(ctx context.Context, req
 	}
 }
 
-// GrokSSOImportCredentials 合并 SSO 兑换出的凭据与导入请求携带的运营侧配置。
-// token 字段以 BuildProviderCredentials 为准（请求不可覆盖）；但 base_url 是运营侧
-// 配置且 Build 恒写官方地址，会吞掉导入时指定的自定义转发地址——与
-// RefreshProviderToken 的保留逻辑对齐，请求显式提供时以请求为准。
+// GrokSSOImportCredentials 合并 SSO 交换结果与导入配置。
+// token 字段使用 BuildProviderCredentials 的结果，base_url 优先使用导入请求中的值，缺省时使用构造结果。
 func GrokSSOImportCredentials(built map[string]any, reqCredentials map[string]any) map[string]any {
-	// 只合并请求中的运营配置，避免将 password、sso_token、cookie 等临时敏感字段写入持久化凭证。
+	// 从请求中提取运营配置，password、sso_token 和 cookie 用于临时授权。
 	allowedReqKeys := map[string]struct{}{
 		"base_url":      {},
 		"model_mapping": {},

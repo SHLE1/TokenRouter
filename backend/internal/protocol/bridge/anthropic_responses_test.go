@@ -1097,7 +1097,7 @@ func TestAnthropicEventToResponses_CacheTokensRoundTripFromMessageStart(t *testi
 
 	events := AnthropicEventToResponsesEvents(testRuntime(), &AnthropicStreamEvent{Type: "message_stop"}, state)
 
-	// 终止 response.completed 事件必须包含 OpenAI 语义的 usage。
+	// 终止 response.completed 事件包含按 OpenAI 规则计算的 usage。
 	var completed *ResponsesStreamEvent
 	for i := range events {
 		if events[i].Type == "response.completed" {

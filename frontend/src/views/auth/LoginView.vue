@@ -350,7 +350,7 @@ const agreementGateActive = computed(
 )
 
 const authActionDisabled = computed(
-  // 弹窗模式保持原有门禁；复选框模式允许填写，在触发认证动作时校验同意状态。
+  // 弹窗模式在同意条款后开放认证操作。复选框模式允许先填写，在触发认证动作时校验同意状态。
   () => isLoading.value || passkeyLoading.value || !publicSettingsLoaded.value ||
     (agreementGateActive.value && loginAgreementMode.value !== 'checkbox')
 )

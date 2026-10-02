@@ -37,12 +37,12 @@ type UpstreamUsageQueryResult struct {
 	Limits       []UpstreamUsageLimit        `json:"limits,omitempty"`
 	Subscription *UpstreamUsageSubscription  `json:"subscription,omitempty"`
 	ExpiresAt    *time.Time                  `json:"expires_at,omitempty"`
-	// Usage 仅供服务内部复用归一化对象，不暴露到管理员响应，避免把协议内部模型
-	// 再套一层 API Key 的“窗口”语义。
+	// Usage 保存服务内部使用的归一化结果。
+	// 管理员响应使用外层的展示字段。
 	Usage *UpstreamUsageInfo `json:"-"`
 }
 
-// UpstreamUsageMetrics 是进程内的查询计数快照；只保存适配器和错误分类，不保存凭据或响应内容。
+// UpstreamUsageMetrics 按适配器和错误类别记录进程内的查询次数。
 type UpstreamUsageMetrics struct {
 	Counts map[string]int64 `json:"counts"`
 }

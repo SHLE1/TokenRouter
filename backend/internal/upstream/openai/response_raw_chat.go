@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// RawResponseOptions 只传递当前端点的技术参数与原请求观察端口。
+// RawResponseOptions 配置当前端点的响应读取、输出和观测回调。
 type RawResponseOptions struct {
 	Runtime              bridge.Runtime
 	ProviderID           int64
@@ -148,14 +148,13 @@ func ReadRawChatStreaming(c *upstream.OutputContext, resp *http.Response, option
 	}
 
 	// 客户端取消/断开后上游读失败与上游截断不可区分（取消会连带取消上游请求），
-	// 沿用既有语义：按已收到的用量正常收尾计费，不判为上游故障。
+	// 此时按已收到的用量收尾计费。
 	clientAborted := clientDisconnected ||
 		errors.Is(scanErr, context.Canceled) ||
 		errors.Is(scanErr, context.DeadlineExceeded)
 
 	// 上游在任何终止信号之前结束：连接被 reset（scanErr != nil）或干净 EOF。
-	// 两者都不能再记成功——此前统一返回 nil error，把上游截断伪装成
-	// `HTTP 200 + usage 0/0`，客户端收到半截回答且 Ops 侧完全无感。
+	// 这两种情况都按流截断记录失败，内容已写出时返回已收集的用量。
 	if !clientAborted && terminal.IsTruncated(clientOutputStarted) {
 		cause := scanErr
 		if cause == nil {
@@ -173,7 +172,7 @@ func ReadRawChatStreaming(c *upstream.OutputContext, resp *http.Response, option
 			// 响应头尚未提交：可以透明换号重试，客户端不会看到半截流。
 			return nil, options.TruncatedFailover(cause)
 		}
-		// 已写出语义字节：无法再 failover，改为带类型的上游错误。handler 会据此
+		// 已写出内容时返回带类型的上游错误。handler 会据此
 		// 补发 SSE error 帧并把本次请求计入 SLA 失败。
 		options.RecordTruncation(cause)
 		return resultWithUsage(), NewUpstreamStreamReadError(cause)
@@ -223,7 +222,7 @@ func ReadRawChatBuffered(c *upstream.OutputContext, resp *http.Response, options
 	}
 	if IsEventStreamResponse(resp.Header) || wire.BodyHasSSEFraming(respBody) {
 		// 某些兼容上游在 stream=false 时仍返回 SSE；逐帧观察才能拿到
-		// response.completed 的实际 service_tier，而不是回退到请求档位。
+		// response.completed 声明的 service_tier。
 		options.ObserveSSE(string(respBody))
 		wire.ForEachOpenAISSEFrame(string(respBody), func(_ string, payload []byte) {
 			if parsed, ok := wire.ExtractOpenAIUsageFromJSONBytes(payload); ok {

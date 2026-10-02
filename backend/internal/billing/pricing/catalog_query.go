@@ -13,7 +13,7 @@ func (s *CatalogQuery) GetModelPricing(modelName string) *CatalogModelPricing {
 	return nil
 }
 
-// GetModelModalities 只读取完整目录条目的模态，不借用静态价格或其它型号的能力。
+// GetModelModalities 从完整型号的目录条目读取模态。
 func (s *CatalogQuery) GetModelModalities(modelName string) ([]string, []string) {
 	if s == nil {
 		return nil, nil

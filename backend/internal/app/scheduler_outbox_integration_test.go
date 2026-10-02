@@ -20,7 +20,7 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// TestSchedulerSnapshotOutboxReplay 保留旧回放断言，全部端口使用生产原生实现。
+// TestSchedulerSnapshotOutboxReplay 使用生产组件检查 outbox 回放。
 func TestSchedulerSnapshotOutboxReplay(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()

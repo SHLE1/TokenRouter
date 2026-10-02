@@ -98,7 +98,7 @@ func clonePointer[T any](value *T) *T {
 	return &out
 }
 
-// CloneRecord 复制模块、缓存与请求边界的提供商图，不复制时钟或安装新的缓存状态。
+// CloneRecord 复制提供商的嵌套数据，供模块、缓存和请求分别持有。
 func CloneRecord(record *Record) *Record { return cloneRecord(record, make(map[*Record]*Record)) }
 
 func cloneRecord(record *Record, seen map[*Record]*Record) *Record {
@@ -113,7 +113,7 @@ func cloneRecord(record *Record, seen map[*Record]*Record) *Record {
 	return out
 }
 
-// CopyRecordInto 在既有记录地址内复制提供商图，保留根自引用及原字段隔离。
+// CopyRecordInto 在现有记录地址内复制嵌套数据，并保持根对象自引用。
 func CopyRecordInto(out, record *Record) {
 	if out == nil {
 		return

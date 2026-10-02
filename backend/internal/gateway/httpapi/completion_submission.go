@@ -9,13 +9,13 @@ import (
 	"go.uber.org/zap"
 )
 
-// CompletionSubmission 在同步 HTTP 边界冻结请求，不缓存 Gin Context 或新建工作池。
+// CompletionSubmission 在 HTTP 请求线程中捕获完成任务的数据。
 type CompletionSubmission struct {
 	pool    *completion.UsageRecordWorkerPool
 	options completion.SubmissionOptions
 }
 
-// NewCompletionSubmission 保留 Messages 与 OpenAI 入口原有的日志来源。
+// NewCompletionSubmission 为 Messages 与 OpenAI 入口配置日志来源。
 func NewCompletionSubmission(pool *completion.UsageRecordWorkerPool, openAI bool) CompletionSubmission {
 	prefix, component := "gateway", "handler.gateway.messages"
 	if openAI {
@@ -47,24 +47,27 @@ func NewQoderCompletionSubmission(pool *completion.UsageRecordWorkerPool) Comple
 	return CompletionSubmission{pool: pool, options: completion.SubmissionOptions{PreserveSourceValues: true}}
 }
 
-// CompletionContext 仅固化原关联字段和模型链，供同步构造完成输入使用。
+// CompletionContext 捕获关联字段和模型映射链，供完成任务使用。
 func CompletionContext(c *gin.Context) context.Context {
 	return completion.SnapshotContext(completionSource(c))
 }
+
 func completionSource(c *gin.Context) context.Context {
 	if c == nil || c.Request == nil {
 		return context.Background()
 	}
 	return c.Request.Context()
 }
+
 func (s CompletionSubmission) Submit(c *gin.Context, task completion.UsageRecordTask) {
 	completion.SubmitTask(s.pool, completionSource(c), task, false, s.options)
 }
+
 func (s CompletionSubmission) SubmitMandatory(c *gin.Context, task completion.UsageRecordTask) {
 	completion.SubmitTask(s.pool, completionSource(c), task, true, s.options)
 }
 
-// SubmitImages 只接收已经确认的产出数量，不读取或重新估算用量。
+// SubmitImages 使用已确认的图片产出数量提交完成任务。
 func (s CompletionSubmission) SubmitImages(c *gin.Context, images int, task completion.UsageRecordTask) {
 	completion.SubmitTask(s.pool, completionSource(c), task, images > 0, s.options)
 }

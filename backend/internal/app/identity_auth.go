@@ -24,7 +24,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
-// identityAuthSettings 只组合所属模块的读取端口，不持有第二份规则或缓存。
+// identityAuthSettings 组合各模块的身份设置读取接口。
 type identityAuthSettings struct {
 	*identity.RuntimeSettings
 	*identity.GrantSettings
@@ -54,7 +54,7 @@ func (s identityAuthSettings) GetDingTalkConnectOAuthConfig(ctx context.Context)
 	return identity.DingTalkRegistrationPolicy{Enabled: value.Enabled, BypassRegistration: value.BypassRegistration, CorpRestrictionPolicy: value.CorpRestrictionPolicy}, err
 }
 
-// identityAuthGraph 固定身份核心和事务适配，所有新旧入口共享同一对象。
+// identityAuthGraph 保存各认证入口共享的身份用例和事务适配器。
 type identityAuthGraph struct {
 	Core   *identity.AuthService
 	State  *identitypostgres.AuthState
@@ -109,7 +109,7 @@ func provideIdentityAuthGraph(
 	return &identityAuthGraph{Core: core, State: state, Client: entClient}
 }
 
-// provideIdentityProfiles 使用 app 的任务拥有者，保持关闭前可等待的后台操作。
+// provideIdentityProfiles 使用 app 的任务跟踪器，在关闭前等待后台资料操作完成。
 func provideIdentityProfiles(users *identitypostgres.UserStore, settings settingscore.Repository, keys apikey.APIKeyAuthCacheInvalidator, cache billing.BillingCache, tasks *lifecycle.Tasks) *identity.UserService {
 	return identity.NewUserService(users, settings, keys, cache, func(name string, fn func()) bool { return tasks.Go(name, fn) }, time.Now)
 }

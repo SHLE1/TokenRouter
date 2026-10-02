@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// RuntimeReaders 只列出执行适配器的已装配读取端口，不拥有规则、缓存或后台任务。
+// RuntimeReaders 包含执行适配器使用的配置与策略读取接口。
 // 各读取器共享应用实例；调用方仍在原请求位置读取动态值。
 type RuntimeReaders struct {
 	Gateway    *gateway.RuntimeSettings

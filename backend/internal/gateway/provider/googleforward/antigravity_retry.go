@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// antigravityRetryAdapter 投影当前尝试，复用提供商探测和转发共享的重试实例。
+// antigravityRetryAdapter 将当前尝试交给共享的提供商重试器。
 func (s *Antigravity) antigravityRetryAdapter(p antigravityRetryLoopParams) (*antigravity.RetryAdapter, antigravity.RetryInput) {
 	value := gatewayprovider.ExecutionRecord(p.provider)
 	factory := s.Retry
@@ -32,7 +32,7 @@ func (s *Antigravity) antigravityRetryAdapter(p antigravityRetryLoopParams) (*an
 		PolicyModelFallback: requeststate.HealthModel(p.ctx, nil),
 
 		Do: func(req *http.Request) (*http.Response, error) {
-			// 原传输/测试端口可发布本次请求的新窗口；在下一次签名恢复前同步显式尝试视图。
+			// 请求交换可更新本次窗口，下次签名恢复前同步尝试状态。
 			resp, err := p.httpUpstream.Do(req, p.proxyURL, p.provider.Record.ID, p.provider.Record.Concurrency)
 			value.Extra = gatewayprovider.ExecutionRecord(p.provider).Extra
 			return resp, err

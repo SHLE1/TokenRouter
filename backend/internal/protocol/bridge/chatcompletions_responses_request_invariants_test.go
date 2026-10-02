@@ -12,7 +12,7 @@ import (
 func assertChatInvariants(t *testing.T, messages []ChatMessage) {
 	t.Helper()
 	for i, m := range messages {
-		// 每个 assistant tool_calls 后面都必须按顺序紧跟对应 tool message。
+		// assistant tool_calls 后按顺序紧跟对应的 tool message。
 		if len(m.ToolCalls) > 0 {
 			for j, tc := range m.ToolCalls {
 				k := i + 1 + j
@@ -48,7 +48,7 @@ func TestGolden_SingleToolCall(t *testing.T) {
 		{"type":"function_call_output","call_id":"call_a","output":"deadbeef"}
 	]`)
 	assertChatInvariants(t, msgs)
-	// reasoning_content 必须挂在 assistant tool-call message 上。
+	// reasoning_content 写入 assistant 的工具调用消息。
 	var asst *ChatMessage
 	for i := range msgs {
 		if len(msgs[i].ToolCalls) > 0 {
@@ -70,7 +70,7 @@ func TestGolden_ParallelToolCalls(t *testing.T) {
 		{"type":"function_call_output","call_id":"c1","output":"tags"}
 	]`)
 	assertChatInvariants(t, msgs)
-	// 并行调用必须共享同一个 assistant message。
+	// 并行调用合入同一个 assistant message。
 	var toolMsgs int
 	for _, m := range msgs {
 		if len(m.ToolCalls) == 2 {
@@ -126,7 +126,7 @@ func TestGolden_MessageBetweenToolCallAndOutput(t *testing.T) {
 		{"type":"function_call_output","call_id":"A","output":"ok"}
 	]`)
 	assertChatInvariants(t, msgs)
-	// assistant tool_calls message 后面必须立刻跟着对应 tool reply。
+	// assistant tool_calls message 后紧跟对应 tool reply。
 	for i, m := range msgs {
 		if len(m.ToolCalls) > 0 {
 			require.Equal(t, "tool", msgs[i+1].Role)

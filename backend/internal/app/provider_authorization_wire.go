@@ -8,7 +8,7 @@ import (
 	"github.com/google/wire"
 )
 
-// providerAuthorizationHTTPProviders 绑定实际授权端口；平台旧适配随提供商能力清理。
+// providerAuthorizationHTTPProviders 汇总各平台授权 HTTP 构造函数。
 var providerAuthorizationHTTPProviders = wire.NewSet(
 	provideClaudeAuthorizationHTTP,
 	provideQoderAuthorizationHTTP,

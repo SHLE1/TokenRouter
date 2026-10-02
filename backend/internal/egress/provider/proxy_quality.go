@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 )
 
-// ProxyQualityHTTP 使用既有共享客户端，逐目标保留超时与诊断语义。
+// ProxyQualityHTTP 通过共享客户端逐个探测目标，按目标记录超时与诊断结果。
 type ProxyQualityHTTP struct{}
 
 func (ProxyQualityHTTP) ProbeTargets(ctx context.Context, proxyURL string, targets []egress.ProxyQualityTarget) ([]egress.ProxyQualityCheckItem, error) {

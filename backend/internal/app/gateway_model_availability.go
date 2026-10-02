@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// gatewayModelAvailability 固定三种诊断意图，共用提供商存储和分组映射读取实例，不读取执行服务。
+// gatewayModelAvailability 包含三种诊断函数，共用提供商存储和分组映射读取实例。
 type gatewayModelAvailability struct {
 	Messages   routing.ModelAvailabilityDiagnoser
 	Compatible routing.ModelAvailabilityDiagnoser

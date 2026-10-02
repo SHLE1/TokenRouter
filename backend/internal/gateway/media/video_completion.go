@@ -9,14 +9,14 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// VideoCompletion 只包含完成计费所需观测，不携带提供商或用户实体。
+// VideoCompletion 保存视频完成计费所需的观测值。
 type VideoCompletion struct {
 	RequestID, ResponseID, Model, BillingModel, UpstreamModel, VideoResolution string
 	ImageCount, VideoCount, VideoDurationSeconds                               int
 	Duration                                                                   time.Duration
 }
 
-// VideoNotice 由入口按原日志级别与字段记录；核心不安装日志后端。
+// VideoNotice 将日志级别和字段交给入口记录。
 type VideoNotice struct {
 	ProviderID      int64
 	Kind            string
@@ -106,7 +106,7 @@ func (s *VideoTasks) PrepareCompletion(ctx context.Context, userID, keyID int64,
 	merged.RequestID = StableGrokVideoBillingRequestID(firstNonEmpty(merged.ResponseID, taskRequestID))
 	merged.ResponseID = firstNonEmpty(merged.ResponseID, taskRequestID)
 	merged.VideoCount = 1
-	// 纯视频结算不保留旧 ImageCount，避免误入图片计价分支。
+	// 纯视频结算将 ImageCount 清零，按视频价格计算。
 	merged.ImageCount = 0
 	// 创建请求省略分辨率时使用官方默认 480p。
 	merged.VideoResolution = pricing.NormalizeVideoBillingResolutionOrDefault(merged.VideoResolution)

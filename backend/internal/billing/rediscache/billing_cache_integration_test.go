@@ -144,7 +144,7 @@ func (s *BillingCacheSuite) TestDeductUserBalance_ErrorPropagation() {
 		{
 			name: "key_not_exists_returns_nil",
 			fn: func(ctx context.Context, cache billing.BillingCache) {
-				// key 不存在时，Lua 脚本返回 0（redis.Nil），应返回 nil 而非错误
+				// key 不存在时，Lua 脚本返回 0（redis.Nil），方法返回 nil。
 				err := cache.DeductUserBalance(ctx, 99999, 1.0)
 				require.NoError(s.T(), err, "DeductUserBalance on non-existent key should return nil")
 			},

@@ -20,12 +20,12 @@ import (
 	usagepostgres "github.com/TokenFlux/TokenRouter/internal/usage/postgres"
 )
 
-// provideOAuthUsageStats 直接组合原存储批量查询与同一个展示缓存。
+// provideOAuthUsageStats 绑定存储批量查询和共享的展示缓存。
 func provideOAuthUsageStats(store *usagepostgres.Store, cache *provider.OAuthUsageCache, calendar timezone.Calendar) *provider.LocalUsageStatistics {
 	return provider.NewLocalUsageStatistics(newProviderLocalUsageStats(store), cache, provider.LocalUsageStatisticsOptions{Now: time.Now, Today: calendar.Today, Log: log.Printf})
 }
 
-// provideOAuthUsageCore 直接绑定原生读取、平台查询和生命周期，不通过旧服务取回实例。
+// provideOAuthUsageCore 为 OAuth 用量查询绑定数据读取、平台查询及启停操作。
 func provideOAuthUsageCore(store *providerpostgres.ProviderStore, usageStore *usagepostgres.Store, cache *provider.OAuthUsageCache, stats *provider.LocalUsageStatistics, gemini *provider.GeminiQuotaService, antigravity *provider.AntigravityQuota, grokView *provider.GrokQuotaView, grok *provider.GrokQuotaService, openAI *provider.OpenAIQuotaService, fetcher provideradapter.ClaudeUsageClient, fingerprints anthropic.FingerprintCache, profiles *egressprovider.TLSProfiles, transport httpclient.UpstreamTransport, settings *provider.QuotaSettingsCache, connections *gatewayhttp.OpenAIWSConnections, manager *lifecycle.Manager, coordinator *provider.OpenAITaskCoordinator) *provider.OAuthUsageService {
 	taskOptions := provider.OpenAITaskOptions{
 		Read: store.GetByID,
@@ -42,7 +42,7 @@ func provideOAuthUsageCore(store *providerpostgres.ProviderStore, usageStore *us
 		Transport: transport, Profiles: profiles, Fingerprints: fingerprints,
 		Tasks: coordinator, TaskOptions: taskOptions,
 	}
-	// 用量查询的会话保持原独立作用域，不与请求执行的会话缓存合并。
+	// 用量查询使用独立的会话缓存。
 	sessions := provideradapter.NewQoderTokenProvider(qoder.SessionBuilder{})
 	sessions.SetHTTPUpstream(transport, profiles)
 	qoderQuery := &provideradapter.QoderUsage{Sessions: sessions, Transport: transport, Profiles: profiles}
@@ -108,7 +108,7 @@ func provideOAuthUsageCore(store *providerpostgres.ProviderStore, usageStore *us
 	return core
 }
 
-// geminiQuotaLocation 保留原洛杉矶日界及加载失败后的固定时区。
+// geminiQuotaLocation 加载洛杉矶时区，失败时返回固定时区。
 func geminiQuotaLocation() *time.Location {
 	location, err := time.LoadLocation("America/Los_Angeles")
 	if err != nil {

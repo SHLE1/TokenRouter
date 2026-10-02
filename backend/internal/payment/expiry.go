@@ -20,7 +20,7 @@ type OrderReconciler interface {
 	ExpireTimedOutOrders(context.Context) (int, error)
 }
 
-// ExpiryRuntime 由 app 投影原锁策略和日志；核心不持有 SQL、Redis 或日志后端。
+// ExpiryRuntime 提供订单过期任务的锁获取函数和日志记录函数。
 type ExpiryRuntime struct {
 	Acquire func(context.Context) (func(), bool)
 	Observe func(string, int, error)

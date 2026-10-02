@@ -119,7 +119,7 @@ export const getAvailabilityProbeCandidateModels = (state: ModelsListState): str
     return normalizeModels(selected).filter(model => available.has(model))
   }
 
-  // 自定义列表关闭时只信任后端本次返回的分组候选，避免历史保存模型或上游平台默认模型混入。
+  // 自定义列表关闭时，候选列表取本次后端返回值。
   return [...state.candidateModels]
 }
 

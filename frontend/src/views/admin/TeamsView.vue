@@ -428,7 +428,7 @@ const saveEdit = async () => {
   }
 }
 
-// 状态是列表中的高频动作，不再与详情或编辑表单混在一起。
+// 团队状态可在列表中直接切换。
 const toggleStatus = async (team: AdminTeam) => {
   statusUpdatingID.value = team.id
   const status = team.status === 'active' ? 'suspended' : 'active'

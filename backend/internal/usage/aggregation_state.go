@@ -18,7 +18,7 @@ const (
 	AnalyticsManualProgress
 )
 
-// AnalyticsStateChange 只传递一次状态更新的意图，不暴露数据库事务。
+// AnalyticsStateChange 包含分析任务的状态更新及预期的手工回填时间。
 type AnalyticsStateChange struct {
 	Kind                                      AnalyticsChangeKind
 	State                                     UsageAnalyticsAggregationState

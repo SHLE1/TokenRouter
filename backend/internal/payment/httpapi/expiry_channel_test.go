@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 测试替身只提供读取数据；真实运行时、渠道绑定和 HTTP 取消链保持生产调用。
+// expiryChannelOrders 提供测试订单数据，过期运行时、渠道绑定和 HTTP 取消使用生产实现。
 type expiryChannelOrders struct {
 	payment.FulfillmentStore
 	nextPhase atomic.Int32

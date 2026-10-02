@@ -145,7 +145,7 @@ func (h *CompatibleTextHandler) Responses(c *gin.Context) {
 		h.responsesErrorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 		return
 	}
-	// 用户提示词替换必须早于模型解析、内容审计和会话 hash，确保后续链路看到同一份请求体。
+	// 在模型解析、内容审计和会话 hash 计算前替换用户提示词，后续步骤共用改写后的请求体。
 	body = h.prompt.ApplyUserPromptReplacementToBody(c.Request.Context(), body, "openai_responses")
 
 	// 按原字段规则读取模型与流标志
@@ -161,7 +161,7 @@ func (h *CompatibleTextHandler) Responses(c *gin.Context) {
 		return
 	}
 
-	// 在协议转换前裁决客户端显式档位，并保留改写前的审计值。
+	// 在协议转换前应用客户端指定档位的策略，审计保存改写前的值。
 	if policyBody, _, policyErr := h.backend.Reasoning(c, apiKey, body); policyErr != nil {
 		h.backend.PolicyDenied(c)
 		h.responsesErrorResponse(c, http.StatusForbidden, "permission_error", policyErr.Error())
@@ -327,7 +327,7 @@ func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
-	// 用户提示词替换必须早于模型解析、内容审计和会话 hash，确保后续链路看到同一份请求体。
+	// 在模型解析、内容审计和会话 hash 计算前替换用户提示词，后续步骤共用改写后的请求体。
 	body = h.prompt.ApplyUserPromptReplacementToBody(c.Request.Context(), body, "chat_completions")
 
 	// 读取模型与流标志
@@ -343,7 +343,7 @@ func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
 		return
 	}
 
-	// 与 Messages/Responses 使用相同策略，避免兼容入口绕过分组上限。
+	// 兼容入口按 Messages/Responses 的策略检查分组上限。
 	if policyBody, _, policyErr := h.backend.Reasoning(c, apiKey, body); policyErr != nil {
 		h.backend.PolicyDenied(c)
 		h.chatCompletionsErrorResponse(c, http.StatusForbidden, "permission_error", policyErr.Error())
@@ -356,7 +356,7 @@ func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
 		h.chatCompletionsErrorResponse(c, http.StatusBadRequest, "invalid_request_error", InvalidStreamFieldTypeMessage)
 		return
 	}
-	// Chat Completions 的端点能力以分组映射模型 G 为准，客户端模型 R 仍用于日志和错误语义。
+	// Chat Completions 按分组映射模型 G 检查端点能力，日志和错误消息使用客户端模型 R。
 	// 当前分组和分组映射结果进入独立计划，不改变原解析位置。
 	groupMappingRoutePlan := h.backend.Plan(c.Request.Context(), apiKey, reqModel)
 	groupMapping := groupMappingRoutePlan.Mapping()

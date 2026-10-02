@@ -105,7 +105,7 @@ func TestAdvancedSchedulerCoreTopKUsesStableOrderForMixedKnownAndUnknownLoads(t 
 	require.True(t, base[2].LoadKnown)
 	require.False(t, base[3].LoadKnown)
 
-	// 遍历全部输入排列，确保全零权重下已知/未知负载混排不会改变同分 Top-K。
+	// 全零权重时，已知和未知负载的候选在每种排列下应得到相同的 Top-K。
 	permutation := []int{0, 1, 2, 3}
 	var verifyPermutations func(int)
 	verifyPermutations = func(position int) {

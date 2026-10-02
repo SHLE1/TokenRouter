@@ -29,7 +29,7 @@ const (
 	TextOpenAIMessages
 )
 
-// TextState 只包含前置步骤已确定的请求值，不接收 HTTP 对象或业务回调。
+// TextState 保存前置步骤确定的文本请求数据。
 type TextState struct {
 	AlternateBudget                                                      bool
 	SelectionContext                                                     context.Context
@@ -85,7 +85,7 @@ type FundingState struct {
 	Subscription *billing.UserSubscription
 }
 type ExecutionResult struct {
-	// PlanProvided 只在执行适配捕获到实际候选投影时为真。
+	// PlanProvided 表示执行适配器已取得本次候选的计划。
 	PlanProvided bool
 
 	Attempt  upstream.AttemptResult

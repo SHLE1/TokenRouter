@@ -1046,7 +1046,7 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 		daysCount = 30
 	}
 
-	// 提供商统计接口沿用 actual_cost 表示提供商口径的历史契约；用户实际扣费由 user_cost 单独返回。
+	// 提供商统计接口用 actual_cost 返回提供商成本，用 user_cost 返回用户实际扣费。
 	query := `
 		SELECT
 			TO_CHAR(created_at, 'YYYY-MM-DD') as date,

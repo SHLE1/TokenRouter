@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// AuthSourceParticipantFields 只投影已合并的配置；使用原存储编码保留金额和旧值容错边界。
+// AuthSourceParticipantFields 将已合并配置编码为更新字段，金额和历史值使用存储编码规则。
 func AuthSourceParticipantFields(value *AuthSourceDefaultSettings) settings.Fields {
 	result := settings.Fields{}
 	if value == nil {
@@ -21,7 +21,7 @@ func AuthSourceParticipantFields(value *AuthSourceDefaultSettings) settings.Fiel
 	return result
 }
 
-// prepareAuthSourceFields 只准备来源配置，不重复执行系统设置或发放资金。
+// prepareAuthSourceFields 准备认证来源的待保存配置。
 func (g *GrantSettings) prepareAuthSourceFields(ctx context.Context, input settings.Fields) (map[string]string, error) {
 	values := map[string]string{}
 	for _, key := range AuthSourceSettingKeys() {

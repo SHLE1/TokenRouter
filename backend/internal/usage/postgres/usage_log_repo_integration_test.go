@@ -328,7 +328,7 @@ func TestUsageLogRepositoryCreateBestEffort_QueueFullBlocksUntilCtxDeadline(t *t
 }
 
 func TestUsageLogRepositoryCreateBestEffort_QueueFullWaitsForDrain(t *testing.T) {
-	// 队列满但批处理器随后排空时，阻塞的入队应成功完成而非丢弃。
+	// 批处理器腾出队列空间后，等待中的记录成功入队。
 	client := testEntClient(t)
 	repo := NewUsageLogRepositoryWithSQL(client, integrationDB, timezone.NewCalendar(time.Local))
 	repo.bestEffortBatchCh = make(chan usageLogBestEffortRequest, 1)
@@ -1212,7 +1212,7 @@ func (s *UsageLogRepoSuite) TestDashboardAggregationConsistency() {
 	s.Require().InDelta(1.5, analyticsTotalCost, 0.000001)
 	s.Require().InDelta(1.4, analyticsActualCost, 0.000001)
 
-	// 迟到记录落入已完成小时后，回看重算应替换该桶而不是重复累加。
+	// 迟到记录落入已完成小时后，回看重算替换该小时的聚合值。
 	lateDuration := 50
 	_, err = s.repo.Create(s.ctx, &usage.UsageLog{
 		UserID: user1.ID, APIKeyID: apiKey1.ID, ProviderID: provider.ID,

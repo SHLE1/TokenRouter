@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 两个显式 HTTP 状态分别在原时点覆盖，沿用 Gin 的同步发布，不引入可变共享状态盒。
+// 两个 HTTP 状态通过 Gin 同步写入各自的键。
 type (
 	codexIdentityState    struct{ source *provider.Record }
 	codexFingerprintState struct{ ids *openai.FingerprintIDs }
@@ -49,7 +49,7 @@ func CodexIdentityRecord(c *gin.Context, fallback *provider.Record) *provider.Re
 	return fallback
 }
 
-// StageCodexFingerprintIDs 无条件覆盖，含 nil，避免 failover 沿用旧提供商的收敛结果。
+// StageCodexFingerprintIDs 用当前值覆盖指纹 ID，包括 nil，failover 后使用当前提供商的结果。
 func StageCodexFingerprintIDs(c *gin.Context, ids *openai.FingerprintIDs) {
 	if c != nil {
 		c.Set(codexFingerprintStateKey, codexFingerprintState{ids: ids})

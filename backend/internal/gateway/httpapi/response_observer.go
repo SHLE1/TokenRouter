@@ -77,7 +77,7 @@ func captureResponseModel(c *gin.Context, result *forwardcore.OpenAIResult) {
 	}
 }
 
-// resetResponseModel 清除上一尝试的模型，避免恢复请求继承失败响应的声明。
+// resetResponseModel 清除上一尝试的模型，恢复请求从自身响应读取模型。
 func resetResponseModel(c *gin.Context) {
 	if observer := UpstreamResponseModelObserverFromContext(c); observer != nil {
 		observer.ResetModel()

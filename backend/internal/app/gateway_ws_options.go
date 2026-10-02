@@ -5,7 +5,7 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 )
 
-// openAIWSExecutionOptions 仅投影WS执行参数，保留nil配置和显式零值。
+// openAIWSExecutionOptions 读取 WS 执行参数，处理 nil 配置并传递配置中的零值。
 func openAIWSExecutionOptions(cfg *config.Config) *gatewayhttp.OpenAIWSOptions {
 	if cfg == nil {
 		return nil

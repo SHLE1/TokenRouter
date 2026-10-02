@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// Forward 拥有 Grok 请求准备和响应决定，网络恢复只复用原生 ResponsesExecutor。
+// Forward 准备 Grok 请求并处理响应，通过 ResponsesExecutor 执行网络恢复。
 func Forward(ctx context.Context, p Ports, o Options, in Input) (*forwardcore.OpenAIResult, error) {
 	body, originalModel, reqStream, startTime := in.Body, in.OriginalModel, in.Stream, in.StartedAt
 

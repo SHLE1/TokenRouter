@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 未消费请求不应读取正文，也不拥有取得槽位或资金检查的端口。
+// 模型查询测试在读取正文、取得槽位或检查资金时失败。
 type modelForbiddenBody struct{}
 
 func (modelForbiddenBody) Read([]byte) (int, error) { panic("models endpoint read request body") }
@@ -67,7 +67,7 @@ func (p *modelsBackendStub) HasAntigravity(context.Context, *int64) (bool, error
 func (p *modelsBackendStub) CapacityLimited(*gin.Context, error) { p.observations++ }
 func (p *modelsBackendStub) SafeModelSegment(m string) bool      { return m != "bad/model" }
 
-// 未被约定回退分支调用的目录方法保持未实现，避免空成功恢复默认列表。
+// 回退分支调用未实现的目录方法时测试失败，空结果会掩盖默认列表恢复错误。
 type modelsCatalogStub struct {
 	ModelsCatalog
 	fallbacks int

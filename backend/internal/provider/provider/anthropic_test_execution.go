@@ -111,10 +111,10 @@ func (s *AnthropicProviderTest) Execute(c *TestRun, value *providercore.Record, 
 	}
 	s.applyUserAgent(req)
 
-	// 提供商级请求头覆写：测试请求与真实转发保持一致的最终头
+	// 测试与转发按相同顺序应用提供商请求头覆盖。
 	applyGrokQuotaHeaders(value, req.Header)
 
-	// 保留提供商显式代理绑定。
+	// 使用提供商配置的代理。
 	proxyURL := ""
 	if value.ProxyID != nil && value.Proxy != nil {
 		proxyURL = value.Proxy.URL()
@@ -311,7 +311,7 @@ func (s *AnthropicProviderTest) ExecuteBedrock(c *TestRun, ctx context.Context, 
 	return nil
 }
 
-// AnthropicProviderTest 持有技术端口，凭据和健康持久化使用原生提供商接口。
+// AnthropicProviderTest 绑定供应商接口，凭据和健康状态通过提供商接口读写。
 type AnthropicProviderTest struct {
 	Tokens      *providercore.ClaudeTokenSource
 	Transport   QoderTransport
@@ -336,7 +336,7 @@ func (s *AnthropicProviderTest) resolveTLSProfile(value *providercore.Record) *t
 	return s.Profiles.ResolveRequestTLS(egress.TLSSelection{Enabled: value.IsTLSFingerprintEnabled(), DirectProfileID: value.GetTLSFingerprintProfileID()})
 }
 
-// mappedTestModel 保留提供商测试的单次映射，不持有请求路由缓存。
+// mappedTestModel 对提供商测试模型执行一次映射。
 func mappedTestModel(value *providercore.Record, model string) string {
 	mapped, _ := providercore.ResolveMappedModel(value.Platform, providercore.ResolveModelMapping(value, ModelDefaults()), model)
 	return mapped

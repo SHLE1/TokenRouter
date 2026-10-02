@@ -503,7 +503,7 @@ const agreementGateActive = computed(
 )
 
 const registrationActionDisabled = computed(
-  // 弹窗模式保持原有门禁；复选框模式允许填写，在触发认证动作时校验同意状态。
+  // 弹窗模式在同意条款后开放注册操作。复选框模式允许先填写，在触发认证动作时校验同意状态。
   () => isLoading.value || !settingsLoaded.value ||
     (agreementGateActive.value && loginAgreementMode.value !== 'checkbox')
 )
@@ -515,7 +515,7 @@ watch(validationToastMessage, (value, previousValue) => {
 })
 
 function syncAffiliateCode(): string {
-  // 只接受上游新版 aff/aff_code，不再读取旧版 ref 参数。
+  // 从 aff 或 aff_code 参数读取推广码。
   const code = resolveAffiliateCode(route.query.aff, route.query.aff_code)
   if (code) {
     formData.aff_code = code

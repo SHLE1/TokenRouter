@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// ModelHealth 只组合本次模型观测，别名规则由 app 投影，不创建另一份目录缓存。
+// ModelHealth 处理本次模型观测，app 传入别名规则。
 type ModelHealth struct {
 	Health *provider.HealthService
 
@@ -58,7 +58,7 @@ func (s *ModelHealth) Observe(ctx context.Context, value *provider.Record, model
 	return s.Health.ApplyModelUnavailable(ctx, value, status, provider.ModelFailureObservation{NotFound: upstream.IsModelNotFoundError(status, body), CodexPlanGated: openai.IsCodexPlanGatedModelError(status, body), ModelKey: key, ImageModel: image, ImagesEndpoint: imagesEndpoint})
 }
 
-// ObserveSparkRateLimit 显式接收当次 thinking，不从旧业务 Context 读取模型意图。
+// ObserveSparkRateLimit 接收本次请求的 thinking 参数。
 func (s *ModelHealth) ObserveSparkRateLimit(ctx context.Context, value *provider.Record, model string, status int, headers http.Header, body []byte, thinking *bool) bool {
 	key := openai.NormalizeCodexModel(s.LimitKey(value, model, thinking))
 	return s.Health.ApplySparkRateLimit(ctx, value, key, status, openai.IsCodexSparkModel(model), func() (provider.OpenAI429Disposition, *time.Time) { return ClassifyOpenAI429(headers, body) })

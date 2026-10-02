@@ -2,7 +2,7 @@ package app
 
 import "testing"
 
-// TestProductEnvCompatibility 验证调试变量继承旧值，显式关闭不被旧值覆盖。
+// TestProductEnvCompatibility 检查调试变量的旧名称兼容，以及新变量关闭时的优先级。
 func TestProductEnvCompatibility(t *testing.T) {
 	t.Setenv("SUB2API_DEBUG_MODEL_ROUTING", "true")
 	t.Setenv("TOKENROUTER_DEBUG_MODEL_ROUTING", "")

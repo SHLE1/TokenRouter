@@ -58,7 +58,7 @@ func ApplyPoolSettings(db *sql.DB, cfg PoolOptions) {
 	)
 }
 
-// PoolOptions 仅描述数据库连接池参数，启动配置在外层投影。
+// PoolOptions 包含启动时解析的数据库连接池参数。
 type PoolOptions struct {
 	MaxOpenConns           int
 	MaxIdleConns           int

@@ -24,7 +24,7 @@ func provideEnt(ctx context.Context, cfg *config.Config, manager *lifecycle.Mana
 
 func provideRedis(ctx context.Context, cfg *config.Config, manager *lifecycle.Manager) (*redis.Client, error) {
 	client := bootstrap.InitRedis(cfg)
-	// 运行状态迁移完成前不装配后台任务或开放流量，避免旧键遗留造成限额重置。
+	// 运行状态迁移完成后再构造后台任务和开放流量，限额从迁移后的键读取。
 	migrationCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 	if err := redisinfra.MigrateProviderNames(migrationCtx, client); err != nil {

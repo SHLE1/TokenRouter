@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// CatalogProvider 只交付目录规则，不向公开响应暴露提供商凭据。
+// CatalogProvider 向公开目录提供模型规则。
 func CatalogProvider(value *provider.Record) creative.CatalogProvider {
 	if value == nil {
 		return nil

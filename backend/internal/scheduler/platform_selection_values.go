@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// platformScores 分数与请求候选之间仅做投影，计算、堆和随机顺序继续复用纯评分实现。
+// platformScores 关联评分结果与请求候选，分数计算、堆和随机顺序由评分函数提供。
 func platformScores(values []PlatformCandidateScore) ([]CandidateScore, map[*ScoreProvider]*FlowProvider) {
 	out := make([]CandidateScore, len(values))
 	source := map[*ScoreProvider]*FlowProvider{}
@@ -72,7 +72,7 @@ func (s *PlatformSelector) partitionSubscription(providers []*FlowProvider) ([]*
 	return subscriptions, regular
 }
 
-// TryOrderBounded 保留原专用入口的 64 次预算；通用池按其原有预算对象执行。
+// TryOrderBounded 为专用入口设置 64 次尝试预算。通用池使用调用方提供的预算。
 func (s *PlatformSelector) TryOrderBounded(ctx context.Context, req PlatformSelectionInput, order []PlatformCandidateScore) (*FlowSelection, bool, error) {
 	budget := NewProbeBudget()
 	budget.enableLimit()
@@ -133,7 +133,7 @@ func (s *PlatformSelector) TryOrder(ctx context.Context, req PlatformSelectionIn
 	return &FlowSelection{Provider: records[output.Candidate.ProjectionID], Acquired: true, ReleaseFunc: owner.Release}, output.CompactBlocked, nil
 }
 
-// CandidatesSnapshot 用于只读诊断和原行为夹具，不修改排序或共享反馈。
+// CandidatesSnapshot 返回供诊断和测试使用的候选副本。
 func (p PlatformLoadPlan) CandidatesSnapshot() []PlatformCandidateScore {
 	return append([]PlatformCandidateScore(nil), p.candidates...)
 }

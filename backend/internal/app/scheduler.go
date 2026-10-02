@@ -64,7 +64,7 @@ func provideConcurrency(cache scheduler.ConcurrencyCache, cfg *config.Config) *s
 		Event: logging.Event,
 	},
 	)
-	// 保留启动旧进程槽清理的必要 I/O，与后台周期启动分开。
+	// 启动时清理上个进程遗留的槽位，周期任务由生命周期管理器启动。
 	if err := core.CleanupStaleProcessSlots(context.Background()); err != nil {
 		logging.LegacyPrintf("service.concurrency", "Warning: startup cleanup stale process slots failed: %v", err)
 	}

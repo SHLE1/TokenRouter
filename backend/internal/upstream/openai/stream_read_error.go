@@ -40,8 +40,8 @@ func NewUpstreamStreamReadError(err error) error {
 	}
 }
 
-// ShouldClassifyUpstreamStreamReadError 只把真实上游传输读取失败交给重试逻辑，
-// 客户端取消、请求超时和本地响应体大小限制必须保留原始语义。
+// ShouldClassifyUpstreamStreamReadError 判断读取错误是否来自上游传输。
+// 客户端取消、请求超时和本地响应体超限时返回 false。
 func ShouldClassifyUpstreamStreamReadError(err error, localBodyLimit error, contexts ...context.Context) bool {
 	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, localBodyLimit) {
 		return false
@@ -69,8 +69,8 @@ func ClassifyUpstreamStreamReadError(err error) (code, message string) {
 			return OpenAIUpstreamStreamTruncatedCode, "Upstream response stream ended before completion"
 		}
 		lower := strings.ToLower(err.Error())
-		// net/http 的 HTTP/2 流错误类型未导出，只匹配其稳定传输特征，
-		// 绝不把包含 stream ID 等细节的原始错误返回客户端。
+		// net/http 的 HTTP/2 流错误类型未导出，按错误文本中的传输特征匹配。
+		// 客户端收到固定错误消息，原始错误留在内部。
 		if strings.Contains(lower, "stream error: stream id ") ||
 			(strings.Contains(lower, "http2:") && strings.Contains(lower, "stream")) {
 			return OpenAIUpstreamHTTP2StreamErrorCode, "Upstream HTTP/2 stream failed"

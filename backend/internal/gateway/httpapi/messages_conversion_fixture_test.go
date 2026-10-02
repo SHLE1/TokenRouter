@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 )
 
-// conversionResponseFixture 输出契约使用原来的扫描缓冲和真实 HTTP Adapter，不模拟转换结果。
+// conversionResponseFixture 为响应转换测试提供扫描缓冲和 HTTP Adapter。
 func conversionResponseFixture(resp *http.Response) forward.Response {
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 500*1024*1024)

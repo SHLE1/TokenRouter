@@ -26,7 +26,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// 剩余转发测试的构造夹具；不再用于模型目录 HTTP。
+// gatewayExecutionProviderRows 按分组提供转发测试需要的提供商数据。
 type gatewayExecutionProviderRows struct {
 	gatewayprovider.ExecutionProviderStore
 
@@ -89,7 +89,7 @@ func newGatewayExecutionPricingConfigServiceForTest(groupID int64, platform stri
 	)
 }
 
-// messageEndpointsFixture 只保存原生处理函数，不复制旧 Handler/Service 的实现或状态。
+// messageEndpointsFixture 保存消息处理函数和请求准备函数。
 type messageEndpointsFixture struct {
 	Messages                     gin.HandlerFunc
 	Responses                    gin.HandlerFunc
@@ -97,7 +97,7 @@ type messageEndpointsFixture struct {
 	prepareGatewayAttemptRequest func(context.Context, *requeststate.ParsedRequest, []byte, *apikey.APIKey, string) (*requeststate.ParsedRequest, routing.GroupMappingResult, error)
 }
 
-// newMessageEndpointsFixture 将被验证的真实单次能力接入原生运行时；观测使用无状态替身。
+// newMessageEndpointsFixture 将单次执行组件接入消息处理器，观测使用无状态替身。
 func newMessageEndpointsFixture(source *messageExecutionFixture, messages *gatewayhttp.MessagesExecutor, funding *admission.FundingAdmission, concurrency *gatewayhttp.ConcurrencyHelper, options gatewayhttp.MessagesHTTPOptions, availability *gatewayModelAvailability, choices *selection.Generic) *messageEndpointsFixture {
 	plan := func(ctx context.Context, key *apikey.APIKey, model string) routing.RoutePlan {
 		var group *routing.Group

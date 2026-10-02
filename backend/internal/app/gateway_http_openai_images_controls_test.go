@@ -115,7 +115,7 @@ func TestOpenAIGatewayHandlerImagesValidatesGroupMappedModel(t *testing.T) {
 	}
 }
 
-// TestImagesGroupMappedTextModelIsRejectedByActualCandidate 验证最终模型校验在候选阶段执行，避免入口把提供商别名误当成非图片模型。
+// TestImagesGroupMappedTextModelIsRejectedByActualCandidate 检查最终模型在选中候选后校验，提供商别名在该阶段解析。
 func TestImagesGroupMappedTextModelIsRejectedByActualCandidate(t *testing.T) {
 	groupID := int64(112)
 	policies := newGatewayExecutionPricingConfigServiceForTest(groupID, "openai", testkit.Configuration{ID: 112, Status: billing.StatusActive, ModelMapping: map[string]string{"gpt-image-2": "gpt-5.4"}})

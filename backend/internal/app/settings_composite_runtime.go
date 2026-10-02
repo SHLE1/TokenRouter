@@ -19,7 +19,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// provideCompositeReadOptions 共享完整设置读取投影，后台首轮与管理读取保持相同解释和发布时机。
+// provideCompositeReadOptions 为综合设置绑定共享读取器，后台初始化和管理查询使用同一套设置解释规则。
 func provideCompositeReadOptions(cfg *config.Config, oauth *identity.OAuthSettings, gatewayRules *gateway.AdminSettingsRules, defaults *scheduler.AdminDefaults) *composite.ReadOptions {
 	return &composite.ReadOptions{OAuth: oauth, Gateway: *gatewayRules, Scheduler: *defaults, DefaultBalance: func() float64 { return cfg.Default.UserBalance }, DefaultConcurrency: func() int { return cfg.Default.UserConcurrency }, Forwarded: func() runtimeconfig.ForwardedInput {
 		value := cfg.ForwardedClientIPSettings()
@@ -29,7 +29,7 @@ func provideCompositeReadOptions(cfg *config.Config, oauth *identity.OAuthSettin
 	}}
 }
 
-// provideCompositeRuntime 固定原运行实例和发布顺序，完整配置仅在 app 投影。
+// provideCompositeRuntime 从完整配置提取参数，绑定设置组件及提交后的发布顺序。
 func provideCompositeRuntime(store *settings.Store, cfg *config.Config, read *composite.ReadOptions, grants *identity.GrantSettings, gatewayRuntime *gateway.RuntimeSettings, gatewayRules *gateway.AdminSettingsRules, defaults *scheduler.AdminDefaults, plans *billing.Plans, backendMode *admission.BackendMode, providerRuntime *provider.RuntimeSettings, quota *provider.QuotaSettingsCache, forwarded *runtimeconfig.ForwardedSettings, shared *schedulerSharedState, worker *creative.CreativeWorkerRuntime, monitor *ops.OpsService) *composite.Runtime {
 	prepare := composite.PrepareOptions{ReadValues: store.GetAll, Gateway: *gatewayRules, Scheduler: *defaults, ValidatePlans: func(ctx context.Context, value []billing.DefaultSubscriptionSetting) error {
 		return billing.ValidateDefaultSubscriptionPlans(ctx, value, plans.GetPlan)

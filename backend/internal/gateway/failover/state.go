@@ -43,13 +43,12 @@ const (
 )
 
 const (
-	// MaxSameProviderRetries 同提供商重试次数默认上限（针对 RetryableOnSameProvider 错误）。
-	// 生产调用方通常传入提供商级配置 provider.GetPoolModeRetryCount()，该常量仅作兜底/测试默认值。
+	// MaxSameProviderRetries 是 RetryableOnSameProvider 错误的默认重试上限。
+	// 生产调用方可传入 provider.GetPoolModeRetryCount()，测试和缺省调用使用该值。
 	MaxSameProviderRetries = 3
 	// SameProviderRetryDelay 同提供商重试间隔
 	SameProviderRetryDelay = 500 * time.Millisecond
-	// MaxRequestScopedRetryDelay 限制请求级瞬时错误的指数退避上限，避免高重试配置
-	// 将单次请求拖入分钟级等待。
+	// MaxRequestScopedRetryDelay 限制请求级瞬时错误的指数退避时长，高重试次数下也按此上限等待。
 	MaxRequestScopedRetryDelay = 8 * time.Second
 	// SingleProviderBackoffDelay 单提供商分组 503 退避重试固定延时。
 	// Service 层在 SingleProviderRetry 模式下已做充分原地重试（最多 3 次、总等待 30s），
@@ -101,7 +100,7 @@ func SameProviderRetryAllowed(failoverErr *FailureInfo, retryCount, retryLimit i
 	return retryLimit > 0 && retryCount < retryLimit
 }
 
-// SameProviderRetryDeadlineAllows 保证服务层提供的重试窗口未过期。
+// SameProviderRetryDeadlineAllows 检查调用方提供的重试截止时间。
 func SameProviderRetryDeadlineAllows(failoverErr *FailureInfo) bool {
 	return failoverErr == nil || failoverErr.SameProviderRetryDeadline.IsZero() || time.Now().Before(failoverErr.SameProviderRetryDeadline)
 }
@@ -256,7 +255,7 @@ func (s *FailoverState[E]) emit(ctx context.Context, event string, fields map[st
 	}
 }
 
-// EffectiveSameProviderRetryLimit 保留提供商预算与错误级更小上限的组合语义。
+// EffectiveSameProviderRetryLimit 取提供商预算和错误级上限中较小的值。
 func EffectiveSameProviderRetryLimit(failure *FailureInfo, limit int) int {
 	if limit > 0 && failure != nil && failure.SameProviderRetryMax > 0 && failure.SameProviderRetryMax < limit {
 		return failure.SameProviderRetryMax

@@ -1355,7 +1355,7 @@ func TestGatewayServiceRecordUsage_PeakRateAffectsTokenModeImageOutputTokens(t *
 	usageRepo := &completiontestkit.UsageLogStore{Inserted: true}
 	userRepo := &completiontestkit.UserStore{}
 	svc := newGatewayRecordUsageServiceForTest(usageRepo, userRepo, &completiontestkit.SubscriptionStore{})
-	// 固定在峰值窗口内，避免测试在每天 23:59 的右开边界偶发失败。
+	// 测试时间固定在峰值窗口内，23:59 是窗口的右开端点。
 	svc.Options.Now = func() time.Time {
 		return time.Date(2026, 7, 1, 12, 0, 0, 0, time.Local)
 	}
@@ -1569,8 +1569,7 @@ func TestGatewayServiceRecordUsage_GeneratesRequestIDWhenAllSourcesMissing(t *te
 }
 
 func TestGatewayServiceRecordUsage_DroppedUsageLogFallsBackToSyncCreate(t *testing.T) {
-	// 计费成功后 best-effort 写入被丢弃（队列超时）时必须同步兜底，
-	// 否则出现“已扣费但无 usage_log”的对账缺口（issue #3656）。
+	// 计费成功后，队列超时导致的写入丢弃转为同步写入，补齐 usage_log 对账记录（issue #3656）。
 	usageRepo := &completiontestkit.BestEffortUsageLogStore{
 		BestEffortErr: usagecore.MarkUsageLogCreateDropped(errors.New("usage log best-effort queue full")),
 	}
@@ -1595,7 +1594,7 @@ func TestGatewayServiceRecordUsage_DroppedUsageLogFallsBackToSyncCreate(t *testi
 	require.NoError(t, err)
 	require.Equal(t, 1, usageRepo.BestEffortCalls)
 	require.Equal(t, 1, usageRepo.CreateCalls)
-	// 兜底调用使用的 ctx 必须仍然存活，不能带着已死的 ctx 走过场。
+	// 同步重试使用新的有效 context。
 	require.NoError(t, usageRepo.LastCtxErr)
 }
 
@@ -1685,8 +1684,7 @@ func TestGatewayServiceRecordUsage_ReasoningEffortNil(t *testing.T) {
 	require.Nil(t, usageRepo.LastLog.ReasoningEffort)
 }
 
-// newGatewayRecordUsageServiceWithResolverForTest 按生产装配方式构造带解析器的
-// token 计费服务，确保测试走会处理服务档位的统一计费路径。
+// newGatewayRecordUsageServiceWithResolverForTest 按生产配置构造带解析器的 token 计费服务，测试据此覆盖服务档位计费。
 func newGatewayRecordUsageServiceWithResolverForTest(usageRepo usagecore.UsageLogRepository) (*completiontestkit.Recording, *apikey.APIKey) {
 	svc := newGatewayRecordUsageServiceForTest(usageRepo, &completiontestkit.UserStore{}, &completiontestkit.SubscriptionStore{})
 	svc.Dependencies.Prices = billingtestkit.PriceResolver(nil, svc.Dependencies.Calculator)
@@ -1755,7 +1753,7 @@ func TestGatewayServiceRecordUsage_FastSpeedHonouredKeepsPremium(t *testing.T) {
 	require.InDelta(t, fastCost.TotalCost, usageRepo.LastLog.TotalCost, 1e-10)
 }
 
-// newGatewayRecordUsageServiceForTest 记录测试只装配原生完成器，不再构造旧网关或后台执行图。
+// newGatewayRecordUsageServiceForTest 为用量记录测试构造完成器。
 func newGatewayRecordUsageServiceForTest(logs usagecore.UsageLogRepository, _ identity.UserRepository, _ billing.UserSubscriptionRepository) *completiontestkit.Recording {
 	return completiontestkit.NewRecording(logs, &completiontestkit.SettlementStore{}, nil, true)
 }

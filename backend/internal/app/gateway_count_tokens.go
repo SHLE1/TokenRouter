@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// countExecution 仅连接选择与计数执行原语，不拥有循环、缓存或规则。
+// countExecution 连接提供商选择和 token 计数操作。
 type countExecution struct {
 	planner   *gatewayprovider.RoutePlanner
 	choices   *selection.Generic
@@ -45,7 +45,7 @@ func (p countExecution) PlanCountRoute(ctx context.Context, key *apikey.APIKey, 
 	return p.planner.PlanKey(ctx, key, model)
 }
 
-// countTarget 将已经取得的提供商保持在受控调用内，不把凭据暴露给 HTTP。
+// countTarget 保存单次计数使用的提供商，凭据在执行时传给上游。
 type countTarget struct {
 	choices   *selection.Generic
 	gateway   *gatewayhttp.MessagesExecutor
@@ -66,7 +66,7 @@ func (t countTarget) ReleaseSession(ctx context.Context, hash string) {
 	t.choices.ReleaseProviderSession(ctx, t.provider, hash)
 }
 
-// provideCountTokensHTTP 直接装配原生 HTTP，固定依赖不经旧 Handler 工厂。
+// provideCountTokensHTTP 为 token 计数 HTTP 入口绑定依赖。
 func provideCountTokensHTTP(planner *gatewayprovider.RoutePlanner, messages *gatewayhttp.MessagesExecutor, shared *schedulerSharedState, funding *admission.FundingAdmission, rules *errorpolicy.ErrorPassthroughService, cfg *config.Config, activity *gatewayRequestActivity, prompts *promptpolicy.Service, availability *gatewayModelAvailability, choices *selection.Generic, cooldown *provider.RetryCooldown, auxiliary *gatewayhttp.OpenAIAuxiliary, gemini *gatewayhttp.GeminiExecutor, clients *messageHTTPBindings) *gatewayhttp.CountTokensHandler {
 	limit := int64(0)
 	switches := 10

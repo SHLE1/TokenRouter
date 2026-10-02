@@ -368,7 +368,7 @@ func TestProviderTestService_QoderDefaultUserInfoProbeUsesHTTPUpstream(t *testin
 	require.Equal(t, int64(12), upstream.providerID)
 	require.Equal(t, 3, upstream.providerConcurrency)
 	require.True(t, upstream.profileSet)
-	// 确认探测路径使用注入的 Qoder session provider，而不是绕过代理/TLS 的默认客户端。
+	// 检查探测使用注入的 Qoder session provider 及其代理和 TLS 配置。
 	sessionProvider, ok := svc.Sessions.(*qoderProviderTestSessionProviderStub)
 	require.True(t, ok)
 	require.Equal(t, "user-12", sessionProvider.session.Identity.UID)
@@ -411,7 +411,7 @@ func TestProviderTestService_QoderUserInfoProbeRedactsSensitiveErrorBody(t *test
 	require.Contains(t, body, "***")
 }
 
-// 夹具只绑定真实测试用例、平台目标和 HTTP 输出器，不复制执行分支。
+// 夹具组合测试用例、平台目标和 HTTP 输出器，执行分支使用生产实现。
 type qoderTestOutputFixture struct {
 	context.Context
 	recorder *httptest.ResponseRecorder

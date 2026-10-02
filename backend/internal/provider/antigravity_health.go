@@ -146,7 +146,7 @@ func SetModelRateLimitByModelName(ctx context.Context, repo AntigravityHealthSto
 	if repo == nil || modelName == "" {
 		return false
 	}
-	// 直接使用官方模型 ID 作为 key，不再转换为 scope
+	// 使用官方模型 ID 作为 key。
 	if err := repo.SetModelRateLimit(ctx, providerID, modelName, resetAt); err != nil {
 		logf("%s status=%d model_rate_limit_failed model=%s error=%v", prefix, statusCode, modelName, err)
 		return false

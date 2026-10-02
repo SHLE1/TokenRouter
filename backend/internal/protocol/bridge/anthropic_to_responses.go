@@ -57,7 +57,7 @@ func AnthropicToResponses(req *AnthropicRequest, options RequestOptions) (*Respo
 		out.Tools = convertAnthropicToolsToResponses(req.Tools)
 	}
 
-	// 只使用 output_config.effort 控制推理等级，thinking.type 不参与判断。
+	// 推理等级使用 output_config.effort。
 	// 默认值跟随 Codex CLI / airgate 的 Anthropic bridge 形态：未设置时使用 medium。
 	effort := "medium"
 	if req.OutputConfig != nil && req.OutputConfig.Effort != "" {
@@ -381,7 +381,7 @@ func convertToolResultOutput(b AnthropicContentBlock) (string, []ResponsesConten
 		return s, nil
 	}
 
-	// Array of content blocks — may contain text and/or images.
+	// 内容块数组可包含文本和图片。
 	var inner []AnthropicContentBlock
 	if err := json.Unmarshal(b.Content, &inner); err != nil {
 		return "(empty)", nil

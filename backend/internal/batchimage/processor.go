@@ -363,7 +363,7 @@ func (i *ResultIndexer) Index(ctx context.Context, job *BatchImageJob, platform 
 		}
 		return nil, err
 	}
-	// 输出中漏掉的已提交项必须补失败记录，而不是静默消失：
+	// 为输出中遗漏的已提交项补写失败记录：
 	// 否则用户看不到该项，且只按成功数计费会掩盖 platform 的丢单。
 	missingCount := 0
 	if len(expected) > 0 {

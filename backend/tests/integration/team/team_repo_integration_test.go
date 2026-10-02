@@ -267,7 +267,7 @@ func TestTeamOwnerKeyLockRequiresExplicitOwnerEnable(t *testing.T) {
 	require.Equal(t, apikey.StatusAPIKeyDisabled, status)
 	require.True(t, ownerDisabled)
 
-	// 普通更新只能改状态，无法清除 Owner 的独立锁定标记。
+	// 普通更新修改状态后，Owner 的独立锁定标记保持原值。
 	_, err = integrationDB.ExecContext(ctx, `UPDATE api_keys SET status = 'active' WHERE id = $1`, apiKey.ID)
 	require.NoError(t, err)
 	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT status, team_owner_disabled FROM api_keys WHERE id = $1`, apiKey.ID).Scan(&status, &ownerDisabled))
@@ -300,7 +300,7 @@ func TestTeamInvitationCopiesCurrentDefaultMemberLimits(t *testing.T) {
 	require.InDelta(t, 8, memberCtx.Membership.WeeklyLimitUSD, 0.000001)
 	require.InDelta(t, 30, memberCtx.Membership.MonthlyLimitUSD, 0.000001)
 
-	// 后续修改默认值只影响新成员，不追溯覆盖已经加入的成员。
+	// 修改默认限额后，新成员使用新值，现有成员保留加入时的限额。
 	require.NoError(t, repo.SetDefaultMemberLimits(ctx, teamCtx.Team.ID, 2, 10, 40))
 	memberCtx, err = repo.GetContextByUserID(ctx, member.ID)
 	require.NoError(t, err)

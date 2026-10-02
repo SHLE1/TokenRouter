@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// provideProviderUsage 为提供商管理和旧累计入口绑定唯一资金存储。
+// provideProviderUsage 为管理和用量累计入口绑定共享的资金存储。
 func provideProviderUsage(db *sql.DB, store *providerpostgres.ProviderStore, cache scheduler.SnapshotCache) *billingpostgres.ProviderUsageStore {
 	return billingpostgres.NewProviderUsageStore(db, providerUsageEvents(store, cache, db))
 }

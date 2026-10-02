@@ -4,7 +4,7 @@ import (
 	"slices"
 )
 
-// AdminCatalogKind 只区分现有管理目录来源，不表示可执行协议能力。
+// AdminCatalogKind 标识管理目录的数据来源。
 type AdminCatalogKind string
 
 const (

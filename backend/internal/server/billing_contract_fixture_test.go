@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// contractSubscriptionGroups 保留原一次分组读取及名称投影。
+// contractSubscriptionGroups 读取分组并返回订阅套餐需要的分组名称。
 type contractSubscriptionGroups struct{ source routing.GroupRepository }
 
 func (p contractSubscriptionGroups) GetByIDLite(ctx context.Context, id int64) (*billing.SubscriptionPlanGroup, error) {
@@ -24,7 +24,7 @@ func (p contractSubscriptionGroups) GetByIDLite(ctx context.Context, id int64) (
 	return &billing.SubscriptionPlanGroup{ID: v.ID, Name: v.Name}, nil
 }
 
-// contractRedeemUsers 保留 HTTP 契约中的身份展示与余额投影。
+// contractRedeemUsers 为兑换接口测试提供用户资料和余额。
 type contractRedeemUsers struct{ source identity.UserRepository }
 
 func (p contractRedeemUsers) GetByID(ctx context.Context, id int64) (*billing.UserSummary, error) {

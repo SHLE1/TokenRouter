@@ -2,7 +2,7 @@ package requeststate
 
 import "context"
 
-// Hint 保留未提供与显式零值的区别，值本身不持有调用方可变指针。
+// Hint 通过设置标记区分未提供与零值，保存传入数据的值副本。
 type Hint[T bool | int | int64] struct {
 	Value T
 	Set   bool
@@ -10,11 +10,11 @@ type Hint[T bool | int | int64] struct {
 
 // ExecutionHints 是本次请求的执行参数快照；派生 attempt 不修改父请求。
 type ExecutionHints struct {
-	// HealthModel 保存本次尝试已规范化的健康观察型号，不再次映射。
+	// HealthModel 保存本次尝试规范化后的型号，健康观测直接使用该值。
 	HealthModel            string
 	SessionIsolationSource string
 	SessionIsolationHash   string
-	// 选择快照只携带本次阈值、分组要求和单次降级标记，不写入共享提供商缓存。
+	// 选择快照保存本次阈值、分组要求和单次降级标记。
 	QuotaAutoPauseThreshold5h   float64
 	QuotaAutoPauseThreshold7d   float64
 	GroupPrivacyRequirement     Hint[bool]
@@ -32,7 +32,7 @@ type ExecutionHints struct {
 	ProviderSwitchCount         Hint[int]
 }
 
-// IsClaudeCodeClient 客户端和能力标记只保存入口已经作出的判断，不重新解析报文或读取设置。
+// IsClaudeCodeClient 返回入口保存的 Claude Code 客户端判断结果。
 func IsClaudeCodeClient(ctx context.Context) bool {
 	return ExecutionHintsFromContext(ctx).ClaudeCode
 }
@@ -73,7 +73,7 @@ func OpenAIImagesEndpointFromContext(ctx context.Context) bool {
 
 type executionHintsKey struct{}
 
-// ExecutionHintsFromContext 仅用于调用边界携带快照，原生执行入口显式接收同一值。
+// ExecutionHintsFromContext 读取 context 中的执行提示，平台执行入口通过参数接收该值。
 func ExecutionHintsFromContext(ctx context.Context) ExecutionHints {
 	if ctx == nil {
 		return ExecutionHints{}
@@ -148,7 +148,7 @@ func ProviderSwitchCountFromContext(ctx context.Context) (int, bool) {
 	return h.Value, h.Set
 }
 
-// WithSessionIsolation 保留入口已经解析的显式会话身份，供分组回退再次校验。
+// WithSessionIsolation 保存入口解析出的指定会话身份，供分组回退时再次校验。
 func WithSessionIsolation(ctx context.Context, source, hash string) context.Context {
 	return updateHints(ctx, func(h *ExecutionHints) { h.SessionIsolationSource, h.SessionIsolationHash = source, hash })
 }

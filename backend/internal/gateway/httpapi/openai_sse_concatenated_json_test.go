@@ -96,7 +96,7 @@ func TestOpenAIWSv2StreamingRepairsConcatenatedJSONDocumentsInSingleMessage(t *t
 	})
 }
 
-// TestOpenAIWSv2RejectsMalformedTypedEventBeforeWritingDownstream 验证以下用例覆盖畸形 WS v2 事件在下游写入前后的拒绝边界。
+// TestOpenAIWSv2RejectsMalformedTypedEventBeforeWritingDownstream 验证下游写入前后对畸形 WS v2 事件的拒绝处理。
 func TestOpenAIWSv2RejectsMalformedTypedEventBeforeWritingDownstream(t *testing.T) {
 	largeInProgress, _, _ := openAIConcatenatedJSONTestEvents(t)
 	testOpenAIWSv2RejectsMalformedEventBeforeWritingDownstream(t, []byte(largeInProgress+"unexpected-tail"))

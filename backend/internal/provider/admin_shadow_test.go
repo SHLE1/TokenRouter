@@ -125,8 +125,8 @@ func (s *sparkShadowRepoStub) ListWithFilters(_ context.Context, _ pagination.Pa
 
 // TestCreateShadow はメインのシナリオを検証する。
 //
-// Test 1 — 基本生成: ParentProviderID / QuotaDimension / 默认 spark model_mapping / 无 auth token / ProxyID 継承
-// Test 2 — 一母一影: 二度目の生成はエラー
+// 检查影子的 ParentProviderID、QuotaDimension、默认 spark model_mapping、凭据为空及继承 ProxyID。
+// 同一母提供商再次创建影子时返回错误。
 func TestCreateShadow(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()
@@ -196,7 +196,7 @@ func TestCreateShadow_BindGroups(t *testing.T) {
 }
 
 // TestCreateShadow_InheritsParentConcurrency 验证未指定并发时
-// 影子继承母提供商并发,避免 Concurrency=0 被限流器当作"无限并发"。
+// 影子继承母提供商的并发数，限流器将 Concurrency=0 解释为无限并发。
 func TestCreateShadow_InheritsParentConcurrency(t *testing.T) {
 	ctx := context.Background()
 
@@ -232,9 +232,8 @@ func TestCreateShadow_InheritsParentConcurrency(t *testing.T) {
 	})
 }
 
-// TestCreateShadow_InheritsParentPriorityWhenOmitted 验证未指定优先级时
-// 影子继承母提供商 priority,而非直写 0 抢到最高调度优先级(repo SetPriority 绕过 ent 默认 50,
-// 调度比较数值越小越优先;前端一键创建只传 name 即触发该路径)。
+// TestCreateShadow_InheritsParentPriorityWhenOmitted 检查请求省略优先级时继承母提供商的值。
+// SetPriority 会覆盖 Ent 默认值 50，数值越小调度越优先，前端仅传 name 时使用继承值。
 func TestCreateShadow_InheritsParentPriorityWhenOmitted(t *testing.T) {
 	ctx := context.Background()
 
@@ -289,8 +288,7 @@ func TestPersistProviderCredentials_SkipsShadow(t *testing.T) {
 	require.Empty(t, repo.providers[shadow.ID].Credentials, "影子凭据不可被写入(仓储)")
 }
 
-// TestResolveCredentialProvider_RejectsParentShadow 验证畸形数据/手工 DB
-// 写出的「影子→影子」链,凭据解析必须 fail-closed 而非停在无凭据的一级影子。
+// TestResolveCredentialProvider_RejectsParentShadow 检查母提供商也是影子时拒绝凭据解析。
 func TestResolveCredentialProvider_RejectsParentShadow(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()
@@ -316,8 +314,7 @@ func TestResolveCredentialProvider_RejectsParentShadow(t *testing.T) {
 	require.Error(t, err, "父提供商本身是影子时凭据解析应拒绝(fail-closed)")
 }
 
-// TestResetProviderQuota_RejectsShadow 验证通用 reset-quota 对影子明确 400 拒绝
-// (影子不持自有配额,语义不一致),且母提供商仍可正常重置。
+// TestResetProviderQuota_RejectsShadow 检查影子的额度重置返回 400，母提供商可正常重置。
 func TestResetProviderQuota_RejectsShadow(t *testing.T) {
 	ctx := context.Background()
 	repo := newSparkShadowRepoStub()
@@ -356,7 +353,7 @@ func TestCreateShadow_RejectsShadowAsParent(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err), "影子当母应返回 400")
 }
 
-// TestCreateShadow_StructuredErrors 验证可预期业务错误返回结构化 4xx 而非 500。
+// TestCreateShadow_StructuredErrors 检查业务错误返回结构化 4xx 响应。
 func TestCreateShadow_StructuredErrors(t *testing.T) {
 	ctx := context.Background()
 
@@ -493,7 +490,7 @@ func TestUpdateProvider_PropagatesProxyToShadow(t *testing.T) {
 	require.Equal(t, newProxy, *storedShadow.ProxyID)
 }
 
-// TestUpdateProvider_RejectsCredentialWriteToShadow 验证安全不变量「影子绝不持有鉴权凭据」
+// TestUpdateProvider_RejectsCredentialWriteToShadow 检查影子提供商拒绝写入鉴权凭据。
 // 在通用更新路径(UpdateProvider,被 edit/re-auth/refresh/batch 共用)上也被守住:
 // 对影子写入 access_token/refresh_token 必须被拒绝,且影子的 access_token/refresh_token
 // 保持为空(Credentials 本身允许持有 CreateShadow 写入的 model_mapping,故不能断言整体为空)。
@@ -604,7 +601,7 @@ func TestCreateShadow_DefaultsNameFromParent(t *testing.T) {
 }
 
 // TestCreateShadow_ConcurrentCreateReturns409 验证并发竞态下预查放行后
-// Create 撞唯一索引,应映射结构化 409 而非裸 500。
+// Create 遇到唯一索引冲突时返回结构化 409 响应。
 func TestCreateShadow_ConcurrentCreateReturns409(t *testing.T) {
 	ctx := context.Background()
 	base := newSparkShadowRepoStub()
@@ -723,7 +720,7 @@ func TestUpdateProvider_ShadowRejectsAuthCredentials(t *testing.T) {
 	require.Empty(t, repo.providers[shadow.ID].Credentials)
 }
 
-// GetByIDs 保留原 Gemini 替身的按请求顺序读取，不新增缺失项。
+// GetByIDs 按请求顺序返回存在的提供商。
 func (s *sparkShadowRepoStub) GetByIDs(_ context.Context, ids []int64) ([]*providercore.Record, error) {
 	var out []*providercore.Record
 	for _, id := range ids {
@@ -734,7 +731,7 @@ func (s *sparkShadowRepoStub) GetByIDs(_ context.Context, ids []int64) ([]*provi
 	return out, nil
 }
 
-// BulkUpdate 保留原替身的零行结果，影子同步仍由真实管理用例执行。
+// BulkUpdate 替身返回零行，影子同步由管理用例执行。
 func (*sparkShadowRepoStub) BulkUpdate(context.Context, []int64, providercore.ProviderBulkUpdate) (int64, error) {
 	return 0, nil
 }

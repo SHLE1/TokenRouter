@@ -11,7 +11,7 @@ import (
 // 对未知模型原样透传，上游必然返回不可重试的 400。
 //
 // 已知的其他厂商模型在此排除；未知或自定义别名继续交给后续模型规则和上游校验。
-// 本函数只按传入的模型名筛选，不在此执行分组或提供商映射。
+// 本函数按调用方传入的模型名筛选候选。
 var oauthForeignModelPrefixes = []string{
 	"deepseek-",
 	"glm-",
@@ -46,7 +46,7 @@ var oauthForeignModelPrefixes = []string{
 // 原样透传必然被 Codex 上游以不可重试的 400 拒绝，应在调度阶段跳过该提供商。
 func IsOpenAIOAuthServableModel(requestedModel string) bool {
 	model := strings.ToLower(capability.LastOpenAIModelSegment(requestedModel))
-	// 厂商资格只读取路径尾段识别已知不支持的模型，不改写转发或查价身份。
+	// 资格检查用路径尾段识别已知不支持的模型，转发和查价使用完整模型名。
 	if index := strings.LastIndexByte(model, '/'); index >= 0 {
 		model = model[index+1:]
 	}

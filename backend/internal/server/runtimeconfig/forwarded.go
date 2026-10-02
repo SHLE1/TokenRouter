@@ -25,7 +25,7 @@ type ForwardedSettingsRepository interface {
 	SetMultiple(context.Context, map[string]string) error
 }
 
-// ForwardedSettingsOptions 由 app 投影启动状态和唯一的运行发布能力。
+// ForwardedSettingsOptions 包含 app 提供的客户端 IP 初始设置和运行时发布函数。
 type ForwardedSettingsOptions struct {
 	InitialTrust             bool
 	TrustedProxiesConfigured bool

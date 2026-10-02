@@ -9,23 +9,8 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// translatePersistenceError 将数据库层错误翻译为业务层错误。
-//
-// 这是 Repository 层的核心错误处理函数，确保数据库细节不会泄露到业务层。
-// 通过统一的错误翻译，业务层可以使用语义明确的错误类型（如 ErrUserNotFound）
-// 而不是依赖于特定数据库的错误（如 sql.ErrNoRows）。
-//
-// 参数：
-//   - err: 原始数据库错误
-//   - notFound: 当记录不存在时返回的业务错误（可为 nil 表示不处理）
-//   - conflict: 当违反唯一约束时返回的业务错误（可为 nil 表示不处理）
-//
-// 返回：
-//   - 翻译后的业务错误，或原始错误（如果不匹配任何规则）
-//
-// 示例：
-//
-//	err := translatePersistenceError(dbErr, service.ErrUserNotFound, service.ErrEmailExists)
+// translatePersistenceError 将未找到和唯一约束错误映射为调用方提供的领域错误。
+// 对应的目标错误为 nil 或类型未匹配时返回输入错误，映射结果保留数据库错误原因。
 func translatePersistenceError(err error, notFound, conflict *infraerrors.ApplicationError) error {
 	if err == nil {
 		return nil
@@ -33,7 +18,6 @@ func translatePersistenceError(err error, notFound, conflict *infraerrors.Applic
 
 	// 兼容 Ent ORM 和标准 database/sql 的 NotFound 行为。
 	// Ent 使用自定义的 NotFoundError，而标准库使用 sql.ErrNoRows。
-	// 这里同时处理两种情况，保持业务错误映射一致。
 	if notFound != nil && (errors.Is(err, sql.ErrNoRows) || dbent.IsNotFound(err)) {
 		return notFound.WithCause(err)
 	}

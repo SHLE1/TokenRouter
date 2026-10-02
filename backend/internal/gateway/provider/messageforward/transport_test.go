@@ -154,7 +154,7 @@ func TestHandleUpstreamTransportError_UpstreamDeadlineStillFailsOver(t *testing.
 	}
 }
 
-// 保留原固定冷却与错误报文断言，不从待测返回值生成期望。
+// 测试使用固定的冷却时长和错误报文作为期望值。
 const gatewayTransportErrorTempUnschedDuration = 10 * time.Minute
 
 var gatewayTransportFailoverBody = []byte(`{"type":"error","error":{"type":"upstream_error","message":"Upstream request failed"}}`)

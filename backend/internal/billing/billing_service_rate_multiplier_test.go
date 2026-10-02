@@ -10,7 +10,7 @@ import (
 )
 
 // TestCalculateCost_RateMultiplier_NegativeClampedToZero 锁定负数倍率被
-// 钳制为 0（而非历史上的 1.0），避免配置异常导致静默按标准价扣费。
+// 钳制为 0，异常的负数倍率按零价计费。
 func TestCalculateCost_RateMultiplier_NegativeClampedToZero(t *testing.T) {
 	svc := newTestCalculator()
 	tokens := pricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}

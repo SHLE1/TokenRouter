@@ -52,7 +52,7 @@ func normalizeCodexImageGenerationExplicitToolPolicy(value string) string {
 }
 
 // CodexImageGenerationBridgeOverride 返回提供商级 Codex 图片桥接覆盖配置。
-// nil 表示不提供提供商覆盖，由调用方使用全局默认值；分组显式协议设置优先。
+// nil 表示使用全局默认值，分组配置的协议设置优先。
 func (a *Record) CodexImageGenerationBridgeOverride() *bool {
 	if a == nil || a.Platform != capability.PlatformOpenAI || a.Extra == nil {
 		return nil

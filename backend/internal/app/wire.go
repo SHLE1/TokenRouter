@@ -11,7 +11,7 @@ import (
 	"github.com/google/wire"
 )
 
-// initializeApplication 只构造和登记资源；运行由 Application.Run 统一启动。
+// initializeApplication 构造并登记资源，Application.Run 负责启动。
 func initializeApplication(ctx context.Context, cfg *config.Config, info BuildInfo, manager *lifecycle.Manager, restarter *lifecycle.Restarter, tasks *lifecycle.Tasks) (*Application, error) {
 	wire.Build(
 		egressAssemblyProviders,

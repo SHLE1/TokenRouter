@@ -66,7 +66,7 @@ describe('BaseDialog 移动端视口约束', () => {
   })
 })
 
-// 分页表单关闭外壳滚动时，普通弹窗仍沿用原有默认值。
+// 分页表单可关闭外壳滚动，普通弹窗默认由外壳滚动。
 it('支持由内嵌表单管理滚动，并在重新打开时复位默认内容区', async () => {
   const wrapper = mount(BaseDialog, {
     props: { show: true, title: '设置' },

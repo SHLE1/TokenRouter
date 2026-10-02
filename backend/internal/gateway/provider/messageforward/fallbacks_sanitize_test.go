@@ -60,7 +60,7 @@ func TestBuildUpstreamRequest_OAuthMimicHaiku_StripsFallbacksEndToEnd(t *testing
 func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_StripsFallbacksWhenClientHeaderMissingBeta(t *testing.T) {
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
-	// 客户端仅带 oauth beta，不带 server-side-fallback-2026-07-01
+	// 客户端 beta 列表为 oauth。
 	c.Request.Header.Set("Anthropic-Beta", "oauth-2025-04-20")
 
 	body := []byte(`{"model":"claude-haiku-4-5","fallbacks":"default","messages":[]}`)
@@ -106,4 +106,4 @@ func TestBuildUpstreamRequestAnthropicAPIKeyPassthrough_PreservesFallbacksWhenCl
 // ============================================================================
 
 // fallback beta token 不在 bedrockSupportedBetaTokens 白名单内（会被
-// filterBedrockBetaTokens 过滤），因此条件 strip 实际总会剥除——这是预期。
+// filterBedrockBetaTokens 过滤），因此此场景会剥离该字段。

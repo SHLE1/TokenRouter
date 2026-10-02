@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// contentSessionSeedPrefix 用于避免内容派生种子与显式会话 ID（如 "sess-xxx"）冲突。
+// contentSessionSeedPrefix 为内容派生种子添加前缀，与 sess-xxx 等指定会话 ID 区分。
 const contentSessionSeedPrefix = "compat_cs_"
 
 // contentStablePrefixSessionSeedPrefix 标识仅由跨独立提示仍保持稳定的请求字段派生的缓存身份。

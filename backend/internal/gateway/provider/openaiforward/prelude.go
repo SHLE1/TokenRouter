@@ -23,7 +23,7 @@ const (
 
 type TransportDecision struct{ Transport, Reason string }
 
-// Profile 只保存当前提供商已经确认的协议资格；不携带凭据或可变提供商实体。
+// Profile 保存当前提供商已确认的协议资格。
 type Profile struct {
 	Platform, Name, Type                                                    string
 	UsesCodex                                                               bool
@@ -47,7 +47,7 @@ type Prelude struct {
 	Route                                                     Dispatch
 }
 
-// PreludePorts 不执行完整转发；每个端口仅作一次策略读取、纯报文转换或观察。
+// PreludePorts 定义请求准备阶段使用的策略读取、报文转换和观测操作。
 type PreludePorts interface {
 	BlockGroupImages() bool
 	StripImages([]byte) ([]byte, bool, error)
@@ -86,7 +86,7 @@ type PreludePorts interface {
 	Log(string, ...any)
 }
 
-// PreparePrelude 保留 Grok、原生 Messages、Raw Chat 和透传的短路顺序。
+// PreparePrelude 依次判断 Grok、Messages、Raw Chat 和透传分支。
 func PreparePrelude(ctx context.Context, body []byte, profile Profile, p PreludePorts) (*Prelude, error) {
 	var err error
 	if p.BlockGroupImages() {

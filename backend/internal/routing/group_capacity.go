@@ -146,7 +146,7 @@ func (s *CapacityService) getGroupCapacitiesBatch(ctx context.Context, groupIDs 
 	return results, nil
 }
 
-// GetGroupCapacityByIDs 返回指定分组的容量摘要；仓储支持批量投影时只执行一次聚合查询。
+// GetGroupCapacityByIDs 返回指定分组的容量摘要，仓储支持批量读取时执行一次聚合查询。
 func (s *CapacityService) GetGroupCapacityByIDs(ctx context.Context, groupIDs []int64) (map[int64]GroupCapacitySummary, error) {
 	results := make(map[int64]GroupCapacitySummary, len(groupIDs))
 	if s == nil || len(groupIDs) == 0 {
@@ -247,7 +247,7 @@ func (s *CapacityService) GetGroupCapacity(ctx context.Context, groupID int64) (
 		}
 	}
 
-	// 批量查询运行时容量数据；缓存异常只影响当前指标，不阻断容量展示。
+	// 批量查询运行时容量数据，缓存异常时该指标留空，其他指标继续展示。
 	concurrencyMap := map[int64]int{}
 	if s.concurrencyService != nil {
 		concurrencyMap, _ = s.concurrencyService.GetProviderConcurrencyBatch(ctx, providerIDs)
@@ -308,7 +308,7 @@ type CapacityRPM interface {
 	GetRPMBatch(context.Context, []int64) (map[int64]int, error)
 }
 
-// CapacityService 只聚合已投影的提供商配置及运行计数，不持有提供商或计数缓存。
+// CapacityService 聚合提供商配置和运行计数，计算分组容量。
 type CapacityService struct {
 	providerRepo       CapacityProviders
 	groupRepo          CapacityGroups

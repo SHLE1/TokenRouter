@@ -65,7 +65,7 @@ func newFingerprintExecutionProvider(id int64, extra map[string]any) *gatewaypro
 
 func TestBuildUpstreamRequestOpenAIPassthrough_AppliesStagedFingerprint(t *testing.T) {
 	svc := newResponsesFixture(responsesFixtureInputs{})
-	// 收敛是显式 opt-in（#5610）：显式开启后验证透传路径的出站头收敛。
+	// 开启指纹统一开关后，检查透传请求的出站头（#5610）。
 	provider := newFingerprintExecutionProvider(2001, map[string]any{
 		"openai_oauth_passthrough": true,
 		"codex_fingerprint_mode":   "session",

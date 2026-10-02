@@ -499,8 +499,8 @@ func TestUpstreamErrorDecision_PoolRetryStatusPromotesFailover(t *testing.T) {
 	require.Empty(t, repo.modelRateLimitCalls)
 }
 
-// TestUpstreamErrorDecision_UsesSeparateEntryDefaults 验证普通提供商保持入口旧行为，
-// 池模式则使用平台错误分类，并且显式策略始终覆盖两者。
+// TestUpstreamErrorDecision_UsesSeparateEntryDefaults 检查普通提供商使用各入口的默认处理规则，
+// 池模式使用平台错误分类，配置的错误策略优先。
 func TestUpstreamErrorDecision_UsesSeparateEntryDefaults(t *testing.T) {
 	provider := &providercore.Record{
 		ID:          20423,
@@ -514,7 +514,7 @@ func TestUpstreamErrorDecision_UsesSeparateEntryDefaults(t *testing.T) {
 	require.False(t, (providercore.UpstreamErrorDecision{Policy: providercore.ErrorPolicyCustomSkipped}).ShouldFailoverWithDefaults(provider, http.StatusBadGateway, true, true))
 }
 
-// 替身只记录健康字段写入，其余能力未被本组契约调用。
+// 替身记录健康字段写入。
 type errorPolicyRepoStub struct {
 	providercore.HealthStore
 	tempCalls, setErrCalls int

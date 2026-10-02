@@ -310,7 +310,7 @@ const loadEntries = async () => {
   loading.value = true
   try {
     const raw = await adminAPI.groups.getGroupRateMultipliers(props.group.id)
-    // 仅显示已设置 rate_multiplier 的条目；rpm_override 在另一个弹窗管理，保留不动
+    // 此处展示 rate_multiplier 条目，rpm_override 由另一个弹窗管理。
     serverEntries.value = raw.filter(e => e.rate_multiplier != null)
     localEntries.value = cloneEntries(serverEntries.value)
     adjustPage()

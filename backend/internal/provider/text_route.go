@@ -52,7 +52,7 @@ func ResolveTextRouteMode(extra map[string]any) TextRouteMode {
 }
 
 // ResolveResponsesContinuationSupported 从提供商 extra 中读取 HTTP continuation 能力开关。
-// 缺失或类型不匹配时按不支持处理，避免把提供商类型误当作上游能力证明。
+// 字段缺失或类型不符时按不支持处理。
 func ResolveResponsesContinuationSupported(extra map[string]any) bool {
 	if extra == nil {
 		return false

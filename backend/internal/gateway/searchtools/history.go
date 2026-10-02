@@ -23,16 +23,12 @@ var (
 	patternWebSearchToolResult = []byte(`"web_search_tool_result"`)
 )
 
-// FilterWebSearchHistoryBlocks 从历史消息中剥离上游不接受的 web search 内容块：
-//
-//  1. tool-use ID 带 ToolUseIDPrefix 的 server_tool_use 与
-//     web_search_tool_result 是网关本地模拟生成的，上游从未签发，因此对所有上游剥离。
-//  2. 对 passback-required 上游（DeepSeek/Kimi/GLM 等）剥离全部同类块；这些
-//     兼容上游只接受 text/thinking/image/tool_use/tool_result。Anthropic strict
-//     与未知协议族保留真实上游块。
-//
-// 模拟 assistant 消息带有文本摘要，剥离后仍保留搜索上下文；若消息被剥空，则按
-// FilterThinkingBlocksForRetry 的方式填入文本占位块。无需修改时原样返回 body。
+// FilterWebSearchHistoryBlocks 从历史消息移除目标上游拒绝的搜索块。
+// tool-use ID 带 ToolUseIDPrefix 的 server_tool_use 和 web_search_tool_result 由网关模拟，转发时全部移除。
+// 要求思考内容回传的 DeepSeek、Kimi、GLM 等兼容上游接受 text、thinking、image、tool_use 和 tool_result，
+// 因此移除全部搜索块；Anthropic strict 和未知协议族保留上游签发的搜索块。
+// 模拟响应的文本摘要继续保留搜索上下文，剥空的消息按 FilterThinkingBlocksForRetry 的方式补占位文本。
+// 无需修改时返回原 body。
 func FilterWebSearchHistoryBlocks(body []byte, stripAll bool) []byte {
 	if !bytes.Contains(body, patternServerToolUse) && !bytes.Contains(body, patternWebSearchToolResult) {
 		return body

@@ -29,7 +29,7 @@ func TestMemberQuotaCalendarProjection(t *testing.T) {
 	require.NoError(t, CheckMemberQuotaSnapshot(got))
 }
 
-// TestMemberQuotaThresholdOrder 保留精确边界和日/周/月拒绝顺序，校验本身不重置窗口。
+// TestMemberQuotaThresholdOrder 检查额度阈值，以及日、周、月限额的拒绝顺序。窗口在校验后保持原值。
 func TestMemberQuotaThresholdOrder(t *testing.T) {
 	snapshot := MemberQuotaSnapshot{DailyLimitUSD: 1, WeeklyLimitUSD: 2, MonthlyLimitUSD: 3, DailyUsageUSD: 1, WeeklyUsageUSD: 2, MonthlyUsageUSD: 3}
 	require.ErrorIs(t, CheckMemberQuotaSnapshot(snapshot), ErrTeamMemberDailyExceeded)

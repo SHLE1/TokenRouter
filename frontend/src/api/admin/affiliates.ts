@@ -103,7 +103,7 @@ export interface UpdateAffiliateUserRequest {
 export interface BatchSetRateRequest {
   user_ids: number[]
   aff_rebate_rate_percent?: number | null
-  /** 设为 true 时批量清除比例，而不是设置比例。 */
+  /** 设为 true 时批量清除比例。 */
   clear?: boolean
 }
 

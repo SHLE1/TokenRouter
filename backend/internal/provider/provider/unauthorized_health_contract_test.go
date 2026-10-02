@@ -77,9 +77,8 @@ func TestRateLimitService_HandleUpstreamError_OAuth401SetsTempUnschedulable(t *t
 	})
 }
 
-// TestRateLimitService_HandleUpstreamError_SparkShadow401RedirectsToParent 影子无独立凭据,
-// 401(母提供商 token 问题)必须重定向到凭据 owner(母提供商)——母提供商 temp-unschedulable + token cache 失效,
-// 影子不得被永久禁用(否则母提供商可恢复的 token 问题会把影子永久打死)。
+// TestRateLimitService_HandleUpstreamError_SparkShadow401RedirectsToParent 检查影子的 401 按母提供商处理。
+// 母提供商临时停调并清除 token 缓存，影子保持启用，等待母提供商凭据恢复。
 func TestRateLimitService_HandleUpstreamError_SparkShadow401RedirectsToParent(t *testing.T) {
 	repo := &unauthorizedHealthStore{}
 	repo.providersByID = map[int64]*providercore.Record{}
@@ -115,11 +114,8 @@ func TestRateLimitService_HandleUpstreamError_SparkShadow401RedirectsToParent(t 
 	require.Equal(t, parentID, invalidator.providers[0].ID, "token cache invalidation must target the parent")
 }
 
-// TestRateLimitService_HandleUpstreamError_OAuth401InvalidatorError
-// OpenAI OAuth 401 缓存失效出错时仍走 temp_unschedulable。
-// 注意：401 handler 不再回写 credentials(避免请求开始时的快照整列覆盖 DB
-// 把另一个 worker 刚刷新出来的新 refresh_token 回滚为旧值),
-// 因此 updateCredentialsCalls 应当为 0。
+// TestRateLimitService_HandleUpstreamError_OAuth401InvalidatorError 检查 token 缓存失效失败时仍临时停调。
+// 401 处理保持数据库中的凭据不变，updateCredentialsCalls 为零。
 func TestRateLimitService_HandleUpstreamError_OAuth401InvalidatorError(t *testing.T) {
 	repo := &unauthorizedHealthStore{}
 	invalidator := &unauthorizedTokenRecorder{err: errors.New("boom")}
@@ -159,11 +155,8 @@ func TestRateLimitService_HandleUpstreamError_NonOAuth401(t *testing.T) {
 	require.Empty(t, invalidator.providers)
 }
 
-// TestRateLimitService_HandleUpstreamError_OAuth401DoesNotOverwriteCredentials
-// 回归测试:确保 401 handler 不再使用请求开始时的 provider 快照写回 credentials。
-// 原实现会通过 persistProviderCredentials → UpdateCredentials → SetCredentials
-// 整列覆盖 credentials JSONB,在另一个 worker 刚刷新完 refresh_token 的窄窗口内
-// 会把新 refresh_token 回滚为快照中的旧值,导致下一周期拿 invalid_grant 被错误 disable。
+// TestRateLimitService_HandleUpstreamError_OAuth401DoesNotOverwriteCredentials 检查 401 处理保持并发刷新的凭据。
+// 请求持有的凭据快照早于数据库中的 refresh_token，更新健康状态时仍保留数据库当前值。
 func TestRateLimitService_HandleUpstreamError_OAuth401DoesNotOverwriteCredentials(t *testing.T) {
 	repo := &unauthorizedHealthStore{}
 	service := newUnauthorizedObserver(repo, nil)
@@ -254,7 +247,7 @@ func TestRateLimitService_HandleUpstreamError_OAuth401NoRefreshTokenSetsError(t 
 	})
 }
 
-// newUnauthorizedObserver 夹具只组合原生观测入口与窄端口，401 不创建无关平台执行器。
+// newUnauthorizedObserver 为 401 观测入口绑定健康状态接口。
 func newUnauthorizedObserver(repo *unauthorizedHealthStore, invalidator *unauthorizedTokenRecorder) *UpstreamHealth {
 	options := providercore.HealthOptions{SessionWindows: repo}
 	if invalidator != nil {

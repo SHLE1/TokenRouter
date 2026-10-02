@@ -28,7 +28,7 @@ func ShouldFlattenOpenAIResponsesNamespaces(
 }
 
 // ShouldStripOpenAIResponsesInputNamespaces 判定 HTTP 转发是否清理历史项的 namespace。
-// 原生 WSv2 保留该字段，并沿用不做 HTTP 回程恢复的规则。
+// WSv2 原样发送该字段，错误按 WebSocket 的恢复规则处理。
 func ShouldStripOpenAIResponsesInputNamespaces(provider *ExecutionProvider, transport egress.OpenAIUpstreamTransport, passthroughEnabled bool) bool {
 	if provider == nil || (!provider.View().IsOpenAIOAuthLike() && !provider.View().IsOpenAIApiKey()) {
 		return false
@@ -42,7 +42,7 @@ func ShouldStripOpenAIResponsesInputNamespaces(provider *ExecutionProvider, tran
 // ShouldKeepOpenAIResponsesToolCallNamespaces 判定清理 input 残留 namespace 时是否
 // 保留工具调用项上的 namespace。
 //
-// 上游对这个字段有两套互斥要求，判定按「出口 + 端点」而非工具声明内容：
+// 上游根据出口和端点对该字段提出两套要求：
 //   - /backend-api/codex/responses 会按 namespace 解析历史调用，缺字段直接 400
 //     `Missing namespace for function_call '...'. Round-trip the model's
 //     function_call item with its namespace field included.`（issue #4761 回帖），

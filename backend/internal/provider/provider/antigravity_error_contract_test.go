@@ -45,19 +45,19 @@ func TestHandleUpstreamError_429_ModelRateLimit(t *testing.T) {
 	require.Equal(t, "claude-sonnet-4-5", repo.modelRateLimitCalls[0].modelKey)
 }
 
-// TestHandleUpstreamError_429_NonModelRateLimit 测试 429 非模型限流场景（走模型级限流兜底）
+// TestHandleUpstreamError_429_NonModelRateLimit 检查普通 429 使用请求模型记录限流。
 func TestHandleUpstreamError_429_NonModelRateLimit(t *testing.T) {
 	repo := &antigravityErrorStoreFixture{}
 	svc := newAntigravityErrorFixture(repo)
 	provider := &acct.Record{ID: 2, Name: "acc-2", Platform: capability.PlatformAntigravity}
 
-	// 429 + 普通限流响应（无 RATE_LIMIT_EXCEEDED reason）→ 走模型级限流兜底
+	// 429 响应缺少 RATE_LIMIT_EXCEEDED reason 时，按请求模型记录限流。
 	body := buildGeminiRateLimitBody("5s")
 
 	result := svc.Observe(AntigravityErrorInput{Context: context.Background(), Prefix: "[test]", Provider: provider, Status: http.StatusTooManyRequests, Headers: http.Header{}, Body: body, RequestedModel: "claude-sonnet-4-5"})
 
 	// handleModelRateLimit 不会处理（因为没有 RATE_LIMIT_EXCEEDED），
-	// 但 429 兜底逻辑会使用 requestedModel 设置模型级限流
+	// 此时使用 requestedModel 设置模型限流。
 	require.Nil(t, result)
 	require.Len(t, repo.modelRateLimitCalls, 1)
 	require.Equal(t, "claude-sonnet-4-5", repo.modelRateLimitCalls[0].modelKey)

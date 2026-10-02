@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<{
   ips: Array<string | null | undefined>
   /** 嵌入页面操作栏时使用按钮样式，不显示表格工具条边框。 */
   inline?: boolean
-  /** 紧凑筛选区使用小尺寸按钮，避免撑高或挤压网格布局。 */
+  /** 紧凑筛选区使用小尺寸按钮。 */
   compact?: boolean
 }>(), {
   inline: false,

@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 )
 
-// UserSummary 是权益查询所需的只读用户展示投影。
+// UserSummary 包含权益查询所需的用户资料。
 type UserSummary struct {
 	ID                         int64
 	Email                      string
@@ -31,5 +31,5 @@ type UserSummary struct {
 	DeletedAt                  *time.Time
 }
 
-// NotifyEmailSummary 是身份联系邮箱的只读值投影。
+// NotifyEmailSummary 是身份联系邮箱记录。
 type NotifyEmailSummary = contact.Entry

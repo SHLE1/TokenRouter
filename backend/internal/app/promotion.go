@@ -34,7 +34,7 @@ func providePromotionAffiliate(repo promotion.AffiliateRepository, settings *pro
 	}})
 }
 
-// identityPromotion 将推广档案结果投影为身份用例需要的成功/失败。
+// identityPromotion 将推广档案操作结果转换为身份用例需要的成功或失败结果。
 type identityPromotion struct{ Service *promotion.AffiliateService }
 
 func (p identityPromotion) EnsureUserAffiliate(ctx context.Context, id int64) error {
@@ -55,7 +55,7 @@ func providePromotionPromo(client *dbent.Client, repo promotion.PromoCodeReposit
 	return promotion.NewPromoService(repo, mutations, auth, balances, promotion.Runtime{Now: time.Now, Background: func(name string, fn func()) { tasks.Go(name, fn) }})
 }
 
-// identityPromotionPreview 公开预览只投影优惠码验证结果，不增加字段或读取。
+// identityPromotionPreview 将优惠码验证结果转换为公开预览数据。
 func identityPromotionPreview(s *promotion.PromoService) func(context.Context, string) identityhttp.PromotionPreview {
 	return func(ctx context.Context, code string) identityhttp.PromotionPreview {
 		v := s.PreviewRegistrationPromotion(ctx, code)

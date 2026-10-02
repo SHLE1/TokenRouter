@@ -15,7 +15,7 @@ import (
 	"github.com/google/wire"
 )
 
-// 提供商管理、授权与运行能力的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
+// providerAssemblyProviders 汇总 provider 模块的 Wire provider。
 var providerAssemblyProviders = wire.NewSet(
 	providerauth.NewOAuthUsageCache,
 	provideGeminiAuthorization,

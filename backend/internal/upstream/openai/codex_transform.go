@@ -74,7 +74,7 @@ func NormalizeCodexCallIDForItemType(itemType, id string) string {
 
 func CompactCodexCallIDForItemType(itemType, id string) string {
 	prefix := protocolopenai.OpenAIResponsesToolCallIDPrefix(itemType) + "_"
-	// 哈希种子保留旧值，确保升级后已有设备、会话及调用身份不变。
+	// 调用 ID 的哈希前缀需要保持稳定，改变前缀会破坏已有调用与结果的配对。
 	digest := sha256.Sum256([]byte("sub2api:codex-call-id:v1:" + id))
 	encoded := hex.EncodeToString(digest[:])
 	return prefix + encoded[:CodexCallIDMaxLength-len(prefix)]
@@ -1304,8 +1304,8 @@ func EnsureCodexReasoningInclude(reqBody map[string]any) bool {
 // ApplyCodexClientMetadata 在请求体补齐 client_metadata["x-codex-installation-id"]，
 // 取值为提供商真实的 openai_device_id（最新 Codex 在请求体携带的安装标识）。
 //
-// 加法式、幂等：仅在提供商存在 device_id 且该键缺失时注入，绝不覆盖既有 client_metadata
-// （如 turn metadata），也不伪造——无 device_id 时不写入。
+// 提供商存在 device_id 且目标键缺失时补齐该键，已有 client_metadata 字段保持原样。
+// device_id 为空时跳过，重复调用结果相同。
 func ApplyCodexClientMetadata(reqBody map[string]any, deviceID string) bool {
 	deviceID = strings.TrimSpace(deviceID)
 	if deviceID == "" {

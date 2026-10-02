@@ -8,14 +8,11 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
-) // ResponsesStreamOutputItems 按 output_index 记录每个
+)
 
-// response.output_item.done 事件携带的原始 item。
-//
-// ReconstructResponseOutputFromSSE 重建缓冲响应时已经优先使用 done item，而不是
-// delta 累积结果，因为累积器只建模“一个 reasoning、一个 message、N 个 function
-// call”，无法保留 item 身份、逐项 status/phase、顺序或未知 item 类型。流式路径
-// 无法一次看到完整正文，这个收集器为它提供同等能力。
+// ResponsesStreamOutputItems 按 output_index 保存 response.output_item.done 中的原始 item。
+// 缓冲重建和流式收集都优先使用 done item，保存 item 身份、status、phase、顺序和未知类型。
+// 增量累积器仅记录一个 reasoning、一个 message 和多个 function call，供缺少 done item 时使用。
 type ResponsesStreamOutputItems struct {
 	items map[int]json.RawMessage
 }
@@ -111,13 +108,10 @@ func NormalizeResponsesStreamingTerminalOutput(data []byte, acc *BufferedRespons
 	return updated, true
 }
 
-// CollectRawResponsesOutputItemsFromSSE 按到达顺序收集 SSE 流中
-// response.output_item.done 携带的原始 item。除已产生结果但仍停留在进行中
-// 的图片状态外，item 以 raw JSON 逐字节保留，
-// 避免经窄结构体重建时丢弃 encrypted_content/summary/opaque 等 compact
-// 专属或未来新增字段（#3777 问题 2）。若整条流没有任何 done 事件，退回
-// 收集 output_item.added 中的 compaction 类 item——compaction 结果没有
-// delta 事件，部分上游只在 added 事件中携带完整 item。
+// CollectRawResponsesOutputItemsFromSSE 按到达顺序收集 output_item.done 中的原始 item。
+// 已产出结果的图片项会修正进行中状态，其余字段保留原始 JSON 字节，包括 encrypted_content、
+// summary、opaque 等压缩字段（#3777 问题 2）。done 缺少 compaction 时，再从 added 收集，
+// 部分上游的 compaction 完整结果仅出现在 added 中。
 func CollectRawResponsesOutputItemsFromSSE(bodyText string) ([]byte, bool) {
 	var items []json.RawMessage
 	seen := make(map[string]struct{})
@@ -148,9 +142,8 @@ func CollectRawResponsesOutputItemsFromSSE(bodyText string) ([]byte, bool) {
 		}
 		appendItem(gjson.GetBytes(data, "item"))
 	})
-	// done 事件未携带 compaction item 时再看 added：覆盖"其他 item 有 done、
-	// compaction 只在 added 中"的混合形态；done 已含 compaction 时跳过，
-	// 避免同一 item 在无 id 可去重时被收集两份（Codex 要求恰好一个）。
+	// done 缺少 compaction 时再检查 added，支持其他 item 有 done、compaction 仅有 added 的流。
+	// Codex 要求恰好一个 compaction item，done 已包含时跳过 added。
 	if !hasCompactionItem {
 		protocolopenai.ForEachSSEDataPayload(bodyText, func(data []byte) {
 			if strings.TrimSpace(gjson.GetBytes(data, "type").String()) != "response.output_item.added" {

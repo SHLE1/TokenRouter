@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// responseFixture 记录真实尝试、同提供商等待和最终完成次数。
+// responseFixture 记录尝试、同提供商等待和最终完成的次数。
 type responseFixture struct {
 	outcomes                                                             []ResponseOutcome
 	skipFirst                                                            bool

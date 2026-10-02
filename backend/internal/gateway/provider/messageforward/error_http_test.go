@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAnthropicErrorEntryRuleAndMonitoring 验证原生错误执行与真实 HTTP Adapter 的提交及监控标记。
+// TestAnthropicErrorEntryRuleAndMonitoring 检查错误处理经 HTTP Adapter 提交的响应和监控标记。
 func TestAnthropicErrorEntryRuleAndMonitoring(t *testing.T) {
 	for _, tc := range []struct {
 		name        string

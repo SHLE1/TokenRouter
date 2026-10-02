@@ -20,7 +20,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// provideMarketplace 直接使用新分组、设置和报价能力；平台模型端口保留原动态来源。
+// provideMarketplace 绑定分组、设置和报价查询，平台模型信息在查询时读取。
 func provideMarketplace(groups *routingpostgres.GroupStore, store *settings.Store, catalogue *routing.RequestableCatalogue, prices *billing.PriceResolver, calculator *billing.Calculator, capacity *routing.CapacityService, availability routing.GroupAvailabilityProbeRepository, cfg *config.Config, attributes *routing.ModelAttributeService) *routing.Marketplace {
 	options := routing.MarketplaceOptions{Attributes: attributes.ResolveModels, Timezone: cfg.Timezone, Now: time.Now, Warn: slog.Warn, DefaultModels: routingprovider.MarketplaceModelDefs, DisplayNames: routingprovider.MarketplaceDisplayNames}
 	return routing.NewMarketplace(groups, store, catalogue, catalogue.Resolver, marketplacePrices{prices, calculator}, capacity, availability, options)
@@ -31,7 +31,7 @@ type marketplacePrices struct {
 	calculator *billing.Calculator
 }
 
-// marketplaceStats 仅投影公开首页需要的 Dashboard 计数。
+// marketplaceStats 返回公开首页需要的 Dashboard 计数。
 type marketplaceStats struct{ source *usage.DashboardService }
 
 func (s marketplaceStats) PublicStats(ctx context.Context) (routingdto.ModelMarketplaceStats, error) {
@@ -52,7 +52,7 @@ func (p marketplacePrices) GetModelModalities(model string) ([]string, []string)
 	return p.calculator.GetModelModalities(model)
 }
 
-// provideMarketplaceHTTP 绑定真实新 Handler 和旧公开统计的窄读取端口。
+// provideMarketplaceHTTP 为市场 Handler 绑定公开统计查询。
 func provideMarketplaceHTTP(core *routing.Marketplace, dashboard *usage.DashboardService) *routinghttp.MarketplaceHandler {
 	return routinghttp.NewMarketplaceHandler(core, marketplaceStats{source: dashboard})
 }

@@ -56,7 +56,7 @@ func applyCacheOverride(usage *TokenUsage, target string) bool {
 	return changed
 }
 
-// normalizeResult 只依据请求快照与实际观察降档，不查询平台或修改共享结果。
+// normalizeResult 根据请求快照和响应观测规范化本次结果的档位。
 func (s *Recorder) normalizeResult(r *Result, a *ProviderSnapshot, openAI bool, observedProvider *ProviderSnapshot) ServiceTierBillingResolution {
 	// 缺失结果不产生档位调整或观测事件。
 	if r == nil {

@@ -31,7 +31,7 @@ type RawChatPorts interface {
 	UpdateGrokUsage(context.Context, string, http.Header, int)
 }
 
-// RawGrokDecision 仅表达平台健康处置结果，不把可变提供商交给编排层。
+// RawGrokDecision 表示 Grok 健康处理的结果。
 type RawGrokDecision struct{ Failover, Generic, RetrySame bool }
 
 // RawGrokRetry 固化平台已有的同提供商恢复预算。

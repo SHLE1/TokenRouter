@@ -27,8 +27,8 @@ var (
 )
 
 // SliceRawFromBody 返回 Result.Raw 对应的原始字节切片。
-// 优先使用 Result.Index 直接从 body 切片，避免对大字段（如 messages）产生额外拷贝。
-// 当 Index 不可用时，退化为复制（理论上极少发生）。
+// 优先通过 Result.Index 引用 body 中的切片，大字段可直接复用输入字节。
+// Index 不可用时复制字段内容。
 func SliceRawFromBody(body []byte, r gjson.Result) []byte {
 	if r.Index > 0 {
 		end := r.Index + len(r.Raw)
@@ -36,7 +36,7 @@ func SliceRawFromBody(body []byte, r gjson.Result) []byte {
 			return body[r.Index:end]
 		}
 	}
-	// fallback: 不影响正确性，但会产生一次拷贝
+	// 缺少索引时复制字段内容。
 	return []byte(r.Raw)
 }
 
@@ -161,14 +161,13 @@ func StripEmptyTextBlocks(body []byte) []byte {
 //   - 如果只移除 thinking block 却保留顶层 `thinking`，可能触发
 //     "Expected `thinking` or `redacted_thinking`, but found `text`"。
 //
-// 策略：尽量保留内容语义。
+// 过滤时执行以下操作：
 //   - 禁用顶层 `thinking` 字段。
 //   - 将 `thinking` block 转成 `text` block，保留 thinking 文本。
 //   - 删除无法转成明文的 `redacted_thinking` block。
-//   - 确保消息 content 不会变成空数组。
+//   - content 为空时补入占位文本。
 //
-// 调用方传入 mappedModel 时，仅 Anthropic 官方语义执行 retry 变形；
-// passback-required/unknown 上游返回原 body，避免破坏原样回传契约。
+// 调用方根据模型的思考重放规则决定是否调用本函数；要求原样回传或规则未知的上游使用原 body。
 func FilterThinkingBlocksForRetry(body []byte) []byte {
 	hasThinkingContent := bytes.Contains(body, patternTypeThinking) ||
 		bytes.Contains(body, patternTypeThinkingSpaced) ||
@@ -196,7 +195,7 @@ func FilterThinkingBlocksForRetry(body []byte) []byte {
 		return body
 	}
 
-	// 尽量避免把整个 body Unmarshal 成 map（会产生大量 map/接口分配）。
+	// 逐字段处理 body，减少整段解码产生的 map 和接口分配。
 	// 这里先用 gjson 把 messages 子树摘出来，后续只对 messages 做 Unmarshal/Marshal。
 	jsonStr := *(*string)(unsafe.Pointer(&body))
 	msgsRes := gjson.Get(jsonStr, "messages")
@@ -204,8 +203,8 @@ func FilterThinkingBlocksForRetry(body []byte) []byte {
 		return body
 	}
 
-	// Fast path：只需要删除顶层 thinking，不需要改 messages。
-	// 注意：patternThinkingField 可能来自嵌套字段（如 tool_use.input.thinking），因此必须用 gjson 判断顶层字段是否存在。
+	// 快速路径删除顶层 thinking，messages 原样保留。
+	// patternThinkingField 可能命中 tool_use.input.thinking 等嵌套字段，此处用 gjson 检查顶层字段是否存在。
 	containsThinkingBlocks := bytes.Contains(body, patternTypeThinking) ||
 		bytes.Contains(body, patternTypeThinkingSpaced) ||
 		bytes.Contains(body, patternTypeRedactedThinking) ||
@@ -445,12 +444,11 @@ func RemoveThinkingDependentContextStrategies(body []byte) []byte {
 //
 // 它包含 FilterThinkingBlocksForRetry 的处理，并额外执行：
 //   - 将 `tool_use` block 转成 text，停止发送结构化工具调用。
-//   - 将 `tool_result` block 转成 text，在不保留工具语义的情况下保留结果内容。
+//   - 将 tool_result 块的结果内容转成 text。
 //
 // 只能在确有必要时使用：把工具块转成纯文本会改变模型行为，也可能增加提示注入风险。
 //
-// 传入 mappedModel 时，仅 Anthropic 官方语义执行变形；passback-required/unknown
-// 上游返回原 body，避免破坏原样回传契约。
+// 调用方根据模型的思考重放规则决定是否调用本函数；要求原样回传或规则未知的上游使用原 body。
 func FilterSignatureSensitiveBlocksForRetry(body []byte) []byte {
 	// Fast path: only run when we see likely relevant constructs.
 	if !bytes.Contains(body, []byte(`"type":"thinking"`)) &&

@@ -111,7 +111,7 @@ func TestAdminKeyCombinedWriteRollsBackOnDatabaseFailure(t *testing.T) {
 	require.Equal(t, group.ID, *stored.GroupID)
 }
 
-// adminResetGroupProjection 只适配本契约调用的原生分组读取，不提供默认查询结果。
+// adminResetGroupProjection 将分组读取转交注入的 GroupRepository。
 type adminResetGroupProjection struct {
 	apikey.GroupRepository
 	reader routing.GroupRepository

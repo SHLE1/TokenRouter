@@ -78,7 +78,7 @@ func (s *managementListFixture) ListSchedulableProvidersForAdvancedSchedulerScor
 	return out, nil
 }
 
-// managementListFixture 只拥有列表与评分候选读模型，保留原分页和调用计数。
+// managementListFixture 提供列表与评分候选，记录分页参数和调用次数。
 type managementListFixture struct {
 	ProviderManagement
 	providers                                                               []provider.Record
@@ -98,7 +98,7 @@ func newManagementListFixture() *managementListFixture {
 	return &managementListFixture{providers: []provider.Record{{ID: 3, Name: "provider", Platform: provider.PlatformAnthropic, Type: provider.ProviderTypeOAuth, Status: provider.StatusActive, CreatedAt: now, UpdatedAt: now}}}
 }
 
-// newManagementListFixtureHandler 使用真实列表、评分和展示实现，静态缺省值保持原独立构造。
+// newManagementListFixtureHandler 组合列表、评分和展示组件，并分别配置静态缺省值。
 func newManagementListFixtureHandler(source *managementListFixture) *ManagementHandler {
 	runtime := provider.NewRuntimeStatusReader(provider.RuntimeStatusOptions{})
 	scores := provider.NewSchedulerScoreView(source, provideradapter.SchedulerScoreOptions(nil, nil, func(_ context.Context, group *accessview.GroupConfig) policy.EffectiveSettings {

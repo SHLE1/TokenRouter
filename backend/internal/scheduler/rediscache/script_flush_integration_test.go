@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSessionBatchAfterScriptFlush 验证Redis 丢失脚本缓存后，批量读仍须返回真实活动会话，不能静默漏报容量。
+// TestSessionBatchAfterScriptFlush 检查 Redis 丢失脚本缓存后，批量读取仍返回已有的活动会话。
 func TestSessionBatchAfterScriptFlush(t *testing.T) {
 	ctx := context.Background()
 	rdb := testRedis(t)
@@ -25,7 +25,7 @@ func TestSessionBatchAfterScriptFlush(t *testing.T) {
 	require.Equal(t, 1, counts[91001])
 	require.Equal(t, 0, counts[91002])
 
-	// 后续单次活动刷新仍使用同一注册项，不新增会话或改变空闲窗口。
+	// 后续单次活动刷新复用该注册项和空闲窗口。
 	require.NoError(t, cache.RefreshSession(ctx, 91001, "session-a", time.Minute))
 	count, err := cache.GetActiveSessionCount(ctx, 91001)
 	require.NoError(t, err)

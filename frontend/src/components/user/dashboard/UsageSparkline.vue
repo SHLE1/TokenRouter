@@ -36,7 +36,7 @@ const props = defineProps<{
 
 const WIDTH = 100
 const HEIGHT = 32
-// 上下各留一点边距，避免线条贴边被裁掉。
+// 上下预留线条绘制空间。
 const PADDING = 2
 
 // coordinates 以 0 为底线按最大值等比缩放，全为 0 时贴底；null 时段不出点。

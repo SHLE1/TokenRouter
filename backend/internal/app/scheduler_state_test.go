@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProviderRuntimeBlockBindingSharesRecoveryFence 验证原生恢复与执行端必须观察同一停调代次，不能各自创建状态副本。
+// TestProviderRuntimeBlockBindingSharesRecoveryFence 检查恢复操作与执行入口观察同一停调代次。
 func TestProviderRuntimeBlockBindingSharesRecoveryFence(t *testing.T) {
 	state := provider.NewRuntimeBlockState(time.Now)
 	gateway := provideOpenAIResponseHealth(nil, state, nil, nil).Runtime
@@ -28,7 +28,7 @@ func TestProviderRuntimeBlockBindingSharesRecoveryFence(t *testing.T) {
 	require.Greater(t, state.ManagedRecoveryFence(value.Record.ID), fence)
 }
 
-// TestSchedulerSharedStateBindsLegacyConsumers 验证实际装配必须把新反馈及兼容参数入口绑定到同一实例。
+// TestSchedulerSharedStateBindsLegacyConsumers 检查反馈与兼容参数读取接口绑定同一实例。
 func TestSchedulerSharedStateBindsLegacyConsumers(t *testing.T) {
 	state := provideSchedulerSharedState(nil, nil)
 	snapshot := gatewayCompatibilitySnapshot(state)
@@ -36,7 +36,7 @@ func TestSchedulerSharedStateBindsLegacyConsumers(t *testing.T) {
 	other := provideSchedulerSharedState(nil, nil)
 	require.NotSame(t, state.Settings, other.Settings)
 	require.NotSame(t, state.Sticky, other.Sticky)
-	// 从已绑定的真实执行入口上报，第二份装配不能改变原反馈作用域。
+	// 从已绑定的执行入口上报，各次装配的反馈状态彼此独立。
 	selection.NewGeneric(selection.GenericDependencies{Shared: provideSelectionShared(nil, nil, nil, nil, state)}, selection.DefaultOptions()).ReportAdvancedProviderScheduleResult(&gatewayprovider.SelectionResult{AdvancedScheduler: true}, 51, false, nil)
 	observed, _, _ := state.Feedback.Snapshot(51)
 	require.Greater(t, observed, 0.0)
@@ -44,7 +44,7 @@ func TestSchedulerSharedStateBindsLegacyConsumers(t *testing.T) {
 	require.Zero(t, untouched)
 }
 
-// TestGatewayBackgroundTasksUseApplicationOwner 验证原生任务拥有者必须等待两个执行入口，停止后不能退回未跟踪 goroutine。
+// TestGatewayBackgroundTasksUseApplicationOwner 检查应用等待两个执行入口的后台任务，停止后拒绝新的任务。
 func TestGatewayBackgroundTasksUseApplicationOwner(t *testing.T) {
 	for _, name := range []string{"messages", "openai"} {
 		t.Run(name, func(t *testing.T) {

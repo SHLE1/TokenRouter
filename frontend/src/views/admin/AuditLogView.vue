@@ -592,8 +592,7 @@ const clearTotpCode = ref('')
 const clearing = ref(false)
 const checkingTotpStatus = ref(false)
 
-// 与其他敏感操作一致：未启用 2FA 时直接提示去个人资料启用 TOTP，
-// 而不是弹出一个无法完成的验证码输入框（后端会以 TOTP_NOT_SETUP 拒绝）。
+// 未启用 2FA 时提示用户去个人资料启用 TOTP，后端会以 TOTP_NOT_SETUP 拒绝未配置 TOTP 的请求。
 async function openClearDialog() {
   if (checkingTotpStatus.value) return
   checkingTotpStatus.value = true

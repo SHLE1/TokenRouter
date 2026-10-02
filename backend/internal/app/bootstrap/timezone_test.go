@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
-// preserveTimezone 原全局初始化断言迁至实际拥有者，每项测试恢复进程原时区。
+// preserveTimezone 在每项测试结束后恢复进程时区。
 func preserveTimezone(t *testing.T) {
 	t.Helper()
 	previous := time.Local

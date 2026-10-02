@@ -55,16 +55,12 @@ type openAIWSInvalidEncryptedBinding struct {
 }
 
 // openAIWSInvalidEncryptedDigestsPerSession 是单会话摘要集合的存储自保护上限。
-// 超出后新增摘要被忽略，仅退化为"该项下次仍触发一次上游拒绝后的常规 recovery"，
-// 不影响正确性。
+// 达到上限后跳过新摘要，该密文下次被上游拒绝时再执行常规恢复。
 const openAIWSInvalidEncryptedDigestsPerSession = 512
 
-// OpenAIWSStateStore 管理 WSv2 的粘连状态。
-// - response_id -> provider_id 用于续链路由
-// - response_id -> conn_id 用于连接内上下文复用
-//
-// response_id -> provider_id 优先走 GatewayCache（Redis），同时维护本地热缓存。
-// response_id -> conn_id 仅在本进程内有效。
+// OpenAIWSStateStore 保存 WebSocket 响应与提供商、连接的对应关系。
+// response_id 到 provider_id 优先读取 Redis，并维护本地缓存，用于续接选择。
+// response_id 到 conn_id 保存在当前进程中，用于复用连接上下文。
 type OpenAIWSStateStore interface {
 	BindResponseProvider(ctx context.Context, groupID int64, responseID string, providerID int64, ttl time.Duration) error
 	GetResponseProvider(ctx context.Context, groupID int64, responseID string) (int64, error)
@@ -84,9 +80,7 @@ type OpenAIWSStateStore interface {
 	GetSessionConn(groupID int64, sessionHash string) (string, bool)
 	DeleteSessionConn(groupID int64, sessionHash string)
 
-	// invalid_encrypted_content lineage：按会话记录已被上游拒绝的
-	// encrypted_content 摘要，后续 turn 进场时仅剥离命中项，避免同一失效
-	// 密文随客户端历史反复触发"整包被拒→剥离→重试/重连"。仅进程内有效。
+	// 按会话在进程内记录上游拒绝的 encrypted_content 摘要，后续 turn 提前剥离匹配密文。
 	MarkSessionInvalidEncryptedContent(groupID int64, sessionHash string, digests []string, ttl time.Duration)
 	GetSessionInvalidEncryptedContentDigests(groupID int64, sessionHash string) map[string]struct{}
 	// HasAnySessionInvalidEncryptedContent 是热路径快速探测：全局无记录时
@@ -508,7 +502,7 @@ func (s *defaultOpenAIWSStateStore) maybeCleanup() {
 		return
 	}
 
-	// 增量限额清理，避免高规模下一次性全量扫描导致长时间阻塞。
+	// 每次限量清理，控制大规模缓存下的扫描耗时。
 	s.responseToProviderMu.Lock()
 	cleanupExpiredProviderBindings(s.responseToProvider, now, openAIWSStateStoreCleanupMaxPerMap)
 	s.responseToProviderMu.Unlock()
@@ -642,7 +636,7 @@ func openAIHTTPResponseOwnerCacheKey(prefix, responseID string) string {
 	return prefix + hex.EncodeToString(sum[:])
 }
 
-// openAIWSResponseProviderMapKey 本地热缓存按分组隔离的 key，与 Redis 层保持一致，避免跨组命中。
+// openAIWSResponseProviderMapKey 为本地缓存生成按分组隔离的键，与 Redis 使用相同分组规则。
 func openAIWSResponseProviderMapKey(groupID int64, responseID string) string {
 	return fmt.Sprintf("%d:%s", groupID, responseID)
 }

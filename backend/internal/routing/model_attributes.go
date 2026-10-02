@@ -144,7 +144,7 @@ func (s *ModelAttributeService) invalidate(ctx context.Context, groups []int64) 
 	}
 }
 
-// ResolveModels 每个分组只读一次档案，以可请求结果中的最终模型生成展示投影。
+// ResolveModels 每个分组读取一次属性档案，按可请求结果中的最终模型生成展示属性。
 func (s *ModelAttributeService) ResolveModels(ctx context.Context, groupID int64, models []RequestableModel) (map[string]EffectiveModelAttributes, error) {
 	config, err := s.Repo.ForGroup(ctx, groupID)
 	if err != nil {

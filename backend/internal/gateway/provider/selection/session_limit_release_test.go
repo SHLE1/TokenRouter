@@ -131,7 +131,7 @@ func TestReleaseProviderSession_NilCacheAndErrorTolerance(t *testing.T) {
 }
 
 // TestReleaseProviderSession_Idempotent 验证释放操作幂等，可安全重复调用
-// （failover 链上按次释放 + defer 兜底可能对同一提供商重复释放）。
+// （failover 的逐次释放和 defer 都可能释放同一提供商）。
 func TestReleaseProviderSession_Idempotent(t *testing.T) {
 	cache := newSessionLimitReleaseCacheStub()
 	svc := newGenericSelectionForTest(GenericDependencies{

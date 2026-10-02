@@ -1,6 +1,6 @@
 <template>
   <div class="relative min-w-0">
-    <!-- 统计内容始终占位，成功提示退出后再恢复，避免表单位移或文字重叠。 -->
+    <!-- 统计内容保留占位，成功提示退出后恢复显示。 -->
     <div :class="{ invisible: message !== null }" :aria-hidden="message !== null || undefined">
       <slot />
     </div>
@@ -74,7 +74,7 @@ const message = ref<{ sequence: number; title: string; detail: string } | null>(
 // 保留时长仅决定提示何时收起，CSS 动画通过完成事件自行清理。
 const FEEDBACK_HOLD_MS = 3000
 const colors = ['bg-primary-400', 'bg-emerald-400', 'bg-amber-400', 'bg-sky-400']
-// 固定轨迹让每次庆祝保持轻量；彩纸只在统计区附近散开，不覆盖其他卡片。
+// 彩纸按固定轨迹在统计区附近散开。
 const particles = Array.from({ length: 16 }, (_, id) => ({
   id,
   color: colors[id % colors.length],

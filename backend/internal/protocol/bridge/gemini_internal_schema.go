@@ -7,7 +7,7 @@ import (
 
 // CleanJSONSchema 清理 JSON Schema，移除 Antigravity/Gemini 不支持的字段
 // 参考 Antigravity-Manager/src-tauri/src/proxy/common/json_schema.rs 实现
-// 确保 schema 符合 JSON Schema draft 2020-12 且适配 Gemini v1internal
+// 按 JSON Schema draft 2020-12 清理 schema，并适配 Gemini v1internal。
 func CleanJSONSchema(schema map[string]any) map[string]any {
 	if schema == nil {
 		return nil
@@ -62,7 +62,7 @@ func flattenRefs(schema map[string]any, defs map[string]any) {
 				// 合并定义内容 (不覆盖现有 key)
 				for k, v := range defMap {
 					if _, has := schema[k]; !has {
-						schema[k] = deepCopy(v) // 需深拷贝避免共享引用
+						schema[k] = deepCopy(v) // 深复制后各属性独立修改。
 					}
 				}
 				// 递归处理刚刚合并进来的内容
@@ -108,7 +108,7 @@ func deepCopy(src any) any {
 	}
 }
 
-// cleanJSONSchemaRecursive 递归核心清理逻辑
+// cleanJSONSchemaRecursive 递归清理 JSON Schema。
 // 返回处理后的值 (通常是 input map，但可能修改内部结构)
 func cleanJSONSchemaRecursive(value any) any {
 	schemaMap, ok := value.(map[string]any)
@@ -116,18 +116,17 @@ func cleanJSONSchemaRecursive(value any) any {
 		return value
 	}
 
-	// 0. [NEW] 合并 allOf
+	// 合并 allOf 的约束。
 	mergeAllOf(schemaMap)
 
-	// 1. [CRITICAL] 深度递归处理子项
+	// 递归清理子项。
 	if props, ok := schemaMap["properties"].(map[string]any); ok {
 		for _, v := range props {
 			cleanJSONSchemaRecursive(v)
 		}
-		// Go 中不需要像 Rust 那样显式处理 nullable_keys remove required，
-		// 因为我们在子项处理中会正确设置 type 和 description
+		// 子项清理同时更新 type 和 description。
 	} else if items, ok := schemaMap["items"]; ok {
-		// [FIX] Gemini 期望 "items" 是单个 Schema 对象（列表验证），而不是数组（元组验证）。
+		// Gemini 的 items 使用单个 Schema 对象进行列表验证。
 		if itemsArr, ok := items.([]any); ok {
 			// 策略：将元组 [A, B] 视为 A、B 中的最佳匹配项。
 			best := extractBestSchemaFromUnion(itemsArr)
@@ -135,7 +134,7 @@ func cleanJSONSchemaRecursive(value any) any {
 				// 回退到通用字符串
 				best = map[string]any{"type": "string"}
 			}
-			// 用处理后的对象替换原有数组
+			// 用选出的 Schema 对象替换元组数组。
 			cleanedBest := cleanJSONSchemaRecursive(best)
 			schemaMap["items"] = cleanedBest
 		} else {
@@ -154,7 +153,7 @@ func cleanJSONSchemaRecursive(value any) any {
 		}
 	}
 
-	// 2. [FIX] 处理 anyOf/oneOf 联合类型: 合并属性而非直接删除
+	// 合并 anyOf/oneOf 联合类型的属性。
 	var unionArray []any
 	typeStr, _ := schemaMap["type"].(string)
 	if typeStr == "" || typeStr == "object" {
@@ -222,7 +221,7 @@ func cleanJSONSchemaRecursive(value any) any {
 		// 4. [ROBUST] 约束迁移
 		migrateConstraints(schemaMap)
 
-		// 5. [CRITICAL] 白名单过滤
+		// 按允许的属性集合过滤。
 		allowedFields := map[string]bool{
 			"type":        true,
 			"description": true,

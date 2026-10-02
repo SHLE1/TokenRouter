@@ -23,7 +23,7 @@ func ParseCodexRateLimitHeaders(headers http.Header) *openai.OpenAICodexUsageSna
 		return nil
 	}
 
-	// 整数窗口字段沿用原 strconv 解析边界。
+	// 整数窗口字段由 strconv 解析。
 	parseInt := func(key string) *int {
 		if v := headers.Get(key); v != "" {
 			if i, err := strconv.Atoi(v); err == nil {

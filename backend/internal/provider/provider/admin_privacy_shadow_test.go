@@ -17,7 +17,7 @@ import (
 
 // TestEnsureOpenAIPrivacySkipsShadow 验证影子提供商跳过隐私设置（不调用 privacyClientFactory）。
 // 影子提供商透传母提供商凭据，但 Extra 通常为空，需给它一个 access_token 才能让
-// 现有的 token=="" 提前返回路径失效，从而真实验证 IsCredentialShadow 守卫。
+// 测试提供非空 token，使请求进入影子提供商检查。
 func TestEnsureOpenAIPrivacySkipsShadow(t *testing.T) {
 	pid := int64(100)
 	shadow := &providercore.Record{

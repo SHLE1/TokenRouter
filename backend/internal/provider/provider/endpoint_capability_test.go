@@ -75,7 +75,7 @@ func TestProviderSupportsOpenAIEndpointCapability(t *testing.T) {
 		}
 
 		require.True(t, SupportsOpenAIEndpoint(provider, providercore.OpenAIEndpointCapabilityTextGeneration))
-		// chat 能力隐含放行 alpha search（OAuth/APIKey 语义一致）。
+		// Chat 能力允许 Alpha Search，OAuth 与 API Key 使用同一规则。
 		require.True(t, SupportsOpenAIEndpoint(provider, providercore.OpenAIEndpointCapabilityAlphaSearch))
 		require.False(t, SupportsOpenAIEndpoint(provider, providercore.OpenAIEndpointCapabilityEmbeddings))
 	})
@@ -239,7 +239,7 @@ func TestProviderSupportsOpenAIEndpointCapability(t *testing.T) {
 	})
 
 	t.Run("responses 能力：仍需通过 chat_completions 配置集校验", func(t *testing.T) {
-		// 未探测（默认支持 responses），但显式能力集未声明 chat_completions。
+		// 默认支持 Responses，配置的能力集合省略了 Chat Completions。
 		provider := &providercore.Record{
 			Platform: capability.PlatformOpenAI,
 			Type:     capability.ProviderTypeAPIKey,

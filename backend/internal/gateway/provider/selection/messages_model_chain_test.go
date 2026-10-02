@@ -26,7 +26,7 @@ import (
 
 // ListModelAvailabilityCandidates 模拟只按持久配置筛选模型诊断候选提供商。
 
-// noSlotSchedulerTestConcurrencyCache 在辅助选择错误触碰真实并发槽时立即暴露问题。
+// noSlotSchedulerTestConcurrencyCache 在辅助选择操作并发槽时使测试失败。
 
 func TestOpenAIGatewayService_MessagesRoutingModelUsesFullMappingChain(t *testing.T) {
 	for _, advancedScheduler := range []bool{false, true} {

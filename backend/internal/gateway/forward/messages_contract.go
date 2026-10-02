@@ -60,7 +60,7 @@ type MessageExecution struct {
 	Hooks                MessageHooks
 }
 
-// MessagePorts 是提供商/设置/网络的单步能力，核心持有准备顺序和错误决定。
+// MessagePorts 提供提供商、设置和网络的单步操作，Messages 流程决定准备顺序和错误处理。
 type MessagePorts interface {
 	ShouldEmulate(context.Context, *int64, []byte) bool
 	Emulate(context.Context, *requeststate.ParsedRequest) (*Result, error)
@@ -115,7 +115,7 @@ type MessagePorts interface {
 // ShouldRetry 保留 OAuth/Setup Token 仅重试 403 的既有资格。
 func ShouldRetry(oauth bool, status int) bool { return oauth && status == 403 }
 
-// ShouldFailover 保留旧可切换状态集合；是否实际切换仍由请求拥有者决定。
+// ShouldFailover 判断响应状态是否允许切换提供商，实际切换由请求流程决定。
 func ShouldFailover(status int) bool {
 	switch status {
 	case 401, 403, 429, 529:
@@ -125,7 +125,7 @@ func ShouldFailover(status int) bool {
 	}
 }
 
-// RetryDelay 保留原指数退避，不新增等待或重试次数。
+// RetryDelay 根据重试次数计算指数退避间隔。
 func RetryDelay(attempt int) time.Duration {
 	if attempt <= 0 {
 		return 300 * time.Millisecond
@@ -137,7 +137,7 @@ func RetryDelay(attempt int) time.Duration {
 	return delay
 }
 
-// PartialUsage 只包装已观测用量；可切换失败不带部分结果。
+// PartialUsage 包装已观测的用量，可切换失败返回空结果。
 func PartialUsage(resp *ExchangeResponse, stream *StreamOutcome, model, upstreamModel string, start time.Time, speed string, failover bool) *Result {
 	if stream == nil || !stream.Usage.HasObservedTokens() || failover {
 		return nil

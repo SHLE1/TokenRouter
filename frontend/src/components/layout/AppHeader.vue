@@ -2,7 +2,7 @@
   <header class="site-header fixed inset-x-0 top-0 z-header border-b border-primary-900/10">
     <!-- 水平内边距与主内容区保持同一条链，两侧边缘在所有断点对齐。 -->
     <div class="flex h-[var(--header-h)] items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
-      <!-- 品牌固定在全局顶栏，避免与侧栏和页面标题争夺层级。 -->
+      <!-- 品牌展示在全局顶栏。 -->
       <div class="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
         <button
           v-if="!publicPage && !isCreativeStudio"
@@ -14,7 +14,7 @@
           <Icon name="menu" size="md" />
         </button>
 
-        <!-- 版本标签与首页链接分离，避免按钮嵌套在链接内触发错误跳转。 -->
+        <!-- 版本标签与首页链接分别渲染为独立控件。 -->
         <div class="header-brand flex min-w-0 items-center gap-2.5 rounded-control px-1.5 py-1 transition-colors hover:bg-primary-100/70 dark:hover:bg-dark-700">
           <router-link
             :to="homePath"

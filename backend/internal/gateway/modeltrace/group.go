@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// WithGroupRedirect 在网关边界组合 Key 与分组的模型阶段，记录本次请求的响应恢复链。
+// WithGroupRedirect 组合 Key 和分组的模型映射，记录本次请求恢复响应模型时所需的名称。
 func WithGroupRedirect(result routing.GroupMappingResult, ctx context.Context, requestedModel string) routing.GroupMappingResult {
 	trace, ok := FromContext(ctx)
 	if !ok {

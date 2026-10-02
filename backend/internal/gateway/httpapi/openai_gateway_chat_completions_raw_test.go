@@ -531,11 +531,8 @@ func TestForwardAsRawChatCompletions_SilentRefusalNormalContentExempt(t *testing
 	require.Contains(t, rec.Body.String(), "data: [DONE]")
 }
 
-// TestForwardAsRawChatCompletions_StripsEmptyToolCallIdentity 端到端验证 raw
-// CC 流式直转路径剔除 DashScope/DeepSeek 后续参数 delta 的空 id/name：
-// 下游仍保留首包合法 id/name 与 arguments 碎片，但后续 delta 不再带
-// `"id":""` / `"name":""`，避免 dsh 等客户端用 `!== undefined` 合并时把
-// 首包合法值覆盖掉（ToolNotFoundError: unknown tool ""）。
+// TestForwardAsRawChatCompletions_StripsEmptyToolCallIdentity 验证直转流剔除 DashScope/DeepSeek 后续参数 delta 中的空 id/name。
+// 首包合法 id/name 和 arguments 分片保留。空字段会使 dsh 等使用 !== undefined 合并的客户端覆盖首包值，报 ToolNotFoundError: unknown tool ""。
 func TestForwardAsRawChatCompletions_StripsEmptyToolCallIdentity(t *testing.T) {
 	body := []byte(`{"model":"deepseek-v4-flash","messages":[{"role":"user","content":"weather"}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -578,7 +575,7 @@ func TestForwardAsRawChatCompletions_StripsEmptyToolCallIdentity(t *testing.T) {
 	require.NotContains(t, downstream, `"name":""`)
 
 	// 逐条扫下游 data payload：后续参数 delta 的 tool_calls.0.id /
-	// function.name 必须已剔除（Exists() == false），首包合法值保留。
+	// 后续分片的 function.name 已剔除（Exists() == false），首包合法值保留。
 	followUpSeen := false
 	for _, line := range strings.Split(downstream, "\n") {
 		payload, ok := openaicore.ExtractSSEDataLine(line)
@@ -606,9 +603,8 @@ func TestForwardAsRawChatCompletions_StripsEmptyToolCallIdentity(t *testing.T) {
 	require.True(t, followUpSeen)
 }
 
-// TestForwardAsRawChatCompletions_TruncatedStreamAfterOutputFailsRequest 验证上游在生成中途干净 EOF（无 [DONE]/usage/finish_reason）且已向客户端写出内容：
-// 不能再记成 HTTP 200 成功，必须回带类型化的上游截断错误，由 handler 补 SSE error
-// 帧并计入 SLA 失败。
+// TestForwardAsRawChatCompletions_TruncatedStreamAfterOutputFailsRequest 验证已输出内容后，上游以无 [DONE]、usage 或 finish_reason 的 EOF 结束时返回截断错误。
+// handler 据此追加 SSE error 并统计 SLA 失败。
 func TestForwardAsRawChatCompletions_TruncatedStreamAfterOutputFailsRequest(t *testing.T) {
 	body := []byte(`{"model":"deepseek-v4-pro","messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -643,7 +639,7 @@ func TestForwardAsRawChatCompletions_TruncatedStreamAfterOutputFailsRequest(t *t
 	require.NotContains(t, rec.Body.String(), "data: [DONE]")
 }
 
-// TestForwardAsRawChatCompletions_EmptyStreamBeforeOutputTriggersFailover 验证上游 200 但一个 SSE 字节都没发：响应头尚未提交，应换号重试而不是回 200 空流。
+// TestForwardAsRawChatCompletions_EmptyStreamBeforeOutputTriggersFailover 验证上游返回 200 后以空 SSE 结束时，在提交响应头前换号重试。
 func TestForwardAsRawChatCompletions_EmptyStreamBeforeOutputTriggersFailover(t *testing.T) {
 	body := []byte(`{"model":"deepseek-v4-pro","messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -701,8 +697,8 @@ func TestForwardAsRawChatCompletions_StreamReadErrorAfterOutputFailsRequest(t *t
 	require.Contains(t, rec.Body.String(), `"content":"partial"`)
 }
 
-// TestForwardAsRawChatCompletions_MissingDoneWithUsageStillSucceeds 验证边界：缺 [DONE] 但收到了 usage 帧 —— 生成已完整，只是尾巴丢失。必须继续按成功
-// 计费，否则会误伤那些跑完就直接 EOF 的兼容上游并白送 token。
+// TestForwardAsRawChatCompletions_MissingDoneWithUsageStillSucceeds 验证缺少 [DONE] 但收到 usage 的流按成功结算。
+// 兼容上游可能在生成完成后直接 EOF，此时仍有已消费的 token。
 func TestForwardAsRawChatCompletions_MissingDoneWithUsageStillSucceeds(t *testing.T) {
 	body := []byte(`{"model":"deepseek-v4-pro","messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -731,7 +727,7 @@ func TestForwardAsRawChatCompletions_MissingDoneWithUsageStillSucceeds(t *testin
 	require.Equal(t, 6, result.Usage.OutputTokens)
 }
 
-// TestForwardAsRawChatCompletions_MissingDoneWithFinishReasonStillSucceeds 验证边界：缺 [DONE] 与 usage，但末帧带 finish_reason —— 生成正常结束，同样不判截断。
+// TestForwardAsRawChatCompletions_MissingDoneWithFinishReasonStillSucceeds 验证缺少 [DONE] 和 usage、但末帧带 finish_reason 时按正常结束处理。
 func TestForwardAsRawChatCompletions_MissingDoneWithFinishReasonStillSucceeds(t *testing.T) {
 	body := []byte(`{"model":"deepseek-v4-pro","messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()
@@ -759,8 +755,8 @@ func TestForwardAsRawChatCompletions_MissingDoneWithFinishReasonStillSucceeds(t 
 	require.Contains(t, rec.Body.String(), `"finish_reason":"stop"`)
 }
 
-// openAIRawStreamDisconnectedWriter 模拟客户端已断开：raw 直转路径经
-// WriteString 写出，故两个方法都必须失败（只覆盖 Write 会被内嵌 writer 绕过）。
+// openAIRawStreamDisconnectedWriter 模拟客户端断开，Write 和 WriteString 均返回错误。
+// 直转路径调用 WriteString，两个方法分别覆盖对应写入。
 type openAIRawStreamDisconnectedWriter struct {
 	gin.ResponseWriter
 }
@@ -773,8 +769,8 @@ func (w *openAIRawStreamDisconnectedWriter) WriteString(string) (int, error) {
 	return 0, errors.New("write failed: client disconnected")
 }
 
-// TestForwardAsRawChatCompletions_ClientDisconnectTruncationStillBills 验证客户端已断开时上游随后截断：两者不可区分，沿用既有语义按已收用量正常收尾计费，
-// 不得把客户端离场记成上游故障。
+// TestForwardAsRawChatCompletions_ClientDisconnectTruncationStillBills 验证客户端断开后上游截断时按已收用量结算。
+// 此时上游截断与客户端断开无法区分，提供商健康状态保持原样。
 func TestForwardAsRawChatCompletions_ClientDisconnectTruncationStillBills(t *testing.T) {
 	body := []byte(`{"model":"deepseek-v4-pro","messages":[{"role":"user","content":"hello"}],"stream":true}`)
 	rec := httptest.NewRecorder()

@@ -196,7 +196,7 @@ export async function validateSSOToken(
 
 /**
  * 密码登录先换取临时 SSO，再兑换 Build OAuth。
- * 密码只在本次调用中通过网络发送，绝不写入持久化凭证。
+ * 密码用于本次网络授权请求。
  */
 export async function authorizePassword(
   emailAndPassword: string,

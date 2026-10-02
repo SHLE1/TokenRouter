@@ -17,7 +17,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// batchDeleteAdminService 记录批量删除并发与结果，验证 handler 的编排语义。
+// batchDeleteAdminService 记录批量删除并发数和结果，供 handler 测试使用。
 type batchDeleteAdminService struct {
 	ProviderManagement
 

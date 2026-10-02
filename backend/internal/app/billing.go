@@ -89,7 +89,7 @@ func provideBillingPlans(client *dbent.Client, orders *paymentpostgres.InstanceS
 	return billing.NewPlans(billingpostgres.NewPlanStore(client), orders)
 }
 
-// provideSubscriptionExpiry 注入旧通知与锁策略，构造期间不启动后台任务。
+// provideSubscriptionExpiry 为订阅过期提醒绑定通知和锁操作，后台任务由生命周期管理器启动。
 func provideSubscriptionExpiry(repo billing.UserSubscriptionRepository, settings settingscore.Repository, notification *notificationcore.NotificationEmailService, lock provider.CNMonitorLeader, db *sql.DB) *billing.SubscriptionExpiryService {
 	return billing.NewSubscriptionExpiryService(repo, billing.ExpiryOptions{Interval: time.Minute, Owner: uuid.NewString(), Now: time.Now, Observe: func(format string, args ...any) { logging.LegacyPrintf("service.subscription_expiry", format, args...) }, Settings: settings, Notifier: expiryNotifications{Service: notification}, Lease: func(ctx context.Context, key, owner string, ttl time.Duration) (func(), bool) {
 		return provider.AcquireSingletonLease(ctx, lock, databaseAdvisoryLease(db), key, owner, ttl)

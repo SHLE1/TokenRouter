@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// UsageURLPolicy 区分未装配配置与显式关闭白名单，保留原查询端点校验顺序。
+// UsageURLPolicy 分别处理未装配配置和已关闭白名单的情况，并校验用量查询端点。
 type UsageURLPolicy struct {
 	Configured        bool
 	Enabled           bool

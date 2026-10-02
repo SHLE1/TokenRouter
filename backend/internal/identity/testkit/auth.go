@@ -60,7 +60,7 @@ func Email(value *identity.EmailChallenges) identity.AuthEmail {
 	return value
 }
 
-// EmailQueue 保留可选队列的 nil 语义，不创建后台执行器。
+// EmailQueue 将 nil 队列指针转换为 nil 接口。
 func EmailQueue(value *notification.EmailQueueService) identity.AuthEmailQueue {
 	if value == nil {
 		return nil

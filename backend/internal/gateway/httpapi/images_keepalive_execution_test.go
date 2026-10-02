@@ -60,7 +60,7 @@ func TestOpenAIImagesJSONKeepalive_KeepsOAuthNonStreamResponseValid(t *testing.T
 }
 
 // TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver 验证回归：failover 第 2+ 轮时，上一轮心跳残留的空白字节不得被误判为“已写响应”，
-// 可重试上游错误必须仍转换为 UpstreamFailoverError，不能吞掉换号机会。
+// 可重试上游错误转换为 UpstreamFailoverError，交给换号流程。
 func TestOpenAIImagesJSONKeepalive_HeartbeatBeforeForwardStillFailsOver(t *testing.T) {
 	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat","response_format":"b64_json"}`)
 

@@ -10,7 +10,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// providerRefreshRegistrations 区分平台注册集合，避免装配重复创建执行器。
+// providerRefreshRegistrations 按平台登记刷新执行器，每个平台登记一次。
 type providerRefreshRegistrations []provider.RefreshRegistration
 
 func provideRefreshPlatforms(claude *provider.ClaudeAuthorization, openai *provider.OpenAIAuthorization, gemini *provider.GeminiAuthorization, antigravity *provider.AntigravityAuthorization, qoder *provideradapter.QoderAuthorization, grok *provider.GrokAuthorization, transport httpclient.UpstreamTransport, profiles *egressprovider.TLSProfiles) providerRefreshRegistrations {

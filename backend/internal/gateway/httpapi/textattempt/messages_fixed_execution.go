@@ -35,7 +35,7 @@ func (r *Runtime) Open(ctx context.Context, in execution.Request, sink upstream.
 		isClaudeCodeClient: in.Metadata.ClaudeCode, platform: in.Text.Platform, hasBoundSession: in.Text.HasBoundSession,
 		sessionKey: in.SessionHash, sessionBoundProviderID: in.Text.BoundProviderID, streamStarted: output.StreamStarted, reqLog: output.Log,
 	}
-	// Messages 入口的隔离标识来自 metadata，不把调度用的内容摘要当成显式会话。
+	// Messages 入口从 metadata 读取隔离标识，内容摘要用于调度。
 	if in.Text.Kind == execution.TextMessages && in.Text.Parsed != nil && requeststate.ExecutionHintsFromContext(ctx).SessionIsolationHash == "" {
 		if id := gatewayhttp.MetadataSessionID(in.Text.Parsed.MetadataUserID); id != "" {
 			ctx = requeststate.WithSessionIsolation(ctx, session.SessionIsolationSourceGateway, id)
@@ -69,7 +69,7 @@ func (r *Runtime) Open(ctx context.Context, in execution.Request, sink upstream.
 	return &base, nil
 }
 
-// messageObservedAttempt 只投影已观测结果；失败结果与错误可以同时返回，不创建额外完成任务。
+// messageObservedAttempt 转换已观测结果，失败结果与错误可以同时返回。
 func messageObservedAttempt(result *forwardcore.MessagesResult, err error) upstream.AttemptResult {
 	if result == nil {
 		return upstream.AttemptResult{Cancelled: errors.Is(err, context.Canceled)}
@@ -80,7 +80,7 @@ func messageObservedAttempt(result *forwardcore.MessagesResult, err error) upstr
 		UpstreamHeaders: http.Header(result.UpstreamHeaders).Clone(), ImageOutputSizes: slices.Clone(result.ImageOutputSizes),
 		ObservedImages: result.ImageCount, SearchCount: result.SearchCount, Cancelled: errors.Is(err, context.Canceled),
 	}
-	// 复用协议计量判断，只投影已观测产物，不改变 RunMessages 的完成资格。
+	// 使用协议计量判断提取已观测产物，RunMessages 判断完成资格。
 	out.HasUsage = result.Usage.HasObservedTokens() || result.ImageCount > 0 || result.AudioUsage != nil || result.SearchCount > 0
 	out.Served = err == nil || out.HasUsage
 	if result.FirstTokenMs != nil {

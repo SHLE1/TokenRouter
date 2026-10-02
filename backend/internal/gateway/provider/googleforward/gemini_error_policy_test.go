@@ -18,10 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ---------------------------------------------------------------------------
-// TestShouldFailoverGeminiUpstreamError — verifies the failover decision
-// for the ErrorPolicyNone path (original logic preserved).
-// ---------------------------------------------------------------------------
+// TestShouldFailoverGeminiUpstreamError 检查 ErrorPolicyNone 时是否触发故障转移。
 
 func TestShouldFailoverGeminiUpstreamError(t *testing.T) {
 	svc := newGeminiFixture(geminiDependencies{})
@@ -60,10 +57,7 @@ func TestShouldFailoverGeminiUpstreamError(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// TestCheckErrorPolicy_GeminiProviders — verifies CheckErrorPolicy works
-// correctly for Gemini platform providers (API Key type).
-// ---------------------------------------------------------------------------
+// TestCheckErrorPolicy_GeminiProviders 检查 Gemini API Key 提供商的错误策略。
 
 func TestCheckErrorPolicy_GeminiProviders(t *testing.T) {
 	tests := []struct {
@@ -270,13 +264,7 @@ func TestCheckErrorPolicy_GeminiProviders(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// TestGeminiErrorPolicyIntegration — verifies the Gemini error handling
-// paths produce the correct behavior for each ErrorPolicyResult.
-//
-// These tests simulate the inline error policy switch in handleClaudeCompat
-// and forwardNativeGemini by calling the same methods in the same order.
-// ---------------------------------------------------------------------------
+// TestGeminiErrorPolicyIntegration 按兼容与 Gemini 协议入口的调用顺序，检查各类错误策略结果。
 
 func TestGeminiErrorPolicyIntegration(t *testing.T) {
 	tests := []struct {
@@ -503,9 +491,7 @@ func TestGeminiErrorPolicyIntegration(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// TestGeminiErrorPolicy_NilRateLimitService — verifies nil safety
-// ---------------------------------------------------------------------------
+// TestGeminiErrorPolicy_NilRateLimitService 检查健康观测器为 nil 时的错误处理。
 
 func TestGeminiErrorPolicy_NilRateLimitService(t *testing.T) {
 	svc := newGeminiFixture(geminiDependencies{
@@ -548,10 +534,7 @@ func TestGeminiErrorPolicy_NilRateLimitService(t *testing.T) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// geminiErrorPolicyRepo — minimal ProviderRepository stub for Gemini error
-// policy tests. Embeds gatewaytestkit.ErrorPolicyStore and adds tracking.
-// ---------------------------------------------------------------------------
+// TestHandleGeminiUpstreamError_GoogleOneCapacityExhaustedUsesTierCooldown 检查 Google One 容量耗尽时的层级冷却。
 
 func TestHandleGeminiUpstreamError_GoogleOneCapacityExhaustedUsesTierCooldown(t *testing.T) {
 	repo := &rateLimit429ProviderRepoStub{}

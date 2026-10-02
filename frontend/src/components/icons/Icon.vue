@@ -77,7 +77,7 @@ export default defineComponent({
           ...attrs,
           ref: svgRef,
           'data-animated-icon': definition().name,
-          // 调用点的显式尺寸优先，避免与 size 档位的类名争夺尺寸。
+          // 调用方传入尺寸时使用该尺寸，省略 size 档位的尺寸类。
           class: [
             'shrink-0 select-none',
             !attrs.height &&

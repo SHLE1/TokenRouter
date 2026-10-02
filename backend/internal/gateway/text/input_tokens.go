@@ -16,7 +16,7 @@ type InputTokensPorts interface {
 	Exhausted(*AttemptFailure)
 }
 
-// RunInputTokens 保留原端点独立预算，不继承普通生成请求的 429/首输出恢复策略。
+// RunInputTokens 按计数端点的独立预算选择提供商并计数。
 func RunInputTokens(p InputTokensPorts, maxSwitches int) {
 	excluded := make(map[int64]struct{})
 	same := make(map[int64]int)

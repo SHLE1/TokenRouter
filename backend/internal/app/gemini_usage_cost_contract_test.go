@@ -12,7 +12,7 @@ import (
 )
 
 func TestGeminiAggregateUsageUsesProviderCost(t *testing.T) {
-	// 用户扣费倍率与提供商成本倍率不同时，Gemini 本地用量必须保持提供商成本口径。
+	// 用户扣费倍率与提供商成本倍率不同时，Gemini 本地用量按提供商成本倍率计算。
 	stats := []usagecore.ModelStat{
 		{
 			Model:        "gemini-2.5-pro",

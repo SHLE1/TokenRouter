@@ -2,39 +2,39 @@
 
 package app
 
-// NewProviderTestsForTest 仅供外部集成测试调用真实组合根，不扩大生产 API。
+// NewProviderTestsForTest 供集成测试调用提供商测试组件的应用构造函数。
 var NewProviderTestsForTest = provideProviderTests
 
-// 以下入口仅在集成测试中组合真实平台探测与应用关闭屏障。
+// 这些构造函数供集成测试组合平台探测和应用任务跟踪器。
 var (
 	NewAntigravityRetryForTest = provideAntigravityRetry
 	NewAntigravityProbeForTest = provideAntigravityProbe
 	NewGatewayActivityForTest  = provideGatewayRequestActivity
 )
 
-// 快照回放测试复用生产装配与原 outbox 发布器。
+// 快照回放测试使用生产装配和 outbox 发布器。
 var (
 	NewSnapshotForTest       = provideSchedulerSnapshot
 	NewProviderEventsForTest = newProviderEvents
 )
 
-// 集成测试直接使用原生装配及单向兼容绑定。
+// 健康状态集成测试使用应用构造函数。
 var (
 	NewProviderHealthRuntimeForTest = provideProviderHealthRuntime
 	NewUpstreamHealthForTest        = provideUpstreamHealth
 )
 
-// 原生完成装配仅向隔离存储测试开放，不增加生产 API。
+// 完成记录集成测试使用应用中的记录器和倍率缓存。
 var (
 	NewCompletionRecordersForTest = ProvideGatewayCompletionRecorders
 	NewGatewayBillingRatesForTest = provideGatewayBillingRates
 )
 
-// 执行提供商集成合同通过真实装配绑定相同存储，不扩大生产接口。
+// NewExecutionProviderStoreForTest 为集成测试构造执行提供商存储。
 var NewExecutionProviderStoreForTest = provideExecutionProviderStore
 
-// 提供商存储合同复用生产配置投影与事件绑定。
+// NewProviderStoreForTest 为集成测试绑定提供商存储配置和事件写入函数。
 var NewProviderStoreForTest = provideProviderStore
 
-// 模型诊断集成合同直接使用实际组合根，不构造旧执行服务。
+// NewModelAvailabilityForTest 为集成测试构造模型诊断组件。
 var NewModelAvailabilityForTest = provideGatewayModelAvailability

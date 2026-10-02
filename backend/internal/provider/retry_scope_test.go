@@ -38,8 +38,7 @@ func TestTempUnscheduleRetryableErrorSkipsRequestScopedTransient(t *testing.T) {
 		require.Zero(t, repo.tempUnschedCalls)
 	})
 
-	// 对照组：同样的 502 在未标记请求级瞬时故障时仍按原有语义临时摘号，
-	// 确认上面的断言来自新增守卫而非其他前置条件。
+	// 同样的 502 未标记为请求级瞬时故障时，按提供商错误执行临时停调。
 	t.Run("未标记时保持原有临时摘号语义", func(t *testing.T) {
 		repo := &capacityShedProviderRepoStub{}
 		svc := providercore.NewRetryCooldown(repo, providercore.RetryCooldownOptions{})

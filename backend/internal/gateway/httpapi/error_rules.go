@@ -130,7 +130,7 @@ func (h *ErrorPassthroughHandler) Create(c *gin.Context) {
 	rule.CustomMessage = req.CustomMessage
 	rule.Description = req.Description
 
-	// 确保切片不为 nil
+	// 空列表返回 []。
 	if rule.ErrorCodes == nil {
 		rule.ErrorCodes = []int{}
 	}
@@ -239,7 +239,7 @@ func (h *ErrorPassthroughHandler) Update(c *gin.Context) {
 		rule.SkipMonitoring = *req.SkipMonitoring
 	}
 
-	// 确保切片不为 nil
+	// 空列表返回 []。
 	if rule.ErrorCodes == nil {
 		rule.ErrorCodes = []int{}
 	}

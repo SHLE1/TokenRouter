@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// GroupProvider 仅提供管理分组需要的提供商资格，不携带凭据。
+// GroupProvider 包含分组管理所需的提供商 ID、平台和类型。
 type GroupProvider struct {
 	ID       int64
 	Platform string

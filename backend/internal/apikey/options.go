@@ -118,6 +118,6 @@ func (s *APIKeyService) groupPolicy(g *routing.Group) string {
 	if s.cfg != nil && s.cfg.GroupFastPolicy != nil {
 		return s.cfg.GroupFastPolicy(g.OpenAIFastPolicy, g.ForceOpenAIFast)
 	}
-	// 独立调用者可传入已经归一化的投影。
+	// 独立调用者可传入已经归一化的策略值。
 	return g.OpenAIFastPolicy
 }

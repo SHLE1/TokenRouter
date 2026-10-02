@@ -9,7 +9,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// HealthObservationFromContext 在网关边界固化模型、thinking 和端点意图，提供商观测不回读业务 context。
+// HealthObservationFromContext 读取模型、thinking 和端点信息，生成健康观测输入。
 func HealthObservationFromContext(ctx context.Context, status int, headers http.Header, body []byte, models []string) provideradapter.HealthObservation {
 	input := provideradapter.HealthObservation{Status: status, Headers: headers, Body: body, EffectiveModel: requeststate.HealthModel(ctx, models), ModelProvided: len(models) > 0, Thinking: requeststate.HealthThinking(ctx), ImagesEndpoint: requeststate.OpenAIImagesEndpointFromContext(ctx)}
 	if len(models) > 0 {
@@ -18,7 +18,7 @@ func HealthObservationFromContext(ctx context.Context, status int, headers http.
 	return input
 }
 
-// ApplyExecutionHealth 保留观测使用独立记录、返回后仅回写凭据与附加状态的边界。
+// ApplyExecutionHealth 用独立记录执行健康观测，返回后将凭据和附加状态写回执行目标。
 func ApplyExecutionHealth(ctx context.Context, observer *provideradapter.UpstreamHealth, target *ExecutionProvider, input provideradapter.HealthObservation) provider.UpstreamErrorDecision {
 	record := ExecutionRecord(target)
 	result := observer.ApplyUpstreamError(ctx, record, input)
@@ -28,7 +28,7 @@ func ApplyExecutionHealth(ctx context.Context, observer *provideradapter.Upstrea
 	return result
 }
 
-// ExecutionErrorPolicy 只借用同步裁决所需的策略字段，不复制或持有完整提供商。
+// ExecutionErrorPolicy 返回错误策略需要的提供商标识、平台、类型和凭据。
 func ExecutionErrorPolicy(value *ExecutionProvider) *provider.Record {
 	if value == nil {
 		return nil

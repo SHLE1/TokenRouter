@@ -43,7 +43,7 @@ const booleanOptions = computed(() => [
   { value: 'false', label: t('admin.modelAttributes.unsupported') },
 ])
 
-// 删除属性键代表继承，显式 false 和空数组必须保留。
+// 删除属性键代表继承，false 和空数组表示已配置的值。
 function set<K extends keyof ModelAttributes>(key: K, value: ModelAttributes[K]) {
   const next = { ...props.modelValue, [key]: value }
   if (value === undefined) delete next[key]

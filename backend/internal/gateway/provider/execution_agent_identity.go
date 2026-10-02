@@ -192,7 +192,7 @@ func (s *ExecutionAgentIdentity) Redact(ctx context.Context, provider *Execution
 	return RedactExecutionAgentBody(ctx, s.store, provider, body)
 }
 
-// ExecutionAgentIdentity 封装本次执行所需身份协作，不持有 Gin、配置或第二份注册状态。
+// ExecutionAgentIdentity 协调执行请求的身份注册和连接失效。
 type ExecutionAgentIdentity struct {
 	store       ExecutionProviderStore
 	coordinator *acctcore.OpenAITaskCoordinator

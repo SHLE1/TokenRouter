@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// AlphaSearchTarget 不暴露完整提供商，准备好的请求禁止序列化或日志展开。
+// AlphaSearchOptions 保存已准备的搜索请求和执行回调。请求含授权信息，仅供执行使用；日志和序列化需要使用脱敏数据。
 type AlphaSearchOptions struct {
 	ProviderID        int64
 	Request           *http.Request `json:"-"`

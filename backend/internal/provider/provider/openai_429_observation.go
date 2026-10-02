@@ -22,7 +22,7 @@ func CanRetryOpenAI429(state *provider.RuntimeBlockState, value *provider.Record
 	return state.RetryWindowActive(value.ID)
 }
 
-// ClassifyOpenAI429 先识别明确耗尽，再保持原重置头及正文回退顺序。
+// ClassifyOpenAI429 先识别额度耗尽，再依次读取重置响应头和正文。
 func ClassifyOpenAI429(headers http.Header, body []byte) (provider.OpenAI429Disposition, *time.Time) {
 	if kind, reset := provider.OpenAIExhaustedWindow(openai.ParseCodexRateLimitHeaders(headers), time.Now); kind != provider.OpenAI429Transient {
 		return kind, reset

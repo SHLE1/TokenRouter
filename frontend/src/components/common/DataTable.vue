@@ -498,7 +498,7 @@ interface Props {
   overscan?: number
   /**
    * 仅当行数超过此阈值时启用虚拟化（默认 100）。
-   * 小列表全量渲染，避免可变行高的估算值与实际值不一致导致滚动补偿抖动。
+   * 小列表全量渲染，可变行高按实际内容计算。
    */
   virtualizeThreshold?: number
   /** 启用受控行选择；应提供稳定的行键。 */
@@ -885,19 +885,19 @@ const shouldVirtualize = computed(() =>
 const rowVirtualizer = useVirtualizer(computed(() => ({
   count: shouldVirtualize.value ? (sortedData.value?.length ?? 0) : 0,
   getScrollElement: () => tableWrapperRef.value,
-  // 用行主键(与模板 :key 一致)而非默认的 index 作为 itemSizeCache 键,
-  // 这样排序/筛选/跨阈值来回都能复用正确的已测行高,而不是残留的按 index 缓存 → 消除高度校正抖动。
+  // itemSizeCache 使用与模板 :key 相同的行主键。
+  // 排序、筛选和跨虚拟化阈值切换时，已测行高仍对应同一行，减少高度校正抖动。
   getItemKey: (index: number) => {
     const row = sortedData.value?.[index]
     return row != null ? resolveRowKey(row, index) : index
   },
   estimateSize: () => props.estimateRowHeight ?? 56,
   overscan: props.overscan ?? 5,
-  // 兜底高度:首个有效高度读数到来前,先按一屏渲染,避免空白帧
+  // 首次测得有效高度前，按一屏高度渲染。
   initialRect: { width: 0, height: estimatedViewportHeight() },
   // 关键:过滤 0 高度读数,杜绝 scrollRect 被钉成 0 → calculateRange 返回 null → 整表空白
   observeElementRect: observeElementRectNonZero,
-  // 把测量类 ResizeObserver 回调批到 rAF,避免滚动中同步 reflow 风暴导致的校正抖动/空白
+  // ResizeObserver 的测量回调合并到 rAF，滚动时按帧处理重排。
   useAnimationFrameWithResizeObserver: true,
 })))
 
@@ -1083,7 +1083,7 @@ defineExpose({
   --sticky-boundary-line-color: theme('borderColor.dark.600');
 }
 
-/* 选择列布局由表格自身维护，避免外层页面的通用单元格样式覆盖。 */
+/* 选择列使用表格自身的单元格样式。 */
 .table-wrapper .table-selection-cell {
   @apply w-11 min-w-11 px-3 text-center;
 }
@@ -1170,7 +1170,7 @@ tbody tr:hover .sticky-col {
   background-color: rgb(23 23 26);
 }
 
-/* 所有固定列统一使用细线边界，避免滚动时出现渐变阴影带。 */
+/* 固定列之间使用细线分隔。 */
 .sticky-boundary-line.is-scrollable .sticky-col-left::after {
   content: '';
   position: absolute;
@@ -1197,7 +1197,7 @@ tbody tr:hover .sticky-col {
 </style>
 
 <style>
-/* 表格滚动条常驻显示，避免横向滚动区域不可发现 */
+/* 常驻显示滚动条，提示表格可以横向滚动。 */
 .table-wrapper {
   scrollbar-width: auto !important;
 }

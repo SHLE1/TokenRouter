@@ -10,7 +10,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideClaudeTokens 保留 OAuth 与 Vertex 两条获取路径的原缓存和调用时点。
+// provideClaudeTokens 绑定 OAuth 与 Vertex 凭据源，各来源按调用时机使用缓存。
 func provideClaudeTokens(store *postgres.ProviderStore, cache provider.AccessTokenCache, authorization *provider.ClaudeAuthorization, refresh *provider.OAuthRefreshAPI) *provider.ClaudeTokenSource {
 	executor := &provider.ClaudeTokenRefresher{Authorization: authorization}
 	return &provider.ClaudeTokenSource{Options: provider.ClaudeTokenOptions{
@@ -25,7 +25,7 @@ func provideClaudeTokens(store *postgres.ProviderStore, cache provider.AccessTok
 	}}
 }
 
-// provideMessageCredentials 固定复用原 Claude/Vertex 源，其他平台保持存量凭据读取。
+// provideMessageCredentials 复用 Claude 和 Vertex 凭据源，其他平台读取已保存的凭据。
 func provideMessageCredentials(claude *provider.ClaudeTokenSource) *provider.MessageCredentialSource {
 	result := &provider.MessageCredentialSource{}
 	if claude != nil {

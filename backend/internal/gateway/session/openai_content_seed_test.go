@@ -354,7 +354,7 @@ func TestDeriveOpenAIContentSessionSeed_AllTruncationOffsetsMatchLegacyBytes(t *
 }
 
 func TestDeriveOpenAIContentSessionSeed_DeterministicMalformedCorpusMatchesLegacy(t *testing.T) {
-	// 固定随机种子生成畸形 JSON 语料，持续守住旧版 gjson 宽松解析语义。
+	// 用固定随机种子生成畸形 JSON，检查 gjson 的宽容解析结果。
 	rng := rand.New(rand.NewSource(4274))
 	alphabet := []byte(`{}[]":,modeltfsuinpcr0123456789 \\`)
 	for caseIndex := 0; caseIndex < 5000; caseIndex++ {

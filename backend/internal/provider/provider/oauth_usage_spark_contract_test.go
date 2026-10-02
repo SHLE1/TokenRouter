@@ -43,7 +43,7 @@ func (r *sparkShadowUsageTestRepo) UpdateExtra(_ context.Context, _ int64, updat
 
 // TestGetOpenAIUsage_SparkShadow_WritesExtraAndReturnsNonEmptyWindows 覆盖:
 // A) spark 影子提供商会持久化自身 codex_5h_used_percent，且上游请求携带母提供商 chatgpt-account-id。
-// B) 同一次调用返回的 UsageInfo 已从 Extra 重建 5h/7d 窗口，而不是只写数据库。
+// B) 同一次调用返回的 UsageInfo 包含从 Extra 重建的 5h 和 7d 窗口。
 func TestGetOpenAIUsage_SparkShadow_WritesExtraAndReturnsNonEmptyWindows(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -70,7 +70,7 @@ func TestGetOpenAIUsage_SparkShadow_WritesExtraAndReturnsNonEmptyWindows(t *test
 	// 同一个 repo 供 OpenAIQuotaService 解析母提供商，也供 ProviderUsageService 持久化 Extra。
 	updateExtraCh := make(chan map[string]any, 1)
 	repo := &sparkShadowUsageTestRepo{
-		// 模拟数据库持有独立快照，不能与请求侧兼容投影写回共享可变对象。
+		// 数据库替身保存独立快照，请求修改自己的数据副本。
 		providers: map[int64]*provider.Record{
 			200: provider.CloneRecord(shadow),
 			100: provider.CloneRecord(parent),
@@ -147,7 +147,7 @@ func TestGetOpenAIUsage_SparkShadow_WritesExtraAndReturnsNonEmptyWindows(t *test
 		t.Fatal("UpdateExtra was not called within timeout — spark shadow persist did not happen")
 	}
 
-	// Assertion B：返回的 UsageInfo 必须有非空窗口，避免只写 Extra 不重建返回值。
+	// 断言 B：返回的 UsageInfo 包含非空窗口。
 	require.NotNil(t, usage.FiveHour,
 		"returned UsageInfo.FiveHour must be non-nil (rebuild from merged Extra must happen)")
 	require.NotNil(t, usage.SevenDay,

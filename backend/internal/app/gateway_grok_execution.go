@@ -19,7 +19,7 @@ func provideGrokExecutor(cfg *config.Config, credentials *gatewayadapter.Request
 	return &gatewayhttp.GrokExecutor{FastPolicy: &gatewayadapter.ExecutionFastPolicy{Readers: readers, Prices: prices}, Credentials: credentials, Transport: transport, Output: output, Health: health, Routes: routes, TLS: tls, Dialer: connections.Dialer(), Enter: activity.Enter, Failure: &gatewayhttp.UpstreamTransportFailure{Health: &provideradapter.TransportHealth{Runtime: blocks, Deferred: deferred, Store: store}}}
 }
 
-// provideGrokRoutes 只投影静态目标策略，动态默认模式仍在原查询位置读取。
+// provideGrokRoutes 绑定静态目标地址策略，默认模式在请求期间读取。
 func provideGrokRoutes(cfg *config.Config, readers *gatewayadapter.RuntimeReaders) gatewayadapter.GrokRoutes {
 	routes := gatewayadapter.GrokRoutes{Validate: grok.ValidateBaseURL}
 	if cfg != nil {

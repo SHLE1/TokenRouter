@@ -1,9 +1,9 @@
 /**
  * 创作台本地存储（IndexedDB）
  * 设计要点：
- * - 图片素材（原图 / mask / 输出）只保存在当前浏览器，绝不 base64 进 localStorage。
+ * 图片素材（原图、mask、输出）保存在当前浏览器的 IndexedDB。
  * - 所有 API Promise 化且幂等（重复 put/delete 同一 key 结果一致）。
- * - 配额不足时抛 LocalStoreQuotaError，由 UI 提示用户下载备份，绝不上传。
+ * - 配额不足时抛 LocalStoreQuotaError，由 UI 提示用户下载备份，素材留在当前浏览器。
  */
 
 // ==================== 常量与类型 ====================
@@ -84,7 +84,7 @@ export function localAssetKey(kind: LocalAssetKind, localId: string): string {
   return `${kind}:local:${localId}`
 }
 
-// 校验并规范化浏览器工作区 UUID，避免客户端把任意长字符串送到服务端。
+// 校验并规范化浏览器工作区 UUID，发往服务端的标识需要符合 UUID 格式。
 export function normalizeCreativeWorkspaceId(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const normalized = value.trim().toLowerCase()
@@ -319,7 +319,7 @@ export async function clearAll(): Promise<void> {
   }
 }
 
-// 测试专用：重置打开缓存，避免用例之间互相污染
+// 测试专用：重置数据库打开缓存，让各用例独立初始化。
 export function __resetCreativeStoreForTest(): void {
   dbPromise = null
 }

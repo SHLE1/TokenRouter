@@ -245,7 +245,7 @@ func (s *GrokReconciliationService) ReconcileGrokOAuth(ctx context.Context, inpu
 			}
 			latestReason, latestAction, stillActionable := ClassifyGrokOAuthReconcileProvider(latest, refreshWindow, s.options.Now)
 			if !stillActionable || latestAction != GrokOAuthReconcileActionBlock {
-				// 分页加载后提供商已变化（例如管理员重新授权），不得执行基于旧状态的破坏性操作。
+				// 提供商在分页加载后已发生变化时，跳过本次基于分页快照的处置。
 				item.Outcome = GrokOAuthReconcileOutcomeSkipped
 				result.Skipped++
 				break

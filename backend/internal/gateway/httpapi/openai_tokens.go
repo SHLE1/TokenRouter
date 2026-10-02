@@ -46,7 +46,7 @@ func NewOpenAITokensHandler(options OpenAITokenOptions, backend OpenAITokenBacke
 	return &OpenAITokensHandler{options: options, backend: backend, prompt: prompt}
 }
 
-// errorResponse 复用同一错误输出，保留以前已提交 compact 的边界。
+// errorResponse 使用共享错误输出处理已提交的 Compact 响应。
 func (h *OpenAITokensHandler) errorResponse(c *gin.Context, status int, kind, message string) {
 	writeOpenAITokenError(c, status, kind, message)
 }

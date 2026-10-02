@@ -470,7 +470,7 @@ func SortedOpenAIWSPayloadKeys(m map[string]any) []string {
 	return keys
 }
 
-// 日志截断、采样与体积估计继续沿用原上限。
+// WebSocket 诊断日志的截断、采样和体积估计上限。
 const (
 	OpenAIWSLogValueMaxLen              = 160
 	OpenAIWSHeaderValueMaxLen           = 120

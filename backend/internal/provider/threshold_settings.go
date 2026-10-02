@@ -92,7 +92,7 @@ func CloneProviderSchedulingThresholds(input map[string]int) map[string]int {
 	return cloned
 }
 
-// GetProviderSchedulingThresholds 保留正常与故障 TTL、singleflight 及拷贝语义。
+// GetProviderSchedulingThresholds 按正常或故障 TTL 缓存结果，以 singleflight 合并查询，并返回独立副本。
 func (s *RuntimeSettings) GetProviderSchedulingThresholds(ctx context.Context) map[string]int {
 	if s == nil || s.settingRepo == nil {
 		return DefaultProviderSchedulingThresholds()
@@ -117,7 +117,7 @@ func (s *RuntimeSettings) GetProviderSchedulingThresholds(ctx context.Context) m
 		raw, err := s.settingRepo.GetValue(dbCtx, SettingKeyProviderSchedulingThresholds)
 		if err != nil {
 			if errors.Is(err, s.notFound) {
-				// 未配置阈值属于稳定默认状态，按正常周期缓存，避免热点路径持续查询数据库。
+				// 未配置阈值时按正常 TTL 缓存默认结果。
 				s.providerSchedulingThresholdsCache.Store(&cachedProviderSchedulingThresholds{
 					thresholds: CloneProviderSchedulingThresholds(thresholds),
 					expiresAt:  time.Now().Add(providerSchedulingThresholdsCacheTTL).UnixNano(),

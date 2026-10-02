@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// TestMain 保留原存储测试进程的 UTC 日历，避免将宿主机 Local 名称传入 PostgreSQL。
+// TestMain 将测试进程时区设为 UTC，PostgreSQL 接收固定的时区名称。
 func TestMain(m *testing.M) {
 	time.Local = time.UTC
 	os.Exit(m.Run())

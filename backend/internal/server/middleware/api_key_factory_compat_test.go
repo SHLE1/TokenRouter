@@ -9,7 +9,7 @@ import (
 )
 
 // NewAPIKeyAuthMiddleware 创建 API Key 认证中间件
-// 旧构造签名仅用于保留原 middleware 契约断言，生产直接在 app 绑定原生服务。
+// NewAPIKeyAuthMiddleware 为中间件测试组合 Key 认证和订阅检查，生产装配位于 app。
 func NewAPIKeyAuthMiddleware(apiKeyService *apikey.APIKeyService, subscriptionService *billing.SubscriptionService, cfg *config.Config) keyhttp.APIKeyAuthMiddleware {
 	return keyhttp.APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, cfg))
 }

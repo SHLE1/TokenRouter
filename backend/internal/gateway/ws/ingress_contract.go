@@ -11,7 +11,7 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// ClientPayload 是一轮经过入站规则规范化后的独立报文，不持有旧提供商或 HTTP context。
+// ClientPayload 保存本轮按入站规则规范化后的独立报文。
 type ClientPayload struct {
 	PayloadRaw                []byte
 	ProviderIdentitySourceRaw []byte
@@ -83,7 +83,7 @@ type TurnCapture struct {
 	PayloadSource      string
 }
 
-// IngressHooks 由请求级准入拥有者注入，网关核心决定调用时机。
+// IngressHooks 由请求准入组件提供，入站流程决定回调时机。
 type IngressHooks struct {
 	TurnStarted   func(int, time.Time)
 	BeforeTurn    func(int) error
@@ -100,7 +100,7 @@ type IngressState struct {
 	StoreDisabled   bool
 }
 
-// ConnLease 仅暴露本次池租约的技术资源操作，不暴露平台客户端或凭据。
+// ConnLease 提供本次连接池租约的读写和释放操作。
 type ConnLease interface {
 	ConnID() string
 	MarkBroken()
@@ -114,7 +114,7 @@ type PreviousTurn interface {
 	Keep([]byte, string, bool) (bool, string, error)
 }
 
-// ReplayCodec 接入唯一供应商 wire 原语；恢复决策与调用次序由网关拥有。
+// ReplayCodec 调用供应商协议处理函数，网关决定恢复方式和调用顺序。
 type ReplayCodec interface {
 	Extract([]byte) ([]json.RawMessage, bool, error)
 	BuildFromItems([]json.RawMessage, bool, []json.RawMessage, bool, bool) ([]json.RawMessage, bool)
@@ -134,7 +134,7 @@ type ReplayCodec interface {
 	ClassifyPrevious(string) string
 }
 
-// IngressPort 只提供一个操作或一次上游 turn，不持有提供商切换/会话重试循环。
+// IngressPort 的方法执行单步操作或一次上游 turn，提供商切换和会话重试由入站流程控制。
 type IngressPort interface {
 	Parse([]byte, bool, int) (ClientPayload, error)
 	ShouldBridge(ClientPayload) bool
@@ -166,7 +166,7 @@ type IngressPort interface {
 	BindWarning(int64, int64, string, error)
 }
 
-// IngressOptions 保留每条入站会话原有的控制预算与亲和配置。
+// IngressOptions 配置入站会话的控制预算和提供商绑定策略。
 type IngressOptions struct {
 	ProviderType       string
 	BridgeThreshold    int64
@@ -183,7 +183,7 @@ type IngressOptions struct {
 	SessionStickyTTL   time.Duration
 }
 
-// IngressSession 拥有 bridge/ctx_pool 的唯一逐轮循环和恢复状态。
+// IngressSession 管理 bridge 和 ctx_pool 的逐轮循环及恢复状态。
 type IngressSession struct {
 	State   *IngressState
 	Store   session.OpenAIWSStateStore

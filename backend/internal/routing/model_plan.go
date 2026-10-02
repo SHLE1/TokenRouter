@@ -15,7 +15,7 @@ type ModelChain struct {
 	BillingModelSource                                                 string
 }
 
-// Mapping 投影本次映射、独立白名单阶段及计费元数据，不重新读取配置。
+// Mapping 从路由计划返回本次模型映射、白名单阶段和计费元数据。
 func (p RoutePlan) Mapping() GroupMappingResult {
 	return GroupMappingResult{
 		MappedModel:            p.models.GroupMappedModel,

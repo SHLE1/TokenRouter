@@ -175,7 +175,7 @@ describe('fetchBatch', () => {
 
     expect(getEntry('203.0.113.20').status).toBe('success')
     expect(getEntry('203.0.113.21').status).toBe('error')
-    // 响应本身是 200，只是个别 IP 缺失/无法定位，属于业务级失败而非网络级失败
+    // HTTP 响应为 200，个别 IP 缺失或无法定位时记录为业务失败。
     expect(ok).toBe(true)
   })
 

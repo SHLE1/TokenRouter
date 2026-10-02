@@ -307,9 +307,8 @@ func (m MediaCodec) GrokMediaSignedVideoContentURL(body []byte, requestID string
 	if rawURL == "" {
 		return "", nil
 	}
-	// 上游 TokenRouter 可能把受保护内容 URL 改写为自身代理端点。此类 URL 应视为
-	// 需要认证的 relay 路径，而不是签名 URL；调用方会基于提供商 base URL 重建地址，
-	// 并附加上游 API Key。
+	// 上游 TokenRouter 返回自身代理端点时，调用方按提供商 base URL 重建 relay 地址，
+	// 并附加上游 API Key 进行认证。
 	if m.IsGrokMediaVideoContentURL(rawURL, requestID) {
 		return "", nil
 	}

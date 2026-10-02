@@ -49,7 +49,7 @@ func cnProviderTestCredentials(platform, mode, protocol string) map[string]any {
 	return credentials
 }
 
-// TestCNProviderProviderProtocolPersistence 覆盖真实创建、编辑及批量凭据更新入口。
+// TestCNProviderProviderProtocolPersistence 覆盖创建、编辑及批量凭据更新入口。
 func TestCNProviderProviderProtocolPersistence(t *testing.T) {
 	t.Parallel()
 	for _, tc := range cnProviderProtocolCases {

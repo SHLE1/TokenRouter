@@ -1,6 +1,8 @@
 package openai
 
-// ServiceTier 常量只描述上游 wire 值，管理员策略另行拥有。
-const ServiceTierPriority = "priority"
-const ServiceTierUltrafast = "ultrafast"
-const ServiceTierFlex = "flex"
+// ServiceTierPriority 表示上游报文中的优先服务档位。
+const (
+	ServiceTierPriority  = "priority"
+	ServiceTierUltrafast = "ultrafast"
+	ServiceTierFlex      = "flex"
+)

@@ -359,7 +359,7 @@ export function useOnboardingTour(options: OnboardingOptions) {
         e.preventDefault()
         e.stopPropagation()
 
-        // 对于交互式步骤，箭头键应该触发交互而非跳过
+        // 交互式步骤用箭头键操作当前控件。
         const currentIndex = driverInstance!.getActiveIndex() ?? 0
         const currentStep = steps[currentIndex]
 
@@ -504,7 +504,7 @@ export function useOnboardingTour(options: OnboardingOptions) {
       clearTimeout(autoStartTimer)
       autoStartTimer = null
     }
-    // 关键修复：不再此处清理 globalKeyboardHandler，交由 driver.onDestroyed 管理
+    // globalKeyboardHandler 由 driver.onDestroyed 清理。
     onboardingStore.clearControlMethods()
   })
 

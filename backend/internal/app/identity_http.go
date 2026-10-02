@@ -33,13 +33,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// identityHTTP 固定新身份 HTTP 和旧支付授权适配，路由保留原 URL 与中间件。
+// identityHTTP 组合身份认证和微信支付授权的 HTTP 处理器。
 type identityHTTP struct {
 	*identityhttp.AuthenticationHandler
 	*paymenthttp.WeChatPaymentHandler
 }
 
-// identityHTTPSettings 只投影请求时读取的认证设置，保持旧入口的回退和错误语义。
+// identityHTTPSettings 在请求期间读取认证设置，并按各字段规则处理缺省值和读取错误。
 type identityHTTPSettings struct {
 	*identityAuthSettings
 	*admission.BackendMode
@@ -157,7 +157,7 @@ func provideIdentityHTTP(g *identityAuthGraph, users *identity.UserService, cfg 
 	return &identityHTTP{auth, pay}
 }
 
-// identityProfileObserve 保留资料同步原有日志级别，不安装第二个日志后端。
+// identityProfileObserve 按调用方传入的级别写入资料同步日志。
 func identityProfileObserve(level, message string, args ...any) {
 	switch level {
 	case "error":

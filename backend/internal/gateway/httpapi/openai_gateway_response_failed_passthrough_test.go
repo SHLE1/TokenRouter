@@ -247,8 +247,7 @@ func TestForwardAsChatCompletions_ResponseFailed_NoRule_Still502(t *testing.T) {
 	require.Equal(t, http.StatusBadGateway, rec.Code, "without passthrough rule should still be 502")
 }
 
-// TestForwardAsChatCompletions_ResponseFailedCustomErrorMissReturnsGeneric500
-// 验证 HTTP 200 流内失败也遵守自定义错误码未命中的通用错误契约。
+// TestForwardAsChatCompletions_ResponseFailedCustomErrorMissReturnsGeneric500 验证 HTTP 200 流内失败未命中自定义错误码时返回通用错误。
 func TestForwardAsChatCompletions_ResponseFailedCustomErrorMissReturnsGeneric500(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
@@ -279,8 +278,7 @@ func TestForwardAsChatCompletions_ResponseFailedCustomErrorMissReturnsGeneric500
 	require.Zero(t, repo.setErrorCalls)
 }
 
-// TestForwardAsChatCompletions_ResponseFailedCustomNonDefaultStatusFailsOver
-// 验证 response.failed 显式携带的非默认状态码可以命中提供商策略并切号。
+// TestForwardAsChatCompletions_ResponseFailedCustomNonDefaultStatusFailsOver 验证 response.failed 携带非默认状态码时，命中提供商策略并切换提供商。
 func TestForwardAsChatCompletions_ResponseFailedCustomNonDefaultStatusFailsOver(t *testing.T) {
 	body := []byte(`{"model":"gpt-5.4","messages":[{"role":"user","content":"hello"}],"stream":false}`)
 	rec := httptest.NewRecorder()
@@ -311,8 +309,7 @@ func TestForwardAsChatCompletions_ResponseFailedCustomNonDefaultStatusFailsOver(
 	require.Equal(t, 1, repo.setErrorCalls)
 }
 
-// TestOpenAIResponsesStreaming_ResponseFailedCustomStatusFailsOver 验证原生
-// Responses 流处理不会绕过 HTTP 200 终止失败事件中的提供商显式策略。
+// TestOpenAIResponsesStreaming_ResponseFailedCustomStatusFailsOver 验证 HTTP 200 的 Responses 终止失败事件执行提供商配置策略。
 func TestOpenAIResponsesStreaming_ResponseFailedCustomStatusFailsOver(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -340,8 +337,8 @@ func TestOpenAIResponsesStreaming_ResponseFailedCustomStatusFailsOver(t *testing
 	require.Equal(t, 1, repo.setErrorCalls)
 }
 
-// bindStatusCodePassthroughRule 绑定一条按错误码+关键词双条件(MatchModeAll)匹配的规则。
-// 此类规则依赖语义状态码推断才能在协议转换路径命中（response.failed 无真实 HTTP 状态码）。
+// bindStatusCodePassthroughRule 绑定同时匹配错误码和关键词的 MatchModeAll 规则。
+// response.failed 位于 HTTP 200 流中，匹配状态码从事件内容推断。
 func bindStatusCodePassthroughRule(c *gin.Context, platform string, statusCode int, keyword string, responseCode int) {
 	rule := &errorpolicy.ErrorPassthroughRule{
 		ID:              1,

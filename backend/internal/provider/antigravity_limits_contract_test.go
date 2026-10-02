@@ -67,7 +67,7 @@ func TestSetModelRateLimitByModelName_UsesOfficialModelID(t *testing.T) {
 				require.Len(t, repo.modelRateLimitCalls, 1)
 				call := repo.modelRateLimitCalls[0]
 				require.Equal(t, int64(123), call.providerID)
-				// 关键断言：存储的 key 应该是官方模型 ID，而不是 scope
+				// 检查存储键为官方模型 ID。
 				require.Equal(t, tt.expectedModelKey, call.modelKey, "should store official model ID, not scope")
 				require.WithinDuration(t, resetAt, call.resetAt, time.Second)
 			} else {
@@ -99,7 +99,7 @@ func TestSetModelRateLimitByModelName_NotConvertToScope(t *testing.T) {
 	require.Len(t, repo.modelRateLimitCalls, 1)
 
 	call := repo.modelRateLimitCalls[0]
-	// 关键断言：存储的应该是 "claude-sonnet-4-5"，而不是 "claude_sonnet"
+	// 检查存储键为 claude-sonnet-4-5。
 	require.Equal(t, "claude-sonnet-4-5", call.modelKey, "should NOT convert to scope like claude_sonnet")
 	require.NotEqual(t, "claude_sonnet", call.modelKey, "should NOT be scope")
 }

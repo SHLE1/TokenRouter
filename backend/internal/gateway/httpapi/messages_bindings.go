@@ -24,7 +24,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// MessagesBindings 固定路由、资金、隔离和审核端口；HTTP 状态操作由本模块拥有。
+// MessagesBindings 绑定路由、资金、隔离和审核接口，HTTP 状态由本模块处理。
 type MessagesBindings struct {
 	PlanRoute           func(context.Context, *apikey.APIKey, string) routing.RoutePlan
 	ClientVersions      func(context.Context) (string, string)

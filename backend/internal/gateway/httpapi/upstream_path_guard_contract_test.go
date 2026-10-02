@@ -41,7 +41,7 @@ func TestOpenAIResponsesRequestPathSuffixRejectsNonConformingSubpaths(t *testing
 		})
 	}
 
-	// 合法子路径必须保持原样转发。
+	// 合法子路径原样转发。
 	for path, want := range map[string]string{
 		"/v1/responses":                        "",
 		"/v1/responses/input_tokens":           "/input_tokens",

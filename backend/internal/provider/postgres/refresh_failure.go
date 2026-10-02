@@ -9,7 +9,7 @@ import (
 )
 
 // ApplyOAuthRefreshFailure 在原单条健康写入中比较交换身份，保留提交后尽力 outbox。
-// 区分身份过期与同身份无需延长 cooldown，避免改变后一种情况的原计数语义。
+// 分别处理身份已变化与同身份无需延长 cooldown 的情况，后者仍按规则累计次数。
 func (r *ProviderStore) ApplyOAuthRefreshFailure(ctx context.Context, version provider.RefreshFailureVersion, failure provider.RefreshFailure) (bool, error) {
 	payload, err := json.Marshal(version.Credentials)
 	if err != nil {

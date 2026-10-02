@@ -194,7 +194,7 @@ type GroupRateAdministration interface {
 	ClearGroupRPMOverrides(context.Context, int64) error
 }
 
-// GroupResources 明确各关联能力的响应投影，HTTP 不接触存储。
+// GroupResources 提供分组容量和关联资源的查询接口。
 type GroupResources struct {
 	Capacity interface {
 		GetAllGroupCapacity(context.Context) ([]routing.GroupCapacitySummary, error)

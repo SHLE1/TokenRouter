@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// CopyAPIKey 保持原管理/执行投影的复制边界；认证缓存另按 v40 的不可变快照复制。
+// CopyAPIKey 复制 Key 及关联的用户和分组数据。认证缓存使用自身快照的复制规则。
 func CopyAPIKey(value *APIKey) *APIKey {
 	if value == nil {
 		return nil

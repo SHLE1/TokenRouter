@@ -10,7 +10,7 @@ func IsHaikuProbe(model string, maxTokens int) bool {
 	return maxTokens == 1 && strings.Contains(strings.ToLower(model), "haiku")
 }
 
-// ClaudeVersionRejection 只生成原版本范围拒绝消息，不读取配置或环境。
+// ClaudeVersionRejection 根据传入的版本范围生成拒绝消息。
 func ClaudeVersionRejection(clientVersion, minVersion, maxVersion string) string {
 	if clientVersion == "" {
 		return "Unable to determine Claude Code version. Please update Claude Code: npm update -g @anthropic-ai/claude-code"

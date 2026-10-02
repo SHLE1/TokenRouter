@@ -907,7 +907,7 @@ const unavailableFallbackGroupOptions = computed(() => {
   return options;
 });
 
-// 不可用回退分组选项（编辑时）：排除当前分组，避免配置自回退。
+// 编辑回退分组时从选项中排除当前分组。
 const unavailableFallbackGroupOptionsForEdit = computed(() => {
   const options: { value: number | null; label: string }[] = [
     { value: null, label: t("admin.groups.unavailableFallback.noFallback") },
@@ -1042,7 +1042,7 @@ const duplicatingGroupIds = reactive(new Set<number>());
 const actionMenuGroup = ref<AdminGroup | null>(null);
 const actionMenuPosition = ref<{ top: number; left: number } | null>(null);
 
-// 与密钥菜单一致，使用视口坐标和 body 浮层，避免卡片或固定操作列裁切菜单。
+// 菜单按视口坐标定位到 body，脱离卡片和固定操作列的裁剪区域。
 const openGroupActionMenu = (group: AdminGroup, event: MouseEvent) => {
   if (actionMenuGroup.value?.id === group.id) {
     closeGroupActionMenu();

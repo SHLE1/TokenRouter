@@ -10,12 +10,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// TestRun 持有一次平台测试的输出和显式状态，不使用 HTTP Context 的通用键值容器。
+// TestRun 保存单次平台测试的输出和执行状态。
 type TestRun struct {
 	Context context.Context
 	Cancel  context.CancelFunc
 	Headers http.Header
-	// 本次执行状态只由同步测试链使用，不再放入 context 的隐式键。
+	// 这些状态供本次同步测试流程使用。
 	RequestedProtocol  provider.TextProtocol
 	TaskRecoveryTried  bool
 	Automatic          bool
@@ -62,7 +62,7 @@ func (r *TestRun) SuppressCompletion() bool {
 	return r.suppressCompletion
 }
 
-// output 输出失败只登记首次错误并取消本次执行，后续写入不再访问下游。
+// output 在首次输出失败时记录错误并取消执行，后续写入直接返回。
 func (r *TestRun) output(write func() error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

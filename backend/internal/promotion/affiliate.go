@@ -214,7 +214,7 @@ type AffiliateService struct {
 	runtime              Runtime
 }
 
-// NewAffiliateService 构造唯一推广用例，配置、缓存与时钟由组合根投影。
+// NewAffiliateService 使用传入的存储、设置、缓存和时钟构造推广服务。
 func NewAffiliateService(repo AffiliateRepository, settingService SettingsReader, authCacheInvalidator AuthCacheInvalidator, billingCacheService BalanceCache, runtime Runtime) *AffiliateService {
 	if runtime.Now == nil {
 		runtime.Now = time.Now

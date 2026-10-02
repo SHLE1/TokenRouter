@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// RuntimeReaders 只装配原生设置读取器，保留 HTTP 夹具的原动态设置数据。
+// RuntimeReaders 将 HTTP 夹具的动态设置数据交给设置读取器。
 func RuntimeReaders(repo settings.Repository) *gatewayprovider.RuntimeReaders {
 	runtime := gateway.NewRuntimeSettings(repo, settings.ErrSettingNotFound, func() *gateway.BetaPolicySettings {
 		return gatewayprovider.GatewayBetaPolicy(anthropic.DefaultBetaPolicySettings())

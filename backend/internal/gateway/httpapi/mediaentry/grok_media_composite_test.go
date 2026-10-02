@@ -53,7 +53,7 @@ func (s *compositeGrokVideoCacheStub) GetSessionOwnerGroupID(context.Context, in
 
 func TestResolveCompositeGrokVideoAPIKeyUsesPersistedOwnerAfterMappingRemoval(t *testing.T) {
 	cache := &compositeGrokVideoCacheStub{groupID: 20, providerID: 88, ownerID: 20}
-	// 存储替身只接入实际视频任务拥有者，不构造无关网关图。
+	// 存储替身接入视频任务归属服务。
 	tasks := gatewaymedia.NewVideoTasks(cache, nil, gatewaymedia.VideoOptions{})
 	handler := New(Bindings{Dependencies: gatewayhttp.OpenAIDependencies{Gateway: true}, VideoTasks: func() *gatewaymedia.VideoTasks { return tasks }})
 
@@ -75,7 +75,7 @@ func TestResolveCompositeGrokVideoAPIKeyRestoresBoundGroup(t *testing.T) {
 	openAIGroup := &routing.Group{ID: 10, Status: billing.StatusActive}
 	grokGroup := &routing.Group{ID: 20, Status: billing.StatusActive}
 	cache := &compositeGrokVideoCacheStub{groupID: grokGroup.ID, providerID: 88}
-	// 存储替身只接入实际视频任务拥有者，不构造无关网关图。
+	// 存储替身接入视频任务归属服务。
 	tasks := gatewaymedia.NewVideoTasks(cache, nil, gatewaymedia.VideoOptions{})
 	handler := New(Bindings{Dependencies: gatewayhttp.OpenAIDependencies{Gateway: true}, VideoTasks: func() *gatewaymedia.VideoTasks { return tasks }})
 

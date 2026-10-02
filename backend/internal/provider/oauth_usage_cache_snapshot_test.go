@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOAuthUsageCachedResultsAreIndependent 验证缓存命中必须返回请求私有结果，管理员展示不得修改共享倒计时或嵌套配置。
+// TestOAuthUsageCachedResultsAreIndependent 检查缓存命中返回独立副本，修改倒计时和嵌套配置后缓存保持不变。
 func TestOAuthUsageCachedResultsAreIndependent(t *testing.T) {
 	for _, platform := range []string{capability.PlatformAntigravity, capability.PlatformQoder} {
 		t.Run(platform, func(t *testing.T) {

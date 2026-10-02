@@ -23,7 +23,7 @@ type LocalUsageStatisticsOptions struct {
 	Log   func(string, ...any)
 }
 
-// LocalUsageStatistics 复用唯一窗口缓存，只拥有懒查询、并发回退和展示投影。
+// LocalUsageStatistics 通过共享窗口缓存按需查询用量，处理并发回源和展示数据转换。
 type LocalUsageStatistics struct {
 	usageLogRepo LocalUsageStats
 	cache        *OAuthUsageCache

@@ -56,8 +56,8 @@ export type SchedulingThresholdPlatformType = "openai" | "anthropic" | "grok" | 
 
 export type ProviderSchedulingThresholdsMap = Record<SchedulingThresholdPlatformType, number>
 
-// 与后端 AllowedSchedulingThresholdPlatforms 保持一致（deepseek 为余额型，
-// 走余额检测而非用量阈值）。
+// 平台列表与后端 AllowedSchedulingThresholdPlatforms 一致。
+// deepseek 通过余额检测判断可调度状态。
 export const SCHEDULING_THRESHOLD_PLATFORMS: SchedulingThresholdPlatformType[] = [
   "openai",
   "anthropic",

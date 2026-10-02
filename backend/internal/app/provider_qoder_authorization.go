@@ -9,7 +9,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideQoderAuthorization 只投影代理读取，授权会话和供应商执行各由原生拥有者管理。
+// provideQoderAuthorization 绑定代理读取接口，授权组件和供应商执行器分别管理会话与请求。
 func provideQoderAuthorization(proxies egress.ProxyRepository) *provideradapter.QoderAuthorization {
 	return provideradapter.NewQoderAuthorization(func(ctx context.Context, id *int64) (string, error) {
 		if id == nil {

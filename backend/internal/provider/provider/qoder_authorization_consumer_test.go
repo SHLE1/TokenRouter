@@ -368,7 +368,7 @@ func TestQoderOAuthServiceExchangeParsesCallbackURLAndBuildsUsableCredentials(t 
 		Type:        capability.ProviderTypeCosy,
 		Credentials: credentials,
 	}, func(ctx context.Context, value *provider.Record) (*qoder.SessionContext, time.Time, error) {
-		// 授权结果使用与运行路径相同的原生缓存和 session 构造器验证。
+		// 通过运行时的缓存和 session 构造器检查授权结果。
 		return (&qoder.SessionBuilder{}).BuildSession(ctx, &qoder.CredentialInput{
 			Name:               value.Name,
 			Site:               value.GetCredential("site"),

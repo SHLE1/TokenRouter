@@ -179,7 +179,7 @@ func TestHandle429_AnthropicPlatformUnaffected(t *testing.T) {
 	}
 }
 
-// 原生观测替身只记录本次字段写入，复用真实提供商健康与平台解析。
+// 观测替身记录本次字段写入，健康规则和平台解析使用生产实现。
 type openAI429Store interface {
 	providercore.HealthStore
 	providercore.SessionWindowStore

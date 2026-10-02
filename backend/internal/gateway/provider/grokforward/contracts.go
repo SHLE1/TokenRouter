@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
-// Input 仅带已选提供商和本次请求投影，不携带凭据或旧业务实体。
+// Input 包含已选提供商和本次请求参数。
 type Input struct {
 	ProviderID                           int64
 	ProviderName, ProviderType, Platform string
@@ -24,7 +24,7 @@ type Input struct {
 	StartedAt                            time.Time
 }
 
-// Options 复用唯一平台编解码器及应用的原生 attempt 生命周期屏障。
+// Options 包含 Grok 编解码器、行长度上限和请求生命周期登记函数。
 type Options struct {
 	Codec       grok.BodyCodec
 	MaxLineSize int

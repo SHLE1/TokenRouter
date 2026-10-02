@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
 )
 
-// 兼容 wire 变体保持原字段与省略语义，桥接不复制其编解码。
+// Gemini wire 类型复用协议包中的字段定义和编解码。
 
 type ClaudeRequest = anthropic.ClaudeRequest
 

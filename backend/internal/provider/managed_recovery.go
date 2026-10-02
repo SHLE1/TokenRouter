@@ -51,7 +51,7 @@ func ObserveManagedRecovery(value *Record) ManagedRecoveryVersion {
 	}
 }
 
-// Advance 只在对应提交成功后推进下一步条件，不修改调用方的提供商或缓存。
+// Advance 在对应步骤提交成功后，更新内部保存的下一步比较条件。
 func (v *ManagedRecoveryVersion) Advance(step ManagedRecoveryStep) {
 	switch step {
 	case ManagedRecoveryError:
@@ -84,7 +84,7 @@ func (v ManagedRecoveryVersion) Matches(value *Record) bool {
 	return reflect.DeepEqual(current, v)
 }
 
-// ClearManagedRefreshError 沿用原独立写入与失败即停止，不撤销并发管理员的新状态。
+// ClearManagedRefreshError 独立提交条件更新，冲突或写入失败时结束恢复。
 func (s *Admin) ClearManagedRefreshError(ctx context.Context, value *Record) (*Record, bool, error) {
 	if value == nil || value.Platform != PlatformAntigravity || value.Status != StatusError || !strings.Contains(value.ErrorMessage, "missing_project_id:") {
 		return nil, false, nil

@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// RealtimeAudioUsage 仅结算真实观察到音频的正时长会话。
+// RealtimeAudioUsage 为已观测到音频且时长为正的会话计算用量。
 func RealtimeAudioUsage(elapsed time.Duration, audioObserved bool) *protocol.AudioUsage {
 	if !audioObserved || elapsed <= 0 {
 		return nil
@@ -17,7 +17,7 @@ func RealtimeAudioUsage(elapsed time.Duration, audioObserved bool) *protocol.Aud
 	return &protocol.AudioUsage{Mode: "realtime", DurationOrUnits: elapsed.Minutes()}
 }
 
-// TTSInputText 保留 input/text/prompt 的首个字符串优先级，包括显式空字符串。
+// TTSInputText 按 input、text、prompt 顺序取首个字符串，包括空字符串。
 func TTSInputText(body []byte) string {
 	if len(body) == 0 {
 		return ""
@@ -46,7 +46,7 @@ func AlphaEndpointUnsupported(apiKey bool, statusCode int) bool {
 	return apiKey && (statusCode == 404 || statusCode == 405)
 }
 
-// AlphaProviderErrorSideEffects 保留工具端点拒绝与提供商全局健康之间的边界。
+// AlphaProviderErrorSideEffects 根据搜索端点错误决定是否更新提供商健康状态。
 func AlphaProviderErrorSideEffects(statusCode int) bool {
 	switch statusCode {
 	case 401, 404, 405:
@@ -56,7 +56,7 @@ func AlphaProviderErrorSideEffects(statusCode int) bool {
 	}
 }
 
-// RequiredModel 只读取已经在原位置取到的报文，不触发请求体读取。
+// RequiredModel 从传入的报文字节中读取必填模型字段。
 func RequiredModel(body []byte, trim bool) (string, bool) {
 	value := gjson.GetBytes(body, "model")
 	if !value.Exists() || value.Type != gjson.String || strings.TrimSpace(value.String()) == "" {

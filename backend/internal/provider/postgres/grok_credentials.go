@@ -59,7 +59,7 @@ func (r *ProviderStore) SetGrokCredentialErrorIfMatch(
 }
 
 // SetGrokOAuthErrorIfCredentialsUnchanged 仅在提供商仍活动且完整 JSONB 凭据与对账观察值一致时，
-// 原子隔离结构无效的 Grok OAuth 提供商。精确比较包含可选的 _token_version，避免并发重新授权被旧检查覆盖。
+// 按 Grok OAuth 凭据及可选的 _token_version 原子比较，匹配时隔离结构无效的提供商。
 func (r *ProviderStore) SetGrokOAuthErrorIfCredentialsUnchanged(
 	ctx context.Context,
 	id int64,

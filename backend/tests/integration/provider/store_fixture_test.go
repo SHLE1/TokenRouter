@@ -15,7 +15,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache/codec"
 )
 
-// newProviderStoreContract 原存储契约只绑定真实 outbox writer；没有缓存时不引入额外读取。
+// newProviderStoreContract 为存储测试绑定 outbox writer，缓存按传入配置使用。
 func newProviderStoreContract(client *dbent.Client, exec postgresinfra.Executor, cache scheduler.SnapshotPublicationCache) *providerpostgres.ProviderStore {
 	store := providerpostgres.NewProviderStore(client, exec, providerpostgres.ProviderStoreOptions{
 		Group: func(g *dbent.Group) *accessview.GroupConfig {
@@ -59,7 +59,7 @@ func (f providerEventsFixture) SyncMany(ctx context.Context, ids []int64) {
 }
 func (f providerEventsFixture) Drop(ctx context.Context, id int64) { f.publisher.Drop(ctx, id) }
 
-// providerPublicationEvents 夹具只连接实际 outbox 与发布实现，不复制锁、编码或事件合并规则。
+// providerPublicationEvents 将提供商存储的 outbox 连接到调度快照发布器。
 func providerPublicationEvents(store *providerpostgres.ProviderStore, cache scheduler.SnapshotPublicationCache) providerEventsFixture {
 	return providerEventsFixture{publisher: scheduler.SnapshotPublisher{
 		Cache: cache,

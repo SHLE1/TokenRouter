@@ -8,7 +8,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// IsWSTokenEvent 协议解析沿用原边界，不查询提供商或改变执行状态。
+// IsWSTokenEvent 判断 WebSocket 事件是否包含 token 增量。
 func IsWSTokenEvent(eventType string) bool {
 	eventType = strings.TrimSpace(eventType)
 	if eventType == "" {

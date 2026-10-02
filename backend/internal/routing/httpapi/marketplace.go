@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MarketplaceStatsReader 只提供首页公开统计投影，不暴露 Dashboard 的其它能力。
+// MarketplaceStatsReader 查询首页公开统计。
 type MarketplaceStatsReader interface {
 	PublicStats(context.Context) (dto.ModelMarketplaceStats, error)
 }

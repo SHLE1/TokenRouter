@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// RefreshFailureVersion 限定旧失败能够修改的提供商身份，不能覆盖管理员刚改变的调度开关。
+// RefreshFailureVersion 记录交换失败时的身份，后续写入按身份和调度状态比较。
 type RefreshFailureVersion struct {
 	CredentialVersion
 	Schedulable bool

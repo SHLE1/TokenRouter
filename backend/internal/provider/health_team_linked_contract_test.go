@@ -22,7 +22,7 @@ type teamLinkedProviderRepoStub struct {
 	failSetError  map[int64]error
 }
 
-// ListByPlatform 镜像真实仓库语义：仅返回该平台的 active 提供商。
+// ListByPlatform 返回指定平台的 active 提供商。
 func (r *teamLinkedProviderRepoStub) ListByPlatform(ctx context.Context, platform string) ([]provider.Record, error) {
 	r.listCalls++
 	if r.listErr != nil {
@@ -123,7 +123,7 @@ func TestTeamLinkedError_SetErrorFailureDoesNotAbortRemaining(t *testing.T) {
 	require.Len(t, blocker.reasons, 2)
 }
 
-// newTeamLinkedTestService 直测原生联动拥有者；列表与写入替身不创建旧服务或第二份缓存。
+// newTeamLinkedTestService 为团队联动组件提供列表和写入替身。
 func newTeamLinkedTestService(repo *teamLinkedProviderRepoStub) (*provider.TeamLinkedHealth, *teamBlockRecorder) {
 	blocker := &teamBlockRecorder{}
 	return provider.NewTeamLinkedHealth(repo, provider.TeamLinkedOptions{Block: blocker.Block}), blocker

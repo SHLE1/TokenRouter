@@ -15,7 +15,7 @@ type ClientRejectionObservation struct {
 	WorkspaceDeactivated         bool
 }
 
-// ApplyBadRequest 保留原状态转换及错误消息，不解析供应商报文。
+// ApplyBadRequest 根据已解析的错误输入更新提供商状态和错误消息。
 func (s *HealthService) ApplyBadRequest(ctx context.Context, provider *Record, observation ClientRejectionObservation) bool {
 	// "organization has been disabled" → 永久禁用
 	if observation.OrganizationDisabled {
@@ -23,7 +23,7 @@ func (s *HealthService) ApplyBadRequest(ctx context.Context, provider *Record, o
 		s.ApplyAuthenticationFailure(ctx, provider, msg)
 		return true
 	} else if provider.Platform == capability.PlatformAnthropic && observation.CreditBalanceExhausted {
-		// Anthropic API key 余额不足（语义等同 402），停止调度
+		// Anthropic API Key 余额不足时按 402 处理，停止调度。
 		msg := "Credit balance exhausted (400): " + observation.Message
 		s.ApplyAuthenticationFailure(ctx, provider, msg)
 		return true
@@ -37,10 +37,10 @@ func (s *HealthService) ApplyBadRequest(ctx context.Context, provider *Record, o
 	return false
 }
 
-// ApplyPaymentRequired 保留原状态转换及错误消息，不解析供应商报文。
+// ApplyPaymentRequired 根据已解析的欠费错误更新提供商状态和错误消息。
 func (s *HealthService) ApplyPaymentRequired(ctx context.Context, provider *Record, observation ClientRejectionObservation) bool {
 	// 国产供应商：余额不足是可恢复状态（充值/检测恢复后由周期任务自动解除），
-	// 不能走 handleAuthError 永久置 status=error。改为可恢复的临时停调。
+	// 此处将提供商临时停调，冷却结束后可恢复。
 	if provider.IsCNProvider() {
 		s.ApplyCNInsufficientBalance(ctx, provider, observation.Message)
 		return true

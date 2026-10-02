@@ -4,8 +4,8 @@ import (
 	"maps"
 )
 
-// ModelRoutingSnapshot 只持有本次模型匹配所需规则，不携带凭据或管理对象。
-// 在原匹配时机创建，避免提前读取动态默认模型或引入第二份别名缓存。
+// ModelRoutingSnapshot 保存本次模型匹配需要的规则。
+// 在模型匹配时创建，并按需读取动态默认模型。
 type ModelRoutingSnapshot struct {
 	platform string
 	mapping  map[string]string

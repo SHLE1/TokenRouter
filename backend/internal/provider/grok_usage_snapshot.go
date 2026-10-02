@@ -44,7 +44,7 @@ func ParseGrokBillingSnapshot(extra map[string]any) (*usageview.BillingSummary, 
 	}
 }
 
-// MergeUsageExtra 隔离请求快照的顶层与 JSON 容器，保留原补丁覆盖顺序。
+// MergeUsageExtra 复制请求快照的顶层和 JSON 容器，再按补丁顺序覆盖字段。
 func MergeUsageExtra(extra, updates map[string]any) map[string]any {
 	if len(updates) == 0 {
 		return extra

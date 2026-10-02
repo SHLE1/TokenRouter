@@ -123,7 +123,7 @@ func (h *GrokOAuthHandler) RefreshToken(c *gin.Context) {
 }
 
 // ValidateSSOToken 将 Web SSO Cookie 转换为 Build OAuth 令牌。
-// 响应只包含 OAuth 令牌信息，绝不回显 sso_token。
+// 响应返回 OAuth token 信息。
 func (h *GrokOAuthHandler) ValidateSSOToken(c *gin.Context) {
 	var req GrokSSOTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -340,7 +340,7 @@ func (h *GrokOAuthHandler) RuntimeSanity(c *gin.Context) {
 	response.Success(c, h.options.RuntimeSanity())
 }
 
-// 提供商授权 HTTP 只使用同模块用例、代理只读投影及运行时诊断端口。
+// 授权 HTTP 使用本模块用例、代理查询和运行诊断接口。
 type GrokOAuthReconciler interface {
 	ReconcileGrokOAuth(context.Context, providercore.GrokOAuthReconcileInput) (*providercore.GrokOAuthReconcileResult, error)
 }

@@ -20,7 +20,7 @@ type InputTokensOptions struct {
 	WriteError     func(int, string, string)
 }
 
-// CountInputTokens 保留原读取/错误输出，响应体仍由本次查询释放。
+// CountInputTokens 查询输入 token 数并输出响应，查询结束时关闭响应体。
 func CountInputTokens(request *http.Request, options InputTokensOptions, sink upstream.OutputSink) error {
 	if options.Enter != nil {
 		done, err := options.Enter()
@@ -91,7 +91,7 @@ func BuildInputTokensRequest(ctx context.Context, body []byte, options Responses
 	return req, nil
 }
 
-// NativeInputTokensOptions 保留原生响应与兼容计数不同的读取和输出约定。
+// NativeInputTokensOptions 配置原生 token 查询的请求、响应读取和错误处理。
 type NativeInputTokensOptions struct {
 	Enter          func() (func(), error)
 	Do             func(*http.Request) (*http.Response, error)

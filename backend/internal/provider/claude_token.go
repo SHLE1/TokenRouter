@@ -30,7 +30,7 @@ type ClaudeTokenOptions struct {
 	Vertex      func(context.Context, *Record) (string, error)
 }
 
-// ClaudeTokenSource 固定请求侧依赖，复用原有读取规则与唯一刷新协调器。
+// ClaudeTokenSource 为请求绑定凭据读取接口和共享刷新协调器。
 type ClaudeTokenSource struct {
 	Options ClaudeTokenOptions
 }

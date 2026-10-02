@@ -2,7 +2,7 @@ package provider
 
 import "strings"
 
-// ResolveCompactForwardModel 保留旧 Compact 附加映射及空值回退。
+// ResolveCompactForwardModel 应用 Compact 附加映射，空值时使用回退模型。
 func ResolveCompactForwardModel(value *Record, model string) string {
 	model = strings.TrimSpace(model)
 	if model == "" || value == nil {

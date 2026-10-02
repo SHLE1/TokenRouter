@@ -28,7 +28,7 @@ import (
 // 复现 #4386：gpt-image-2 /v1/images/edits 的 usage 携带 input_tokens_details.image_tokens，
 // 提取器须将图片输入 token 单独填入 ImageInputTokens（此前被丢弃并入 InputTokens 按文本价计费）。
 
-// prompt_tokens_details 回退路径（部分上游用 prompt_tokens 口径）。
+// prompt_tokens_details 回退路径，适用于使用 prompt_tokens 字段的上游。
 
 // 纯文本请求：无 image_tokens 时 ImageInputTokens 为 0，行为不变。
 

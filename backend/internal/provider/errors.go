@@ -11,7 +11,7 @@ var (
 	ErrProviderNotInFallback = apperror.BadRequest("PROVIDER_NOT_IN_FALLBACK", "provider is not in proxy fallback state")
 )
 
-// DiscardDeprecatedExtra 保持原写入边界的废弃键清理。
+// DiscardDeprecatedExtra 清理写入数据中的废弃扩展键。
 func DiscardDeprecatedExtra(extra map[string]any) {
 	delete(extra, "upstream_billing_probe")
 	delete(extra, "upstream_billing_probe_enabled")

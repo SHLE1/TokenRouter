@@ -14,14 +14,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
 )
 
-// 网关策略设置沿用原持久键，不将规则推入通用设置存储。
+// 网关策略设置使用以下持久化键。
 const (
 	SettingKeyBetaPolicySettings       = "beta_policy_settings"
 	SettingKeyOpenAIFastPolicySettings = "openai_fast_policy_settings"
 	SettingKeyRectifierSettings        = "rectifier_settings"
 )
 
-// Fast 策略复用唯一的纯策略实现。
+// OpenAIFastPolicySettings 使用 tierpolicy 的 Fast 策略类型。
 type OpenAIFastPolicySettings = tierpolicy.OpenAIFastPolicySettings
 
 // RuntimeSettingsStore 仅提供运行规则所需存取。
@@ -31,7 +31,7 @@ type RuntimeSettingsStore interface {
 	Set(context.Context, string, string) error
 }
 
-// RuntimeSettings 的平台缺省规则通过值投影提供，核心不导入具体上游。
+// RuntimeSettings 读取并缓存网关设置，平台默认规则由调用方传入。
 type RuntimeSettings struct {
 	clientOptions               ClientSettingsOptions
 	antigravityUAVersionCache   atomic.Value
@@ -67,7 +67,7 @@ type RectifierSettings struct {
 	APIKeySignaturePatterns  []string `json:"apikey_signature_patterns"`  // API Key 自定义匹配关键词
 }
 
-// DefaultRectifierSettings 保留原默认开启的整流策略。
+// DefaultRectifierSettings 默认开启思考签名和预算整流。
 func DefaultRectifierSettings() *RectifierSettings {
 	return &RectifierSettings{
 		Enabled:                  true,
@@ -76,7 +76,7 @@ func DefaultRectifierSettings() *RectifierSettings {
 	}
 }
 
-// BetaPolicyRule 是网关管理策略的独立投影，不依赖具体供应商实现。
+// BetaPolicyRule 描述 beta token 的动作、适用提供商类型和模型范围。
 type BetaPolicyRule struct {
 	BetaToken            string   `json:"beta_token"`                       // beta token 值
 	Action               string   `json:"action"`                           // "pass" | "filter" | "block"
@@ -87,7 +87,7 @@ type BetaPolicyRule struct {
 	FallbackErrorMessage string   `json:"fallback_error_message,omitempty"` // 未匹配白名单时的自定义错误消息 (fallback_action=block 时生效)
 }
 
-// BetaPolicySettings 是网关管理策略的独立投影，不依赖具体供应商实现。
+// BetaPolicySettings 保存按顺序匹配的 beta 规则。
 type BetaPolicySettings struct {
 	Rules []BetaPolicyRule `json:"rules"`
 }
@@ -104,7 +104,7 @@ const (
 	BetaPolicyScopeBedrock = "bedrock" // 仅 AWS Bedrock 提供商
 )
 
-// GetRectifierSettings 保留原网关策略设置的缺省、校验及持久化行为。
+// GetRectifierSettings 读取整流设置，缺失、空值或 JSON 无效时返回默认设置。
 func (s *RuntimeSettings) GetRectifierSettings(ctx context.Context) (*RectifierSettings, error) {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyRectifierSettings)
 	if err != nil {
@@ -125,7 +125,7 @@ func (s *RuntimeSettings) GetRectifierSettings(ctx context.Context) (*RectifierS
 	return &settings, nil
 }
 
-// SetRectifierSettings 保留原网关策略设置的缺省、校验及持久化行为。
+// SetRectifierSettings 将整流设置编码为 JSON 后保存，nil 设置返回错误。
 func (s *RuntimeSettings) SetRectifierSettings(ctx context.Context, settings *RectifierSettings) error {
 	if settings == nil {
 		return fmt.Errorf("settings cannot be nil")
@@ -139,7 +139,7 @@ func (s *RuntimeSettings) SetRectifierSettings(ctx context.Context, settings *Re
 	return s.settingRepo.Set(ctx, SettingKeyRectifierSettings, string(data))
 }
 
-// IsSignatureRectifierEnabled 保留原网关策略设置的缺省、校验及持久化行为。
+// IsSignatureRectifierEnabled 检查总开关和签名整流开关，读取失败时返回 true。
 func (s *RuntimeSettings) IsSignatureRectifierEnabled(ctx context.Context) bool {
 	settings, err := s.GetRectifierSettings(ctx)
 	if err != nil {
@@ -148,7 +148,7 @@ func (s *RuntimeSettings) IsSignatureRectifierEnabled(ctx context.Context) bool 
 	return settings.Enabled && settings.ThinkingSignatureEnabled
 }
 
-// IsBudgetRectifierEnabled 保留原网关策略设置的缺省、校验及持久化行为。
+// IsBudgetRectifierEnabled 检查总开关和预算整流开关，读取失败时返回 true。
 func (s *RuntimeSettings) IsBudgetRectifierEnabled(ctx context.Context) bool {
 	settings, err := s.GetRectifierSettings(ctx)
 	if err != nil {
@@ -157,7 +157,7 @@ func (s *RuntimeSettings) IsBudgetRectifierEnabled(ctx context.Context) bool {
 	return settings.Enabled && settings.ThinkingBudgetEnabled
 }
 
-// GetBetaPolicySettings 保留原网关策略设置的缺省、校验及持久化行为。
+// GetBetaPolicySettings 读取 beta 规则，缺失、空值或 JSON 无效时使用调用方提供的默认规则。
 func (s *RuntimeSettings) GetBetaPolicySettings(ctx context.Context) (*BetaPolicySettings, error) {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyBetaPolicySettings)
 	if err != nil {
@@ -178,7 +178,7 @@ func (s *RuntimeSettings) GetBetaPolicySettings(ctx context.Context) (*BetaPolic
 	return &settings, nil
 }
 
-// SetBetaPolicySettings 保留原网关策略设置的缺省、校验及持久化行为。
+// SetBetaPolicySettings 校验并保存 beta 规则，同时清理模型匹配模式两侧的空白。
 func (s *RuntimeSettings) SetBetaPolicySettings(ctx context.Context, settings *BetaPolicySettings) error {
 	if settings == nil {
 		return fmt.Errorf("settings cannot be nil")
@@ -223,7 +223,7 @@ func (s *RuntimeSettings) SetBetaPolicySettings(ctx context.Context, settings *B
 	return s.settingRepo.Set(ctx, SettingKeyBetaPolicySettings, string(data))
 }
 
-// GetOpenAIFastPolicySettings 保留原网关策略设置的缺省、校验及持久化行为。
+// GetOpenAIFastPolicySettings 读取 OpenAI 服务档位策略，缺省时使用默认策略。
 func (s *RuntimeSettings) GetOpenAIFastPolicySettings(ctx context.Context) (*OpenAIFastPolicySettings, error) {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyOpenAIFastPolicySettings)
 	if err != nil {
@@ -250,7 +250,7 @@ func (s *RuntimeSettings) GetOpenAIFastPolicySettings(ctx context.Context) (*Ope
 	return &settings, nil
 }
 
-// SetOpenAIFastPolicySettings 保留原网关策略设置的缺省、校验及持久化行为。
+// SetOpenAIFastPolicySettings 校验并保存 OpenAI 服务档位策略。
 func (s *RuntimeSettings) SetOpenAIFastPolicySettings(ctx context.Context, settings *OpenAIFastPolicySettings) error {
 	value, err := tierpolicy.Prepare(settings)
 	if err != nil {

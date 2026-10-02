@@ -1,4 +1,4 @@
-/* TokenRouter Interactive Tour Styles - DOM Restructured Version */
+/* TokenRouter 交互导览样式 */
 
 /* 1. Overlay & Highlight */
 .driver-overlay {
@@ -7,10 +7,8 @@
   z-index: 99999998 !important; /* check-ui-allow: driver.js 第三方覆盖,层级受外部约束 */
   background-color: transparent !important;
   /*
-   * 关键修复：让 overlay 不拦截点击事件
-   * 因为已设置 allowClose: false，用户不能通过点击遮罩关闭引导
-   * 这样 Select 下拉菜单等脱离高亮区域的元素才能正常交互
-   * 视觉遮罩效果保持不变（SVG 仍然渲染，pointer-events 只影响交互不影响渲染）
+   * 遮罩让点击穿透至 Select 下拉菜单等高亮区域外的控件。
+   * allowClose: false 让引导保持打开，SVG 继续绘制遮罩。
    */
   pointer-events: none !important;
 }
@@ -127,7 +125,7 @@
   color: var(--tour-muted-color);
 }
 
-/* 5. 底部保留页码和操作按钮，键盘提示不再注入。 */
+/* 5. 底部展示页码和操作按钮。 */
 .theme-tour-popover .driver-popover-footer {
   display: flex !important;
   flex: 0 0 auto !important;

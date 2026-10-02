@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// newExecutionReadersFixture 直接绑定原生端口，保留原替身和设置读取时点。
+// newExecutionReadersFixture 将测试替身绑定到执行时的设置读取接口。
 func newExecutionReadersFixture(repo settings.Repository) *gatewayprovider.RuntimeReaders {
 	if repo != nil {
 		repo = settings.New(repo)

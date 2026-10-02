@@ -24,7 +24,7 @@ type opsDashboardSnapshotV2CacheKey struct {
 	BucketSecond int    `json:"bucket_second"`
 }
 
-// CachedDashboardSnapshot 查询沿用原并行三路和单独三十秒缓存，不增加合并策略。
+// CachedDashboardSnapshot 并行执行三项查询，将结果缓存三十秒。
 func (s *OpsService) CachedDashboardSnapshot(ctx context.Context, filter *OpsDashboardFilter, bucketSeconds int) (*DashboardSnapshot, bool, error) {
 	s.snapshotOnce.Do(func() { s.snapshotCache = querycache.NewCache(30 * time.Second) })
 	keyRaw, _ := json.Marshal(opsDashboardSnapshotV2CacheKey{

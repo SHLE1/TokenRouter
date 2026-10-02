@@ -31,7 +31,7 @@ type OpenAIWSOptions struct {
 	ModeRouterV2Enabled, ResponsesWebsockets, ResponsesWebsocketsV2 bool
 }
 
-// ResolveOpenAIWSTransport 按原优先级选择出站协议，只消费认证与运行参数投影。
+// ResolveOpenAIWSTransport 根据认证方式和运行参数选择出站协议。
 func ResolveOpenAIWSTransport(provider OpenAIWSProvider, wsCfg *OpenAIWSOptions) OpenAIWSProtocolDecision {
 	if !provider.Present {
 		return OpenAIWSHTTPDecision("provider_missing")

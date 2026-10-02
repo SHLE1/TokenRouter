@@ -34,7 +34,7 @@ type trackedMediaBody struct {
 
 func (b trackedMediaBody) Close() error { b.closed.Store(true); return b.ReadCloser.Close() }
 
-// TestEmbeddingsAdapterOwnsNativeTargetAndResponse 验证本地 HTTP 夹具验证目标投影、凭据 Header、原报文和响应关闭，不访问供应商环境。
+// TestEmbeddingsAdapterOwnsNativeTargetAndResponse 用本地 HTTP 服务检查执行目标、凭据 Header、请求报文和响应关闭。
 func TestEmbeddingsAdapterOwnsNativeTargetAndResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "Bearer sensitive-fixture", r.Header.Get("Authorization"))

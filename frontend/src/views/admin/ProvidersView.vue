@@ -690,7 +690,7 @@ const providerToolsDropdownStyle = computed(() => ({
 const hiddenColumns = reactive<Set<string>>(new Set())
 const DEFAULT_HIDDEN_COLUMNS = ['today_stats', 'proxy', 'notes', 'scheduler_score', 'rate_multiplier']
 const HIDDEN_COLUMNS_KEY = 'provider-hidden-columns'
-// 一次性迁移旧列配置：已有管理员也默认隐藏调度权值，避免自动触发高开销后端打分。
+// 迁移列配置时默认隐藏调度权值，该列展示会触发后端打分。
 const HIDDEN_COLUMNS_VERSION_KEY = 'provider-hidden-columns-version'
 const HIDDEN_COLUMNS_CURRENT_VERSION = 'scheduler-score-hidden-by-default'
 
@@ -853,7 +853,7 @@ const upstreamUsageCacheKey = (provider: Provider) => {
 }
 
 // sessionStorage 可被浏览器扩展或旧版本页面写入任意 JSON；恢复前只接受
-// 适配器已经归一化过的有限数值、时间和模式，避免损坏快照污染提供商列表。
+// 检查适配器返回的数值、时间和模式，过滤损坏的快照。
 const isFiniteOptionalNumber = (value: unknown, nonNegative = false) =>
   value == null || (typeof value === 'number' && Number.isFinite(value) && (!nonNegative || value >= 0))
 
@@ -1493,7 +1493,7 @@ const clampDropdownLeft = (left: number, width: number) => {
 const buildTopDropdownStyle = (trigger: HTMLElement | null, width: number, align: 'left' | 'right' = 'right'): Record<string, string> => {
   if (!trigger) return {}
   const rect = trigger.getBoundingClientRect()
-  // 顶部工具菜单固定定位，按触发按钮对齐并限制在视口内，避免滚动容器裁剪。
+  // 顶部工具菜单按触发按钮固定定位，并限制在视口范围内。
   const rawLeft = align === 'left' ? rect.left : rect.right - width
   const left = clampDropdownLeft(rawLeft, width)
   return {
@@ -1888,7 +1888,7 @@ const refreshProvidersIncrementally = async () => {
       hasPendingListSync.value = false
     }
 
-    // 自动刷新只恢复当前页面已有的成功缓存，不触发任何上游请求。
+    // 自动刷新从成功缓存恢复当前页面的上游用量。
     hydrateUpstreamUsageCache()
     await refreshTodayStatsBatch()
   } catch (error) {
@@ -2113,12 +2113,12 @@ function getAntigravityTierLabel(row: any): string | null {
 }
 
 // 提供商显示邮箱:优先提供商自身(extra/credentials),影子提供商回退母提供商 parent_email。
-// 供名称单元格 v-if/标题/文本三处共用,避免同一回退链在模板里重复三次。
+// 名称单元格的 v-if、标题和文本共用此回退结果。
 function providerDisplayEmail(row: any): string {
   return row.extra?.email_address || row.extra?.email || row.credentials?.email || row.parent_email || ''
 }
 
-// API Key 提供商只暴露上游站点的协议、主机和端口，避免把凭据或接口路径带入外链。
+// API Key 提供商的站点外链由协议、主机和端口构成。
 function providerHomepageUrl(row: Provider): string {
   if (row.type !== 'apikey' || typeof row.credentials?.base_url !== 'string') return ''
   const baseUrl = sanitizeUrl(row.credentials.base_url)
@@ -2293,7 +2293,7 @@ const handleBulkRefreshToken = async () => {
   }
 }
 const canQueryProviderUsage = (provider: Provider) => {
-  // 仅对后端 /usage 主动查询有意义的提供商开放批量查询，避免 API Key 提供商产生无效请求。
+  // 支持后端 /usage 主动查询的提供商可参加批量查询。
   return (
     (provider.platform === 'anthropic' && (provider.type === 'oauth' || provider.type === 'setup-token')) ||
     (provider.platform === 'openai' && provider.type === 'oauth') ||
@@ -2690,7 +2690,7 @@ const handleExportData = async () => {
     link.click()
     URL.revokeObjectURL(url)
     // spark 影子提供商被后端排除出备份(其凭据透传母提供商、调度配置不可经凭据型导入重建);
-    // 跳过非零时明确提示用户,避免「下载成功但少了提供商」的静默丢失。
+    // 存在跳过项时提示用户下载文件缺少的提供商数量。
     if (dataPayload.skipped_shadows && dataPayload.skipped_shadows > 0) {
       appStore.showWarning(t('admin.providers.dataExportedSkippedShadows', { count: dataPayload.skipped_shadows }))
     } else {

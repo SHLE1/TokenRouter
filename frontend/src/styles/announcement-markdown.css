@@ -112,7 +112,7 @@
   @apply italic text-gray-600 dark:text-gray-400;
 }
 
-/* 公告浮层使用紧凑排版，避免正文重新形成大标题式视觉层级。 */
+/* 公告浮层正文采用紧凑排版。 */
 .announcement-popup-content {
   @apply text-sm leading-7 text-gray-700 dark:text-dark-200;
 }

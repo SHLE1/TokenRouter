@@ -24,7 +24,7 @@ func (h *ManagementHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	// 按原 404 语义读取提供商。
+	// 读取提供商，缺失时返回 404。
 	provider, err := h.adminService.GetProvider(c.Request.Context(), providerID)
 	if err != nil {
 		response.NotFound(c, "Provider not found")
@@ -52,9 +52,9 @@ func (h *ManagementHandler) Refresh(c *gin.Context) {
 // POST /api/v1/admin/providers/:id/apply-oauth-credentials
 //
 // 该接口刻意不复用通用 Update：
-//   - 只接收 type、credentials、extra，避免前端误传其它提供商配置；
-//   - Extra 走 JSONB key 级合并，避免重新授权清空 base_rpm、quota_*、privacy_mode 等持久化配置；
-//   - 服务端统一清理错误状态并失效 token 缓存，避免新授权后仍命中旧 token。
+// - 接收 type、credentials 和 extra 字段。
+// - Extra 按 JSONB 键合并，base_rpm、quota_*、privacy_mode 等其他配置保持当前值。
+// - 清理错误状态并使 token 缓存失效，后续请求读取新凭据。
 func (h *ManagementHandler) ApplyOAuthCredentials(c *gin.Context) {
 	providerID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

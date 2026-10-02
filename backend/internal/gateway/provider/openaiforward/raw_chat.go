@@ -38,7 +38,7 @@ func RunRawChat(ctx context.Context, body []byte, defaultMappedModel string, p R
 		// 在图片桥接或其它请求体改写前解析，使回退身份始终基于客户端稳定的会话前缀。
 		grokCacheIdentity = p.GrokCacheIdentity(body, "", upstreamModel)
 	}
-	// 3. 只改写模型，不转换协议。
+	// 3. 将模型改写为上游型号。
 	upstreamBody := body
 	if upstreamModel != originalModel {
 		upstreamBody = p.ReplaceModel(body, upstreamModel)
@@ -53,7 +53,7 @@ func RunRawChat(ctx context.Context, body []byte, defaultMappedModel string, p R
 		return nil, policyErr
 	}
 	upstreamBody = updatedBody
-	// 最终请求档位与响应观测档位分别记录，供凭据对应的计费契约使用。
+	// 分别记录最终请求档位和响应观测档位，计费时按凭据类型选择。
 	serviceTier := p.ServiceTier(upstreamBody)
 	if profile.Grok {
 		strippedBody, stripErr := p.StripViewImage(upstreamBody)
@@ -131,7 +131,7 @@ func RunRawChat(ctx context.Context, body []byte, defaultMappedModel string, p R
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	// 7. 保留上游错误分类与 failover 边界。
+	// 7. 分类上游错误并判断是否换提供商。
 	if resp.StatusCode >= 400 {
 		respBody, upstreamMsg := p.ReadUpstreamError(resp)
 		if profile.Grok {

@@ -402,7 +402,7 @@
                 <Icon name="edit" size="sm" />
                 <span class="text-xs">{{ t('common.edit') }}</span>
               </button>
-              <!-- Owner 锁定由团队管理员控制，成员侧不再提供无效的恢复入口。 -->
+              <!-- Owner 锁定由团队管理员解除。 -->
               <span
                 v-if="row.team_owner_disabled"
                 class="flex cursor-not-allowed flex-col items-center gap-0.5 rounded-control p-1.5 text-amber-600 dark:text-amber-400"
@@ -463,7 +463,7 @@
       </template>
     </TablePageLayout>
 
-    <!-- 创建/编辑密钥共用弹窗；表单允许在窄屏内收缩，避免撑开页面。 -->
+    <!-- 创建和编辑密钥共用弹窗，表单随窄屏收缩。 -->
     <BaseDialog
       :show="showCreateModal || showEditModal"
       :title="showEditModal ? t('keys.editKey') : t('keys.createKey')"
@@ -1304,7 +1304,7 @@ const formatBalancePair = (
 const COMPOSITE_GROUP_PREVIEW_LIMIT = 4
 
 // visibleCompositeGroups 返回表格中需要直接展示的复合映射。
-// 恰好只多出一条时直接全部展示，避免用计数胶囊替代单条映射。
+// 比预览上限多一条时展示全部映射。
 const visibleCompositeGroups = (row: ApiKey) => {
   const groups = row.composite_groups ?? []
   if (groups.length <= COMPOSITE_GROUP_PREVIEW_LIMIT + 1) {
@@ -1375,7 +1375,7 @@ const loadSavedColumns = () => {
         )
         .forEach((key) => hiddenColumns.add(key))
       const rawStoredVersion = Number(localStorage.getItem(COLUMN_SETTINGS_VERSION_KEY) ?? '1')
-      // 版本值被损坏时按最旧版处理，避免新的低频列意外显示。
+      // 无效版本值按版本 1 处理，低频列按版本迁移规则隐藏。
       const storedVersion = Number.isInteger(rawStoredVersion) && rawStoredVersion >= 1
         ? rawStoredVersion
         : 1
@@ -1433,7 +1433,7 @@ const formGroups = ref<Group[]>([])
 const billingSubscriptions = ref<ApiKeyBillingSubscriptionOption[]>([])
 const billingOptionsLoading = ref(false)
 const formGroupsLoading = ref(false)
-// 首次 Key 请求开始前也保持加载态，避免公共设置请求期间误显示空列表。
+// 加载态从公共设置请求开始，持续到首次 Key 请求完成。
 const loading = ref(true)
 const usageLoading = ref(false)
 const submitting = ref(false)
@@ -1667,7 +1667,7 @@ const onStatusFilterChange = (value: string | number | boolean | null) => {
   onFilterChange()
 }
 
-// 用户侧分组选项只投影选择所需信息，不传递管理员使用的容量数据。
+// 用户侧分组选项包含名称、描述、品牌和倍率。
 const buildGroupOptions = (source: Group[]) =>
   source.map((group) => ({
     value: group.id,
@@ -1775,7 +1775,7 @@ const onBillingModeChange = (value: string | number | boolean | null) => {
     return
   }
 
-  // 选定订阅后再裁剪不兼容分组，避免丢失仍可用的现有映射。
+  // 选定订阅后按兼容性裁剪分组，仍可用的映射继续保留。
   formData.value.preferred_subscription_id = null
   formGroups.value = []
 }
@@ -1886,7 +1886,7 @@ const loadGroups = async () => {
   try {
     const available = await userGroupsAPI.getAvailable(scope.value)
     groups.value = available
-    // 自动与余额模式沿用用户原有分组，避免表单打开时的重复请求清空已有选择。
+    // 自动与余额模式使用用户已选分组，表单打开时的重复请求也保留该选择。
     if (formData.value.billing_mode !== 'subscription') {
       formGroups.value = available
     }
@@ -2065,7 +2065,7 @@ const toggleKeyStatus = async (key: ApiKey) => {
   }
 }
 
-// 更多菜单使用视口坐标并传送到 body，避免被固定操作列的 overflow 裁切。
+// 更多菜单按视口坐标定位并挂载到 body，脱离固定操作列的裁剪区域。
 const openKeyActionMenu = (key: ApiKey, event: MouseEvent) => {
   if (actionMenuKey.value?.id === key.id) {
     closeKeyActionMenu()
@@ -2177,7 +2177,7 @@ const handleRotate = async () => {
   rotatingKey.value = true
   try {
     const updated = await keysAPI.rotate(rotationKey.value.id)
-    // 先替换页面中的凭据，避免列表刷新失败时仍复制到旧值。
+    // 先将页面凭据替换为新值，列表刷新失败时复制功能也能取得新凭据。
     apiKeys.value = apiKeys.value.map(key =>
       key.id === updated.id ? { ...key, key: updated.key, updated_at: updated.updated_at } : key
     )
@@ -2496,7 +2496,7 @@ const resetRateLimitUsage = async () => {
   }
 }
 
-// Key 内嵌分组未带目录时复用当前已加载的可见分组，避免逐行请求。
+// Key 内嵌分组缺少目录时，从已加载的可见分组中读取。
 const groupWithModels = (key: ApiKey | null): Group | undefined => {
   if (!key?.group_id) return undefined
   const available = groups.value.find(group => group.id === key.group_id)

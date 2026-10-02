@@ -81,7 +81,7 @@
               </div>
             </header>
 
-            <!-- 列表区域独立滚动，避免较多公告撑出视口。 -->
+            <!-- 公告列表在视口内独立滚动。 -->
             <div class="announcement-list-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-gray-100 dark:border-dark-700/70">
               <ContentSkeleton v-if="loading" data-testid="announcement-list-loading" variant="list" :rows="4" class="p-6" />
 
@@ -197,7 +197,7 @@ const announcementStore = useAnnouncementStore()
 // 通过 storeToRefs 保持公告列表和加载状态的响应性。
 const { announcements, loading } = storeToRefs(announcementStore)
 const unreadCount = computed(() => announcementStore.unreadCount)
-// Header 维持原有的 20 条展示上限，完整列表留给未读统计和仪表盘时间排序。
+// Header 最多展示 20 条公告，未读统计和仪表盘时间排序使用完整列表。
 const displayedAnnouncements = computed(() => announcements.value.slice(0, 20))
 const triggerClass = computed(() => {
   if (props.variant === 'status') {
@@ -274,8 +274,8 @@ watch(
 </script>
 
 <style scoped>
-/* 过渡配方用全局 pop-fade(数值与原 scoped 拷贝逐字一致),reduced-motion 也由全局收敛。 */
-/* 滚动条使用中性色，避免列表区域产生额外强调。 */
+/* 使用全局 pop-fade 过渡，全局样式同时处理减少动态效果。 */
+/* 列表滚动条使用中性色。 */
 .announcement-list-scrollbar::-webkit-scrollbar {
   width: 8px;
 }

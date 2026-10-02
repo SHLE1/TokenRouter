@@ -2,8 +2,7 @@ package ws
 
 import "fmt"
 
-// GenericPolicyError 表示自定义错误码已开启但当前状态未命中。
-// HTTP 入站路径据此返回统一 500，避免把不可信的握手或事件错误透传给客户端。
+// GenericPolicyError 表示已开启自定义错误码，但当前状态未匹配配置，HTTP 入站返回统一 500。
 type GenericPolicyError struct {
 	upstreamStatus int
 }

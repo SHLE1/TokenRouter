@@ -23,14 +23,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// provideProviderTests 直接绑定原生提供商和平台目标，后台与 HTTP 共用同一入口。
+// provideProviderTests 绑定提供商存储和平台测试目标，供后台任务与 HTTP 共用。
 func provideProviderTests(store *providerpostgres.ProviderStore, geminiToken *provider.GeminiTokenSource, claudeToken *provider.ClaudeTokenSource, grokToken *provider.GrokTokenSource, ag *provideradapter.AntigravityProbe, transport httpclient.UpstreamTransport, cfg *config.Config, profiles *egressprovider.TLSProfiles, routers *egress.TLSFingerprintRouterService, settings *gateway.RuntimeSettings, tasks *provideradapter.ProbeTasks, manager *lifecycle.Manager) *provider.TestService {
 	urlPolicy := egress.OperatorURLPolicy{Enabled: cfg.Security.URLAllowlist.Enabled, AllowInsecureHTTP: cfg.Security.URLAllowlist.AllowInsecureHTTP, AllowPrivateHosts: cfg.Security.URLAllowlist.AllowPrivateHosts, UpstreamHosts: slices.Clone(cfg.Security.URLAllowlist.UpstreamHosts)}
 	probePolicy := &provideradapter.OpenAIProbePolicy{Available: true, ForceCLI: cfg.Gateway.ForceCodexCLI, Read: store.GetByID, AllowClaudeCode: settings.IsOpenAIAllowClaudeCodeCodexPluginEnabled, BrowserUserAgent: settings.GetOpenAICodexUserAgent, DefaultBrowserUserAgent: gateway.DefaultOpenAICodexUserAgent, Routers: routers, Profiles: profiles, ManualProfiles: profiles}
 	openaiTest := &provideradapter.OpenAIProviderTest{Store: store, Transport: transport, ValidateURL: urlPolicy.Validate, Prepare: probePolicy.Prepare, ApplyRouting: probePolicy.ApplyTestRouting, ResolveTLS: probePolicy.ResolveTestTLS, EnsureTask: tasks.Ensure}
 	geminiTest := &provideradapter.GeminiProviderTest{Tokens: geminiToken, Transport: transport, Profiles: profiles, ValidateURL: urlPolicy.Validate}
 	anthropicTest := &provideradapter.AnthropicProviderTest{Tokens: claudeToken, Transport: transport, Profiles: profiles, Store: store, ValidateURL: urlPolicy.Validate}
-	// 保留管理测试独立的会话作用域，并明确登记其停止拥有者。
+	// 管理测试使用独立的会话缓存，并登记关闭操作。
 	qoderSessions := provideradapter.NewQoderTokenProvider(qoder.SessionBuilder{})
 	qoderSessions.SetHTTPUpstream(transport, profiles)
 	manager.Register(lifecycle.Hook{Name: "ProviderTestQoderSessions", StopOrder: 26, Stop: qoderSessions.StopContext})
@@ -47,7 +47,7 @@ func provideProviderTests(store *providerpostgres.ProviderStore, geminiToken *pr
 	return core
 }
 
-// provideProviderTestHTTP 与后台复用唯一测试用例，成功恢复仍调用原健康端口。
+// provideProviderTestHTTP 与后台任务共用测试用例，测试成功后调用健康恢复函数。
 func provideProviderTestHTTP(core *provider.TestService, recovery *provider.RecoveryService) *providerhttp.TestHandler {
 	return providerhttp.NewTestHandler(core, func(ctx context.Context, id int64) error {
 		_, err := recovery.RecoverProviderAfterSuccessfulTest(ctx, id)

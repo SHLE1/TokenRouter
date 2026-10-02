@@ -8,7 +8,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// recordSnapshot 的凭据仅能由 Adapter 解包；调度核心接口只暴露重建元数据。
+// recordSnapshot 包装提供商记录，调度器通过 SnapshotMetadata 读取重建元数据。
+// 执行适配器通过 RecordValue 取得含凭据的完整记录。
 type recordSnapshot struct{ value *provider.Record }
 
 func (s recordSnapshot) SnapshotMetadata() scheduler.SnapshotMetadata {
@@ -25,7 +26,7 @@ func WrapRecord(value *provider.Record) scheduler.SnapshotProvider {
 	return recordSnapshot{value: value}
 }
 
-// RecordValue 仅供受控提供商读取和缓存编码使用，不向评分核心输出凭据。
+// RecordValue 为提供商读取和缓存编码返回完整记录，记录含有执行凭据。
 func RecordValue(value scheduler.SnapshotProvider) (*provider.Record, error) {
 	if value == nil {
 		return nil, nil

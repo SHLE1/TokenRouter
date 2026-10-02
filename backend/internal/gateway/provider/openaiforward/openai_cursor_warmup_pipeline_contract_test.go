@@ -16,9 +16,7 @@ import (
 // 请求包含 input 且没有 messages 时，只改写 model，保留原 input 数组，包括较大的系统提示词。
 // 将该请求解码为 ChatCompletionsRequest 会丢失 input，并使后续转换产生上游拒绝的 input: null。
 func TestCursorMixedShapeDetection(t *testing.T) {
-	// Representative Cursor cloud body — shape is what matters, content is
-	// abridged. Notice: `input` is a Responses-API array, there is no
-	// `messages` field at all, and `user`/`stream` are at the top level.
+	// Cursor 请求使用 Responses 的 input 数组，user 和 stream 位于顶层。
 	cursorBody := []byte(`{
 		"user": "85df22e7463ab6c2",
 		"model": "gpt-5.4",
@@ -49,7 +47,7 @@ func TestCursorMixedShapeDetection(t *testing.T) {
 	// 3a. model must be rewritten to the upstream target.
 	assert.Equal(t, upstreamModel, gjson.GetBytes(rewritten, "model").String())
 
-	// 3b. input array must be preserved verbatim — no reshaping, no nulling.
+	// 3b. input 数组原样保留。
 	inputResult := gjson.GetBytes(rewritten, "input")
 	require.True(t, inputResult.Exists(), "input field must still exist after rewrite")
 	require.True(t, inputResult.IsArray(), "input must still be an array (not null, not object)")
@@ -126,9 +124,7 @@ func TestCursorMixedShapeDetection_EmptyBody(t *testing.T) {
 		"body with neither messages nor input must not be taken as Cursor shape")
 }
 
-// TestCursorMixedShape_JSONRoundtrip ensures the rewritten body is still
-// valid JSON and parseable back into a map without surprises — catches
-// any encoding drift from sjson.
+// TestCursorMixedShape_JSONRoundtrip 检查 sjson 改写后的请求体能否解析为 JSON 对象。
 func TestCursorMixedShape_JSONRoundtrip(t *testing.T) {
 	cursorBody := []byte(`{"model":"gpt-5.4","stream":true,"input":[{"role":"user","content":"hi"}]}`)
 

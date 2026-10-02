@@ -1,15 +1,17 @@
 package googleforward
 
-// 以下入口仅在测试构建中开放私有边界。
-var ResolveProjectForTest = resolveAntigravityProjectID
-var EnsureSignatureForTest = ensureGeminiFunctionCallThoughtSignatures
-var ConvertClaudeForTest = convertClaudeMessagesToGeminiGenerateContent
-var GeminiResponseForTest = (*Gemini).geminiResponseAdapter
-var AntigravityResponseForTest = (*Antigravity).antigravityResponseAdapter
-var ErrorBodyLimitForTest = (*Antigravity).upstreamErrorBodyReadLimit
-var GeminiFailoverForTest = (*Gemini).shouldFailoverGeminiUpstreamError
-var GeminiPolicyForTest = (*Gemini).applyGeminiUpstreamErrorPolicy
-var AntigravityBodyForTest = (*Antigravity).buildAntigravityCompatGeminiBody
+// 这些导出方法供测试调用包内实现。
+var (
+	ResolveProjectForTest      = resolveAntigravityProjectID
+	EnsureSignatureForTest     = ensureGeminiFunctionCallThoughtSignatures
+	ConvertClaudeForTest       = convertClaudeMessagesToGeminiGenerateContent
+	GeminiResponseForTest      = (*Gemini).geminiResponseAdapter
+	AntigravityResponseForTest = (*Antigravity).antigravityResponseAdapter
+	ErrorBodyLimitForTest      = (*Antigravity).upstreamErrorBodyReadLimit
+	GeminiFailoverForTest      = (*Gemini).shouldFailoverGeminiUpstreamError
+	GeminiPolicyForTest        = (*Gemini).applyGeminiUpstreamErrorPolicy
+	AntigravityBodyForTest     = (*Antigravity).buildAntigravityCompatGeminiBody
+)
 
 // AttemptForTest 允许断言状态复位及观测结果，仍使用同一实际状态类型。
 type AttemptForTest = attempt

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeFixedWindow 在 HTTP 契约处提供可控结果，不依赖 Redis 或可变全局钩子。
+// fakeFixedWindow 为 HTTP 限流测试提供可控的计数和错误。
 type fakeFixedWindow struct {
 	counts  map[string]int64
 	failure error

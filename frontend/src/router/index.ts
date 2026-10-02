@@ -14,7 +14,7 @@ import { resolveCompletedSetupRedirectPath } from './setupRedirect'
 import { resolveRouteDocumentTitle } from './title'
 import { initializeTfCliImportSession } from '@/utils/tfCliImport'
 
-// 登录守卫读取 fullPath 前先移除一次性会话 secret，避免它进入重定向参数。
+// 登录守卫读取 fullPath 前移除一次性会话 secret，重定向参数使用清理后的路径。
 initializeTfCliImportSession()
 
 /**
@@ -834,7 +834,7 @@ router.beforeEach(async (to, _from, next) => {
         return
       }
     } catch {
-      // 无法确认初始化状态时保留 setup 页面可访问，避免阻断首次安装。
+      // 无法确认初始化状态时仍可访问 setup 页面，供首次安装继续执行。
     }
   }
 

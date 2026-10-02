@@ -44,8 +44,7 @@ func GrokRateLimitResetAt(snapshot *usageview.QuotaSnapshot, now time.Time) (tim
 		return time.Time{}, false
 	}
 
-	// Retry-After 是 xAI 明确给出的重试边界；以观测时间为基准，避免每次读取持久化
-	// 快照时重新启动冷却。
+	// Retry-After 加上观测时间得到固定的重试时刻，多次读取共用这个时刻。
 	retryAfterExpired := false
 	var resetAt time.Time
 	if snapshot.RetryAfterSeconds != nil && *snapshot.RetryAfterSeconds > 0 {
@@ -80,8 +79,8 @@ func GrokRateLimitResetAt(snapshot *usageview.QuotaSnapshot, now time.Time) (tim
 	if !resetAt.IsZero() {
 		return resetAt, true
 	}
-	// Retry-After 与快照时间组合后即为绝对边界。已过期的持久化快照不能被转换为新的
-	// 滚动回退冷却，但仍允许采用更晚的明确窗口重置时间。
+	// Retry-After 加上快照时间得到固定的重试时刻。
+	// 该时刻已过期时，仍可使用更晚的窗口重置时间。
 	if retryAfterExpired {
 		return time.Time{}, false
 	}

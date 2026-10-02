@@ -12,24 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RawChat 直转客户端的 Chat Completions 请求到上游
-// `{base_url}/v1/chat/completions`，**不**做 CC↔Responses 协议转换。
-//
-// 适用场景：provider.platform=openai && provider.type=apikey && 上游已被探测确认
-// 不支持 /v1/responses 端点（如 GLM/Qwen 等第三方 OpenAI 兼容上游）；CN 供应商
-// 固定 chat_completions 协议也走此路径。
-//
-// 与 Chat 的关键差异：
-//
-//   - 不调用 apicompat.ChatCompletionsToResponses，body 仅做模型 ID 改写
-//   - 上游 URL 拼到 /v1/chat/completions 而非 /v1/responses
-//   - 流式响应 SSE 直接透传给客户端（上游 chunk 已是 CC 格式）
-//   - 非流式响应 JSON 直接透传，仅按需提取 usage
-//   - 不应用 codex OAuth transform（APIKey 路径无 OAuth）
-//   - 不注入 prompt_cache_key（OAuth 专属机制）
-//
-// 调用入口：openai_gateway_chat_completions.go::Chat
-// 在函数顶部通过统一文本协议解析器分流。
+// RawChat 将 Chat Completions 请求直转至 {base_url}/v1/chat/completions。
+// 模型 ID 改写后，SSE chunk 和非流式 JSON 原样透传，并按需提取 usage。
+// 路由适用于已确认缺少 Responses 端点的 OpenAI API Key 提供商，以及配置固定 chat_completions 协议的 CN 供应商。
+// 该路径使用 API Key 请求头和正文处理，OAuth 的请求变换与 prompt_cache_key 注入由 OAuth 路径处理。
 func (s *OpenAITextExecutor) RawChat(
 	ctx context.Context,
 	c *gin.Context,
@@ -45,16 +31,8 @@ func (s *OpenAITextExecutor) RawChat(
 	return out, err
 }
 
-// MessagesViaRawChat 将 `/v1/messages` 客户端请求桥接到
-// 仅支持 `/v1/chat/completions` 的 OpenAI 兼容上游。
-//
-// 转换链直接跳过 Responses 中间表示：
-//
-//	请求：Anthropic Messages → Chat Completions
-//	响应：Chat Completions chunk/response → Anthropic events/response
-//
-// 该函数与服务 `/v1/responses` 的 ResponsesViaRawChat 对应，
-// 但每个流式 token 只经过一个状态机，不再往返 Responses 表示。
+// MessagesViaRawChat 将 /v1/messages 请求转换为 Chat Completions，响应转换为 Anthropic 事件或正文。
+// 它使用单个流式状态机，与服务 /v1/responses 的 ResponsesViaRawChat 分别处理各自客户端协议。
 func (s *OpenAITextExecutor) MessagesViaRawChat(
 	ctx context.Context,
 	c *gin.Context,

@@ -23,7 +23,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// Execute 按原凭据、模式和显式测试类型执行 OpenAI 测试。
+// Execute 按提供商凭据、模式和测试类型执行 OpenAI 测试。
 func (s *OpenAIProviderTest) Execute(c *TestRun, value *providercore.Record, modelID string, prompt string, mode string, testTypes ...string) error {
 	ctx := c.Context
 	mode, testType, explicitTestType := providercore.ResolveProviderTestModeAndType(mode, testTypes...)
@@ -45,7 +45,7 @@ func (s *OpenAIProviderTest) Execute(c *TestRun, value *providercore.Record, mod
 		return s.executeLegacyCompact(c, value, testModelID)
 	}
 
-	// 显式类型优先于模型名；未指定类型时才保留旧版图片模型兼容判断。
+	// 指定的测试类型优先，省略时按模型名判断图片请求。
 	if (explicitTestType && testType == providercore.ProviderTestTypeImage) ||
 		(!explicitTestType && strings.HasPrefix(strings.ToLower(testModelID), "gpt-image-")) {
 		imagePrompt := strings.TrimSpace(prompt)
@@ -115,7 +115,7 @@ func (s *OpenAIProviderTest) Execute(c *TestRun, value *providercore.Record, mod
 	// 保留事件流提交时机。
 	c.Begin(true)
 
-	// OAuth 提供商使用 ChatGPT Codex 上游，测试请求必须与真实转发使用同一模型归一化规则。
+	// OAuth 提供商使用 ChatGPT Codex 上游，测试与转发共用模型归一化规则。
 	upstreamTestModelID := testModelID
 	if isOAuth {
 		upstreamTestModelID = s.normalizeModel(credentialProvider, testModelID)
@@ -169,7 +169,7 @@ func (s *OpenAIProviderTest) Execute(c *TestRun, value *providercore.Record, mod
 		openai.EnforceCodexIdentityHeaders(req.Header)
 	}
 
-	// 提供商级请求头覆写：测试请求与真实转发保持一致的最终头
+	// 测试与转发按相同顺序应用提供商请求头覆盖。
 	applyGrokQuotaHeaders(credentialProvider, req.Header)
 
 	// 保留提供商关联代理。
@@ -247,7 +247,7 @@ func (s *OpenAIProviderTest) executeChat(
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	s.ApplyRouting(c, value, req, false)
 
-	// 提供商级请求头覆写：测试请求与真实转发保持一致的最终头
+	// 测试与转发按相同顺序应用提供商请求头覆盖。
 	applyGrokQuotaHeaders(value, req.Header)
 
 	proxyURL := ""
@@ -337,7 +337,7 @@ func (s *OpenAIProviderTest) executeNativeCompaction(c *TestRun, value *provider
 	req = req.WithContext(upstream.WithHTTPUpstreamProfile(req.Context(), upstream.HTTPUpstreamProfileOpenAI))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
-	// 与真实 V2 请求相同，即使提供商覆盖尝试移除该头，后面也会重新补齐。
+	// 提供商请求头覆盖完成后会补齐 V2 协商头。
 	openai.EnsureRemoteCompactionV2Header(req.Header)
 	if credentialProvider.IsOpenAIAgentIdentity() {
 		authHeaders, authErr := s.agentHeaders(ctx, credentialProvider)
@@ -371,7 +371,7 @@ func (s *OpenAIProviderTest) executeNativeCompaction(c *TestRun, value *provider
 		openai.EnforceCodexIdentityHeaders(req.Header)
 	}
 
-	// 提供商覆盖先执行，再补 V2 协商头，保证手动测试和真实转发有相同的协议契约。
+	// 先应用提供商请求头覆盖，再补齐 V2 协商头，测试与转发顺序一致。
 	applyGrokQuotaHeaders(value, req.Header)
 	openai.EnsureRemoteCompactionV2Header(req.Header)
 
@@ -399,7 +399,7 @@ func (s *OpenAIProviderTest) executeNativeCompaction(c *TestRun, value *provider
 
 	compactionFound := openai.CompactionTestHasOutput(body)
 	if s.Store != nil {
-		// 手动测试只保存额度观测，不修改管理员开关。
+		// 手动测试保存额度观测，管理员开关保持配置值。
 		var updates map[string]any
 		if codexUpdates, err := ExtractOpenAIUsageUpdates(resp, time.Now()); err == nil && len(codexUpdates) > 0 {
 			updates = mergeTestExtraUpdates(updates, codexUpdates)
@@ -519,7 +519,7 @@ func (s *OpenAIProviderTest) executeLegacyCompact(c *TestRun, value *providercor
 		openai.EnforceCodexIdentityHeaders(req.Header)
 	}
 
-	// 提供商级请求头覆写：测试请求与真实转发保持一致的最终头
+	// 测试与转发按相同顺序应用提供商请求头覆盖。
 	applyGrokQuotaHeaders(value, req.Header)
 
 	proxyURL := ""
@@ -545,7 +545,7 @@ func (s *OpenAIProviderTest) executeLegacyCompact(c *TestRun, value *providercor
 	}
 
 	if s.Store != nil {
-		// 手动测试只保存额度观测，不修改管理员开关。
+		// 手动测试保存额度观测，管理员开关保持配置值。
 		var updates map[string]any
 		if codexUpdates, err := ExtractOpenAIUsageUpdates(resp, time.Now()); err == nil && len(codexUpdates) > 0 {
 			updates = mergeTestExtraUpdates(updates, codexUpdates)
@@ -554,7 +554,7 @@ func (s *OpenAIProviderTest) executeLegacyCompact(c *TestRun, value *providercor
 			_ = s.Store.UpdateExtra(ctx, value.ID, updates)
 			value.Extra = providercore.MergeUsageExtra(value.Extra, updates)
 		}
-		// 手动测试如返回 429，主动同步限流状态,避免后续短时间内继续选中。
+		// 手动测试返回 429 时同步限流状态，调度器据此暂停该提供商。
 		if resp.StatusCode == http.StatusTooManyRequests {
 			s.reconcileOpenAI429State(ctx, value, resp.Header, body)
 		}
@@ -647,7 +647,7 @@ func (s *OpenAIProviderTest) ExecuteImageAPIKey(c *TestRun, ctx context.Context,
 	req.Header.Set("Authorization", "Bearer "+authToken)
 	s.ApplyRouting(c, value, req, false)
 
-	// 提供商级请求头覆写：测试请求与真实转发保持一致的最终头
+	// 测试与转发按相同顺序应用提供商请求头覆盖。
 	applyGrokQuotaHeaders(value, req.Header)
 
 	proxyURL := ""
@@ -704,7 +704,7 @@ func (s *OpenAIProviderTest) ExecuteImageAPIKey(c *TestRun, ctx context.Context,
 			(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "image", ImageURL: item.URL})
 		}
 	}
-	// 上游返回了 data 但没有可展示的图片时视为失败，避免空结果被当作测试成功。
+	// 上游返回 data 但缺少可展示图片时，测试失败。
 	if images == 0 {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Upstream returned no image data: %s", logredact.TruncateLine(body, 512)))
 	}
@@ -779,7 +779,7 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 	}
 	s.ApplyRouting(c, value, req, true)
 	setTestChatGPTHeaders(req.Header, credentialProvider)
-	// 与真实转发一致：originator 与最终 User-Agent 首段配套（原 opencode 与 Codex UA 错配会 404，issue #3901）。
+	// originator 与最终 User-Agent 的首段保持匹配，错配会触发 404（issue #3901）。
 	openai.EnforceCodexIdentityHeaders(req.Header)
 
 	proxyURL := ""
@@ -835,7 +835,7 @@ func (s *OpenAIProviderTest) ExecuteImageOAuth(c *TestRun, ctx context.Context, 
 	return nil
 }
 
-// OpenAIProviderTest 固定提供商存储、共享传输和策略端口，单次状态只留在 TestRun。
+// OpenAIProviderTest 绑定提供商存储、共享传输和请求策略，TestRun 保存单次状态。
 type OpenAIProviderTest struct {
 	Store        OpenAIProviderTestStore
 	Transport    QoderTransport

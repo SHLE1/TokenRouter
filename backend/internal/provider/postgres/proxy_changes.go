@@ -7,7 +7,7 @@ import (
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
 
-// ProxyChanges 只参与调用方连接；不提交、发布事件或触发缓存失效。
+// ProxyChanges 在调用方连接中更新代理关联，调用方负责提交、事件发布和缓存失效。
 type ProxyChanges struct{ exec postgresinfra.Executor }
 
 func ProxyChangesInTx(exec postgresinfra.Executor) ProxyChanges { return ProxyChanges{exec: exec} }

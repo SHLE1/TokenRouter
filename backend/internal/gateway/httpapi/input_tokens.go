@@ -24,8 +24,7 @@ type InputTokensCall struct {
 	Log                                        *zap.Logger
 }
 
-// ResponsesInputTokens 处理 Codex 使用的 OpenAI 原生 Responses 输入 token 预检。
-// 该请求只做计数，不占用用户并发槽位，也不记录用量。
+// ResponsesInputTokens 处理 Codex 的 Responses 输入 token 预检，使用无并发槽、免用量记录的计数流程。
 func (h *OpenAITokensHandler) ResponsesInputTokens(c *gin.Context) {
 	done, accepted := h.beginRequest(c, "openai")
 	if !accepted {

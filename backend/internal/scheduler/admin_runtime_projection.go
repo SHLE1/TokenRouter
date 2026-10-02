@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// RuntimeSettingsFromAdmin 保留每项独立默认、存在性和原解析顺序，不创建第二个运行实例。
+// RuntimeSettingsFromAdmin 按字段解析管理设置，分别记录是否设置，并在缺省时使用对应默认值。
 func RuntimeSettingsFromAdmin(value AdminSettings, defaults AdminDefaults) policy.RuntimeSettings {
 	errorAlpha, _ := ParseAdvancedSchedulerAlphaOverride(value.AdvancedSchedulerEWMAErrorRateAlpha, defaults.Process.EwmaErrorRateAlpha)
 	ttftAlpha, _ := ParseAdvancedSchedulerAlphaOverride(value.AdvancedSchedulerEWMATTFTAlpha, defaults.Process.EwmaTTFTAlpha)
@@ -26,5 +26,6 @@ func RuntimeSettingsFromAdmin(value AdminSettings, defaults AdminDefaults) polic
 			SettingKeyAdvancedSchedulerWeightReset:            value.AdvancedSchedulerWeightReset,
 			SettingKeyAdvancedSchedulerWeightSessionSticky:    value.AdvancedSchedulerWeightSessionSticky,
 			SettingKeyAdvancedSchedulerWeightTTFT:             value.AdvancedSchedulerWeightTTFT,
-		})}
+		}),
+	}
 }

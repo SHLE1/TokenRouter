@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// provideOpenAIAuthorization 直接构造唯一授权实例，动态 UA 仍通过原设置读取器获取。
+// provideOpenAIAuthorization 构造共享的授权实例，通过设置读取器取得动态 UA。
 func provideOpenAIAuthorization(proxies egress.ProxyRepository, client provideradapter.OpenAIOAuthClient, privacy openai.PrivacyClientFactory, settings *gateway.RuntimeSettings, routers provideradapter.OpenAITokenRouterReader, profiles provideradapter.OpenAITokenProfileResolver) *provider.OpenAIAuthorization {
 	deps := &provideradapter.OpenAIAuthorizationDependencies{
 		Proxies:        proxies,

@@ -38,7 +38,7 @@ type ConcurrencyCache interface {
 	ReleaseUserSlot(ctx context.Context, userID int64, requestID string) error
 	GetUserConcurrency(ctx context.Context, userID int64) (int, error)
 
-	// 等待队列计数（每次入队都会刷新 TTL，避免长时间排队时计数提前过期）
+	// 等待队列计数，每次入队刷新 TTL，长时间排队时持续续期。
 	IncrementWaitCount(ctx context.Context, userID int64, maxWait int) (bool, error)
 	DecrementWaitCount(ctx context.Context, userID int64) error
 
@@ -320,10 +320,10 @@ func (s *ConcurrencyService) SetProviderLoadBatchCacheTTL(ttl time.Duration) {
 	}
 }
 
-// AcquireResult represents the result of acquiring a concurrency slot
+// AcquireResult 记录是否取得并发槽位及其释放函数。
 type AcquireResult struct {
 	Acquired    bool
-	ReleaseFunc func() // Must be called when done (typically via defer)
+	ReleaseFunc func() // 调用方在请求结束时调用，可使用 defer。
 }
 
 type ProviderWithConcurrency struct {
@@ -351,10 +351,9 @@ type UserLoadInfo struct {
 }
 
 // acquireProviderSlot 尝试获取提供商并发槽位。
-// If the provider is at max concurrency, it waits until a slot is available or timeout.
-// Returns a release function that MUST be called when the request completes.
+// 达到上限时返回 Acquired=false，取得槽位后调用方需要在请求结束时调用释放函数。
 func (s *ConcurrencyService) acquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int) (*AcquireResult, error) {
-	// If maxConcurrency is 0 or negative, no limit
+	// maxConcurrency 非正时直接放行。
 	if maxConcurrency <= 0 {
 		return &AcquireResult{
 			Acquired:    true,
@@ -362,7 +361,7 @@ func (s *ConcurrencyService) acquireProviderSlot(ctx context.Context, providerID
 		}, nil
 	}
 
-	// Generate unique request ID for this slot
+	// 为本次槽位申请生成请求 ID。
 	requestID := GenerateRequestID()
 
 	acquired, err := s.cache.AcquireProviderSlot(ctx, providerID, maxConcurrency, requestID)
@@ -389,10 +388,10 @@ func (s *ConcurrencyService) acquireProviderSlot(ctx context.Context, providerID
 	}, nil
 }
 
-// acquireUserSlot 尝试获取用户并发槽位，达到上限时等待可用槽位或超时。
+// acquireUserSlot 尝试取得用户并发槽位，达到上限时返回 Acquired=false。
 // 请求结束后必须调用返回的释放函数。
 func (s *ConcurrencyService) acquireUserSlot(ctx context.Context, userID int64, maxConcurrency int) (*AcquireResult, error) {
-	// If maxConcurrency is 0 or negative, no limit
+	// maxConcurrency 非正时直接放行。
 	if maxConcurrency <= 0 {
 		return &AcquireResult{
 			Acquired:    true,
@@ -400,7 +399,7 @@ func (s *ConcurrencyService) acquireUserSlot(ctx context.Context, userID int64, 
 		}, nil
 	}
 
-	// Generate unique request ID for this slot
+	// 为本次槽位申请生成请求 ID。
 	requestID := GenerateRequestID()
 
 	acquired, err := s.cache.AcquireUserSlot(ctx, userID, maxConcurrency, requestID)
@@ -427,7 +426,7 @@ func (s *ConcurrencyService) acquireUserSlot(ctx context.Context, userID int64, 
 	}, nil
 }
 
-// trackAPIKeySlot 记录一个 API Key 活跃请求槽位，但不施加 Key 级并发上限。
+// trackAPIKeySlot 登记 API Key 活跃请求槽位，用于统计。
 // 统计采用故障放行：Redis 出错时记录日志并返回空操作释放函数。
 func (s *ConcurrencyService) trackAPIKeySlot(ctx context.Context, apiKeyID int64) func() {
 	if s == nil || s.cache == nil || apiKeyID <= 0 {
@@ -461,7 +460,7 @@ func (s *ConcurrencyService) trackAPIKeySlot(ctx context.Context, apiKeyID int64
 }
 
 // GetAPIKeyConcurrencyBatch 批量获取 API Key 的实时活跃请求数。
-// 统计采用尽力而为语义：缓存不支持或 Redis 出错时返回零值。
+// 缓存不支持统计或 Redis 出错时返回零值。
 func (s *ConcurrencyService) GetAPIKeyConcurrencyBatch(ctx context.Context, apiKeyIDs []int64) (map[int64]int, error) {
 	result := zeroAPIKeyConcurrencyMap(apiKeyIDs)
 	if len(apiKeyIDs) == 0 {
@@ -502,10 +501,6 @@ func zeroAPIKeyConcurrencyMap(apiKeyIDs []int64) map[int64]int {
 	return result
 }
 
-// ============================================
-// Wait Queue Count Methods
-// ============================================
-
 // GetProviderWaitingCount 获取提供商当前的等待队列长度。
 func (s *ConcurrencyService) GetProviderWaitingCount(ctx context.Context, providerID int64) (int, error) {
 	if s.cache == nil {
@@ -514,8 +509,7 @@ func (s *ConcurrencyService) GetProviderWaitingCount(ctx context.Context, provid
 	return s.cache.GetProviderWaitingCount(ctx, providerID)
 }
 
-// CalculateMaxWait calculates the maximum wait queue size for a user
-// maxWait = userConcurrency + defaultExtraWaitSlots
+// CalculateMaxWait 在用户并发上限上增加 defaultExtraWaitSlots 个等待名额，非正并发上限按 1 计算。
 func CalculateMaxWait(userConcurrency int) int {
 	if userConcurrency <= 0 {
 		userConcurrency = 1
@@ -528,7 +522,7 @@ func (s *ConcurrencyService) GetProvidersLoadBatch(ctx context.Context, provider
 	return s.getProvidersLoadBatch(ctx, providers, true)
 }
 
-// GetProvidersLoadBatchFresh 绕过极短 TTL 缓存，用于抢槽失败后的实时刷新兜底。
+// GetProvidersLoadBatchFresh 直接读取提供商负载，供抢槽失败后刷新候选使用。
 func (s *ConcurrencyService) GetProvidersLoadBatchFresh(ctx context.Context, providers []ProviderWithConcurrency) (map[int64]*ProviderLoadInfo, error) {
 	return s.getProvidersLoadBatch(ctx, providers, false)
 }
@@ -660,7 +654,7 @@ func cloneProviderLoadMap(loadMap map[int64]*ProviderLoadInfo) map[int64]*Provid
 	return clone
 }
 
-// GetUsersLoadBatch returns load info for multiple users.
+// GetUsersLoadBatch 批量读取用户负载。
 func (s *ConcurrencyService) GetUsersLoadBatch(ctx context.Context, users []UserWithConcurrency) (map[int64]*UserLoadInfo, error) {
 	if s.cache == nil {
 		return map[int64]*UserLoadInfo{}, nil
@@ -668,7 +662,7 @@ func (s *ConcurrencyService) GetUsersLoadBatch(ctx context.Context, users []User
 	return s.cache.GetUsersLoadBatch(ctx, users)
 }
 
-// CleanupExpiredProviderSlots removes expired slots for one provider (background task).
+// CleanupExpiredProviderSlots 清理指定提供商的过期槽位，供后台任务调用。
 func (s *ConcurrencyService) CleanupExpiredProviderSlots(ctx context.Context, providerID int64) error {
 	if s.cache == nil {
 		return nil
@@ -676,7 +670,7 @@ func (s *ConcurrencyService) CleanupExpiredProviderSlots(ctx context.Context, pr
 	return s.cache.CleanupExpiredProviderSlots(ctx, providerID)
 }
 
-// StartSlotCleanupWorker 保持立即首轮和原周期，实际清理受运行取消约束。
+// StartSlotCleanupWorker 启动后立即清理一次，随后按周期清理，运行 context 取消时停止。
 func (s *ConcurrencyService) StartSlotCleanupWorker(interval time.Duration) {
 	if s == nil || s.cache == nil || interval <= 0 {
 		return
@@ -690,7 +684,7 @@ func (s *ConcurrencyService) StartSlotCleanupWorker(interval time.Duration) {
 	}})
 }
 
-// Stop 为旧消费者保留有界委托；应用使用统一剩余预算。
+// Stop 使用 30 秒预算停止任务，应用可通过 StopContext 传入剩余关闭预算。
 func (s *ConcurrencyService) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -704,9 +698,8 @@ func (s *ConcurrencyService) StopContext(ctx context.Context) error {
 	return s.runtime.StopContext(ctx)
 }
 
-// GetProviderConcurrencyBatch gets current concurrency counts for multiple providers.
-// Uses a detached context with timeout to prevent HTTP request cancellation from
-// causing the entire batch to fail (which would show all concurrency as 0).
+// GetProviderConcurrencyBatch 批量读取提供商的当前并发数。
+// 查询使用独立的超时 context，HTTP 请求取消后继续完成查询，以便返回并发计数。
 func (s *ConcurrencyService) GetProviderConcurrencyBatch(ctx context.Context, providerIDs []int64) (map[int64]int, error) {
 	if len(providerIDs) == 0 {
 		return map[int64]int{}, nil
@@ -771,7 +764,7 @@ func (s *ConcurrencyService) EnterProviderWait(ctx context.Context, id int64, li
 	return result, nil
 }
 
-// LiveLeases 仅暴露长会话租约端口，不让旧执行层访问整个并发缓存。
+// LiveLeases 返回长会话的租约接口。
 func (s *ConcurrencyService) LiveLeases() LiveConcurrencyCache {
 	if s == nil || s.cache == nil {
 		return nil
@@ -823,7 +816,7 @@ func (s *ConcurrencyService) AcquireUserSlot(ctx context.Context, userID int64, 
 	return result, nil
 }
 
-// TrackAPIKeySlot 与原统计查询预算一致，关闭后拒绝新的统计写入。
+// TrackAPIKeySlot 在统计查询的超时预算内登记槽位，运行实例关闭后拒绝新的登记。
 func (s *ConcurrencyService) TrackAPIKeySlot(ctx context.Context, id int64) func() {
 	if s == nil {
 		return func() {}

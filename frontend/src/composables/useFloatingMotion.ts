@@ -31,7 +31,7 @@ export function useFloatingMotion(
       if (!next) follow()
     }
     const observer = new MutationObserver(update)
-    // 只观察当前触发器的祖先，其他表格行和输入更新不会触发布局测量。
+    // 观察当前触发器的祖先节点，节点属性变化时重新测量布局。
     let ancestor: HTMLElement | null = element
     while (ancestor) {
       observer.observe(ancestor, { attributes: true, attributeFilter: ['inert', 'hidden', 'class'] })

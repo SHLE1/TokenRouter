@@ -6,7 +6,7 @@
     <!-- Background Decoration -->
     <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-    <!-- 全局顶栏横跨侧栏和内容区，页面标题由内容区承载。 -->
+    <!-- 全局顶栏横跨侧栏和内容区，页面标题显示在内容区。 -->
     <AppHeader />
 
     <!-- Sidebar and Main Content Area -->
@@ -23,7 +23,7 @@
             : 'lg:ml-[var(--sidebar-w)]',
       ]"
     >
-      <!-- Main Content：布局组件统一负责空间分配,子页面不再复制父级尺寸或抵消内边距。 -->
+      <!-- 主内容区：布局组件为子页面分配可用空间。 -->
       <main v-content-reveal="route.path"
         class="app-main flex min-w-0 flex-1 flex-col"
         :class="mainClass"
@@ -118,7 +118,7 @@ function lockDocumentScroll(): void {
   document.body.style.overflowY = 'hidden'
 }
 
-// 路由离开时恢复进入创作台前的页面滚动策略，避免影响普通页面。
+// 离开创作台时恢复进入前的页面滚动设置。
 function restoreDocumentScroll(): void {
   if (typeof document === 'undefined') return
   if (previousHtmlOverflowY !== null) {

@@ -62,7 +62,7 @@ func (r *systemOperationFixture) FinishOperation(ctx context.Context, id int64, 
 	return false, nil
 }
 
-// systemOperationFixture 只模拟维护 HTTP 所需的带所有者租约，不重建旧聚合服务。
+// systemOperationFixture 模拟维护 HTTP 操作使用的带所有者租约。
 type systemOperationFixture struct {
 	mu     sync.Mutex
 	nextID int64

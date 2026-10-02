@@ -2,5 +2,5 @@ package provider
 
 import "github.com/TokenFlux/TokenRouter/internal/identity"
 
-// LinuxDoOptions 兼容提供方旧名称，契约只有一份。
+// LinuxDoOptions 是 identity.LinuxDoOAuthOptions 的类型别名。
 type LinuxDoOptions = identity.LinuxDoOAuthOptions

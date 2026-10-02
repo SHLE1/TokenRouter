@@ -267,7 +267,7 @@ func TestOpenAIWSProtocolResolver_Resolve_ModeRouterV2(t *testing.T) {
 	})
 }
 
-// 夹具只提供原开关与模式缺省；认证资格仍由真实提供商模型解释。
+// wsTransportTestOptions 提供传输开关和默认接入模式。
 type wsTransportTestOptions struct {
 	egress.OpenAIWSOptions
 	IngressModeDefault string

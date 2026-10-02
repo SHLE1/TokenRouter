@@ -345,8 +345,8 @@ func TestCalculateCostUnified_ImageMode(t *testing.T) {
 	require.Equal(t, string(routing.BillingModeImage), cost.BillingMode)
 }
 
-// TestCalculateCostUnified_RateMultiplierZeroProducesZero 锁定新行为：
-// 保存时强制 > 0；若 0 仍泄漏到计费层，按 0 计费（而非历史上的 1.0）。
+// TestCalculateCostUnified_RateMultiplierZeroProducesZero 检查零倍率的计费结果。
+// 保存时要求倍率大于 0，计费层收到 0 时按零价计费。
 func TestCalculateCostUnified_RateMultiplierZeroProducesZero(t *testing.T) {
 	bs := newTestCalculator()
 	resolver := billingtestkit.PriceResolver(nil, bs)

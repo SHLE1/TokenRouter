@@ -25,7 +25,7 @@ type ManagementCreationResult struct {
 	Results         []ManagementCreationItem
 }
 
-// Create 保留原逐项创建、部分成功和两组异步隐私；幂等重放由 HTTP Adapter 控制。
+// Create 逐项创建并返回部分成功结果，异步执行两组隐私设置，HTTP 适配器处理幂等重放。
 func (s *ManagementBatch) Create(ctx context.Context, inputs []CreateProviderInput) (*ManagementCreationResult, error) {
 	result := &ManagementCreationResult{Results: make([]ManagementCreationItem, 0, len(inputs))}
 	var antigravity, openai []*Record

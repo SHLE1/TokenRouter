@@ -17,7 +17,7 @@ type CodexImportOptions struct {
 	Invalidate         func(context.Context, *Record) error
 }
 
-// CodexImporter 拥有逐项匹配、有效期与写入；无跨请求缓存，平台密钥解析由端口提供。
+// CodexImporter 逐项匹配、检查有效期并写入提供商，通过注入的接口解析平台密钥。
 type CodexImporter struct {
 	providers CodexImportProviders
 	archive   *Archive

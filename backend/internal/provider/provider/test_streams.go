@@ -86,7 +86,7 @@ func (s TestStreamOutput) Gemini(c *TestRun, body io.Reader) error {
 			}
 		}
 
-		// 错误事件沿用原消息回退。
+		// 错误事件在消息缺失时使用回退文本。
 		if errData, ok := data["error"].(map[string]any); ok {
 			errorMsg := "Unknown error"
 			if msg, ok := errData["message"].(string); ok {
@@ -97,7 +97,7 @@ func (s TestStreamOutput) Gemini(c *TestRun, body io.Reader) error {
 	}
 }
 
-// Anthropic 将 Claude 原生流投影为提供商测试事件。
+// Anthropic 将 Claude 流转换为提供商测试事件。
 func (s TestStreamOutput) Anthropic(c *TestRun, body io.Reader) error {
 	reader := bufio.NewReader(body)
 
@@ -330,14 +330,14 @@ func (s TestStreamOutput) SendEvent(c *TestRun, event providercore.TestEvent) {
 	}
 }
 
-// Error 保留原错误日志、事件和返回文本。
+// Error 记录错误日志和事件，并返回错误文本。
 func (s TestStreamOutput) Error(c *TestRun, errorMsg string) error {
 	log.Printf("Provider test error: %s", errorMsg)
 	s.SendEvent(c, providercore.TestEvent{Type: "error", Error: errorMsg})
 	return fmt.Errorf("%s", errorMsg)
 }
 
-// TestStreamOutput 将供应商测试流同步投影为提供商测试事件，不持有请求或共享状态。
+// TestStreamOutput 将供应商流同步转换为提供商测试事件。
 type TestStreamOutput struct{}
 
 // 兼容原 data: 前缀后可选空白，保留各平台独立的终态判定。

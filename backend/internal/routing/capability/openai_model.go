@@ -14,7 +14,7 @@ func LastOpenAIModelSegment(model string) string {
 	return model
 }
 
-// CanonicalizeOpenAIModelAliasSpelling 只规范查询大小写，不修正模型拼写或删除供应商。
+// CanonicalizeOpenAIModelAliasSpelling 规范查询大小写，保留型号拼写及供应商前缀。
 func CanonicalizeOpenAIModelAliasSpelling(model string) string {
 	return strings.ToLower(strings.TrimSpace(model))
 }

@@ -66,7 +66,7 @@ func newAuthHTTPFixture(t *testing.T, input *authHTTPFixture) *authHTTPFixture {
 	return input
 }
 
-// bindAuthHTTPFixture 只在测试显式替换输入后重新装配，不在请求路径重建图。
+// bindAuthHTTPFixture 在测试替换输入后重新装配处理器。
 func bindAuthHTTPFixture(t *testing.T, h *authHTTPFixture) {
 	t.Helper()
 	var client *dbent.Client
@@ -231,7 +231,7 @@ func (v googleVerifierFixture) Verify(ctx context.Context, credential, audience 
 	return verifier.Verify(ctx, credential, audience)
 }
 
-// paymentResume 仅投影原显式及历史测试密钥，算法由 payment 唯一实现。
+// paymentResume 使用配置密钥或历史测试密钥创建 payment 恢复服务。
 func (h *authHTTPFixture) paymentResume() *payment.PaymentResumeService {
 	var raw string
 	var configured bool

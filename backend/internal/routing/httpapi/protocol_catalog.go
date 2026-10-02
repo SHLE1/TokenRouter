@@ -25,7 +25,7 @@ type ProtocolGroupProfile struct {
 	DefaultFallbacks map[protocol.ProtocolID][]protocol.ProtocolID `json:"default_fallbacks"`
 }
 
-// ProtocolCatalogResponse 显式描述目录响应，便于调用方和契约测试检查完整结构。
+// ProtocolCatalogResponse 是协议、提供商和分组能力的目录响应。
 type ProtocolCatalogResponse struct {
 	Protocols           []Protocol                `json:"protocols"`
 	Providers           []ProtocolProviderProfile `json:"providers"`
@@ -33,7 +33,7 @@ type ProtocolCatalogResponse struct {
 	AuxiliaryOperations []AuxiliaryOperation      `json:"auxiliary_operations"`
 }
 
-// AdminProtocolCatalog 是前后端共用的唯一目录投影。
+// AdminProtocolCatalog 生成管理端使用的协议能力目录。
 func AdminProtocolCatalog(endpoints map[protocol.ProtocolID]string) ProtocolCatalogResponse {
 	providers := []ProtocolProviderProfile{}
 	groups := []ProtocolGroupProfile{}
@@ -102,7 +102,7 @@ func publicProtocols(endpoints map[protocol.ProtocolID]string) []Protocol {
 	return out
 }
 
-// NewProtocolCatalogHandler 冻结 app 注入的展示投影，不反向依赖网关路由。
+// NewProtocolCatalogHandler 复制 app 传入的端点表，使用该副本生成目录响应。
 func NewProtocolCatalogHandler(endpoints map[protocol.ProtocolID]string) gin.HandlerFunc {
 	snapshot := maps.Clone(endpoints)
 	return func(c *gin.Context) { httpx.Success(c, AdminProtocolCatalog(snapshot)) }

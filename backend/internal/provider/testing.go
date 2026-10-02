@@ -27,7 +27,7 @@ type TestEvent struct {
 	Error    string `json:"error,omitempty"`
 }
 
-// NormalizeProviderTestType 统一管理端传入的测试类型；空值由调用方视为旧版请求。
+// NormalizeProviderTestType 统一管理端传入的测试类型，空值由调用方按兼容方式处理。
 func NormalizeProviderTestType(testType string) string {
 	switch strings.ToLower(strings.TrimSpace(testType)) {
 	case ProviderTestTypeImage:
@@ -40,7 +40,7 @@ func NormalizeProviderTestType(testType string) string {
 }
 
 // ProviderTestTypeFromArgs 返回类型以及是否由调用方明确指定。
-// 旧版调用不传类型时保留按模型名兼容判断，新的管理端请求始终传入 text/image。
+// 省略类型时按模型名判断，管理端请求传入 text 或 image。
 func ProviderTestTypeFromArgs(testTypes ...string) (string, bool) {
 	if len(testTypes) == 0 || strings.TrimSpace(testTypes[0]) == "" {
 		return ProviderTestTypeText, false
@@ -127,7 +127,7 @@ type TestTargetInfo struct {
 	APIProtocol string
 }
 
-// TestTarget 是受控执行句柄，只公开安全快照，不向调用者返回完整凭据。
+// TestTarget 提供单次测试执行和脱敏的提供商快照。
 type TestTarget interface {
 	Information() TestTargetInfo
 	Execute(context.Context, PreparedTestRequest, TestEventSink) error
@@ -235,7 +235,7 @@ func TestProtocolID(protocol string) capability.ProtocolID {
 
 // testProtocolAllowed 判断本次文字测试能否直连所选协议。
 // OpenAI API Key 可在 Responses 与 Chat 之间任选，OAuth 只有 Responses；
-// 国产平台只能测试提供商已启用的原生协议。其他平台只有一个测试端点，不接受显式协议。
+// 国产平台可测试已启用的协议，其他平台使用各自固定的测试端点。
 func testProtocolAllowed(info TestTargetInfo, protocol string) bool {
 	switch info.Platform {
 	case PlatformOpenAI:
@@ -309,7 +309,7 @@ func (s *TestService) RunTestBackgroundWithPromptAndUserAgent(ctx context.Contex
 	return &ScheduledTestResult{Status: status, ResponseText: text, ErrorMessage: message, LatencyMs: finished.Sub(started).Milliseconds(), StartedAt: started, FinishedAt: finished}, nil
 }
 
-// 后台直接聚合事件，保留原 JSON 编码对非法 UTF-8 和不可编码 Data 的处理，不构造 HTTP/SSE 缓冲。
+// 后台直接收集事件，通过 JSON 编码处理非法 UTF-8，编码失败的 Data 被丢弃。
 type testResultSink struct {
 	mu    sync.Mutex
 	texts []string

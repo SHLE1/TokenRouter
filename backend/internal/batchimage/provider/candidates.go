@@ -18,7 +18,7 @@ type CandidateProviders interface {
 	ListSchedulableByGroupIDAndPlatform(context.Context, int64, string) ([]provider.Record, error)
 }
 
-// Candidates 只把已查询的提供商投影为任务候选，注册表与模型观测由装配注入。
+// Candidates 将查询到的提供商转换为批量任务候选，使用注入的注册表和模型观察函数。
 type Candidates struct {
 	Source       CandidateProviders
 	Registry     *batchimage.Registry[BatchImageProvider]
@@ -66,7 +66,7 @@ func (r *Candidates) Project(value *provider.Record) *batchimage.Candidate {
 		selected, _ := r.Registry.Get(name)
 		return BindProvider(selected, value)
 	}
-	// 已有批量提供商只执行 Gemini/Vertex，不执行其它平台的模型规范化。
+	// 批量提供商按 Gemini/Vertex 规则解析模型。
 	result.ResolveUpstream = func(ctx context.Context, model string) string {
 		resolved := strings.TrimSpace(provider.ResolveForwardMappedModel(value, model, provideradapter.ModelDefaults()))
 		if r.ObserveModel != nil {

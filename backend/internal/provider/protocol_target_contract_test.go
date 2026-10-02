@@ -12,7 +12,7 @@ import (
 )
 
 // TestGetAPIProtocol 验证协议凭证维度的平台校验矩阵：
-// responses 仅 deepseek / kimi；缺失/非法值回退 chat_completions（与旧行为一致）。
+// DeepSeek 和 Kimi 支持 Responses，字段缺失或无效时回退 Chat Completions。
 func TestGetAPIProtocol(t *testing.T) {
 	t.Parallel()
 

@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/gateway"
 
-// ApplyGatewayAdminReadSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyGatewayAdminReadSettings 将网关读取结果写入综合快照。
 func (s *Snapshot) ApplyGatewayAdminReadSettings(value *gateway.AdminReadSettings) {
 	s.AntigravityUserAgentVersion = value.AntigravityUserAgentVersion
 	s.BackendModeEnabled = value.BackendModeEnabled

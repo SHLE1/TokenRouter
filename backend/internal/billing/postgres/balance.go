@@ -179,7 +179,7 @@ func (r *BalanceStore) CreditAffiliateTransfer(ctx context.Context, id int64, am
 	return r.UpdateBalance(ctx, id, amount)
 }
 
-// CreditRegistrationPromo 保留旧 Promo 的 UpdateBalance 语义：正数同步累计充值。
+// CreditRegistrationPromo 增加优惠注册余额，正数金额同步计入累计充值。
 func (r *BalanceStore) CreditRegistrationPromo(ctx context.Context, id int64, amount float64) error {
 	return r.UpdateBalance(ctx, id, amount)
 }

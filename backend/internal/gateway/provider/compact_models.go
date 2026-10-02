@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// CompactModels 保存静态回退配置；提供商映射与默认模型仍按原顺序按需求值。
+// CompactModels 保存压缩回退配置，按需读取提供商映射和默认模型。
 type CompactModels struct{ Default string }
 
 type compactAttemptModels struct {

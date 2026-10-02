@@ -218,7 +218,7 @@ func (s *OpsSystemLogSink) run() {
 	defer ticker.Stop()
 
 	batch := make([]*logevent.LogEvent, 0, s.batchSize)
-	// 仅在本 goroutine 内读写，无需加锁。
+	// 该状态由本 goroutine 独占读写。
 	failures := 0
 	var suppressedUntil time.Time
 	flush := func(baseCtx context.Context) {

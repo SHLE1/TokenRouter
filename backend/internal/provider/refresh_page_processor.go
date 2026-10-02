@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 )
 
-// RefreshProviderExecution 提供已选平台的资格和单提供商执行端口，不携带旧实体或具体实现。
+// RefreshProviderExecution 提供已选平台的资格判断和单个提供商刷新接口。
 type RefreshProviderExecution struct {
 	Platform     string
 	State        *RefreshProviderState

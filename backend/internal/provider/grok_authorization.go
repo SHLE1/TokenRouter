@@ -265,7 +265,7 @@ func (s *GrokAuthorization) validateSSOToken(ctx context.Context, ssoToken strin
 	return s.tokenInfoFromResponse(tokenResp, s.Options.DefaultClientID, nil), nil
 }
 
-// convertFromSSO 是批量导入入口，语义与 ValidateSSOToken 相同。
+// convertFromSSO 为批量导入调用 SSO 验证和 token 交换。
 func (s *GrokAuthorization) convertFromSSO(ctx context.Context, ssoToken string, proxyID *int64) (*GrokTokenInfo, error) {
 	return s.validateSSOToken(ctx, ssoToken, proxyID)
 }

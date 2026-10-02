@@ -48,7 +48,7 @@ export const useAnnouncementStore = defineStore('announcements', () => {
   }
 
   function enqueueNewPopups() {
-    // 弹窗候选仍限制为服务端优先级最高的前 20 条，避免一次会话堆积过多弹窗。
+    // 从服务端优先级最高的前 20 条公告中选取弹窗。
     const newPopups = announcements.value
       .slice(0, MAX_POPUP_CANDIDATES)
       .filter((a) => a.notify_mode === 'popup' && !a.read_at && !shownPopupIds.has(a.id))
@@ -82,8 +82,7 @@ export const useAnnouncementStore = defineStore('announcements', () => {
     // Mark as read (fire-and-forget, UI already updated)
     markAsRead(id)
 
-    // 下一条由 AnnouncementPopup 的离场结束事件触发 onPopupClosed，
-    // 不再用 300ms 定时器猜弹窗的离场时长。
+    // AnnouncementPopup 离场结束时触发 onPopupClosed，推进到下一条公告。
   }
 
   // AnnouncementPopup 离场动画结束（或动画途中被卸载）时回调，推进连播队列。

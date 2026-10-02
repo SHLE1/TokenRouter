@@ -48,7 +48,7 @@ func newOpenAIUpstreamClientErrorTestProvider() *gatewayprovider.ExecutionProvid
 	return &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Name: "acct"}}
 }
 
-// newOpenAIUpstreamErrorTestContext 兼容上游新增测试使用的命名，复用 fork 原有测试夹具。
+// newOpenAIUpstreamErrorTestContext 创建上游错误测试上下文。
 func newOpenAIUpstreamErrorTestContext(t *testing.T) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
 	return newOpenAIUpstreamClientErrorTestContext()
@@ -149,8 +149,7 @@ func TestHandleErrorResponse_PoolRetryable400StillFailsOver(t *testing.T) {
 	require.Empty(t, recorder.Body.String())
 }
 
-// TestHandleErrorResponse_NonDeterministicStatusesKeepGeneric502 验证作用域守卫：本次只放行 400。其余落到 default 的状态码必须维持原样，
-// 避免后续有人顺手把 404/422/5xx 一起改掉。
+// TestHandleErrorResponse_NonDeterministicStatusesKeepGeneric502 验证 404、422 和 5xx 等默认分支返回通用 502，400 使用单独处理。
 func TestHandleErrorResponse_NonDeterministicStatusesKeepGeneric502(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -169,7 +168,7 @@ func TestHandleErrorResponse_NonDeterministicStatusesKeepGeneric502(t *testing.T
 			"unprocessable", http.StatusUnprocessableEntity, `{"error":{"message":"Invalid schema for field messages"}}`,
 			http.StatusBadGateway, "upstream_error", "Upstream request failed",
 		},
-		// 401/402/403 是网关运营方的凭据/账单问题，必须继续对客户端屏蔽上游提供商状态。
+		// 401/402/403 表示运营方的凭据或账单问题，客户端收到转换后的错误状态。
 		// 403 的自由文本不能升级成 durable access-state typed failover；只有明确结构化 code 才可以。
 		{
 			"unauthorized", http.StatusUnauthorized, `{"error":{"message":"Incorrect API key provided: sk-abc"}}`,

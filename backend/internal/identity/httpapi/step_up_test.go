@@ -193,7 +193,7 @@ func TestEnforceStepUpNilSettingsFailsClosed(t *testing.T) {
 }
 
 // TestEnforceStepUpTypedNilSettingServiceFailsClosed 验证EnforceStepUp 收到 nil *identity.RuntimeSettings 时不得因 typed-nil 装箱绕过门控：
-// 未认证请求仍应被拦截（401），而不是当作"开关关闭"放行。
+// 未认证请求返回 401。
 func TestEnforceStepUpTypedNilSettingServiceFailsClosed(t *testing.T) {
 	c, rec := newStepUpTestContext(t)
 

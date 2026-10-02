@@ -28,7 +28,7 @@ func TestAdminServiceCreateProviderDiscardsDeprecatedLongContextBillingExtra(t *
 	require.Equal(t, true, provider.Extra["preserved"])
 }
 
-// 指针同一性断言跟随创建实现，兼容层的旧模型投影单独由 HTTP/消费者测试覆盖。
+// 此处检查创建结果的指针，HTTP 和使用方测试覆盖模型数据转换。
 type deprecatedCreateStore struct {
 	AdminStore
 	createdProvider *Record

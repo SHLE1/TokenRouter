@@ -104,7 +104,7 @@ func (s *GrokProviderTest) Execute(c *TestRun, value *providercore.Record, model
 	if value.IsGrokOAuth() && (xai.MediaCodec{}).IsGrokCLIProxyTarget(apiURL) {
 		xai.ApplyCLIHeaders(req.Header)
 	}
-	// 连通性测试与真实转发保持同一套提供商级请求头覆写。
+	// 连通性测试与转发共用提供商请求头覆盖规则。
 	applyGrokQuotaHeaders(value, req.Header)
 
 	proxyURL := ""
@@ -154,7 +154,7 @@ func (s *GrokProviderTest) Execute(c *TestRun, value *providercore.Record, model
 			case decision.Class == xai.GrokFailureBilling && (xai.IsSpendingLimitError(body) || strings.Contains(strings.ToLower(decision.Reason), "credit")):
 				providercore.PersistGrokRateLimit(ctx, s.Store, value, providercore.GrokSpendingLimitResetAt(value, now), slog.Warn)
 			case resp.StatusCode == http.StatusPaymentRequired:
-				// 未能从正文识别可恢复消费限额时，保留既有 30 分钟计费冷却。
+				// 正文缺少可恢复消费限额时，使用三十分钟计费冷却。
 				stateCtx, cancel := grokTestStateContext(ctx)
 				_ = s.Store.SetTempUnschedulable(stateCtx, value.ID, now.Add(30*time.Minute), "grok payment required")
 				cancel()
@@ -246,7 +246,7 @@ func (s *GrokProviderTest) executeImage(c *TestRun, ctx context.Context, value *
 			(TestStreamOutput{}).SendEvent(c, providercore.TestEvent{Type: "image", ImageURL: item.URL, MimeType: mimeType})
 		}
 	}
-	// 上游返回了 data 但没有可展示的图片时视为失败，避免空结果被当作测试成功。
+	// 上游返回 data 但缺少可展示图片时，测试失败。
 	if images == 0 {
 		return (TestStreamOutput{}).Error(c, fmt.Sprintf("Grok returned no image data: %s", logredact.TruncateLine(body, 512)))
 	}
@@ -254,7 +254,7 @@ func (s *GrokProviderTest) executeImage(c *TestRun, ctx context.Context, value *
 	return nil
 }
 
-// GrokProviderTest 使用原提供商 token source 和传输，健康写入交给原生规则。
+// GrokProviderTest 使用共享 token 源和传输实例，健康规则负责状态写入。
 type GrokProviderTest struct {
 	Tokens    *providercore.GrokTokenSource
 	Transport interface {
@@ -275,7 +275,7 @@ func (s *GrokProviderTest) responsesURL(value *providercore.Record) (string, err
 	if err != nil {
 		return "", err
 	}
-	// 设置沿用原 Background 读取时机，只有文本端点使用动态默认值。
+	// 在调用时通过 Background context 读取设置，文本端点使用动态默认值。
 	transport := GrokQuotaTransport{DefaultBaseURL: s.DefaultBaseURL}
 	return xai.BuildResponsesURLWithValidator(transport.baseURL(context.Background(), value, true), validator)
 }

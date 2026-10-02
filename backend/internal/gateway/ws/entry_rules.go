@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// EntryFallbackSeed 保留无显式会话标识时的旧隔离键格式。
+// EntryFallbackSeed 为缺少指定会话标识的请求生成隔离键。
 func EntryFallbackSeed(userID, keyID int64, groupID *int64) string {
 	var group int64
 	if groupID != nil {
@@ -23,7 +23,7 @@ func entrySeedHash(seed string) string {
 	return value
 }
 
-// EntryNextAttemptMessage 只在存在当前 turn 完整重放时换号，避免重发已完成轮次。
+// EntryNextAttemptMessage 在当前 turn 可完整重放时返回供下一个提供商使用的消息。
 func EntryNextAttemptMessage(current, retry []byte, currentTurn bool) ([]byte, bool) {
 	if !currentTurn {
 		return append([]byte(nil), current...), true
@@ -34,7 +34,7 @@ func EntryNextAttemptMessage(current, retry []byte, currentTurn bool) ([]byte, b
 	return append([]byte(nil), retry...), true
 }
 
-// EntryBillingModel 保留共享价卡覆盖的原优先级。
+// EntryBillingModel 优先使用共享价卡指定的计费模型。
 func EntryBillingModel(result *ForwardResult, mapping routing.GroupMappingResult, requested, upstream string) string {
 	model := ""
 	if result != nil {
@@ -67,7 +67,7 @@ func entrySucceeded(r *ForwardResult) bool {
 	return r.UpstreamTerminalEvent == "response.completed" || r.UpstreamTerminalEvent == "response.done"
 }
 
-// ErrEntryLocalRoutingRejected 只标记本地提供商资格拒绝，不把它记作上游故障。
+// ErrEntryLocalRoutingRejected 标记本地提供商资格检查拒绝，上游健康状态保持原值。
 var ErrEntryLocalRoutingRejected = errors.New("local websocket routing rejected")
 
 func EntryLocalRoutingReason(model string) string {

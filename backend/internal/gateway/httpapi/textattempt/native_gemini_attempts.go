@@ -38,7 +38,7 @@ type nativeGeminiAttemptBridge struct {
 
 // Select 保留 Gemini 原生适配，重试与完成资格由文本核心控制。
 func (b *nativeGeminiAttemptBridge) Select(excluded map[int64]struct{}) (textflow.Selection, error) {
-	// 通用调度器会自行执行 R -> G，这里必须传原始模型，避免把 G 再做一次分组映射。
+	// 传入原始模型 R，通用调度器负责执行 R -> G。
 	var err error
 	b.selection, err = b.binding().selectProvider(b.c.Request.Context(), b.apiKey.GroupID, b.sessionKey, b.reqModel, excluded, "", int64(0)) // Gemini 不使用会话限制
 	if err != nil {
@@ -181,7 +181,7 @@ func (b *nativeGeminiAttemptBridge) OtherFailure(err error) {
 func (b *nativeGeminiAttemptBridge) Complete(state textflow.AttemptState) {
 	completionActorID := b.subject.UserID
 	completionModel := b.modelName
-	// 捕获请求信息（用于异步记录，避免在 goroutine 中访问 gin.Context）
+	// 捕获请求信息，供异步任务记录。
 	userAgent := b.c.GetHeader("User-Agent")
 	clientIP := clientip.GetClientIP(b.c)
 
@@ -200,15 +200,15 @@ func (b *nativeGeminiAttemptBridge) Complete(state textflow.AttemptState) {
 		}
 	}
 
-	// 使用量记录通过有界 worker 池提交，避免请求热路径创建无界 goroutine。
+	// 用量记录通过有界 worker 池提交。
 	requestPayloadHash := billing.HashUsageRequestPayload(b.body)
 	inboundEndpoint := gatewayhttp.GetInboundEndpoint(b.c)
 	upstreamEndpoint := gatewayhttp.GetUpstreamEndpoint(b.c, b.provider.Record.Platform)
-	// ForceCacheBilling 提前拍成标量，避免 worker 闭包保活 failover 状态里的响应体。
+	// 完成任务捕获 ForceCacheBilling 的布尔值，failover 响应体可随请求释放。
 	forceCacheBilling := state.ForceCacheBilling
 
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
-	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
+	// 入队前捕获资金和报文数据，worker 使用这份快照。
 	completionInput := gatewaycapture.CaptureMessages(gatewayhttp.CompletionContext(b.c), &gatewaycapture.MessagesCapture{
 		Result: b.result,
 

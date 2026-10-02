@@ -78,12 +78,12 @@ func (p *AntigravityTokenState) GetAccessToken(ctx context.Context, provider *Re
 	expiresAt := provider.GetCredentialAsTime("expires_at")
 	needsRefresh := expiresAt == nil || time.Until(*expiresAt) <= antigravityTokenRefreshSkew
 	if needsRefresh && options.Refresh != nil {
-		// 请求路径使用短超时，避免代理不通时阻塞过久（后台刷新服务会继续重试）
+		// 请求路径使用短超时，代理连接失败时尽快返回，后台刷新会继续重试。
 		refreshCtx, cancel := context.WithTimeout(ctx, antigravityRequestRefreshTimeout)
 		defer cancel()
 		result, err := options.Refresh(refreshCtx, provider, antigravityTokenRefreshSkew)
 		if err != nil {
-			// 标记提供商临时不可调度，避免后续请求继续命中
+			// 标记提供商临时不可调度，后续请求会跳过它。
 			p.markTempUnschedulable(provider, err, options)
 			if options.Policy.OnRefreshError == ProviderRefreshErrorReturn {
 				return "", err
@@ -168,7 +168,7 @@ func (p *AntigravityTokenState) shouldAttemptBackfill(providerID int64) bool {
 }
 
 // markTempUnschedulable 在请求路径上 token 刷新失败时标记提供商临时不可调度。
-// 同时写 DB 和 Redis 缓存，确保调度器立即跳过该提供商。
+// 同时写入数据库和 Redis，调度器据此跳过该提供商。
 // 使用 background context 因为请求 context 可能已超时。
 func (p *AntigravityTokenState) markTempUnschedulable(provider *Record, refreshErr error, options AntigravityTokenOptions) {
 	if options.SetTempUnschedulable == nil || provider == nil {

@@ -6,7 +6,7 @@ import {
   type ProviderTestRun
 } from './providerTestRun'
 
-/** 一批最多测试的模型数，避免误触发大量真实请求。 */
+/** 每批测试的模型数量上限。 */
 export const MAX_BATCH_MODELS = 50
 /** 可选的并发数，数值越大越容易触发上游限流。 */
 export const BATCH_CONCURRENCY_OPTIONS = [1, 2, 3] as const
@@ -23,7 +23,7 @@ type Translate = (key: string, params?: Record<string, unknown>) => string
 
 /**
  * 批量模型测试的状态与调度：按并发数依次取模型执行连接测试。
- * 停止只会让后续模型不再开始，已发出的请求继续等待结果；关闭弹窗时才中止全部请求。
+ * 停止后暂停后续模型的测试，已发出的请求继续等待结果。关闭弹窗时中止全部请求。
  */
 export function useProviderBatchTest(t: Translate) {
   const baseModels = ref<string[]>([])

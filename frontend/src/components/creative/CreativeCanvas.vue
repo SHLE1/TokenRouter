@@ -6,9 +6,9 @@
     :class="dropTargetActive && 'drop-target-active'"
   >
     <canvas ref="canvasElRef"></canvas>
-    <!-- 独立 mask 画布：先以不透明颜色合成，再整体设置透明度，避免笔迹重叠变深 -->
+    <!-- mask 在独立画布中以不透明颜色合成，再统一设置透明度，重叠笔迹颜色一致。 -->
     <canvas ref="maskCanvasElRef" class="mask-overlay"></canvas>
-    <!-- 拖放目标反馈不接收指针事件，避免覆盖 Fabric 画布交互。 -->
+    <!-- 拖放反馈层的指针事件穿透到 Fabric 画布。 -->
     <div v-if="dropTargetActive" class="pointer-events-none absolute inset-2 z-[2] rounded-surface border-2 border-dashed border-primary-500/70 bg-primary-500/5"><!-- check-ui-allow: 画布内局部堆叠 --></div>
 
     <!-- 浮动工具栏（顶部居中，含移动端）：上传 | 下载 | 框选 | 局部重绘画笔组 | 删除选中。
@@ -437,7 +437,7 @@ const selectedImage = shallowRef<FabricObject | null>(null)
 const selectedObjectCount = ref(0)
 // 当前是否有外部图片或历史输出悬停在画布上，用于显示拖放目标反馈
 const dropTargetActive = ref(false)
-// mask 锚定的图片对象：选中图片时设置，与 fabric 选中态解耦，避免画笔落笔自动丢弃选中后涂抹被中断
+// 选中图片时保存 mask 目标，画笔落笔清除 Fabric 选中态后仍向该图片涂抹。
 const inpaintAnchor = shallowRef<FabricObject | null>(null)
 // 手动暂停涂抹（移动视角 / 换选图片后再恢复）
 const paintSuspended = ref(false)
@@ -461,7 +461,7 @@ let canvas: Canvas | null = null
 let maskCanvas: StaticCanvas | null = null
 let resizeObserver: ResizeObserver | null = null
 let sceneSaveTimer: ReturnType<typeof setTimeout> | null = null
-// 恢复期间禁止保存 Fabric 的 clear/add 事件，避免异步恢复把快照写成空场景
+// 恢复场景期间跳过 clear/add 事件触发的保存，快照在恢复完成后更新。
 let sceneRestoreInProgress = false
 // 恢复代际用于使卸载或用户清空后的迟到恢复回调失效
 let sceneRestoreGeneration = 0
@@ -481,15 +481,15 @@ let dragDepth = 0
 let isPanning = false
 let lastClientX = 0
 let lastClientY = 0
-// 移动端双指手势状态；以开始时中点下的场景点为锚，避免缩放过程中画面漂移
+// 双指缩放以手势开始时中点下的场景点为固定锚点。
 let pinchGesture: PinchGesture | null = null
 // 平滑平移动画的 rAF 句柄
 let panAnimFrame: number | null = null
-// 图片原始 blob 的运行时缓存：assetKey → blob（生成时取源图，避免反复读 IndexedDB）
+// 按 assetKey 缓存图片原始 blob，生成时从内存读取源图。
 const runtimeBlobs = new Map<string, Blob>()
 // 上一个放置位置（场景坐标，right/bottom 为右缘 / 下缘）
 let lastPlaced: { right: number; top: number; bottom: number } | null = null
-// 多个异步输出共享同一画布时串行排布，避免同时计算到相同的上板位置
+// 异步输出按队列依次计算位置并放入画布。
 let outputPlacementQueue: Promise<void> = Promise.resolve()
 // mask 笔迹撤销栈（LIFO，上限见 MASK_UNDO_LIMIT）：记录笔迹新增与整体清除
 type MaskUndoEntry =
@@ -963,7 +963,7 @@ function onVisibilityChange(): void {
   if (document.visibilityState === 'hidden') flushSceneSave()
 }
 
-// 将 wheel 的像素、行、页三种单位统一成画布像素，避免鼠标滚轮平移过慢。
+// wheel 的像素、行和页单位统一换算成画布像素。
 function normalizeWheelDelta(delta: number, deltaMode: number, pageSize: number): number {
   if (!Number.isFinite(delta) || delta === 0) return 0
   if (deltaMode === WHEEL_DELTA_MODE_LINE) return delta * WHEEL_LINE_HEIGHT
@@ -1033,7 +1033,7 @@ function onKeyDown(event: KeyboardEvent): void {
   const selected = canvas.getActiveObjects()
   if (!selected.length) return
   event.preventDefault()
-  // ActiveSelection 只是选区包装对象，必须移除其中的实际图片对象，否则框选删除不会生效。
+  // ActiveSelection 包装了选区，删除时移除其中的图片对象。
   canvas.discardActiveObject()
   canvas.remove(...selected)
   canvas.requestRenderAll()
@@ -1101,7 +1101,7 @@ function makeBrush(): PencilBrush {
   return brush
 }
 
-// 进入涂抹：锁定全部对象，仅落笔作画（锚点用独立描边标示，不依赖 fabric 选中态）
+// 进入涂抹时锁定全部对象，启用画笔，用独立描边标示锚点。
 function enterPainting(): void {
   if (!canvas || painting.value || !isInpaint.value || !inpaintAnchor.value) return
   painting.value = true
@@ -1127,7 +1127,7 @@ function exitPainting(): void {
   canvas.requestRenderAll()
 }
 
-// 锚点描边：涂抹期间在目标图片外围画一圈青色虚线，避免"在涂哪张图"失焦
+// 涂抹时用青色虚线标出目标图片。
 function updateAnchorOutline(): void {
   const anchor = inpaintAnchor.value
   if (!canvas || !anchor || !painting.value) {
@@ -1137,7 +1137,7 @@ function updateAnchorOutline(): void {
   if (!anchorOutline) {
     anchorOutline = new Rect({
       ...ANCHOR_OUTLINE_STYLE,
-      // 图片使用左上角定位，描边也必须使用相同原点，避免按默认中心原点产生半尺寸偏移。
+      // 描边与图片共用左上角原点，中心原点会产生半个尺寸的偏移。
       originX: 'left',
       originY: 'top',
       selectable: false,
@@ -1172,7 +1172,7 @@ function refreshMaskClip(): void {
     top: vp.top,
     width: vp.width,
     height: vp.height,
-    // getBoundingRect 给出包围盒左上角；显式使用左上原点，避免 Fabric 默认中心原点造成半尺寸偏移
+    // getBoundingRect 返回左上角坐标，此处以左上角为原点定位。
     originX: 'left',
     originY: 'top',
   })
@@ -1220,7 +1220,7 @@ watch(isEdit, (edit) => {
   if (!edit) {
     editRefs.value = []
   } else if (canvas) {
-    // 切入 edit 时沿用其它模式下已经框选的对象，避免必须重新拖一次选框
+    // 切入 edit 时继续使用其他模式下已框选的对象。
     syncEditRefFromSelection(canvas.getActiveObjects())
   }
   syncCanvasSelection()
@@ -1258,7 +1258,7 @@ function refreshRefOutlines(): void {
 
 // 描边矩形对齐对象的绝对包围盒；ActiveSelection 中不能直接使用对象的 left/top 组内坐标
 function syncOutlineToObject(rect: Rect, object: FabricObject): void {
-  // ActiveSelection 会改变对象的父级，先刷新角点缓存，避免沿用入组前的场景坐标
+  // ActiveSelection 改变对象父级后，刷新角点缓存以取得当前场景坐标。
   object.setCoords()
   const bounds = object.getBoundingRect()
   rect.set({ left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height, angle: 0 })
@@ -1510,7 +1510,7 @@ async function placeOutput(asset: { blob: Blob; runId: string; outputIndex: numb
   await placement
 }
 
-// 历史输出拖到画布时使用指定中心点，但仍串入输出队列，避免与自动收割同时修改 Fabric 场景。
+// 历史输出按指定中心点放置，与自动生成的输出共用队列，依次修改 Fabric 场景。
 async function placeOutputAt(
   asset: { blob: Blob; runId: string; outputIndex: number },
   center: { x: number; y: number },
@@ -1551,7 +1551,7 @@ async function placeOutputNow(
       panToScenePoint({ x: position.x + placedWidth / 2, y: position.y + placedHeight / 2 })
     }
     scheduleSceneSave()
-    // 图片完成上板后立即落一份快照，避免用户在防抖窗口内刷新导致场景丢失。
+    // 图片放入画布后立即保存快照，用户随后刷新时可恢复该场景。
     flushSceneSave()
   } catch (error) {
     console.error('Failed to place creative output:', error)
@@ -1568,7 +1568,7 @@ async function addUploadedImageAt(blob: Blob, center: { x: number; y: number }):
   try {
     await saveAsset({ key: assetKey, kind: 'source', blob, createdAt: Date.now() })
   } catch (error) {
-    // 本地保存失败（多为配额不足）：不上板，避免画出无法恢复的场景
+    // 本地保存失败时终止放置，配额不足时提示用户。
     if (error instanceof LocalStoreQuotaError) {
       emit('error', t('creative.error.quotaExceeded'))
     } else {
@@ -1614,7 +1614,7 @@ async function addDroppedFiles(files: File[], center: { x: number; y: number }):
   }
 }
 
-// 历史缩略图只传本地 key；实际图片从当前浏览器 IndexedDB 读取，不触发网络请求。
+// 历史缩略图传递本地 key，图片从当前浏览器的 IndexedDB 读取。
 async function importDroppedOutput(
   payload: { runId: string; outputIndex: number },
   center: { x: number; y: number },
@@ -1758,7 +1758,7 @@ async function downloadSelected(): Promise<void> {
 
 function resetCanvas(): void {
   if (!canvas) return
-  // 用户明确清空画布时取消尚未完成的旧快照恢复，避免清空后旧对象迟到复活。
+  // 清空画布时取消尚未完成的快照恢复，迟到的恢复结果随之失效。
   sceneRestoreGeneration++
   sceneRestoreInProgress = false
   stopPanAnim()
@@ -1787,7 +1787,7 @@ function resetCanvas(): void {
   sceneReady.value = true
   canvas.requestRenderAll()
   scheduleSceneSave()
-  // 清空是用户明确操作，立即写入空场景，避免旧快照在短暂防抖期间复活。
+  // 清空操作立即保存空场景快照。
   flushSceneSave()
 }
 
@@ -1988,12 +1988,12 @@ defineExpose({
   border-radius: 9999px;
 }
 
-/* mask 独立画布只展示，不拦截主画布的指针事件；整层透明度避免笔迹重叠变深 */
+/* mask 画布让指针事件穿透至主画布，透明度应用于整层，使重叠笔迹保持同样的深浅。 */
 .mask-overlay {
   @apply pointer-events-none absolute inset-0 z-[1]; /* check-ui-allow: 画布内局部堆叠 */
 }
 
-/* 桌面端让新增画笔组带动工具条平滑扩展；窄屏保留原有逐项换行，并淡入新增控件。 */
+/* 画笔组出现时，桌面工具条平滑扩展。窄屏逐项换行，控件淡入。 */
 .canvas-toolbar-extension {
   display: flex;
   min-width: 0;

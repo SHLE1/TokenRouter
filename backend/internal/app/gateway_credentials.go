@@ -13,7 +13,7 @@ import (
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
-// provideGrokCredentialRecovery 共享应用的提供商存储、运行阻断和 token 源，不创建新缓存。
+// provideGrokCredentialRecovery 绑定共享的提供商存储、运行阻断状态和 token 源。
 func provideGrokCredentialRecovery(store *providerpostgres.ProviderStore, tokens *provider.GrokTokenSource, blocks *provider.RuntimeBlockState) *provider.GrokCredentialRecovery {
 	return &provider.GrokCredentialRecovery{
 		Read:       store.GetByID,
@@ -32,7 +32,7 @@ func provideRequestCredentialExecutor(runtime *gatewayadapter.RequestCredentials
 	return &gatewayhttp.RequestCredentialExecutor{Runtime: runtime}
 }
 
-// grokCredentialStateWriter 只补齐存储比较所需的既有原因值，不改变条件更新。
+// grokCredentialStateWriter 为存储条件更新补齐待比较的原因值。
 type grokCredentialStateWriter struct {
 	store *providerpostgres.ProviderStore
 }

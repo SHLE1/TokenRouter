@@ -30,7 +30,7 @@ func auditNormalizeBodyKey(key string) string {
 //   - SensitiveCredentialKeys：提供商 credentials 的敏感子键（session_key / service_account_json 等）
 //   - providerSensitiveConfigFields：支付渠道密钥字段（pkey / privatekey / apiv3key 等）
 //
-// Redactor 持有调用方投影的敏感键集合；发布后只读。
+// Redactor 保存敏感键集合，构造后按只读方式共享。
 type Redactor struct{ exact map[string]struct{} }
 
 func NewRedactor(extraKeys []string) *Redactor {
@@ -75,7 +75,7 @@ func (r *Redactor) RedactBody(raw []byte, contentType string) string {
 		return ""
 	}
 	if len(raw) > AuditRequestBodyCaptureLimit {
-		// raw 可能已被中间件按上限截断，实际请求体只会更大，不报具体字节数。
+		// raw 可能已被中间件截断，提示使用捕获上限作为请求体大小的下界。
 		return "<body omitted: exceeds " + strconv.Itoa(AuditRequestBodyCaptureLimit) + " bytes>"
 	}
 	ct := strings.ToLower(contentType)

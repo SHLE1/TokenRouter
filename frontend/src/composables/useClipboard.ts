@@ -14,7 +14,7 @@ function isClipboardSupported(): boolean {
 
 /**
  * 降级方案：使用 textarea + execCommand
- * 使用 textarea 而非 input，以正确处理多行文本
+ * textarea 支持复制多行文本。
  */
 function fallbackCopy(text: string): boolean {
   const textarea = document.createElement('textarea')

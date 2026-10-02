@@ -60,7 +60,7 @@ func newRefreshAPI(repo providercore.RefreshRepository, cache providercore.Refre
 	return providercore.NewOAuthRefreshAPI(repo, cache, providercore.RefreshOptions{Platform: providercore.ProviderRefreshPlatformPolicy()})
 }
 
-// refreshRecordFixture 模拟原行读取，不构造任何旧提供商服务或缓存。
+// refreshRecordFixture 模拟提供商记录读取。
 type refreshRecordFixture struct {
 	providersByID map[int64]*providercore.Record
 }

@@ -332,7 +332,7 @@ func TestForwardAlphaSearchAPIKeyMapsModelAndPassesThroughError(t *testing.T) {
 	require.True(t, gjson.GetBytes(upstream.lastBody, "commands.search_query").IsArray())
 }
 
-// TestForwardAlphaSearchReturnsFailoverBeforeWriting 验证可重试错误必须在写入响应前返回给 handler，以便切换提供商。
+// TestForwardAlphaSearchReturnsFailoverBeforeWriting 验证可重试错误在响应写入前返回 handler，供其切换提供商。
 func TestForwardAlphaSearchReturnsFailoverBeforeWriting(t *testing.T) {
 	body := []byte(`{"id":"search-session","model":"gpt-5.6-sol","commands":{}}`)
 	recorder := httptest.NewRecorder()
@@ -592,10 +592,8 @@ func TestForwardAlphaSearchPATResponsesFallbackUnauthorizedDoesNotMarkProviderEr
 	require.False(t, c.Writer.Written())
 }
 
-// TestForwardAlphaSearchAPIKeyEndpointNotFoundFailsOver 验证API key 上游（官方平台或第三方中转）不提供 /v1/alpha/search 时返回的
-// 404/405 必须触发换号而不是把错误透传给客户端：混合分组里 OAuth 提供商可以
-// 承接搜索，请求不能死在先被选中的 API key 提供商上。端点缺失也不能写提供商
-// 错误状态——提供商本身是健康的。
+// TestForwardAlphaSearchAPIKeyEndpointNotFoundFailsOver 验证 API Key 上游缺少 /v1/alpha/search 而返回 404/405 时触发换号。
+// 混合分组中的 OAuth 提供商可继续执行搜索。端点缺失时，API Key 提供商的错误状态保持原样。
 func TestForwardAlphaSearchAPIKeyEndpointNotFoundFailsOver(t *testing.T) {
 	body := []byte(`{"id":"search-session","model":"gpt-5.6-sol","commands":{"search_query":[{"q":"news"}]}}`)
 	recorder := httptest.NewRecorder()
@@ -638,7 +636,7 @@ func TestForwardAlphaSearchAPIKeyEndpointNotFoundFailsOver(t *testing.T) {
 	require.Empty(t, recorder.Body.String())
 }
 
-// TestForwardAlphaSearchOAuthNotFoundPassesThrough 验证OAuth 提供商的 chatgpt.com 端点固定存在，404 保持原有透传行为不变。
+// TestForwardAlphaSearchOAuthNotFoundPassesThrough 验证 OAuth 的 chatgpt.com 搜索端点返回 404 时透传该错误。
 func TestForwardAlphaSearchOAuthNotFoundPassesThrough(t *testing.T) {
 	body := []byte(`{"id":"search-session","model":"gpt-5.6-sol","commands":{"search_query":[{"q":"news"}]}}`)
 	recorder := httptest.NewRecorder()

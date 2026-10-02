@@ -164,7 +164,7 @@ func TestProviderTestService_TestProviderConnection_GrokDefaultsEmptyModelTo45(t
 			"access_token":  "grok-access-token",
 			"refresh_token": "grok-refresh-token",
 			"expires_at":    time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
-			// 空模型必须在提供商映射之后才回退默认值，因此不能命中这个显式键。
+			// 空模型在提供商映射后使用默认值，因此跳过此处的映射键。
 			"model_mapping": map[string]any{"grok-4.5": "grok-4.3"},
 		},
 	}
@@ -256,7 +256,7 @@ func TestProviderTestService_Grok429WithoutQuotaHeadersUsesFallback(t *testing.T
 	require.WithinDuration(t, before.Add(2*time.Minute), repo.resetAt, time.Second)
 }
 
-// 夹具只记录存储写入和真实平台请求，不复制提供商测试算法。
+// 夹具记录存储写入和平台请求，提供商测试使用生产实现。
 type grokTestStoreFixture struct {
 	providersByID map[int64]*providercore.Record
 }

@@ -248,7 +248,7 @@ func TestTimeOnlyPricingGroupPricingConfigParity(t *testing.T) {
 	require.InDelta(t, 0.0006, costs[0], 1e-12)
 }
 
-// TestTierOnlyPricingPreservesImagePricesEqually 验证Fast 只改变倍率，不能清空内置的图片输入和输出价格桶。
+// TestTierOnlyPricingPreservesImagePricesEqually 检查 Fast 倍率生效后图片输入和输出价格仍存在。
 func TestTierOnlyPricingPreservesImagePricesEqually(t *testing.T) {
 	card := routing.ModelPricingEntry{Models: []string{"claude-sonnet-4"}, BillingMode: routing.BillingModeToken, FastMultiplier: testPtrFloat64(2)}
 	var costs []float64
@@ -322,7 +322,7 @@ func TestModifierCardsPreserveBuiltinPricingPolicy(t *testing.T) {
 				expected := 100 * 2.2e-7 * 3
 
 				if hour >= 1 && hour < 4 {
-					expected *= 2 // 仅显式价卡分时生效，不按型号追加峰值。
+					expected *= 2 // 分时倍率来自价卡配置。
 				}
 				require.InDelta(t, expected, cost.TotalCost, 1e-12)
 			}

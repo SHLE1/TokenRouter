@@ -8,7 +8,7 @@ import (
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// OwnerStore 沿用已有原子首次归属与 TTL 接口。
+// OwnerStore 原子记录首次会话归属并更新有效期。
 type OwnerStore interface {
 	SetSessionOwnerGroupID(context.Context, int64, string, string, int64, time.Duration) (bool, error)
 	GetSessionOwnerGroupID(context.Context, int64, string, string) (int64, error)
@@ -34,7 +34,7 @@ const (
 
 var ErrSessionIsolationConflict = infraerrors.Forbidden("SESSION_ISOLATION_CONFLICT", SessionIsolationConflictMessage)
 
-// EnsureIsolation 只处理已投影的用户、最终分组与会话标识。
+// EnsureIsolation 根据用户、最终分组和会话标识检查会话归属。
 func EnsureIsolation(ctx context.Context, cache OwnerStore, input IsolationInput) error {
 	userID, source, sessionHash, ttl := input.UserID, input.Source, input.Hash, input.TTL
 	source = strings.TrimSpace(source)
@@ -49,7 +49,7 @@ func EnsureIsolation(ctx context.Context, cache OwnerStore, input IsolationInput
 	targetGroupID := input.GroupID
 	targetIsolationEnabled := input.Enabled
 
-	// 所有显式会话都会先尝试绑定首次归属；未开启隔离的分组也会成为 owner。
+	// 指定会话先尝试登记首次所属分组，包括未开启隔离的分组。
 	written, err := cache.SetSessionOwnerGroupID(ctx, userID, source, sessionHash, targetGroupID, ttl)
 	if err != nil {
 		return err

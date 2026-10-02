@@ -35,7 +35,7 @@ type githubReleaseClientError struct {
 func NewReleaseClient(options ReleaseOptions) ReleaseClient {
 	proxyURL, allowDirectOnProxyError := options.ProxyURL, options.AllowDirectOnProxyError
 	// 安全说明：httpclient.GetClient 的错误链（url.Parse / proxyutil）不含明文代理凭据，
-	// 但仍通过 slog 仅在服务端日志记录，不会暴露给 HTTP 响应。
+	// 此信息通过 slog 写入服务端日志。
 	sharedClient, err := httpclient.GetClient(httpclient.Options{
 		Timeout:  30 * time.Second,
 		ProxyURL: proxyURL,
@@ -255,7 +255,7 @@ func (c *githubReleaseClient) FetchChecksumFile(ctx context.Context, url string)
 	return io.ReadAll(resp.Body)
 }
 
-// ReleaseOptions 明确投影更新查询所需参数；不接收完整配置。
+// ReleaseOptions 配置发布查询的代理、认证和下载参数。
 type ReleaseOptions struct {
 	ProxyURL                string
 	AllowDirectOnProxyError bool

@@ -13,7 +13,7 @@ import (
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// provideProviderRuntimePresenter 直接绑定新展示实现，不再引用旧 handler。
+// provideProviderRuntimePresenter 绑定提供商运行状态展示组件。
 func provideProviderRuntimePresenter(admin *provider.Admin, ollama *provider.OllamaCloudUsageService, concurrency *scheduler.ConcurrencyService, usage *usagepostgres.Store, sessions scheduler.SessionLimitCache, rpm scheduler.RPMCache, settings *provider.QuotaSettingsCache) *providerhttp.RuntimePresenter {
 	return providerhttp.NewRuntimePresenter(provider.NewRuntimeStatusReader(provideradapter.RuntimeStatusOptions(concurrency, usage, sessions, rpm, settings)), admin, ollama)
 }

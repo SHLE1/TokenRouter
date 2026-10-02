@@ -31,7 +31,7 @@ type Models interface {
 	ResolveGlobalModel(string) string
 }
 
-// Recovery 只持有模型投影和纯协议操作；不拥有提供商切换或第二套重试循环。
+// Recovery 根据模型信息和协议报文决定压缩恢复方式。
 type Recovery struct {
 	Models        Models
 	ContextWindow func(string, []byte) bool
@@ -60,7 +60,7 @@ func (r Recovery) ResolveModel(requested string) string {
 	return strings.TrimSpace(r.Models.ResolveGlobalModel(fallback))
 }
 
-// NewFailure 只为显式压缩请求创建恢复信号，不改变普通失败响应。
+// NewFailure 为压缩请求创建恢复信号，普通请求返回 nil。
 func (r Recovery) NewFailure(explicit bool, payload []byte, message string) *Failure {
 	if !explicit || !r.ModelFailure(400, message, payload) {
 		return nil
@@ -85,7 +85,7 @@ func (r Recovery) Prepare(in Request, status int, message string, payload []byte
 	return body, fallback, true
 }
 
-// RetryEffects 是恢复决定后的单步输出/资源操作，核心规定顺序。
+// RetryEffects 提供恢复决定后的单步输出和资源操作，恢复流程决定调用顺序。
 type RetryEffects interface {
 	ObserveRetry([]byte, string)
 	CloseResponse()
@@ -170,7 +170,7 @@ func ExplicitModelAvailabilityMessage(value string) bool {
 			return true
 		}
 	}
-	// 只接受以模型为主体的明确不可用消息，避免误判不支持的模型输出特性。
+	// 模型不可用错误需要以模型为主语，提到不支持的输出特性时继续按普通错误处理。
 	if strings.HasPrefix(value, "the model ") || strings.HasPrefix(value, "model ") {
 		return strings.Contains(value, " does not exist") ||
 			strings.Contains(value, " was not found") ||
@@ -195,7 +195,7 @@ func NormalizeHTTPErrorPayload(signal *Failure) []byte {
 		bytes.Equal(bytes.TrimSpace(terminal.Response.Error), []byte("null")) {
 		return payload
 	}
-	// 只在流转 HTTP 边界把嵌套 error 提到原 HTTP 错误 envelope。
+	// 流转为 HTTP 错误时，将嵌套 error 提到 HTTP 错误报文顶层。
 	normalized, err := json.Marshal(struct {
 		Error json.RawMessage `json:"error"`
 	}{Error: terminal.Response.Error})

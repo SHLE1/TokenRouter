@@ -20,7 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AntigravityOutput 持有当前 HTTP 交换与静态输出配置，不承载提供商、重试或资金状态。
+// AntigravityOutput 保存当前 HTTP 请求和静态输出配置。
 type AntigravityOutput struct {
 	GoogleOutput
 	Options googleforward.Options

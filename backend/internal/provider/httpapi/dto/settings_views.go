@@ -1,12 +1,12 @@
 package dto
 
-// OverloadCooldownSettings 保留现有 HTTP JSON 字段与省略语义。
+// OverloadCooldownSettings 是过载冷却设置的 HTTP 数据结构。
 type OverloadCooldownSettings struct {
 	Enabled         bool `json:"enabled"`
 	CooldownMinutes int  `json:"cooldown_minutes"`
 }
 
-// OpenAI403CooldownSettings 保留现有 HTTP JSON 字段与省略语义。
+// OpenAI403CooldownSettings 是 OpenAI 403 冷却设置的 HTTP 数据结构。
 type OpenAI403CooldownSettings struct {
 	Enabled                 bool `json:"enabled"`
 	CooldownMinutes         int  `json:"cooldown_minutes"`
@@ -15,18 +15,18 @@ type OpenAI403CooldownSettings struct {
 	ThresholdWindowMinutes  int  `json:"threshold_window_minutes"`
 }
 
-// RateLimit429CooldownSettings 保留现有 HTTP JSON 字段与省略语义。
+// RateLimit429CooldownSettings 是 429 冷却设置的 HTTP 数据结构。
 type RateLimit429CooldownSettings struct {
 	Enabled         bool `json:"enabled"`
 	CooldownSeconds int  `json:"cooldown_seconds"`
 }
 
-// OpenAIImagesOAuthUnavailableCooldownSettings 保留现有 HTTP JSON 字段与省略语义。
+// OpenAIImagesOAuthUnavailableCooldownSettings 是 OAuth 图片不可用时的冷却设置。
 type OpenAIImagesOAuthUnavailableCooldownSettings struct {
 	CooldownMinutes int `json:"cooldown_minutes"`
 }
 
-// OpenAIOAuthImportProviderDefaults 保留现有 HTTP JSON 字段与省略语义。
+// OpenAIOAuthImportProviderDefaults 是 OAuth 导入模板中的提供商默认字段。
 type OpenAIOAuthImportProviderDefaults struct {
 	Notes              *string  `json:"notes,omitempty"`
 	Concurrency        *int     `json:"concurrency,omitempty"`
@@ -36,14 +36,14 @@ type OpenAIOAuthImportProviderDefaults struct {
 	AutoPauseOnExpired *bool    `json:"auto_pause_on_expired,omitempty"`
 }
 
-// OpenAIOAuthImportDefaults 保留现有 HTTP JSON 字段与省略语义。
+// OpenAIOAuthImportDefaults 是 OpenAI OAuth 导入默认设置。
 type OpenAIOAuthImportDefaults struct {
 	Provider    OpenAIOAuthImportProviderDefaults `json:"provider,omitempty"`
 	Credentials map[string]any                    `json:"credentials,omitempty"`
 	Extra       map[string]any                    `json:"extra,omitempty"`
 }
 
-// StreamTimeoutSettings 保留现有 HTTP JSON 字段与省略语义。
+// StreamTimeoutSettings 是流式请求超时设置的 HTTP 数据结构。
 type StreamTimeoutSettings struct {
 	Enabled                bool   `json:"enabled"`
 	Action                 string `json:"action"`

@@ -17,7 +17,7 @@ type OpenAIWSConnections struct {
 	closed     bool
 }
 
-// NewOpenAIWSConnections 只登记配置和拨号器，不启动连接池任务。
+// NewOpenAIWSConnections 保存配置和拨号器，连接池在首次使用时启动。
 func NewOpenAIWSConnections(options *openai.WSPoolOptions, dialer openai.WSClientDialer) *OpenAIWSConnections {
 	return &OpenAIWSConnections{Options: options, dialer: dialer}
 }
@@ -58,7 +58,7 @@ func (s *OpenAIWSConnections) InvalidateProvider(providerID int64) {
 	}
 }
 
-// Close 保留当前池供关闭后只读观测，禁止再次按需启动。
+// Close 关闭连接池并标记停止，后续 Pool 调用返回已关闭的池。
 func (s *OpenAIWSConnections) Close() {
 	if s == nil {
 		return

@@ -16,13 +16,12 @@ import (
 
 const keepaliveTestInterval = 10 * time.Millisecond
 
-// waitForKeepaliveBeats 等待至少一次心跳写出。读取 recorder 前必须先经
-// StopOpenAICompactSSEKeepaliveCommitted 停拍建立 happens-before。
+// waitForKeepaliveBeats 等待至少一次心跳。读取 recorder 前调用 StopOpenAICompactSSEKeepaliveCommitted，等待心跳写入结束。
 func waitForKeepaliveBeats() {
 	time.Sleep(20 * keepaliveTestInterval)
 }
 
-// stripKeepaliveComments 去掉 SSE 注释块，返回真实事件文本。
+// stripKeepaliveComments 去掉 SSE 注释块，返回事件文本。
 func stripKeepaliveComments(body string) string {
 	var blocks []string
 	for _, block := range strings.Split(strings.TrimSpace(body), "\n\n") {
@@ -107,8 +106,7 @@ func TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitAppendsEvents(t *testin
 	require.Equal(t, "resp_ka_1", gjson.Get(events[1][1], "response.id").String())
 }
 
-// TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitFailureEmitsFailedEvent 验证心跳已提交后上游非 2xx：状态码无法回传，必须以 response.failed 终止事件
-// 收尾（Codex 将其作为终止事件处理），并标记流内错误供 ops 采集。
+// TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitFailureEmitsFailedEvent 验证心跳提交 200 后，上游非 2xx 以 response.failed 收尾，并标记流内错误供 Ops 采集。
 func TestWriteOpenAICompactSSEBridge_AfterKeepaliveCommitFailureEmitsFailedEvent(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	stop := StartOpenAICompactSSEKeepalive(c, keepaliveTestInterval)
@@ -139,9 +137,8 @@ func TestWriteOpenAICompactSSEBridge_BeforeKeepaliveCommitFailureKeepsJSONPath(t
 	require.Zero(t, rec.Body.Len())
 }
 
-// TestOpenAICompactKeepaliveWriter_RequestSideWriteSuspendsBeats 验证未被显式拦截的写回路径（直接操作 c.Writer）也必须与心跳互斥：包装器在
-// 请求侧任何响应构造时停拍。-race 下验证无数据竞争，且停拍后不再有心跳
-// 字节写出。
+// TestOpenAICompactKeepaliveWriter_RequestSideWriteSuspendsBeats 验证请求直接使用 c.Writer 构造响应时停止心跳。
+// -race 检查并发写入，停拍后心跳字节数保持稳定。
 func TestOpenAICompactKeepaliveWriter_RequestSideWriteSuspendsBeats(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	stop := StartOpenAICompactSSEKeepalive(c, keepaliveTestInterval)
@@ -181,7 +178,7 @@ func TestOpenAICompactKeepaliveWriter_DelegatesWhenReady(t *testing.T) {
 	require.Equal(t, "ready", rec.Body.String())
 }
 
-// TestWriteOpenAIFastPolicyBlockedResponse_AfterKeepaliveCommit 验证fast policy block 在心跳提交后必须降级为 response.failed 终止事件。
+// TestWriteOpenAIFastPolicyBlockedResponse_AfterKeepaliveCommit 验证心跳提交后的 Fast 策略拒绝写为 response.failed。
 func TestWriteOpenAIFastPolicyBlockedResponse_AfterKeepaliveCommit(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	stop := StartOpenAICompactSSEKeepalive(c, keepaliveTestInterval)
@@ -197,9 +194,8 @@ func TestWriteOpenAIFastPolicyBlockedResponse_AfterKeepaliveCommit(t *testing.T)
 	require.Contains(t, gjson.Get(events[0][1], "response.error.message").String(), "tier blocked")
 }
 
-// TestOpenAICompactKeepaliveAdjustedWrittenSize_ExcludesHeartbeatBytes 验证failover"是否已写响应"判定的口径：心跳字节必须被排除，否则 compact 在
-// 上游等待期间发过心跳后，可换号的 failover 会被误判放弃；真实响应字节
-// 写出后口径必须变化。
+// TestOpenAICompactKeepaliveAdjustedWrittenSize_ExcludesHeartbeatBytes 验证换号判断扣除心跳字节。
+// 等待上游时发送心跳仍可换号，写出协议内容后结果随字节数变化。
 func TestOpenAICompactKeepaliveAdjustedWrittenSize_ExcludesHeartbeatBytes(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	// 无心跳的请求：等价于 c.Writer.Size()。
@@ -211,7 +207,7 @@ func TestOpenAICompactKeepaliveAdjustedWrittenSize_ExcludesHeartbeatBytes(t *tes
 	waitForKeepaliveBeats()
 	require.Equal(t, before, OpenAICompactKeepaliveAdjustedWrittenSize(c), "仅心跳字节不得改变判定口径")
 
-	// 真实响应字节写出（经包装器，先停拍再写）后口径必须变化。
+	// 协议内容经包装器写出，心跳先停止，已写字节数随后增加。
 	_, err := c.Writer.Write([]byte("real-bytes"))
 	require.NoError(t, err)
 	require.Equal(t, len("real-bytes"), OpenAICompactKeepaliveAdjustedWrittenSize(c))
@@ -232,7 +228,7 @@ func TestOpenAIStreamClientOutputStarted_IgnoresCompactKeepaliveBytes(t *testing
 	require.True(t, OpenAIStreamClientOutputStarted(c, false))
 }
 
-// TestWriteOpenAIFastPolicyBlockedResponse_BeforeKeepaliveCommit 验证fast policy block 在心跳未提交时保持 403 JSON 原语义。
+// TestWriteOpenAIFastPolicyBlockedResponse_BeforeKeepaliveCommit 验证心跳提交前 Fast 策略拒绝返回 403 JSON。
 func TestWriteOpenAIFastPolicyBlockedResponse_BeforeKeepaliveCommit(t *testing.T) {
 	c, rec := newCompactBridgeTestContext(t, true)
 	stop := StartOpenAICompactSSEKeepalive(c, time.Hour)

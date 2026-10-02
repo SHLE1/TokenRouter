@@ -66,7 +66,7 @@ func (s *OpenAIAuthorization) generateAuthURL(ctx context.Context, proxyID *int6
 		return nil, infraerrors.Newf(500, "OPENAI_OAUTH_SESSION_FAILED", "failed to generate session ID: %v", err)
 	}
 
-	// 使用显式指定的代理。
+	// 使用调用方指定的代理。
 	var proxyURL string
 	if proxyID != nil {
 		resolvedProxyURL, proxyFound, err := s.Options.ProxyURL(ctx, *proxyID)
@@ -367,7 +367,7 @@ func NormalizeOpenAIOAuthPlatform(platform string) string {
 	return PlatformOpenAI
 }
 
-// Start 只启动提供商已有会话清理，不提前执行供应商交换。
+// Start 启动授权会话的清理循环。
 func (s *OpenAIAuthorization) Start() {
 	if s == nil || s.Sessions == nil {
 		return
@@ -444,7 +444,7 @@ func (s *OpenAIAuthorization) EnrichTokenInfo(ctx context.Context, tokenInfo *Op
 	s.enrichTokenInfo(ctx, tokenInfo, proxyURL)
 }
 
-// ValidatePersonalAccessToken 复用原验证端口，并登记到提供商授权的唯一活动拥有者。
+// ValidatePersonalAccessToken 调用验证接口，并将本次操作登记到授权活动跟踪器。
 func (s *OpenAIAuthorization) ValidatePersonalAccessToken(ctx context.Context, token, proxyURL string) (*OpenAITokenInfo, error) {
 	ctx, done, err := s.activity.begin(ctx, ErrProbeStopped)
 	if err != nil {

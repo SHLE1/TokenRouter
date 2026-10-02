@@ -19,7 +19,7 @@ const INTERACTIVE_SELECTOR = [
   '[role="switch"]'
 ].join(', ')
 
-/** 将图标绑定到最近的控件，避免只悬停在文字上时没有反馈。 */
+/** 图标动画绑定到最近的控件，悬停控件文字也会触发。 */
 export function useIconAnimation(
   svgRef: Ref<SVGSVGElement | null>,
   definition: () => IconDefinition,

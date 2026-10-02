@@ -142,7 +142,7 @@ func (c *errorPassthroughCache) SubscribeUpdates(ctx context.Context, handler fu
 	}()
 }
 
-// StopSubscription 主动取消并等待最后一次回调，保持原订阅频道与故障语义。
+// StopSubscription 取消订阅并等待最后一次回调完成。
 func (c *errorPassthroughCache) StopSubscription() {
 	c.subscriptionMu.Lock()
 	c.subscriptionStopped = true

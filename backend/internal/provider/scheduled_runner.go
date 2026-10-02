@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// ScheduledTestExecutor 保留后台结果语义；实际测试事件入口在后续批次接入同一实现。
+// ScheduledTestExecutor 返回后台测试结果。
 type ScheduledTestExecutor interface {
 	RunTestBackground(context.Context, int64, string) (*ScheduledTestResult, error)
 }
@@ -172,7 +172,7 @@ func (s *ScheduledTestRunnerService) runScheduled() {
 		}
 		s.mu.Unlock()
 	}()
-	// 仍落在分钟约 :10；停止时不再等待不可取消的十秒 Sleep。
+	// 每分钟约第十秒执行，等待期间响应停止信号。
 	delay := time.NewTimer(s.options.Offset)
 	defer delay.Stop()
 	select {
@@ -249,7 +249,7 @@ func (s *ScheduledTestRunnerService) runOnePlan(ctx context.Context, plan *Sched
 	}
 }
 
-// tryRecoverProvider 保留原可恢复状态的判断结果与日志。
+// tryRecoverProvider 检查可恢复状态，执行恢复并记录结果。
 func (s *ScheduledTestRunnerService) tryRecoverProvider(ctx context.Context, providerID int64, planID int64) {
 	if s.options.Recover == nil {
 		return

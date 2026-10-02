@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// GoogleOneTierObservation 只保留本次供应商查询的观测，不能携带旧配置整图。
+// GoogleOneTierObservation 保存本次供应商查询的档位结果。
 type GoogleOneTierObservation struct {
 	TierID     string
 	Storage    *GoogleOneStorage
@@ -41,7 +41,7 @@ type TierBatchResult struct {
 	Errors                 []TierRefreshFailure
 }
 
-// TierManagement 拥有资格、批量查询和条件写入，实际 Drive 请求由平台端口执行。
+// TierManagement 检查资格、批量查询并条件写入，通过平台接口调用 Drive。
 type TierManagement struct {
 	store    TierManagementStore
 	options  TierManagementOptions
@@ -105,7 +105,7 @@ func GoogleOneTierExtraPatch(observation GoogleOneTierObservation) map[string]an
 	return out
 }
 
-// ProjectGoogleOneTier 保留原 tier 响应和旧消费者的完整返回形状；写入使用明确字段增量。
+// ProjectGoogleOneTier 将档位结果转换为完整展示数据，写入时按字段更新。
 func ProjectGoogleOneTier(v *Record, observation GoogleOneTierObservation) (map[string]any, map[string]any) {
 	extra := CloneValues(v.Extra)
 	if extra == nil {

@@ -142,7 +142,7 @@ func parsePlanID(c *gin.Context, paramName string) (int64, bool) {
 	return id, true
 }
 
-// ParsePlanFeatures 将原有逐行功能说明投影成公开列表。
+// ParsePlanFeatures 将逐行填写的功能说明转换为公开列表。
 func ParsePlanFeatures(raw string) []string {
 	if raw == "" {
 		return []string{}

@@ -18,7 +18,7 @@ type OpenAITaskOptions struct {
 // OpenAITaskCoordinator 延续原进程内按提供商共享锁，不增加跨进程协调协议。
 type OpenAITaskCoordinator struct{ locks sync.Map }
 
-// openAITaskCopyCredentials 保留原任务更新的浅复制边界。
+// openAITaskCopyCredentials 浅拷贝任务更新需要的凭据 map。
 func openAITaskCopyCredentials(values map[string]any) map[string]any {
 	if values == nil {
 		return nil
@@ -65,7 +65,7 @@ func (s *OpenAITaskCoordinator) Ensure(ctx context.Context, options OpenAITaskOp
 	}
 	sharedTaskMu.Lock()
 	defer sharedTaskMu.Unlock()
-	// 共享锁内重新读取提供商，避免不同请求持有旧快照时依次重复注册 task。
+	// 在共享锁内重读提供商，已有 task 时复用它。
 	if options.Read != nil && credProvider.ID > 0 {
 		if refreshed, refreshErr := options.Read(ctx, credProvider.ID); refreshErr == nil && refreshed != nil {
 			if refreshed.IsCredentialShadow() {

@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/idempotency"
 )
 
-// MemoryStore 为 HTTP 幂等契约提供独立的内存替身；不替代真实事务验证。
+// MemoryStore 为 HTTP 幂等测试保存内存记录，数据库事务由集成测试检查。
 type MemoryStore struct {
 	mu     sync.Mutex
 	nextID int64

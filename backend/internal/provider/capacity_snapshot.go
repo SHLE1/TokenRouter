@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// GroupProviderCapacityRow 是容量汇总所需的轻量提供商投影。
+// GroupProviderCapacityRow 包含容量汇总需要的提供商字段。
 type GroupProviderCapacityRow struct {
 	GroupID             int64
 	ProviderID          int64
@@ -30,7 +30,7 @@ func ProjectCapacity(id int64, config RuntimeConfig, quotaAutoPaused bool) Capac
 	return CapacitySnapshot{ID: id, Concurrency: config.Concurrency, MaxSessions: config.GetMaxSessions(), SessionIdleTimeoutMinutes: config.GetSessionIdleTimeoutMinutes(), BaseRPM: config.GetBaseRPM(), QuotaAutoPaused: quotaAutoPaused}
 }
 
-// ProjectObservedCapacity 组合提供商运行参数与纯阈值结果；调用方保留原逐行取时点。
+// ProjectObservedCapacity 汇总运行参数和阈值判断结果，调用方逐行传入观测时间。
 func ProjectObservedCapacity(row GroupProviderCapacityRow, settings QuotaAutoPauseSettings, now time.Time) CapacitySnapshot {
 	paused, _ := EvaluateQuotaAutoPause(row.Platform, row.Extra, settings, now)
 	return ProjectCapacity(row.ProviderID, RuntimeConfig{Extra: row.Extra, Concurrency: row.Concurrency, SessionWindowStart: row.SessionWindowStart, SessionWindowEnd: row.SessionWindowEnd}, paused)

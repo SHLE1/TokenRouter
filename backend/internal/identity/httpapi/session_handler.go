@@ -26,7 +26,7 @@ type InvitationReader interface {
 	GetByCode(context.Context, string) (*identity.RedeemCode, error)
 }
 
-// PromotionPreview 是未迁推广用例给出的展示投影，不持有推广规则。
+// PromotionPreview 包含推广校验结果、赠送金额和错误信息。
 type PromotionPreview struct {
 	Valid       bool
 	BonusAmount float64

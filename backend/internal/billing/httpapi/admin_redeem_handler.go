@@ -65,7 +65,7 @@ type UpdateRedeemCodeRequest struct {
 }
 
 // CreateAndRedeemCodeRequest represents creating a fixed code and redeeming it for a target user.
-// Type 为 omitempty 而非 required 是为了向后兼容旧版调用方（不传 type 时默认 balance）。
+// Type 使用 omitempty，未传入时默认为 balance。
 type CreateAndRedeemCodeRequest struct {
 	Code          string  `json:"code" binding:"required,min=3,max=128"`
 	Type          string  `json:"type" binding:"omitempty,oneof=balance concurrency subscription invitation"` // 不传时默认 balance（向后兼容）

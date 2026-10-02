@@ -80,7 +80,7 @@ func TestDeferredFinalFlushReportsFailure(t *testing.T) {
 	require.True(t, retained)
 }
 
-// NewTimingWheelService 旧行为测试使用真实时间轮，构造依旧不启动。
+// NewTimingWheelService 为测试构造时间轮，由测试调用 Start 启动。
 func NewTimingWheelService() (*timingwheel.Wheel, error) { return timingwheel.New(), nil }
 
 // 不响应取消的写入模拟底层连接阻塞；停止必须有界返回并保留未排空的队列。

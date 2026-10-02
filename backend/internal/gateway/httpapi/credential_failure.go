@@ -1,13 +1,13 @@
 package httpapi
 
 import (
-	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-
 	"net/http"
 	"strings"
+
+	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 )
 
-// CredentialFailoverClientResponse 仅投影已经判定的凭据失败，不改变重试资格。
+// CredentialFailoverClientResponse 为已分类的凭据失败生成客户端响应。
 func CredentialFailoverClientResponse(failoverErr *forwardcore.UpstreamFailoverError) (int, string) {
 	if failoverErr != nil && failoverErr.Reason == forwardcore.OpenAIUpstreamAccessStateReason && strings.TrimSpace(failoverErr.ClientMessage) != "" {
 		status := failoverErr.ClientStatusCode

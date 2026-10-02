@@ -28,7 +28,7 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 	}
 	defer done()
 
-	// 局部兜底：确保该 handler 内部任何 panic 都不会击穿到进程级。
+	// 捕获 handler 内部 panic，按当前响应状态输出错误。
 	streamStarted := false
 	defer h.recoverResponsesPanic(c, &streamStarted)
 	compactStartedAt := time.Now()
@@ -83,9 +83,8 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 		return
 	}
 	legacyCompact, nativeCompactionV2 := IsOpenAIResponsesCompactPath(c), IsBareOpenAIResponsesPath(c) && IsOpenAIRemoteCompactionV2Request(body)
-	// body-signal compact：上游 unary 等待期间向下游发 SSE 注释行心跳，防止
-	// 反向代理空闲超时掐断长压缩连接（#3887）。首拍延迟一个心跳间隔，快速
-	// 失败仍走 JSON+状态码链路；未标记客户端流式或间隔为 0 时是 no-op。
+	// body-signal Compact 等待上游期间发送 SSE 注释心跳，维持反向代理连接（#3887）。
+	// 首拍延迟一个心跳间隔，此前失败返回 JSON 和 HTTP 状态。客户端未标记流式或间隔为 0 时跳过心跳。
 	stopCompactKeepalive := h.backend.StartCompact(c, h.options.CompactKeepaliveInterval)
 	defer stopCompactKeepalive()
 
@@ -95,11 +94,11 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 		return
 	}
-	// 用户提示词替换必须在 compact 归一化之后、模型解析之前执行。
+	// compact 规范化后替换用户提示词，再解析模型。
 	body = h.prompt.ApplyUserPromptReplacementToBody(c.Request.Context(), body, "openai_responses")
 	sessionHashBody := body
 
-	// 使用 gjson 只读提取字段做校验，避免完整 Unmarshal
+	// 使用 gjson 提取校验需要的字段。
 	modelResult := gjson.GetBytes(body, "model")
 	if !modelResult.Exists() || modelResult.Type != gjson.String || modelResult.String() == "" {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "model is required")
@@ -187,8 +186,8 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 		return
 	}
 
-	// 分组映射模型 G 决定生图并发和提供商端点能力，客户端模型 R 继续用于日志与会话语义。
-	// 当前分组和分组映射结果进入独立计划，不改变原解析位置。
+	// 分组映射模型 G 决定生图并发和端点能力，客户端模型 R 用于日志与会话。
+	// 当前分组和映射结果保存在独立计划中。
 	groupMappingRoutePlan := h.backend.Plan(c.Request.Context(), apiKey, reqModel)
 	groupMapping := groupMappingRoutePlan.Mapping()
 	h.backend.BindPlan(c, groupMappingRoutePlan)
@@ -197,14 +196,14 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 	if forwardModel == "" {
 		forwardModel = reqModel
 	}
-	// 权限、并发和提供商能力只看显式意图；宽泛意图继续供转发层处理工具与计费。
+	// 客户端声明的生图意图用于权限、并发和提供商能力检查，宽泛意图用于转发时的工具处理与计费。
 	imageIntent := h.backend.ExplicitImageIntent("/v1/responses", routingModel, forwardBody)
-	// 只有 HTTP Responses 入口会按提供商开关进入自动透传，供 upstream 限制计算真实模型。
+	// HTTP Responses 入口按提供商开关启用自动透传，upstream 据此计算用于限制检查的模型。
 	selectionCtx := h.backend.PassthroughContext(c.Request.Context())
-	// 错误诊断也必须看到相同入口语义，避免把可透传模型误报为 model_not_found。
+	// 错误诊断使用同一入口的模型规则，可透传模型按透传资格判断。
 	c.Request = c.Request.WithContext(selectionCtx)
 	if imageIntent {
-		// 生图家族限流依赖上下文标记，必须使用分组映射后的显式意图结果。
+		// 生图家族限流的上下文标记使用分组映射后的客户端生图意图。
 		selectionCtx = h.backend.ImageContext(selectionCtx)
 	}
 	if imageIntent && !h.backend.AllowsImages(apiKey) {
@@ -226,7 +225,7 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 
 	h.backend.SeedImageIntent(c, groupMapping.Mapped, forwardImageIntent)
 
-	// 提前校验 function_call_output 是否具备可关联上下文，避免上游 400。
+	// 转发前校验 function_call_output 的关联上下文，缺少上下文会触发上游 400。
 	if !h.backend.ValidateTools(c, body, reqLog) {
 		return
 	}
@@ -249,7 +248,7 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 	if lease := scheduler.RequestLease(c.Request.Context()); lease != nil {
 		selectionCtx = scheduler.WithRequestLease(selectionCtx, lease)
 	}
-	// 确保请求取消时也会释放槽位，避免长连接被动中断造成泄漏
+	// 请求取消时释放槽位，长连接中断也会触发释放。
 	if userReleaseFunc != nil {
 		defer userReleaseFunc()
 	}
@@ -282,12 +281,9 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 	))
 	requireCompact := legacyCompact
 
-	// 生图意图的 /v1/responses 请求必须调度到确实支持 Responses API 的提供商，否则
-	// 会在 forward 阶段被静默降级为无法生图的 Chat Completions 直转（#4417）。
-	// 仅对 OpenAI 平台生效：Grok 生图走独立的 forwardGrokResponses 路径，不应被过滤。
-	// 复用前置权限与并发阶段按分组映射模型 G 和未再修改的 forwardBody 确认的显式生图意图，
-	// 避免大 tools 请求重复扫描。
-	// 该判断已排除 Codex 被动 image_gen namespace，避免 CC-only 提供商被误过滤（#4476）。
+	// OpenAI 生图请求选择支持 Responses API 的提供商，Chat Completions 直转无法生图（#4417）。
+	// Grok 由 forwardGrokResponses 单独处理。复用准入阶段根据分组模型 G 和 forwardBody 确认的客户端生图意图，省去 tools 重复扫描。
+	// Codex 被动 image_gen namespace 保持 Chat-only 提供商的可选资格（#4476）。
 	requiredCapability := textflow.RequiredResponsesCapability(
 		imageIntent,
 		nativeCompactionV2,

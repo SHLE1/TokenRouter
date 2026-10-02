@@ -39,7 +39,7 @@ func TestDefaultPriceUsesCatalogAndPreservesZero(t *testing.T) {
 	require.Equal(t, 4.0, values["output"])
 	require.Equal(t, 8.0, values["fast_output"])
 	require.Equal(t, 2.0, values["flex_output"])
-	// 长上下文投影为应用倍率后的绝对单价：output 4x1.5，fast 8x1.5，flex 2x1.5。
+	// 长上下文返回应用倍率后的单价：output 4x1.5，fast 8x1.5，flex 2x1.5。
 	require.Zero(t, values["long_input"])
 	require.Equal(t, 6.0, values["long_output"])
 	require.Equal(t, 12.0, values["long_fast_output"])

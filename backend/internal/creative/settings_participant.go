@@ -41,7 +41,7 @@ func PrepareAdminSettings(value AdminSettings) (AdminSettings, map[string]string
 	return value, values, nil
 }
 
-// SettingsParticipant 静态声明写入所有权，只准备已经投影的实际字段。
+// SettingsParticipant 声明创作台开关、模型和 worker 数量的存储键，并准备请求中提供的设置。
 func SettingsParticipant() settings.Participant {
 	fields := []string{"creative_enabled", "creative_worker_count", "creative_model_settings"}
 	keys := []string{SettingKeyCreativeEnabled, SettingKeyCreativeWorkerCount, SettingKeyCreativeModelSettings}

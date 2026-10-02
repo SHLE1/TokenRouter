@@ -34,7 +34,7 @@ func NewUserMsgQueueHelper(
 }
 
 // AcquireWithWait 等待获取串行锁，流式请求期间发送 SSE ping
-// 返回的 releaseFunc 内部使用 sync.Once，确保只执行一次释放
+// 返回的 releaseFunc 使用 sync.Once 释放一次。
 func (h *UserMsgQueueHelper) AcquireWithWait(c *gin.Context, providerID int64, baseRPM int, isStream bool, streamStarted *bool, timeout time.Duration, reqLog *zap.Logger) (func(), error) {
 	lease, err := h.queueService.AcquireWithWait(c.Request.Context(), providerID, baseRPM, timeout, h.observer(c, providerID, isStream, streamStarted, reqLog))
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
 
-// ProviderUsageParticipant 只在传入的连接上写消费字段，不控制事务或发布成功事件。
+// ProviderUsageParticipant 通过传入的连接写入提供商消费字段。
 // 普通调用可传数据库连接；跨模块操作必须传入调用方现有 Ent/SQL 事务连接。
 type ProviderUsageParticipant struct{ exec postgresinfra.Executor }
 

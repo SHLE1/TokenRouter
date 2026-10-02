@@ -58,15 +58,12 @@ func TestReplaceModelInBody(t *testing.T) {
 }
 
 func TestReplaceModelInBody_InvalidJSON(t *testing.T) {
-	// Case 1: broken JSON object — gjson won't find "model", sjson does best-effort set
-	// (no panic, no error from sjson, but result is mutated garbage)
+	// 损坏的对象缺少可读的 model，sjson 仍尝试写入并返回修改后的字节。
 	brokenBody := []byte("{broken")
 	result := ReplaceModelInBody(brokenBody, "new-model")
 	require.NotNil(t, result)
-	// sjson does not error on this input, so result differs from original — just verify no panic
 
-	// Case 2: JSON array — sjson.SetBytes returns error on non-object,
-	// triggering the L447 error fallback path that returns original body.
+	// 数组输入使 sjson.SetBytes 返回错误，函数返回原始 body。
 	arrayBody := []byte("[]")
 	result2 := ReplaceModelInBody(arrayBody, "new-model")
 	require.Equal(t, arrayBody, result2)

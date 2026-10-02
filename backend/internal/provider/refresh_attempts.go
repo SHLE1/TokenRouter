@@ -18,7 +18,7 @@ type ProviderRefreshAttemptGate interface {
 	AcquireRate(context.Context) (func(), error)
 }
 
-// GrokRefreshMutationWriter 保留 Grok 原有条件更新和失败分类，其他平台使用通用失败写入。
+// GrokRefreshMutationWriter 提供 Grok 的条件更新和失败分类，其他平台使用通用失败写入。
 type GrokRefreshMutationWriter interface {
 	SetGrokOAuthRefreshErrorIfCredentialsUnchanged(context.Context, int64, map[string]any, *int64, string) (bool, error)
 	SetGrokOAuthRefreshTempUnschedulableIfCredentialsUnchanged(context.Context, int64, map[string]any, *int64, time.Time, string) (bool, error)
@@ -110,7 +110,7 @@ func (s RefreshAttempts) Run(
 				_ = result.NewCredentials // 统一 API 已设置 _token_version 并更新 DB，无需重复操作
 			}
 		} else {
-			// 降级：直接调用 refresher（兼容旧路径）
+			// 未配置协调器时调用 refresher。
 			failureProvider = CloneRecord(provider)
 			releaseRate := func() {}
 			if acquireRate != nil {
@@ -183,7 +183,7 @@ func (s RefreshAttempts) Run(
 			return &ProviderCycleContainmentRefreshError{Cause: err}
 		}
 		if s.AmbiguousEntitlement(provider, err) {
-			// 当前 Grok 客户端会把 token 端点的所有 403 标为权益拒绝；没有明确证据时只隔离本周期的平台，避免因 WAF 或共享故障禁用提供商。
+			// Grok 客户端将 token 端点的所有 403 标为权益拒绝，缺少归属证据时本轮暂停该平台，提供商保持当前状态。
 			return &ProviderCycleContainmentRefreshError{Cause: err}
 		}
 
@@ -293,7 +293,7 @@ func (s RefreshAttempts) Run(
 		return err
 	}
 
-	// 可重试错误耗尽：临时标记提供商不可调度，避免请求路径反复命中已知失败的提供商
+	// 可重试错误耗尽时临时停调该提供商，后续请求会跳过它。
 	s.Warn("token_refresh.retry_exhausted",
 		"provider_id", provider.ID,
 		"platform", provider.Platform,
@@ -345,7 +345,7 @@ func (s RefreshAttempts) Run(
 		return lastErr
 	}
 
-	// 尚未取得交换快照的排队/读取失败不能归责给传入的旧提供商。
+	// 排队或读取阶段尚未取得交换快照，失败时保持提供商状态不变。
 	if failureProvider == nil {
 		return lastErr
 	}

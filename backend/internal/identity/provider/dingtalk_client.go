@@ -121,7 +121,7 @@ func (c *DingTalkClient) GetUnionIdByUserToken(ctx context.Context, userToken st
 type DingTalkStaffInfo = identity.DingTalkProfileSnapshot
 
 // DingTalkOAPIBase 推导钉钉旧版 OAPI base URL（host: api.dingtalk.com → oapi.dingtalk.com）。
-// getbyunionid 与 topapi/v2/user/get 仅在旧版 OAPI 提供，不在 v1.0 OpenAPI。
+// getbyunionid 与 topapi/v2/user/get 使用 OAPI。
 func (c *DingTalkClient) DingTalkOAPIBase() string {
 	u, err := url.Parse(c.cfg.UserInfoURL)
 	if err != nil || u.Scheme == "" || u.Host == "" {

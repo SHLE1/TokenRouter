@@ -13,7 +13,7 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// RelayTurn 保留 ctx_pool 单轮输出、usage、TTFT 和错误边界，不把 retry 循环放进平台 Adapter。
+// RelayTurn 处理 ctx_pool 的单轮帧循环，记录输出、usage、首 token 时间和错误。
 func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input ClientPayload, turn int, o StreamOptions, hooks *StreamHooks) (*ForwardResult, error) {
 	payload, payloadBytes, originalModel, routingModel := input.PayloadRaw, input.PayloadBytes, input.OriginalModel, input.RoutingModel
 	imageBillingModel, imageSizeTier, imageInputSize := input.ImageBillingModel, input.ImageSizeTier, input.ImageInputSize
@@ -96,7 +96,7 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 			}
 			lastEventType = eventType
 		}
-		// 先保存用量和风控证据，确保错误早退后 AfterTurn 仍可完成风控收尾。
+		// 先保存用量和风控证据，错误提前返回后 AfterTurn 仍可完成风控处理。
 		// @project-doc docs/domains/content_moderation.md#upstream_cyber_policy
 		if p.ShouldParseUsage(eventType) {
 			p.ParseUsage(upstreamMessage, &usage)
@@ -129,7 +129,7 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 				o.PreviousRecovery &&
 				!wroteDownstream
 			if recoverablePrevNotFound {
-				// 可恢复场景使用非 error 关键字日志，避免被 LegacyPrintf 误判为 ERROR 级别。
+				// 可恢复事件的日志避开 error 词，LegacyPrintf 会根据该词判断 ERROR 级别。
 				p.Log(fmt.Sprintf(
 					"ingress_ws_prev_response_recoverable provider_id=%d turn=%d conn_id=%s idx=%d reason=%s code=%s type=%s message=%s previous_response_id=%s previous_response_id_kind=%s response_id=%s store_disabled=%v has_prompt_cache_key=%v",
 					o.ProviderID,
@@ -242,17 +242,9 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 				}
 			}
 			replayCollector.AddEvent(eventType, upstreamMessage)
-			// 客户端写出副本改写容量降载码：Codex 对 error/response.failed 中的
-			// server_is_overloaded / slow_down 判致命并终止会话，改写后走客户端
-			// 内置退避重试。HTTP/SSE（openai_gateway_response_handling.go）与
-			// http_bridge（openai_ws_http_bridge.go）两条路径早已这么做，
-			// ctx_pool 的 ingress 直写路径是唯一漏掉的一条 —— 同一个上游降载
-			// 事件在这里会让会话就地终止，切到 http_bridge 却能正常退避重试。
-			//
-			// 必须写进独立变量而不是原地改 upstreamMessage：下面的
-			// markOpenAIWSClientVisibleFailure 与 handleOpenAIWSTerminalTransientFailure
-			// 仍要按未改写的原始 payload 判定提供商状态，这正是
-			// p.CapacityShed 注释里写明的前提。
+			// 输出给客户端的副本改写 server_is_overloaded 和 slow_down，使 Codex 执行退避重试。
+			// Codex 会将原错误码判为致命错误并结束会话，HTTP/SSE 和 HTTP bridge 使用同样的改写。
+			// upstreamMessage 保留上游原始报文，客户端失败和瞬时终态的健康处理据此判断提供商状态。
 			clientMessage := upstreamMessage
 			if eventType == "error" || eventType == "response.failed" {
 				if rewritten, changed := p.CapacityShed(clientMessage); changed {
@@ -283,7 +275,7 @@ func RelayTurn(ctx context.Context, p StreamPort, lease StreamLease, input Clien
 			}
 		}
 		if isTerminalEvent {
-			// 客户端已断连时，上游连接的 session 状态不可信，标记 broken 避免回池复用。
+			// 客户端断开后将上游连接标记为 broken，连接池丢弃该连接。
 			if clientDisconnected {
 				lease.MarkBroken()
 			}

@@ -24,7 +24,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// TestProtocolForwardUsesConfiguredTarget 验证通过真实转发器核对三个客户端协议到 CN 原生端点的 URL 和载荷，覆盖全部转换组合。
+// TestProtocolForwardUsesConfiguredTarget 通过转发器检查三个客户端协议到 CN 平台端点的 URL 和载荷，覆盖全部转换组合。
 func TestProtocolForwardUsesConfiguredTarget(t *testing.T) {
 	for _, platform := range []string{capability.PlatformDeepseek, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformGrok} {
 		for _, ingress := range cnProtocolIngressCases() {

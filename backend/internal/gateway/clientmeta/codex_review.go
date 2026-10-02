@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// Codex 审查线索沿用原字段；这里只解释声明，不授予权限或解析提供商。
+// Codex 审查线索记录请求声明，权限校验和提供商选择由各自的入口处理。
 const (
 	CodexAutoReviewModel      = "codex-auto-review"
 	OpenAISubagentHeader      = "x-openai-subagent"
@@ -20,7 +20,7 @@ type CodexReviewInput struct {
 	Body                                          []byte
 }
 
-// CodexReviewParent 返回无歧义的父线程标识，原始模型和每类声明必须同时满足原约束。
+// CodexReviewParent 检查请求模型和各类审查声明，返回匹配且无冲突的父线程标识。
 func CodexReviewParent(input CodexReviewInput) string {
 	if !IsCodexReviewModel(input.Model) {
 		return ""
@@ -87,7 +87,7 @@ func hasUnambiguousOpenAICodexReviewSubagent(candidates ...string) bool {
 	return subagent == "guardian" || subagent == "review"
 }
 
-// IsCodexReviewModel 供 HTTP 边界在读取线索前保持原模型短路。
+// IsCodexReviewModel 判断请求模型是否需要读取 Codex 审查线索。
 func IsCodexReviewModel(model string) bool {
 	return strings.EqualFold(strings.TrimSpace(model), CodexAutoReviewModel)
 }

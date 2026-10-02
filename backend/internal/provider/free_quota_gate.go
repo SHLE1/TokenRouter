@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// FreeQuotaOptions 是免费层调度门禁的显式配置投影。
+// FreeQuotaOptions 是免费档位调度准入的配置参数。
 type FreeQuotaOptions struct {
 	Enabled      bool
 	TokenLimit   int64
@@ -35,7 +35,7 @@ type FreeQuotaGate struct {
 	metrics    *FreeQuotaMetrics
 }
 
-// NewFreeQuotaGate 不启动任务，保留按调用时点取得配置与异步回源的语义。
+// NewFreeQuotaGate 构造免费额度检查器，配置读取和异步回源在调用时执行。
 func NewFreeQuotaGate(options func() FreeQuotaOptions, load func(context.Context, []int64, time.Time) (map[int64]int64, error), background func(string, func()) bool, now func() time.Time, observe func(bool, string, ...any), metrics *FreeQuotaMetrics) *FreeQuotaGate {
 	if now == nil {
 		now = time.Now
@@ -193,7 +193,7 @@ func (g *FreeQuotaGate) refresh(settings grokFreeQuotaGateSettings, providerIDs 
 			g.inFlight.Delete(id)
 		}
 	}
-	// 任务接入应用完成屏障，保留原独立查询 context。
+	// 应用关闭前等待查询任务完成，查询使用独立 context。
 	if !g.background("provider/free_quota_gate.go:stats_refresh", func() {
 		defer release()
 		now := g.now().UTC()
@@ -233,10 +233,10 @@ func (g *FreeQuotaGate) refresh(settings grokFreeQuotaGateSettings, providerIDs 
 	}
 }
 
-// grokFreeQuotaGateCacheMinSweepAge 设置最小清理年龄，避免极短 TTL 导致每请求重查。
+// grokFreeQuotaGateCacheMinSweepAge 是条目可被清理前的最短存活时间。
 const grokFreeQuotaGateCacheMinSweepAge = 5 * time.Minute
 
-// sweepGrokFreeQuotaGateCache 清理远超 TTL 的条目，避免已删除或离开免费层的提供商常驻进程内存；
+// sweepGrokFreeQuotaGateCache 回收超过 TTL 较久的条目，删除或离开免费档位的提供商可随之释放内存。
 // 仍活跃的提供商会在下次未命中时重新填充。
 func sweepGrokFreeQuotaGateCache(cache *sync.Map, now time.Time, cacheTTL time.Duration) {
 	if cache == nil || cacheTTL <= 0 {

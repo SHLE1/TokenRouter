@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// refreshFailureMatchesFixture 竞争替身显式比较与生产 writer 相同的身份字段；nil 凭据沿用旧快照的空对象语义。
+// refreshFailureMatchesFixture 比较身份字段和凭据版本，nil 凭据按空对象比较。
 func refreshFailureMatchesFixture(value *gatewayprovider.ExecutionProvider, version provider.RefreshFailureVersion) bool {
 	if value == nil {
 		return false

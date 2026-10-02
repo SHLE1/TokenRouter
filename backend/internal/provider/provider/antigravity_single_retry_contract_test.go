@@ -93,7 +93,7 @@ func TestHandleSmartRetry_503_LongDelay_SingleProviderRetry_RetryInPlace(t *test
 
 	require.NotNil(t, result)
 	require.Equal(t, antigravity.SmartRetryActionBreakWithResp, result.Action)
-	// 关键断言：返回 resp（原地重试成功），而非 switchError（切换提供商）
+	// 同一提供商重试成功后返回 resp。
 	require.NotNil(t, result.Resp, "should return successful response from in-place retry")
 	require.Equal(t, http.StatusOK, result.Resp.StatusCode)
 	require.Nil(t, result.SwitchError, "should NOT return switchError in single provider mode")
@@ -119,8 +119,8 @@ func TestHandleSmartRetry_503_LongDelay_NoSingleProviderRetry_StillSwitches(t *t
 		Platform: capability.PlatformAntigravity,
 	}
 
-	// 503 + 39s >= 7s 阈值（使用 RATE_LIMIT_EXCEEDED 而非 MODEL_CAPACITY_EXHAUSTED，
-	// 因为 MODEL_CAPACITY_EXHAUSTED 走独立的重试路径，不触发 shouldRateLimitModel）
+	// 503 携带 39 秒等待时间，超过七秒阈值。
+	// RATE_LIMIT_EXCEEDED 触发模型限流检查，MODEL_CAPACITY_EXHAUSTED 使用单独的重试流程。
 	respBody := []byte(`{
 		"error": {
 			"code": 503,
@@ -169,7 +169,7 @@ func TestHandleSmartRetry_503_LongDelay_NoSingleProviderRetry_StillSwitches(t *t
 }
 
 // TestHandleSmartRetry_429_LongDelay_SingleProviderRetry_StillSwitches
-// 边界情况：429（非 503）+ SingleProviderRetry 标记
+// 检查 429 与 SingleProviderRetry 标记的组合。
 // → 单提供商原地重试仅针对 503，429 依然走切换提供商逻辑
 func TestHandleSmartRetry_429_LongDelay_SingleProviderRetry_StillSwitches(t *testing.T) {
 	repo := &antigravityRetryStoreFixture{}
@@ -224,7 +224,7 @@ func TestHandleSmartRetry_429_LongDelay_SingleProviderRetry_StillSwitches(t *tes
 
 // TestHandleSmartRetry_503_ShortDelay_SingleProviderRetry_NoRateLimit
 // 503 + retryDelay < 7s + SingleProviderRetry → 智能重试耗尽后直接返回 503，不设限流
-// 使用 RATE_LIMIT_EXCEEDED（走 1 次智能重试），避免 MODEL_CAPACITY_EXHAUSTED 的 60 次重试导致测试超时
+// 使用 RATE_LIMIT_EXCEEDED，执行一次智能重试。
 func TestHandleSmartRetry_503_ShortDelay_SingleProviderRetry_NoRateLimit(t *testing.T) {
 	// 智能重试也返回 503
 	failRespBody := `{
@@ -308,7 +308,7 @@ func TestHandleSmartRetry_503_ShortDelay_SingleProviderRetry_NoRateLimit(t *test
 
 // TestHandleSmartRetry_503_ShortDelay_NoSingleProviderRetry_SetsRateLimit
 // 对照组：503 + retryDelay < 7s + 无 SingleProviderRetry → 智能重试耗尽后照常设限流
-// 使用 RATE_LIMIT_EXCEEDED 而非 MODEL_CAPACITY_EXHAUSTED，因为后者走独立的 60 次重试路径
+// 使用 RATE_LIMIT_EXCEEDED，MODEL_CAPACITY_EXHAUSTED 使用独立的六十次重试流程。
 func TestHandleSmartRetry_503_ShortDelay_NoSingleProviderRetry_SetsRateLimit(t *testing.T) {
 	failRespBody := `{
 		"error": {
@@ -888,7 +888,7 @@ func TestAntigravityRetryLoop_503_SingleProvider_InPlaceRetryUsed_E2E(t *testing
 		"should NOT set model rate limit in single provider retry mode")
 }
 
-// 预检查只核对是否发起请求，成功响应保持原固定报文。
+// 预检查测试记录是否发送请求，成功响应使用固定报文。
 type recordingOKUpstream struct{ calls int }
 
 func (r *recordingOKUpstream) Do(*http.Request, string, int64, int) (*http.Response, error) {

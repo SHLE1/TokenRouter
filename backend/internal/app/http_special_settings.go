@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// providePreAggregationHTTP 直接注入原生任务实例，保持原管理入口的权限与时序。
+// providePreAggregationHTTP 为预聚合管理入口注入任务实例。
 func providePreAggregationHTTP(settings *preaggregation.PreAggregationSettingsService, usage *usage.DashboardAggregationService, ops *ops.OpsAggregationService) *settingshttp.PreAggregationHandler {
 	return settingshttp.NewPreAggregationHandler(settings, usage, ops)
 }

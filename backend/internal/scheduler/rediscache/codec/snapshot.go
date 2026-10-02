@@ -214,11 +214,9 @@ func filterSchedulerExtra(extra map[string]any) map[string]any {
 		"openai_compact_mode",
 		"openai_native_compaction_v2_mode",
 		"openai_responses_continuation_supported",
-		// 透传开关必须进投影：候选过滤(ListSchedulableProviders)读的是本投影，
-		// 而 providercore.Record.IsModelSupported 靠 extra 上的这两个键短路 model_mapping 白名单。
-		// 裁掉它们，透传提供商在选号阶段会退回按(常为过期的)白名单判定并被误判为
-		// model_not_supported —— 转发阶段却仍按透传工作，表现为"单独测提供商能通、
-		// 走网关报 no available providers"。
+		// 候选过滤 ListSchedulableProviders 读取此快照，IsModelSupported 使用这两个透传开关决定是否跳过 model_mapping。
+		// 丢失开关会使选号退回白名单检查，即使提供商可透传，也可能被判为 model_not_supported，
+		// 导致单独测试提供商成功、网关返回 no available providers。
 		"openai_passthrough",
 		"openai_oauth_passthrough",
 		"codex_fingerprint_mode",
@@ -235,7 +233,7 @@ func filterSchedulerExtra(extra map[string]any) map[string]any {
 		"auto_pause_5h_disabled",
 		"auto_pause_7d_disabled",
 		"model_rate_limits",
-		// 媒体资格判定依赖显式覆盖和精简计费观测，调度缓存不得丢失。
+		// 媒体资格检查使用管理员覆盖值和计费观测，调度缓存同时保存这两项。
 		providercore.GrokMediaEligibleExtraKey,
 		"grok_billing_snapshot",
 	}
@@ -251,4 +249,4 @@ func filterSchedulerExtra(extra map[string]any) map[string]any {
 	return filtered
 }
 
-// AcquireBucketLease 为生产重建提供持有者安全的释放句柄，复用原 Redis 客户端。
+// AcquireBucketLease 使用调度 Redis 获取重建租约，释放句柄校验持有者令牌。

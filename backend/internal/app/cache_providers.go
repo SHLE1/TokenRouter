@@ -9,7 +9,7 @@ import (
 	"github.com/google/wire"
 )
 
-// cacheProviders 直接绑定唯一缓存实现，旧调用方继续共享同一个周期任务锁实例。
+// cacheProviders 绑定各缓存实现，使用方共用周期任务锁。
 var cacheProviders = wire.NewSet(
 	rediscache.NewInternal500CounterCache,
 	redisinfra.NewLeaderLockCache,

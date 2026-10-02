@@ -49,9 +49,8 @@ type schedulerProviderQueryKey struct {
 	platform string
 }
 
-// 查询结果只在一次 rebuild batch 内，按原始 groupID+platform 复用成功的 single/forced 查询；
-// mixed 与历史模式保持独立。每个 task 都用 defer 消费 remaining，最后一个消费者会立即释放结果，
-// 避免把提供商切片的生命周期扩大到整轮 full rebuild。
+// schedulerProviderQueryCache 在一次 rebuild batch 内按 groupID+platform 缓存成功的 single/forced 查询。
+// mixed 与历史模式分别查询。每个 task 在 defer 中减少 remaining，最后一个消费者释放结果切片。
 type schedulerProviderQueryCache struct {
 	remaining           map[schedulerProviderQueryKey]int
 	providers           map[schedulerProviderQueryKey][]SnapshotProvider
@@ -59,8 +58,8 @@ type schedulerProviderQueryCache struct {
 }
 
 // schedulerSnapshotProviderIDWriter 是 SnapshotCache 的可选批次优化能力。
-// 首次完整发布成功后返回实际可编码提供商 ID；同一查询结果的后续桶只需发布这些 ID，
-// 避免重复序列化并覆盖全局提供商缓存。未实现该接口的缓存继续走原 SetSnapshot 路径。
+// 首次完整发布成功后返回已编码的提供商 ID，同一查询结果的后续桶通过这些 ID 发布成员。
+// 未实现该接口的缓存使用 SetSnapshot 发布完整快照。
 type schedulerSnapshotProviderIDWriter interface {
 	SetSnapshotAndReturnProviderIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providers []SnapshotProvider) ([]int64, error)
 	SetSnapshotByProviderIDs(ctx context.Context, bucket SchedulerBucket, token SchedulerBucketWriteToken, providerIDs []int64) error
@@ -170,7 +169,7 @@ func NewSnapshotService(
 	}
 }
 
-// Start 保持异步初始重建和 outbox 立即首轮，运行拥有者拒绝重复启动。
+// Start 异步启动初始重建并立即处理首轮 outbox，重复调用跳过启动。
 func (s *SnapshotService) Start() {
 	if s == nil || s.cache == nil {
 		return
@@ -189,7 +188,7 @@ func (s *SnapshotService) Start() {
 	s.runtime.Start(tasks...)
 }
 
-// Stop 为旧消费者保留有界兼容入口，应用传入统一剩余预算。
+// Stop 使用 30 秒预算停止任务，应用可通过 StopContext 传入剩余关闭预算。
 func (s *SnapshotService) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -332,7 +331,7 @@ func (s *SnapshotService) pollOutbox() {
 	}
 	if len(events) == 0 {
 		// outbox 查询本身已证明水位之后没有事件。在健康的一秒轮询路径上
-		// 清除降级/重试状态，不额外增加两次仓储查询。
+		// 根据本次空批次结果清除降级和重试状态。
 		s.clearOutboxDegradedEpisode()
 		return
 	}
@@ -533,7 +532,7 @@ func (s *SnapshotService) handleBulkProviderEvent(ctx context.Context, payload m
 		rebuildGroupIDs = append(rebuildGroupIDs, gid)
 	}
 
-	// 缺失提供商无法确定原平台，保留全平台重建以避免遗留旧快照。
+	// 提供商缺失时无法确定其平台，重建全部平台以清理旧快照。
 	if !allProvidersFound {
 		return s.rebuildByGroupIDs(ctx, rebuildGroupIDs, "provider_bulk_change", seen)
 	}
@@ -562,7 +561,7 @@ func (s *SnapshotService) handleBulkProviderEvent(ctx context.Context, payload m
 
 	}
 
-	// payload 携带更新前的组；只扩散到本事件实际涉及的平台，避免平台间交叉重建。
+	// payload 携带更新前的分组，本事件涉及的平台各自重建这些分组。
 	if len(preloadGroupIDs) > 0 {
 		preloadGroupIDs = s.normalizeGroupIDs(preloadGroupIDs)
 		for platform := range platformGroupSets {
@@ -655,7 +654,7 @@ func (s *SnapshotService) reconcileGroupLifecycle(ctx context.Context, groupID i
 	return nil
 }
 
-// prepareGroupLifecycle 生命周期决策必须在所有者安全的租约内读取 fresh 且完整的分组权威状态。
+// prepareGroupLifecycle 在持有分组租约期间读取数据库中的完整分组状态，再决定退休或重新开放。
 // active 仅 Reopen canonical bucket；missing/inactive 同时 Retire canonical 与已登记历史 bucket；
 // group event 路径只有在权威决策和后续重建全部成功后才会标记 seen。
 func (s *SnapshotService) prepareGroupLifecycle(ctx context.Context, groupID int64, knownHistorical []SchedulerBucket) (plan schedulerGroupLifecyclePlan, retErr error) {
@@ -759,7 +758,8 @@ func schedulerSnapshotPlatforms() []string {
 	return append([]string{""}, capability.ProviderPlatforms()...)
 }
 
-// schedulerBucketsForGroup 生命周期辅助函数有意排除 group0；full rebuild 构造 group0 canonical 集时必须显式调用 canonical helper。
+// schedulerBucketsForGroup 返回业务分组的桶，group0 返回空列表。
+// 全量重建通过 canonical helper 构造 group0 的桶集合。
 func schedulerBucketsForGroup(groupID int64) []SchedulerBucket {
 	if groupID <= 0 {
 		return nil
@@ -934,7 +934,7 @@ func (s *SnapshotService) setRebuildSnapshot(
 	if queries.remaining[key] > 1 {
 		// 必须保存实际成功编码并写入的有序 ID，不能从原提供商切片重新推导；
 		// 否则不可编码提供商会只出现在后续桶中，破坏两个快照的成员一致性。
-		// 返回切片由当前批次独占，直接接管可避免 10k 提供商场景再次复制。
+		// 返回切片由当前批次独占，可直接保存。
 		queries.snapshotProviderIDs[key] = providerIDs
 	}
 	return nil
@@ -1005,7 +1005,7 @@ func (s *SnapshotService) rebuildFullSnapshot(ctx context.Context, reason string
 		}
 
 		// 较早的 full_rebuild 事件可能读到为后续 group_changed 事件提交的激活状态。
-		// 此处依据最新权威状态恢复，避免前一事件在后一事件执行前阻塞 outbox 水位。
+		// 按数据库中的最新状态恢复，使前一事件可在后一事件处理前推进 outbox 水位。
 		knownHistorical := registeredByGroup[groupID]
 		if knownHistorical == nil {
 			knownHistorical = []SchedulerBucket{}
@@ -1092,8 +1092,8 @@ func (s *SnapshotService) prepareAndRebuildFullSnapshot(
 	ordinaryBuckets []SchedulerBucket,
 	reason string,
 ) error {
-	// 首个 DB 查询前必须完成全部普通 bucket 的 token 预备；任何预备错误都不会留下部分发布。
-	// fresh Reopen task 保持严格锁与 fencing 语义，普通 captured task 继续沿用 lock busy/fence 跳过语义。
+	// 首次 DB 查询前取得全部普通 bucket 的写入 token，预备失败时立即返回。
+	// fresh Reopen task 在锁冲突或令牌失效时返回错误，普通 captured task 在这两种情况下跳过。
 	preparedBuckets := make(map[SchedulerBucket]struct{}, len(captured)+len(reopened))
 	for _, task := range captured {
 		preparedBuckets[task.bucket] = struct{}{}
@@ -1229,7 +1229,7 @@ func (s *SnapshotService) checkOutboxLag(ctx context.Context, watermark int64) {
 	backlogDegraded := backlogKnown && backlogThreshold > 0 && backlog >= int64(backlogThreshold)
 
 	// 重建成功后锁存当前降级阶段，直到确认恢复。重建失败仍可重试，
-	// 但必须等待指数退避冷却期，避免一秒轮询引发重建风暴。
+	// 重试先等待指数退避冷却期，将重建频率限制在轮询频率以下。
 	logLagWarning := s.shouldLogOutboxLagWarning(lagWarning)
 	s.lagMu.Lock()
 	fullyRecovered := !lagDegraded && backlogKnown && !backlogDegraded
@@ -1629,7 +1629,7 @@ func isContextDoneError(ctx context.Context, err error) bool {
 	return errors.Is(ctxErr, context.Canceled) || errors.Is(ctxErr, context.DeadlineExceeded)
 }
 
-// contextDoneError 返回对上游更有意义的上下文错误，兜底保留原始错误。
+// contextDoneError 优先返回 context 的取消或超时错误，否则返回传入的错误。
 func contextDoneError(ctx context.Context, err error) error {
 	if ctx != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {

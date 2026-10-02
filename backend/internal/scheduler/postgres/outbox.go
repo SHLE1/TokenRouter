@@ -86,7 +86,7 @@ func (r *schedulerOutboxRepository) ListAfterAndReleaseDedup(ctx context.Context
 			if err := json.Unmarshal(payloadRaw, &payload); err != nil {
 				return nil, err
 			}
-			// 旧事件在读取边界归一化，不扫描或改写历史 outbox。
+			// 旧事件读取后按当前格式归一化。
 			if ids, ok := payload["account_ids"]; ok {
 				if _, exists := payload["provider_ids"]; !exists {
 					payload["provider_ids"] = ids
@@ -137,8 +137,7 @@ func (r *schedulerOutboxRepository) DeleteConsumedUpTo(ctx context.Context, wate
 	if limit <= 0 {
 		limit = schedulerOutboxDefaultCleanSize
 	}
-	// 十秒宽限只延后清理，不保证低 ID 的迟提交事件重新进入水位之后。
-	// 迟提交事件可能错过消费水位，由周期全量重建恢复；此处没有写入屏障。
+	// 清理保留十秒宽限期。低 ID 的迟提交事件仍可能错过消费水位，由周期全量重建恢复。
 	result, err := r.db.ExecContext(ctx, `
 		WITH doomed AS (
 			SELECT id
@@ -246,12 +245,12 @@ func schedulerOutboxEventSupportsDedup(eventType string) bool {
 	}
 }
 
-// EnqueueProviderQuotaChangedInTx 只写调用者给定事务；资金提交失败时不发布提供商变更。
+// EnqueueProviderQuotaChangedInTx 在调用方事务中写入提供商额度变更，随资金事务一起提交或回滚。
 func EnqueueProviderQuotaChangedInTx(ctx context.Context, tx *sql.Tx, providerID int64) error {
 	return enqueueSchedulerOutbox(ctx, tx, scheduler.SchedulerOutboxEventProviderChanged, &providerID, nil, nil)
 }
 
-// EnqueueSchedulerChange 只在给定连接写入原事件格式；不创建事务或发布提交后副作用。
+// EnqueueSchedulerChange 使用给定连接写入调度事件，事务和提交后的发布由调用方处理。
 func EnqueueSchedulerChange(ctx context.Context, exec postgresinfra.Executor, eventType string, providerID, groupID *int64, payload any) error {
 	return enqueueSchedulerOutbox(ctx, exec, eventType, providerID, groupID, payload)
 }

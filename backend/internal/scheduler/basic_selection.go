@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// BasicProvider 仅包含原基础排序使用的身份与观测；候选不能读取执行凭据。
+// BasicProvider 保存基础排序使用的提供商身份和观测值。
 type BasicProvider struct {
 	ID               int64
 	Type             string
@@ -75,7 +75,7 @@ func FilterBySoonestReset(providers []BasicCandidate, now func() time.Time) []Ba
 		}
 	}
 	if minEnd == nil {
-		// 没有任何提供商拥有活跃窗口，保持原集合
+		// 所有提供商均无活跃窗口，返回输入集合。
 		return providers
 	}
 	result := make([]BasicCandidate, 0, len(providers))

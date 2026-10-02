@@ -26,7 +26,7 @@ type GrokCredentialStateWriter interface {
 }
 
 // GrokCredentialRecovery 由 app 唯一持有，所有请求路径复用其按提供商互斥及运行时状态。
-// 持久写入、回读确认和缓存失效仍使用原有各自的预算。
+// 持久写入、回读确认和缓存失效分别使用各自的时间预算。
 type GrokCredentialRecovery struct {
 	Read       func(context.Context, int64) (*Record, error)
 	State      GrokCredentialStateWriter

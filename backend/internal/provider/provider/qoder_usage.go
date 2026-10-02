@@ -37,7 +37,7 @@ func (s *QoderUsage) Options() providercore.QoderUsageOptions {
 	}
 }
 
-// qoderQuotaProgressFromRaw 将站点归一化结果投影到提供商公开展示值。
+// qoderQuotaProgressFromRaw 将站点用量结果转换为提供商展示数据。
 func qoderQuotaProgressFromRaw(raw *qoder.QuotaProgress, useCapAsTotal bool) *providercore.QoderQuotaProgress {
 	value := qoder.NormalizeQuotaProgress(raw, useCapAsTotal)
 	if value == nil {
@@ -70,7 +70,7 @@ func (s *QoderUsage) fetchQoderQuotaUsage(ctx context.Context, provider *provide
 		return usage, err
 	}
 
-	// PAT 可随时重新交换；认证失败时丢弃旧 session 并仅重试一次，避免额度页永久停留在需重新授权状态。
+	// PAT 认证失败时丢弃缓存 session，重新交换后重试一次。
 	sessionSource.Invalidate(provider.ID)
 	return s.fetchQoderQuotaUsageWithProvider(ctx, provider, sessionSource)
 }

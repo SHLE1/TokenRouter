@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
-// 凭据测试复用实际应用的读取与投影，不在夹具复制微信资格规则。
+// 凭据测试使用应用的读取和数据转换函数，微信资格由支付模块判断。
 type paymentOAuthSettingsFixture map[string]string
 
 func (s paymentOAuthSettingsFixture) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {

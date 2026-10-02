@@ -5,7 +5,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideOpenAIImages 复用现有请求、输出和活动屏障；模型冷却仍归提供商拥有者。
+// provideOpenAIImages 绑定共享的请求、输出和任务跟踪器，模型冷却由提供商模块管理。
 func provideOpenAIImages(text *gatewayhttp.OpenAITextExecutor, activity *gatewayRequestActivity) *gatewayhttp.OpenAIImagesExecutor {
 	cooldown := &provideradapter.ImageToolCooldown{Store: text.Requests.Providers}
 	if text.Requests.Readers != nil {

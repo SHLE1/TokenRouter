@@ -9,7 +9,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideScheduledTests 固定唯一计划/结果用例，构造无定时器或后台任务。
+// provideScheduledTests 构造提供商定时测试用例，定时任务由生命周期管理器启动。
 func provideScheduledTests(plans provider.ScheduledTestPlanRepository, results provider.ScheduledTestResultRepository) *provider.ScheduledTestService {
 	return provider.NewScheduledTestService(plans, results, provider.ScheduledTestOptions{Now: time.Now, NextRun: provideradapter.NextScheduledTestRun})
 }

@@ -31,20 +31,20 @@ type Groups interface {
 	GetByIDLite(context.Context, int64) (*routing.Group, error)
 }
 
-// Snapshots 是受控读取端口；具体缓存解码仍由所属 Adapter 提供。
+// Snapshots 定义提供商快照读取方法，实现方负责缓存解码。
 type Snapshots interface {
 	GetProvider(context.Context, int64) (*provider.Record, error)
 	ListProviders(context.Context, *int64, string, bool) ([]provider.Record, bool, error)
 }
 
-// Reads 只持有现有数据来源，不创建仓储、缓存或回源预算。
+// Reads 包含提供商、分组和快照的数据来源。
 type Reads struct {
 	Providers Providers
 	Groups    Groups
 	Snapshot  Snapshots
 }
 
-// Shared 接收 app 已构造的原生拥有者；普通和高级选择不得复制反馈、计数或共享价格配置缓存。
+// Shared 包含 app 构造的反馈、计数和配置实例，基础与高级选择共用这些实例。
 type Shared struct {
 	Cache         schedulercore.StickyCache
 	Concurrency   *schedulercore.ConcurrencyService
@@ -66,7 +66,7 @@ type GenericDependencies struct {
 	SetProviderError        func(context.Context, int64, string) error
 }
 
-// CompatibleDependencies 只借用同一响应归属、健康状态和配额观测，不能执行供应商交换。
+// CompatibleDependencies 包含兼容选择所需的响应归属、健康状态和配额观测依赖。
 type CompatibleDependencies struct {
 	Generic *Generic
 	Gemini  *Gemini
@@ -89,7 +89,7 @@ type GeminiDependencies struct {
 	QuotaPrecheck *provider.GeminiPrecheck
 }
 
-// Options 是启动配置的显式投影；零值与配置缺省由 app 区分。
+// Options 包含启动配置，app 负责区分未配置和零值。
 type Options struct {
 	Scheduling        schedulercore.FlowOptions
 	DebugRouting      bool
@@ -101,7 +101,7 @@ type Options struct {
 	WSIngressMode     string
 }
 
-// DefaultOptions 对应原未提供进程配置的缺省值，不覆写已配置的显式零值。
+// DefaultOptions 返回未提供进程配置时的默认值。
 func DefaultOptions() Options {
 	return Options{
 		Scheduling: schedulercore.FlowOptions{StickySessionMaxWaiting: 3, StickySessionWaitTimeout: 45 * time.Second, FallbackWaitTimeout: 30 * time.Second, FallbackMaxWaiting: 100, LoadBatchEnabled: true},

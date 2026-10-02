@@ -315,7 +315,7 @@ func applyEnvironmentContextScopedUserPromptReplacementRule(text string, rule co
 			builder.Grow(len(text))
 		}
 		_, _ = builder.WriteString(text[cursor:start])
-		// 默认规则需要限制在单个 environment_context 块内，避免正则中的 .*? 横跨多个块误替换。
+		// 默认规则限定在单个 environment_context 块内，跨块匹配的 .*? 会误替换其他块。
 		_, _ = builder.WriteString(applySingleUserPromptReplacementRule(text[start:end], rule, now))
 		cursor = end
 	}
@@ -483,13 +483,13 @@ func ConfigToRaw(cfg *UserPromptReplacementConfig) (string, error) {
 	return string(raw), nil
 }
 
-// Settings 只提供本配置项的读写，不能访问完整业务配置。
+// Settings 提供提示词替换配置的读写。
 type Settings interface {
 	GetValue(context.Context, string) (string, error)
 	Set(context.Context, string, string) error
 }
 
-// Service 复用唯一原进程缓存，构造不启动工作任务。
+// Service 持有提示词替换规则的进程缓存，规则在读取时加载。
 type Service struct {
 	store    Settings
 	notFound error

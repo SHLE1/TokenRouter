@@ -27,10 +27,9 @@ func buildReplayTurnPayload(turn, itemBytes int) []byte {
 	return []byte(b.String())
 }
 
-// TestOpenAIWSReplayStateBuildAllocationBounded 长会话分配回归：128 turn、每轮
-// ~10KiB 增量，全量历史逐轮重发。replay 状态构建（build + 历史保存）必须共享
-// 正文而非逐轮深拷贝，否则累计分配为 O(T²)（本场景 >160MB）；共享实现的累计
-// 分配与客户端重发总量同阶（~85MB payload 本身之外仅头数组与解析开销）。
+// TestOpenAIWSReplayStateBuildAllocationBounded 检查 128 轮、每轮约 10KiB 增量并重发全量历史时的内存分配。
+// 状态构建和历史保存共用报文正文，累计分配约为 85MB 正文加头数组及解析开销。
+// 逐轮深拷贝会产生 O(T²) 的累计分配，本场景超过 160MB。
 func TestOpenAIWSReplayStateBuildAllocationBounded(t *testing.T) {
 	const (
 		turns     = 128

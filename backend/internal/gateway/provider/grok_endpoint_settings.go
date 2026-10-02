@@ -23,7 +23,7 @@ func GrokBaseURLForMode(mode string) string {
 	}
 }
 
-// GrokDefaultBaseURLReader 保留每次查询读取动态设置的原时点。
+// GrokDefaultBaseURLReader 每次查询时读取动态默认地址设置。
 func GrokDefaultBaseURLReader(settings *gateway.RuntimeSettings) func(context.Context) string {
 	return func(ctx context.Context) string { return GrokBaseURLForMode(settings.GetGrokDefaultBaseURLMode(ctx)) }
 }

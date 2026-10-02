@@ -7,7 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// OpenAISilentRefusalErrorBody 保留网关内部失败编码与旧安全消息。
+// OpenAISilentRefusalErrorBody 返回网关用于静默拒绝的错误码和安全消息。
 func OpenAISilentRefusalErrorBody() []byte {
 	body, err := json.Marshal(map[string]any{
 		"error": map[string]any{

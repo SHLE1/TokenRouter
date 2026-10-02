@@ -362,7 +362,7 @@ func TestAdminServiceBulkUpdateProvidersRejectsGeminiThirdPartyWithoutCustomBase
 	require.Empty(t, repo.bulkUpdateIDs)
 }
 
-// TestAdminServiceBulkUpdateAllowsMixedProviderPlatforms 验证组内已有其他平台提供商不会阻止显式关联。
+// TestAdminServiceBulkUpdateAllowsMixedProviderPlatforms 检查批量更新允许关联已有其他平台提供商的分组。
 func TestAdminServiceBulkUpdateAllowsMixedProviderPlatforms(t *testing.T) {
 	repo := &providerRepoStubForBulkUpdate{
 		getByIDsProviders: []*providercore.Record{

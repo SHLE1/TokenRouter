@@ -104,7 +104,7 @@ func (v catalogueRules) UpstreamModels(ctx context.Context, model string) []stri
 	return v.policy.ListingModels(ctx, model)
 }
 
-// CatalogueProvider 只公开原目录投影，凭据仅留在内部模型规则端口。
+// CatalogueProvider 返回模型目录需要的提供商信息。
 func CatalogueProvider(value *provider.Record, route requeststate.AttemptRoute) routing.CatalogueProvider {
 	snapshot := (ModelPolicy{Record: value, Route: route}).CandidateSnapshot()
 	groups := make([]int64, len(value.ProviderGroups))

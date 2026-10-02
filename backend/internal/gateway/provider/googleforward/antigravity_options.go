@@ -52,7 +52,7 @@ func (s *Antigravity) getUpstreamErrorDetail(body []byte) string {
 }
 
 // getMappedModel 获取映射后的模型名
-// 完全依赖映射配置：提供商映射（通配符）→ 默认映射兜底
+// 优先使用提供商模型映射（支持通配符），未命中时使用默认映射。
 func (s *Antigravity) getMappedModel(provider *gatewayprovider.ExecutionProvider, requestedModel string) string {
 	return provideradapter.MapAntigravityModel(gatewayprovider.ExecutionRecord(provider), requestedModel)
 }

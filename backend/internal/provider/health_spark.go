@@ -6,9 +6,8 @@ import (
 	"time"
 )
 
-// ApplySparkRateLimit 将 Spark 独立配额窗口记录为模型级限流。
-// Spark 的 x-codex-* 使用率和 reset 时间只代表 Spark 模型维度，不能写入提供商级
-// RateLimitResetAt，否则同一 OAuth 提供商上的其他模型也会被错误停调。
+// ApplySparkRateLimit 将 Spark 配额窗口写入模型限流。
+// x-codex-* 使用率和 reset 时间属于 Spark 模型，其他模型继续按各自的额度调度。
 func (s *HealthService) ApplySparkRateLimit(ctx context.Context, provider *Record, modelKey string, statusCode int, spark bool, observe func() (OpenAI429Disposition, *time.Time)) bool {
 	if s == nil || provider == nil || s.providerRepo == nil || statusCode != http.StatusTooManyRequests || !provider.IsOpenAIOAuthLike() {
 		return false
@@ -23,7 +22,7 @@ func (s *HealthService) ApplySparkRateLimit(ctx context.Context, provider *Recor
 	now := s.options.Now()
 	disposition, resetAt := observe()
 	// Spark 只有明确耗尽 5h/7d 窗口时才能使用上游长 reset；普通瞬时 429
-	// 即使携带全局 reset 头，也只能使用短时回避，避免错误冷却数天。
+	// Spark 使用短时冷却，即使响应携带全局 reset 头也按短时规则处理。
 	if disposition != OpenAI429Quota5h && disposition != OpenAI429Quota7d {
 		resetAt = nil
 	}
@@ -42,5 +41,5 @@ func (s *HealthService) ApplySparkRateLimit(ctx context.Context, provider *Recor
 	return true
 }
 
-// CodexSparkRateLimitReason 保留原 Spark 模型限流来源。
+// CodexSparkRateLimitReason 返回 Spark 模型限流的原因。
 const CodexSparkRateLimitReason = "openai_codex_spark_rate_limit"

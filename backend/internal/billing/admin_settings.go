@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// AdminSettings 仅描述资金展示和默认权益配置，不包含运行态消费或余额写入。
+// AdminSettings 包含资金展示和默认权益配置。
 type AdminSettings struct {
 	BalanceIconSVG                  string                       `json:"balance_icon_svg"`
 	BalanceLowNotifyEnabled         bool                         `json:"balance_low_notify_enabled"`

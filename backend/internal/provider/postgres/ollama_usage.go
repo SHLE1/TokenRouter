@@ -13,7 +13,7 @@ import (
 )
 
 // ListOllamaCloudUsageGroupProviders 通过一次 ID 查询和一次批量装载解析所有给定身份的同组提供商。
-// API Key 只作为查询参数使用，不持久化任何派生的共享键。
+// API Key 用于本次查询参数。
 func (r *ProviderStore) ListOllamaCloudUsageGroupProviders(ctx context.Context, providers []*acctcore.Record) ([]acctcore.Record, error) {
 	if r == nil || r.sql == nil {
 		return nil, acctcore.ErrOllamaCloudUsageUnavailable
@@ -348,8 +348,8 @@ func canonicalJSON(raw string) string {
 //     若不改写，PostgreSQL 16 及更早版本会静默返回 NULL，使所有到期列均为 NULL，
 //     最终让 ListDueOllamaCloudUsageProviders 退化到开放分支。
 //
-// 必须使用 jsonpath 而不是直接转换为 ::timestamptz，确保格式匹配但日期非法的值
-// （例如 2026-02-30）按开放策略返回 NULL，而不是中断整条查询。
+// jsonpath 将格式匹配但日期非法的值（例如 2026-02-30）解析为 NULL，
+// 查询按开放策略处理这些记录。
 func ollamaCloudUsageParseRFC3339SQL(expression string) string {
 	return `CASE
 		WHEN ` + expression + ` IS NULL THEN NULL
@@ -372,7 +372,7 @@ func ollamaCloudUsageParseRFC3339SQL(expression string) string {
 
 // ListDueOllamaCloudUsageProviders 为每个精确 API Key 最多返回一个真正到期、
 // 由活动驱动的候选提供商。它会在 LIMIT 前按防抖、最大等待和失败退避规则判断到期，
-// 避免尚未到期的活跃分组挤占名额。
+// 尚未到期的分组留给后续扫描。
 // Provider.LastUsedAt 会写入分组 MAX(last_used_at)，供服务层纯函数再次检查，
 // 防止查询候选与执行刷新之间出现竞态。
 //

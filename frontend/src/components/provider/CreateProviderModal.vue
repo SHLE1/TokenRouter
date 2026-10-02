@@ -212,7 +212,7 @@
                   :description="t('admin.providers.cnProviders.providerMode.paygDesc')"
                   @click="providerMode = 'payg'"
                 />
-                <!-- Coding Plan 仅支持 Kimi / 智谱，DeepSeek 不支持 -->
+                <!-- Coding Plan 支持 Kimi 和智谱。 -->
                 <ProviderChoiceCard
                   :accent="form.platform"
                   v-if="form.platform !== 'deepseek'"
@@ -1111,7 +1111,7 @@
             data-provider-field="header-override"
           />
 
-          <!-- Grok OAuth：自定义上游地址只改写转发端点，OAuth 授权与刷新不受影响。 -->
+          <!-- Grok OAuth 的自定义地址用于请求转发，授权与刷新使用各自的端点。 -->
           <SettingsSection v-if="form.platform === 'grok' && isOAuthFlow" :title="t('admin.providers.sections.grok')">
             <SettingToggleRow
               id="create-grok-custom-base-url"
@@ -1621,7 +1621,7 @@
 import { vContentReveal } from '@/directives/contentReveal'
 import Collapse from '@/components/common/Collapse.vue'
 
-// 统一协议选择只保存原生集合，不在提供商侧配置转换。
+// 协议选择保存提供商支持的协议集合。
 const upstreamProtocols = ref<ProtocolID[] | undefined>(undefined)
 
 import { normalizeLegacyOpenAIExtra, normalizeOpenAICompactMode } from '@/utils/openaiLegacyConfiguration'
@@ -2083,12 +2083,12 @@ const selectedErrorCodes = ref<number[]>([])
 const headerOverrideEnabled = ref(false)
 const headerOverrideRows = ref<HeaderOverrideRow[]>([])
 
-// Grok OAuth：自定义上游地址（base_url 仅改写转发端点，OAuth 授权/刷新不受影响）
+// Grok OAuth 自定义转发地址，授权与刷新使用各自的端点。
 const grokOAuthCustomBaseUrlEnabled = ref(false)
 const grokOAuthBaseUrl = ref('')
 
 // Grok OAuth 三条创建路径（授权码/RT 批量/SSO 批量）共用的前置校验。
-// 授权码路径必须在兑换 code 之前调用，避免校验失败时白白消耗一次性授权码。
+// 兑换 code 前校验上游配置，配置错误时授权码仍可继续使用。
 const validateGrokOAuthUpstreamConfig = (): boolean => {
   if (grokOAuthCustomBaseUrlEnabled.value) {
     const trimmed = grokOAuthBaseUrl.value.trim()
@@ -2129,7 +2129,7 @@ const openaiPassthroughEnabled = ref(false)
 const openaiFlattenNamespacesEnabled = ref(false)
 const openAICompactMode = ref<OpenAICompactMode>('force_on')
 const openAINativeCompactionV2Mode = ref<OpenAICompactMode>('force_on')
-// HTTP continuation 默认关闭，避免把中继提供商误判为支持 previous_response_id。
+// HTTP continuation 默认关闭，确认支持 previous_response_id 后启用。
 const openAIResponsesContinuationSupported = ref(false)
 // 图片回填默认关闭，只对 OpenAI API Key 提供商生效。
 const openAIImagesURLToB64JSON = ref(false)
@@ -2954,7 +2954,7 @@ const setAllowedModels = (models: string[]) => {
 
 const applyPersistedModelRestriction = (credentials: Record<string, unknown>) => {
   // 普通提供商将请求侧映射与最终白名单拆开持久化。
-  // 这里即使白名单为空，也要显式写入 []，避免后端回退到 legacy 的自映射白名单解析。
+  // 空白名单也写入 []，后端据此使用空列表；字段缺失时后端会解析自映射白名单。
   const persisted = buildPersistedModelRestriction(allowedModels.value, modelMappings.value)
   if (persisted.modelMapping) {
     credentials.model_mapping = persisted.modelMapping
@@ -3247,7 +3247,7 @@ const finishClose = () => {
 }
 
 const handleClose = () => {
-  // Qoder 创建请求不可取消；等待服务端响应，避免提供商已创建但页面丢弃成功事件。
+  // Qoder 创建期间等待服务端响应，再处理创建成功事件和关闭弹窗。
   if (form.platform === 'qoder' && submitting.value) return
   finishClose()
 }
@@ -3279,7 +3279,7 @@ const buildOpenAIExtra = (base?: Record<string, unknown>): Record<string, unknow
     delete extra.openai_passthrough
     delete extra.openai_oauth_passthrough
   }
-  // 关闭时删除默认项，避免提供商 extra 堆积无意义的 false。
+  // 关闭时删除 extra 中的默认项。
   if (form.type === 'oauth' && openaiFlattenNamespacesEnabled.value) {
     extra.openai_responses_flatten_namespaces = true
   } else {
@@ -3469,7 +3469,7 @@ const handleSubmit = async () => {
       failAt(t('admin.providers.pleaseEnterProviderName'), 'name')
       return
     }
-    // 第 1 步的配置在进入授权前先校验，失败时还能定位到所在页签；授权阶段保留原有兜底校验。
+    // 第 1 步的配置在进入授权前校验，失败时定位到所在页签。授权阶段再次校验。
     if (form.platform === 'grok' && !validateGrokOAuthUpstreamConfig()) return
     if (tempUnschedEnabled.value && buildTempUnschedRules(tempUnschedRules.value).length === 0) {
       failAt(t('admin.providers.tempUnschedulable.rulesInvalid'), 'temp-unsched')
@@ -3670,7 +3670,7 @@ const handleSubmit = async () => {
     base_url: enteredBaseUrl || defaultBaseUrl,
     api_key: apiKeyValue.value.trim()
   }
-  // New API 钱包是用户级余额；访问令牌只写入 Credentials，不进入 Extra。
+  // New API 钱包是用户级余额，访问令牌写入 Credentials。
   if (upstreamUsageAdapter.value === 'new_api') {
     if (upstreamUsageWalletAccessToken.value.trim()) {
       credentials.new_api_user_access_token = upstreamUsageWalletAccessToken.value.trim()
@@ -3857,7 +3857,7 @@ const createQoderOAuthProvider = async (
     }
     return created
   } finally {
-    // 只释放自己持有的锁，旧流程的 finally 不能解除新流程的创建锁。
+    // finally 按流程代次释放本次持有的创建锁。
     if (qoderProviderCreateGeneration.value === context.generation) {
       qoderProviderCreateGeneration.value = null
       submitting.value = false
@@ -4559,7 +4559,7 @@ const handleOpenAIImportCodexSession = async (content: string) => {
   try {
     await loadOpenAIOAuthImportDefaults()
     await loadProtocolCatalog()
-    // 等默认配置加载完成后再生成凭据快照，避免异步竞态覆盖管理员的模型限制。
+    // 默认配置加载完成后生成凭据快照，快照包含管理员设置的模型限制。
     const credentialExtras = buildOpenAICodexImportCredentialExtras()
     if (credentialExtras === null) {
       return
@@ -4638,7 +4638,7 @@ const handleOpenAIImportCodexPAT = async (accessToken: string) => {
 
   try {
     await loadOpenAIOAuthImportDefaults()
-    // 等默认配置加载完成后再生成凭据快照，避免异步竞态覆盖管理员的模型限制。
+    // 默认配置加载完成后生成凭据快照，快照包含管理员设置的模型限制。
     const credentialExtras = buildOpenAICodexImportCredentialExtras()
     if (credentialExtras === null) {
       return

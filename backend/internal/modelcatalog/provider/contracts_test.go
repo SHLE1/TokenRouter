@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCatalogQueryFreezesOneCandidateFactory 验证一次查询只生成一次完整身份候选，不再尝试日期回退。
+// TestCatalogQueryFreezesOneCandidateFactory 检查每次查询生成一次完整型号候选。
 func TestCatalogQueryFreezesOneCandidateFactory(t *testing.T) {
 	factories, lookups := 0, 0
 	options := Options{ModelLookupCandidates: func() func(string) []string {

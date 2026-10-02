@@ -36,7 +36,7 @@ func MergeQuotaAutoPauseSettings(raw string, quota OpsOpenAIProviderQuotaAutoPau
 	return value, nil
 }
 
-// ParseQuotaAutoPauseSettings 只读取本模块 JSON 中的提供商只读投影。
+// ParseQuotaAutoPauseSettings 从 Ops JSON 配置解析提供商额度自动暂停设置。
 func ParseQuotaAutoPauseSettings(raw string) OpsOpenAIProviderQuotaAutoPauseSettings {
 	cfg := defaultOpsAdvancedSettings()
 	if strings.TrimSpace(raw) != "" {

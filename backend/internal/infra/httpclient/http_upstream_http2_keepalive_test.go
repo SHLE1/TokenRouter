@@ -35,8 +35,7 @@ func requireHTTP2Configured(t *testing.T, tr *http.Transport, msg string) {
 // TestEnableOpenAIHTTP2KeepAlive_EnablesPingHealthCheck 验证Codex/OpenAI 上游改走 HTTP/2 后，池化连接被代理/NAT 静默掐断会成为“死连接”：
 // 两端都以为连接存活，请求落上去会挂到 TCP 重传超时（分钟级）才失败。Go 的
 // http2.Transport 默认 ReadIdleTimeout=0（不发健康 PING），无法检测这种死连接。
-// 必须显式启用主动 PING 探测，让死连接被提前剔除，而不是只靠 ResponseHeaderTimeout
-// 事后兜底。
+// 启用主动 PING 探测，在 ResponseHeaderTimeout 触发前剔除死连接。
 func TestEnableOpenAIHTTP2KeepAlive_EnablesPingHealthCheck(t *testing.T) {
 	tr := &http.Transport{}
 

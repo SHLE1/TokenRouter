@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOpenAIHTTPResourceBindingSharesImageCapacity 验证共享资源与 HTTP 入口必须看到同一个已占用图片槽，不能各建一份 limiter。
+// TestOpenAIHTTPResourceBindingSharesImageCapacity 检查共享资源和 HTTP 入口使用同一个图片并发限制器。
 func TestOpenAIHTTPResourceBindingSharesImageCapacity(t *testing.T) {
 	resources := &gatewayhttp.OpenAIHTTPResources{
 		Concurrency:  gatewayhttp.NewConcurrencyHelper(nil, gatewayhttp.SSEPingFormatNone, 0),

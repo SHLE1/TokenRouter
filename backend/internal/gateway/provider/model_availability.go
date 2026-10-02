@@ -9,12 +9,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// AvailabilityProviders 只读取持久配置候选，不使用瞬时调度缓存或执行凭据入口。
+// AvailabilityProviders 读取持久配置中的候选提供商。
 type AvailabilityProviders interface {
 	ListModelAvailabilityCandidates(context.Context, *int64, []string, bool) ([]provider.Record, error)
 }
 
-// NewModelAvailability 绑定提供商查询与分组映射读取端口，不维护独立缓存。
+// NewModelAvailability 绑定提供商查询和分组映射读取接口。
 // @project-doc docs/architecture/provider_scheduling_and_cache.md#advanced_scheduler_selection
 func NewModelAvailability(source AvailabilityProviders, groupPolicies *routing.PricingConfigService, compatible bool) *routing.ModelAvailability {
 	result := &routing.ModelAvailability{

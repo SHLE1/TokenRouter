@@ -41,8 +41,7 @@ func (s *OpenAITextExecutor) httpFailover(
 		(provider != nil && provider.Record.Platform == capability.PlatformGrok && grok.IsGrokContentPolicyRejection(resp.StatusCode, respBody)) {
 		return nil
 	}
-	// 没有 gin 上下文时无法安全评估请求级临时规则；保持上游语义，
-	// 仅让默认已判定为可故障转移的错误继续进入提供商策略管线。
+	// 缺少 Gin 上下文时，按默认故障转移分类决定是否执行提供商策略。
 	if c == nil && !shouldFailover && (provider == nil || provider.Record.Platform != capability.PlatformGrok) {
 		return nil
 	}

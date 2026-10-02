@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-// ErrClaudeCodeOnly 保留原客户端限制的错误身份及消息。
+// ErrClaudeCodeOnly 表示该分组仅允许 Claude Code 客户端。
 var ErrClaudeCodeOnly = errors.New("this group only allows Claude Code clients")
 
 // ClientGroupPolicy 明确保留两个已有入口的快照缺失与回退 ID 差异。

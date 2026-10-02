@@ -14,7 +14,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// ImageResponseOptions 只提供本次输出和观测，不保存提供商或配置。
+// ImageResponseOptions 配置图片响应的读取、输出和观测。
 type ImageResponseOptions struct {
 	PreserveContentType bool
 	Backfill            func([]byte) []byte
@@ -33,14 +33,14 @@ type ImageResponseOptions struct {
 	Logf                func(string, ...any)
 }
 
-// WriteImagesStreamEvent 保留原图片事件、读取和断开收尾时序。
+// WriteImagesStreamEvent 写出并刷新一条图片 SSE 事件。
 func WriteImagesStreamEvent(c *upstream.OutputContext, options ImageResponseOptions, flusher http.Flusher, eventName string, payload []byte) error {
 	if strings.TrimSpace(eventName) != "" {
 		if _, err := fmt.Fprintf(c.Writer, "event: %s\n", eventName); err != nil {
 			return err
 		}
 	}
-	// 图片事件的语义观测独立于 HTTP 是否已提交，不改变旧计费张数。
+	// partial_image 和 completed 事件标记为内容输出，completed 同时标记为终态。
 	if strings.HasSuffix(eventName, ".partial_image") || strings.HasSuffix(eventName, ".completed") {
 		c.NextEvent(true, strings.HasSuffix(eventName, ".completed"))
 	}
@@ -51,7 +51,7 @@ func WriteImagesStreamEvent(c *upstream.OutputContext, options ImageResponseOpti
 	return nil
 }
 
-// TryWriteImagesStreamEvent 保留原图片事件、读取和断开收尾时序。
+// TryWriteImagesStreamEvent 写出图片事件，并更新断连状态和最后写入时间。
 func TryWriteImagesStreamEvent(
 	c *upstream.OutputContext, options ImageResponseOptions,
 	flusher http.Flusher,
@@ -76,7 +76,7 @@ func TryWriteImagesStreamEvent(
 	return true
 }
 
-// ReadImagesOAuthNonStreaming 保留原图片事件、读取和断开收尾时序。
+// ReadImagesOAuthNonStreaming 读取 OAuth 图片结果，输出响应并返回用量和图片数量。
 func ReadImagesOAuthNonStreaming(
 	resp *http.Response,
 	sink upstream.OutputSink, options ImageResponseOptions,
@@ -130,7 +130,7 @@ func ReadImagesOAuthNonStreaming(
 	return usage, len(results), OpenAIResponsesImageResultSizes(results), nil
 }
 
-// ReadImagesOAuthStreaming 保留原图片事件、读取和断开收尾时序。
+// ReadImagesOAuthStreaming 转发 OAuth 图片流，收集图片数量、尺寸和用量。
 func ReadImagesOAuthStreaming(
 	resp *http.Response,
 	c *upstream.OutputContext, options ImageResponseOptions,

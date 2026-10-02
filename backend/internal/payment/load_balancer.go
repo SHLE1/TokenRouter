@@ -385,7 +385,7 @@ func (lb *DefaultLoadBalancer) GetInstanceConfig(ctx context.Context, instanceID
 	return config, nil
 }
 
-// observe 观察端口不安装日志后端，app 保留原级别和字段。
+// observe 将日志级别、消息和字段传给注入的观察函数。
 func (lb *DefaultLoadBalancer) observe(level, message string, attrs ...any) {
 	if lb.runtime.Observe != nil {
 		lb.runtime.Observe(level, message, attrs...)

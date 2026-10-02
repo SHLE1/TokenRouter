@@ -8,7 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// Observation 区分显式零用量、语义内容和终态；不推算缺失字段。
+// Observation 分别记录响应报告的用量、内容输出和终态，零用量与缺失用量分开表示。
 type Observation struct {
 	HasUsage, Semantic, Terminal bool
 	Model                        string

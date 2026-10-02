@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// RuntimeConfig 只为规则调用提供当前配置与窗口视图，不持有调度缓存或执行资源。
+// RuntimeConfig 为规则计算提供当前配置和窗口数据。
 // 凭据不会进入这个只读配置输入。
 type RuntimeConfig struct {
 	Extra              map[string]any `json:"-"`

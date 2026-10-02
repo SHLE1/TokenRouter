@@ -1003,7 +1003,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 自定义日期输入在浅色模式使用中性焦点圈，暗色模式保留原品牌强调。 */
+/* 自定义日期输入在浅色模式使用中性焦点圈，暗色模式使用品牌色。 */
 .input-ring {
   transition: box-shadow var(--motion-normal) var(--motion-ease), border-color var(--motion-normal) var(--motion-ease);
 }

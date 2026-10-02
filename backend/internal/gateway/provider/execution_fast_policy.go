@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
-// ExecutionFastPolicy 在原请求位置惰性读取设置和价格，不持有第二份缓存。
+// ExecutionFastPolicy 在处理请求时读取 Fast 设置和价格。
 type ExecutionFastPolicy struct {
 	Readers *RuntimeReaders
 	Prices  *billing.PriceResolver
@@ -29,14 +29,8 @@ type ExecutionFastPolicy struct {
 //   - ModelWhitelist 将规则限制到指定模型，FallbackAction 处理未匹配模型
 //   - 用户专属规则优先于全局规则，两组内部均保持配置顺序并首条命中
 //
-// 与 Claude BetaPolicy 的差异（保留首条匹配 short-circuit）：
-//   - BetaPolicy 处理的是 anthropic-beta header 中的 token 集合，不同
-//     规则可能针对不同 token，filter 需要累加成 set；block 则 first-match。
-//   - OpenAI fast policy 操作的是单个字段 service_tier：filter 即删字段，
-//     没有可累加的对象。一次请求只携带一个 service_tier，规则的 tier
-//     维度天然互斥；同一 (scope, tier) 下若多条规则的 model whitelist
-//     发生重叠，admin 可通过规则顺序明确意图。因此采用 first-match 而
-//     非 BetaPolicy 那样的"block 覆盖 filter 覆盖 pass"语义。
+// 一次请求携带一个 service_tier，filter 删除该字段。同一 scope 和 tier 下
+// 多条模型白名单重叠时，管理员通过配置顺序决定先应用哪条规则。
 func (s *ExecutionFastPolicy) Evaluate(ctx context.Context, provider *ExecutionProvider, model, serviceTier string) (action, errMsg string) {
 	if s == nil || s.Readers == nil {
 		return anthropic.BetaPolicyActionPass, ""
@@ -69,13 +63,9 @@ func openAIFastPolicyUserID(ctx context.Context) int64 {
 	return userID
 }
 
-// openAIFastPolicyCtxKey 是 context 中预取的 OpenAIFastPolicySettings 缓存
-// 键，仅用于 WebSocket 长会话内多帧复用同一份策略快照，避免每帧 DB 命中。
-//
-// Trade-off：策略变更不会影响当前 WS session（只影响新 session）。这是
-// 有意为之 —— 对长会话来说，"策略一致性"比"立刻生效"更重要，且 Claude
-// BetaPolicy 的 gin.Context 缓存也是同样取舍。需要 hot-reload 时管理员
-// 可以通过踢断 session 强制刷新。
+// openAIFastPolicyCtxKeyType 标识 WebSocket 会话共用的 Fast 策略快照。
+// 同一会话的各帧复用该快照，策略更新在新会话中生效。
+// 管理员可断开会话，使重连后的请求读取新策略。
 type openAIFastPolicyCtxKeyType struct{}
 
 var openAIFastPolicyCtxKey = openAIFastPolicyCtxKeyType{}

@@ -46,7 +46,7 @@ func (t *APIKeyModelRedirectTrace) RegisterModel(model string) {
 	t.mu.Unlock()
 }
 
-// ResponseModels 返回按字典序排列的内部模型快照，避免并发写响应时遍历可变 map。
+// ResponseModels 返回按字典序排列的模型副本，供并发响应写入使用。
 func (t *APIKeyModelRedirectTrace) ResponseModels() []string {
 	if t == nil {
 		return nil
@@ -61,7 +61,7 @@ func (t *APIKeyModelRedirectTrace) ResponseModels() []string {
 	return models
 }
 
-// ReplaceModelMetadata 只替换常见协议中的模型元数据字段，不触碰正文内容。
+// ReplaceModelMetadata 替换常见协议的模型元数据字段，正文保持原字节。
 func ReplaceModelMetadata(data []byte, fromModel, toModel string) []byte {
 	fromModel = strings.TrimSpace(fromModel)
 	toModel = strings.TrimSpace(toModel)
@@ -101,7 +101,7 @@ func (t *APIKeyModelRedirectTrace) RegisterResponsePayload(data []byte) {
 	}
 }
 
-// responseMetadataModels 只读取协议模型字段，不扫描正文或工具参数中的同名文本。
+// responseMetadataModels 从协议模型字段中收集名称。
 func responseMetadataModels(data []byte) []string {
 	payloads := make([][]byte, 0, 4)
 	trimmed := bytes.TrimSpace(data)
@@ -151,7 +151,7 @@ func responseMetadataModels(data []byte) []string {
 	return models
 }
 
-// ContextKey 供旧上下文边界保留唯一 Trace；新用例直接接收 Trace。
+// ContextKey 标识 context 中的 Trace，支持参数传递的调用方可直接传入 Trace。
 type ContextKey struct{}
 
 func WithContext(ctx context.Context, trace *APIKeyModelRedirectTrace) context.Context {

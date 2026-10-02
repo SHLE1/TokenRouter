@@ -9,7 +9,7 @@ type opsErrorLogJob struct {
 	entry *ops.OpsInsertErrorLogInput
 }
 
-// captureOpsErrorQueue 是单测试独立的同步观察替身，不安装全局队列。
+// captureOpsErrorQueue 是各测试独立使用的同步观测替身。
 type captureOpsErrorQueue struct {
 	health ops.ErrorLogQueueHealth
 	jobs   chan opsErrorLogJob

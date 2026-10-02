@@ -105,9 +105,8 @@ func (s *authCacheInvalidatorStub) InvalidateAuthCacheByGroupID(ctx context.Cont
 	s.groupIDs = append(s.groupIDs, groupID)
 }
 
-// TestAdminService_UpdateUserBalance_UsesAtomicPrimitives 验证管理员调账必须走原子的 AdjustBalance/SetBalance，而不是"读余额→算新值→整行写回"，
-// 后者会把并发的计费扣款覆盖掉。userRepoStub.Update 对未预期的调用会 panic，
-// 因此这里同时证明它没被走到。
+// TestAdminService_UpdateUserBalance_UsesAtomicPrimitives 检查管理员调账调用原子的 AdjustBalance/SetBalance。
+// 先读余额再整行写回会覆盖并发扣款。夹具的 Update 方法在被调用时 panic。
 func TestAdminService_UpdateUserBalance_UsesAtomicPrimitives(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -247,7 +246,7 @@ func (*balanceRedeemRepoStub) CreateUsage(context.Context, *billing.RedeemCodeUs
 	return nil
 }
 
-// rechargeSettingsFixture 只组合推广开关读取，不复制设置解释规则。
+// rechargeSettingsFixture 使用推广设置读取器查询管理员充值返利开关。
 type rechargeSettingsFixture struct {
 	identity.AdminUserSettings
 	runtime *promotion.RuntimeSettings

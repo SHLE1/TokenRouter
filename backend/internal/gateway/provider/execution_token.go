@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// ExecutionTokenSource 仅供执行提供商的受控凭据读取，原生源不接收旧实体。
+// ExecutionTokenSource 定义执行请求读取提供商凭据的接口。
 type ExecutionTokenSource interface {
 	GetAccessToken(context.Context, *provider.Record) (string, error)
 }

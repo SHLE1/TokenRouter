@@ -6,7 +6,7 @@ type GeminiSession struct {
 	SessionHash string
 }
 
-// GeminiSessionOption 保留可省略、nil 和按顺序覆盖的原调用约定。
+// GeminiSessionOption 可省略或传 nil，多个选项按顺序覆盖。
 type GeminiSessionOption func(*GeminiSession)
 
 func WithGeminiSession(groupID int64, sessionHash string) GeminiSessionOption {

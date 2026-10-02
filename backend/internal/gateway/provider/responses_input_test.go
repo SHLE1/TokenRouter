@@ -145,5 +145,5 @@ func TestOpenAIResponsesInputNeverRequestsPreemptiveTruncation(t *testing.T) {
 	}
 }
 
-// 原边界长度仅作回归数据，生产链不静默截断。
+// openAIResponsesInputTextMaxChars 是长文本透传测试的输入长度。
 const openAIResponsesInputTextMaxChars = 10000000

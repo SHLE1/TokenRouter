@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 )
 
-// WeChatOAuthOptions 是一次授权所需的配置投影，模式与地址解析仍由 HTTP 负责。
+// WeChatOAuthOptions 包含一次微信授权所需的配置，模式和地址由 HTTP 层解析。
 type WeChatOAuthOptions struct {
 	Mode, AppID, AppSecret, AuthorizeURL, Scope, RedirectURI, FrontendCallback, APIBaseURL string
 	OpenEnabled, MPEnabled                                                                 bool
@@ -53,7 +53,7 @@ func WeChatFallbackUsername(subject string) string {
 	if subject == "" {
 		return "wechat_user"
 	}
-	// 保留旧授权流程的 512 字节 UTF-8 安全截断边界。
+	// 按 UTF-8 字符截断到 512 字节以内。
 	return "wechat_" + logredact.TruncateUTF8Value(subject, 512)
 }
 

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestScheduledPlanStorageContract 验证使用隔离 PostgreSQL 验证计划边界、结果保留数及级联删除，沿用原表和 SQL。
+// TestScheduledPlanStorageContract 在隔离 PostgreSQL 中检查计划限制、结果保留数和级联删除。
 func TestScheduledPlanStorageContract(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)

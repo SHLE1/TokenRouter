@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestPriorityCacheTTLUsesPricesRegardlessOfSource 验证来源只作追溯，不改变 Fast TTL 金额和展示。
+// TestPriorityCacheTTLUsesPricesRegardlessOfSource 检查各价格来源的 Fast TTL 金额和展示一致。
 func TestPriorityCacheTTLUsesPricesRegardlessOfSource(t *testing.T) {
 	for _, source := range []string{"models.dev", "local_supplement"} {
 		t.Run(source, func(t *testing.T) {
@@ -36,7 +36,7 @@ func TestPriorityCacheTTLUsesPricesRegardlessOfSource(t *testing.T) {
 	}
 }
 
-// TestPartialImageCardDoesNotDeclareMissingSizesFree 覆盖纯价卡投影，目录补全由应用层统一完成。
+// TestPartialImageCardDoesNotDeclareMissingSizesFree 检查缺失尺寸的价卡按缺价处理，目录补全由应用层执行。
 func TestPartialImageCardDoesNotDeclareMissingSizesFree(t *testing.T) {
 	zero := 0.0
 	resolved := ResolvePriceCards(&ModelPricingEntry{BillingMode: BillingModeImage, Intervals: []PricingInterval{{TierLabel: "1K", PerRequestPrice: &zero}}}, nil, PricingSourceUnpriced, true)

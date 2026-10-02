@@ -58,7 +58,7 @@ func (r *gatewayForwardErrorPolicyRepoStub) SetOverloaded(context.Context, int64
 // 已观测到的上游 usage 不得随错误一起被丢弃，Forward 必须把部分结果与错误一同
 // 返回，供 handler 照常提交 usage 记录。
 
-// newForwardPartialUsageServiceForTest 夹具只组合本条执行链的原生依赖，不构造旧网关服务。
+// newForwardPartialUsageServiceForTest 构造部分用量测试所需的转发依赖。
 func newForwardPartialUsageServiceForTest(upstream *anthropicHTTPUpstreamRecorder) *messageforward.Runtime {
 	return newPartialRuntime(upstream, nil)
 }

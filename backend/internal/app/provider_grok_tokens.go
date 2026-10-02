@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
-// provideGrokTokens 让请求与手动查询共用原生缓存及刷新协调器。
+// provideGrokTokens 让网关请求与手动查询共用 token 缓存和刷新协调器。
 func provideGrokTokens(store *postgres.ProviderStore, cache provider.AccessTokenCache, authorization *provider.GrokAuthorization, refresh *provider.OAuthRefreshAPI) *provider.GrokTokenSource {
 	executor := provider.NewGrokTokenRefresher(authorization)
 	return &provider.GrokTokenSource{

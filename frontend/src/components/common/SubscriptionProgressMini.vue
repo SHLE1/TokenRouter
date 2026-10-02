@@ -137,7 +137,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 
-/* 手机端顶部状态栏空间有限，弹层按视口留边居中，避免右侧按钮定位把内容挤出左边界。 */
+/* 手机端弹层在视口内居中，并在两侧留边。 */
 @media (max-width: 639px) {
   .subscription-progress-popover {
     position: fixed;

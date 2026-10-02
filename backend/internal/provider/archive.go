@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider/transfer"
 )
 
-// ArchiveProviders 只提供文件导入/导出所需的管理操作，不暴露仓储或完整旧聚合服务。
+// ArchiveProviders 提供文件导入和导出所需的管理操作。
 type ArchiveProviders interface {
 	ListProviders(context.Context, int, int, string, string, string, string, int64, string, string, string) ([]Record, int64, error)
 	GetProvidersByIDs(context.Context, []int64) ([]*Record, error)
@@ -40,7 +40,7 @@ type ArchiveOptions struct {
 	Info, Error, Debug func(string, ...any)
 }
 
-// Archive 拥有备份查询、逐项创建和原后置行为，实际平台交换通过窄端口执行。
+// Archive 执行备份查询、逐项创建和导入后操作，通过接口访问供应商。
 type Archive struct {
 	providers ArchiveProviders
 	proxies   ArchiveProxies
@@ -274,7 +274,7 @@ func (h *Archive) Import(ctx context.Context, req transfer.DataImportRequest) (t
 		result.ProviderCreated++
 	}
 
-	// 异步设置 Antigravity 隐私，避免大量导入时阻塞请求
+	// Antigravity 隐私设置异步执行，批量导入请求先返回。
 	if len(privacyProviders) > 0 && h.options.Background != nil && h.options.ForcePrivacy != nil {
 		h.options.Background("handler/admin/provider_data.go:importData", func() {
 			defer func() {

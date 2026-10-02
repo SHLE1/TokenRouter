@@ -148,7 +148,7 @@ func (s *QoderAuthorizationStore[F]) FinishCompletion(sessionID string, tokenInf
 	}
 }
 
-// Start 显式启动当前会话实例的清理循环。
+// Start 启动当前会话实例的清理循环。
 func (s *QoderAuthorizationStore[F]) Start() {
 	s.runtimeMu.Lock()
 	defer s.runtimeMu.Unlock()
@@ -254,7 +254,7 @@ func (s *QoderAuthorization[F]) completeSession(ctx context.Context, sessionID, 
 	}
 	defer done()
 	ctx = operation
-	// proxyID 仅为旧客户端兼容字段；OAuth 会话必须使用创建时冻结的代理。
+	// OAuth 会话使用创建时固定的代理，proxyID 字段供旧客户端传入。
 	_ = proxyID
 	for {
 		session, cachedTokenInfo, waitCh, err := s.Store.BeginCompletion(sessionID, state)

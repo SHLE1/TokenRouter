@@ -47,7 +47,7 @@ func provideBatchRuntime(repo batchimage.BatchImageRepository, providers *provid
 	return batchimage.NewWorkerRuntime(worker, recovery, cfg != nil && cfg.BatchImage.QueueEnabled)
 }
 
-// batchWorkerOptions 只投影启动配置，默认值和校验由任务模块维护。
+// batchWorkerOptions 从启动配置读取 worker 参数，默认值和校验由任务模块维护。
 func batchWorkerOptions(cfg *config.Config) batchimage.BatchImageWorkerOptions {
 	if cfg == nil {
 		return batchimage.NormalizeBatchImageWorkerOptions(batchimage.BatchImageWorkerOptions{})

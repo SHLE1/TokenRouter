@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestProviderHealthRedisCompatibility 验证独立缓存实例共享原 Redis 命名空间和 Lua 语义，不创建第二套计数或限流状态。
+// TestProviderHealthRedisCompatibility 检查独立缓存实例共用 Redis 命名空间，Lua 操作读写同一份计数和限流状态。
 func TestProviderHealthRedisCompatibility(t *testing.T) {
 	client := rediscontainer.New(t)
 	ctx := context.Background()

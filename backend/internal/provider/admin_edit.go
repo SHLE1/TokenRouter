@@ -109,13 +109,13 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 	} else if len(input.Credentials) > 0 {
 		incomingCredentials := PreserveProtocolCredentials(provider.Credentials, input.Credentials)
 		if IsOpenAIAPIKeyProvider(provider) {
-			// 先规范化本次增量，确保旧客户端提交的别名能覆盖提供商中已有的新键。
+			// 先规范化本次增量，请求中的兼容别名按本次输入覆盖已保存的配置。
 			if err := NormalizeOpenAIAPIKeyConfigurationPatch(incomingCredentials, nil); err != nil {
 				return nil, err
 			}
 		}
-		// 敏感子键采用"incoming 没提供就保留"的合并语义：前端响应已脱敏，
-		// 全对象 PUT 编辑时不会再带回 token，避免覆盖时清空已有凭证。
+		// 前端拿到脱敏后的凭据，提交完整对象时会省略敏感字段。
+		// 更新时从当前记录补齐这些字段。
 		provider.Credentials = MergePreservingSensitiveCreds(provider.Credentials, incomingCredentials)
 		// 校验并规范化请求头覆写配置（header 名小写化、格式检查）
 		if err := egress.NormalizeHeaderOverrideCredentials(provider.Credentials); err != nil {
@@ -127,14 +127,14 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 			return nil, err
 		}
 	}
-	// Extra 使用 map：需要区分“未提供(nil)”与“显式清空({})”。
+	// Extra 为 nil 时保持当前值，空 map 表示清空。
 	// 关闭配额限制时前端会删除 quota_* 键并提交 extra:{}，此时也必须落库；只有废弃键时则不替换。
 	if shouldReplaceExtra {
 		DiscardDeprecatedProviderExtra(normalizedExtra)
 		if err := NormalizeUpstreamUsageExtra(normalizedExtra); err != nil {
 			return nil, err
 		}
-		// 旧版编辑器可能未携带该键；整份 Extra 替换时仍保留已有查询配置。
+		// 请求省略查询配置键时，整份 Extra 替换也保持已保存的查询配置。
 		if _, provided := input.Extra[UpstreamUsageQueryExtraKey]; !provided {
 			if value, exists := provider.Extra[UpstreamUsageQueryExtraKey]; exists {
 				if normalized, ok := NormalizedUpstreamUsageConfigValue(value); ok {
@@ -164,7 +164,7 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 			}
 		}
 		if IsOpenAIAPIKeyProvider(provider) {
-			// 新增能力字段对旧版编辑器保持兼容；未回传时保留已有管理员设置。
+			// 请求省略能力字段时，保持已保存的管理员设置。
 			_, continuationProvided := input.Extra[ExtraKeyResponsesContinuationSupported]
 			if !continuationProvided {
 				if value, ok := provider.Extra[ExtraKeyResponsesContinuationSupported]; ok {
@@ -201,7 +201,7 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 	}
 	// 影子代理由母提供商同步，不能独立编辑，否则两次同步之间会出现出站代理不一致。
 	if input.ProxyID != nil && !provider.IsCredentialShadow() {
-		// 0 表示清除代理（前端发送 0 而不是 null 来表达清除意图）
+		// 0 表示清除代理，前端通过这个值提交清除操作。
 		if *input.ProxyID == 0 {
 			provider.ProxyID = nil
 		} else {
@@ -357,7 +357,7 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 		}
 	}
 
-	// 重新查询以确保返回完整数据（包括正确的 Proxy 关联对象）
+	// 重新查询完整数据，包括更新后的 Proxy 关联对象。
 	updated, err := s.providerRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -365,7 +365,7 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 	return updated, nil
 }
 
-// UpdateProviderExtra 仅对提供商 Extra JSONB 做 key 级合并，避免覆盖运行态或持久化配置键。
+// UpdateProviderExtra 按键合并 Extra JSONB，其余运行状态和配置字段保持当前值。
 func (s *Admin) UpdateProviderExtra(ctx context.Context, id int64, updates map[string]any) error {
 	updates = SanitizedCodexFingerprintExtraUpdates(updates)
 	DiscardDeprecatedProviderExtra(updates)
@@ -438,7 +438,7 @@ func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvid
 		return nil, err
 	}
 
-	// 预取所有目标提供商，供凭据与代理守卫共用，避免多次 DB 查询。
+	// 一次预取全部目标提供商，供凭据和代理校验共用。
 	var cachedTargets []*Record
 	hasOpenAIConfigPatch := HasOpenAIConfigurationPatch(input.Credentials, input.Extra)
 	if len(input.Credentials) > 0 || input.ProxyID != nil || hasOpenAIConfigPatch {
@@ -475,7 +475,7 @@ func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvid
 		}
 	}
 	// 批量写入凭据时，目标不能包含影子。
-	// ProviderIDs 此时已包含显式 ID 和筛选条件解析出的 ID。
+	// ProviderIDs 包含请求传入的 ID 和筛选结果中的 ID。
 	if len(input.Credentials) > 0 {
 		for _, acc := range cachedTargets {
 			if acc != nil && acc.IsCredentialShadow() {
@@ -485,7 +485,7 @@ func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvid
 		}
 	}
 
-	// 批量代理更新的目标不能包含影子，避免独立代理覆盖母提供商的继承值。
+	// 批量代理更新拒绝影子提供商，影子的代理通过母提供商更新。
 	// 含影子时拒绝整批更新，要求调用方先将影子移出目标集合。
 	if input.ProxyID != nil {
 		for _, acc := range cachedTargets {

@@ -19,7 +19,7 @@ const (
 	SelectionRateLimited
 )
 
-// SelectionProblem 只保存对外安全消息；持久模型诊断不得泄露内部模型别名。
+// SelectionProblem 保存可返回客户端的错误消息，模型诊断使用客户端可见的模型名。
 type SelectionProblem struct {
 	Kind    SelectionProblemKind
 	Message string
@@ -27,7 +27,7 @@ type SelectionProblem struct {
 
 var selectionModelRateLimitedPattern = regexp.MustCompile(`(?:model_rate_limited|rate_limited)=(\d+)`)
 
-// DiagnoseSelection 保留原查询条件和时机，空模型/分组不会新增存储读取。
+// DiagnoseSelection 查询分组中的模型配置，模型或分组缺失时直接返回暂不可用。
 func DiagnoseSelection(ctx context.Context, diag routing.ModelAvailabilityDiagnoser, groupID *int64, routingModel, displayModel, platform string) SelectionProblem {
 	fallback := SelectionProblem{Kind: SelectionUnavailable, Message: "Service temporarily unavailable"}
 	routingModel = strings.TrimSpace(routingModel)
@@ -45,7 +45,7 @@ func DiagnoseSelection(ctx context.Context, diag routing.ModelAvailabilityDiagno
 	return fallback
 }
 
-// RefineSelectionFailure 保留模型配置诊断优先级，再解释原调度器的暂时限流计数。
+// RefineSelectionFailure 优先返回模型配置诊断，否则根据调度器的限流计数细化错误。
 func RefineSelectionFailure(err error, fallback SelectionProblem) SelectionProblem {
 	if err == nil || fallback.Kind == SelectionModelNotFound {
 		return fallback

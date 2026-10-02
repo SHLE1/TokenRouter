@@ -93,7 +93,7 @@ describe('creative API', () => {
       // 未登录态无 JWT
       expect(config.headers.get('Authorization')).toBeFalsy()
 
-      // 登录态下 Authorization 来自 client 拦截器的 Bearer JWT，而非本模块
+      // 登录态下由 client 拦截器把 Bearer JWT 写入 Authorization。
       localStorage.setItem('auth_token', 'jwt-token-abc')
       adapter.mockClear()
       await createCreativeRun(new FormData(), WORKSPACE_ID)

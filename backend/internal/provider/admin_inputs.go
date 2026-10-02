@@ -48,7 +48,7 @@ type UpdateProviderInput struct {
 	AutoPauseOnExpired  *bool
 }
 
-// BulkUpdateProvidersInput 保留批量修改的筛选与字段省略语义。
+// BulkUpdateProvidersInput 指定批量修改的筛选条件和待更新字段，省略的字段保持不变。
 type BulkUpdateProvidersInput struct {
 	ProviderIDs    []int64
 	Filters        *BulkUpdateProviderFilters

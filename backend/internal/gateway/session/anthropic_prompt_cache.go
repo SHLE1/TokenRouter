@@ -76,7 +76,7 @@ func (s *AnthropicPromptCache) Find(providerID int64, cAPIKeyID int64, digestCha
 	}
 }
 
-// Bind 保留原TTL和旧链删除顺序，不延长其它绑定。
+// Bind 为当前绑定设置 TTL，替换时先删除旧续接链，其他绑定使用各自的到期时间。
 func (s *AnthropicPromptCache) Bind(providerID int64, cAPIKeyID int64, digestChain, promptCacheKey, oldDigestChain string, ttl time.Duration) {
 	if s == nil || digestChain == "" || strings.TrimSpace(promptCacheKey) == "" {
 		return
@@ -103,7 +103,7 @@ func AnthropicDigestPromptCacheKey(digestChain string) string {
 	return "anthropic-digest-" + upstream.HashSensitiveValueForLog(digestChain)
 }
 
-// AnthropicMetadataPromptCacheKey 保留客户端元数据会话的原哈希格式。
+// AnthropicMetadataPromptCacheKey 对客户端元数据会话标识计算缓存键。
 func AnthropicMetadataPromptCacheKey(req *protocolanthropic.AnthropicRequest) string {
 	if req == nil || len(req.Metadata) == 0 {
 		return ""
@@ -148,7 +148,7 @@ type AnthropicPromptCache struct {
 	clock   func() time.Time
 }
 
-// NewAnthropicPromptCache 在组合根固定时钟，不启动工作任务。
+// NewAnthropicPromptCache 使用 app 传入的时钟构造提示缓存。
 func NewAnthropicPromptCache(clock func() time.Time) *AnthropicPromptCache {
 	if clock == nil {
 		clock = time.Now

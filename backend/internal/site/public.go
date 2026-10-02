@@ -47,7 +47,7 @@ func NewPublicService(source PublicSource, calendar timezone.Calendar, timezoneN
 	return &PublicService{source: source, calendar: calendar, timezoneName: timezoneName}
 }
 
-// ServerTimezone 供 API 和 HTML 投影共享配置时区与当前偏移，保留各自读取时点。
+// ServerTimezone 返回配置时区和调用时刻的 UTC 偏移，供 API 和 HTML 使用。
 func (s *PublicService) ServerTimezone() (string, string) {
 	return s.timezoneName, s.calendar.UTCOffset(s.calendar.Now())
 }

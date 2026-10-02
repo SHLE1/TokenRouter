@@ -111,7 +111,7 @@ func IsExpectedGrokRealtimeClose(err error) bool {
 	}
 }
 
-// ImageErrorResponse 保留图片错误的可选 code/param 与已完成的安全客户端投影。
+// ImageErrorResponse 返回图片错误的可选 code/param 和清洗后的客户端错误信息。
 type ImageErrorResponse struct {
 	Status                     int
 	Type, Message, Code, Param string

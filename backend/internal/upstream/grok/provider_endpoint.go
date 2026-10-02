@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// ResolveProviderBaseURL 保留 OAuth 官方地址归一化与显式中继规则。
+// ResolveProviderBaseURL 归一化 OAuth 官方地址，并使用配置的中继地址。
 // 此处不执行目标安全校验，实际构造请求时仍使用调用方的出站策略。
 func ResolveProviderBaseURL(oauth bool, configured, fallback string) string {
 	fallback = strings.TrimRight(strings.TrimSpace(fallback), "/")

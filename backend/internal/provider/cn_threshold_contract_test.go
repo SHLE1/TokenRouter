@@ -144,7 +144,7 @@ func TestCNProviderQuotaSnapshotReset(t *testing.T) {
 	require.NotNil(t, got)
 	require.True(t, future5h.Equal(*got))
 
-	// 两窗口均在未来 → 取较早者（429 多由 5h 窗口触发，避免冷却到 weekly 重置）。
+	// 两个窗口都尚未重置时取较早时间，429 通常由 5h 窗口触发。
 	both := cnCodingTestProvider(capability.PlatformKimi)
 	attachCNMonitorLimits(both, now, []UpstreamUsageLimit{
 		{Name: "5h", Used: &used, ResetAt: &future5h},

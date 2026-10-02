@@ -20,17 +20,21 @@ import (
 	servertiming "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
 )
 
-const s3UploadPartSizeMB = 64
-const s3UploadConcurrency = 4
-const s3MinUploadPartSizeMB = 5
-const s3MaxUploadPartSizeMB = 128
-const s3MinUploadConcurrency = 1
-const s3MaxUploadConcurrency = 8
-const s3MaxUploadParts = 10000
-const s3UploadFailTimeout = 30 * time.Second
+const (
+	s3UploadPartSizeMB     = 64
+	s3UploadConcurrency    = 4
+	s3MinUploadPartSizeMB  = 5
+	s3MaxUploadPartSizeMB  = 128
+	s3MinUploadConcurrency = 1
+	s3MaxUploadConcurrency = 8
+	s3MaxUploadParts       = 10000
+	s3UploadFailTimeout    = 30 * time.Second
+)
 
-const backupStreamPartSizeBytes = 16 * 1024 * 1024
-const backupStreamConcurrency = 1
+const (
+	backupStreamPartSizeBytes = 16 * 1024 * 1024
+	backupStreamConcurrency   = 1
+)
 
 // S3BackupStore implements backup.BackupObjectStore using AWS S3 compatible storage
 type S3BackupStore struct {
@@ -246,7 +250,7 @@ func (s *S3BackupStore) Delete(ctx context.Context, key string) error {
 
 func (s *S3BackupStore) PresignURL(ctx context.Context, key string, expiry time.Duration) (string, error) {
 	presignClient := s3.NewPresignClient(s.client)
-	// 强制 attachment disposition：浏览器同页导航该 URL 时直接触发下载而非渲染，
+	// 使用 attachment disposition，浏览器打开该 URL 时触发下载，
 	// 前端无需依赖会被弹窗拦截的新标签页。
 	disposition := fmt.Sprintf("attachment; filename=%q", path.Base(key))
 	result, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{

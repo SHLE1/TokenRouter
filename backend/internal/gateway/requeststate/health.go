@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// FirstHealthModel 保留只取第一个模型和空白规范化的入口语义。
+// FirstHealthModel 取第一个模型并清理两侧空白。
 func FirstHealthModel(values []string) string {
 	if len(values) == 0 {
 		return ""
@@ -25,7 +25,7 @@ func WithHealthModel(ctx context.Context, models []string) context.Context {
 	return updateHints(ctx, func(value *ExecutionHints) { value.HealthModel = model })
 }
 
-// HealthModel 优先采用本次显式模型，缺省时读取当前 attempt 的提示。
+// HealthModel 优先使用本次传入的模型，缺省时读取当前尝试的提示。
 func HealthModel(ctx context.Context, models []string) string {
 	if model := FirstHealthModel(models); model != "" {
 		return model
@@ -36,7 +36,7 @@ func HealthModel(ctx context.Context, models []string) string {
 	return strings.TrimSpace(ExecutionHintsFromContext(ctx).HealthModel)
 }
 
-// HealthThinking 返回独立的三态值，未提供与显式 false 保持区别。
+// HealthThinking 返回思考状态的独立副本，区分未提供、true 和 false。
 func HealthThinking(ctx context.Context) *bool {
 	if value, ok := ThinkingEnabledFromContext(ctx); ok {
 		return &value

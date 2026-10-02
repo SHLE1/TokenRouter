@@ -28,7 +28,7 @@ func (Team) Mixin() []ent.Mixin {
 }
 
 func (Team) Fields() []ent.Field {
-	// 团队默认限额只作为新成员加入时的快照，不追溯覆盖已有成员。
+	// 新成员加入时复制团队默认限额，已有成员使用各自保存的限额。
 	validateDefaultLimit := func(value float64) error {
 		if value < 0 {
 			return fmt.Errorf("团队成员默认限额不能为负数")

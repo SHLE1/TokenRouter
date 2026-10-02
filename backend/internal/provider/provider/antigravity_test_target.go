@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// AntigravityProviderTest 保留静态凭据分流，原生重试和额度规则通过既有探测端口执行。
+// AntigravityProviderTest 按静态凭据类型分派，其余测试通过探测接口执行重试和额度检查。
 type AntigravityProviderTest struct {
 	Gemini    *GeminiProviderTest
 	Anthropic *AnthropicProviderTest

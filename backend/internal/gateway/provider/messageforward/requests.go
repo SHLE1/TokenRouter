@@ -16,7 +16,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// buildRequest 只按已选提供商类型选择原生构造器，不提前交换凭据或改变重试时点。
+// buildRequest 根据已选提供商类型调用请求构造器。
 func (r *Runtime) buildRequest(ctx context.Context, output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider, body []byte, token, tokenType, model string, stream, mimic bool) (*http.Request, []byte, error) {
 	if target.Record.Platform == capability.PlatformAnthropic && target.Record.Type == capability.ProviderTypeServiceAccount {
 		body = anthropic.StripDeferredToolCacheControl(body)
@@ -94,7 +94,7 @@ func (r *Runtime) buildCountRequest(ctx context.Context, output HTTPBoundary, st
 	return anthropic.BuildCountTokensRequest(ctx, body, token, tokenType, model, mimic, options)
 }
 
-// requestOptions 固定本次目标与准备状态，动态设置仍由平台构造器在原时点调用。
+// requestOptions 保存本次目标和准备状态，平台构造器读取动态设置。
 func (r *Runtime) requestOptions(ctx context.Context, output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider, model, tokenType string, mimic bool) anthropic.RequestOptions {
 	options := anthropic.RequestOptions{
 		InjectAPIKeyBeta: r.options.InjectAPIKeyBeta,
@@ -154,7 +154,7 @@ func (r *Runtime) requestOptions(ctx context.Context, output HTTPBoundary, state
 	return options
 }
 
-// requestURL 保留普通、计数和透传端点的原差异，代理查询参数只用于自定义 relay。
+// requestURL 根据普通、计数或透传请求选择端点，为自定义 relay 添加代理查询参数。
 func (r *Runtime) requestURL(target *gatewayadapter.ExecutionProvider, count, passthrough bool) (string, error) {
 	endpoint, path := anthropic.ClaudeAPIURL, "/v1/messages"
 	if count {

@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// MarketplaceModelDefs 投影平台当前默认模型，保持动态目录读取时点与返回顺序。
+// MarketplaceModelDefs 在调用时读取平台默认模型，并按目录顺序返回。
 func MarketplaceModelDefs(platform string) []routing.MarketplaceModelDef {
 	switch platform {
 	case capability.PlatformOpenAI:

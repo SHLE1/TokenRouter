@@ -2,7 +2,7 @@ package modelidentity
 
 import "strings"
 
-// ThinkingProtocol 描述上游对 thinking block 的处理契约。
+// ThinkingProtocol 描述上游对 thinking block 的处理规则。
 // 不同上游对历史 thinking block 的要求相反：Anthropic 官方要求有效签名，
 // 第三方 Anthropic 兼容上游通常要求原样回传历史 thinking block。
 type ThinkingProtocol int
@@ -11,10 +11,10 @@ const (
 	// ThinkingProtocolUnknown 表示无法识别协议族，默认保守不剥离。
 	ThinkingProtocolUnknown ThinkingProtocol = iota
 
-	// ThinkingProtocolAnthropicStrict 表示 Anthropic 官方语义：缺失或非法签名应剥离。
+	// ThinkingProtocolAnthropicStrict 表示 Anthropic 官方规则：剥离签名缺失或非法的 thinking block。
 	ThinkingProtocolAnthropicStrict
 
-	// ThinkingProtocolPassbackRequired 表示第三方兼容上游语义：thinking block 必须原样回传。
+	// ThinkingProtocolPassbackRequired 表示第三方兼容规则：原样回传 thinking block。
 	ThinkingProtocolPassbackRequired
 )
 

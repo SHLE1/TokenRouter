@@ -10,7 +10,7 @@ func RegisterProxyRoutes(admin *gin.RouterGroup, endpoint *ProxyHandler, stepUpA
 	{
 		proxies.GET("", endpoint.List)
 		proxies.GET("/all", endpoint.GetAll)
-		// 代理导出泄露提供商密码原文——要求 step-up 2FA
+		// 代理导出包含提供商密码原文，需要 step-up 二次验证。
 		proxies.GET("/data", stepUpAuth, endpoint.ExportData)
 		proxies.POST("/data", endpoint.ImportData)
 		proxies.GET("/:id", endpoint.GetByID)

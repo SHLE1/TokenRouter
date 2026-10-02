@@ -190,7 +190,7 @@ func (p *GeminiQuotaPolicy) ApplyOverrides(tiers map[string]GeminiTierQuotaOverr
 		if !ok {
 			policy = GeminiTierPolicy{Cooldown: 5 * time.Minute}
 		}
-		// 保留旧覆盖输入的解释方式：
+		// 按凭据中的配额覆盖值解析：
 		// 共享档位将 pro_rpd 解释为 shared_rpd。
 		// 其余档位分别覆盖各模型配额。
 		if override.ProRPD != nil {
@@ -356,7 +356,7 @@ func GeminiQuotaTierKeyForProvider(provider *Record) string {
 		return tierID
 	}
 
-	// 等级缺失或未知时保留原默认档位。
+	// 等级缺失或未知时使用默认档位。
 	switch oauthType {
 	case "google_one":
 		return GeminiTierGoogleOneFree
@@ -370,7 +370,7 @@ func GeminiQuotaTierKeyForProvider(provider *Record) string {
 	}
 }
 
-// Clone 仅复制策略值，不创建新的服务缓存或加载状态。
+// Clone 返回策略值的副本。
 func (p *GeminiQuotaPolicy) Clone() *GeminiQuotaPolicy {
 	if p == nil {
 		return nil

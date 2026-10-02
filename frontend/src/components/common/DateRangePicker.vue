@@ -662,7 +662,7 @@ const handleViewportChange = () => {
   }
 }
 
-// 首次渲染前识别初始范围对应的快捷项，避免触发器先闪出默认文案。
+// 首次渲染前匹配初始范围的快捷项，触发器直接显示对应文案。
 onDateChange()
 
 // Sync local state with props

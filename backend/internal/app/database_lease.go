@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
 
-// databaseAdvisoryLease 只绑定已有连接来源；是否回退与锁身份仍由各调用方决定。
+// databaseAdvisoryLease 绑定数据库连接来源，调用方决定锁身份和失败时的处理方式。
 func databaseAdvisoryLease(db *sql.DB) func(context.Context, string) (func(), bool) {
 	if db == nil {
 		return nil

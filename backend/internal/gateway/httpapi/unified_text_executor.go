@@ -31,7 +31,7 @@ type UnifiedTextExecutor struct {
 	MessageQueueWait time.Duration
 }
 
-// EnforceClient 只对原有兼容提供商执行 OpenAI 客户端策略，其它适配器自行验证各自入口。
+// EnforceClient 对 OpenAI 兼容提供商执行客户端策略，其他适配器验证各自入口。
 func (e *UnifiedTextExecutor) EnforceClient(ctx context.Context, c *gin.Context, target *gatewayadapter.ExecutionProvider, body []byte, match egress.TLSFingerprintRouterMatchResult) error {
 	c.Request = c.Request.WithContext(ctx)
 	if target.View().IsOpenAICompatible() {
@@ -175,7 +175,7 @@ func (e *UnifiedTextExecutor) native(ctx context.Context, c *gin.Context, target
 	return nativeTextResult(result, GetUpstreamEndpoint(c, target.Record.Platform)), err
 }
 
-// nativeTextResult 保留原生输入桶和缓存时长，完成器据此选择原生结算口径。
+// nativeTextResult 保存上游协议的输入用量分类和缓存时长，供完成器结算。
 func nativeTextResult(value *forward.MessagesResult, endpoint string) *forward.OpenAIResult {
 	if value == nil {
 		return nil

@@ -22,7 +22,7 @@ data: [DONE]`
 }
 
 func TestOpenAIImageOutputCounter_DataArraySkipsNonImageObjects(t *testing.T) {
-	// 回归覆盖：非图片 data 数组不能触发按图片计费，真实图片 data 仍需计数。
+	// 图片 data 参与图片计数，其他 data 数组的图片计数为零。
 	nonImageData := `data: {"type":"response.completed","response":{"id":"resp_1","output":[{"id":"item_1","type":"message","content":[{"type":"output_text","text":"Hello"}]}]},"data":[{"id":"not_an_image","status":"done"}]}
 
 data: [DONE]`

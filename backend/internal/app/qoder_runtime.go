@@ -30,7 +30,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// qoderRuntime 的字段在应用装配时固定，不持有 Gin 或逐请求状态。
+// qoderRuntime 保存应用装配时绑定的共享依赖。
 type qoderRuntime struct {
 	Choices     *selection.Generic
 	Routes      *gatewayprovider.RoutePlanner

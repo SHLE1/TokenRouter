@@ -12,7 +12,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 )
 
-// StickyCache 只持有调度粘性与显式会话分组归属，不包含登录或上游远端会话。
+// StickyCache 保存调度粘性绑定和会话所属分组。
 type StickyCache interface {
 	GetSessionProviderID(context.Context, int64, string) (int64, error)
 	SetSessionProviderID(context.Context, int64, string, int64, time.Duration) error
@@ -20,7 +20,7 @@ type StickyCache interface {
 	DeleteSessionProviderID(context.Context, int64, string) error
 }
 
-// StickyStats 仅有一个进程实例，各次兼容入口复用此观测。
+// StickyStats 保存进程内各次兼容入口共用的粘性观测。
 type StickyStats struct {
 	readFallbackTotal atomic.Int64
 	readFallbackHit   atomic.Int64
@@ -38,7 +38,7 @@ type StickyOptions struct {
 	DefaultTTL      time.Duration
 }
 
-// StickySession 的配置由平台入口显式投影，算法不读取平台配置或 HTTP Context。
+// StickySession 使用平台入口传入的粘性配置。
 type StickySession struct {
 	cache   StickyCache
 	options StickyOptions

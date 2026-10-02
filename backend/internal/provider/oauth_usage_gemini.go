@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// GeminiUsageOptions 接收当前额度、只读模型统计和显式时区，不拥有分组或资金服务。
+// GeminiUsageOptions 接收当前额度、模型用量统计和时区。
 type GeminiUsageOptions struct {
 	Quota    func(context.Context, *Record) (GeminiQuota, bool)
 	Totals   func(context.Context, int64, time.Time, time.Time) (GeminiUsageTotals, error)

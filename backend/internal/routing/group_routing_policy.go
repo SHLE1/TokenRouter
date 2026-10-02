@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// GroupPolicyView 是当前分组的策略投影，与共享价格配置及其启停状态无关。
+// GroupPolicyView 包含当前分组的路由策略和允许的协议。
 type GroupPolicyView struct {
 	GroupRoutingPolicy
 	AllowedProtocols  []protocol.ProtocolID
@@ -114,7 +114,7 @@ func (p *GroupPolicyView) IsModelRestricted(model string) bool {
 	return true
 }
 
-// IsWebSearchEmulationEnabled 保留平台开关语义，旧的非对象值不会开启模拟。
+// IsWebSearchEmulationEnabled 读取平台开关，配置值为非对象时返回 false。
 func (p *GroupPolicyView) IsWebSearchEmulationEnabled(platform string) bool {
 	if p == nil {
 		return false

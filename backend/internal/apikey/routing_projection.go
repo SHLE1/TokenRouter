@@ -2,7 +2,7 @@ package apikey
 
 import "github.com/TokenFlux/TokenRouter/internal/routing"
 
-// GroupFromRouting 保留认证与管理输入之间的副本边界。
+// GroupFromRouting 复制分组，供认证与管理调用方各自使用。
 func GroupFromRouting(group *routing.Group) *routing.Group {
 	return routing.CloneGroup(group)
 }

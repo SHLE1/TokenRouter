@@ -20,7 +20,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// OpenAITextOptions 只投影 HTTP 限制和原提供商切换上限，不携带配置对象。
+// OpenAITextOptions 配置 HTTP 限制和提供商切换上限。
 type OpenAITextOptions struct {
 	MaxBodyBytes             int64
 	MaxSwitches              int
@@ -28,7 +28,7 @@ type OpenAITextOptions struct {
 	ForceCodexCLI            bool
 }
 
-// OpenAISessionInput 区分粘性、显式隔离和上游缓存键的读取目的。
+// OpenAISessionInput 分别提供粘性会话、客户端隔离标识和上游缓存键。
 type OpenAISessionInput uint8
 
 const (
@@ -37,7 +37,7 @@ const (
 	OpenAIPromptCacheSession
 )
 
-// OpenAITextCall 是 HTTP 准入成功后的请求独立输入；完成快照仍由执行端口同步冻结。
+// OpenAITextCall 保存通过 HTTP 准入的请求数据，执行接口同步捕获完成快照。
 type OpenAITextCall struct {
 	Route                                                          routing.RoutePlan
 	Protocol                                                       protocol.ProtocolID
@@ -56,7 +56,7 @@ type OpenAITextCall struct {
 	Log                                                            *zap.Logger
 }
 
-// OpenAITextBackend 提供单步用例、状态投影和同步观测，不能接回旧完整 handler。
+// OpenAITextBackend 提供逐步执行接口、请求状态和同步观测。
 // 三条入口的读取、校验、审核、等待和循环调用顺序均由本 HTTP Adapter 决定。
 type OpenAITextBackend interface {
 	Access(*gin.Context) (*apikey.APIKey, bool)

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestQoderGatewayShouldFailoverRetryableUpstreamErrors 验证原兼容入口的未知错误边界不得被 Chat 策略覆盖。
+// TestQoderGatewayShouldFailoverRetryableUpstreamErrors 检查兼容请求可重试的上游错误，普通错误和 401 返回 false。
 func TestQoderGatewayShouldFailoverRetryableUpstreamErrors(t *testing.T) {
 	require.True(t, MaySwitchCompatibleAttempt(&APIError{StatusCode: http.StatusTooManyRequests}))
 	require.True(t, MaySwitchCompatibleAttempt(&APIError{StatusCode: http.StatusBadGateway, Code: "115"}))

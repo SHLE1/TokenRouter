@@ -61,7 +61,7 @@ type Selection struct {
 	Switched           func()
 }
 
-// RequestPorts 在 app 绑定实际唯一实例；Check(afterWait) 复查资金时不再次累计 RPM。
+// RequestPorts 由 app 绑定请求服务，Check(afterWait) 复查资金，RPM 在等待前累计。
 type RequestPorts struct {
 	Concurrency    *scheduler.ConcurrencyService
 	Check          func(context.Context, bool) error
@@ -92,7 +92,7 @@ func (u *QoderUseCase) Run(ctx context.Context, request Request, ports RequestPo
 	return u.run(ctx, request, ports, output, nil)
 }
 
-// run 是兼容测试与固定依赖入口共用的唯一尝试循环。
+// run 为测试和执行入口提供提供商尝试循环。
 func (u *QoderUseCase) run(ctx context.Context, request Request, ports RequestPorts, output *OutputTracker, execution *ExecutionResult) error {
 	if u.Enter != nil {
 		done, err := u.Enter()

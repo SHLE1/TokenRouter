@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// WriteAnthropicFailover 只解释客户端展示，保持静默拒绝、规则和默认映射的原顺序。
+// WriteAnthropicFailover 依次处理静默拒绝、错误规则和默认映射，生成客户端响应。
 func WriteAnthropicFailover(c *gin.Context, failoverErr *forwardcore.UpstreamFailoverError, platform string, streamStarted bool, rules ErrorRuleMatcher, silent func([]byte) bool, silentMessage string) {
 	statusCode := failoverErr.StatusCode
 	responseBody := failoverErr.ResponseBody
@@ -42,7 +42,7 @@ func WriteAnthropicFailover(c *gin.Context, failoverErr *forwardcore.UpstreamFai
 		}
 	}
 
-	// 记录原始上游状态码，以便 ops 错误日志捕获真实的上游错误
+	// 记录上游状态码，供 Ops 错误日志使用。
 	upstreamMsg := upstream.ExtractErrorMessage(responseBody)
 	SetOpsUpstreamError(c, statusCode, upstreamMsg, "")
 

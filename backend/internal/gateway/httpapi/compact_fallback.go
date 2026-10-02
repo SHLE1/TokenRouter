@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/compact"
 )
 
-// CompactFallbackErrorResponse 将原生压缩恢复信号投影回原 HTTP 错误链。
+// CompactFallbackErrorResponse 将压缩恢复信号转换为 HTTP 错误。
 func CompactFallbackErrorResponse(resp *http.Response, signal *compact.Failure) (*http.Response, []byte) {
 	headers := make(http.Header)
 	if resp != nil {

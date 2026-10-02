@@ -108,7 +108,7 @@ func TestSettingService_GetPublicSettings_ExposesForceEmailOnThirdPartySignup(t 
 	require.True(t, settings.ForceEmailOnThirdPartySignup)
 }
 
-// TestSettingService_GetPublicSettings_ExposesAffiliateEnabled 验证公开配置必须透传邀请返利开关，否则前端侧栏和路由守卫会把入口隐藏。
+// TestSettingService_GetPublicSettings_ExposesAffiliateEnabled 检查公开配置返回邀请返利开关，供前端侧栏和路由守卫使用。
 func TestSettingService_GetPublicSettings_ExposesAffiliateEnabled(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{
@@ -122,7 +122,7 @@ func TestSettingService_GetPublicSettings_ExposesAffiliateEnabled(t *testing.T) 
 	require.True(t, settings.AffiliateEnabled)
 }
 
-// TestSettingService_GetPublicSettings_ExposesPageFeatureFlags 验证页面开关必须在公开设置中明确返回，供侧边栏和路由守卫共用。
+// TestSettingService_GetPublicSettings_ExposesPageFeatureFlags 检查公开设置返回页面开关，供侧栏和路由守卫共用。
 func TestSettingService_GetPublicSettings_ExposesPageFeatureFlags(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{
@@ -138,7 +138,7 @@ func TestSettingService_GetPublicSettings_ExposesPageFeatureFlags(t *testing.T) 
 	require.False(t, settings.CreativeEnabled)
 }
 
-// TestSettingService_GetPublicSettings_CreativeEnabledDefaultsTrue 验证创作台开关缺省视为开启：旧版本库未写入该键时不能隐藏创作台入口。
+// TestSettingService_GetPublicSettings_CreativeEnabledDefaultsTrue 检查数据库缺少创作台开关配置时默认开启。
 func TestSettingService_GetPublicSettings_CreativeEnabledDefaultsTrue(t *testing.T) {
 	repo := &settingPublicRepoStub{values: map[string]string{}}
 	svc := newSitePublicSettingsFixture(repo, &config.Config{})
@@ -147,7 +147,7 @@ func TestSettingService_GetPublicSettings_CreativeEnabledDefaultsTrue(t *testing
 	require.NoError(t, err)
 	require.True(t, settings.CreativeEnabled)
 
-	// HTML 首屏注入配置必须与 /settings/public 保持一致，同样缺省开启。
+	// HTML 首屏注入配置与 /settings/public 都将创作台开关缺省值设为开启。
 	payload, err := svc.GetPublicSettingsForInjection(context.Background())
 	require.NoError(t, err)
 	encoded, err := json.Marshal(payload)
@@ -168,7 +168,7 @@ func TestSettingService_GetPublicSettings_ExposesAllowUserViewErrorRequests(t *t
 	require.True(t, settings.AllowUserViewErrorRequests)
 }
 
-// TestSettingService_GetPublicSettingsForInjection_ExposesPublicFeatureFlags 验证HTML 首屏注入配置要与 /settings/public 保持一致，避免刷新后菜单先按旧默认值渲染。
+// TestSettingService_GetPublicSettingsForInjection_ExposesPublicFeatureFlags 检查首屏注入配置与 /settings/public 一致，刷新页面时菜单按该配置渲染。
 func TestSettingService_GetPublicSettingsForInjection_ExposesPublicFeatureFlags(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{
@@ -332,7 +332,7 @@ func TestSettingService_GetGoogleOneTapConfigRequiresIndependentSwitch(t *testin
 	require.Equal(t, "google-client-secret", settings.ClientSecret)
 }
 
-// newSitePublicSettingsFixture 验证真实公开来源组合，配置、API 与 embed 共用同一 Store。
+// newSitePublicSettingsFixture 组合公开设置的数据来源，配置、API 和嵌入前端共用一个 Store。
 func newSitePublicSettingsFixture(repo settingscore.Repository, cfg *config.Config) *site.PublicService {
 	store := settingscore.New(repo)
 	return provideSitePublic(store, provideOAuthSettings(store, cfg), cfg, timezone.NewCalendar(time.Local))

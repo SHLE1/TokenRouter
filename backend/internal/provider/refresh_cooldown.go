@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// RefreshCooldownVersion 将成功刷新与当时的临时停调绑定，避免清理新的管理员状态。
+// RefreshCooldownVersion 将成功刷新与交换时的临时停调状态绑定，清理前复核版本。
 type RefreshCooldownVersion struct {
 	CredentialVersion
 	ParentProviderID *int64

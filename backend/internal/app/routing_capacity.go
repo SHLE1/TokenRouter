@@ -14,14 +14,14 @@ import (
 	routingpostgres "github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 )
 
-// provideGroupCapacity 直接读取唯一提供商存储，复用原并发/会话/RPM 实例和动态设置读取时机。
+// provideGroupCapacity 绑定提供商存储及并发、会话和 RPM 实例，查询时读取动态设置。
 func provideGroupCapacity(providers *providerpostgres.ProviderStore, groups *routingpostgres.GroupStore, concurrency *scheduler.ConcurrencyService, sessions scheduler.SessionLimitCache, rpm scheduler.RPMCache, settings *provider.QuotaSettingsCache) *routing.CapacityService {
 	return routing.NewCapacityService(capacityProviders{Store: providers, Settings: func(ctx context.Context) provider.QuotaAutoPauseSettings {
 		return settings.GetOpenAIQuotaAutoPauseSettings(ctx)
 	}}, groups, concurrency, sessions, rpm)
 }
 
-// capacityProviders 只把已有存储行投影给路由；不持有提供商缓存或执行供应商规则。
+// capacityProviders 将提供商存储记录转换为路由需要的容量数据。
 type capacityProviders struct {
 	Store    *providerpostgres.ProviderStore
 	Settings func(context.Context) provider.QuotaAutoPauseSettings

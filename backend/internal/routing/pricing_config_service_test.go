@@ -2195,7 +2195,7 @@ func makePolicyRepo(policy GroupRoutingPolicy, config PricingConfig, platforms m
 	return repo
 }
 
-// TestPricingConfigModelLookupIndependentOfGroupPlatform 验证价格查找只依赖关联关系，不得再访问分组平台。
+// TestPricingConfigModelLookupIndependentOfGroupPlatform 检查价格按配置关联关系查找。
 func TestPricingConfigModelLookupIndependentOfGroupPlatform(t *testing.T) {
 	config := PricingConfig{ID: 1, Status: StatusActive, GroupIDs: []int64{10, 20}, ModelPricing: []ModelPricingEntry{{Models: []string{"claude-x"}, InputPrice: testPtrFloat64(3)}, {Models: []string{"gpt-*"}, InputPrice: testPtrFloat64(5)}}}
 	repo := &mockPricingConfigRepository{listAllFn: func(context.Context) ([]PricingConfig, error) { return []PricingConfig{config}, nil }, getGroupPlatformsFn: func(context.Context, []int64) (map[int64]string, error) {

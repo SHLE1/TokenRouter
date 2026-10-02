@@ -203,7 +203,7 @@ func (q *ErrorLogQueue) OpsErrorLogQueueLength() int64 {
 	return q.opsErrorLogQueueLen.Load()
 }
 
-// Shutdown 封闭入队并等待批次真正处理完毕，由组合根提供总预算。
+// Shutdown 关闭入队并等待批次处理完成，等待预算由传入的 context 控制。
 func (q *ErrorLogQueue) Shutdown(ctx context.Context) error {
 	q.opsErrorLogStopOnce.Do(func() {
 		q.opsErrorLogShutdownOnce.Do(func() { close(q.opsErrorLogShutdownCh) })

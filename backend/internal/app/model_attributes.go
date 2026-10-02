@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/postgres"
 )
 
-// provideModelAttributes 仅向管理和展示消费者提供属性服务，不注入请求执行器。
+// provideModelAttributes 为管理和展示接口提供模型属性服务。
 func provideModelAttributes(repo *postgres.ModelAttributeStore, catalog *provider.Service, invalidator apikey.APIKeyAuthCacheInvalidator) *routing.ModelAttributeService {
 	return &routing.ModelAttributeService{
 		Repo:        repo,

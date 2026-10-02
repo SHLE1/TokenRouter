@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSettingsFieldOwnership 要求真实装配覆盖全部扁平输入；新增字段未登记时立即失败。
+// TestSettingsFieldOwnership 检查 app 登记覆盖全部扁平输入，缺少字段登记时失败。
 func TestSettingsFieldOwnership(t *testing.T) {
 	defaults := scheduler.DefaultAdminSettingsDefaults()
 	participants := staticSettingsParticipants(&payment.Runtime{}, nil, &defaults, provideGatewayAdminRules())

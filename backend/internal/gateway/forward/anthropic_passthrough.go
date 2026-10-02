@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// APIKeyPassthrough 保留已选提供商的响应判断与部分用量；交换和原生流仍由 upstream 唯一实现。
+// APIKeyPassthrough 处理已选提供商的响应和部分用量，upstream 执行网络交换和协议流读取。
 func APIKeyPassthrough(ctx context.Context, p PassthroughPorts, in MessageInput, input APIKeyInput) (*Result, error) {
 	done, err := p.Begin()
 	if err != nil {

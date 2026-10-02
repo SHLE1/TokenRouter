@@ -274,8 +274,7 @@ func TestFindCyberSessionBlocked_EmptyAndNilService(t *testing.T) {
 // mark a session blocked via a combo cache+store, then confirm IsCyberSessionBlocked
 // returns true, and an unrelated key returns false.
 func TestCyberSessionBlock_RoundTrip(t *testing.T) {
-	// SettingService with only settingRepo set — GetCyberSessionBlockRuntime needs
-	// nothing else (cfg/proxyRepo/etc. are not touched by this code path).
+	// GetCyberSessionBlockRuntime 通过 settingRepo 读取设置，夹具提供该依赖。
 	settingSvc := moderation.NewRuntimeSettings(&fakeSettingRepo{
 		vals: map[string]string{
 			moderation.SettingKeyCyberSessionBlockEnabled:    "true",

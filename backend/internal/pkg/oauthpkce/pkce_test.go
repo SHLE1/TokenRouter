@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestPlatformVerifierFormats 保留各平台已有编码，而非统一成一种 verifier。
+// TestPlatformVerifierFormats 检查各平台 verifier 的编码格式。
 func TestPlatformVerifierFormats(t *testing.T) {
 	verifier, err := Verifier()
 	if err != nil {

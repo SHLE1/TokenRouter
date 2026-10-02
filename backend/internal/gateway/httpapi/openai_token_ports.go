@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// OpenAICountTarget 只允许读取选择快照和执行计数，不交付提供商凭据。
+// OpenAICountTarget 提供选择快照读取和计数执行接口。
 type OpenAICountTarget interface {
 	Snapshot() provider.ProviderSnapshot
 	ForwardCount(context.Context, *gin.Context, []byte, string) error
@@ -131,7 +131,7 @@ func (OpenAITokenPorts) AuthLatency(c *gin.Context, ms int64) {
 	SetOpsLatencyMs(c, OpsAuthLatencyMsKey, ms)
 }
 
-// tokenSelectionError 保留模型不支持与容量不足的独立观测口径。
+// tokenSelectionError 分别记录模型不支持和容量不足。
 func tokenSelectionError(c *gin.Context, diagnose routing.ModelAvailabilityDiagnoser, key *apikey.APIKey, routingModel, displayModel string) SelectionErrorResponse {
 	var group *int64
 	if key != nil {

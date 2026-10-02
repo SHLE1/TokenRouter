@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// provideGatewayRouteMount 在构造时固定原生端点，不再在注册时创建旧 handler。
+// provideGatewayRouteMount 为路由注册函数绑定已构造的网关端点。
 func provideGatewayRouteMount(eCountTokensHTTP *gatewayhttp.CountTokensHandler,
 	eQoderCompatibleHTTP *gatewayhttp.QoderCompatibleHandler,
 	eCompatibleTextHTTP *gatewayhttp.CompatibleTextHandler,
@@ -24,7 +24,8 @@ func provideGatewayRouteMount(eCountTokensHTTP *gatewayhttp.CountTokensHandler,
 	ePublicUsage *httpapi.PublicUsageHandler,
 	eQoderChat *gatewayhttp.QoderChatHandler,
 	batch *batchhttp.BatchImageHandler,
-	options gatewayhttp.RouteMiddleware) gatewayRouteMount {
+	options gatewayhttp.RouteMiddleware,
+) gatewayRouteMount {
 	return func(r *gin.Engine) {
 		gatewayhttp.RegisterGatewayRoutes(r, gatewayhttp.RouteEndpoints{CountTokens: eCountTokensHTTP, QoderCompatible: eQoderCompatibleHTTP, CompatibleText: eCompatibleTextHTTP, GeminiNative: eGeminiNativeHTTP, OpenAIText: eOpenAITextHTTP, OpenAITokens: eOpenAITokensHTTP, ResponsesWS: eResponsesWSHTTP, Models: eModelsHTTP, Messages: eMessagesHTTP, Media: eMediaHTTP, Auxiliary: eAuxiliaryHTTP, Live: eLiveHTTP, Search: eSearchHTTP, PublicUsage: ePublicUsage.Usage, QoderChat: eQoderChat.ChatCompletions}, options, func(group *gin.RouterGroup) { batchhttp.RegisterGatewayRoutes(group, batch) })
 	}

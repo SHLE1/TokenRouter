@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// ResponsesEndpoint 保留 DeepSeek 原生路径与其余兼容平台的版本段规则。
+// ResponsesEndpoint 按平台规则处理 DeepSeek 和其他兼容平台的 URL 版本段。
 func ResponsesEndpoint(platform, base string) string {
 	if platform == capability.PlatformDeepseek {
 		return httpclient.BuildOpenAIEndpointURL(base, "/responses")

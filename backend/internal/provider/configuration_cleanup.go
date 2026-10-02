@@ -10,8 +10,8 @@ func DiscardDeprecatedProviderExtra(extra map[string]any) {
 	DiscardDeprecatedExtra(extra)
 }
 
-// NormalizeDeprecatedProviderExtraUpdate 规范化整份替换语义的提供商 Extra 更新。
-// 第二个返回值表示是否仍应执行替换：显式空对象保留清空语义，只有废弃键的对象视为未提供更新。
+// NormalizeDeprecatedProviderExtraUpdate 规范化用于整份替换的提供商 Extra。
+// 返回的布尔值表示是否执行替换：空对象清空 Extra，仅含废弃键时跳过更新。
 func NormalizeDeprecatedProviderExtraUpdate(extra map[string]any) (map[string]any, bool) {
 	if extra == nil {
 		return nil, false

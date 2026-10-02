@@ -815,7 +815,7 @@ func TestLoadCodeAssistResponse_完整JSON(t *testing.T) {
 }
 
 // ===========================================================================
-// 以下为新增测试：真正调用 Client 方法，通过 RoundTripper 拦截 HTTP 请求
+// 测试调用 Client 方法，通过 RoundTripper 拦截 HTTP 请求
 // ===========================================================================
 
 // redirectRoundTripper 将请求中特定前缀的 URL 重定向到 httptest server
@@ -857,7 +857,7 @@ func newTestClientWithRedirect(redirects map[string]string) *Client {
 }
 
 // ---------------------------------------------------------------------------
-// Client.ExchangeCode - 真正调用方法的测试
+// Client.ExchangeCode 测试
 // ---------------------------------------------------------------------------
 
 func TestClient_ExchangeCode_Success_RealCall(t *testing.T) {
@@ -1008,7 +1008,7 @@ func TestClient_ExchangeCode_ContextCanceled_RealCall(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Client.RefreshToken - 真正调用方法的测试
+// Client.RefreshToken 测试
 // ---------------------------------------------------------------------------
 
 func TestClient_RefreshToken_Success_RealCall(t *testing.T) {
@@ -1136,7 +1136,7 @@ func TestClient_RefreshToken_ContextCanceled_RealCall(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Client.GetUserInfo - 真正调用方法的测试
+// Client.GetUserInfo 测试
 // ---------------------------------------------------------------------------
 
 func TestClient_GetUserInfo_Success_RealCall(t *testing.T) {
@@ -1251,7 +1251,7 @@ func TestClient_GetUserInfo_ContextCanceled_RealCall(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Client.LoadCodeAssist - 真正调用方法的测试
+// Client.LoadCodeAssist 测试
 // ---------------------------------------------------------------------------
 
 // withMockBaseURLs 临时替换 BaseURLs，测试结束后恢复
@@ -1461,7 +1461,7 @@ func TestClient_LoadCodeAssist_ContextCanceled_RealCall(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Client.FetchAvailableModels - 真正调用方法的测试
+// Client.FetchAvailableModels 测试
 // ---------------------------------------------------------------------------
 
 func TestClient_FetchAvailableModels_Success_RealCall(t *testing.T) {

@@ -117,7 +117,7 @@
         />
       </aside>
 
-      <!-- 右侧：单模型结果或批量模型列表；窄屏随左栏整体滚动，按内容撑高，避免被压缩后卡片贴住底栏 -->
+      <!-- 右侧展示单模型结果或批量模型列表，窄屏按内容撑高并随左栏滚动。 -->
       <section
         :aria-label="t('admin.providers.testDialog.results')"
         class="flex min-w-0 flex-col px-4 py-5 sm:px-6 md:min-h-0 md:flex-1"
@@ -255,7 +255,7 @@ const hasProviderBrandIcon = computed(() => Boolean(resolveProviderBrand(props.p
 const isOpenAIProvider = computed(() => props.provider?.platform === 'openai')
 const isCNProvider = computed(() => ['kimi', 'zhipu', 'deepseek'].includes(props.provider?.platform ?? ''))
 
-// 测试协议只作用于本次请求，不改写提供商配置。
+// 协议选择用于构造本次测试请求。
 const protocolPlan = computed(() => providerTestProtocolPlan(props.provider))
 const testProtocol = ref<ProviderTestProtocol | 'native' | 'all'>('native')
 const protocolOptions = computed(() => {
@@ -307,7 +307,7 @@ const requestProtocol = computed<ProviderTestProtocol | undefined>(() => {
 
 const prioritizedGeminiModels = ['gemini-3.1-flash-image', 'gemini-2.5-flash-image', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3-flash-preview', 'gemini-3-pro-preview', 'gemini-2.0-flash']
 
-// 图片/文字请求类型完全由管理员选择，不再从模型名称推断。
+// 图片或文字请求类型由管理员选择。
 const imageTestAvailable = computed(() => {
   const platform = props.provider?.platform
   return platform === 'openai' || platform === 'gemini' || platform === 'grok' ||

@@ -32,7 +32,7 @@ type DataPayload struct {
 	SkippedShadows int `json:"skipped_shadows,omitempty"`
 }
 
-// DataProvider 用于管理员备份导出，Credentials 保留原文，不经过 DTO 脱敏。
+// DataProvider 用于管理员备份导出，Credentials 包含凭据原文。
 // 格式不包含 parent_provider_id 或 quota_dimension，导入要求凭据非空，无法重建影子的父子链接。
 // Spark 影子及其独立优先级、并发、分组和状态不在导出范围，前端会提示跳过的影子数量。
 type DataProvider struct {
@@ -92,7 +92,7 @@ type DataImportResult struct {
 	Errors          []DataImportError `json:"errors,omitempty"`
 }
 
-// ValidateHeader 校验导入格式；品牌别名不放宽版本和字段边界。
+// ValidateHeader 校验导入的类型、版本和字段，接受兼容的品牌名称。
 // @project-doc docs/interfaces/http_api.md#product_name_compatibility
 func ValidateHeader(payload DataPayload) error {
 	if payload.Type != DataType && payload.Type != LegacyDataType {
@@ -110,7 +110,7 @@ func ValidateHeader(payload DataPayload) error {
 	return nil
 }
 
-// UnmarshalJSON 拒绝旧账号字段，避免新旧集合并存时静默丢失导入数据。
+// UnmarshalJSON 在出现旧账号字段时返回错误，要求输入使用提供商集合。
 func (p *DataPayload) UnmarshalJSON(data []byte) error {
 	type payload DataPayload
 	var value payload

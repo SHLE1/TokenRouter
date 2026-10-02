@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 )
 
-// gatewayExecutionFixture 只保存测试显式构造的原生组件与输入，不承载规则、锁或缓存。
+// gatewayExecutionFixture 保存测试构造的执行组件和输入。
 type gatewayExecutionFixture struct {
 	Text       *gatewayhttp.OpenAITextExecutor
 	Requests   *gatewayhttp.OpenAIRequests

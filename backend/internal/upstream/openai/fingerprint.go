@@ -45,7 +45,7 @@ func ResolveConvergedSessionID(seed string) string {
 	if seed == "" {
 		return ""
 	}
-	// 哈希种子保留旧值，确保升级后已有设备、会话及调用身份不变。
+	// session_id 由固定前缀和 seed 派生，升级时需要保持前缀稳定。
 	return DeriveStableUUIDv4("sub2api:codex-session-id:v2:" + seed)
 }
 
@@ -56,15 +56,14 @@ func ResolveConvergedThreadID(seed, clientSessionID string) string {
 	if seed == "" || clientSessionID == "" {
 		return ""
 	}
-	// 哈希种子保留旧值，确保升级后已有设备、会话及调用身份不变。
+	// thread_id 由固定前缀、seed 和客户端会话标识派生，升级时需要保持前缀稳定。
 	return DeriveStableUUIDv4("sub2api:codex-thread-id:v2:" + seed + ":" + clientSessionID)
 }
 
-// FingerprintIDs 收敛后的完整 ID 集合。
-// 由 resolveCodexFingerprintIDs 一次性生成，同一个实例在头改写和体改写之间共享，
-// 确保所有载体中的 turn_id 等随机字段一致。体改写时还会补记原始
-// client_metadata.session_id，用于识别 root prompt_cache_key 的默认值。
-// 字段仅供同次尝试的适配投影，保持原私有状态不进入 JSON 的行为。
+// FingerprintIDs 保存统一指纹使用的 ID。
+// resolveCodexFingerprintIDs 生成的实例供请求头和请求体共用，使 turn_id 等随机字段一致。
+// 请求体改写时记录客户端的 client_metadata.session_id，用于识别根级 prompt_cache_key 的默认值。
+// 字段用于同次尝试，并通过 json 标签排除序列化。
 type FingerprintIDs struct {
 	ProviderID                    int64  `json:"-"`
 	Mode                          string `json:"-"`
@@ -169,9 +168,8 @@ func ApplyCodexFingerprintClientMetadata(reqBody map[string]any, ids *Fingerprin
 	return modified
 }
 
-// ApplyCodexFingerprintToClientMetadataMap 是 client_metadata 改写的共享核心，
-// map 版（非透传，body 已解码）与 raw 字节版（透传热路径）都经由它，保证两条
-// 路径的收敛语义永不漂移。
+// ApplyCodexFingerprintToClientMetadataMap 改写 client_metadata 的指纹字段。
+// 已解码的 map 和透传 JSON 字节都调用此函数。
 func ApplyCodexFingerprintToClientMetadataMap(existing map[string]any, ids *FingerprintIDs) bool {
 	if existing == nil || ids == nil {
 		return false
@@ -262,17 +260,17 @@ func ApplyCodexFingerprintPromptCacheKey(reqBody map[string]any, ids *Fingerprin
 }
 
 // ApplyCodexFingerprintClientMetadataRaw 在原始 JSON 字节上改写 client_metadata，
-// 供透传路径使用——透传是热路径，禁止对可能高达数十 MB 的 body 做全量
+// 供透传路径使用。为节省数十 MB 请求体的解码开销，此处跳过全量
 // Unmarshal（见 forwardOpenAIPassthrough 的轻量提取注释）。实现为：gjson 提取
 // client_metadata 小对象单独解码，经共享核心改写后 sjson 一次性拼回，body
 // 其余字节原样保留；root prompt_cache_key 仅在可证明是 body session 默认值时
-// 做标量改写。语义与 ApplyCodexFingerprintClientMetadata 逐点一致（含
-// "非对象值整体替换为收敛集合"的行为）。
+// 做标量改写。处理规则与 ApplyCodexFingerprintClientMetadata 相同，
+// 非对象值整体替换为指纹字段集合。
 func ApplyCodexFingerprintClientMetadataRaw(body []byte, ids *FingerprintIDs) ([]byte, bool, error) {
 	if len(body) == 0 || ids == nil {
 		return body, false, nil
 	}
-	// 非 JSON 对象的 body（数组/标量/畸形）没有 client_metadata 语义，
+	// 非 JSON 对象的 body（数组、标量或畸形输入）无法按字段读取 client_metadata，
 	// sjson 在这类根上写字段会改写整体结构，直接放行保持原样。
 	root := gjson.ParseBytes(body)
 	if !root.IsObject() {

@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GoogleOutput 只负责本次 HTTP 输出；平台准备器通过同步端口写入。
+// GoogleOutput 接收平台准备器的同步写入并输出 HTTP 响应。
 type GoogleOutput struct{ Context *gin.Context }
 
 func (o GoogleOutput) RequestContext() context.Context { return o.Context.Request.Context() }
@@ -27,7 +27,7 @@ func (o GoogleOutput) GetHeader(key string) string {
 }
 func (o GoogleOutput) Header(key, value string) { o.Context.Header(key, value) }
 
-// WriteHeaders 在 HTTP 边界应用既有响应头过滤器。
+// WriteHeaders 使用响应头过滤器写入 HTTP Header。
 func (o GoogleOutput) WriteHeaders(dst, src http.Header, filter *egress.CompiledHeaderFilter) {
 	egressprovider.WriteFilteredHeaders(dst, src, filter)
 }

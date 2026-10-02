@@ -7,5 +7,5 @@ import (
 	"github.com/google/wire"
 )
 
-// 团队 HTTP 直接装配原生用例与共享日期对象，不再经过旧 handler 构造器。
+// teamHTTPProviders 汇总团队用户端和管理端 HTTP 构造函数。
 var teamHTTPProviders = wire.NewSet(teamhttp.NewUserHandler, teamhttp.NewAdminHandler)

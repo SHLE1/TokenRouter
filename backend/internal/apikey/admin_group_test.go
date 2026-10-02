@@ -647,7 +647,7 @@ func newKeyAdminForTest(keys apikey.APIKeyRepository, groups *groupRepoStubForGr
 	return out
 }
 
-// keyGroupsFixture 延续旧分组投影的副本边界，其余未调用方法保持未配置。
+// keyGroupsFixture 返回分组数据副本，测试需要的方法由 source 提供。
 type keyGroupsFixture struct {
 	apikey.GroupRepository
 	source *groupRepoStubForGroupUpdate

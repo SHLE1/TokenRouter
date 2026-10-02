@@ -83,8 +83,7 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 		}
 
 		p.StageFingerprint(nil)
-		// 透传与普通转换路径共享指纹收敛语义。只局部改写 client_metadata，
-		// 避免为大请求体做整包反序列化。
+		// 透传与普通转换路径使用同一指纹规则，局部修改 client_metadata 可减少大请求体的解析开销。
 		if !p.CompactPath() {
 			fingerprintIDs := p.Fingerprint()
 			if fingerprintIDs != nil {
@@ -96,7 +95,7 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 					body = updatedBody
 				}
 			}
-			// nil 也必须覆盖，避免 failover 复用前一个提供商的收敛 ID。
+			// nil 清除前一个提供商的指纹 ID。
 			p.StageFingerprint(fingerprintIDs)
 		}
 	}
@@ -142,7 +141,7 @@ func RunPassthrough(ctx context.Context, in PassthroughInput, p PassthroughPorts
 		body = sanitizedBody
 	}
 	// 透传分支后续的 OAuth/APIKey 兼容归一化可能删除无工具请求的
-	// parallel_tool_calls；Responses Lite 契约仍要求显式发送 false。
+	// parallel_tool_calls，Responses Lite 在此补上 false。
 	if p.HasContext() && p.LiteHeader() {
 		liteBody, liteChanged, liteErr := p.NormalizeLite(body)
 		if liteErr != nil {

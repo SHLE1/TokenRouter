@@ -22,6 +22,8 @@ type ContextGetter interface {
 	Get(key string) (value any, exists bool)
 }
 
-// 资金来源仅保存既有请求投影，不在此重新授权或查询订阅。
-const ContextKeyAPIKeyBilling = "api_key_billing"
-const ContextKeySubscription = "subscription"
+// 资金来源保存请求已经取得的授权和订阅信息。
+const (
+	ContextKeyAPIKeyBilling = "api_key_billing"
+	ContextKeySubscription  = "subscription"
+)

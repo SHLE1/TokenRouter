@@ -14,7 +14,7 @@ import (
 	"github.com/google/wire"
 )
 
-// 网关协议入口及剩余执行装配的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
+// gatewayAssemblyProviders 汇总网关协议入口和执行器的 Wire provider。
 var gatewayAssemblyProviders = wire.NewSet(
 	gatewaysession.NewDigestSessionStore,
 	provideQoderRuntime,

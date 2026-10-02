@@ -86,10 +86,9 @@ func parseResetTimestamp(raw string, now time.Time, maxAge time.Duration) (time.
 	return resetAt, true
 }
 
-// SelectFableWindowLimit 解析 Anthropic 7d_oi 模型窗口响应头。
-// 该窗口只约束 Fable 家族，不能让提供商对其它模型失去调度资格。
-// surpassed-threshold 使用浮点数而非布尔值，因此 status=rejected 或
-// utilization >= 1.0 都视为超限；缺少专用 reset 时回退到聚合 reset。
+// SelectFableWindowLimit 解析 Anthropic 7d_oi 响应头，返回 Fable 家族的限额窗口。
+// surpassed-threshold 为浮点数，status=rejected 或 utilization >= 1.0 时视为超限。
+// 缺少模型窗口 reset 时使用聚合 reset，其他模型按各自的窗口调度。
 func SelectFableWindowLimit(headers http.Header, now time.Time) *WindowLimit {
 	if !isWindowRejected(headers, "7d_oi") && !isWindowExceeded(headers, "7d_oi") {
 		return nil

@@ -108,12 +108,12 @@ const modeLabel = computed(() => {
 })
 
 const selectedTypes = computed(() => {
-  // 兼容旧接口或脏数据返回 null，避免 includes 在渲染阶段抛错。
+  // 接口返回 null 时按空数组处理，供渲染调用 includes。
   return Array.isArray(props.provider.supported_types) ? props.provider.supported_types : []
 })
 
 const displayTypes = computed(() => {
-  // Stripe Checkout 的具体支付方式由 Stripe Dashboard 控制，旧 supported_types 只做后端兼容，不再展示成可切换按钮。
+  // Stripe Checkout 的支付方式由 Stripe Dashboard 控制，supported_types 用于兼容后端数据。
   if (props.provider.provider_key === 'stripe') {
     return []
   }

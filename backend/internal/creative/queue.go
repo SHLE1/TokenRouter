@@ -45,7 +45,7 @@ type CreativeRunQueue interface {
 }
 
 // CreativeTransientStore 是创作台临时 Redis 存储抽象。
-// 输入载荷与输出图片本体只保存在这里，TTL 到期即失效，绝不允许落库。
+// 输入载荷和输出图片本体存放在临时存储中，TTL 到期即失效。数据库保存任务元数据。
 type CreativeTransientStore interface {
 	// SavePayload 保存任务载荷（prompt 与元数据），TTL 为配置的 transient_ttl_seconds。
 	SavePayload(ctx context.Context, runID string, payload *CreativeRunPayload) error

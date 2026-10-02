@@ -44,7 +44,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return isAllowedOpsWSOrigin(r)
 	},
-	// 优先新协议，同时兼容旧前端；JWT 只用于认证，不能被选为响应协议。
+	// 优先协商 tokenrouter-admin，兼容 sub2api-admin。JWT 用于认证。
 	Subprotocols: []string{"tokenrouter-admin", "sub2api-admin"},
 }
 

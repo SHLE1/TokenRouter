@@ -126,7 +126,7 @@ func (s *OllamaCloudUsageService) GetState(ctx context.Context, providerID int64
 }
 
 // ResolveProviders 将共享身份组管理的状态覆盖到给定提供商对象上。
-// 仓储通过一次有界查询解析所有匹配提供商，避免提供商列表逐行查询。
+// 存储通过一次有结果数量上限的查询解析全部匹配提供商。
 func (s *OllamaCloudUsageService) ResolveProviders(ctx context.Context, providers []*Record) error {
 	if s == nil || s.providerRepo == nil || len(providers) == 0 {
 		return nil
@@ -428,7 +428,7 @@ func (s *OllamaCloudUsageService) refreshProvider(ctx context.Context, providerI
 				siblings, listErr := writer.ListOllamaCloudUsageGroupProviders(ctx, []*Record{provider})
 				if listErr != nil {
 					// 回退到当前提供商自身的 last_used_at。它比分组最大值的活动信号更窄，
-					// 到期检查可能因此跳过原本应执行的刷新，所以记录错误而不是静默改变语义。
+					// 到期检查可能因此跳过刷新，此处记录错误供排查。
 					s.options.Log(
 						"group_last_used_lookup_failed: provider_id=%d err=%v", provider.ID, listErr)
 				} else {

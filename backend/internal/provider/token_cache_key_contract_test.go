@@ -309,7 +309,7 @@ func TestClaudeTokenCacheKey(t *testing.T) {
 }
 
 func TestCacheKeyUniqueness(t *testing.T) {
-	// 确保不同平台的缓存键不会冲突
+	// 不同平台使用各自的缓存键前缀。
 	provider := &Record{ID: 123}
 
 	openaiKey := OpenAITokenCacheKey(provider)

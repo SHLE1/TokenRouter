@@ -326,7 +326,7 @@ func anthropicFableThresholdCandidate(provider *Record) *SchedulingThresholdCand
 	}
 }
 
-// grokThresholdCandidates 只读取响应头投影的滚动额度窗口，
+// grokThresholdCandidates 读取响应头记录的滚动额度窗口，
 // 不使用官方账单的 7 天或 30 天窗口执行自动停调。
 func grokThresholdCandidates(provider *Record) []*SchedulingThresholdCandidate {
 	if provider == nil {
@@ -343,7 +343,7 @@ func grokThresholdCandidates(provider *Record) []*SchedulingThresholdCandidate {
 }
 
 // CNProviderThresholdCandidates 读取独立监控保存的统一窗口快照。快照身份必须与
-// 当前凭据、地址、代理和 TLS 设置一致，避免旧身份结果参与调度。
+// 当前凭据、地址、代理和 TLS 设置一致时，快照才可参与调度。
 func CNProviderThresholdCandidates(provider *Record, platform string) []*SchedulingThresholdCandidate {
 	if provider == nil || provider.Platform != platform || !provider.IsCodingPlan() {
 		return nil

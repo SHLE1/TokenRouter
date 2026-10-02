@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// 影子契约只需原生提供商行的内存存取，不构造旧管理员服务。
+// 影子测试通过内存替身读写提供商记录。
 type crsShadowStore struct {
 	rows map[int64]*provider.Record
 }

@@ -94,7 +94,7 @@ export function getRemainingExpiryDuration(
   }
 }
 
-// highestQuotaExhausted 按服务端规则只检查最高层正数额度，避免低层窗口暂时耗尽时误导用户撤销套餐。
+// highestQuotaExhausted 按服务端规则检查最高层正数额度。低层窗口暂时耗尽仍可等待重置。
 export function highestQuotaExhausted(subscription: Pick<
   UserSubscription,
   'monthly_limit_usd' | 'monthly_usage_usd' | 'weekly_limit_usd' | 'weekly_usage_usd' | 'daily_limit_usd' | 'daily_usage_usd'

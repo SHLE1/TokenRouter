@@ -92,9 +92,8 @@ func FormatGeminiSessionValue(uuid string, providerID int64) string {
 // geminiDigestSessionKeyPrefix Gemini 摘要 fallback 会话 key 前缀
 const geminiDigestSessionKeyPrefix = "gemini:digest:"
 
-// GenerateGeminiDigestSessionKey 生成 Gemini 摘要 fallback 的 sessionKey
-// 组合 prefixHash 前 8 位 + uuid 前 8 位，确保不同会话产生不同的 sessionKey
-// 用于在 SelectProviderWithLoadAwareness 中保持粘性会话
+// GenerateGeminiDigestSessionKey 拼接 prefixHash 和 uuid 各自前八位，生成 Gemini 内容摘要的会话键。
+// SelectProviderWithLoadAwareness 据此保持会话粘性。
 func GenerateGeminiDigestSessionKey(prefixHash, uuid string) string {
 	prefix := prefixHash
 	if len(prefixHash) >= 8 {

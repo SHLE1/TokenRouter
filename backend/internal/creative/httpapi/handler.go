@@ -170,7 +170,7 @@ func (h *CreativeHandler) CreateRun(c *gin.Context) {
 // parseCreativeCreateRunMultipart 手工解析 multipart 表单：
 // 字段 group_id/model/operation/prompt/image_size/aspect_ratio/quality/background/
 // thinking_level，
-// 文件字段 source_images（多文件）与 mask（单文件）。只接受上传文件，不接受远程 URL。
+// source_images 接收多个上传文件，mask 接收单个上传文件。
 func parseCreativeCreateRunMultipart(c *gin.Context, partLimit, totalInputLimit int64) (*creativeCreateRunRequest, error) {
 	contentType := c.GetHeader("Content-Type")
 	_, params, err := mime.ParseMediaType(contentType)
@@ -501,7 +501,7 @@ func (h *CreativeHandler) AckOutput(c *gin.Context) {
 	response.Success(c, gin.H{"acked": true})
 }
 
-// CreativeUseCases 只暴露 HTTP 消费的任务契约，不依赖旧聚合服务。
+// CreativeUseCases 提供创作台 HTTP 处理器调用的任务操作。
 type CreativeUseCases interface {
 	ListModels(context.Context, int64) (*creative.CreativeModelsResponse, error)
 	GetCapabilities(context.Context) *creative.CreativeCapabilitiesResponse

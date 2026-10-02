@@ -46,7 +46,7 @@ func TestTierMaintenanceStopWaitsAndRejectsLateWrite(t *testing.T) {
 	require.Equal(t, stopErr, core.StopContext(context.Background()))
 }
 
-// 批量请求保持十并发尽力语义；非法提供商过滤不计入总数，缺失/空列表使用原查询。
+// 批量查询最多十并发，分别记录失败。总数排除非法提供商，缺失或空列表时通过存储查询。
 type tierBatchStore struct {
 	TierManagementStore
 	values     []Record

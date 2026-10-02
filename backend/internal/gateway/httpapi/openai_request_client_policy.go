@@ -144,7 +144,7 @@ func (s *OpenAIRequests) WSTLSProfile(provider *gatewayprovider.ExecutionProvide
 }
 
 func openAIClientPolicyForbiddenMessage(result providercore.CodexClientRestrictionDetectionResult) string {
-	// 按策略返回更明确的拒绝原因，同时保留旧 codex_cli_only 测试和客户端提示语义。
+	// 按客户端策略返回拒绝原因。
 	if result.Policy == providercore.OpenAIOAuthClientPolicyCodexOnly {
 		return "This provider only allows Codex official clients"
 	}

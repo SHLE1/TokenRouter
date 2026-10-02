@@ -108,7 +108,7 @@
     width: 100%;
     height: 100%;
     background-color: white;
-    /* 使用通用 check 图标的路径，描边为 1.75，避免平台原生粗勾的差异。 */
+    /* 复选框使用通用 check 图标，描边宽度为 1.75。 */
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12 9 17L20 6' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
     opacity: 0;
     transform: scale(0.65);
@@ -191,7 +191,7 @@
     background: var(--page-bg);
   }
 
-  /* 视觉视口缩放后仍让应用根节点占满屏幕，避免右侧出现固定空白带。 */
+  /* 视觉视口缩放后应用根节点仍占满屏幕。 */
   #app {
     width: 100%;
     min-width: 0;
@@ -202,7 +202,7 @@
     scrollbar-color: rgba(161, 161, 170, 0.45) var(--page-bg);
   }
 
-  /* 主题切换时临时关闭局部过渡，避免背景、卡片和文字不同步。 */
+  /* 切换主题时暂停局部过渡，背景、卡片和文字同时更新。 */
   html.theme-switching,
   html.theme-switching *,
   html.theme-switching *::before,
@@ -210,7 +210,7 @@
     transition: none !important;
   }
 
-  /* 自定义滚动条 - 仅针对 Firefox，避免 Chrome 取消 webkit 的全局定制 */
+  /* Firefox 使用此滚动条样式，Chrome 使用 webkit 规则。 */
   @supports (-moz-appearance:none) {
     :where(
       .overflow-y-auto,
@@ -447,7 +447,7 @@
   }
 
   .btn-primary {
-    /* 按钮保持纯色和平面边界，避免出现渐变、发光或外投影。 */
+    /* 按钮使用纯色背景和平面边框。 */
     @apply bg-primary-600;
     @apply text-white shadow-none;
     @apply hover:bg-primary-700 hover:shadow-none;
@@ -739,7 +739,7 @@
   }
 
   .table th {
-    /* 与 DataTable 统一的中性紧凑表头:py-2 + text-xs,不再使用品牌底色。 */
+    /* 表头与 DataTable 共用中性配色和紧凑尺寸：py-2 + text-xs。 */
     @apply px-4 py-2 text-left text-xs font-medium tracking-wider;
     @apply text-gray-500 dark:text-dark-300;
     @apply bg-gray-50 dark:bg-dark-900;
@@ -952,7 +952,7 @@
 
 }
 
-/* Vue 在运行时添加过渡类，必须留在 Tailwind layer 外，避免构建按静态类名裁剪。 */
+/* Vue 过渡类写在 Tailwind layer 外，生产构建按运行时需要保留这些类。 */
 /* @project-doc docs/architecture/frontend_ui_conventions.md#ui_motion */
 .fade-enter-active,
 .fade-slow-enter-active,
@@ -1381,7 +1381,7 @@
     overflow-x: auto;
   }
 
-  /* 固定表头沿用单元格分隔线，不再叠加阴影。 */
+  /* 固定表头通过单元格分隔线划分行。 */
   .table-wrapper thead.sticky {
     box-shadow: none;
   }
@@ -1393,7 +1393,7 @@
     background-color: rgb(18, 167, 232);
   }
 
-  /* 浅色主题统一加深常规次级文字，暗色主题继续使用各组件原有的颜色。 */
+  /* 浅色主题统一加深常规次级文字，暗色主题使用各组件配置的颜色。 */
   html:not(.dark) :is(
     .text-gray-500,
     .text-primary-900\/65,

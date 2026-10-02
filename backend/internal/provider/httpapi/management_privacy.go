@@ -39,7 +39,7 @@ func (h *ManagementHandler) SetPrivacy(c *gin.Context) {
 		response.BadRequest(c, "Cannot set privacy: missing access_token")
 		return
 	}
-	// 从 DB 重新读取以确保返回最新状态
+	// 从数据库重新读取最新状态。
 	updated, err := h.adminService.GetProvider(c.Request.Context(), providerID)
 	if err != nil {
 		// 隐私已设置成功但读取失败，回退到内存更新

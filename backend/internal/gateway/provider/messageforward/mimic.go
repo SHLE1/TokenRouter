@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
-// mimicAttempt 的 systemRaw 仅兼容原 JSON string/array 输入，不携带业务实体。
+// mimicAttempt 的 systemRaw 接收 JSON 字符串或数组格式的系统提示。
 type mimicAttempt struct {
 	*attempt
 	systemRaw any

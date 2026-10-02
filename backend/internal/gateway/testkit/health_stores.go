@@ -39,7 +39,7 @@ func (r *ErrorPolicyStore) SetModelRateLimit(_ context.Context, id int64, scope 
 	return nil
 }
 
-// HealthStoreRecorder 保留原健康字段写入次数、错误注入和最新参数。
+// HealthStoreRecorder 记录健康字段写入次数和最新参数，支持注入写入错误。
 type HealthStoreRecorder struct {
 	HealthStoreBase
 	SetErrorCalls          int

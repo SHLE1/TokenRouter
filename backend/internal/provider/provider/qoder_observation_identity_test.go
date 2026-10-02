@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 上游返回前替换管理员凭据，旧额度不能写入新身份的快照或停调状态。
+// 上游返回前替换管理员凭据，随后条件写入拒绝先前身份的额度结果。
 type qoderObservationIdentityRepo struct {
 	provider.OAuthUsageReader
 	current *provider.Record

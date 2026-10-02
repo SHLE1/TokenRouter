@@ -25,7 +25,7 @@ func openAIProxyStreamCircuitProxyID(provider *gatewayprovider.ExecutionProvider
 }
 
 func withOpenAIProxyStreamQuarantineBypass(ctx context.Context) context.Context {
-	// 保留原入口对有效 context 的要求，派生 attempt 不覆盖父请求。
+	// 父 context 为 nil 时 panic，派生 attempt 使用独立的执行提示副本。
 	if ctx == nil {
 		panic("cannot create context from nil parent")
 	}

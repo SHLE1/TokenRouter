@@ -40,13 +40,12 @@ type QoderPayloadRequest struct {
 	PromptCacheKey  string
 	MetadataUserID  string
 	ResponseID      string
-	// autoResponseSession 表示 explicitSession 是根据本次响应 id 合成的，
-	// 而不是客户端显式传入的。它不能遮蔽 prompt_cache_key 或 header 这类
-	// 更稳定的旧 session key。
+	// AutoResponseSession 表示 ExplicitSession 由本次响应 ID 合成。
+	// 选择会话键时，prompt_cache_key 和请求头中的稳定标识优先。
 	AutoResponseSession bool
 	// previousResponseID 标记 OpenAI Responses 续写请求。不同于
 	// session_id/conversation_id，previous_response_id 通常只携带新的 input item，
-	// 因此对话规划器可以把它追加到旧状态，而不是要求完整回放前缀。
+	// 对话规划器将新的 input item 追加到已有状态。
 	PreviousResponseID string
 }
 
@@ -460,7 +459,7 @@ func ApplyQoderThinkingDirective(payload map[string]any, site Site, modelKey str
 	runtimeOverride["reasoning_effort"] = effort
 }
 
-// QoderThinkingEffortForCapability 把通用请求等级投影到官方模型实际提供的档位。
+// QoderThinkingEffortForCapability 把请求的思考等级转换为模型支持的档位。
 func QoderThinkingEffortForCapability(capability ThinkingCapability, requested string) string {
 	switch capability {
 	case ThinkingHighMax:

@@ -34,7 +34,7 @@ func (options ImageBackfillOptions) ReportFailure(index int) {
 	}
 }
 
-// Backfill 按显式选项补全图片 Base64，不接收提供商实体。
+// Backfill 按下载选项为带 URL 的图片补全 Base64。
 // @project-doc docs/interfaces/openai_upstream.md#images_url_backfill
 func (options ImageBackfillOptions) Backfill(ctx context.Context, body []byte) []byte {
 	if !options.Enabled || !gjson.ValidBytes(body) || (options.Stream || strings.EqualFold(strings.TrimSpace(options.ResponseFormat), "url")) {

@@ -23,7 +23,7 @@ export interface UsageTotals {
 }
 
 const HOUR_MS = 60 * 60 * 1000
-// 跨度不超过两天时按小时聚合，避免折线只剩一两个点。
+// 跨度不超过两天时按小时聚合，展示每小时的数据点。
 const HOURLY_MAX_SPAN_MS = 2 * 24 * HOUR_MS
 
 const pad = (value: number): string => String(value).padStart(2, '0')

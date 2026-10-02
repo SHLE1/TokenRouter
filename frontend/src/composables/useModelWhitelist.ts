@@ -627,7 +627,7 @@ export interface PersistedModelRestriction {
 }
 
 // normalizeModelWhitelist 将白名单规范成“精确模型列表”。
-// 这里继续忽略通配符，避免把 whitelist 的输入误当成 request-side mapping 规则。
+// whitelist 输入按具体模型处理，通配符属于 request-side mapping 规则。
 export function normalizeModelWhitelist(rawWhitelist?: unknown): string[] {
   if (!Array.isArray(rawWhitelist)) {
     return []

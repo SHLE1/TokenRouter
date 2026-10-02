@@ -959,7 +959,7 @@ const parseYamlScalar = (value: string): string => {
   return trimmed
 }
 
-// 字符串用 JSON 引号输出，避免名称和描述里的特殊字符破坏 YAML。
+// 名称和描述以 JSON 引号转义后写入 YAML。
 const formatYamlString = (value: string): string => JSON.stringify(value)
 
 const formatYamlNumericArray = (arr: number[] | null | undefined, formatter: (n: number) => string = formatHex): string => {

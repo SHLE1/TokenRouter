@@ -19,7 +19,7 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-// newLocalTestServer 保留原环境限制检测；无法监听时明确标记跳过。
+// newLocalTestServer 在环境无法监听时跳过测试。
 func newLocalTestServer(tb testing.TB, handler http.Handler) *httptest.Server {
 	tb.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

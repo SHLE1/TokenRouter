@@ -35,7 +35,7 @@ func (r *privacyProviderWriter) UpdatePrivacyModeIfUnchanged(context.Context, pr
 	return true, nil
 }
 
-// TestPrivacyProxyLookupFailureDoesNotConnectDirectly 验证使用本地真实 HTTP 证明代理读取失败时不能退到直连，也不能写入成功状态。
+// TestPrivacyProxyLookupFailureDoesNotConnectDirectly 通过本地 HTTP 检查代理读取失败后请求结束，成功状态保持未写入。
 func TestPrivacyProxyLookupFailureDoesNotConnectDirectly(t *testing.T) {
 	for _, force := range []bool{false, true} {
 		t.Run(map[bool]string{false: "ensure", true: "force"}[force], func(t *testing.T) {

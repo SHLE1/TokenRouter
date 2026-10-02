@@ -368,7 +368,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 		if errors.Is(err, ErrUserNotFound) {
 			return "", nil, ErrInvalidCredentials
 		}
-		// 记录数据库错误但不暴露给用户
+		// 记录数据库错误，向用户返回服务不可用。
 		s.Observer.Printf("service.auth", "[Auth] Database error during login: %v", err)
 		return "", nil, ErrServiceUnavailable
 	}
@@ -406,7 +406,7 @@ func (s *AuthService) AuthCanBypassRegistrationDisabledForOAuth(ctx context.Cont
 }
 
 // LoginOrRegisterOAuthWithTokenPair 用于第三方 OAuth/SSO 登录，返回完整的 TokenPair。
-// 与 LoginOrRegisterOAuth 功能相同，但返回 TokenPair 而非单个 token。
+// LoginOrRegisterOAuth 返回单个 token，本方法返回 TokenPair。
 // invitationCode 仅在邀请码注册模式下新用户注册时使用；已有账号登录时忽略。
 // affiliateCode 是邀请返利码，仅在新用户注册时生效；signupSource 用于渠道默认授权和钉钉注册豁免。
 func (s *AuthService) LoginOrRegisterOAuthWithTokenPair(ctx context.Context, email, username, invitationCode, affiliateCode, signupSource string) (*TokenPair, *User, error) {
@@ -462,8 +462,8 @@ func (s *AuthService) AuthLoginOrRegisterOAuthWithTokenPair(ctx context.Context,
 				return nil, nil, fmt.Errorf("hash password: %w", err)
 			}
 
-			// 优先用 caller 显式传入的 signupSource（如 "dingtalk" / "linuxdo" / "oidc" / "wechat"），
-			// 否则才按邮箱后缀推断——避免有真实邮箱的 OAuth 用户被推断为 "email" 渠道，导致渠道授权错读。
+			// 优先使用调用方传入的 signupSource，如 dingtalk、linuxdo、oidc 或 wechat。
+			// 缺省时才按邮箱后缀判断，有邮箱的 OAuth 用户仍按其授权渠道读取设置。
 			if strings.TrimSpace(signupSource) == "" {
 				signupSource = AuthInferLegacySignupSource(email)
 			}

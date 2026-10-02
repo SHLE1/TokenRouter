@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// NormalizeOpenAI 仅返回已登记的完整 OpenAI 型号，不修正未知名称。
+// NormalizeOpenAI 返回已登记的完整 OpenAI 型号，未知名称返回空字符串。
 func NormalizeOpenAI(model string) string {
 	return openai.GetNormalizedCodexModel(model)
 }

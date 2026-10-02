@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// InvalidJSONInput 保留原 2xx 响应事实；用于健康策略的状态仍固定为 502。
+// InvalidJSONInput 记录上游 2xx 响应和 JSON 解析失败，健康策略使用 502 状态。
 type InvalidJSONInput struct {
 	ProviderID              int64
 	ProviderName, RequestID string

@@ -165,7 +165,7 @@ const handleUpdateUser = async () => {
       rpm_limit: form.rpm_limit,
       api_key_limit: form.api_key_limit
     }
-    // 角色未变化时不发送 role，避免普通管理员资料编辑触发权限提升门控。
+    // 角色变化时提交 role 并触发权限检查，普通资料编辑省略该字段。
     if (form.role !== props.user.role) data.role = form.role
     if (form.password.trim()) data.password = form.password.trim()
     // 提升为管理员属敏感操作：后端返回 STEP_UP_REQUIRED 时弹 TOTP 验证并重试

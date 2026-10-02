@@ -169,7 +169,7 @@ func TestOpsRuntimeSettingsRefreshStopEndsLifecycle(t *testing.T) {
 	if svc.RuntimeSettingsRefreshHealth().Running {
 		t.Fatal("refresh health still reports running after Stop")
 	}
-	// 幂等性属于清理契约的一部分。
+	// 重复停止刷新任务应当成功。
 	svc.StopRuntimeSettingsRefresh()
 }
 

@@ -29,8 +29,7 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 		result.Usage.InputTokens = 0
 	}
 
-	// Cache TTL Override: 确保计费时 token 分类与提供商设置一致。
-	// 提供商级设置优先；全局 1h 请求注入开启时，默认把 usage 计费归回 5m。
+	// 按提供商设置重新分类缓存 token。提供商设置优先，全局一小时 TTL 注入开启时默认按五分钟缓存计费。
 	cacheTTLOverridden := false
 	if overrideTarget := s.cacheOverrideTarget(ctx, input); overrideTarget != "" {
 		applyCacheOverride(&result.Usage, overrideTarget)
@@ -82,7 +81,7 @@ func (s *Recorder) RecordAnthropic(ctx context.Context, input *Input, opts *Pric
 	// 计算费用
 	cost := s.CalculateRecordUsageCost(ctx, result, apiKey, provider, billingModel, requestedModel, input.BillingModelSource, input.GroupMappedModel, multiplier, imageMultiplier, opts)
 
-	// 预填 billing_type 仅用于 持久化前对象，真实扣费结果会在统一扣费后回填。
+	// 此处预填 billing_type，统一扣费完成后用结算结果覆盖。
 	isSubscriptionBilling := subscription != nil
 	billingType := BillingTypeBalance
 	if isSubscriptionBilling {
@@ -249,8 +248,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 	}
 	s.normalizeResult(result, billingProvider, true, provider)
 
-	// OpenAI input_tokens 是总输入，包含缓存读取和缓存写入明细。
-	// 将三类 token 拆成互斥桶，避免缓存写入同时按普通输入和 cache_write 重复计费。
+	// OpenAI input_tokens 包含缓存读取和写入，此处分为未缓存输入、缓存读取和缓存写入三个独立计费桶。
 	actualInputTokens := result.Usage.InputTokens - result.Usage.CacheReadInputTokens - result.Usage.CacheCreationInputTokens
 	if actualInputTokens < 0 {
 		actualInputTokens = 0
@@ -349,8 +347,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 			if !IsUsagePricingUnavailableError(standardErr) {
 				return standardErr
 			}
-			// 标准价不可用时沿用既有缺价行为：不向用户扣费，但保留 Fast
-			// 成本用于提供商统计，避免一次新策略把成功请求变成计费错误。
+			// 标准价缺失时用户费用为零，提供商统计仍使用 Fast 成本。
 			s.observeEvent(BillingEvent{Kind: "standard_pricing_missing", Component: "service.openai_gateway", RequestID: result.RequestID, Err: standardErr})
 			standardCost = &CostBreakdown{}
 		}
@@ -359,7 +356,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		cost.ActualCost = standardCost.ActualCost
 	}
 
-	// 预填 billing_type 仅用于 持久化前对象，真实扣费结果会在统一扣费后回填。
+	// 此处预填 billing_type，统一扣费完成后用结算结果覆盖。
 	isSubscriptionBilling := subscription != nil
 	billingType := BillingTypeBalance
 	if isSubscriptionBilling {
@@ -491,7 +488,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		usageLog.IPAddress = &input.IPAddress
 	}
 
-	// 添加 SessionID（客户端显式会话标识；缺失/无效时保持 nil）
+	// 记录客户端指定的 SessionID，缺失或无效时为 nil。
 	usageLog.SessionID = OptionalTrimmedStringPtr(input.ClientSessionID)
 
 	if apiKey.GroupID != nil {

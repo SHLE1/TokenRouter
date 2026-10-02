@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
-// 请求构造测试只提供 Header；若误用响应端口，嵌入的空接口会让测试失败。
+// 请求构造测试提供 Header。调用响应方法时，嵌入的 nil 接口会使测试失败。
 type requestBoundaryFixture struct {
 	HTTPBoundary
 	Request *http.Request

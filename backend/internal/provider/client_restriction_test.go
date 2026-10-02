@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newCodexDetectorTestContext 保留原 HTTP Header 的取值形状，核心只按需读取字符串。
+// newCodexDetectorTestContext 为识别器提供按需读取的 HTTP Header 字符串。
 func newCodexDetectorTestContext(ua string, originator string) func() (string, string) {
 	req := httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	if ua != "" {

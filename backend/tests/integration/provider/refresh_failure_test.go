@@ -95,7 +95,7 @@ func TestRefreshFailureLongerCooldownAndOutboxFailure(t *testing.T) {
 	ctx := context.Background()
 	client := testEntClient(t)
 	until := time.Now().Add(time.Hour).Truncate(time.Microsecond)
-	// 显式包含纳秒，确保比较的是 PostgreSQL 持久化后的微秒值，而非 Ent 创建时的内存值。
+	// 输入带纳秒的时间，比较 PostgreSQL 持久化后的微秒值。
 	updatedAt := until.Add(-time.Hour).Add(123 * time.Nanosecond)
 	row, err := client.Provider.Create().SetName("refresh-failure-semantics").SetPlatform(provider.PlatformOpenAI).SetType(provider.ProviderTypeOAuth).SetStatus(provider.StatusActive).SetSchedulable(true).SetCredentials(map[string]any{}).SetTempUnschedulableUntil(until).SetTempUnschedulableReason("existing-longer").SetUpdatedAt(updatedAt).Save(ctx)
 	require.NoError(t, err)

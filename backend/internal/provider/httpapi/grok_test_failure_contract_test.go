@@ -133,7 +133,7 @@ func TestProviderTestServiceGrokOAuthPaymentRequiredTemporarilyUnschedulesProvid
 	require.Contains(t, recorder.Body.String(), "Grok Responses API returned 402")
 }
 
-// 只记录原健康写入字段与次数，不模拟状态规则。
+// 替身记录健康字段写入和调用次数。
 type grokTestFailureStoreFixture struct {
 	tempUnschedCalls, rateLimitedCalls int
 	lastRateLimitedID                  int64

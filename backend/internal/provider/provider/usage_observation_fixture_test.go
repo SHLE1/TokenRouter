@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// matches 原交错测试替身按当前行身份判断，拒绝管理员修改后的旧观测。
+// matches 按当前记录身份比较观测，管理员更新身份后拒绝此前的结果。
 func (r *qoderObservationIdentityRepo) matches(value provider.UsageObservationVersion) bool {
 	current := r.current
 	return current.ID == value.ID && current.Platform == value.Platform && current.Type == value.Type && current.Status == value.Status && reflect.DeepEqual(current.Credentials, value.Credentials) && reflect.DeepEqual(current.ProxyID, value.ProxyID)

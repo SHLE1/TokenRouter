@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// 记录快照重建调用，验证停止后不再启动重建。
+// planSnapshotCache 记录并控制快照重建调用，供停止流程测试使用。
 type planSnapshotCache struct {
 	SnapshotCache
 	calls chan struct{}

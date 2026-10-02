@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNewProxyExitInfoProberUsesConfiguredTargets 验证配置必须控制实际请求目标，装配不能忽略配置而使用内置地址。
+// TestNewProxyExitInfoProberUsesConfiguredTargets 检查探测器使用配置指定的请求目标。
 func TestNewProxyExitInfoProberUsesConfiguredTargets(t *testing.T) {
 	calls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -267,7 +267,7 @@ func openAIWSPayloadTransientStatus(payload []byte) int {
 }
 
 // openAIWSErrorPolicyStatus 解析 WS 错误事件用于提供商策略的状态码。
-// 事件显式携带状态码时必须原样保留，否则按既有 WS 错误类型映射，避免瞬态推断改变自定义规则的匹配值。
+// 事件携带状态码时按该值匹配自定义规则，缺失时按 WS 错误类型映射。
 func openAIWSErrorPolicyStatus(payload []byte) int {
 	if len(payload) == 0 {
 		return 0
@@ -293,8 +293,8 @@ func openAIWSErrorPolicyStatus(payload []byte) int {
 	return upstreamopenai.WSErrorHTTPStatusFromRaw(codeRaw, errTypeRaw)
 }
 
-// openAIWSTerminalPolicyDecision 保留终止事件类型及其提供商策略结果，
-// 调用方必须在写给客户端前判断通用错误和故障转移。
+// openAIWSTerminalPolicyDecision 保存终止事件类型和提供商策略结果。
+// 调用方在写给客户端前检查通用错误和故障转移。
 type openAIWSTerminalPolicyDecision struct {
 	TerminalEvent string
 	StatusCode    int

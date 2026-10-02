@@ -314,7 +314,7 @@ func TestApplyErrorPassthroughRule_NoSkipMonitoringDoesNotSetContextKey(t *testi
 	assert.False(t, exists, "OpsSkipPassthroughKey should NOT be set when skip_monitoring=false")
 }
 
-// ---- ResponseCommittedKey: service 层写完错误响应后标记，handler 层检查跳过兜底写入 ----
+// ResponseCommittedKey 在错误响应写完后设置，handler 据此跳过补充错误输出。
 
 func TestOpenAIHandleErrorResponse_SetsResponseCommitted(t *testing.T) {
 	rec := httptest.NewRecorder()

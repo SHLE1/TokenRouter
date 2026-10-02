@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCodexImportInjectedClockAndExpiryBoundaries 验证精确保持两个原有效期边界：JWT exp 的严格大于比较与显式到期值的小于等于比较。
+// TestCodexImportInjectedClockAndExpiryBoundaries 检查 JWT exp 使用大于比较，到期值使用小于等于比较。
 func TestCodexImportInjectedClockAndExpiryBoundaries(t *testing.T) {
 	now := time.Date(2026, 9, 13, 0, 0, 0, 0, time.UTC)
 	options := CodexImportOptions{Now: func() time.Time { return now }, OAuthClientID: "fixture-client"}

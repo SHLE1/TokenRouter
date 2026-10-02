@@ -104,7 +104,7 @@ func (r *ProviderStore) FindByExtraField(ctx context.Context, key string, value 
 }
 
 func (r *ProviderStore) ListCRSAccountIDs(ctx context.Context) (map[string]int64, error) {
-	// 只将母提供商加入 CRS 同步映射，避免后续同步覆盖影子的类型、凭据和继承代理。
+	// CRS 同步映射记录母提供商，影子的类型、凭据和代理由继承规则管理。
 	rows, err := r.sql.QueryContext(ctx, `
 		SELECT id, extra->>'crs_account_id'
 		FROM providers
@@ -136,8 +136,8 @@ func (r *ProviderStore) ListCRSAccountIDs(ctx context.Context) (map[string]int64
 // ListWithFilters 按分页参数和管理端筛选条件查询提供商。
 func (r *ProviderStore) ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, providerType, status, search string, groupID int64, privacyMode string) ([]acctcore.Record, *pagination.PaginationResult, error) {
 	q := r.ProviderListFilteredQuery(platform, providerType, status, search, groupID, privacyMode)
-	// Count 前先 Clone，避免 SoftDeleteMixin 等拦截器把谓词追加到共享 builder，
-	// 进而污染后续列表查询，导致 total 与当前页 items 使用不同条件。
+	// Count 使用查询构造器的副本，SoftDeleteMixin 等拦截器只向副本添加谓词。
+	// 后续列表查询据此与总数使用相同条件。
 	total, err := q.Clone().Count(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -476,7 +476,7 @@ func (r *ProviderStore) ListSchedulableByPlatforms(ctx context.Context, platform
 		return nil, nil
 	}
 	// 仅返回可调度的活跃提供商，并过滤处于过载/限流窗口的提供商。
-	// 代理与分组信息统一在 RecordsFromEntities 中批量加载，避免 N+1 查询。
+	// RecordsFromEntities 批量加载代理和分组信息。
 	now := time.Now()
 	providers, err := r.client.Provider.Query().
 		Where(
@@ -824,7 +824,7 @@ func (r *ProviderStore) ProviderListFilteredQuery(platform, providerType, status
 	return q
 }
 
-// SchedulableProvidersQuery 统一完整提供商查询与轻量投影的可调度过滤条件。
+// SchedulableProvidersQuery 为完整记录和容量摘要查询提供相同的可调度过滤条件。
 func (r *ProviderStore) SchedulableProvidersQuery(now time.Time) *dbent.ProviderQuery {
 	return r.client.Provider.Query().
 		Where(

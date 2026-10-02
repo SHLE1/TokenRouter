@@ -80,7 +80,7 @@ func DeriveCompatPromptCacheKey(req *protocolopenai.ChatCompletionsRequest, mapp
 	return compatPromptCacheKeyPrefix + upstream.HashSensitiveValueForLog(strings.Join(seedParts, "|"))
 }
 
-// DeriveAnthropicCompatPromptCacheKey 优先保留 cache_control 锚点，再使用原兼容种子。
+// DeriveAnthropicCompatPromptCacheKey 优先根据 cache_control 派生缓存键，缺少标记时使用兼容种子。
 func DeriveAnthropicCompatPromptCacheKey(req *protocolanthropic.AnthropicRequest, mappedModel string) string {
 	if req == nil {
 		return ""
@@ -125,7 +125,7 @@ func DeriveAnthropicCompatPromptCacheKey(req *protocolanthropic.AnthropicRequest
 	return compatPromptCacheKeyPrefix + upstream.HashSensitiveValueForLog(strings.Join(seedParts, "|"))
 }
 
-// DeriveAnthropicCacheControlPromptCacheKey 按原顺序派生显式缓存锚点。
+// DeriveAnthropicCacheControlPromptCacheKey 从请求中标有 cache_control 的内容派生缓存键。
 func DeriveAnthropicCacheControlPromptCacheKey(req *protocolanthropic.AnthropicRequest) string {
 	if req == nil {
 		return ""

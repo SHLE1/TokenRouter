@@ -1084,7 +1084,7 @@ func (r *refreshAPIProviderRepo) UpdateOAuthCredentialsIfUnchanged(ctx context.C
 	return err == nil, err
 }
 
-// TestRefreshResultDoesNotShareExecutorValues 验证每轮返回值必须与执行器持有的嵌套凭据及返回提供商相互隔离。
+// TestRefreshResultDoesNotShareExecutorValues 检查每次刷新返回独立的嵌套凭据和提供商记录。
 func TestRefreshResultDoesNotShareExecutorValues(t *testing.T) {
 	value := &Record{ID: 1001, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Status: billing.StatusActive}
 	repo := &refreshAPIProviderRepo{provider: value}
@@ -1104,7 +1104,7 @@ func TestRefreshResultDoesNotShareExecutorValues(t *testing.T) {
 	require.Equal(t, "initial", returned["cookie"])
 }
 
-// newRefreshAPIForTest 保留原构造输入，直接配置唯一刷新协调器。
+// newRefreshAPIForTest 按测试输入构造刷新协调器。
 func newRefreshAPIForTest(repo RefreshRepository, cache AccessTokenCache, lockTTL ...time.Duration) *OAuthRefreshAPI {
 	options := RefreshOptions{Now: time.Now, Warn: slog.Warn, Info: slog.Info, Error: slog.Error, Platform: ProviderRefreshPlatformPolicy()}
 	if len(lockTTL) > 0 {

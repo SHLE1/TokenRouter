@@ -32,7 +32,7 @@ type processOutput struct {
 	buffer bytes.Buffer
 }
 
-// Write 不嵌入 Buffer，避免 io.Copy 调用提升的 ReadFrom 绕过输出互斥。
+// Write 通过具名 Buffer 字段写入，io.Copy 调用此方法时会先获取输出锁。
 func (o *processOutput) Write(p []byte) (int, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -57,7 +57,7 @@ func startTestProcess(t *testing.T, binary, dir string, env []string, args ...st
 	t.Helper()
 	p := &testProcess{cmd: exec.Command(binary, args...), done: make(chan struct{}), output: &processOutput{}}
 	p.cmd.Dir = dir
-	// 子进程只接收测试配置，不能继承开发机的数据库或供应商密钥。
+	// 子进程使用测试配置，数据库和供应商凭据由测试提供。
 	p.cmd.Env = append([]string{"PATH=" + os.Getenv("PATH"), "HOME=" + dir, "TMPDIR=" + os.TempDir(), "TZ=UTC", "DATA_DIR=" + dir}, env...)
 	p.cmd.Stdout = p.output
 	p.cmd.Stderr = p.output
@@ -188,7 +188,7 @@ func TestProcessModes(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "config.yaml"), data, 0o600))
 		return dir, []string{"PGAPPNAME=test-" + mode}
 	}
-	// 旧运行模式键仅作为升级兼容输入，启动不能修改既有管理员并发。
+	// 兼容旧运行模式键时，启动后管理员并发值保持不变。
 	for _, mode := range []string{"standard", "simple"} {
 		t.Run(mode+"-sigterm", func(t *testing.T) {
 			administrators := make(map[int64]int)
@@ -234,7 +234,7 @@ func TestProcessModes(t *testing.T) {
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] stopped "+name))
 				require.Less(t, strings.Index(logs, "stopped "+name), strings.Index(logs, "stopped Redis"))
 			}
-			// 认证资源在完整请求结束后退出；持久化延迟 outbox 不等同于全部排空。
+			// 认证资源在请求结束后退出，持久化的延迟 outbox 留待下次启动处理。
 			for _, name := range []string{"APIKeyService", "AuthCacheInvalidationWorker"} {
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] started "+name))
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] stopped "+name))
@@ -310,7 +310,7 @@ func TestProcessModes(t *testing.T) {
 				require.Less(t, strings.Index(logs, "stopped "+pair[0]), strings.Index(logs, "stopped "+pair[1]), pair)
 			}
 
-			// 完整请求与原生尝试共用入口屏障；授权/额度资源仍先于 Redis/SQL 停止。
+			// 请求和单次执行共用入口关闭检查，授权和额度资源先于 Redis、SQL 停止。
 			for _, name := range []string{"GatewayRequestsAndAttempts", "QoderRequestsAndAttempts", "QoderCredentialSessions", "OpenAIQuotaActions", "OpenAIQuotaService"} {
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] stopped "+name), name)
 				require.Less(t, strings.Index(logs, "stopped "+name), strings.Index(logs, "stopped Redis"), name)
@@ -322,7 +322,7 @@ func TestProcessModes(t *testing.T) {
 				require.Less(t, strings.Index(logs, "stopped GatewayRequestsAndAttempts"), strings.Index(logs, "stopped "+name), name)
 				require.Less(t, strings.Index(logs, "stopped "+name), strings.Index(logs, "stopped Redis"), name)
 			}
-			// 请求等待与原生操作屏障同阶段完成；操作取消不能等待自身所属 HTTP handler 先返回。
+			// 请求等待和操作取消在同一阶段执行，操作取消后 HTTP handler 才能结束。
 			for _, name := range []string{"HTTPRequests", "GatewayRequestsAndAttempts", "QoderRequestsAndAttempts"} {
 				require.Equal(t, 1, strings.Count(logs, "[Lifecycle] stopped "+name), name)
 				require.Less(t, strings.Index(logs, "stopped "+name), strings.Index(logs, "stopped UsageRecordWorkerPool"), name)
@@ -341,7 +341,7 @@ func TestProcessModes(t *testing.T) {
 		})
 	}
 
-	// JWT 维护命令只初始化用户读取和签发能力，参数/输出与真实签名保持兼容。
+	// JWT 维护命令初始化用户读取和签发组件，输出的 token 可通过签名验证。
 	t.Run("jwtgen-minimal", func(t *testing.T) {
 		tool := filepath.Join(t.TempDir(), "jwtgen")
 		build := exec.Command("go", "build", "-o", tool, "./cmd/jwtgen")

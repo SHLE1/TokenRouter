@@ -79,7 +79,7 @@ func TestQoderThinkingParsersUseProtocolNativeFields(t *testing.T) {
 }
 
 func TestBuildQoderAnthropicThinkingPayloadDefaultsToGlobalSite(t *testing.T) {
-	// 不带站点的导出构造函数必须沿用旧提供商语义，按国际站应用 Thinking 能力。
+	// 不带站点的导出构造函数按国际站应用 Thinking 能力。
 	body := []byte(`{
 		"model":"deepseek-v4-pro",
 		"max_tokens":1024,

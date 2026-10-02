@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/site"
 
-// SiteAdminSettings 仅转换所属模块值，不读取设置或发布状态。
+// SiteAdminSettings 从综合快照提取站点设置。
 func (s *Snapshot) SiteAdminSettings() site.AdminSettings {
 	return site.AdminSettings{
 		APIBaseURL:                  s.APIBaseURL,
@@ -36,7 +36,7 @@ func (s *Snapshot) SiteAdminSettings() site.AdminSettings {
 	}
 }
 
-// ApplySiteAdminSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplySiteAdminSettings 将站点设置写入综合快照。
 func (s *Snapshot) ApplySiteAdminSettings(value site.AdminSettings) {
 	s.APIBaseURL = value.APIBaseURL
 	s.ContactInfo = value.ContactInfo

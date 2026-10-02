@@ -68,7 +68,7 @@ func (r *ProviderStore) BatchUpdateLastUsed(ctx context.Context, updates map[int
 }
 
 func (r *ProviderStore) SetError(ctx context.Context, id int64, errorMsg string) error {
-	// 标记错误时同步关闭调度开关，确保快照刷新后调度器不再选中该提供商。
+	// 标记错误时同时关闭调度开关，快照刷新后该提供商退出候选池。
 	_, err := r.client.Provider.Update().
 		Where(dbprovider.IDEQ(id)).
 		SetStatus(acctcore.StatusError).
@@ -119,7 +119,7 @@ func (r *ProviderStore) SetRateLimited(ctx context.Context, id int64, resetAt ti
 }
 
 // SetRateLimitedIfLater 以原子方式延长提供商级限流。Grok 请求可能并发结束，较旧响应
-// 不得覆盖其它请求或实例已观测到的更晚重置边界。
+// 使用较早重置时间的响应到达时，已保存的较晚时间保持不变。
 func (r *ProviderStore) SetRateLimitedIfLater(ctx context.Context, id int64, resetAt time.Time) error {
 	now := r.options.Now()
 	updated, err := r.client.Provider.Update().
@@ -150,7 +150,7 @@ func (r *ProviderStore) SetRateLimitedIfLater(ctx context.Context, id int64, res
 }
 
 // ClearRateLimitIfObserved 只清除成功请求观察到的 Grok 限流代次。
-// 同时匹配两个时间戳，避免过期成功请求清除后来重新设置且重置时间相同或更短的新代次。
+// 同时匹配设置时间与重置时间，仅清除本次观察到的限流记录。
 func (r *ProviderStore) ClearRateLimitIfObserved(ctx context.Context, id int64, observedLimitedAt, observedResetAt time.Time) (bool, error) {
 	updated, err := r.client.Provider.Update().
 		Where(
@@ -443,7 +443,7 @@ func (r *ProviderStore) AutoPauseExpiredProviders(ctx context.Context, now time.
 	}
 
 	if len(providerIDs) > 0 {
-		// 只刷新本次暂停的提供商及其所属分组，避免少量提供商到期触发所有调度桶重建。
+		// 刷新本次暂停的提供商及其所属分组对应的调度桶。
 		payload := map[string]any{"provider_ids": providerIDs}
 		if err := r.enqueue(ctx, r.sql, ProviderBulkChanged, nil, nil, payload); err != nil {
 			r.observe("[SchedulerOutbox] enqueue auto pause provider changes failed: err=%v", err)

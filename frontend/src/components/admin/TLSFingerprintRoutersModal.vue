@@ -781,12 +781,12 @@ function handleYamlPaste() {
   setTimeout(() => parseYamlInput(), 50)
 }
 
-// 字符串用 JSON 引号输出，避免特殊字符破坏 YAML 结构。
+// 字符串用 JSON 引号转义后写入 YAML。
 function formatYamlString(value: string): string {
   return JSON.stringify(value)
 }
 
-// token TLS 模板使用 null 明确表达“不启用”，避免和内置默认模板 0 混淆。
+// token TLS 模板的 null 表示关闭，0 表示内置默认模板。
 function formatYamlNullableNumber(value: number | null | undefined): string {
   return value === null || typeof value === 'undefined' ? 'null' : String(value)
 }

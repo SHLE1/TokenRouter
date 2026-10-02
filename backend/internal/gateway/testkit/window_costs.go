@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// WindowCosts 只投影原用量测试来源，保留可选批量能力与 nil 返回，不实现窗口规则。
+// WindowCosts 适配测试用量来源，支持可选的批量查询和 nil 结果。
 func WindowCosts(source usage.UsageLogRepository) billing.WindowCostSource {
 	if source == nil {
 		return nil

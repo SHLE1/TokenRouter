@@ -49,7 +49,7 @@ func collectMapstructureKeys(t reflect.Type, prefix string, out map[string]strin
 				elem = elem.Elem()
 			}
 			if elem.Kind() == reflect.Struct {
-				// 结构体切片只能由配置文件解码，不能安全地从单个环境变量展开。
+				// 结构体切片由配置文件解码。
 				continue
 			}
 		}
@@ -59,7 +59,7 @@ func collectMapstructureKeys(t reflect.Type, prefix string, out map[string]strin
 
 // TestConfigKeysAreEnvReachable 系统性防止配置结构与环境变量注册漂移：
 // viper.Unmarshal 只解码 AllKeys 返回的 SetDefault、配置文件和 BindEnv 键；
-// AutomaticEnv 只能覆盖已有键，不能新增键，`-tags embed` 构建也不会启用
+// AutomaticEnv 覆盖已注册键，`-tags embed` 构建未启用
 // viper_bind_struct 兜底。
 //
 // 因此没有注册默认值、且不在 config.yaml 中的字段无法由环境变量配置：加载器会

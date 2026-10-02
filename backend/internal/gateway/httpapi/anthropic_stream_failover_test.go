@@ -17,13 +17,8 @@ import (
 const partialMessageStartSSE = "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_01\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-sonnet-4-5\",\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":10,\"output_tokens\":1}}}\n\n" +
 	"event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
 
-// TestStreamWrittenGuard_MessagesPath_AbortFailoverOnSSEContentWritten 验证：
-// 当 Forward 在返回 UpstreamFailoverError 前已向客户端写入 SSE 内容时，
-// 故障转移保护逻辑必须终止循环并发送 SSE 错误事件，而不是进行下一次 Forward。
-// 具体验证：
-//  1. c.Writer.Size() 检测条件正确触发（字节数已增加）
-//  2. handleFailoverExhausted 以 streamStarted=true 调用后，响应体以 SSE 错误事件结尾
-//  3. 响应体中只出现一个 message_start，不存在第二个（防止流拼接腐化）
+// TestStreamWrittenGuard_MessagesPath_AbortFailoverOnSSEContentWritten 验证 Forward 已写出 SSE 后返回 UpstreamFailoverError 时结束换号。
+// 测试检查 Writer.Size 增加、handleFailoverExhausted 以 streamStarted=true 写出终止错误，以及 message_start 仅出现一次。
 func TestStreamWrittenGuard_MessagesPath_AbortFailoverOnSSEContentWritten(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -67,8 +62,7 @@ func TestStreamWrittenGuard_MessagesPath_AbortFailoverOnSSEContentWritten(t *tes
 		"响应体中 'event: message_start' 必须只出现一次，不得因 failover 拼接导致两次")
 }
 
-// TestStreamWrittenGuard_GeminiPath_AbortFailoverOnSSEContentWritten 与上述测试相同，
-// 验证 Gemini 路径使用 service.PlatformGemini（而非 provider.Platform）时行为一致。
+// TestStreamWrittenGuard_GeminiPath_AbortFailoverOnSSEContentWritten 验证 Gemini 路径使用 service.PlatformGemini 时，在 SSE 输出后结束换号并返回流错误。
 func TestStreamWrittenGuard_GeminiPath_AbortFailoverOnSSEContentWritten(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

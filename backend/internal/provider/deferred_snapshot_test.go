@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestDeferredFailureKeepsNewerPendingActivity 验证旧批次写回失败时，同提供商的新活动时间必须保留，不能由旧批次回填覆盖。
+// TestDeferredFailureKeepsNewerPendingActivity 检查旧批次写回失败后，待写入队列中较新的活动时间保持不变。
 func TestDeferredFailureKeepsNewerPendingActivity(t *testing.T) {
 	repo := &deferredDrainRepository{entered: make(chan struct{}), release: make(chan struct{}), err: errors.New("forced write failure")}
 	wheel, err := NewTimingWheelService()

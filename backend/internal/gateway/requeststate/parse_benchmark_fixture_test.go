@@ -7,12 +7,8 @@ import (
 	"math"
 )
 
-// parseIntegralNumber 将 JSON 解码后的数字安全转换为 int。
-// 仅接受“整数值”的输入，小数/NaN/Inf/越界值都会返回 false。
-//
-// 说明：
-//   - 该函数当前仅用于 unit 测试中的 map-based 解析逻辑验证，因此放在 unit build tag 下，
-//     避免在默认构建中触发 unused lint。
+// parseIntegralNumber 将 JSON 解码后的整数值转换为 int，小数、NaN、Inf 和越界值返回 false。
+// 该辅助函数位于 unit 构建中，供 map 解析测试使用。
 func parseIntegralNumber(raw any) (int, bool) {
 	switch v := raw.(type) {
 	case float64:

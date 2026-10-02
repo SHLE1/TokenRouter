@@ -2,7 +2,7 @@ package identity
 
 import "strings"
 
-// PublicAuthSettings 只包含浏览器可见的身份能力，不包含 secret 或内部认证选项。
+// PublicAuthSettings 包含可向浏览器公开的登录开关和认证参数。
 type PublicAuthSettings struct {
 	LinuxDo, DingTalk, OIDC, WeChat, WeChatOpen, WeChatMP, WeChatMobile, GitHub, Google, GoogleOneTap bool
 	OIDCName, GoogleClientID, TencentRegion, AliyunRegion                                             string

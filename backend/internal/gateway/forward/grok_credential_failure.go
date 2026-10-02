@@ -34,7 +34,7 @@ type GrokCredentialFailure struct {
 	snapshot  *providercore.CredentialMutationSnapshot
 }
 
-// ClassifyGrokCredentialFailure 保留原因匹配顺序，仅读取代理存在性与错误链。
+// ClassifyGrokCredentialFailure 按原因顺序检查代理是否存在及错误链，返回凭据失败分类。
 func ClassifyGrokCredentialFailure(hasProxy bool, err error) GrokCredentialFailure {
 	stableReason := strings.ToLower(strings.TrimSpace(apperror.Reason(err)))
 	message := ""
@@ -96,5 +96,5 @@ func (f *GrokCredentialFailure) SetSnapshot(snapshot *providercore.CredentialMut
 	f.snapshot = snapshot
 }
 
-// Snapshot 只供本次受控状态写入使用，不作为公开诊断载荷。
+// Snapshot 返回本次状态写入所需的数据。
 func (f GrokCredentialFailure) Snapshot() *providercore.CredentialMutationSnapshot { return f.snapshot }

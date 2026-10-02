@@ -43,7 +43,7 @@ func TestQoderTokenProviderConcurrent(t *testing.T) {
 			for j := 0; j < numRequestsPerGoroutine; j++ {
 				session, err := tokenSource.GetSession(ctx, provider)
 				if err != nil {
-					// 与显式 Invalidate 竞争的旧世代构建必须被丢弃，这是预期的安全结果。
+					// Invalidate 或凭据更新后，先前代次的构建结果被丢弃。
 					if errors.Is(err, errQoderSessionBuildInvalidated) {
 						successCount.Store(workerID*1000+j, true)
 						continue

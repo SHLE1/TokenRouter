@@ -582,7 +582,7 @@ const form = reactive({
   sections: [emptyPricingSection()] as PricingSection[],
 })
 
-// 计费模型来源只决定查价口径。
+// 计费模型来源决定使用哪个模型查询价格。
 const billingModelSourceHint = computed(() => {
   switch (form.billing_model_source) {
     case 'requested':
@@ -602,7 +602,7 @@ function formatDate(value: string): string {
   return new Date(value).toLocaleDateString()
 }
 
-// 每个配置保存一份模型价表，提供商成本规则保持原有次序。
+// 每个配置保存一份模型价表，提供商成本规则按数组顺序保存。
 function emptyPricingSection(): PricingSection {
   return { group_ids: [], model_pricing: [], provider_stats_pricing_rules: [] }
 }
@@ -1012,7 +1012,7 @@ async function handleSubmit() {
     return
   }
 
-  // 检查未选择模型的定价条目，避免保存后被静默跳过
+  // 保存前检查定价条目是否选择了模型。
   for (const section of form.sections) {
     if (section.group_ids.length === 0) {
       appStore.showError(t('admin.pricing.noGroupsSelected'))
@@ -1038,7 +1038,7 @@ async function handleSubmit() {
     }
   }
 
-  // 倍率只能调整已配置的定价，不能单独继承系统默认价。
+  // 配置倍率时需要至少填写一项价格。
   for (const section of form.sections) {
     const entries = [
       ...section.provider_stats_pricing_rules.flatMap(rule => rule.pricing),

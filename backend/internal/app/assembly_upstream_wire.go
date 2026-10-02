@@ -10,7 +10,7 @@ import (
 	"github.com/google/wire"
 )
 
-// 共享上游技术客户端的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
+// upstreamAssemblyProviders 汇总上游客户端的 Wire provider。
 var upstreamAssemblyProviders = wire.NewSet(
 	wire.Bind(new(httpclient.UpstreamTransport), new(*gatewaytransport.Client)),
 	upstreamClientProviders,

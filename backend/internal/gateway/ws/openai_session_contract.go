@@ -11,23 +11,23 @@ import (
 
 // OpenAIIngressHooks 定义入站 WS 每个 turn 的生命周期回调。
 type OpenAIIngressHooks struct {
-	// ClientLifecycleContext 是叠加 ingress 租约取消信号前的客户端请求上下文。
-	// 下行写使用它保留客户端断连和服务关闭信号，同时避免租约丢失中断当前帧。
+	// ClientLifecycleContext 是加入 ingress 租约取消信号前的客户端 context。
+	// 下行写入继承客户端断开和服务关闭信号，租约丢失则在当前帧完成后结束连接。
 	ClientLifecycleContext context.Context
 	// InitialRequestModel 是首帧分组映射前的请求模型，供会话缺省模型与策略范围使用。
 	InitialRequestModel string
 	// InitialTurnStartedAt 是首轮 response.create 被接受时的时间快照。
 	InitialTurnStartedAt time.Time
-	// MaxReasoningEffort 限制当前 WS 会话中显式指定的推理强度。
+	// MaxReasoningEffort 限制当前 WebSocket 会话中请求指定的推理强度。
 	MaxReasoningEffort string
-	// MaxReasoningEffortOverLimit 控制显式推理强度超限时降档或拒绝。
+	// MaxReasoningEffortOverLimit 指定请求推理强度超限时降档或拒绝。
 	MaxReasoningEffortOverLimit string
-	// ReasoningEffortMappings 在当前 WS 会话中改写显式指定的推理强度。
+	// ReasoningEffortMappings 改写当前 WebSocket 会话中请求指定的推理强度。
 	ReasoningEffortMappings []routing.ReasoningEffortMapping
 	// ResolveRoutingModel 在提供商映射前逐轮把客户端模型 R 解析为分组映射模型 G。
 	// payload 用于按分组映射后的完整请求判断该轮能力；返回错误时当前帧不得发送上游。
 	ResolveRoutingModel func(turn int, requestedModel string, payload []byte) (string, error)
-	// ResolveFastModePolicy 逐轮刷新 API Key Fast 策略，避免长连接永久沿用握手快照。
+	// ResolveFastModePolicy 在每轮读取 API Key 的当前 Fast 策略。
 	ResolveFastModePolicy func(turn int) string
 	// TurnStarted 报告每轮 response.create 的开始时刻；时间值应在策略处理前捕获。
 	TurnStarted   func(turn int, startedAt time.Time)

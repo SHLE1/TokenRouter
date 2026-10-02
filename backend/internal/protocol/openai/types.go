@@ -114,7 +114,7 @@ type ResponsesTool struct {
 	Parameters  json.RawMessage `json:"parameters,omitempty"`
 	Strict      *bool           `json:"strict,omitempty"`
 
-	// type=namespace 的子工具列表（tools 与 children 二选一，语义相同）。
+	// type=namespace 的子工具列表，tools 与 children 为同义字段，二选一。
 	Tools    []ResponsesTool `json:"tools,omitempty"`
 	Children []ResponsesTool `json:"children,omitempty"`
 
@@ -168,7 +168,7 @@ type ResponsesError struct {
 	Code       string `json:"code"`
 	Type       string `json:"type,omitempty"`
 	Message    string `json:"message"`
-	StatusCode int    `json:"status_code,omitempty"` // 保留聚合上游附带的语义状态码，供提供商错误策略判断。
+	StatusCode int    `json:"status_code,omitempty"` // 聚合上游报告的状态码，供提供商错误策略判断。
 }
 
 // ResponsesIncompleteDetails explains why a response is incomplete.
@@ -206,8 +206,7 @@ type ResponsesOutput struct {
 
 // MarshalJSON 处理 tool_search_call 项的线上形态（复用 CallID/Arguments 字段）：
 // execution 固定为 "client"（codex 的必填字段，非 client 的调用会被静默忽略），
-// arguments 是 JSON 对象而非 function_call 语义下的字符串。其余类型走默认结构体
-// 序列化，输出逐字节不变。
+// arguments 编码为 JSON 对象。其余类型使用默认结构体序列化。
 func (o ResponsesOutput) MarshalJSON() ([]byte, error) {
 	type responsesOutputAlias ResponsesOutput
 	if o.Type != "tool_search_call" {
@@ -392,7 +391,7 @@ type ResponsesStreamEvent struct {
 
 	// response.created / response.completed / response.done / response.failed / response.incomplete
 	Response *ResponsesResponse `json:"response,omitempty"`
-	// 部分 OpenAI 兼容上游会把 usage 放在终止事件顶层，而不是 response.usage。
+	// 部分 OpenAI 兼容上游将 usage 放在终止事件顶层。
 	Usage *ResponsesUsage `json:"usage,omitempty"`
 
 	// response.output_item.added / response.output_item.done
@@ -637,7 +636,7 @@ func (m ChatMessage) ReasoningText() string {
 	return m.Reasoning
 }
 
-// ReasoningText 返回增量中的推理文本；正式字段即使显式为空也优先于兼容别名。
+// ReasoningText 返回增量中的推理文本，正式字段存在时优先使用其值，包括空字符串。
 func (d ChatDelta) ReasoningText() *string {
 	if d.ReasoningContent != nil {
 		return d.ReasoningContent

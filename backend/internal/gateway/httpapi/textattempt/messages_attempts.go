@@ -55,7 +55,7 @@ type messageAttemptBridge struct {
 	result                                         *forwardcore.MessagesResult
 }
 
-// PrepareAttempt 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
+// PrepareAttempt 准备当前尝试的模型和请求体。
 func (b *messageAttemptBridge) PrepareAttempt() bool {
 	var err error
 	b.attemptParsedReq, b.attemptGroupMapping, err = b.binding().prepareGatewayAttemptRequest(
@@ -69,7 +69,7 @@ func (b *messageAttemptBridge) PrepareAttempt() bool {
 	return true
 }
 
-// Select 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
+// Select 选择支持请求模型的提供商。
 func (b *messageAttemptBridge) Select(excluded map[int64]struct{}) (textflow.Selection, error) {
 	// 选择支持该模型的提供商
 	b.reqLog.Info("sticky.selecting_provider",
@@ -102,7 +102,7 @@ func (b *messageAttemptBridge) Select(excluded map[int64]struct{}) (textflow.Sel
 	return gatewaycapture.CaptureTextSelection(b.provider), nil
 }
 
-// FirstSelectionFailure 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
+// FirstSelectionFailure 将首次选择失败转换为客户端错误。
 func (b *messageAttemptBridge) FirstSelectionFailure(err error, fallbackUsed bool) {
 	if handleGroupSelectionBusinessError(b.c, err, *b.streamStarted, func(status int, errType string, message string, responseStarted bool) {
 		b.binding().handleStreamingAwareError(b.c, status, errType, message, responseStarted)
@@ -128,7 +128,7 @@ func (b *messageAttemptBridge) FirstSelectionFailure(err error, fallbackUsed boo
 	b.binding().handleStreamingAwareError(b.c, cls.Status, cls.ErrType, message, *b.streamStarted)
 }
 
-// Intercept 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
+// Intercept 识别并直接响应 warmup 请求。
 func (b *messageAttemptBridge) Intercept() bool {
 	if b.provider.View().IsInterceptWarmupEnabled() {
 		interceptType := clientmeta.DetectInterceptType(b.body, b.reqModel, b.parsedReq.MaxTokens, b.isClaudeCodeClient)
@@ -148,7 +148,7 @@ func (b *messageAttemptBridge) Intercept() bool {
 	return false
 }
 
-// Acquire 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
+// Acquire 取得提供商槽位，等待成功后绑定粘性会话。
 func (b *messageAttemptBridge) Acquire() bool {
 	// 3. 获取提供商并发槽位
 	b.providerReleaseFunc = b.selection.ReleaseFunc
@@ -217,7 +217,7 @@ func (b *messageAttemptBridge) Acquire() bool {
 	return true
 }
 
-// Forward 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
+// Forward 应用消息队列和兼容策略，再向所选平台转发请求。
 func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Outcome {
 	var err error
 	// ===== 用户消息串行队列 START =====
@@ -244,7 +244,7 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 		}
 
 	case queuepolicy.MessageQueueThrottle:
-		// 软性限速：仅施加 RPM 自适应延迟，不阻塞并发
+		// 按 RPM 添加自适应延迟，并发槽位继续按并发限制管理。
 		baseRPM := gatewaycapture.ExecutionRuntimeConfig(b.provider).GetBaseRPM()
 		if tErr := b.binding().userMsgQueueHelper.ThrottleWithPing(
 			b.c, b.provider.Record.ID, baseRPM, b.reqStream, b.streamStarted,
@@ -266,7 +266,7 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 		}
 	}
 
-	// 用 wrapReleaseOnDone 确保 context 取消时自动释放（仅 serialize 模式有 queueRelease）
+	// context 取消时自动释放串行锁，queueRelease 由 serialize 模式创建。
 	queueRelease = scheduler.WrapRelease(b.c.Request.Context(), scheduler.ReleaseOnCancel, queueRelease)
 	b.sessionAttempts.Own(b.provider.Record.ID, queueRelease)
 	// 注入回调到 ParsedRequest：使用外层 wrapper 以便提前清理 AfterFunc
@@ -288,9 +288,9 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 		requestCtx = requeststate.WithProviderSwitchCount(requestCtx, state.SwitchCount)
 	}
 	if state.ForceCacheBilling {
-		// 将故障转移后的缓存计费语义传给同步响应改写逻辑。
+		// 将故障转移后的缓存计费标记传给同步响应改写函数。
 		requestCtx = requeststate.WithForceCacheBilling(requestCtx)
-		// 分组回退会重建提供商尝试状态，这项已触发策略必须保留到请求完成。
+		// 分组回退会重建提供商尝试状态，请求 context 保存已触发的计费策略直至完成。
 		b.c.Request = b.c.Request.WithContext(requestCtx)
 	}
 	// 记录 Forward 前已写入字节数，Forward 后若增加则说明 SSE 内容已发，禁止 failover
@@ -301,7 +301,7 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 		b.result, err = b.binding().forwardMessages(requestCtx, b.c, b.provider, b.attemptParsedReq)
 	}
 
-	// 兜底释放串行锁（正常情况已通过回调提前释放）
+	// 释放尚未由回调释放的串行锁。
 	if queueRelease != nil {
 		queueRelease()
 	}
@@ -330,7 +330,7 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 	return out
 }
 
-// Complete 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
+// Complete 捕获用量和请求数据并提交完成任务。
 func (b *messageAttemptBridge) Complete(state textflow.AttemptState) {
 	usageResult := b.result
 
@@ -355,11 +355,11 @@ func (b *messageAttemptBridge) Complete(state textflow.AttemptState) {
 		usageResult.ReasoningEffort = gatewaycapture.DefaultEffortForThinkingEnabled(protocolModel)
 	}
 
-	// ForceCacheBilling 提前拍成标量，避免 worker 闭包保活 failover 状态里的响应体。
+	// 完成任务捕获 ForceCacheBilling 的布尔值，failover 响应体可随请求释放。
 	forceCacheBilling := state.ForceCacheBilling || requeststate.IsForceCacheBilling(b.Context())
 
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
-	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
+	// 入队前捕获资金和报文数据，worker 使用这份快照。
 	completionInput := gatewaycapture.CaptureMessages(gatewayhttp.CompletionContext(b.c), &gatewaycapture.MessagesCapture{
 		Result: usageResult,
 
@@ -395,7 +395,7 @@ func (b *messageAttemptBridge) Complete(state textflow.AttemptState) {
 	})
 }
 
-// OtherFailure 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
+// OtherFailure 补充尚未输出的客户端错误并记录失败日志。
 func (b *messageAttemptBridge) OtherFailure(err error) {
 	upstreamErrorAlreadyCommunicated := gatewayhttp.ForwardErrorAlreadyCommunicated(b.c, b.writerSizeBeforeForward, err)
 	wroteFallback := false
@@ -423,7 +423,7 @@ func (b *messageAttemptBridge) OtherFailure(err error) {
 	b.reqLog.Error("gateway.forward_failed", forwardFailedFields...)
 }
 
-// Success 只执行一次适配操作，重试与分组回退循环由 gateway/text 拥有。
+// Success 增加 RPM 计数并更新粘性会话。
 func (b *messageAttemptBridge) Success() {
 	// RPM 计数递增（Forward 成功后）
 	// 注意：TOCTOU 竞态是已知且可接受的设计权衡，与 WindowCost 一致的 soft-limit 模式。

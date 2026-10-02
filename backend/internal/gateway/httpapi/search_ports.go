@@ -42,7 +42,7 @@ type StandaloneSearchSelector interface {
 	Select(context.Context, int64, string, map[int64]struct{}) (StandaloneSearchTarget, searchtools.Selection, bool, error)
 }
 
-// SearchPorts 由组合根绑定唯一依赖；每个搜索只在 Run 中持有本次选择。
+// SearchPorts 接收应用绑定的依赖，Run 保存本次搜索选择的提供商。
 type SearchPorts struct {
 	Selector    StandaloneSearchSelector
 	Funding     *admission.FundingAdmission
@@ -99,7 +99,7 @@ func (p SearchPorts) ConcurrencyError(c *gin.Context, err error) {
 	WriteAnthropicStreamError(c, status, kind, code, message, false, MarkOpsStreamError)
 }
 
-// 当前提供商仅在当前 HTTP Adapter 内用于执行和同步快照，不进入核心或后台闭包。
+// 当前 HTTP Adapter 使用所选提供商执行请求，并同步捕获完成快照。
 type gatewayStandaloneSearchRun struct {
 	ports   SearchPorts
 	c       *gin.Context
@@ -176,9 +176,9 @@ func (r *gatewayStandaloneSearchRun) Complete(c *gin.Context, req searchtools.St
 	upstreamEndpoint := GetUpstreamEndpoint(c, provider.Platform)
 	requestPayloadHash := billing.HashUsageRequestPayload([]byte(req.Query))
 
-	// request ID 是结算幂等键，必须按调用唯一；查询、IP 或 UA 哈希会错误合并重复搜索。
+	// request ID 是每次调用独立的结算幂等键，查询、IP 或 UA 哈希会合并重复搜索。
 	searchRequestID := searchLabel + ":" + uuid.NewString()
-	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
+	// 入队前捕获资金和报文数据，worker 使用这份快照。
 	completionInput := gatewaycapture.CaptureMessages(CompletionContext(c), &gatewaycapture.MessagesCapture{
 		Result: &forwardcore.MessagesResult{
 			RequestID:   searchRequestID,

@@ -39,11 +39,11 @@ func TestProtocolCatalogFixture(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err = os.WriteFile(path, append(data, '\n'), 0600); err != nil {
+		if err = os.WriteFile(path, append(data, '\n'), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	// 默认运行即核对前端夹具；更新目录后需显式导出并审查契约差异。
+	// 测试默认核对前端夹具，更新协议目录后需要导出并检查字段差异。
 	frontend := filepath.Join("..", "..", "..", "frontend", "src")
 	fixture, err := os.ReadFile(filepath.Join(frontend, "__tests__", "fixtures", "protocol-catalog.json"))
 	require.NoError(t, err)
@@ -51,7 +51,7 @@ func TestProtocolCatalogFixture(t *testing.T) {
 	require.NoError(t, err)
 	require.JSONEq(t, string(fixture), string(actual))
 
-	// TypeScript 联合类型必须覆盖完整目录，新增或删除协议都不能静默漂移。
+	// TypeScript 联合类型需要覆盖协议目录，增删协议后同步更新。
 	types, err := os.ReadFile(filepath.Join(frontend, "types", "index.ts"))
 	require.NoError(t, err)
 	block := regexp.MustCompile(`(?s)export type ProtocolID =\s*((?:\s*\|\s*'[^']+')+)`).FindSubmatch(types)
@@ -66,7 +66,7 @@ func TestProtocolCatalogFixture(t *testing.T) {
 	require.Empty(t, ids)
 }
 
-// testEndpoints 与 app 一样显式组装跨 Adapter 的只读投影。
+// testEndpoints 组合各 HTTP 适配器提供的协议列表。
 func testEndpoints() map[protocol.ProtocolID]string {
 	out := map[protocol.ProtocolID]string{}
 	for _, e := range gatewayhttpapi.ProtocolEndpoints() {

@@ -16,7 +16,7 @@ var openaiAllowedHeaders = map[string]bool{
 	"user-agent":      true,
 	"originator":      true,
 	"session_id":      true,
-	// Codex 设备/会话标识参与提供商 namespace 隔离，必须在进入请求构造器时保留。
+	// 请求构造器保留 Codex 设备和会话标识，用于提供商 namespace 隔离。
 	"installation_id":            true,
 	"x-codex-installation-id":    true,
 	"session-id":                 true,
@@ -35,7 +35,7 @@ var openaiAllowedHeaders = map[string]bool{
 }
 
 // OpenAI passthrough allowed headers whitelist.
-// 透传模式下仅放行这些低风险请求头，避免将非标准/环境噪声头传给上游触发风控。
+// 透传模式放行以下低风险请求头，其他请求头可能触发上游风控。
 var openaiPassthroughAllowedHeaders = map[string]bool{
 	"accept":                     true,
 	"accept-language":            true,
@@ -62,20 +62,11 @@ var openaiPassthroughAllowedHeaders = map[string]bool{
 	media.ResponsesLiteHeaderKey: true,
 }
 
-// openaiCCRawAllowedHeaders 是 CC 直转路径专用的客户端 header 透传白名单。
-//
-// **关键**：不能复用 openaiAllowedHeaders——后者含 Codex 客户端专属 header
-// （originator / session_id / x-codex-turn-state / x-codex-turn-metadata / conversation_id），
-// 这些在 ChatGPT OAuth 上游是必需的，但透传给 DeepSeek/Kimi/GLM 等第三方
-// OpenAI 兼容上游会造成：
-//   - 完全忽略（多数友好厂商）——隐性污染上游统计
-//   - 400 "unknown parameter"（严格上游）——可见错误
-//
-// 这里仅放行通用 HTTP header；content-type / authorization / accept 由上下文
-// 显式设置，不依赖透传。
-//
-// 参见决策记录：
-// pensieve/short-term/maxims/dont-reuse-shared-headers-whitelist-across-different-upstream-trust-domains
+// openaiCCRawAllowedHeaders 是 Chat Completions 直转的客户端请求头白名单。
+// Codex 专用头 originator、session_id、x-codex-turn-state、x-codex-turn-metadata、conversation_id 用于 ChatGPT OAuth。
+// 将这些头发给 DeepSeek、Kimi、GLM 等兼容上游，可能被忽略或返回 400 unknown parameter。
+// 此白名单透传通用 HTTP 头，content-type、authorization 和 accept 由请求上下文设置。
+// 参见 pensieve/short-term/maxims/dont-reuse-shared-headers-whitelist-across-different-upstream-trust-domains。
 var openaiCCRawAllowedHeaders = map[string]bool{
 	"accept-language": true,
 	"user-agent":      true,

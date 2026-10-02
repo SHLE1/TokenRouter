@@ -11,34 +11,36 @@ import (
 // 路由声明复用唯一的协议 ID。
 type ProtocolID = protocol.ProtocolID
 
-const ProtocolAnthropicMessages = protocol.ProtocolAnthropicMessages
-const ProtocolOpenAIResponses = protocol.ProtocolOpenAIResponses
-const ProtocolOpenAIChatCompletions = protocol.ProtocolOpenAIChatCompletions
-const ProtocolGeminiGenerateContent = protocol.ProtocolGeminiGenerateContent
-const ProtocolEmbeddings = protocol.ProtocolEmbeddings
-const ProtocolImagesGenerations = protocol.ProtocolImagesGenerations
-const ProtocolImagesEdits = protocol.ProtocolImagesEdits
-const ProtocolImageBatches = protocol.ProtocolImageBatches
-const ProtocolVideosGenerations = protocol.ProtocolVideosGenerations
-const ProtocolVideosEdits = protocol.ProtocolVideosEdits
-const ProtocolVideosExtensions = protocol.ProtocolVideosExtensions
-const ProtocolTTS = protocol.ProtocolTTS
-const ProtocolSTT = protocol.ProtocolSTT
-const ProtocolCustomVoices = protocol.ProtocolCustomVoices
-const ProtocolVoiceRealtime = protocol.ProtocolVoiceRealtime
-const ProtocolResponsesWebSocket = protocol.ProtocolResponsesWebSocket
-const ProtocolLive = protocol.ProtocolLive
-const ProtocolResponsesCompact = protocol.ProtocolResponsesCompact
-const ProtocolAlphaSearch = protocol.ProtocolAlphaSearch
-const ProtocolWebSearch = protocol.ProtocolWebSearch
-const ProtocolXSearch = protocol.ProtocolXSearch
-const ProtocolQoderChat = protocol.ProtocolQoderChat
-const ProtocolGeminiBatch = protocol.ProtocolGeminiBatch
-const ProtocolVertexBatch = protocol.ProtocolVertexBatch
+const (
+	ProtocolAnthropicMessages     = protocol.ProtocolAnthropicMessages
+	ProtocolOpenAIResponses       = protocol.ProtocolOpenAIResponses
+	ProtocolOpenAIChatCompletions = protocol.ProtocolOpenAIChatCompletions
+	ProtocolGeminiGenerateContent = protocol.ProtocolGeminiGenerateContent
+	ProtocolEmbeddings            = protocol.ProtocolEmbeddings
+	ProtocolImagesGenerations     = protocol.ProtocolImagesGenerations
+	ProtocolImagesEdits           = protocol.ProtocolImagesEdits
+	ProtocolImageBatches          = protocol.ProtocolImageBatches
+	ProtocolVideosGenerations     = protocol.ProtocolVideosGenerations
+	ProtocolVideosEdits           = protocol.ProtocolVideosEdits
+	ProtocolVideosExtensions      = protocol.ProtocolVideosExtensions
+	ProtocolTTS                   = protocol.ProtocolTTS
+	ProtocolSTT                   = protocol.ProtocolSTT
+	ProtocolCustomVoices          = protocol.ProtocolCustomVoices
+	ProtocolVoiceRealtime         = protocol.ProtocolVoiceRealtime
+	ProtocolResponsesWebSocket    = protocol.ProtocolResponsesWebSocket
+	ProtocolLive                  = protocol.ProtocolLive
+	ProtocolResponsesCompact      = protocol.ProtocolResponsesCompact
+	ProtocolAlphaSearch           = protocol.ProtocolAlphaSearch
+	ProtocolWebSearch             = protocol.ProtocolWebSearch
+	ProtocolXSearch               = protocol.ProtocolXSearch
+	ProtocolQoderChat             = protocol.ProtocolQoderChat
+	ProtocolGeminiBatch           = protocol.ProtocolGeminiBatch
+	ProtocolVertexBatch           = protocol.ProtocolVertexBatch
+)
 
 // ProtocolRoute 描述需要分组准入的标准化入口；别名在路由层统一去除前缀。
 type ProtocolRoute struct {
-	// 空方法表示所有方法；子资源匹配以完整路径段为边界。
+	// 空方法匹配所有方法，子资源按完整路径段匹配。
 	Method    string
 	Path      string
 	Prefix    bool
@@ -79,7 +81,7 @@ var protocolEndpoints = []ProtocolEndpoint{
 	{ID: ProtocolVertexBatch, Endpoint: "POST /v1/projects/{project}/locations/{location}/batchPredictionJobs"},
 }
 
-// httpProtocol 从同一份路径元数据派生目录展示，避免入口描述与门禁映射漂移。
+// httpProtocol 使用门禁的路径元数据生成目录展示。
 func httpProtocol(id ProtocolID, primary ProtocolRoute, aliases ...ProtocolRoute) ProtocolEndpoint {
 	endpoint := "/v1" + primary.Path
 	if primary.Method != "" {

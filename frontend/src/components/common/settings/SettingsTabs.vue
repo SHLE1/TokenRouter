@@ -20,7 +20,7 @@
       </button>
     </div>
     <div ref="contentRef" class="settings-tab-content">
-      <!-- 所有页签持续挂载，避免编辑器的内部草稿在切页或页签暂时隐藏时丢失。 -->
+      <!-- 页签持续挂载，切页与暂时隐藏后编辑器仍保存草稿。 -->
       <section
         v-for="tab in tabs"
         v-show="isShown(tab.key)"

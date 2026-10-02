@@ -10,7 +10,7 @@ import (
 	"github.com/google/wire"
 )
 
-// HTTP 汇总与全局入口的组合根登记；这里只分组原 provider，不创建资源或复制业务实现。
+// httpAssemblyProviders 汇总HTTP 入口的 Wire provider。
 var httpAssemblyProviders = wire.NewSet(
 	nativeHTTPProviders,
 	server.ProviderSet,

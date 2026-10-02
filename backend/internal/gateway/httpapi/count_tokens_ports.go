@@ -20,7 +20,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// CountTarget 持有本次受控执行目标；HTTP 只读取无凭据快照，不反查提供商记录。
+// CountTarget 保存所选计数目标，HTTP 读取其摘要数据。
 type CountTarget interface {
 	Snapshot() provider.ProviderSnapshot
 	RetryLimit() int

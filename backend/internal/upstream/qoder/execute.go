@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// StreamClient 只发送一次已准备的 Qoder 请求，不执行提供商调度或资金动作。
+// StreamClient 发送一次已准备的 Qoder 请求。
 type StreamClient interface {
 	StreamRequestContext(context.Context, *SessionContext, string, []byte, map[string]string) (*http.Response, error)
 }
@@ -21,7 +21,7 @@ type streamClientWithDoer interface {
 	StreamRequestContextWithDoer(context.Context, *SessionContext, string, []byte, map[string]string, RequestDoer) (*http.Response, error)
 }
 
-// Target 只接受本次平台所需的投影和受控凭据入口，不能读取任意提供商字段。
+// Target 保存本次 Qoder 请求的站点、元数据和会话获取函数。
 type Target struct {
 	ProviderID int64
 	Site       Site
@@ -42,7 +42,7 @@ func (t *Target) TargetID() int64 {
 // String 防止诊断格式化展开闭包、代理及凭据。
 func (t *Target) String() string { return fmt.Sprintf("qoder target provider=%d", t.TargetID()) }
 
-// ExecuteOptions 保存唯一会话实例和本次执行预算，构造不启动工作。
+// ExecuteOptions 配置会话存储、执行超时和活动登记函数。
 type ExecuteOptions struct {
 	Conversations *QoderConversationStore
 	Timeout       time.Duration
@@ -230,7 +230,7 @@ func (e *Executor) Execute(ctx context.Context, input upstream.AttemptInput, sin
 			return upstream.AttemptResult{}, err
 		}
 		result.Served = true
-		// 非流写失败不撤销已完成的供应商服务，沿用旧入口的结算行为。
+		// 非流式输出写入失败时，已完成的上游服务仍进入结算。
 		if writeErr := sink.Begin(upstream.OutputHead{Status: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json; charset=utf-8"}}}); writeErr != nil {
 			result.ClientDisconnect = true
 		} else if writeErr = sink.Emit(upstream.OutputEvent{Data: responseBody, Semantic: true, CommitForRetry: true, Terminal: true}); writeErr != nil {

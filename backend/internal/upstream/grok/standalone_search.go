@@ -251,13 +251,13 @@ User query:
 %s`, NormalizeGrokWebSearchMaxResults(maxResults), query)
 }
 
-// BuildGrokWebSearchResponsesBody 保留原最小 Responses 请求与来源声明。
+// BuildGrokWebSearchResponsesBody 构造 web_search 请求，并要求返回引用来源。
 func BuildGrokWebSearchResponsesBody(query string, maxResults int, model string) []byte {
 	body, _ := json.Marshal(map[string]any{"model": ResolveDefaultTextModel(model), "input": BuildGrokWebSearchPrompt(query, maxResults), "tools": []map[string]any{{"type": "web_search"}}, "include": []string{"web_search_call.action.sources"}, "store": false, "stream": false})
 	return body
 }
 
-// StandaloneSearchResult 只表示供应商来源，不携带搜索配额或网关状态。
+// StandaloneSearchResult 是上游返回的一条搜索结果。
 type StandaloneSearchResult struct {
 	URL     string `json:"url"`
 	Title   string `json:"title"`

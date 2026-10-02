@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 )
 
-// ModelsDevPrices 将统一目录投影为现有计费字段，保留缺价与显式零价。
+// ModelsDevPrices 将统一目录转换为计费字段，区分缺价和配置的零价。
 func ModelsDevPrices(catalog *modelcatalog.Catalog) map[string]json.RawMessage {
 	result := map[string]json.RawMessage{}
 	for key, entry := range catalog.Entries {
@@ -78,7 +78,7 @@ func modelsDevPriceFields(entry modelcatalog.Entry, cost modelcatalog.Cost) map[
 	put("cache_read_input_token_cost", cost.CacheRead)
 	put("cache_creation_input_token_cost", cost.CacheWrite)
 	fields["supports_prompt_caching"] = cost.CacheRead != nil || cost.CacheWrite != nil
-	// 当前服务层级字段只表达文本 token 价，不把图片 Fast 价写入文本价格桶。
+	// 服务层级字段记录文本 token 价格，图片 Fast 价单独处理。
 	if entry.Fast != nil && !imageOutput {
 		fields["supports_service_tier"] = true
 		put("input_cost_per_token_priority", entry.Fast.Input)

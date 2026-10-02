@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// WaitCounters 仅操作原有用户及提供商计数，不承担槽位或资金校验。
+// WaitCounters 读写用户和提供商的等待计数。
 type WaitCounters interface {
 	IncrementWaitCount(context.Context, int64, int) (bool, error)
 	DecrementWaitCount(context.Context, int64) error
@@ -22,7 +22,7 @@ const (
 	WaitUncertain
 )
 
-// WaitResult 即使被值复制也共用一次释放；故障放行不等于取得计数。
+// WaitResult 的副本共用一次释放。故障放行时 Ownership 为 WaitUncertain，释放时跳过计数扣减。
 type WaitResult struct {
 	Allowed   bool
 	Ownership WaitOwnership
@@ -31,7 +31,7 @@ type WaitResult struct {
 
 func (r WaitResult) Release() { r.resource.Release() }
 
-// EnterUserWait 保持原用户等待故障放行策略，同时明确计数所有权。
+// EnterUserWait 登记用户等待计数，缓存故障时放行并标记计数结果不明。
 func EnterUserWait(ctx context.Context, cache WaitCounters, id int64, maxWait int, diagnostics Diagnostics) (WaitResult, error) {
 	if cache == nil {
 		return WaitResult{Allowed: true}, nil
@@ -39,7 +39,7 @@ func EnterUserWait(ctx context.Context, cache WaitCounters, id int64, maxWait in
 	return enterWait(ctx, id, maxWait, "user", cache.IncrementWaitCount, cache.DecrementWaitCount, diagnostics)
 }
 
-// EnterProviderWait 保持原提供商等待上限和故障放行，不释放别的请求取得的计数。
+// EnterProviderWait 按提供商等待上限登记计数，缓存故障时放行。释放时仅扣减本次确认取得的计数。
 func EnterProviderWait(ctx context.Context, cache WaitCounters, id int64, maxWait int, diagnostics Diagnostics) (WaitResult, error) {
 	if cache == nil {
 		return WaitResult{Allowed: true}, nil

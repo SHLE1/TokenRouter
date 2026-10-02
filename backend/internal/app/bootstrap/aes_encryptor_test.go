@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ── 测试辅助 ─────────────────────────────────────────────────────────────────
+// 测试辅助函数。
 
 // aesHexKey 构造一个全填充为 b 的 n 字节密钥并以 hex 编码返回。
 func aesHexKey(n int, b byte) string {
@@ -40,7 +40,7 @@ func aesEncryptor(t *testing.T) *AESEncryptor {
 	return enc
 }
 
-// ── NewAESEncryptor ──────────────────────────────────────────────────────────
+// NewAESEncryptor 构造测试。
 
 func TestNewAESEncryptor_ValidKey32Bytes(t *testing.T) {
 	enc, err := NewAESEncryptor(aesTestCfg(aesHexKey(32, 0x01)))
@@ -70,7 +70,7 @@ func TestNewAESEncryptor_WrongKeyLength(t *testing.T) {
 	}
 }
 
-// TestNewAESEncryptor_MissingOrInvalidConfig 验证"配置缺失"场景：空字符串与非法 hex 编码。
+// TestNewAESEncryptor_MissingOrInvalidConfig 检查空字符串与非法 hex 编码的错误。
 func TestNewAESEncryptor_MissingOrInvalidConfig(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -90,7 +90,7 @@ func TestNewAESEncryptor_MissingOrInvalidConfig(t *testing.T) {
 	}
 }
 
-// ── 加解密往返（Roundtrip）───────────────────────────────────────────────────
+// 加解密往返测试。
 
 func TestAESEncryptor_RoundTrip(t *testing.T) {
 	enc := aesEncryptor(t)
@@ -119,7 +119,7 @@ func TestAESEncryptor_RoundTrip(t *testing.T) {
 	}
 }
 
-// ── IV/Nonce 随机性 ──────────────────────────────────────────────────────────
+// IV 和 Nonce 随机性测试。
 
 func TestAESEncryptor_Encrypt_NonceRandomness(t *testing.T) {
 	enc := aesEncryptor(t)
@@ -138,7 +138,7 @@ func TestAESEncryptor_Encrypt_NonceRandomness(t *testing.T) {
 		"每次加密应因随机 Nonce 产生唯一密文，共 %d 次", iterations)
 }
 
-// ── Decrypt 错误路径 ──────────────────────────────────────────────────────────
+// Decrypt 错误处理测试。
 
 func TestAESDecrypt_InvalidBase64(t *testing.T) {
 	enc := aesEncryptor(t)
@@ -186,7 +186,7 @@ func TestAESDecrypt_TamperedTag(t *testing.T) {
 	require.Error(t, err, "篡改 GCM 标签后解密应失败")
 }
 
-// ── 跨实例（Cross-instance）──────────────────────────────────────────────────
+// 跨实例加解密测试。
 
 func TestAESEncryptor_CrossInstance_SameKey_CanDecrypt(t *testing.T) {
 	keyHex := aesHexKey(32, 0xDE)

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mustCreateGroup 分组夹具保留原 Ent 默认值与字段赋值次序。
+// mustCreateGroup 使用 Ent 默认值和传入字段创建测试分组。
 func mustCreateGroup(t *testing.T, client *dbent.Client, g *routing.Group) *routing.Group {
 	t.Helper()
 	ctx := context.Background()

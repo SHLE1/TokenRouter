@@ -875,7 +875,7 @@ const DEFAULT_HIDDEN_COLUMNS = [
 ]
 const REMOVED_COLUMNS = new Set(['last_login_at'])
 // 强制可见列：加载时会被强制移出 hiddenColumns，并在列设置 UI 上 disabled。
-// 当前没有列需要强制可见 —— last_active_at 已改为可被用户隐藏。
+// 当前强制可见集合为空，用户可以隐藏 last_active_at。
 const FORCED_VISIBLE_COLUMNS = new Set<string>()
 
 // 列设置 localStorage key
@@ -941,7 +941,7 @@ const saveColumnsToStorage = () => {
 const isForcedVisibleColumn = (key: string) => FORCED_VISIBLE_COLUMNS.has(key)
 const toggleColumn = (key: string) => {
   // 强制可见列(如 last_active_at)在加载时会被恢复成可见，
-  // 这里阻止用户在当前会话隐藏它，避免"取消勾选 → 刷新又恢复"的反直觉行为。
+  // 固定显示的列在当前会话中保持可见。
   if (FORCED_VISIBLE_COLUMNS.has(key)) return
   const wasHidden = hiddenColumns.has(key)
   if (hiddenColumns.has(key)) {
@@ -965,7 +965,7 @@ const toggleColumn = (key: string) => {
 const isColumnVisible = (key: string) => !hiddenColumns.has(key)
 // usage 主列或任意 usage_<platform> 子列可见时都需要批量拉取用量数据
 // 列 key → 平台名（'usage' 主列汇总所有平台时为 null）
-// 显式数组取代 Object.keys()：保证迭代顺序（决定列头排序按钮渲染顺序）
+// 数组顺序决定列头排序按钮的渲染顺序。
 // 不会因 JS 引擎差异或 USAGE_COLUMN_PLATFORMS 属性顺序调整而静默变化。
 const USAGE_COLUMN_KEYS: readonly string[] = ['usage', 'usage_anthropic', 'usage_openai', 'usage_gemini', 'usage_antigravity', 'usage_qoder']
 const USAGE_COLUMN_PLATFORMS: Record<string, string | null> = {
@@ -1067,7 +1067,7 @@ const groupFilterOptions = computed(() => {
 })
 
 // API Key 分组筛选项：“全部” + 按类型分区的分组；value 使用分组 ID。
-// 当前 fork 的订阅套餐不再挂载 group_id，因此只展示专属、公开和已禁用分区。
+// 订阅套餐与 group_id 独立，分组选项分为专属、公开和已禁用三类。
 // 使用包含禁用分组的 allGroupsForApiKeyFilter。
 const apiKeyGroupFilterOptions = computed(() =>
   buildApiKeyGroupFilterOptions(allGroupsForApiKeyFilter.value, {
@@ -1205,7 +1205,7 @@ const persistUsageSort = () => {
     console.error('Failed to persist usage sort:', e)
   }
 }
-// 切回服务端排序时清空当前页用量排序，避免本地排序覆盖后端排序结果。
+// 切回服务端排序时清空本地用量排序，列表采用服务端顺序。
 const clearUsageSort = () => {
   if (!usageSort.value) return
   usageSort.value = null
@@ -1249,7 +1249,7 @@ const getUsageValue = (userId: number, key: string, metric: UsageMetric): number
 }
 
 // 在 server-side 排序结果之上叠加用量列的本地排序；无 usageSort 时直接透传原数组。
-// 稳定排序：等值按原 index 保序，避免拉取新用量数据时表行抖动。
+// 数值相等时按原 index 排序，刷新用量后保持行间次序。
 const sortedUsers = computed(() => {
   const s = usageSort.value
   if (!s) return users.value

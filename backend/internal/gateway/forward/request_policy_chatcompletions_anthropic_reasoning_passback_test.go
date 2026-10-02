@@ -94,8 +94,8 @@ func TestAnthropicChatBridge_MatchesResponsesChatBridgeReasoningPlacement(t *tes
 		"两条桥对等价历史必须产出同样的 reasoning_content 位置")
 }
 
-// TestAnthropicToChatCompletionsRequest_ThinkingWithoutToolCallsStaysDropped 验证作用域守卫：不带工具调用的纯文本轮次维持现状(与兄弟桥一致 —— reasoning 只随
-// 工具调用回传)，避免把 reasoning_content 撒到不需要它的上游请求上。
+// TestAnthropicToChatCompletionsRequest_ThinkingWithoutToolCallsStaysDropped 检查纯文本轮次省略 reasoning_content。
+// 推理内容仅随工具调用回传。
 func TestAnthropicToChatCompletionsRequest_ThinkingWithoutToolCallsStaysDropped(t *testing.T) {
 	req := &protocolanthropic.AnthropicRequest{
 		Model:     "deepseek-v4-flash",

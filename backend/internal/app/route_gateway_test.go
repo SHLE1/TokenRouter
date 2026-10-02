@@ -34,7 +34,7 @@ func newGatewayRoutesTestRouterWithConfig(cfg *config.Config, platform ...string
 	return newGatewayRoutesTestRouterWithOptions(cfg, platform...)
 }
 
-// newGatewayRoutesTestRouterWithOptions 以原生 HTTP 入口验证配置和平台路由。
+// newGatewayRoutesTestRouterWithOptions 通过 HTTP 入口检查配置和平台路由。
 func newGatewayRoutesTestRouterWithOptions(cfg *config.Config, platform ...string) *gin.Engine {
 	groupPlatform := capability.PlatformOpenAI
 	if len(platform) > 0 && platform[0] != "" {
@@ -56,7 +56,7 @@ func newGatewayRoutesTestRouterWithOptions(cfg *config.Config, platform ...strin
 	})
 }
 
-// newGatewayRoutesTestRouterWithGroup 允许测试显式控制 nil 与空协议集合。
+// newGatewayRoutesTestRouterWithGroup 允许测试分别传入 nil 和空协议集合。
 func newGatewayRoutesTestRouterWithGroup(cfg *config.Config, group *routing.Group, models ...*gatewayhttp.ModelsHandler) *gin.Engine {
 	router := gin.New()
 
@@ -354,7 +354,7 @@ func TestGatewayRoutesNonNativeResponsesWebSocketIsRejected(t *testing.T) {
 	require.Contains(t, w.Body.String(), "protocol_not_allowed")
 }
 
-// TestGatewayRoutesOpenAIAlphaSearchPathsAreRegistered 验证Alpha Search 的三种公开路径都必须注册到 OpenAI 专用 handler。
+// TestGatewayRoutesOpenAIAlphaSearchPathsAreRegistered 检查 Alpha Search 的三种公开路径都使用 OpenAI 专用 handler。
 func TestGatewayRoutesOpenAIAlphaSearchPathsAreRegistered(t *testing.T) {
 	router := newGatewayRoutesTestRouter()
 	registered := make(map[string]bool)
@@ -404,7 +404,7 @@ func TestGatewayRoutesOpenAIImagesPathsAreRegistered(t *testing.T) {
 	}
 }
 
-// TestGatewayRoutesAsyncImagesPathsAreRemoved 锁定自研异步图片接口不再暴露。
+// TestGatewayRoutesAsyncImagesPathsAreRemoved 检查自研异步图片路径返回 404。
 func TestGatewayRoutesAsyncImagesPathsAreRemoved(t *testing.T) {
 	router := newGatewayRoutesTestRouter()
 	registered := make(map[string]bool)
@@ -434,7 +434,7 @@ func TestGatewayRoutesAsyncImagesPathsAreRemoved(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code, "method=%s path=%s", route.method, route.requestPath)
 	}
 
-	// Gemini 批量图片作业是独立功能，移除自研异步接口后仍须保留。
+	// Gemini 批量图片作业使用独立路由。
 	for _, route := range []string{
 		"POST /v1/images/batches",
 		"GET /v1/images/batches",
@@ -451,7 +451,7 @@ func TestGatewayRoutesAsyncImagesPathsAreRemoved(t *testing.T) {
 	}
 }
 
-// TestGatewayRoutesBillingIntrospectionIsRemoved 锁定旧版公开账单自省接口不再注册。
+// TestGatewayRoutesBillingIntrospectionIsRemoved 检查已下线的公开账单自省路径返回 404。
 func TestGatewayRoutesBillingIntrospectionIsRemoved(t *testing.T) {
 	router := newGatewayRoutesTestRouter()
 	for _, route := range router.Routes() {
@@ -614,9 +614,9 @@ func TestGatewayRoutesGrokAllowsCLICompatibilityEntrypoints(t *testing.T) {
 	}
 }
 
-// TestGatewayRoutesResponsesSubpathRejectsNonConformingSubpaths 端到端锁定不变式：
-// /responses/*subpath 的子路径会被转发到上游同名端点之后，因此不合规的子路径必须
-// 在入口就被拒绝，不得进入调度与转发流程。
+// TestGatewayRoutesResponsesSubpathRejectsNonConformingSubpaths 检查 Responses 子路径准入。
+// /responses/*subpath 会转发到上游同名端点，非法子路径在入口返回错误，
+// 调度与转发在路径校验通过后执行。
 func TestGatewayRoutesResponsesSubpathRejectsNonConformingSubpaths(t *testing.T) {
 	router := newGatewayRoutesTestRouter()
 

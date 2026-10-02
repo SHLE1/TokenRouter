@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestArchiveDefaultsPreservePresenceAndIsolation 验证JSON 省略和显式 null/false/空集合继续区别，同时默认模板不能被某个导入条目污染。
+// TestArchiveDefaultsPreservePresenceAndIsolation 检查省略、null、false 和空集合分别处理，每个导入条目使用独立的默认模板副本。
 func TestArchiveDefaultsPreservePresenceAndIsolation(t *testing.T) {
 	concurrency, priority := 4, 3
 	defaults := &transfer.OpenAIOAuthImportDefaults{Provider: transfer.OpenAIOAuthImportProviderDefaults{Concurrency: &concurrency, Priority: &priority}, Credentials: map[string]any{"model_mapping": map[string]any{"alias": "model"}}, Extra: map[string]any{"enabled": true, "list": []any{"default"}, "nullable": "default"}}
@@ -34,7 +34,7 @@ func TestArchiveDefaultsPreservePresenceAndIsolation(t *testing.T) {
 	require.NotContains(t, string(data), "PrioritySet")
 }
 
-// TestArchiveIdentityHintsDoNotReplaceExplicitValues 验证ID Token 只是导入提示，保留明确的平台/type 边界与“已有非空值优先”。
+// TestArchiveIdentityHintsDoNotReplaceExplicitValues 检查 ID Token 补齐导入提示时保持平台、类型和已有非空值。
 func TestArchiveIdentityHintsDoNotReplaceExplicitValues(t *testing.T) {
 	item := transfer.DataProvider{Platform: " OpenAI ", Type: " OAUTH ", Credentials: map[string]any{"id_token": " fixture-token ", "email": "admin@example.test", "plan_type": nil}}
 	require.Equal(t, " fixture-token ", ArchiveIDToken(&item))

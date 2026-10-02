@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// assertAnthropicPairing 校验 Anthropic Messages 工具配对不变量，避免上游返回 400。
+// assertAnthropicPairing 校验 Anthropic Messages 的工具配对，配对错误会使上游返回 400。
 func assertAnthropicPairing(t *testing.T, messages []AnthropicMessage) {
 	t.Helper()
 	for i, m := range messages {
@@ -21,13 +21,13 @@ func assertAnthropicPairing(t *testing.T, messages []AnthropicMessage) {
 		for _, b := range blocks {
 			switch b.Type {
 			case "tool_result":
-				// tool_result 必须在前一条消息里有对应 tool_use。
+				// tool_result 与前一条消息的 tool_use 配对。
 				require.Positivef(t, i, "tool_result %s has no previous message", b.ToolUseID)
 				prev := parseContentBlocks(messages[i-1].Content)
 				require.Truef(t, hasToolUse(prev, b.ToolUseID),
 					"tool_result %s has no corresponding tool_use in previous message", b.ToolUseID)
 			case "tool_use":
-				// tool_use 必须在后一条消息里有对应 tool_result。
+				// tool_use 与后一条消息的 tool_result 配对。
 				require.Lessf(t, i+1, len(messages), "tool_use %s has no following message", b.ID)
 				next := parseContentBlocks(messages[i+1].Content)
 				require.Truef(t, hasToolResult(next, b.ID),
@@ -64,7 +64,7 @@ func convertAnthropic(t *testing.T, input string) []AnthropicMessage {
 }
 
 // 测试使用 call_ 前缀 id，因为 fromResponsesCallIDToAnthropic 会原样透传这类 id，
-// 与 Codex 真实的 call_00_... id 一致；裸 id 会被改写成 toolu_<id>。
+// 使用 Codex 的 call_00_... ID 格式，裸 ID 会被改写成 toolu_<id>。
 
 // TestAnthropicPairing_DeveloperMessageBetween 验证function_call 和 output 之间插入的 developer/审批消息必须移出 tool_use→tool_result 邻接关系，
 // 这是线上触发 “tool_result 必须在前一条消息有对应 tool_use” 400 的典型形态。
@@ -75,7 +75,7 @@ func TestAnthropicPairing_DeveloperMessageBetween(t *testing.T) {
 		{"type":"message","role":"developer","content":[{"type":"input_text","text":"Approved command prefix saved"}]},
 		{"type":"function_call_output","call_id":"call_A","output":"ok"}
 	]`)
-	// assistant tool_use 消息后必须紧跟对应 tool_result。
+	// assistant tool_use 消息后紧跟对应 tool_result。
 	for i, m := range msgs {
 		if hasToolUse(parseContentBlocks(m.Content), "call_A") {
 			require.Equal(t, "user", msgs[i+1].Role)
@@ -104,7 +104,7 @@ func TestAnthropicPairing_ParallelBothAnswered(t *testing.T) {
 	require.True(t, sawGrouped, "parallel tool_use blocks should share one assistant message")
 }
 
-// TestAnthropicPairing_ParallelOneUnanswered 验证并行调用中某个 sibling 一直没有输出时，必须丢弃未回答调用，确保剩余 tool_use 都有结果。
+// TestAnthropicPairing_ParallelOneUnanswered 检查并行调用中缺少输出的调用被丢弃，剩余 tool_use 各自有结果。
 func TestAnthropicPairing_ParallelOneUnanswered(t *testing.T) {
 	msgs := convertAnthropic(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"q"}]},

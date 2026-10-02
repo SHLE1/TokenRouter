@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// CompatResponses 保存兼容会话的响应归属、回合状态与禁用标记，三者共用原过期窗口。
+// CompatResponses 保存兼容会话的响应归属、回合状态和禁用标记，三者共用过期时间。
 type CompatResponses struct {
 	bindings sync.Map
 	TTL      func() time.Duration
@@ -20,7 +20,7 @@ func (s *CompatResponses) ttl() time.Duration {
 	return time.Hour
 }
 
-// CompatResponseKey 保留原提供商、Key 与提示缓存的隔离编码。
+// CompatResponseKey 将提供商 ID、API Key ID 和提示缓存键用空字节拼接，隔离各会话。
 func CompatResponseKey(providerID, apiKeyID int64, prompt string) string {
 	key := strings.TrimSpace(prompt)
 	if key == "" {

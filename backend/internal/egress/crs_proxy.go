@@ -21,7 +21,7 @@ type CRSProxyStore interface {
 	Create(context.Context, *Proxy) error
 }
 
-// MatchOrCreateCRSProxy 保留原 socks 别名、活动身份复用与逐项创建，不触发管理探测。
+// MatchOrCreateCRSProxy 解析 socks 别名，复用已有活动代理，缺失时逐项创建代理记录。
 func MatchOrCreateCRSProxy(ctx context.Context, store CRSProxyStore, enabled bool, cached *[]Proxy, src *CRSProxySpec, defaultName string) (*int64, error) {
 	if !enabled || src == nil {
 		return nil, nil

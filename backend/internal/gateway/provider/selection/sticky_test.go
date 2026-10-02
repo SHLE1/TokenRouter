@@ -69,7 +69,7 @@ func TestSetStickySessionProviderID_DualWriteOldDisabled(t *testing.T) {
 	require.False(t, exists)
 }
 
-// stickyCacheFixture 保留原键空间和未命中错误，只实现本合同实际使用的四项能力。
+// stickyCacheFixture 实现测试使用的粘性缓存方法和未命中错误。
 type stickyCacheFixture struct {
 	sessionBindings map[string]int64
 	deletedSessions map[string]int

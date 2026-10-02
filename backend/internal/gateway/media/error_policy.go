@@ -27,8 +27,8 @@ type GrokFailurePorts struct {
 	NewFailover      func(GrokRetry, bool) error
 }
 
-// ResolveGrokFailure 保留内容拒绝、提供商策略、切号和最终错误改写的原先优先级。
-// Rewrite 只在决定不切号后调用，不能把展示规则升级为提供商健康策略。
+// ResolveGrokFailure 依次检查内容拒绝、提供商策略和切换条件，再改写最终错误。
+// Rewrite 在确定结束提供商切换后应用错误展示规则，健康处理由调用方完成。
 func ResolveGrokFailure(status int, message string, p GrokFailurePorts) error {
 	if rejected, client := p.ContentRejection(); rejected {
 		p.Observe("http_error", client)
@@ -93,7 +93,7 @@ func ResolveEmbeddingFailure(status int, p EmbeddingFailurePorts) error {
 	return fmt.Errorf("upstream returned status %d", status)
 }
 
-// AlphaFailurePorts 保留独立搜索端点的 failover 和健康副作用边界。
+// AlphaFailurePorts 提供搜索端点的故障切换和健康状态处理函数。
 type AlphaFailurePorts struct {
 	Prepare             func()
 	Failover            func() bool
@@ -116,7 +116,7 @@ func ResolveAlphaFailure(status int, p AlphaFailurePorts) error {
 	return p.NewFailover(disabled)
 }
 
-// ImageFailurePorts 分离一次授权恢复、失败观测、提供商策略与旧错误类型投影。
+// ImageFailurePorts 分别提供授权恢复、失败观测、提供商策略和错误转换函数。
 type ImageFailurePorts struct {
 	Recover     func() (bool, error)
 	Failover    func() bool

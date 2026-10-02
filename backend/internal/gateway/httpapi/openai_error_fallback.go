@@ -14,7 +14,7 @@ func (h OpenAIErrorOutput) EnsureResponse(c *gin.Context, streamStarted bool, er
 	if c == nil || c.Writer == nil {
 		return false
 	}
-	// 先停止两类心跳再读 Writer 状态，避免与心跳 goroutine 竞争。
+	// 两类心跳停止后读取 Writer 状态，此时心跳 goroutine 已结束写入。
 	compactKeepaliveCommitted := StopOpenAICompactSSEKeepaliveCommitted(c)
 	if compactKeepaliveCommitted {
 		streamStarted = true
@@ -29,7 +29,7 @@ func (h OpenAIErrorOutput) EnsureResponse(c *gin.Context, streamStarted bool, er
 		imageKeepaliveResponseWritten = adjustedSize >= 0
 	}
 	compactKeepaliveHasMeaningfulOutput := compactKeepaliveCommitted && OpenAICompactKeepaliveAdjustedWrittenSize(c) > 0
-	// Compact 心跳可能只提交了 200 响应头而没有写语义 SSE；此时仍须补齐 response.failed。
+	// Compact 心跳提交 200 响应头后，如果尚未写出协议事件，补充 response.failed。
 	if (IsResponseCommitted(c) && (!compactKeepaliveCommitted || compactKeepaliveHasMeaningfulOutput)) ||
 		(!compactKeepaliveCommitted && imageKeepaliveResponseWritten) {
 		return false
@@ -44,8 +44,7 @@ func (h OpenAIErrorOutput) EnsureResponse(c *gin.Context, streamStarted bool, er
 			status = warning.StatusCode
 		}
 	}
-	// 普通 SSE 心跳已写出时继续追加协议终态；图片 JSON 只有心跳空白时
-	// 仍按非流式响应补写一个 JSON 错误，不能误切换到 SSE 格式。
+	// 普通 SSE 心跳写出后，追加协议终态。图片 JSON 若仅写出心跳空白，则补写 JSON 错误。
 	if c.Writer.Written() && !imageKeepalivePaddingOnly {
 		streamStarted = true
 	}
@@ -72,8 +71,7 @@ func OpenAIForwardErrorAlreadyCommunicated(c *gin.Context, writerSizeBeforeForwa
 	if err == nil || c == nil || c.Writer == nil {
 		return false
 	}
-	// 与快照同口径：排除 compact 心跳字节，避免"仅心跳写出"被误判为
-	// 响应已写出（#3887）。
+	// 扣除 compact 心跳字节后判断响应是否开始输出（#3887）。
 	if OpenAICompactKeepaliveAdjustedWrittenSize(c) == writerSizeBeforeForward || OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c) == writerSizeBeforeForward {
 		return false
 	}

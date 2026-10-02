@@ -6,7 +6,7 @@ import (
 )
 
 // CompiledIPRules 表示预编译的 IP 匹配规则。
-// PatternCount 记录原始规则数量，用于保留“规则存在但全无效”时的行为语义。
+// PatternCount 记录输入规则数量，用于区分空规则与全部无效的规则。
 type CompiledIPRules struct {
 	CIDRs        []*net.IPNet
 	IPs          []net.IP

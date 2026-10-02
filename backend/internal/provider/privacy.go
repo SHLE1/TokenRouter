@@ -15,7 +15,7 @@ type PrivacyProxyReader interface {
 	GetByID(context.Context, int64) (*egress.Proxy, error)
 }
 
-// PrivacyOptions 只提供平台交换与观察接口，核心不创建 HTTP 客户端。
+// PrivacyOptions 提供平台请求和状态记录接口。
 type PrivacyOptions struct {
 	OpenAI       func(context.Context, string, string) string
 	Antigravity  func(context.Context, string, string, string) string
@@ -216,7 +216,7 @@ func (s *PrivacyService) RefreshAntigravityPrivacy(ctx context.Context, v *Recor
 
 var ErrPrivacyStopped = errors.New("provider privacy maintenance stopped")
 
-// StopContext 取消实际隐私请求并等待；已排队的旧任务由 app 完成屏障等待，后续调用不再发起 I/O。
+// StopContext 取消并等待隐私请求，app 等待已排队任务完成，后续调用返回停止错误。
 func (s *PrivacyService) StopContext(ctx context.Context) error {
 	return s.activity.stop(ctx, "provider privacy maintenance")
 }

@@ -83,7 +83,7 @@ func TestUpdateProviderModelRateLimitInCache_PreservesExistingExtra(t *testing.T
 	require.NotNil(t, limits["claude-sonnet-4-5"])
 }
 
-// 发布端口只记录交付的提供商投影，不创建第二个快照服务。
+// 发布替身记录收到的提供商数据。
 type antigravityPublicationFixture struct{ setProviderCalls []*Record }
 
 func (s *antigravityPublicationFixture) publish(_ context.Context, v *Record) error {

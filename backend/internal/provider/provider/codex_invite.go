@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// CodexInviteFactory 在原准备时点解析凭据、代理和专用 TLS，不创建共享状态。
+// CodexInviteFactory 在准备邀请操作时解析凭据、代理和专用 TLS 配置。
 type CodexInviteFactory struct {
 	Token     *provider.OpenAITokenSource
 	Proxy     func(context.Context, int64) (*egress.Proxy, error)

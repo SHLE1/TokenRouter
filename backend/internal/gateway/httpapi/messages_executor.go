@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MessagesExecutor 将 HTTP 输出接到固定运行时，每次调用创建独立的输出边界。
+// MessagesExecutor 为每次调用创建独立的 HTTP 输出适配器并传给运行时。
 type MessagesExecutor struct {
 	runtime *messageforward.Runtime
 	filter  *egress.CompiledHeaderFilter

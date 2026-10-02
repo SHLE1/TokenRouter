@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 读取器在可见输出和用量之后报错，用于核对新旧返回入口的契约。
+// 读取器在输出内容和用量后报错，测试检查返回结果。
 type grokObservationErrorReader struct{ err error }
 
 func (r grokObservationErrorReader) Read([]byte) (int, error) { return 0, r.err }

@@ -20,7 +20,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/config"
 )
 
-// snapshotHydrationCache 提供原轻量/完整投影，读取继续经过真实 SnapshotService。
+// snapshotHydrationCache 为 SnapshotService 提供轻量和完整提供商快照。
 type snapshotHydrationCache struct {
 	scheduler.SnapshotCache
 	snapshot  []*gatewayprovider.ExecutionProvider

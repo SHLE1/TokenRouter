@@ -27,7 +27,7 @@ type ProviderOutcomeStore interface {
 	CompleteProviderOutcome(context.Context, string, float64, bool, time.Time) error
 }
 
-// ResultDelivery 只负责成功事实与结果交付，不调用供应商，也不决定资金金额。
+// ResultDelivery 保存成功记录并交付生成结果。
 type ResultDelivery struct {
 	Now      func() time.Time
 	Repo     CreativeRunRepository

@@ -26,7 +26,7 @@ func (h *PricingHandler) UpdateDefaultPricing(c *gin.Context) {
 	httpx.Success(c, gin.H{"updated": true})
 }
 
-// ListDefaultPricing 只查询网关已加载的默认价，不触发目录同步。
+// ListDefaultPricing 查询网关内存中已加载的默认价格。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#gateway_default_pricing
 func (h *PricingHandler) ListDefaultPricing(c *gin.Context) {
 	snapshot := h.catalog.Snapshot()

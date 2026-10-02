@@ -214,7 +214,7 @@
             </div>
 
             <div class="grid min-w-0 grid-cols-1 items-start gap-4 p-4 md:grid-cols-2 lg:grid-cols-3 md:p-5">
-              <!-- 显式单列和可收缩卡片阻止长定价内容撑大网格；大屏保持三列。 -->
+              <!-- 窄屏使用单列和可收缩卡片，长定价内容在卡片内换行，大屏使用三列。 -->
               <article
                 v-for="model in group.models"
                 :key="`${group.id}-${model.id}`"
@@ -246,10 +246,10 @@
                   </div>
                   <ModelCapabilityTags :model="model" />
                 </div>
-                <!-- ID 独占整行，避免跟随标题列被右侧能力图标挤窄。 -->
+                <!-- ID 独占整行，右侧能力图标占用标题行。 -->
                 <ModelIdLabel :model-id="model.id" class="mt-1" />
 
-                <!-- 价格预览改为无边框列表，避免卡片里再嵌套一层卡片。 -->
+                <!-- 价格预览使用无边框列表。 -->
                 <div class="mt-4">
                   <template v-if="compactPricingRows(model.pricing).length > 0">
                     <dl class="space-y-2">
@@ -267,7 +267,7 @@
                     {{ t('marketplace.pricingUnavailable') }}
                   </p>
 
-                  <!-- 完整定价改为卡片内抽屉式浮窗，展开/收起与区间、fast mode 切换收敛在组件内部。 -->
+                  <!-- 完整定价使用卡片内抽屉浮窗，组件管理展开、收起、区间和 fast mode 切换。 -->
                   <ModelPricingPanel :model="model" />
                 </div>
               </article>
@@ -483,13 +483,13 @@ function formatMultiplier(multiplier: number): string {
   return `x${multiplier.toFixed(multiplier % 1 === 0 ? 0 : 2)}`
 }
 
-// 分组倍率文案交给 i18n 拼接，避免不同语言的空格规则写死在模板里。
+// 分组倍率文案由 i18n 按各语言的空格规则拼接。
 function formatRateMultiplierLabel(multiplier: number): string {
   return t('marketplace.rateMultiplierValue', { multiplier: formatMultiplier(multiplier) })
 }
 
 
-// 相对官方价的最高优惠文案（分组级），口径与首页精选卡片一致：比例缺失、非法或不低于 1（无折扣）时返回 null。
+// 生成分组相对官方价的最高优惠文案，与首页精选卡片使用相同算法。比例缺失、非法或不低于 1（无折扣）时返回 null。
 function formatMaxDiscountOff(ratio?: number): string | null {
   if (typeof ratio !== 'number' || !Number.isFinite(ratio) || ratio <= 0 || ratio >= 1) {
     return null

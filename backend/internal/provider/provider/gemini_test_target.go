@@ -26,7 +26,7 @@ func (t geminiTestTarget) Execute(ctx context.Context, request provider.Prepared
 	headers.Set("User-Agent", request.UserAgent)
 	run := NewTestRun(ctx, headers, sink)
 	defer run.Cancel()
-	// 自动测试的显式 UA 只属于本次执行，不能修改共享适配器。
+	// 自动测试的 UA 保存在本次执行状态中。
 	executor := *t.executor
 	if request.Automatic {
 		executor.UserAgent = request.UserAgent

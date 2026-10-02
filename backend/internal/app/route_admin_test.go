@@ -150,7 +150,7 @@ func TestCanonicalBackupIDRouteGuard(t *testing.T) {
 	}
 }
 
-// TestRetiredAdminStatisticsNativeRoutes 验证通过管理员鉴权后的生产路由退役结果。
+// TestRetiredAdminStatisticsNativeRoutes 检查管理员通过鉴权后访问已下线路由的响应。
 func TestRetiredAdminStatisticsNativeRoutes(t *testing.T) {
 	router := gin.New()
 	checked := 0
@@ -186,7 +186,7 @@ func TestRetiredAdminStatisticsNativeRoutes(t *testing.T) {
 			}
 		})
 	}
-	// 不存在的路由由 Gin 直接返回 404；兑换码动态路由必须先经过管理员鉴权。
+	// 不存在的路由由 Gin 返回 404，兑换码动态路由先经过管理员鉴权。
 	require.Equal(t, 1, checked)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/admin/redeem-codes/stats", nil))

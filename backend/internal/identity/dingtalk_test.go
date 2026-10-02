@@ -148,7 +148,7 @@ func TestCompleteDingTalkRegistration_UsernameFromEmailLocalPart(t *testing.T) {
 }
 
 // TestBuildDingTalkUpstreamClaims_SubjectEqualsUnionID 验证subject = unionID
-// 而非 staff.UserID，与 identityKey.ProviderSubject 保持一致。
+// 并检查它与 identityKey.ProviderSubject 一致。
 // §4.2: buildDingTalkUpstreamClaims subject 字段修正。
 func TestBuildDingTalkUpstreamClaims_SubjectEqualsUnionID(t *testing.T) {
 	staff := &identityprovider.DingTalkStaffInfo{UserID: "user123", Name: "张三", Email: "zhangsan@corp.com"}
@@ -208,7 +208,7 @@ func TestDingTalkStaffFromClaims_RoundTrip(t *testing.T) {
 }
 
 // TestSyncDingTalkIdentity_UsesCfgAttrKeys_NoopWithNilService 验证 syncDingTalkIdentity 使用 cfg 中配置的 attr key
-// 而不是硬编码值。通过 userAttributeService=nil 使同步路径走 warn 跳过，但在此之前先验证
+// 传入自定义属性键。userAttributeService=nil 时同步记录警告并跳过，测试检查
 // syncField 构建逻辑（即 attr key 从 cfg 读取）。
 // 间接验证：通过构造定制 cfg，确认不同 attr key 可以正确传入（编译时保证类型正确，运行时不 panic）。
 func TestSyncDingTalkIdentity_UsesCfgAttrKeys_NoopWithNilService(t *testing.T) {

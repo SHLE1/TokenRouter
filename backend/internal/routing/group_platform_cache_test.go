@@ -50,7 +50,7 @@ func TestUpdateGroupDoesNotInvalidateIndependentPricingCache(t *testing.T) {
 	require.Zero(t, spy.calls)
 }
 
-// TestUpdateGroupWithoutPricingConfigCacheInvalidator 验证依赖可以不注入（例如测试或裁剪构建），此时不应 panic——缓存靠 TTL 自然重建。
+// TestUpdateGroupWithoutPricingConfigCacheInvalidator 检查缓存失效接口缺失时更新成功，缓存按 TTL 重建。
 func TestUpdateGroupWithoutPricingConfigCacheInvalidator(t *testing.T) {
 	repo := &groupPlatformRepoStub{group: &routing.Group{ID: 7, Name: "g"}}
 	svc := newGroupAdminForTest(repo, nil, nil)

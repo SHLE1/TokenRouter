@@ -490,7 +490,7 @@ func (c *WSConn) supportsIdlePingWithoutReader() bool {
 		return false
 	}
 	capable, ok := c.ws.(WSIdlePingCapable)
-	// 测试与替代实现沿用历史探测行为，除非显式声明不支持无人读取时 Ping。
+	// 未实现 WSIdlePingCapable 的连接默认支持无人读取时 Ping。
 	return !ok || capable.SupportsIdlePingWithoutReader()
 }
 
@@ -761,7 +761,7 @@ func (p *WSConnPool) Close() {
 				return true
 			})
 		}
-		// 保留在途租约的原请求取消策略；租约返回时再关闭，空闲和迟到连接在这里回收。
+		// 在途租约返回时关闭连接，空闲和迟到连接在这里回收。
 		closeConnections()
 		p.workerWg.Wait()
 		p.acquireWG.Wait()
@@ -2175,7 +2175,7 @@ func activeCodexFingerprintMode(provider *WSPoolProvider) codexFingerprintMode {
 	return provider.FingerprintMode
 }
 
-// SnapshotProviderState 只投影连接和租约数量，不暴露连接或认证头。
+// WSPoolProviderState 记录提供商的连接、租约和固定连接数量。
 type WSPoolProviderState struct{ Connections, LeasedConnections, PinnedConnections int }
 
 func (p *WSConnPool) SnapshotProviderState(id int64) (WSPoolProviderState, bool) {

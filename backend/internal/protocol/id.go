@@ -1,6 +1,6 @@
 package protocol
 
-// ProtocolID 唯一标识提供商原生能力与客户端协议，持久化值保持不变。
+// ProtocolID 标识提供商支持的协议和客户端协议，值用于持久化。
 type ProtocolID string
 
 const (

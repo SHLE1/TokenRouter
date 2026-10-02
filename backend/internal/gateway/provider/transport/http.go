@@ -28,7 +28,7 @@ const (
 	// defaultMaxIdleConnsPerHost: 默认每主机最大空闲连接数
 	defaultMaxIdleConnsPerHost = 120
 	// defaultMaxConnsPerHost: 默认每主机最大连接数（含活跃连接）
-	// 达到上限后新请求会等待，而非无限创建连接
+	// 达到连接上限后，新请求等待空闲连接。
 	defaultMaxConnsPerHost = 240
 	// defaultIdleConnTimeout: 默认空闲连接超时时间（90秒）
 	// 超时后连接会被关闭，释放系统资源（建议小于上游 LB 超时）
@@ -69,7 +69,7 @@ type openAIHTTP2Settings struct {
 	fallbackTTL               time.Duration
 }
 
-// httpClientForEgressPolicy 保留原每请求派生与重定向检查先后顺序。
+// httpClientForEgressPolicy 根据请求的出口策略派生客户端并设置重定向检查。
 func httpClientForEgressPolicy(s *Client, client *http.Client, policy egress.EgressPolicy) *http.Client {
 	if client == nil {
 		return nil
@@ -340,7 +340,7 @@ func normalizeProxyURL(raw string) (string, *url.URL, error) {
 }
 
 // defaultPoolSettings 获取默认连接池配置
-// 从显式参数读取，无效值使用原常量默认值
+// 读取传入参数，无效值使用常量定义的默认值。
 //
 // 参数:
 //   - cfg: 传输参数
@@ -381,10 +381,10 @@ func defaultPoolSettings(cfg *Options) poolSettings {
 	}
 }
 
-// poolSettings 使用技术池的参数类型，配置投影由 app 提供。
+// poolSettings 是连接池参数类型，app 提供配置值。
 type poolSettings = httpclient.UpstreamSettings
 
-// upstreamPool 是平台适配与通用连接池之间的执行契约，也供测试替换外部传输。
+// upstreamPool 定义平台调用连接池的接口，测试可替换其传输实现。
 type upstreamPool interface {
 	Do(*http.Request, httpclient.UpstreamRequestOptions) (*http.Response, error)
 }
@@ -496,13 +496,13 @@ func (s *Client) CloseIdleConnections() {
 	}
 }
 
-// http2Options 投影传输参数，回退状态与决策唯一归 egress。
+// http2Options 将 HTTP/2 设置转换为 egress 的参数类型。
 func (s *Client) http2Options() egress.HTTP2Options {
 	v := s.resolveOpenAIHTTP2Settings()
 	return egress.HTTP2Options{Enabled: v.enabled, AllowProxyFallbackToHTTP1: v.allowProxyFallbackToHTTP1, FallbackErrorThreshold: v.fallbackErrorThreshold, FallbackWindow: v.fallbackWindow, FallbackTTL: v.fallbackTTL}
 }
 
-// requestPolicy 只组合传输参数与请求标记，DNS 执行仍在原校验点。
+// requestPolicy 根据传输参数和请求标记构造出口策略。
 func (s *Client) requestPolicy(req *http.Request) egress.EgressPolicy {
 	input := egress.RequestPolicyInput{}
 	if s != nil {

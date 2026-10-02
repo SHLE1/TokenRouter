@@ -147,7 +147,7 @@ func TestUpdateProvider_EmptyExtraPayloadCanClearQuotaLimits(t *testing.T) {
 
 	svc := newProviderEditorForTest(repo)
 	updated, err := svc.UpdateProvider(context.Background(), providerID, &providercore.UpdateProviderInput{
-		// 显式空对象：语义是“清空 extra 中的可配置键”（例如关闭配额限制）
+		// 空对象表示清空 Extra 中的可配置键，例如关闭配额限制。
 		Extra: map[string]any{},
 	})
 

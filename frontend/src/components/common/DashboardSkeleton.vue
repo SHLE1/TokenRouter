@@ -7,7 +7,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <!-- 首屏保留统计卡、筛选控件和图表的位置，避免加载时只剩一个转圈。 -->
+  <!-- 首屏骨架为统计卡、筛选控件和图表预留位置。 -->
   <div class="space-y-4" role="status" :aria-label="t('common.loading')" aria-busy="true" data-testid="dashboard-skeleton">
     <div class="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-hidden="true">
       <div v-for="card in 8" :key="card" class="card p-4">

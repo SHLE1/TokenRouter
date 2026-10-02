@@ -18,10 +18,10 @@ const (
 	grokMediaVideoRequestOwnerSource = "grok_video_request"
 )
 
-// VideoOptions 仅投影绑定有效期，不传递完整应用配置。
+// VideoOptions 设置视频任务绑定的有效期。
 type VideoOptions struct{ StickyTTL time.Duration }
 
-// VideoTasks 无本地状态，复用唯一 session 存储。
+// VideoTasks 通过传入的 session 存储读写视频任务。
 type VideoTasks struct {
 	owners  session.GatewayCache
 	billing session.GrokVideoBillingCache
@@ -60,9 +60,8 @@ type GrokVideoPendingBilling struct {
 	VideoResolution      string `json:"video_resolution,omitempty"`
 	VideoDurationSeconds int    `json:"video_duration_seconds,omitempty"`
 	OriginalModel        string `json:"original_model,omitempty"`
-	// CreatedAt 是网关接受异步创建请求的时间，采用 RFC3339Nano UTC 格式。
-	// 延迟计费的 duration_ms 从该时刻计算到首次观测到官方 done 和 video.url，
-	// 观测来源可以是状态轮询或内容下载，而不是仅计算单次发现请求的耗时。
+	// CreatedAt 是网关接受异步创建请求的 UTC 时间，格式为 RFC3339Nano。
+	// duration_ms 从该时刻计至首次观测到 done 和 video.url，观测可来自状态轮询或内容下载。
 	CreatedAt string `json:"created_at,omitempty"`
 }
 
@@ -89,8 +88,8 @@ func (s *VideoTasks) BindGrokMediaVideoRequestProvider(
 	if cacheKey == "" || providerID <= 0 {
 		return fmt.Errorf("grok video request binding is invalid")
 	}
-	// 视频任务可能在 WebSocket 粘性 TTL（默认一小时）之后才完成。
-	// 绑定时间至少覆盖待计费快照，确保较晚的状态或内容轮询仍可解析提供商。
+	// 视频任务可能超过 WebSocket 粘性 TTL（默认一小时）才完成，绑定有效期至少覆盖待计费快照。
+	// 后续状态和内容轮询通过该绑定解析提供商。
 	ttl := VideoPendingTTL
 	if s.options.StickyTTL > 0 {
 		if sticky := s.options.StickyTTL; sticky > ttl {
@@ -216,7 +215,7 @@ func (s *VideoTasks) StoreGrokVideoPendingBilling(
 	if pending.VideoDurationSeconds > 0 {
 		pending.VideoDurationSeconds = pricing.NormalizeVideoBillingDurationSecondsOrDefault(pending.VideoDurationSeconds)
 	}
-	// 缺少任务受理时间时始终补写，确保延迟计费的 duration_ms 为端到端耗时。
+	// 任务受理时间缺失时补写，延迟计费据此计算从受理到完成的耗时。
 	if strings.TrimSpace(pending.CreatedAt) == "" {
 		pending.CreatedAt = GrokVideoPendingCreatedAtNow()
 	} else {
@@ -261,8 +260,7 @@ func (s *VideoTasks) LoadGrokVideoPendingBilling(
 	return &pending, nil
 }
 
-// ClaimGrokVideoBilling 对已完成视频请求仅返回一次 true，避免状态轮询重复计费。
-// 采用失败关闭策略，领取失败时按已计费处理。
+// ClaimGrokVideoBilling 对完成的视频请求返回一次 true，后续轮询按已计费处理。领取失败时也按已计费处理。
 func (s *VideoTasks) ClaimGrokVideoBilling(
 	ctx context.Context,
 	requestID string,
@@ -329,7 +327,7 @@ func (s *VideoTasks) TrackCreated(ctx context.Context, groupID *int64, taskID st
 	}
 }
 
-// VideoBinding 只投影认证快照内的分组关系，不包含分组策略或凭据。
+// VideoBinding 保存认证快照中的分组关系。
 type VideoBinding struct {
 	GroupID int64
 	Present bool

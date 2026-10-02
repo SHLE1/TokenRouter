@@ -20,7 +20,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// 测试源只保存旧交叉契约的输入，所有候选与资金规则使用原生模块。
+// batchProvidersFixtureSource 提供候选查询数据，候选筛选与资金处理由生产模块执行。
 type batchProvidersFixtureSource interface {
 	GetByID(context.Context, int64) (*providercore.Record, error)
 	ListSchedulableByPlatform(context.Context, string) ([]providercore.Record, error)

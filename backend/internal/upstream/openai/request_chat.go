@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// CCRequestOptions 的平台专属 Header 通过外层已经选定的端口写入。
+// CCRequestOptions 通过调用方提供的回调写入平台专属 Header。
 type CCRequestOptions struct {
 	URL              string
 	Token            string `json:"-"`

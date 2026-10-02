@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// classifyNoProviderErrorFromGin 错误输入仅投影当前已认证 Key；分类与 envelope 继续使用原生 HTTP 实现。
+// classifyNoProviderErrorFromGin 从已认证 Key 取得错误输入，调用 HTTP 错误分类和响应生成函数。
 func classifyNoProviderErrorFromGin(c *gin.Context, diag routing.ModelAvailabilityDiagnoser, key *apikey.APIKey, model, display, platform string) gatewayhttp.SelectionErrorResponse {
 	ctx := context.Background()
 	if c != nil && c.Request != nil {

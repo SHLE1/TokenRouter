@@ -50,7 +50,7 @@ func openAIQuotaWindowResetAny(extra map[string]any, now time.Time, windows ...s
 	return false
 }
 
-// 保留原调度中性值、次窗口折扣和观测有效期。
+// 评分考虑缺省中性值、次窗口折扣和观测有效期。
 const (
 	openAIQuotaHeadroomNeutralFactor      = 0.5
 	openAIQuotaHeadroomSecondaryLowRemain = 0.10

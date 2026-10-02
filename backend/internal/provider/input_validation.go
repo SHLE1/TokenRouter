@@ -17,8 +17,8 @@ func NormalizeProviderConcurrency(platform, providerType string, concurrency int
 }
 
 // NormalizeCNProviderCredentials 校验国产平台提供商组合，并为新提供商补齐历史默认值。
-// 旧记录缺少 mode/protocol 时由 Provider 方法按 payg + chat_completions 读取，避免无关编辑
-// 把兼容数据强制改写；新建记录则显式保存默认值，方便前端和监控选择适配器。
+// 旧记录缺少 mode/protocol 时，读取按 payg + chat_completions 处理。
+// 新建记录保存默认值，前端和监控据此选择适配器。
 // @project-doc docs/interfaces/upstream_provider_matrix.md#cn_provider_protocols
 func NormalizeCNProviderCredentials(provider *Record, isCreate bool) error {
 	if provider == nil || !IsCNProvider(provider.Platform) {
@@ -52,7 +52,7 @@ func NormalizeCNProviderCredentials(provider *Record, isCreate bool) error {
 	switch protocol {
 	case APIProtocolAdaptive, APIProtocolChatCompletions, APIProtocolAnthropic:
 	case APIProtocolResponses:
-		// 保存校验与转发共用平台能力，避免前端可选协议被旧白名单拒绝。
+		// 保存校验与转发共用平台协议能力列表。
 		if !provider.SupportsNativeCNResponses() {
 			return infraerrors.BadRequest("CN_PROVIDER_PROTOCOL_INVALID", "only DeepSeek and Kimi support Responses protocol")
 		}

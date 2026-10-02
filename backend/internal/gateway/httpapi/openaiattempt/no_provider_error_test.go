@@ -234,14 +234,9 @@ func TestClassifyNoProviderError_FromGin_NilContextStillSafe(t *testing.T) {
 	require.Empty(t, gatewayhttp.OpsClientBusinessLimitedReason(nil))
 }
 
-// TestClassifySelectionFailureError_ModelNotFoundIsNotOverriddenByRateLimited 验证权威的 404 model_not_found 不能被"提供商被限流"的 429 盖掉。
-//
-// 选号失败的错误串同时携带多种过滤原因，例如
-// "pool=9, filtered: model_not_supported=8 model_rate_limited=1"：8 个提供商根本不支持该模型，
-// 剩下 1 个恰好处于模型级冷却。此时 classifyNoProviderError 已通过持久化判据确认整个分组
-// 没有提供商能服务该模型（ModelNotFound=true），改判成 429 "All available providers are
-// currently rate-limited" 是错误诊断——重试永远不会成功，而把 429 当限流的客户端会反复
-// 重试并吞掉 body（Codex 只显示 "exceeded retry limit"），恰好丢掉唯一说明真实原因的信息。
+// TestClassifySelectionFailureError_ModelNotFoundIsNotOverriddenByRateLimited 验证持久化诊断确认的 404 model_not_found 优先于过滤原因中的限流信号。
+// 例如 pool=9, filtered: model_not_supported=8 model_rate_limited=1，过滤原因同时包含模型不支持和冷却。
+// ModelNotFound=true 时整个分组无法提供该模型，返回 429 会使客户端反复重试，Codex 最终仅显示 exceeded retry limit。
 func TestClassifySelectionFailureError_ModelNotFoundIsNotOverriddenByRateLimited(t *testing.T) {
 	modelNotFound := noProviderErrorClassification{
 		Status:        http.StatusNotFound,
@@ -260,10 +255,8 @@ func TestClassifySelectionFailureError_ModelNotFoundIsNotOverriddenByRateLimited
 		"分组里没有任何提供商能服务该模型时，模型级冷却不该把 404 改判成 429")
 }
 
-// TestClassifySelectionFailureError_CallSiteChainKeepsModelNotFoundAttribution 验证真实调用点的顺序：先 ClassifyNoProviderErrorFromGin，再 classifySelectionFailureError。
-// 覆盖这条链路是为了同时锁住 ops 归因——调用点用 ModelNotFound 决定是否标记
-// routing capacity limited，一旦 404 被改判成 429，同一个请求会既被标成
-// local model configuration 又被标成容量问题，自相矛盾。
+// TestClassifySelectionFailureError_CallSiteChainKeepsModelNotFoundAttribution 验证先调用 ClassifyNoProviderErrorFromGin，再调用 classifySelectionFailureError。
+// 调用方按 ModelNotFound 决定 Ops 是否标记 routing capacity limited，模型配置错误保持该归因。
 func TestClassifySelectionFailureError_CallSiteChainKeepsModelNotFoundAttribution(t *testing.T) {
 	c := newTestGinContextWithRequest()
 	fd := &fakeDiagnoser{resp: routing.ModelAvailabilityDiagnosis{HasProvidersInPool: true, HasModelSupport: false}}

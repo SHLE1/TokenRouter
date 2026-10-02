@@ -241,8 +241,8 @@ func newOpenAIResponsesFailoverTestContext(t *testing.T, ctx context.Context) (*
 
 // TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected 复现
 // #4257：客户端在上游请求在途期间断开，上游随后返回可 failover 的 520。
-// 期望：不再用已取消的 context 重新选号（不触达提供商 2）、不把取消误报成
-// 502 提供商耗尽、请求按 499 归类。
+// 客户端断开后结束提供商选择，将请求归类为 499，
+// 提供商 2 的调用次数保持为零。
 func TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -259,7 +259,7 @@ func TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected(t *t
 	_, hasFinalUpstreamErr := c.Get(gatewayhttp.OpsUpstreamStatusCodeKey)
 	require.False(t, hasFinalUpstreamErr, "不应记录 failover 耗尽的上游错误终态")
 
-	// 真实发生过的 520 应保留 failover 事件（service 层在返回 failover 错误前记录）
+	// 上游返回的 520 保留为 failover 事件，执行组件在返回错误前记录。
 	rawEvents, ok := c.Get(gatewayhttp.OpsUpstreamErrorsKey)
 	require.True(t, ok)
 	events, ok := rawEvents.([]*ops.OpsUpstreamErrorEvent)
@@ -269,9 +269,9 @@ func TestOpenAIGatewayHandlerResponses_FailoverAbortsWhenClientDisconnected(t *t
 	require.Equal(t, 520, events[0].UpstreamStatusCode)
 }
 
-// TestOpenAIGatewayHandlerResponses_FailoverContinuesForConnectedClient 回归
-// 守卫：客户端在线时 failover 行为不变——切换到提供商 2，两个提供商都 520 后按
-// 耗尽返回 502。
+// TestOpenAIGatewayHandlerResponses_FailoverContinuesForConnectedClient 检查客户端在线时，
+// 提供商 1 返回 520 后切换到提供商 2，两个提供商都返回 520 时，
+// 按提供商耗尽返回 502。
 func TestOpenAIGatewayHandlerResponses_FailoverContinuesForConnectedClient(t *testing.T) {
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()

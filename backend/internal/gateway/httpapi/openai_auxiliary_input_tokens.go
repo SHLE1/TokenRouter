@@ -36,7 +36,7 @@ func (s *OpenAIAuxiliary) ForwardResponsesInputTokens(
 		return fmt.Errorf("responses input_tokens: missing provider")
 	}
 
-	// 此辅助协议只覆盖已实现的 OpenAI 兼容计数，不能把其它平台凭据送到 OpenAI 端点。
+	// 该预检使用 OpenAI 兼容计数提供商及其凭据。
 	if provider.Record.Platform != "openai" && !provider.View().IsGrok() && !provider.View().IsCNProvider() {
 		writeOpenAIResponsesInputTokensError(c, http.StatusNotFound, "not_found_error", "Responses input token counting is not supported for this provider")
 		return nil

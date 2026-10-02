@@ -107,7 +107,7 @@ onMounted(() => {
   messageHandler = (event: MessageEvent) => {
     if (event.origin !== window.location.origin) return
     if (event.data?.type !== 'STRIPE_POPUP_INIT') return
-    // INIT 已到达，取消兜底超时，避免长时间的扫码支付被误判为超时。
+    // INIT 到达后取消初始化超时计时，扫码支付可以继续等待。
     clearInitTimeout()
     if (messageHandler) {
       window.removeEventListener('message', messageHandler)

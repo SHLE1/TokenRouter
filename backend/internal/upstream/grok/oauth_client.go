@@ -213,7 +213,7 @@ func grokOAuthStatusError(code, message string, resp *req.Response) error {
 func grokOAuthHasExplicitEntitlementDenial(body string) bool {
 	lower := strings.ToLower(body)
 	// 账单额度耗尽可恢复；xAI 可能同时返回通用 access_denied 与额度消息，
-	// 因此额度语义必须优先于 refresh token 流程中的 entitlement 拒绝标记。
+	// 因此 refresh token 流程先识别额度消息，再识别 entitlement 拒绝标记。
 	for _, phrase := range []string{
 		"spending limit",
 		"run out of credits",

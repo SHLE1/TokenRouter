@@ -22,7 +22,7 @@ import zhLanding from '../locales/zh/landing'
 import zhMisc from '../locales/zh/misc'
 
 // locales/{zh,en}/index.ts 与 admin/index.ts 使用对象展开聚合各域模块，
-// 展开模块之间若出现同名顶层键会静默覆盖。本测试将该风险固化为显式失败。
+// 展开模块之间若出现同名顶层键会静默覆盖，测试会将重复键报告为失败。
 type Modules = Record<string, Record<string, unknown>>
 
 function collisions(modules: Modules): string[] {

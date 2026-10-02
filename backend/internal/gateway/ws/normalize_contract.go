@@ -2,7 +2,7 @@ package ws
 
 import "context"
 
-// ImagePolicy 是当前报文适用的图片资格投影，不持有提供商/分组实体。
+// ImagePolicy 保存当前报文适用的图片资格规则。
 type ImagePolicy struct {
 	Allowed  bool
 	Explicit string
@@ -49,7 +49,7 @@ type NormalizeOptions struct {
 	ForceHTTPBridge bool
 }
 
-// RequestNormalizer 只持有明确会话模型状态，构造不执行任何任务。
+// RequestNormalizer 保存会话模型状态，按收到的请求帧执行规范化。
 type RequestNormalizer struct {
 	State   *IngressState
 	Options NormalizeOptions

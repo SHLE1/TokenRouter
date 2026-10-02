@@ -5,8 +5,8 @@ import (
 	"sync"
 )
 
-// SessionAttempts 保存当前请求的会话完成状态，允许资源按原取消/接受时机先释放，
-// 最终保留与注销仍以执行层观测到的成功或可结算部分结果为准。
+// SessionAttempts 保存当前请求的会话完成状态。资源可在取消或接受请求时先行释放，
+// 会话保留与注销以执行层观测到的成功或可结算部分结果为准。
 type SessionAttempts struct {
 	mu          sync.Mutex
 	closed      bool
@@ -19,7 +19,7 @@ func NewSessionAttempts(cache SessionLimitCache, diagnostics Diagnostics) *Sessi
 	return &SessionAttempts{cache: cache, diagnostics: diagnostics, entries: map[int64]*AttemptLease{}}
 }
 
-// Track 接管原入口已处理的会话绑定；同提供商再次选择保留原“最新投影替换”语义。
+// Track 登记入口处理后的会话绑定，再次选中同一提供商时使用最新绑定。
 func (s *SessionAttempts) Track(binding SessionBinding) {
 	if binding.SessionID == "" {
 		return
@@ -55,7 +55,7 @@ func (s *SessionAttempts) Own(id int64, release func()) {
 	}
 }
 
-// Abandon 保留切号时立即注销原提供商会话的时机。
+// Abandon 在切换提供商时立即注销前一个提供商的会话。
 func (s *SessionAttempts) Abandon(id int64) {
 	s.mu.Lock()
 	attempt := s.entries[id]
@@ -77,7 +77,7 @@ func (s *SessionAttempts) Reset() {
 	}
 }
 
-// Finish 与原请求最终状态一致；重复调用不把成功结果改成失败。
+// Finish 按请求的最终结果结束所有尝试，重复调用保持首次结果。
 func (s *SessionAttempts) Finish(outcome AttemptOutcome) {
 	s.mu.Lock()
 	if s.closed {

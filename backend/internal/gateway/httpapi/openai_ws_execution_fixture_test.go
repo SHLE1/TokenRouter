@@ -29,7 +29,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// wsFixtureOptions 只保存这些传输合同实际设置的原生选项。
+// wsFixtureOptions 保存传输测试使用的选项。
 type wsFixtureOptions struct {
 	WS      OpenAIWSOptions
 	Pool    openai.WSPoolOptions
@@ -52,7 +52,7 @@ type wsFixtureInputs struct {
 	corrector *openai.CodexToolCorrector
 }
 
-// wsExecutionFixture 组合跨HTTP/WS合同需要的实际执行器，不保存第二份连接或会话状态。
+// wsExecutionFixture 组合 HTTP 和 WS 测试使用的执行器，共用连接与会话状态。
 type wsExecutionFixture struct {
 	*OpenAIWebSocketExecutor
 	Responses *OpenAIResponsesExecutor
@@ -154,14 +154,14 @@ func newUpstreamHealthForTest(store gatewayadapter.ExecutionProviderStore, _ *ws
 	return gatewaytestkit.NewHealthObserver(gatewaytestkit.HealthInput{Store: store, Cache: cache, Options: options, Readers: readers})
 }
 
-// setWSFixtureHealth 替换测试所需的观察端口，复用现有连接池和会话。
+// setWSFixtureHealth 替换测试使用的健康观察接口，共用连接池和会话。
 func setWSFixtureHealth(s *wsExecutionFixture, observer *provideradapter.UpstreamHealth) {
 	s.Output.Health.Health = observer
 	s.Output.GrokHealth.Health = observer
 	s.Output.Observer = observer
 }
 
-// newWSFastPolicy 只构造策略实际依赖的设置读取器。
+// newWSFastPolicy 构造策略使用的设置读取器。
 func newWSFastPolicy(t *testing.T, values *tierpolicy.OpenAIFastPolicySettings) *gatewayadapter.ExecutionFastPolicy {
 	t.Helper()
 	repo := &gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{}}
@@ -191,7 +191,7 @@ func (r wsFixtureProviderStore) GetByID(_ context.Context, id int64) (*gatewayad
 	return nil, errors.New("provider not found")
 }
 
-// wsFixtureModelBlocked 阻断断言读取原生状态，字段投影与生产提供商健康端口相同。
+// wsFixtureModelBlocked 按提供商健康接口的字段读取模型阻断状态。
 func wsFixtureModelBlocked(s *wsExecutionFixture, value *gatewayadapter.ExecutionProvider, model string) bool {
 	if value == nil {
 		return false

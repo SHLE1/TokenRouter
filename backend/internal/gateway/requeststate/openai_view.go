@@ -45,7 +45,7 @@ func NewOpenAIRequestView(body []byte) OpenAIRequestView {
 
 	view := OpenAIRequestView{body: body}
 	var seen uint8
-	// 直接读取原始请求体，避免为大 input/contents 复制整段 JSON；视图持有 body 保证字符串有效。
+	// 视图持有 body 并直接引用原始请求体，input 和 contents 使用其中的字节区间。
 	wirejson.ParseView(body).ForEach(func(key, value gjson.Result) bool {
 		switch key.Str {
 		case "model":

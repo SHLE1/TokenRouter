@@ -40,8 +40,7 @@ func defaultCNProviderTestModel(platform string) string {
 	}
 }
 
-// Execute 按提供商真实上游协议选择测试端点，避免把 Chat 或
-// Responses 提供商错误地当作 Anthropic API Key 测试。
+// Execute 按提供商协议选择 Chat、Responses 或 Anthropic 测试端点。
 func (s *CNProviderTest) Execute(
 	c *TestRun,
 	value *providercore.Record,

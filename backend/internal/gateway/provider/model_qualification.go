@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// CandidateSnapshot 只返回原候选字段，当次协议覆盖不写回提供商记录。
+// CandidateSnapshot 返回候选快照，并在快照中设置本次启用的协议。
 func (p ModelPolicy) CandidateSnapshot() provider.ProviderSnapshot {
 	if p.Record == nil {
 		return provider.ProviderSnapshot{}
@@ -22,7 +22,7 @@ func (p ModelPolicy) CandidateSnapshot() provider.ProviderSnapshot {
 	return snapshot
 }
 
-// ProtocolRoute 保留单次候选资格复核及原分组投影。
+// ProtocolRoute 根据分组协议配置复核候选，返回上游协议。
 func (p ModelPolicy) ProtocolRoute(group *routing.Group, source protocol.ProtocolID) (protocol.ProtocolID, bool) {
 	if p.Record == nil {
 		return "", false
@@ -36,7 +36,7 @@ func (p ModelPolicy) ProtocolRoute(group *routing.Group, source protocol.Protoco
 	return candidate.UpstreamProtocol, ok
 }
 
-// AllowsProtocol 在原调用点读取请求路线，不提前读取模型目录。
+// AllowsProtocol 根据请求分组和客户端协议检查提供商资格。
 func (p ModelPolicy) AllowsProtocol(ctx context.Context) bool {
 	group, _ := requeststate.GroupFromContext(ctx)
 	if p.Record == nil || group != nil && (group.RequireOAuthOnly && !p.Record.IsOAuth() || group.RequirePrivacySet && !p.Record.IsPrivacySet()) {
@@ -50,7 +50,7 @@ func (p ModelPolicy) AllowsProtocol(ctx context.Context) bool {
 	return ok
 }
 
-// Schedulable 保留协议、提供商状态、模型窗口的原检查顺序。
+// Schedulable 依次检查协议、提供商状态和模型可用性。
 func (p ModelPolicy) Schedulable(ctx context.Context, model string) bool {
 	if p.Record == nil {
 		return false
@@ -61,7 +61,7 @@ func (p ModelPolicy) Schedulable(ctx context.Context, model string) bool {
 	return p.AllowsModel(ctx, model)
 }
 
-// Limited 只报告模型窗口，不把超额消费许可混入原只读窗口判断。
+// Limited 检查模型各限流窗口是否生效。
 func (p ModelPolicy) Limited(ctx context.Context, model string) bool {
 	for _, key := range p.LimitKeys(ctx, model) {
 		if p.Record.ModelRateLimitActive(key) {
@@ -71,7 +71,7 @@ func (p ModelPolicy) Limited(ctx context.Context, model string) bool {
 	return false
 }
 
-// LimitRemaining 保留多范围最大剩余时间和每次窗口读取的原时钟。
+// LimitRemaining 返回各模型限流窗口中最长的剩余时间。
 func (p ModelPolicy) LimitRemaining(ctx context.Context, model string) time.Duration {
 	remaining := time.Duration(0)
 	for _, key := range p.LimitKeys(ctx, model) {
@@ -82,7 +82,7 @@ func (p ModelPolicy) LimitRemaining(ctx context.Context, model string) time.Dura
 	return remaining
 }
 
-// FinalAntigravityModel 只提供显式模型和本次 thinking，规则复用提供商平台适配。
+// FinalAntigravityModel 根据模型和本次 thinking 设置解析 Antigravity 上游模型。
 func (p ModelPolicy) FinalAntigravityModel(ctx context.Context, model string) string {
 	return provideradapter.FinalAntigravityModel(p.Record, model, modelThinking(ctx))
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
-// InitTimezone 仅由进程引导设置 time.Local，后续装配捕获同一时区的 Calendar。
+// InitTimezone 在进程引导时设置 time.Local，后续装配使用该时区构造 Calendar。
 func InitTimezone(name string) error {
 	if name == "" {
 		name = "Asia/Shanghai"

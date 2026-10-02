@@ -469,7 +469,7 @@ func TestOpenAIGatewayServiceForward_CodexBridgeSkipsCompactRequests(t *testing.
 	c.Request.Header.Set("User-Agent", "codex_cli_rs/0.98.0")
 	provider := newOpenAIImageGenerationControlTestProvider()
 
-	// /responses/compact 上游不接受 tool_choice，bridge 注入必须整体豁免 compact 请求。
+	// /responses/compact 上游拒绝 tool_choice，compact 请求跳过 bridge 工具注入。
 	result, err := svc.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.4","input":"summarize the conversation","stream":false}`))
 
 	require.NoError(t, err)
@@ -481,7 +481,7 @@ func TestOpenAIGatewayServiceForward_CodexBridgeSkipsCompactRequests(t *testing.
 	require.NotContains(t, instructions, "image_generation")
 }
 
-// TestOpenAIGatewayService_CodexImageGenerationBridgeOverridePrecedence 验证分组协议设置优先于提供商，旧分组功能默认值不再影响任何请求。
+// TestOpenAIGatewayService_CodexImageGenerationBridgeOverridePrecedence 验证分组协议设置优先于提供商设置，分组功能默认值被忽略。
 func TestOpenAIGatewayService_CodexImageGenerationBridgeOverridePrecedence(t *testing.T) {
 	for _, tt := range []struct {
 		name     string

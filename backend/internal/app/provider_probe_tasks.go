@@ -10,7 +10,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideProviderProbeTasks 绑定原 task 协调与条件凭据写入，app 不持有锁或任务规则。
+// provideProviderProbeTasks 为探测绑定任务协调器和凭据条件写入函数。
 func provideProviderProbeTasks(store *postgres.ProviderStore, connections *gatewayhttp.OpenAIWSConnections, coordinator *provider.OpenAITaskCoordinator) *provideradapter.ProbeTasks {
 	return &provideradapter.ProbeTasks{Coordinator: coordinator, Options: provider.OpenAITaskOptions{
 		Read: store.GetByID,

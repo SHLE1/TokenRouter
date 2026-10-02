@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
-// streamOptions 保留响应窗口观察和逐事件缓存规则读取，不复制流解析状态。
+// streamOptions 配置响应窗口观测和逐事件缓存规则读取函数。
 func (r *Runtime) streamOptions(output HTTPBoundary, state *AttemptState, target *gatewayadapter.ExecutionProvider) anthropic.StreamOptions {
 	options := anthropic.StreamOptions{
 		ProviderID: target.Record.ID,
@@ -94,7 +94,7 @@ func detachedStreamContext(ctx context.Context, stream bool) (context.Context, c
 	return context.WithoutCancel(ctx), func() {}
 }
 
-// 固定时长仅用于平台已有的重试预算，不引入额外请求循环。
+// 固定时长用于平台重试预算。
 const (
 	maxRetryAttempts = 5
 	maxRetryElapsed  = 10 * time.Second

@@ -27,7 +27,7 @@ func newUserProfileCore(t *testing.T, users identity.UserRepository) *identity.U
 	return identity.NewUserService(users, nil, nil, nil, tasks.Go)
 }
 
-// newUserBindingAuth 只绑定原资料测试需要的会话、邮箱挑战和无数据库路径。
+// newUserBindingAuth 为资料测试绑定会话和邮箱验证函数，数据库连接设为 nil。
 func newUserBindingAuth(users identity.UserRepository, refresh identity.RefreshTokenCache, cfg *config.Config, settings identity.AuthSettings, email identity.AuthEmail) *identity.AuthService {
 	options := &identity.AuthOptions{JWT: identity.SessionOptions{Secret: cfg.JWT.Secret, ExpireHour: cfg.JWT.ExpireHour}}
 	deps := &identity.AuthDependencies{Users: users, RefreshTokens: refresh, Options: options, Settings: settings, Email: email}
@@ -37,7 +37,7 @@ func newUserBindingAuth(users identity.UserRepository, refresh identity.RefreshT
 	return core
 }
 
-// newUserBindingSettings 复用真实身份设置端口组合，保留换绑开关的动态读取。
+// newUserBindingSettings 组合身份设置读取器，在调用时读取邮箱换绑开关。
 func newUserBindingSettings(repo settings.Repository, cfg *config.Config) *identityAuthSettings {
 	store := settings.New(repo)
 	return provideIdentityAuthSettings(provideIdentitySettings(store), provideGrantSettings(store, cfg, nil), provideSiteDisplay(store, cfg), provideOAuthSettings(store, cfg), providePromotionSettings(store))

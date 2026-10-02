@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// GeminiInput 只带当前请求与提供商显示/资格投影，不带凭据。
+// GeminiInput 保存当前请求以及提供商的展示和资格字段。
 type GeminiInput struct {
 	StartedAt                                   time.Time
 	Model, Action                               string
@@ -34,7 +34,7 @@ type GeminiHooks struct {
 	OutputError func(error)
 }
 
-// GeminiPorts 的恢复端口复用唯一供应商原语；核心不再创建重试算法。
+// GeminiPorts 通过平台提供的恢复操作执行供应商重试。
 type GeminiPorts interface {
 	GoogleError(int, string) error
 	ImageInputSize([]byte) string

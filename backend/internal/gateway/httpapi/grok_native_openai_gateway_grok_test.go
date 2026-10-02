@@ -110,8 +110,7 @@ func TestBuildGrokResponsesRequestAppliesHeaderOverridesLast(t *testing.T) {
 	req, err := (&GrokExecutor{Routes: gatewayprovider.GrokRoutes{Validate: xai.ValidateBaseURL}}).BuildResponsesRequest(context.Background(), nil, provider, []byte(`{"model":"grok-4.3"}`), "access-token", "conv-1", false)
 	require.NoError(t, err)
 	require.Equal(t, "https://relay.example.test/v1/responses", req.URL.String())
-	// 覆写值优先于内置 CLI 身份头。名字不在 wire casing 映射中的覆写头
-	// 以小写键直写（HTTP/2 线上语义），需按写入形态断言。
+	// 覆写值优先于内置 CLI 身份头。wire casing 映射外的覆写头按小写键写入，测试检查写入后的形式。
 	require.Equal(t, "relay-client/2.0", req.Header.Get("User-Agent"))
 	require.Equal(t, []string{"9.9.9"}, map[string][]string(req.Header)["x-grok-client-version"])
 	require.Empty(t, req.Header.Get("X-Grok-Client-Version"))

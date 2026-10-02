@@ -446,7 +446,7 @@ func TestOpenAITempUnschedulable_UnknownModelKeepsProviderRuntimeBlock(t *testin
 	require.Empty(t, repo.ModelRateLimitCalls)
 }
 
-// httpRuntimeClock 为过期窗口提供显式时钟，不改写运行状态内部字段。
+// httpRuntimeClock 为过期窗口测试提供时钟。
 type httpRuntimeClock struct{ nanos atomic.Int64 }
 
 func (c *httpRuntimeClock) Now() time.Time {

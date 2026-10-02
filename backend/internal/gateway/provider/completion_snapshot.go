@@ -151,7 +151,7 @@ func ProjectOpenAICompletionResult(v *forwardcore.OpenAIResult, a *provider.Reco
 	return completion.SnapshotResult(out)
 }
 
-// completionUserSummary 将身份记录投影为权益和通知所需的只读数据。
+// completionUserSummary 从身份记录提取权益和通知所需的数据。
 func completionUserSummary(u *identity.User) *billing.UserSummary {
 	if u == nil {
 		return nil

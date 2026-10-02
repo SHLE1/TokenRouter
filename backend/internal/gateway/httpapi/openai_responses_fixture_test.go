@@ -93,7 +93,7 @@ func newResponsesFixture(v responsesFixtureInputs) *OpenAIResponsesExecutor {
 	}}
 }
 
-// compileHTTPFixtureHeaders 使用实际 Header 策略，保留 nil 配置语义。
+// compileHTTPFixtureHeaders 使用 Header 策略，nil 表示使用默认配置。
 func compileHTTPFixtureHeaders(options *responsesFixtureOptions) *egress.CompiledHeaderFilter {
 	if options == nil {
 		return nil
@@ -101,7 +101,7 @@ func compileHTTPFixtureHeaders(options *responsesFixtureOptions) *egress.Compile
 	return egress.CompileHeaderFilter(options.Headers)
 }
 
-// newHTTPReadersFixture 只构造测试需要的动态读取端口。
+// newHTTPReadersFixture 构造测试使用的动态读取接口。
 func newHTTPReadersFixture(repo settings.Repository, _ *responsesFixtureOptions) *gatewayadapter.RuntimeReaders {
 	if repo != nil {
 		repo = settings.New(repo)
@@ -119,8 +119,7 @@ func newHTTPHealthFixture(store gatewayadapter.ExecutionProviderStore, options *
 	return testkit.NewHealthObserver(testkit.HealthInput{Store: store, Cache: cache, Options: health, Readers: readers})
 }
 
-// httpFixtureRuntimeBlocked 只投影身份，运行阻断仍由提供商模块判断。
-// httpFixtureRuntimeBlocked 只投影凭据身份，停调与恢复仍由提供商运行状态判断。
+// httpFixtureRuntimeBlocked 提供凭据身份，由提供商运行状态判断停调和恢复。
 func httpFixtureRuntimeBlocked(s *OpenAIResponsesExecutor, target *gatewayadapter.ExecutionProvider) bool {
 	return s.Output.Health.Runtime.Blocked(target.Record.ID, func() string {
 		return provider.RefreshCredentialIdentity(target.View())

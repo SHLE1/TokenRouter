@@ -50,7 +50,7 @@ type MessagesCall struct {
 	Mapping                                  routing.GroupMappingResult
 }
 
-// MessagesBackend 只绑定已有用例的单步能力及同步观测，不另建循环或缓存。
+// MessagesBackend 提供用例的逐步执行接口和同步观测。
 type MessagesBackend interface {
 	Access(*gin.Context) (*apikey.APIKey, bool)
 	CompatibilityMetrics(*zap.Logger)
@@ -142,7 +142,7 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 
 	h.backend.ObserveRequest(c, "", false)
 
-	// 用户提示词替换必须早于解析、内容审计和会话 hash，确保后续链路看到同一份请求体。
+	// 在解析、内容审计和会话 hash 计算前替换用户提示词，后续步骤共用改写后的请求体。
 	body = h.prompt.ApplyUserPromptReplacementToBody(c.Request.Context(), body, "anthropic_messages")
 
 	bodyRef := requeststate.NewRequestBodyRef(body)
@@ -158,12 +158,12 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
 
 	// 设置 max_tokens=1 + haiku 探测请求标识到 context 中
-	// 必须在 SetClaudeCodeClientContext 之前设置，因为 ClaudeCodeValidator 需要读取此标识进行绕过判断
+	// 在 SetClaudeCodeClientContext 前设置，ClaudeCodeValidator 根据此标识判断是否跳过验证。
 	if clientmeta.IsHaikuProbe(reqModel, parsedReq.MaxTokens) {
 		h.backend.BindProbe(c)
 	}
 
-	// 检查是否为 Claude Code 客户端，设置到 context 中（复用已解析请求，避免二次反序列化）。
+	// 复用已解析的请求识别 Claude Code 客户端，将结果写入 context。
 	detection := DetectClaudeCodeRequest(c, body, parsedReq, h.backend.Probe(c))
 	h.backend.BindClient(c, detection)
 	isClaudeCodeClient := detection.ClaudeCode
@@ -228,7 +228,7 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 		h.concurrencyError(c, err, "user", streamStarted)
 		return
 	}
-	// 在请求结束或 Context 取消时确保释放槽位，避免客户端断开造成泄漏
+	// 请求结束或 Context 取消时释放槽位。
 	userReleaseFunc = scheduler.WrapRelease(c.Request.Context(), scheduler.ReleaseOnCancel, userReleaseFunc)
 	if userReleaseFunc != nil {
 		defer userReleaseFunc()
@@ -367,7 +367,7 @@ func (h *MessagesHandler) checkClientVersion(c *gin.Context, detected ClientDete
 	return false
 }
 
-// SubscriptionFromContext 仅投影原 HTTP 权益字段，不执行查询。
+// SubscriptionFromContext 从 HTTP 请求上下文读取订阅。
 func SubscriptionFromContext(c *gin.Context) (*billing.UserSubscription, bool) {
 	value, exists := c.Get("subscription")
 	if !exists {

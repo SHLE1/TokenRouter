@@ -166,7 +166,7 @@ return 0
 
 	// activateSnapshotScript 原子 CAS 切换快照版本。
 	// 仅当新版本号 >= 当前激活版本时才切换，防止并发写入导致版本回滚。
-	// 旧快照使用 EXPIRE 设置宽限期而非立即 DEL，避免与 reader 竞态。
+	// 旧快照通过 EXPIRE 设置宽限期，正在读取该版本的请求可继续完成。
 	//
 	// KEYS[1] = activeKey     (sched:active:{bucket})
 	// KEYS[2] = readyKey      (sched:ready:{bucket})
@@ -224,7 +224,7 @@ type SnapshotCache struct {
 	writeChunkSize int
 }
 
-// SnapshotCacheOptions 仅控制原读写分块，零值采用原默认参数。
+// SnapshotCacheOptions 配置读写分块大小，零值使用默认参数。
 type SnapshotCacheOptions struct {
 	MGetChunkSize  int
 	WriteChunkSize int
@@ -414,13 +414,12 @@ func (c *SnapshotCache) SetSnapshot(ctx context.Context, bucket scheduler.Schedu
 	if !token.ValidFor(bucket) {
 		return fmt.Errorf("%w: bucket=%s", scheduler.ErrSchedulerBucketWriteFenced, bucket.String())
 	}
-	// 分配版本与激活指针是两个 fencing 边界；中间写入的数据只有通过第二次校验才能发布。
+	// 分配版本和激活指针时分别校验写入令牌，数据通过激活时的校验后发布。
 	version, err := c.allocateSnapshotVersion(ctx, bucket, token)
 	if err != nil {
 		return err
 	}
-	// 快照成员最终只依赖可编码提供商的有序 ID；直接复用 ID 路径，避免为
-	// 随后立即丢弃的完整 Provider 再分配一份临时切片。
+	// 快照成员使用已编码提供商的有序 ID，写入后即可激活版本。
 	if _, err := c.writeSnapshotVersionAndReturnProviderIDs(ctx, bucket, version, providers); err != nil {
 		return err
 	}
@@ -433,7 +432,7 @@ func (c *SnapshotCache) SetSnapshotAndReturnProviderIDs(ctx context.Context, buc
 	if !token.ValidFor(bucket) {
 		return nil, fmt.Errorf("%w: bucket=%s", scheduler.ErrSchedulerBucketWriteFenced, bucket.String())
 	}
-	// 分配版本与激活指针是两个 fencing 边界；中间写入的数据只有通过第二次校验才能发布。
+	// 分配版本和激活指针时分别校验写入令牌，数据通过激活时的校验后发布。
 	version, err := c.allocateSnapshotVersion(ctx, bucket, token)
 	if err != nil {
 		return nil, err
@@ -499,7 +498,7 @@ func schedulerSnapshotMembers(providerIDs []int64) []redis.Z {
 	if len(providerIDs) == 0 {
 		return nil
 	}
-	// 使用序号作为 score，保持数据库返回的排序语义；重复 ID 继续交由 Redis ZADD
+	// 使用序号作为 score，保持数据库返回的顺序，重复 ID 交由 Redis ZADD
 	// 按最后一个 score 覆盖，与直接从提供商切片构造成员时的行为一致。
 	members := make([]redis.Z, 0, len(providerIDs))
 	for idx, providerID := range providerIDs {
@@ -533,7 +532,7 @@ func (c *SnapshotCache) activateSnapshotVersion(ctx context.Context, bucket sche
 	// 第二阶段：原子 CAS 切换版本，同时再次校验退休状态与 writer epoch。
 	// Lua 脚本保证：仅当新版本 >= 当前激活版本时才切换 active 指针，
 	// 防止并发写入导致版本回滚。
-	// 旧快照使用 EXPIRE 宽限期而非立即 DEL，避免 reader 竞态。
+	// 旧快照通过 EXPIRE 设置宽限期，正在读取该版本的请求可继续完成。
 	activeKey := schedulerBucketKey(schedulerActivePrefix, bucket)
 	readyKey := schedulerBucketKey(schedulerReadyPrefix, bucket)
 	snapshotKeyPrefix := fmt.Sprintf("%s%d:%s:%s:v", schedulerSnapshotPrefix, bucket.GroupID, bucket.Platform, bucket.Mode)

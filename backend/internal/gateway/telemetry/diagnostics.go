@@ -28,7 +28,7 @@ func ErrorRules(message string, args ...any) {
 	logger.LegacyPrintf("service.error_passthrough", message, args...)
 }
 
-// Failover 保留请求关联、日志级别和原字段，只适配输出技术。
+// Failover 按给定级别记录提供商切换，附带请求关联和事件字段。
 func Failover(ctx context.Context, event string, values map[string]any) {
 	fields := make([]zap.Field, 0, len(values))
 	for k, v := range values {

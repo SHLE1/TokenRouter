@@ -22,7 +22,7 @@ type AdminMutations struct {
 
 func (s *AdminMutations) HasDatabase() bool { return s != nil && s.Client != nil }
 
-// DeleteUserAndKeys 保留原闭合删除与事务失败语义。
+// DeleteUserAndKeys 在同一事务中删除用户及其 Key，失败时回滚。
 func (s *AdminMutations) DeleteUserAndKeys(ctx context.Context, id int64, keys []identitycore.AdminKeySummary) error {
 	opCtx := ctx
 	writer := s.Keys

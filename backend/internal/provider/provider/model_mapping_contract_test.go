@@ -482,7 +482,7 @@ func TestProviderGetMappedModel(t *testing.T) {
 	}
 }
 
-// TestProviderGetModelMapping_AntigravityNormalizesGemini31ProAliases 验证显式提供商配置读取后保持原样。
+// TestProviderGetModelMapping_AntigravityNormalizesGemini31ProAliases 检查读取配置后 Gemini 3.1 Pro 映射保持管理员保存的值。
 func TestProviderGetModelMapping_AntigravityNormalizesGemini31ProAliases(t *testing.T) {
 	raw := map[string]any{"gemini-pro-agent": "gemini-pro-agent", "gemini-3.1-pro-high": "gemini-3.1-pro-high", "gemini-3.1-pro-preview": "gemini-3.1-pro-high"}
 	provider := &acct.Record{Platform: capability.PlatformAntigravity, Credentials: map[string]any{"model_mapping": raw}}
@@ -497,7 +497,7 @@ func TestProviderGetModelMapping_AntigravityNormalizesGemini31ProAliases(t *test
 	}
 }
 
-// TestProviderGetModelMapping_AntigravityPreservesGemini31ProOverrides 验证显式提供商配置读取后保持原样。
+// TestProviderGetModelMapping_AntigravityPreservesGemini31ProOverrides 检查管理员设置的 Gemini 3.1 Pro 覆盖值按配置返回。
 func TestProviderGetModelMapping_AntigravityPreservesGemini31ProOverrides(t *testing.T) {
 	raw := map[string]any{"gemini-pro-agent": "custom-model", "gemini-3.1-pro-high": "another-model"}
 	provider := &acct.Record{Platform: capability.PlatformAntigravity, Credentials: map[string]any{"model_mapping": raw}}
@@ -628,7 +628,7 @@ func TestProviderResolveMappedModel(t *testing.T) {
 	}
 }
 
-// TestProviderGetModelMapping_AntigravityEnsuresGeminiDefaultPassthroughs 验证显式提供商配置读取后保持原样。
+// TestProviderGetModelMapping_AntigravityEnsuresGeminiDefaultPassthroughs 检查读取 Gemini 映射时返回管理员配置的集合。
 func TestProviderGetModelMapping_AntigravityEnsuresGeminiDefaultPassthroughs(t *testing.T) {
 	raw := map[string]any{"gemini-3-pro-high": "gemini-3.1-pro-high"}
 	provider := &acct.Record{Platform: capability.PlatformAntigravity, Credentials: map[string]any{"model_mapping": raw}}

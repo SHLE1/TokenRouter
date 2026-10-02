@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 本地交换器用闸门控制是否响应取消，不依赖真实供应商或定时睡眠。
+// 本地交换器通过闸门控制何时响应取消。
 type lifecycleRefreshExecutor struct {
 	started      chan struct{}
 	release      chan struct{}
@@ -110,7 +110,7 @@ func TestRefreshLockRejectsStoppedOwnerBeforeCancellationArrives(t *testing.T) {
 	defer close(allowCancel)
 	defer finish()
 
-	// 固定取消传播的间隙，避免依赖 goroutine 调度或 map 遍历顺序。
+	// 用闸门固定取消传播的间隙。
 	api.activity.mu.Lock()
 	for id, cancel := range api.activity.active {
 		api.activity.active[id] = func() {

@@ -1,8 +1,7 @@
 package bridge
 
-// custom/freeform 工具（如 Codex 0.14x 的 exec）在 responses→chat 桥上的双向转换。
-// 背景：Codex 的核心命令执行工具 exec 是 type=custom（输入为自由文本），此前被
-// responsesToolsToChatTools 丢弃，导致模型工具列表中没有 exec、无法执行任何命令。
+// custom/freeform 工具在 Responses 与 Chat 之间双向转换。
+// Codex 0.14x 的 exec 使用 type=custom 和自由文本输入，转换后的工具列表需要保留它才能执行命令。
 
 import (
 	"encoding/json"
@@ -432,7 +431,7 @@ func TestChatCompletionsResponseToResponses_ToolSearchCallOutputItem(t *testing.
 	assert.Equal(t, "call_s", item.CallID)
 
 	// 线上形态：execution 必须为 "client"（codex 的必填字段，非 client 被忽略），
-	// arguments 必须是 JSON 对象而非字符串（codex 按对象解析 query/limit）。
+	// arguments 编码为 JSON 对象，Codex 从对象中解析 query/limit。
 	b, err := json.Marshal(item)
 	require.NoError(t, err)
 	var m map[string]any
@@ -506,7 +505,7 @@ func TestChatCompletionsChunkToResponsesEvents_ToolSearchCallStream(t *testing.T
 	require.NotNil(t, itemDone, "缺少 tool_search_call 的 output_item.done")
 	assert.Equal(t, "call_s", itemDone.Item.CallID)
 
-	// SSE 线上形态经 responsesItemWire 白名单重组，必须单独断言。
+	// SSE JSON 由 responsesItemWire 按允许的字段重组，测试直接检查序列化结果。
 	sse, err := ResponsesEventToSSE(*itemDone)
 	require.NoError(t, err)
 	assert.Contains(t, sse, `"execution":"client"`)
@@ -780,7 +779,7 @@ func TestNamespaceToolNames_MapsFlattenedNames(t *testing.T) {
 	assert.Equal(t, NamespacedToolName{Namespace: "gmail", Name: "send"}, m["gmail__send"])
 	assert.Equal(t, NamespacedToolName{Namespace: "crm", Name: "query"}, m["crm__query"])
 
-	// 摊平名超长时截断加哈希，无法按字符串切分还原，必须经映射反查。
+	// 摊平名称超长时会截断并加哈希，回程通过映射查回原名称。
 	longNS := "very_long_namespace_prefix_for_testing_purposes"
 	longChild := "and_a_rather_long_tool_name_too"
 	m2 := NamespaceToolNames([]ResponsesTool{{
@@ -793,9 +792,8 @@ func TestNamespaceToolNames_MapsFlattenedNames(t *testing.T) {
 	assert.Nil(t, NamespaceToolNames(nil))
 }
 
-// TestResponsesToChatCompletionsRequest_RejectsToolSearchNameConflict 验证内置 tool_search 降级后的代理 function 与客户端声明的同名工具无法区分：回程会把
-// 普通工具的调用劫持成 tool_search_call，必须显式拒绝（代理不能改名，codex 的模型
-// 侧按 tool_search 这个名字调用）。
+// TestResponsesToChatCompletionsRequest_RejectsToolSearchNameConflict 检查 tool_search 代理与客户端工具重名时拒绝请求。
+// Codex 按 tool_search 名称调用，重名会使回程把普通工具调用还原为 tool_search_call。
 func TestResponsesToChatCompletionsRequest_RejectsToolSearchNameConflict(t *testing.T) {
 	// 与顶层 function 工具同名。
 	_, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
@@ -820,7 +818,7 @@ func TestResponsesToChatCompletionsRequest_RejectsToolSearchNameConflict(t *test
 	}, nil)
 	require.Error(t, err, "与内置 tool_search 代理撞名的 custom 工具必须拒绝")
 
-	// 重复声明 type=tool_search 去重后只产出一个代理，不拒绝。
+	// 重复声明 type=tool_search 去重后产出一个代理。
 	out, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
@@ -851,7 +849,7 @@ func TestResponsesToChatCompletionsRequest_RejectsDuplicateTopLevelExecutableNam
 // TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool 验证tool_choice 指向被转换丢弃的工具（如 web_search）或不存在的名字时不能原样转发，
 // chat 上游会因选择项指向未声明工具而 400；字符串形式与指向幸存工具的选择保持转发。
 func TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool(t *testing.T) {
-	// 强制选择被丢弃的 web_search：工具没了，选择项也必须丢。
+	// web_search 被丢弃时，指向它的强制选择项一并丢弃。
 	out, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model: "glm-5.2",
 		Input: json.RawMessage(`"hi"`),
@@ -889,7 +887,7 @@ func TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool(t *test
 	require.NoError(t, err)
 	assert.Empty(t, out.ToolChoice, "指向不存在工具名的 tool_choice 必须丢弃")
 
-	// 字符串形式与指向幸存工具的选择保持原有转发行为。
+	// 字符串形式和指向保留工具的选择原样转发。
 	out, err = ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
 		Model:      "glm-5.2",
 		Input:      json.RawMessage(`"hi"`),
@@ -933,9 +931,8 @@ func TestResponsesToChatCompletionsRequest_ToolSearchToolChoiceMapsToProxy(t *te
 	assert.Empty(t, out.ToolChoice)
 }
 
-// TestResponsesToChatCompletionsRequest_RejectsAmbiguousFlattenedNames 验证客户端请求在原生 Responses API 上合法（namespace 子工具按 namespace+name 路由），
-// 是摊平转换让名字产生歧义；歧义无法消除时必须显式拒绝整个请求（400），而不是
-// 静默降级——否则重复声明发给上游、回程还原到错误工具，问题只能靠抓包定位。
+// TestResponsesToChatCompletionsRequest_RejectsAmbiguousFlattenedNames 检查 namespace 摊平后重名的请求返回 400。
+// Responses 按 namespace 和 name 区分工具，摊平后的 Chat 工具只能按名称区分，重名会导致回程还原到错误工具。
 func TestResponsesToChatCompletionsRequest_RejectsAmbiguousFlattenedNames(t *testing.T) {
 	// 摊平名与顶层 function 工具撞名。
 	_, err := ResponsesToChatCompletionsRequestWithOptions(&ResponsesRequest{
@@ -1009,7 +1006,7 @@ func TestChatCompletionsResponseToResponses_NamespacedToolCallRestored(t *testin
 	assert.Equal(t, "call_n", item.CallID)
 	assert.Equal(t, `{"text":"hi"}`, item.Arguments)
 
-	// 非流式响应体走 ResponsesOutput.MarshalJSON，namespace 必须落到线上 JSON。
+	// 非流式响应经 ResponsesOutput.MarshalJSON 编码后包含 namespace。
 	b, err := json.Marshal(item)
 	require.NoError(t, err)
 	assert.Contains(t, string(b), `"namespace":"mcp__svc"`)
@@ -1074,7 +1071,7 @@ func TestChatCompletionsChunkToResponsesEvents_NamespacedToolCallStream(t *testi
 	assert.Equal(t, "mcp__svc", itemDone.Item.Namespace)
 	assert.Equal(t, `{"text":"hi"}`, itemDone.Item.Arguments)
 
-	// SSE 线上形态经 responsesItemWire 白名单重组，必须单独断言 namespace 落线。
+	// SSE JSON 由 responsesItemWire 重组，测试检查序列化结果中的 namespace。
 	sse, err := ResponsesEventToSSE(*itemDone)
 	require.NoError(t, err)
 	assert.Contains(t, sse, `"namespace":"mcp__svc"`)

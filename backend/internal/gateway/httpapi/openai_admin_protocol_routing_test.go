@@ -29,7 +29,7 @@ func TestOpenAIAdministratorProtocolOverridesAllLegacyProbeState(t *testing.T) {
 					c, _ := gin.CreateTestContext(httptest.NewRecorder())
 					c.Request = httptest.NewRequest(http.MethodPost, "/v1/"+inbound, bytes.NewReader(body))
 					c.Request.Header.Set("Content-Type", "application/json")
-					// 在上游接收请求后返回可控错误，断言真实目标和载荷而不耦合响应适配器。
+					// 上游接收请求后返回固定错误，测试检查收到的目标和载荷。
 					upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
 						StatusCode: http.StatusBadRequest,
 						Header:     http.Header{"Content-Type": []string{"application/json"}},

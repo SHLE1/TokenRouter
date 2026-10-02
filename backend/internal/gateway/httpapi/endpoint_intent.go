@@ -25,7 +25,7 @@ func IsBatchImageBillingBypassRequest(method, path string) bool {
 }
 
 // IsAPIKeyNonConsumingRequest 标识只读取已有状态或释放资源的网关请求。
-// 未知路径默认视为会产生消费，避免新增路由自动绕过团队限额。
+// 未知路径按消费请求检查团队限额。
 func IsAPIKeyNonConsumingRequest(method, path string) bool {
 	path = strings.TrimRight(path, "/")
 	if IsAPIKeyUsageRequest(method, path) {
@@ -45,8 +45,8 @@ func IsAPIKeyNonConsumingRequest(method, path string) bool {
 	return false
 }
 
-// IsAPIKeyUsageRequest 统一识别两套 Claude 风格的 Key 用量查询入口。
-// 这类接口只读取 Key 自身状态，不能因为订阅或 Key 配额已耗尽而被消费准入拦截。
+// IsAPIKeyUsageRequest 识别两套 Claude 风格的 Key 用量查询入口。
+// 查询读取 Key 自身状态，订阅或 Key 配额耗尽时仍可查询。
 func IsAPIKeyUsageRequest(method, path string) bool {
 	if method != http.MethodGet {
 		return false

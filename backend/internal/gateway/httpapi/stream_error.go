@@ -17,10 +17,8 @@ type ResponsesFailedError struct {
 	Message string `json:"message"`
 }
 
-// ResponsesFailedBody 对齐 apicompat.makeResponsesCompletedEvent 输出的 response 子对象字段集。
-// Output 用空 slice（不是 nil）确保 marshal 为 `[]` 而非 `null`。
-// CreatedAt 不带 omitempty：严格客户端把它当必填字段，缺失会以
-// `missing field 'created_at'` 反序列化失败——那正是本文件要避免的"客户端读不懂终止事件"。
+// ResponsesFailedBody 使用 apicompat.makeResponsesCompletedEvent 的 response 字段。
+// Output 使用空切片，序列化为 []。CreatedAt 总是输出，缺失时严格客户端会报 missing field 'created_at'。
 type ResponsesFailedBody struct {
 	ID        string               `json:"id"`
 	Object    string               `json:"object"`
@@ -88,27 +86,9 @@ func WriteResponsesFailedSSE(c *gin.Context, errType, code, message, requestID, 
 	return true
 }
 
-// InboundIsResponses 判断当前请求是否落在任意 Responses 路由上
-// （不区分 root 还是 compact 变体）。
-//
-// 不能直接用 GetInboundEndpoint(c) == EndpointResponses 比较，因为
-// GetInboundEndpoint/NormalizeInboundEndpoint 会把 compact 变体归一化为
-// 单独的 EndpointResponsesCompact（而不是 EndpointResponses），
-// 而本函数在这里只关心“是不是 Responses 家族的请求”，
-// 不需要区分 root/compact，所以不能用那个等值比较。
-//
-// 这里改用 FullPath 的后缀/子串判断，一次性覆盖 root 和 compact 的所有变体：
-//   - /v1/responses
-//   - /v1/responses/compact
-//   - /responses
-//   - /responses/compact
-//   - /backend-api/codex/responses
-//   - /backend-api/codex/responses/compact
-//
-// 对于通配路由（如 "/v1/responses/*action"）注册的 FullPath 本身就带有
-// "/responses/" 子串（例如 "/v1/responses/*action"），所以下面的
-// strings.Contains(p, "/responses/") 分支同样能覆盖这些通配路由，
-// 不需要额外处理通配符本身。
+// InboundIsResponses 判断请求是否属于 Responses 路由，包括 root 和 compact。
+// FullPath 的后缀或 /responses/ 子串覆盖 /v1/responses、/responses、/backend-api/codex/responses 及其 compact 子路径。
+// 通配模式 /v1/responses/*action 同样包含 /responses/。GetInboundEndpoint 会区分 EndpointResponses 和 EndpointResponsesCompact，此处将两者都视为 Responses。
 func InboundIsResponses(c *gin.Context) bool {
 	if c == nil {
 		return false
@@ -147,7 +127,7 @@ func MapResponsesErrorCode(errType string, code ...string) string {
 	}
 }
 
-// SynthesizeResponseID 使用显式关联 ID，避免读取旧业务 context。
+// SynthesizeResponseID 根据传入的关联 ID 生成响应 ID。
 func SynthesizeResponseID(requestID string) string {
 	if requestID = strings.TrimSpace(requestID); requestID != "" {
 		return "resp_" + strings.ReplaceAll(requestID, "-", "")

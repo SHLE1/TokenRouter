@@ -10,12 +10,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// QoderTransport 只接收单次技术请求，提供商缓存和授权状态仍由原生提供商核心管理。
+// QoderTransport 接收单次上游请求，provider 管理缓存和授权状态。
 type QoderTransport interface {
 	DoWithTLS(*http.Request, string, int64, int, *tlsfingerprint.Profile) (*http.Response, error)
 }
 
-// QoderRequestDoer 固化原代理及 TLS 选择，不复制客户端池或改变缺失代理的原行为。
+// QoderRequestDoer 为请求绑定代理和 TLS 选择函数，共用客户端池。
 func QoderRequestDoer(value *provider.Record, transport QoderTransport, profiles *egressprovider.TLSProfiles) qoder.RequestDoer {
 	if transport == nil || value == nil {
 		return nil

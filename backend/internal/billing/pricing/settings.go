@@ -86,8 +86,8 @@ func parseMinutes(hhmm string) (int, bool) {
 
 // PeakMultiplierAt 返回指定时刻 now 的高峰因子。
 //   - 未启用 / 未配置 / 配置非法（start>=end 或格式错误） / 非高峰时段 → 返回 1.0（安全降级）
-//   - 区间为左闭右开 [PeakStart, PeakEnd)，仅支持当日区间，不支持跨天（如 22:00-次日02:00）
-//   - 调用方把时刻投影到显式日期对象的时区后再调用
+//   - 区间为左闭右开 [PeakStart, PeakEnd)，起止时间需要在同一天。
+//   - 调用方先将时刻转换到日期对象的时区
 //
 // 该方法是纯函数，不读取任何外部状态，便于单测。
 func (g *BillingSettings) PeakMultiplierAt(now time.Time) float64 {

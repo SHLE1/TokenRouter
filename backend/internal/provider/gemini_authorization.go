@@ -659,7 +659,7 @@ func (s *GeminiAuthorization) RefreshProviderToken(ctx context.Context, provider
 	// For AI Studio OAuth, project_id is optional and should not block refresh.
 	switch oauthType {
 	case "code_assist":
-		// 先设置默认值或保留旧值，确保 tier_id 始终有值
+		// 使用默认值或当前值填充 tier_id。
 		if existingTierID != "" {
 			tokenInfo.TierID = CanonicalGeminiTierIDForOAuthType(oauthType, existingTierID)
 		}
@@ -799,7 +799,7 @@ func (s *GeminiAuthorization) fetchProjectID(ctx context.Context, accessToken, p
 		return strings.TrimSpace(loadResp.CloudAICompanionProject), tierID, nil
 	}
 
-	// 关键逻辑：对齐 Gemini CLI 对“已注册用户”的处理方式。
+	// 按 Gemini CLI 的方式处理已注册用户。
 	// 当 LoadCodeAssist 返回了 currentTier / paidTier（表示提供商已注册）但没有返回 cloudaicompanionProject 时：
 	// - 不要再调用 onboardUser（通常不会再分配 project_id，且可能触发 INVALID_ARGUMENT）
 	// - 先尝试从 Cloud Resource Manager 获取可用项目；仍失败则提示用户手动填写 project_id

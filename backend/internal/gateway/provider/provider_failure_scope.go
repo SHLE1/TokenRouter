@@ -44,7 +44,7 @@ func IsContentPolicyRejection(responseBody []byte) bool {
 	return false
 }
 
-// IsRequestScopedProviderFailure 识别只与当前请求有关、不能修改提供商健康状态的错误。
+// IsRequestScopedProviderFailure 识别应按单次请求处理的提供商错误。
 // 413 请求体限制可能是提供商上游代理的独有限制，仍允许切换提供商，因此不在这里统一排除。
 func IsRequestScopedProviderFailure(provider *ExecutionProvider, statusCode int, responseBody []byte) bool {
 	upstreamMsg := strings.TrimSpace(upstream.ExtractErrorMessage(responseBody))

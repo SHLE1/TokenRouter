@@ -14,7 +14,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// NewClient SQLite 保留原单测数据库与外键设置；不替代 PostgreSQL 事务验收。
+// NewClient 创建启用外键的 SQLite 测试数据库。PostgreSQL 事务行为由集成测试检查。
 func NewClient(t *testing.T) *dbent.Client {
 	t.Helper()
 	name := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.NewReplacer("/", "_", " ", "_").Replace(t.Name()))

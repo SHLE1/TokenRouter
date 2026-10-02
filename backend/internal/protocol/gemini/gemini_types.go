@@ -105,7 +105,7 @@ type GeminiImageSearch struct {
 // GeminiToolConfig Gemini 工具配置
 type GeminiToolConfig struct {
 	FunctionCallingConfig *GeminiFunctionCallingConfig `json:"functionCallingConfig,omitempty"`
-	// 混合函数工具与 Google Search 时，上游要求显式开启服务端工具调用。
+	// 混合函数工具与 Google Search 时，需要开启服务端工具调用。
 	IncludeServerSideToolInvocations *bool `json:"includeServerSideToolInvocations,omitempty"`
 }
 

@@ -15,7 +15,7 @@ type UsageObservationVersion struct {
 	RateLimitedAt, RateLimitResetAt, OverloadUntil *time.Time
 }
 
-// UsageObservationWriter 保留快照、设置限流、清除限流各自的提交与通知边界。
+// UsageObservationWriter 为快照写入、设置限流和清除限流分别提交并发布通知。
 type UsageExtraWriter interface {
 	UpdateUsageExtraIfUnchanged(context.Context, UsageObservationVersion, map[string]any) (bool, error)
 }

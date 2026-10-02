@@ -2,10 +2,10 @@ package requeststate
 
 import "context"
 
-// cacheBillingKey 只属于当前尝试的执行标记，不对外暴露可变全局键。
+// cacheBillingKey 标识当前尝试的强制缓存计费状态。
 type cacheBillingKey struct{}
 
-// IsForceCacheBilling 保留原布尔读取及错误类型值的缺省行为。
+// IsForceCacheBilling 读取强制缓存计费标记，缺失或类型错误时返回 false。
 func IsForceCacheBilling(ctx context.Context) bool {
 	value, _ := ctx.Value(cacheBillingKey{}).(bool)
 	return value

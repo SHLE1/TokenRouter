@@ -35,7 +35,7 @@ func (s *Service) AttributesSnapshot() AttributeSnapshot {
 	return result
 }
 
-// ModelAttributes 仅解析明确的模型身份，不借用跨型号的计费回退。
+// ModelAttributes 按完整的模型身份读取属性。
 func (s *Service) ModelAttributes(model string) modelcatalog.Attributes {
 	candidates := []string{model}
 	if s.options.ModelLookupCandidates != nil {
@@ -188,7 +188,7 @@ func (s *Service) publishModelsCatalog(body []byte, updated time.Time, persist b
 	var prices map[string]*CatalogModelPricing
 	var fingerprint string
 	var defaults pricing.OperationPrices
-	// 文件编辑可能与目录同步重叠，只发布来自同一组本地文件内容的价格投影。
+	// 文件编辑可能与目录同步重叠，发布前后核对文件指纹，价格数据取自同一组文件内容。
 	for attempt := 0; attempt < 3; attempt++ {
 		before := s.customPricingFilesFingerprint()
 		var err error

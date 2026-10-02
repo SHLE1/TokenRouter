@@ -67,7 +67,7 @@ func AdminGroupFromRouting[A any](g *routing.Group) *AdminGroup[A] {
 	return out
 }
 
-// GroupFromRouting 不输出内部字段，保留用户与管理员 DTO 的字段边界。
+// GroupFromRouting 将分组转换为用户或管理员的 DTO 字段。
 func GroupFromRouting(g *routing.Group) *Group {
 	if g == nil {
 		return nil
@@ -76,7 +76,7 @@ func GroupFromRouting(g *routing.Group) *Group {
 	return &out
 }
 
-// GroupCapacityFromSummary 仅投影既有容量字段，不改变 nil 与零值表示。
+// GroupCapacityFromSummary 将容量摘要转换为响应字段，nil 返回 nil，零值保持为零。
 func GroupCapacityFromSummary(v *routing.GroupCapacitySummary) *GroupCapacity {
 	if v == nil {
 		return nil

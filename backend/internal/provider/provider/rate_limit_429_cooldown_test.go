@@ -64,7 +64,7 @@ func TestHandle429_FallbackDisabledSkipsLocalMark(t *testing.T) {
 	require.Zero(t, providerRepo.rateLimitCalls)
 }
 
-// TestHandle429_AnthropicNoResetTimeUsesFallbackCooldown 验证Anthropic 缺少 reset 头的 429 也应进入短期兜底冷却，避免持续消耗故障转移预算。
+// TestHandle429_AnthropicNoResetTimeUsesFallbackCooldown 检查 Anthropic 的 429 缺少 reset 头时采用默认短冷却。
 func TestHandle429_AnthropicNoResetTimeUsesFallbackCooldown(t *testing.T) {
 	providerRepo := &rateLimit429ProviderRepoStub{}
 	settingRepo := newCooldownSettingsStore()
@@ -85,7 +85,7 @@ func TestHandle429_AnthropicNoResetTimeUsesFallbackCooldown(t *testing.T) {
 	require.True(t, !providerRepo.lastRateLimitReset.Before(before.Add(12*time.Second)) && !providerRepo.lastRateLimitReset.After(after.Add(12*time.Second)))
 }
 
-// TestHandle429_AnthropicNoResetTimeFallbackDisabledSkipsMark 验证管理端关闭兜底冷却后，Anthropic 缺少 reset 头的 429 不应标记提供商。
+// TestHandle429_AnthropicNoResetTimeFallbackDisabledSkipsMark 检查默认冷却关闭后，缺少 reset 头的 429 保持提供商状态不变。
 func TestHandle429_AnthropicNoResetTimeFallbackDisabledSkipsMark(t *testing.T) {
 	providerRepo := &rateLimit429ProviderRepoStub{}
 	settingRepo := newCooldownSettingsStore()

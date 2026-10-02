@@ -15,7 +15,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// QoderRuntimeOptions 只绑定提供商令牌、技术传输及已有平台会话，不持有旧实体或完整配置。
+// QoderRuntimeOptions 包含提供商令牌源、传输和平台会话依赖。
 type QoderRuntimeOptions struct {
 	Tokens        *provideradapter.QoderTokenProvider
 	Client        qoder.StreamClient
@@ -50,7 +50,7 @@ func (r *QoderRuntime) BindAttemptActivity(enter func() (func(), error)) {
 	r.enter = enter
 }
 
-// Executor 只创建一次平台执行器，不创建第二套提供商尝试循环。
+// Executor 按需创建并复用 Qoder 执行器。
 func (r *QoderRuntime) Executor() *qoder.Executor {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -60,12 +60,12 @@ func (r *QoderRuntime) Executor() *qoder.Executor {
 	return r.executor
 }
 
-// PrepareQoderTarget 将本次提供商记录投影为受控目标，凭据不进入公开结果。
+// PrepareQoderTarget 根据本次提供商记录构造 Qoder 执行目标。
 func (r *QoderRuntime) PrepareQoderTarget(metadata qoder.RequestMetadata, value *provider.Record, body []byte, wire protocol.ProtocolID, responseModel string) (upstream.Executor, upstream.AttemptInput) {
 	return r.Executor(), upstream.AttemptInput{Protocol: wire, Body: mapQoderRequestModel(value, body), ResponseModel: responseModel, Stream: qoder.GjsonBool(body, "stream"), Target: r.Target(metadata, value)}
 }
 
-// Target 保留会话与客户端的按需取得时点，未在准备阶段发起网络请求。
+// Target 绑定会话和客户端读取函数，执行时取得所需资源。
 func (r *QoderRuntime) Target(metadata qoder.RequestMetadata, value *provider.Record) *qoder.Target {
 	site, err := qoderRuntimeSite(value)
 	if err != nil {
@@ -102,7 +102,7 @@ func (r *QoderRuntime) Target(metadata qoder.RequestMetadata, value *provider.Re
 	}
 }
 
-// ObserveQoderFailure 只转交原提供商健康观察，不提交用量或决定重试。
+// ObserveQoderFailure 将失败交给提供商健康观测器。
 func (r *QoderRuntime) ObserveQoderFailure(ctx context.Context, value *provider.Record, err error) {
 	if r == nil || value == nil {
 		return

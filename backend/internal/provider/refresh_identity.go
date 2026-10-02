@@ -22,12 +22,12 @@ func (n RefreshFailureNotice) String() string {
 }
 func (n RefreshFailureNotice) GoString() string { return n.String() }
 
-// Prepare 在条件写入之前读取停止代次；返回的发布函数不得在显式清理后重新安装旧阻断。
+// Prepare 在条件写入前读取停止代次，返回的发布函数按代次检查当前阻断状态。
 type RefreshFailureObserver interface {
 	PrepareRefreshFailure(int64) func(RefreshFailureNotice)
 }
 
-// PrepareRefreshFailureNotice 在写入前冻结认证身份和通知代次，不重复安装旧阻断。
+// PrepareRefreshFailureNotice 在写入前固定认证身份和通知代次，发布时据此检查阻断状态。
 func PrepareRefreshFailureNotice(observer RefreshFailureObserver, value *Record) func(time.Time, string) {
 	if observer == nil || value == nil {
 		return func(time.Time, string) {}

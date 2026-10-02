@@ -15,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// QoderCompatibleTarget 只允许执行、刷新和完成投影，不向 HTTP 暴露提供商凭据。
+// QoderCompatibleTarget 提供执行、刷新和完成数据捕获接口。
 type QoderCompatibleTarget interface {
 	Snapshot() provider.ProviderSnapshot
 	Forward(context.Context, *gin.Context, []byte, protocol.ProtocolID, string) (*forward.MessagesResult, error)
@@ -23,7 +23,7 @@ type QoderCompatibleTarget interface {
 	Completion(context.Context, QoderCompletionCapture) *completion.Input
 }
 
-// QoderCompatibleSelection 持有本次选择的槽位与反馈参数，不创建第二个选号循环。
+// QoderCompatibleSelection 保存本次选择取得的槽位和反馈参数。
 type QoderCompatibleSelection interface {
 	Target() QoderCompatibleTarget
 	Acquired() bool
@@ -33,7 +33,7 @@ type QoderCompatibleSelection interface {
 	Switched()
 }
 
-// QoderCompatibleExecution 是固定的选择、路由和粘性端口。
+// QoderCompatibleExecution 提供提供商选择、路由和粘性会话接口。
 type QoderCompatibleExecution interface {
 	Select(context.Context, *int64, string, string, map[int64]struct{}, int64) (QoderCompatibleSelection, error)
 	Plan(context.Context, *apikey.APIKey, string) routing.RoutePlan

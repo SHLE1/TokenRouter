@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/search"
 )
 
-// searchSettingRows 只返回当前测试保存的原 JSON，不解释启用策略。
+// searchSettingRows 返回测试保存的 JSON 配置。
 type searchSettingRows struct {
 	search.ConfigRepository
 	data string

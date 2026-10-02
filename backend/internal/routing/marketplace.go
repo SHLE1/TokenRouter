@@ -390,7 +390,7 @@ func (s *Marketplace) RequestableModelPricing(ctx context.Context, group *Group,
 	return s.PublicModelPricing(ctx, group, pricingModel)
 }
 
-// PublicModelPricing 把分组价格与模式投影给 billing 报价端口，不读取旧网关或配置。
+// PublicModelPricing 将分组价格和计费模式传给 billing，返回公开报价。
 func (s *Marketplace) PublicModelPricing(ctx context.Context, group *Group, model string) pricing.ModelDisplayPricing {
 	if s.prices == nil {
 		return pricing.UnknownDisplayPricing()

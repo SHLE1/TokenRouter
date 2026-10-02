@@ -57,7 +57,7 @@ const chips = computed(() => {
       hint: hint('cost')
     }
   ]
-  // 旧数据可能没有用户扣费口径，此时不展示该项，避免把缺失显示成 0。
+  // 数据包含 user_cost 时展示用户扣费，旧数据可能缺少该字段。
   if (props.stats.user_cost != null) {
     items.push({
       key: 'userCost',

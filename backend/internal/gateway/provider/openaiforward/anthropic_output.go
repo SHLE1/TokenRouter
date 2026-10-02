@@ -31,7 +31,7 @@ type AnthropicOutputOptions struct {
 	Warn           func(string, ...zap.Field)
 }
 
-// AnthropicUsageToOpenAI 保留输入与缓存计数口径，不改变资金算法。
+// AnthropicUsageToOpenAI 将 Anthropic 输入与缓存计数转换为 OpenAI 用量格式。
 func AnthropicUsageToOpenAI(u *upstream.TokenUsage) protocolopenai.ForwardUsage {
 	if u == nil {
 		return protocolopenai.ForwardUsage{}
@@ -575,7 +575,7 @@ func ChatFromAnthropicStreaming(resp *http.Response, c *upstream.OutputContext, 
 		}
 	}
 	// onIdle 关闭上游连接（解除阻塞的读、归还连接池位），并按已累计 usage
-	// 返回——与 messages 主路径 "stream usage incomplete after timeout" 同语义。
+	// 返回，按 Messages 的空闲超时规则处理部分用量。
 	onIdle := func() (*Result, error) {
 		_ = resp.Body.Close()
 		if !clientDisconnected {

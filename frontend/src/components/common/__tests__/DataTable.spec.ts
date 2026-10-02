@@ -214,7 +214,7 @@ describe('DataTable', () => {
 
     const exposed = (wrapper.vm as any).virtualizer
     const instance = exposed?.value ?? exposed
-    // getItemKey 必须使用稳定行主键，而非位置索引。
+    // getItemKey 返回稳定的行主键。
     expect(instance.options.getItemKey(0)).toBe(100)
     expect(instance.options.getItemKey(5)).toBe(105)
   })

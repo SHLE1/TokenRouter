@@ -111,7 +111,7 @@ func TestCreativeTransientStoreInputsMissing(t *testing.T) {
 	require.Error(t, err)
 }
 
-// TestCreativeQueueEnqueueReserveAck 校验队列的入队/保留/确认语义。
+// TestCreativeQueueEnqueueReserveAck 检查任务入队、保留和确认的状态变化。
 func TestCreativeQueueEnqueueReserveAck(t *testing.T) {
 	_, client := newCreativeTestRedis(t)
 	queue := NewCreativeQueue(client, &QueueOptions{

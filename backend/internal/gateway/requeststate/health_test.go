@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestHealthHintsPreserveAttemptAndExplicitInputs 验证健康模型属于当前尝试，派生状态不能回写父请求或丢失显式 false。
+// TestHealthHintsPreserveAttemptAndExplicitInputs 检查派生尝试保留模型和 false 值，父请求数据保持原值。
 func TestHealthHintsPreserveAttemptAndExplicitInputs(t *testing.T) {
-	// 显式保留缺省 context 输入，不以正常 context 替代该合同。
+	// 使用 nil context 检查缺省输入。
 	cases := []struct{ ctx context.Context }{{ctx: nil}}
 	for _, item := range cases {
 		require.Nil(t, WithHealthModel(item.ctx, nil))

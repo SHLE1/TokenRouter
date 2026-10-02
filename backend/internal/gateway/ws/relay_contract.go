@@ -7,7 +7,7 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// RelayInput 只提供同步帧端口和事件观察，供应商 relay 算法由 Adapter 调用。
+// RelayInput 提供同步帧操作和事件回调，适配器执行供应商 relay。
 type RelayInput struct {
 	Ctx                context.Context
 	ClientConn         FrameConn

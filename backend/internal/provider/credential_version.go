@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// CredentialVersion 只作为刷新条件写入的比较输入，不进入管理 DTO 或日志。
+// CredentialVersion 是刷新条件写入时比较的身份数据。
 // 提供商身份和代理与交换前的完整凭据一起比较，不能只比较 access_token。
 type CredentialVersion struct {
 	ID          int64
@@ -34,7 +34,7 @@ func CloneCredentialVersion(value CredentialVersion) CredentialVersion {
 	return value
 }
 
-// MatchesCredentialVersion 与数据库凭据 CAS 使用相同的身份维度，保留 nil 凭据的空对象语义。
+// MatchesCredentialVersion 按数据库 CAS 的身份字段比较凭据，nil 凭据按空对象比较。
 func MatchesCredentialVersion(value *Record, expected CredentialVersion) bool {
 	if value == nil || value.ID != expected.ID || value.Status != expected.Status {
 		return false

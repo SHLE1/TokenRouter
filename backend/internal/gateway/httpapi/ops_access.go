@@ -11,7 +11,7 @@ type OpsErrorLogQueue interface {
 	Enqueue(*ops.OpsService, *ops.OpsInsertErrorLogInput)
 }
 
-// OpsObservationAccess 区分错误日志的只读身份投影和准入拒绝，不执行身份认证。
+// OpsObservationAccess 为错误日志提供身份数据和准入拒绝信息。
 type OpsObservationAccess struct {
 	APIKey   func(*gin.Context) *apikey.APIKey
 	Rejected func(*gin.Context) bool

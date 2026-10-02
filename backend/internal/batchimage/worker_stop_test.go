@@ -46,7 +46,7 @@ func TestRepeatedStopWaitsForSameWork(t *testing.T) {
 	require.False(t, returned, "第一次停止仍有在途工作时，重复 Stop 不能报告完成")
 }
 
-// TestStoppedRuntimesRejectStart 验证保留原停止后不可重开的批量任务子场景。
+// TestStoppedRuntimesRejectStart 检查批量任务停止后再次启动仍保持停止状态。
 func TestStoppedRuntimesRejectStart(t *testing.T) {
 	t.Run("batchimage", func(t *testing.T) {
 		r := batchimage.NewWorkerRuntime(batchimage.NewBatchImageWorker(&blockingBatchImageRuntimeQueue{}, &fakeBatchImageProcessor{}, batchimage.BatchImageWorkerOptions{}), nil, true)

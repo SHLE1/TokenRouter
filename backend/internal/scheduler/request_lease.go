@@ -2,7 +2,7 @@ package scheduler
 
 import "context"
 
-// requestLeaseKey 只传递当前请求资源拥有者，不涉及存储事务或认证主体。
+// requestLeaseKey 标识 context 中管理当前请求资源的 Lease。
 type requestLeaseKey struct{}
 
 // WithRequestLease 将已经取得的用户租约传递给后续提供商尝试，执行层继续决定释放时机。
@@ -18,7 +18,7 @@ func RequestLease(ctx context.Context) *Lease {
 	return lease
 }
 
-// ownRequestResource 让请求异常返回也能清理；显式 attempt 完成与请求清理共享幂等释放。
+// ownRequestResource 登记请求异常返回时的清理函数，attempt 完成和请求清理共用一次释放。
 func ownRequestResource(ctx context.Context, release func()) {
 	if owner := RequestLease(ctx); owner != nil {
 		owner.Own(release)

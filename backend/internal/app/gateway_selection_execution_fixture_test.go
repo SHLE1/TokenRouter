@@ -30,7 +30,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// newOpenAIExecutionAndSelectionFixture 组合真实执行组件与原生选择器，显式共享所有可变状态。
+// newOpenAIExecutionAndSelectionFixture 组合执行组件和选择器，两者共享可变状态。
 func newOpenAIExecutionAndSelectionFixture(
 	providerRepo gatewayprovider.ExecutionProviderStore,
 	cache session.GatewayCache,
@@ -119,7 +119,7 @@ func newOpenAIExecutionAndSelectionFixture(
 	return source, choices, &gatewayhttp.RequestCredentialExecutor{Runtime: credentials}
 }
 
-// newEmptyCompatibleSelectionFixture 对应原零值执行入口，仍不配置任何提供商来源。
+// newEmptyCompatibleSelectionFixture 构造提供商来源为空的兼容执行入口。
 func newEmptyCompatibleSelectionFixture() *selection.Compatible {
 	return selection.NewCompatible(selection.CompatibleDependencies{}, selection.DefaultOptions())
 }

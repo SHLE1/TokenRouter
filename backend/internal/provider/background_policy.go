@@ -6,7 +6,7 @@ type BackgroundSkipAction int
 const (
 	// BackgroundSkipAsSkipped 计入 skipped（保持当前默认行为）。
 	BackgroundSkipAsSkipped BackgroundSkipAction = iota
-	// BackgroundSkipAsSuccess 计入 success（仅用于兼容旧统计口径时可选）。
+	// BackgroundSkipAsSuccess 将跳过计入 success，调用方可按统计需要选择。
 	BackgroundSkipAsSuccess
 )
 

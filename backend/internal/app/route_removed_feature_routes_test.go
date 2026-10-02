@@ -13,9 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRemovedFeatureRoutesReturnNotFound 锁定下线功能的用户端和管理端路径不再注册。
+// TestRemovedFeatureRoutesReturnNotFound 检查下线功能的用户端和管理端路径返回 404。
 func TestRemovedFeatureRoutesReturnNotFound(t *testing.T) {
-
 	router := gin.New()
 	// 身份处理器已通过模块嵌入组合，夹具需提供外层接收者后才能登记方法值。
 	allHandlers := &routeTestHandlers{User: &identityhttp.UserHandler{}, Admin: &routeTestAdminHandlers{}}

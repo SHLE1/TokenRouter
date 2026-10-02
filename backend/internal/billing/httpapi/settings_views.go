@@ -1,6 +1,6 @@
 package httpapi
 
-// DefaultSubscriptionSetting 保留现有 HTTP JSON 字段与省略语义。
+// DefaultSubscriptionSetting 是默认订阅设置的 HTTP JSON 数据。
 type DefaultSubscriptionSetting struct {
 	PlanID int64 `json:"plan_id"`
 }

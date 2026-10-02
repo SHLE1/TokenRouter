@@ -104,7 +104,7 @@ func (r *Store) resolveUsageAnalyticsWindow(ctx context.Context, start, end time
 	}
 	window.dailyStart = ceilDayUTC(window.aggregateStart)
 	window.dailyEnd = window.aggregateEnd.Truncate(24 * time.Hour)
-	// 保留“不存在完整 UTC 日”的边界状态，让查询构造阶段退化为完整小时区间。
+	// 没有完整 UTC 日时，查询使用整个范围内的完整小时。
 	return window, true, nil
 }
 

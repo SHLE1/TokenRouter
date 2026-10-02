@@ -95,7 +95,7 @@ func (e *errorExchange) SetError(status int, message, detail string) {
 }
 
 func (e *errorExchange) Observe(notice forward.Notice) {
-	// 此错误分支沿用原精简事件，不顺便补充其他分支才有的字段。
+	// 此分支记录提供商、上游请求 ID、状态码和错误详情。
 	e.output.Observe(forward.Notice{
 		Platform: notice.Platform, ProviderID: notice.ProviderID,
 		UpstreamStatusCode: notice.UpstreamStatusCode, UpstreamRequestID: notice.UpstreamRequestID,
@@ -150,7 +150,7 @@ func (r *Runtime) failoverHealth(ctx context.Context, response *http.Response, t
 	return gatewayadapter.ApplyExecutionHealth(ctx, r.dependencies.Health, target, gatewayadapter.HealthObservationFromContext(ctx, response.StatusCode, response.Header, body, models))
 }
 
-// claudeScopeError 保留原凭据范围诊断的双短语匹配，不扩大错误分类。
+// claudeScopeError 检查凭据范围错误是否同时包含两个 Claude Code 专用授权短语。
 func claudeScopeError(message string) bool {
 	message = strings.ToLower(strings.TrimSpace(message))
 	return message != "" && strings.Contains(message, "only authorized for use with claude code") &&

@@ -42,8 +42,8 @@ func NormalizeCodexCallOutputBootstrap(body []byte, isCandidate func(map[string]
 		return body, false
 	}
 
-	// 按 *_call / *_call_output 报文形状识别内置调用。
-	// delegation 仅在 ID 明确配对时与历史锚点共存；automation 保留首次引导边界。
+	// 按 *_call 和 *_call_output 的报文形状识别内置调用。
+	// delegation 在 ID 配对后可与历史锚点共存，automation 使用首次引导位置。
 	for _, raw := range input {
 		item, ok := raw.(map[string]any)
 		if !ok {

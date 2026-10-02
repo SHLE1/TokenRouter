@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// ValidateAbsoluteHTTPURL 保留原 URL 接受与拒绝边界。
+// ValidateAbsoluteHTTPURL 要求带主机的绝对 HTTP(S) URL，含 fragment 时返回错误。
 func ValidateAbsoluteHTTPURL(raw string) error {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -31,7 +31,7 @@ func ValidateAbsoluteHTTPURL(raw string) error {
 	return nil
 }
 
-// ValidateFrontendRedirectURL 保留原 URL 接受与拒绝边界。
+// ValidateFrontendRedirectURL 接受单斜线开头的相对路径或绝对 HTTP(S) URL，并拒绝换行字符。
 func ValidateFrontendRedirectURL(raw string) error {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {

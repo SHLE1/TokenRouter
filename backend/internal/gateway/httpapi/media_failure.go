@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// MediaNoProvider 是共同选路分类的只读结果，不把路由查询实现带入 HTTP 适配。
+// MediaNoProvider 保存无可用提供商错误的分类结果。
 type MediaNoProvider struct {
 	ModelNotFound bool
 	Status        int
@@ -34,7 +34,7 @@ type MediaFailurePorts interface {
 	MediaWarnFailure(bool) bool
 }
 
-// WriteGenerationFailure 保留流输出、上游分类与错误展示边界；不参与选号或资金操作。
+// WriteGenerationFailure 根据流输出状态和上游错误分类写出生成错误。
 func WriteGenerationFailure(f media.GenerationFailure, state MediaFailureContext, p MediaFailurePorts) {
 	if state.Grok {
 		writeGrokGenerationFailure(f, state, p)

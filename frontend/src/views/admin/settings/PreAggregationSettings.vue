@@ -168,7 +168,7 @@ import Icon from "@/components/icons/Icon.vue";
 import { useAppStore } from "@/stores";
 import { extractApiErrorMessage } from "@/utils/apiError";
 
-// 状态项使用无边框网格，避免在设置卡片内再次嵌套卡片。
+// 状态项在设置卡片内使用无边框网格。
 const StatusItem = defineComponent({
   props: { label: { type: String, required: true } },
   setup(props, { slots, attrs }) {

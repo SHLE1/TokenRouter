@@ -23,13 +23,13 @@ type OpenAILiveOptions struct {
 	ObserverRetryInterval time.Duration
 }
 
-// LiveProviderSelection 只提供创建时选择和长连接逐轮资格复核。
+// LiveProviderSelection 提供创建会话时的提供商选择和每轮资格复核。
 type LiveProviderSelection interface {
 	SelectProviderWithSchedulerForCapability(context.Context, *int64, string, string, string, map[int64]struct{}, egress.OpenAIUpstreamTransport, provider.OpenAIEndpointCapability, bool, bool, ...string) (*gatewayadapter.SelectionResult, scheduler.PlatformDecision, error)
 	ResolveOpenAIWSRoutingModelForProvider(context.Context, *int64, *gatewayadapter.ExecutionProvider, string, provider.OpenAIEndpointCapability) (string, error)
 }
 
-// OpenAILiveExecutor 只持有Live技术依赖与观察者登记，共用既有会话、租约和传输。
+// OpenAILiveExecutor 管理 Live 依赖和观察者登记，共用会话、租约与传输。
 type OpenAILiveExecutor struct {
 	Options             OpenAILiveOptions
 	Requests            *OpenAIRequests

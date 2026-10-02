@@ -200,7 +200,7 @@ func TestHandleResponsesStreamingResponse_CompactSSEFormat(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 
-	// 流式路径必须使用与缓冲路径相同的紧凑 SSE 解析规则。
+	// 流式与缓冲路径共用紧凑 SSE 解析规则。
 	resp := &http.Response{
 		Header: http.Header{"x-request-id": []string{"rid_compact_stream"}},
 		Body: io.NopCloser(strings.NewReader(strings.Join([]string{

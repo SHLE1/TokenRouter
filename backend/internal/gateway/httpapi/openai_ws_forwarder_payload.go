@@ -166,7 +166,7 @@ func (s *OpenAIWebSocketExecutor) buildOpenAIWSCreatePayload(reqBody map[string]
 	}
 	payload["type"] = "response.create"
 
-	// OAuth 默认保持 store=false，避免误依赖服务端历史。
+	// OAuth 默认设置 store=false，请求自身携带历史。
 	if provider != nil && provider.View().UsesOpenAICodexProtocol() && !s.isOpenAIWSStoreRecoveryAllowed(provider) {
 		payload["store"] = false
 	}
@@ -227,7 +227,7 @@ func (s *OpenAIWebSocketExecutor) openAIWSStoreDisabledConnMode() string {
 	case openAIWSStoreDisabledConnModeStrict, openAIWSStoreDisabledConnModeAdaptive, openAIWSStoreDisabledConnModeOff:
 		return mode
 	case "":
-		// 兼容旧配置：仅配置了布尔开关时按旧语义推导。
+		// 仅配置布尔开关时，根据该开关推导传输模式。
 		if s.Options.StoreDisabledForceNewConn {
 			return openAIWSStoreDisabledConnModeStrict
 		}
@@ -237,7 +237,5 @@ func (s *OpenAIWebSocketExecutor) openAIWSStoreDisabledConnMode() string {
 	}
 }
 
-// Replay 状态所有权不变式：replay 序列中的 json.RawMessage 正文一经放入即视为
-// 不可变，所有持有者共享同一份字节，任何修改都必须整体替换元素或重建 payload。
-// 序列头数组在跨持有者保存时必须新建（combineOpenAIWSReplayItems），禁止通过
-// 共享头 append，否则会写入其他持有者可见的底层数组。
+// Replay 序列共享不可变的 json.RawMessage 正文，修改时需要整体替换元素或重建 payload。
+// 跨持有者保存序列时，combineOpenAIWSReplayItems 新建头数组，使 append 使用独立的底层数组。

@@ -104,7 +104,7 @@ const props = withDefaults(defineProps<{
 
 const { t } = useI18n()
 
-// 查询按钮只负责发出管理员显式操作，组件挂载和滚动不会触发请求。
+// 管理员点击查询按钮时发起请求。
 const unsupportedCNQuery = computed(() =>
   props.provider.platform === 'zhipu' && !supportsUpstreamUsageQuery(props.provider)
 )
@@ -277,7 +277,7 @@ const subscriptionRemainingLabel = computed(() => {
   const subscription = normalizedUsage.value?.subscription
   if (!subscription || subscription.unlimited || subscription.remaining == null) return ''
   // New API/Zivv 的 Key quota 已在“总限额”条目中展示；不要再用泛化的“剩余”
-  // 文案重复渲染，避免它被误认为用户钱包余额。
+  // 独立额度已展示时省略重复的订阅余额文案。
   if (hasSeparateQuota.value) return ''
   return t('admin.providers.upstreamUsage.subscriptionRemaining', {
     remaining: formatAmount(subscription.remaining, normalizedUsage.value?.unit)

@@ -824,7 +824,7 @@ func TestOpenAIGatewayService_Forward_StripsImageGenerationToolForSparkAPIKey(t 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
-	// 开启图片生成以复现工具被规范化保留的路径，确保 Spark 剥离逻辑能覆盖该泄漏。
+	// 开启图片生成使工具通过规范化，再检查 Spark 是否剥离该工具。
 	c.Set("api_key", &apikey.APIKey{Group: &routing.Group{AllowImageGeneration: true}})
 	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
 

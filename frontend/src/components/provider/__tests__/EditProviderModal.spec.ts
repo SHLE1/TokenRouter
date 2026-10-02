@@ -1515,7 +1515,7 @@ describe('EditProviderModal', () => {
   it('allows saving apikey provider against legacy backend without credentials_status', async () => {
     // 新前端 + 旧后端：credentials_status 缺失，但 credentials.api_key 仍是明文，应允许保存。
     const provider = buildProvider()
-    // 显式确保没有 credentials_status。
+    // 构造缺少 credentials_status 的响应。
     expect(provider.credentials_status).toBeUndefined()
     updateProviderMock.mockReset()
     checkMixedChannelRiskMock.mockReset()

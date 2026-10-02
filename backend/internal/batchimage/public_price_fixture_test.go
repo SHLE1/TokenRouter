@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// 模型配置与价卡夹具只提供原输入，编译和报价仍调用真实模块。
+// publicPricingConfigFixture 提供模型配置和价卡数据，编译和报价由生产模块执行。
 type publicPricingConfigFixture struct {
 	routing.PricingConfigRepository
 	pricingConfig routing.PricingConfig

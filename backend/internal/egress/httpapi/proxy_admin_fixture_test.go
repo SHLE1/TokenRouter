@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// proxyAdminFixture 只记录代理管理端口的输入和探测，不持有其他管理领域。
+// proxyAdminFixture 记录代理管理测试的写入参数和探测调用。
 type proxyAdminFixture struct {
 	proxies                         []egress.Proxy
 	proxyCounts                     []egress.ProxyWithProviderCount

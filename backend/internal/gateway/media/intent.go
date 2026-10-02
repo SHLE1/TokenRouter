@@ -58,7 +58,7 @@ func (p ImageIntentPolicy) IsImageGenerationIntent(endpoint string, requestedMod
 	var modelSeen, toolsSeen, inputSeen, toolChoiceSeen bool
 	imageIntent := false
 	wirejson.ParseView(body).ForEach(func(key, value gjson.Result) bool {
-		// 保持 GetBytes 对重复字段取首个值的语义，同时只遍历一次根对象。
+		// 根对象遍历一次，重复字段取首个值，与 GetBytes 相同。
 		switch key.Str {
 		case "model":
 			if !modelSeen {

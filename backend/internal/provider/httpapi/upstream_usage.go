@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// UpstreamUsageQueries 是只读管理查询端口；HTTP 不接触提供商仓储或供应商客户端。
+// UpstreamUsageQueries 提供管理员用量查询操作。
 type UpstreamUsageQueries interface {
 	QueryProvider(context.Context, int64) (*provider.UpstreamUsageQueryResult, error)
 	QueryBatch(context.Context, []int64) (map[int64]*provider.UpstreamUsageQueryResult, map[int64]error, error)

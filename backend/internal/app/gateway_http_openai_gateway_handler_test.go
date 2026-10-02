@@ -310,7 +310,7 @@ func TestOpenAIResponses_MissingDependencies_ReturnsServiceUnavailable(t *testin
 		Concurrency: 1,
 	})
 
-	// 故意使用未初始化依赖，验证快速失败而不是崩溃。
+	// 使用未初始化依赖，检查请求返回依赖错误。
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{})
 	require.NotPanics(t, func() {
 		h.Responses(c)

@@ -30,7 +30,7 @@ func (r *importDefaultsMemoryRepo) Set(_ context.Context, _ string, value string
 	return nil
 }
 
-// TestOpenAIImportDefaultsNormalizeLegacyConfiguration 验证读取、保存旧模板时都清理旧字段，缺省配置保持缺省，显式关闭不变。
+// TestOpenAIImportDefaultsNormalizeLegacyConfiguration 检查模板读写时清理废弃字段，缺省配置及关闭状态保持不变。
 func TestOpenAIImportDefaultsNormalizeLegacyConfiguration(t *testing.T) {
 	ctx := context.Background()
 	repo := &importDefaultsMemoryRepo{value: `{"extra":{"openai_compact_mode":"auto","openai_native_compaction_v2_mode":"force_off","openai_responses_probe_status":{},"keep":7}}`}

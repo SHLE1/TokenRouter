@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// 协议类型由各 wire 包唯一拥有；桥接内部复用别名，不复制编解码实现。
+// 桥接通过别名使用各 wire 包的协议类型和编解码。
 type (
 	AnthropicRequest      = anthropic.AnthropicRequest
 	AnthropicOutputConfig = anthropic.AnthropicOutputConfig

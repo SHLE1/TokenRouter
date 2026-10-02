@@ -12,7 +12,7 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// 设置键保持原数据库表示。
+// 设置键对应数据库中的运行参数记录。
 const (
 	SettingKeyAdvancedSchedulerStickyWeightedEnabled       = "advanced_scheduler_sticky_weighted_enabled"
 	SettingKeyAdvancedSchedulerSubscriptionPriorityEnabled = "advanced_scheduler_subscription_priority_enabled"
@@ -35,13 +35,13 @@ const (
 	advancedSchedulerSettingDBTimeout                      = 2 * time.Second
 )
 
-// RuntimeSettingSource 保留批量读取失败后逐键降级的独立端口。
+// RuntimeSettingSource 提供批量读取和逐键读取，批量失败时按键重试。
 type RuntimeSettingSource interface {
 	GetMultiple(context.Context, []string) (map[string]string, error)
 	GetValue(context.Context, string) (string, error)
 }
 
-// SettingsRuntime 唯一持有 TTL 快照和 singleflight；参数每次请求按原时点合并。
+// SettingsRuntime 缓存带 TTL 的设置快照，并用 singleflight 合并并发读取。每次请求合并参数。
 type SettingsRuntime struct {
 	cache       atomic.Value
 	sf          singleflight.Group
@@ -146,8 +146,8 @@ func (s *SettingsRuntime) Load(ctx context.Context, repo RuntimeSettingSource, d
 				stickyEscapeTTFTMs, stickyEscapeTTFTMsSet = ParseAdvancedSchedulerPositiveFloatOverride(values[SettingKeyAdvancedSchedulerStickyEscapeTTFTMs], defaults.StickyEscape.TtftMs)
 				stickyEscapeErrorRate, stickyEscapeErrorRateSet = ParseAdvancedSchedulerRateOverride(values[SettingKeyAdvancedSchedulerStickyEscapeErrorRate], defaults.StickyEscape.ErrorRate)
 			} else {
-				// 批量读取失败时逐键降级，覆盖全部键（含 TopK/权重），避免只加载布尔开关
-				// 而静默丢弃管理员配置的覆盖值；降级状态会被缓存一个 TTL，必须留痕。
+				// 批量读取失败时逐键读取全部设置，包括 TopK 和权重。
+				// 降级结果缓存一个 TTL，日志记录批量读取失败的原因。
 				s.diagnostics.event("warn", "advanced_scheduler_settings_batch_load_failed", "error", err)
 				fallbackValues := make(map[string]string)
 				for _, key := range AdvancedSchedulerRuntimeSettingKeys() {
@@ -205,7 +205,7 @@ func (s *SettingsRuntime) Load(ctx context.Context, repo RuntimeSettingSource, d
 	})
 
 	settings, _ := result.(policy.RuntimeSettings)
-	// 每个请求拥有独立权重映射，不能修改 singleflight 的共享结果。
+	// 每个请求复制一份权重映射后再应用覆盖值。
 	settings.WeightOverrides = CloneAdvancedSchedulerWeightOverrides(settings.WeightOverrides)
 	return settings
 }
@@ -334,7 +334,7 @@ func CloneAdvancedSchedulerWeightOverrides(in map[string]float64) map[string]flo
 	return out
 }
 
-// Store 仅在原设置成功写入与缓存刷新阶段调用，维持替换语义与 TTL。
+// Store 替换缓存值并更新 TTL，调用方在设置写入成功后刷新缓存时调用。
 func (s *SettingsRuntime) Store(value policy.RuntimeSettings) {
 	s.sf.Forget("advanced_scheduler_settings")
 	s.cache.Store(&cachedAdvancedSchedulerSetting{

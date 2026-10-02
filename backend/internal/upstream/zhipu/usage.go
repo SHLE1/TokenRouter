@@ -36,8 +36,8 @@ func ClassifyZhipuWindowUnit(unit int64) CnZhipuWindow {
 // ParseZhipuTokenTiers 解析智谱额度响应 data.limits 为 5h + weekly 两档。
 //
 // 分类优先级（对齐 cc-switch parse_zhipu_token_tiers，issue #3036）：
-//  1. 显式 unit 字段（3=5h / 6=weekly）——不能用 reset 排序代替，周期末尾
-//     周窗口会比 5h 更早重置，时间排序必然标反。
+//  1. 按 unit 字段分类（3=5h / 6=weekly）。周期末尾周窗口会比 5h 更早重置，
+//     按 reset 排序会把两类窗口标反。
 //  2. unit 缺失/未识别：无 nextResetTime 的条目优先归 5h（0% 状态下 5h 桶可能
 //     没有 reset），其余按 reset 升序依次填入仍空缺的槽位。
 //

@@ -14,12 +14,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// openAICompactClientStreamKey 标记 body-signal compact 请求（Codex remote
-// compact v2，见 #3777）的原始 body 携带 stream:true。白名单归一化会删除
-// stream 字段并让上游走 unary /responses/compact（JSON），但客户端仍按
-// Responses SSE 协议消费响应：它必须收到 response.output_item.done（其中恰好
-// 一个 type=compaction 的 item）和 response.completed，否则报
-// "stream closed before response.completed" 并无限重连（#3875）。
+// openAICompactClientStreamKey 标记 body-signal Compact 原始正文中的 stream:true（Codex remote compact v2，#3777）。
+// 规范化删除 stream 后，上游使用 unary /responses/compact JSON。客户端需要 SSE 中恰好一个 compaction 类型的 output_item.done 和 response.completed。
+// 缺少事件时 Codex 报 stream closed before response.completed 并重连（#3875）。
 const openAICompactClientStreamKey = "openai_compact_client_stream"
 
 // MarkOpenAICompactClientStream 由 handler 在 body-signal 提升时调用，记录
@@ -43,14 +40,9 @@ func OpenAICompactClientWantsStream(c *gin.Context) bool {
 	return wants
 }
 
-// WriteOpenAICompactSSEBridge 将 unary compact 的最终 JSON 响应按 Codex remote
-// compact v2 的消费协议合成为最小 Responses SSE 流写回客户端。仅当请求被标记
-// 为 body-signal 客户端流式、状态码为 2xx 且 body 是合法 JSON 对象时生效；
-// 返回 false 表示未写出任何内容，调用方应按原路径写回。
-//
-// 若下游心跳已把响应头提交为 200（见 openAICompactSSEKeepalive），则本函数
-// 必须接管一切写回：非 2xx 或不可合成的响应降级为 response.failed 终止事件，
-// 不能再返回 false（否则调用方的 JSON 写回会与已提交的 SSE 流交错）。
+// WriteOpenAICompactSSEBridge 将 Compact JSON 转换为 Codex remote compact v2 的 Responses SSE。
+// 客户端标记流式、状态码为 2xx 且正文为 JSON 对象时写出事件，其他情况返回 false，调用方自行写回。
+// 心跳已提交 200 时，此函数接管响应，非 2xx 或转换失败通过 response.failed 返回。
 func WriteOpenAICompactSSEBridge(c *gin.Context, statusCode int, finalResponse []byte, observe CompactStreamErrorObserver) bool {
 	if c == nil || !OpenAICompactClientWantsStream(c) {
 		return false
@@ -157,7 +149,7 @@ func newCompactResponseID() string {
 	return "resp_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 }
 
-// BuildOpenAICompactSSEPayload 在 HTTP 边界注入响应 ID 生成，纯转换不读运行环境。
+// BuildOpenAICompactSSEPayload 向协议转换函数传入响应 ID 生成器。
 func BuildOpenAICompactSSEPayload(body []byte) ([]byte, bool) {
 	return compact.StreamPayload(body, newCompactResponseID)
 }

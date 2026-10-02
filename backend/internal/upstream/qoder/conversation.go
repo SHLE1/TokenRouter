@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// RequestMetadata 是解析完成的入站投影，不保存 Gin 或完整提供商。
+// RequestMetadata 保存入站 API Key 标识、Claude Code 标记和请求头。
 type RequestMetadata struct {
 	APIKeyID   int64
 	ClaudeCode bool

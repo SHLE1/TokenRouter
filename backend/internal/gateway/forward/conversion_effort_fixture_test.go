@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// chatEffortFixture 输出契约使用原来的扫描缓冲和真实 HTTP Adapter，不模拟转换结果。
+// chatEffortFixture 使用扫描缓冲和 HTTP 适配器读取协议转换结果。
 func chatEffortFixture(body []byte, models ...string) *string {
 	return forward.ExtractEffort(body, true, capability.NormalizeRecordedOpenAIEffortForModel, models...)
 }

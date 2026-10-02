@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// BatchCreate 保留原输入和幂等 scope，核心只在首次执行时创建与派发后置任务。
+// BatchCreate 按幂等 scope 接收批量输入，首次执行时创建提供商并派发后置任务。
 func (h *ManagementHandler) BatchCreate(c *gin.Context) {
 	var req struct {
 		Providers []CreateProviderRequest `json:"providers" binding:"required,min=1"`

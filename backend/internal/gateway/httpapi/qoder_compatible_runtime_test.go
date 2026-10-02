@@ -24,7 +24,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// qoderRuntimeContract 只替换外部端口，实际运行 HTTP、尝试循环及完成提交边界。
+// qoderRuntimeContract 为 HTTP、提供商尝试和完成提交测试提供外部依赖替身。
 type qoderRuntimeContract struct {
 	t                                   *testing.T
 	partial                             bool

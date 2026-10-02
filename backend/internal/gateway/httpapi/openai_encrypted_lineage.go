@@ -12,19 +12,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// OpenAIEncryptedLineage 复用请求与 WS 的会话存储，只持有失效密文读写所需端口。
+// OpenAIEncryptedLineage 通过 HTTP 与 WS 共用的会话存储读写失效密文。
 type OpenAIEncryptedLineage struct {
 	Store session.OpenAIWSStateStore
 	TTL   func() time.Duration
 }
 
-// invalid_encrypted_content 失效密文 lineage。
-//
-// 上游判定某轮请求中的加密 reasoning/compaction 项不可解后，同一失效密文会随
-// 客户端维护的会话历史在后续每一轮重新出现，重复触发"整包被拒→剥离→重试/
-// 重连"。这里按会话记录已被上游拒绝过的 encrypted_content 摘要
-// （OpenAIWSStateStore，带 TTL 与容量自保护）；后续请求进场时仅剥离摘要命中
-// 的项，新生成的密文摘要不同，不会被误删。
+// invalid_encrypted_content 表示上游拒绝的加密 reasoning 或 compaction 项。
+// 客户端会话历史可能反复携带这些项，每轮都会触发拒绝、剥离和重试。
+// OpenAIWSStateStore 按会话保存 encrypted_content 摘要，并设置 TTL 和容量限制。
+// 后续请求剥离命中摘要的项，新密文使用不同摘要。
 
 const OpenAIInvalidEncryptedContentReason = "invalid_encrypted_content"
 

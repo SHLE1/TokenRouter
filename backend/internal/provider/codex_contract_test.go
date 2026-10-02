@@ -441,7 +441,7 @@ func TestCodexProviderIndexKeepsAllCandidatesForSharedProviderKey(t *testing.T) 
 	}
 
 	// 无论索引构建顺序如何，携带新 user id 的条目都应跳过 user-2 的提供商，
-	// 命中缺少 user id 的存量提供商，而不是因单一候选被遮蔽而落空。
+	// 检查结果命中缺少 user id 的提供商。
 	for _, providers := range [][]Record{
 		{member, legacy},
 		{legacy, member},
@@ -489,8 +489,8 @@ func TestCodexProviderIndexUpsertReplacesSameProvider(t *testing.T) {
 	}
 	index.Add(backfilled)
 
-	// 回填后同一提供商在 provider 键下应被原位替换而非残留旧副本：
-	// 其他成员的条目不应再通过旧副本（无 user id）命中该提供商。
+	// 回填后，provider 键下的数据更新为带 user id 的记录。
+	// 其他成员的查询按更新后的 user id 判断。
 	keys := BuildCodexImportIdentityKeys("team-1", "user-2", "", "token-other", "refresh-other")
 	if got, matchedKey := index.Find(keys, "user-2"); got != nil {
 		t.Fatalf("stale candidate matched after upsert by %q: provider ID %d", matchedKey, got.ID)

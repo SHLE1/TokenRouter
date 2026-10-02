@@ -8,14 +8,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// AnthropicError 保留提供商策略、提交标记、规则匹配和安全消息的原有顺序。
+// AnthropicError 依次应用提供商策略、检查提交状态、匹配错误规则并输出安全消息。
 func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, error) {
 	// 上游返回非成功 HTTP 状态，仍应计入 Ollama Cloud 活动。
 	p.ScheduleActivity()
 	body, readErr := p.ReadBody()
 	if readErr != nil {
-		// 读取失败时 body 可能被截断，错误分类会基于不完整数据；记录日志以便排查，
-		// 避免静默吞掉导致误判。
+		// 读取失败时 body 可能已截断，记录读取错误以辅助检查基于部分报文的错误分类。
 		p.Log(fmt.Sprintf("[Forward] Failed to fully read upstream error body: Provider=%d(%s) Status=%d err=%v",
 			in.ProviderID, in.ProviderName, in.Status, readErr))
 	}
@@ -48,7 +47,7 @@ func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, 
 		Detail:             upstreamDetail,
 	})
 
-	// 处理上游错误，并区分显式策略、自定义未命中和池模式默认绕过。
+	// 按已配置策略、自定义规则未命中和池模式的默认处理方式分类上游错误。
 	decision := p.Health(ctx, in.Status, in.RequestedModels)
 	if decision.Generic {
 		p.Commit()
@@ -145,7 +144,7 @@ func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, 
 	return nil, fmt.Errorf("upstream error: %d message=%s", in.Status, upstreamMsg)
 }
 
-// AnthropicRetryError 保留提供商策略、提交标记、规则匹配和安全消息的原有顺序。
+// AnthropicRetryError 按提供商策略、提交状态和错误规则处理重试失败。
 func AnthropicRetryError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, error) {
 	respBody, _ := p.ReadBody()
 	p.ResetBody(respBody)

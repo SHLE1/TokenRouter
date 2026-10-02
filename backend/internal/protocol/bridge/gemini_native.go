@@ -618,7 +618,7 @@ func NativeNormalizeGeminiRequestForAIStudio(body []byte) []byte {
 func NativeIsClaudeWebSearchToolMap(tool map[string]any) bool {
 	toolType, _ := tool["type"].(string)
 	// 名为 web_search 的普通 function 仍属于客户端工具；Hermes 等 Chat Completions
-	// 客户端会用普通 function 表示其内置运行时工具。只有显式声明为服务端搜索类型的
+	// 客户端会用普通 function 表示其内置运行时工具。声明为服务端搜索类型的
 	// 工具才能提升为 Gemini 的 googleSearch 内置工具。
 	return strings.HasPrefix(toolType, "web_search") || toolType == "google_search"
 }
@@ -781,13 +781,13 @@ func NativeConvertClaudeGenerationConfig(req map[string]any) map[string]any {
 	return out
 }
 
-// NativeGeminiUsage 是协议解析的用量投影，不携带结算或旧网关状态。
+// NativeGeminiUsage 保存从 Gemini 响应解析出的 token 用量。
 type NativeGeminiUsage struct{ InputTokens, OutputTokens, CacheReadInputTokens, ImageOutputTokens int }
 
 // NativeGeminiOptions 由旧平台确定签名策略，转换器不识别提供商或认证方式。
 type NativeGeminiOptions struct{ DummyThoughtSignature string }
 
-// NativeGeminiRuntime 保留调用方原有消息和工具 ID 的生成来源。
+// NativeGeminiRuntime 接收调用方提供的消息和工具 ID 生成函数。
 type NativeGeminiRuntime struct {
 	MessageID func() string
 	RandomHex func(int) string

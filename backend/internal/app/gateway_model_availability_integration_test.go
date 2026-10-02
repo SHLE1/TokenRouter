@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestModelAvailabilityUsesPersistentProviderStore 验证诊断必须直接读持久配置；瞬时冷却不把已配置模型误报为不存在。
+// TestModelAvailabilityUsesPersistentProviderStore 检查诊断读取持久配置，处于瞬时冷却的已配置模型仍可被查到。
 func TestModelAvailabilityUsesPersistentProviderStore(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := t.Context()
@@ -49,7 +49,7 @@ func TestModelAvailabilityUsesPersistentProviderStore(t *testing.T) {
 		require.True(t, result.HasProvidersInPool)
 		require.True(t, result.HasModelSupport)
 	})
-	// 管理禁用属于持久配置，仍应退出诊断池；不运行健康写入或选号。
+	// 管理禁用的提供商从诊断候选中排除。
 	require.NoError(t, f.client.Provider.UpdateOneID(row.ID).SetStatus(provider.StatusDisabled).Exec(ctx))
 	result := diagnoser.Compatible.DiagnoseModelAvailabilityForPlatform(ctx, &group.ID, "public-known", capability.PlatformOpenAI)
 	require.False(t, result.HasProvidersInPool)

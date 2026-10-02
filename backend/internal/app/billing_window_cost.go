@@ -6,7 +6,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// provideWindowCostCache 直接构造唯一资金窗口缓存，沿用原 Redis 客户端与命名空间。
+// provideWindowCostCache 使用共享 Redis 客户端和资金窗口命名空间构造缓存。
 func provideWindowCostCache(rdb *redis.Client) billing.WindowCostCache {
 	return billingredis.NewWindowCostCache(rdb)
 }

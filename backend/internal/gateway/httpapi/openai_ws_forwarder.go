@@ -59,7 +59,7 @@ func openAIWSFastModePolicyContext(ctx context.Context, hooks *gatewayws.OpenAII
 }
 
 // resolveOpenAIWSTurnModels 按 R -> G -> U 顺序解析单个 WebSocket turn 的模型。
-// originalModel 始终由调用方另行保留，返回值只用于提供商能力判断后的上游请求。
+// 调用方保存 originalModel，返回值用于通过提供商能力检查后的上游请求。
 func resolveOpenAIWSTurnModels(provider *gatewayprovider.ExecutionProvider, hooks *gatewayws.OpenAIIngressHooks, turn int, requestedModel string, payload []byte) (string, string, error) {
 	routingModel := strings.TrimSpace(requestedModel)
 	if hooks != nil && hooks.ResolveRoutingModel != nil {
@@ -191,8 +191,7 @@ func (s *OpenAIWebSocketExecutor) openAIWSDialTimeout() time.Duration {
 }
 
 func (s *OpenAIWebSocketExecutor) openAIWSAcquireTimeout() time.Duration {
-	// Acquire 覆盖“连接复用命中/排队/新建连接”三个阶段。
-	// 这里不再叠加 write_timeout，避免高并发排队时把 TTFT 长尾拉到分钟级。
+	// Acquire 的预算覆盖连接复用、排队和新建连接，高并发排队也使用该预算。
 	dial := s.openAIWSDialTimeout()
 	if dial <= 0 {
 		dial = 10 * time.Second

@@ -165,7 +165,7 @@ func (r *errorPassthroughRepository) toModel(e *ent.ErrorPassthroughRule) *error
 		rule.Description = e.Description
 	}
 
-	// 确保切片不为 nil
+	// 用空切片表示空结果。
 	if rule.ErrorCodes == nil {
 		rule.ErrorCodes = []int{}
 	}

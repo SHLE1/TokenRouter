@@ -35,7 +35,7 @@ func (s *Admin) CreateProvider(ctx context.Context, input *CreateProviderInput) 
 	if err != nil {
 		return nil, err
 	}
-	// 只有新建提供商需要生成并持久化机器身份；编辑旧提供商时必须保留兼容回退语义。
+	// 创建时生成并保存机器身份，编辑时按兼容规则读取已有身份。
 	if provider.IsQoderCosy() {
 		s.options.Credentials.Prepare(provider)
 	}

@@ -87,7 +87,7 @@ var settingKeyJSONAliases = map[string]string{
 // settingKeyByJSONName 将 UpdateSettingsRequest 中非指针顶层 JSON 字段映射到其写入的设置键。
 // 该映射只根据结构体标签构建一次，使新增字段无需修改此处也能自动纳入处理。
 //
-// 指针字段会被刻意排除：UpdateSettings 已通过指针为它们实现“省略即保留存储值”的合并语义，
+// 指针字段由 UpdateSettings 合并，省略时保留存储值，因此本表排除这些字段。
 // 部分字段还依赖每次保存时重新写入，以重新规范化故障关闭的安全状态，参见
 // TestUpdateSettingsMalformedForwardedClientIPHeadersRemainFailClosedWhenOmitted。
 // 只有非指针字段无法区分省略与主动清空。
@@ -197,7 +197,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	if req.UserEmailChangeEnabled != nil {
 		userEmailChangeEnabled = *req.UserEmailChangeEnabled
 	}
-	// 两个安全开关同样保留省略字段语义。
+	// 这两个安全开关省略时使用存储值。
 	sessionBindingEnabled := previousSettings.SessionBindingEnabled
 	if req.SessionBindingEnabled != nil {
 		sessionBindingEnabled = *req.SessionBindingEnabled
@@ -261,7 +261,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	if req.TablePageSizeOptions == nil {
 		req.TablePageSizeOptions = previousSettings.TablePageSizeOptions
 	}
-	// 用量领域解释存在性、排序与展示规则，HTTP 只投影请求。
+	// 将请求字段传给 usage，由 usage 处理省略字段、排序和展示规则。
 	usageRanking, rankingErr := usage.ResolveRankingSettings(usage.UsageRankingSettings{
 		Enabled: previousSettings.UsageRankingEnabled, SortBy: usage.UsageRankingSortBy(previousSettings.UsageRankingSortBy), ShowTotalTokens: previousSettings.UsageRankingShowTotalTokens, ShowRequests: previousSettings.UsageRankingShowRequests, ShowActualCost: previousSettings.UsageRankingShowActualCost, Limit: previousSettings.UsageRankingLimit,
 	}, usage.RankingSettingsUpdate{Limit: req.UsageRankingLimit, Enabled: req.UsageRankingEnabled, SortBy: req.UsageRankingSortBy, ShowTotalTokens: req.UsageRankingShowTotalTokens, ShowRequests: req.UsageRankingShowRequests, ShowActualCost: req.UsageRankingShowActualCost})
@@ -1291,7 +1291,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	if req.OpenAICodexUserAgent != nil {
 		normalized := strings.TrimSpace(*req.OpenAICodexUserAgent)
 		req.OpenAICodexUserAgent = &normalized
-		// 仅做长度上限保护，不限制具体格式（运维需要可自由调整 codex 版本号）
+		// 检查长度上限，运维可自行设置 codex 版本号格式。
 		if len(normalized) > 512 {
 			response.Error(c, http.StatusBadRequest, "openai_codex_user_agent must be at most 512 characters")
 			return
@@ -1858,7 +1858,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	fields["usage_ranking_show_requests"], _ = json.Marshal(settings.UsageRankingShowRequests)
 	fields["usage_ranking_show_actual_cost"], _ = json.Marshal(settings.UsageRankingShowActualCost)
 	fields["allow_user_view_error_requests"], _ = json.Marshal(settings.AllowUserViewErrorRequests)
-	// 身份字段只投影已经通过原权限/兼容合并的值，仍按原非指针省略规则过滤。
+	// 身份字段取自完成权限检查和兼容合并后的设置，省略的非指针字段从更新集合中移除。
 	identityRaw, err := json.Marshal(settings.IdentityAdminSettings())
 	if err != nil {
 		response.ErrorFrom(c, err)
@@ -2347,7 +2347,7 @@ func mapDingTalkValidateError(err error) string {
 // ensureDingTalkSyncAttributes 在保存 settings 后，按 admin 配置的 (attr key, attr name)
 // 兜底 upsert 对应 user attribute definition：不存在则创建；存在但 name 不同则更新 name
 // （type/options/required 不变）。仅 internal_only + 对应 sync 开关开启时执行。
-// 失败仅记录日志，不阻塞 settings 保存。
+// 失败时记录日志，settings 保存继续执行。
 func (h *Handler) ensureDingTalkSyncAttributes(ctx context.Context, settings *composite.Snapshot) {
 	if h.userAttributeService == nil || settings == nil {
 		return

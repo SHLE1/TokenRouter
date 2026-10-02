@@ -5,7 +5,7 @@ import { useNavigationLoadingState } from '@/composables/useNavigationLoading'
 const { t } = useI18n()
 const { isLoading, isNavigating, navigationId, finishNavigation } = useNavigationLoadingState()
 
-// CSS 动画结束后再隐藏，不用定时器猜测动画时长。
+// CSS 动画结束事件触发隐藏。
 const onAnimationEnd = (event: AnimationEvent) => {
   if (!event.animationName.startsWith('navigation-complete')) return
   const target = event.currentTarget as HTMLElement
@@ -24,7 +24,7 @@ const onAnimationEnd = (event: AnimationEvent) => {
     aria-valuemin="0"
     aria-valuemax="100"
   >
-    <!-- 仅表示导航仍在进行，不向辅助技术报告虚构的完成百分比。 -->
+    <!-- 进度线表示导航仍在进行。 -->
     <div
       class="navigation-progress-bar"
       :data-navigation-id="navigationId"

@@ -31,7 +31,7 @@ func TestResponsesPayload(modelID string, prompt string, isOAuth bool) map[strin
 		payload["store"] = false
 	}
 
-	// 两类提供商的 Responses 测试均保留原指令。
+	// 两类提供商的 Responses 测试均使用 DefaultInstructions。
 	payload["instructions"] = DefaultInstructions
 
 	return payload

@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// Probe 连接分组提供商选择与原生测试，传递本次选择的分组映射模型。
+// Probe 选择分组提供商并测试，传入本次分组映射后的模型。
 type Probe struct {
 	ProviderTest    ProviderTester
 	gatewaySvc      *Generic
@@ -18,7 +18,7 @@ type Probe struct {
 	geminiCompatSvc *Gemini
 }
 
-// ProviderTester 只执行已选提供商的原生测试，不持有管理聚合服务。
+// ProviderTester 定义已选提供商的测试操作。
 type ProviderTester interface {
 	RunTestBackgroundWithPromptAndUserAgent(context.Context, int64, string, string, string) (*provider.ScheduledTestResult, error)
 }
@@ -57,7 +57,7 @@ func (s Probe) selectProbeProvider(ctx context.Context, due routing.GroupAvailab
 	return nil, fmt.Errorf("provider selector not configured")
 }
 
-// NewProbe 固定平台选择与提供商测试端口，不构造额外测试服务或调度状态。
+// NewProbe 绑定平台选择器和提供商测试器。
 func NewProbe(test ProviderTester, generic *Generic, compatible *Compatible, gemini *Gemini) Probe {
 	return Probe{ProviderTest: test, gatewaySvc: generic, openAIGateway: compatible, geminiCompatSvc: gemini}
 }

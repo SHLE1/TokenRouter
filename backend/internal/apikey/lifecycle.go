@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-// ErrAuthenticationStopped 只用于关闭期间拒绝新的认证工作，不与无效 Key 混淆。
+// ErrAuthenticationStopped 表示认证服务已停止接收工作。
 var ErrAuthenticationStopped = errors.New("API Key authentication is stopping")
 
 // authOperationGate 把停止认领与在途计数放在同一个临界区，禁止 Wait 与零计数 Add 竞争。

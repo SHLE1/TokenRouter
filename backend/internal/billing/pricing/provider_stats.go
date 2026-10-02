@@ -65,7 +65,7 @@ func MatchProviderStatsRule(rule *ProviderStatsPricingRule, providerID, groupID 
 }
 
 // FindEffectivePricingForModel 用于提供商统计成本规则。
-// 空定价行只是配置占位，不是成本规则；显式 0 指针仍视为有效，返回 0 成本覆盖。
+// 空定价行是配置占位，零值指针表示有效的 0 成本覆盖。
 func FindEffectivePricingForModel(pricingList []ModelPricingEntry, modelLower string) *ModelPricingEntry {
 	return FindPricingForModelByPredicate(pricingList, modelLower, func(p *ModelPricingEntry) bool {
 		return p != nil && p.HasEffectivePricing()
@@ -210,7 +210,7 @@ func HasAnyStatsTokenUsage(tokens UsageTokens) bool {
 		tokens.ImageOutputTokens > 0
 }
 
-// ProviderStatsInput 是已查询价卡的只读投影，nil 成本与显式零价保持不同。
+// ProviderStatsInput 包含查询到的价卡，nil 成本和配置的零价分别处理。
 type ProviderStatsInput struct {
 	Rules               []ProviderStatsPricingRule
 	ProviderID, GroupID int64

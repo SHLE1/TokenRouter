@@ -31,7 +31,7 @@ type ExecutionProviderReader interface {
 	GetByID(context.Context, int64) (*ExecutionProvider, error)
 }
 
-// CredentialChatGPTHeaders 保留先解析母提供商、再应用请求头的原顺序。
+// CredentialChatGPTHeaders 先解析母提供商，再应用 ChatGPT 请求头。
 func CredentialChatGPTHeaders(ctx context.Context, reader ExecutionProviderReader, headers http.Header, value *ExecutionProvider) error {
 	resolved, err := CredentialProvider(ctx, reader, value)
 	if err != nil {

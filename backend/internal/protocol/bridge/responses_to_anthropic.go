@@ -296,9 +296,8 @@ func resToAnthHandleCreated(evt *ResponsesStreamEvent, state *ResponsesEventToAn
 	}
 	state.MessageStartSent = true
 
-	// Anthropic 官方 message_start 使用 stop_reason: null，并在已知时携带 input_tokens。
-	// 在 response.completed 前保持 StopReason 为 nil、用量为零，避免空字符串破坏严格客户端的
-	// 回合结束判断和会话用量统计。
+	// Anthropic message_start 使用 stop_reason: null，已知时携带 input_tokens。
+	// response.completed 到来前，StopReason 为 nil、用量为零，供客户端判断回合结束并统计用量。
 	return []AnthropicStreamEvent{{
 		Type: "message_start",
 		Message: &AnthropicResponse{
@@ -418,7 +417,7 @@ func resToAnthHandleFuncArgsDelta(evt *ResponsesStreamEvent, state *ResponsesEve
 	}
 
 	// Read 的空 pages 只有在参数成为完整 JSON 后才能安全清洗；一旦完整便在 delta 阶段发出，
-	// 不再依赖可能缺失的 arguments.done 事件。
+	// arguments.done 缺失时也能完成参数处理。
 	if state.CurrentBlockType == "tool_use" && state.CurrentToolName == "Read" {
 		state.CurrentToolArgs += evt.Delta
 		if state.CurrentToolHadDelta || !json.Valid([]byte(state.CurrentToolArgs)) {
@@ -490,7 +489,7 @@ func resToAnthHandleFuncArgsDone(evt *ResponsesStreamEvent, state *ResponsesEven
 		blockIdx = state.ContentBlockIndex
 	}
 
-	// 如果 block 已关闭（ContentBlockIndex 已越过它），说明 arguments 已通过 delta 流式发完，不再补发
+	// ContentBlockIndex 已越过该 block 时，参数已由 delta 输出，此处跳过补发。
 	if !state.ContentBlockOpen || blockIdx != state.ContentBlockIndex {
 		return nil
 	}

@@ -274,7 +274,7 @@ func (p *OpenAIResponseOutput) ResponseError(
 		return nil, fmt.Errorf("upstream invalid request: %d message=%s", resp.StatusCode, upstreamMsg)
 	}
 
-	// 请求级排除完成后再执行提供商策略，避免非故障转移状态漏掉显式配置。
+	// 请求级排除完成后执行提供商策略，包括未触发故障转移的状态。
 	var reqModel string
 	if len(requestedModel) > 0 {
 		reqModel = strings.TrimSpace(requestedModel[0])
@@ -339,7 +339,7 @@ func (p *OpenAIResponseOutput) ResponseError(
 		}
 	}
 
-	// 透传规则只改变最终客户端响应，不得绕过已经执行的提供商策略。
+	// 提供商策略执行后，透传规则决定最终客户端响应。
 	if status, errType, errMsg, matched := ApplyErrorPassthroughRule(
 		c,
 		provider.Record.Platform,
@@ -366,7 +366,7 @@ func (p *OpenAIResponseOutput) ResponseError(
 	}
 
 	// 只有既有分类明确判定不可故障转移的 400 才属于确定性请求错误。
-	// 池模式重试状态码、server_is_overloaded 和瞬时处理错误仍保留原有重试或 502 语义。
+	// 池模式重试状态码、server_is_overloaded 和瞬时处理错误按分类重试或返回 502。
 	if provider != nil && provider.Record.Platform == capability.PlatformOpenAI &&
 		IsOpenAIDeterministicClientError(resp.StatusCode, defaultFailover) {
 		MarkResponseCommitted(c)
@@ -378,7 +378,7 @@ func (p *OpenAIResponseOutput) ResponseError(
 	}
 	MarkResponseCommitted(c)
 
-	// 保留原状态码对应的客户端错误信封。
+	// 按上游状态码写出客户端错误。
 	var errType, errMsg string
 	var statusCode int
 
@@ -477,7 +477,7 @@ func (p *OpenAIResponseOutput) CompatError(
 	SetOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
 
 	if openai.IsOpenAIClientInvalidRequestError(resp.StatusCode, upstreamMsg, body) {
-		// 兼容协议也必须保留上游 error 对象中的 code、param 等结构化详情。
+		// 兼容协议保留上游 error 对象中的 code、param 等结构化详情。
 		AppendOpsUpstreamError(c, ops.OpsUpstreamErrorEvent{
 			Platform:           provider.Record.Platform,
 			ProviderID:         provider.Record.ID,
@@ -553,7 +553,7 @@ func (p *OpenAIResponseOutput) CompatError(
 		}
 	}
 
-	// 透传规则只负责最终响应格式，不能绕过提供商策略。
+	// 提供商策略执行后，透传规则决定最终响应格式。
 	if status, errType, errMsg, matched := ApplyErrorPassthroughRule(
 		c, provider.Record.Platform, resp.StatusCode, body,
 		http.StatusBadGateway, "api_error", "Upstream request failed",

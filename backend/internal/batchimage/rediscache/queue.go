@@ -214,7 +214,7 @@ func (q *batchImageQueue) reserveOnce(ctx context.Context) (string, error) {
 	return batchID, nil
 }
 
-// RequeueAfter 非持有者入口仅用于没有有效锁的恢复，不能修改当前持有者的队列记录。
+// RequeueAfter 恢复没有有效锁的任务，已有持有者的队列记录保持原样。
 func (q *batchImageQueue) RequeueAfter(ctx context.Context, id string, delay time.Duration) error {
 	return q.mutateOwned(ctx, id, "", "requeue", delay)
 }

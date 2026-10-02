@@ -85,10 +85,8 @@ func TestOpenAIGatewayServiceForwardImages_ImageRateLimitReturnsFailoverAndCools
 	require.Equal(t, providercore.OpenAIImageGenerationRateLimitKey, repo.ModelRateLimitCalls[0].Scope)
 }
 
-// TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapability 验证上游只返回文字时，不冷却提供商的图片能力。
-// issue #6171：上游"回文字没回图"是**这一轮**的结果（模型选择了说话），不是提供商能力
-// 失效。它同时被判为可重试（502）并驱动 failover，若还写 30 分钟提供商级冷却，一次闲聊
-// 回复就会沿号池把每个被重试到的提供商依次冷却掉。冷却仍保留给结构化上游证据。
+// TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapability 验证上游仅返回文字时，提供商图片能力状态保持原样（#6171）。
+// 文字结果按可重试的 502 换号，冷却依据是结构化上游错误。如果为每次文字结果设置 30 分钟冷却，换号会依次冷却整个池。
 func TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapability(t *testing.T) {
 	repo := &gatewaytestkit.ModelHealthStore{}
 	body := []byte(`{"model":"gpt-image-2","prompt":"draw a cat"}`)
@@ -130,7 +128,7 @@ func TestOpenAIGatewayServiceForwardImages_TextFallbackDoesNotCoolImageCapabilit
 	require.False(t, failoverErr.RetryableOnSameProvider)
 	// 换号行为不变：该判据仍足以放弃本提供商重试这一次请求……
 	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
-	// ……但不再写任何提供商级状态，否则重试会把冷却一路刷到整个号池。
+	// 提供商状态保持原样，重试过程中各提供商的冷却时间也保持原样。
 	require.Empty(t, repo.ModelRateLimitCalls,
 		"模型回文字只说明这一轮没出图，不构成提供商 30 分钟不可用的证据")
 }

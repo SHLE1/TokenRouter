@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// ProviderRPMInput 是提供商配置的显式调度投影，不读取完整提供商或凭据。
+// ProviderRPMInput 保存提供商 RPM 调度所需的配置。
 type ProviderRPMInput struct {
 	ID           int64
 	Enabled      bool

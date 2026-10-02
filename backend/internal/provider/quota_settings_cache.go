@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// QuotaSettingsCache 拥有提供商阈值快照；共享 Ops JSON 的解析通过只读投影输入。
+// QuotaSettingsCache 保存提供商阈值快照，共享 Ops JSON 通过读取接口解析。
 type QuotaSettingsCache struct {
 	settingRepo interface {
 		GetValue(context.Context, string) (string, error)
@@ -20,7 +20,7 @@ type QuotaSettingsCache struct {
 	openAIQuotaAutoPauseSettingsSF    singleflight.Group
 }
 
-// NewQuotaSettingsCache 构造不回源，保持原同步预热和异步刷新时点。
+// NewQuotaSettingsCache 创建阈值缓存，调用方可同步预热，读取缺失或过期条目时触发异步刷新。
 func NewQuotaSettingsCache(repo interface {
 	GetValue(context.Context, string) (string, error)
 }, notFound error, decode func(string) QuotaAutoPauseSettings,
@@ -28,7 +28,7 @@ func NewQuotaSettingsCache(repo interface {
 	return &QuotaSettingsCache{settingRepo: repo, notFound: notFound, decode: decode}
 }
 
-// 原共享设置键只读，提供商缓存没有 Ops 配置写权限。
+// SettingKeyOpsAdvancedSettings 是提供商缓存读取 Ops 设置时使用的键。
 const SettingKeyOpsAdvancedSettings = "ops_advanced_settings"
 
 type cachedOpenAIQuotaAutoPauseSettings struct {
@@ -91,7 +91,7 @@ func (s *QuotaSettingsCache) refreshOpenAIQuotaAutoPauseSettings(ctx context.Con
 	if err == nil {
 		settings = s.decode(raw)
 	} else if !errors.Is(err, s.notFound) {
-		// 真实错误：继续返回旧值，但更快重试刷新。
+		// 读取失败时返回缓存值，并缩短下次刷新间隔。
 		if prior, _ := s.openAIQuotaAutoPauseSettingsCache.Load().(*cachedOpenAIQuotaAutoPauseSettings); prior != nil {
 			settings = prior.settings
 		}
@@ -116,7 +116,7 @@ func (s *QuotaSettingsCache) SetOpenAIQuotaAutoPauseSettings(settings QuotaAutoP
 	})
 }
 
-// Apply 只发布已提交阈值；未修改共享 JSON 时使已有缓存过期，沿用后台刷新。
+// Apply 发布已提交的阈值，共享 JSON 未变化时使缓存过期并交给后台刷新。
 func (s *QuotaSettingsCache) Apply(value QuotaAutoPauseSettings, explicit bool) {
 	s.openAIQuotaAutoPauseSettingsSF.Forget(openAIQuotaAutoPauseSettingsRefreshKey)
 	if explicit {

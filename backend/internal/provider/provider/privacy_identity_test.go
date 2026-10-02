@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 用本地真实 HTTP 固定隐私请求期间管理员切换提供商身份的交错。
+// 用本地 HTTP 控制隐私查询与管理员修改身份的执行顺序。
 type privacyIdentityWriter struct {
 	mu      sync.Mutex
 	current providercore.Record
@@ -43,7 +43,7 @@ func TestPrivacyObservationDoesNotOverwriteNewIdentity(t *testing.T) {
 	require.Equal(t, "new-identity-mode", writer.current.Extra["privacy_mode"])
 }
 
-// UpdatePrivacyModeIfUnchanged 条件写入夹具模拟与真实 PostgreSQL 同样的身份冲突，不执行回写。
+// UpdatePrivacyModeIfUnchanged 模拟 PostgreSQL 身份比较，发生冲突时跳过写入。
 func (w *privacyIdentityWriter) UpdatePrivacyModeIfUnchanged(_ context.Context, v providercore.UsageObservationVersion, mode string) (bool, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()

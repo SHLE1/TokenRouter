@@ -41,7 +41,7 @@ func (s *DingTalkSyncRuntime) Pending(ctx context.Context, p *PendingAuthSession
 	s.FromClaims(ctx, cfg, s.Client(cfg), id, p.UpstreamIdentityClaims, username)
 }
 
-// RunDingTalkSync 与请求取消解耦但保留值，任务是否接受及退出等待由组合根负责。
+// RunDingTalkSync 复制请求 context 的值并解除取消关联，由注入的任务调度函数接收和等待任务。
 func RunDingTalkSync(parent context.Context, run func(string, func()) bool, observe ProfileSyncObserver, fn func(context.Context)) {
 	if run == nil {
 		return

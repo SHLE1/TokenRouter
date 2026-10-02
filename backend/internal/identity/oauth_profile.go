@@ -112,7 +112,7 @@ func PrepareEmailRegistrationDraft(provider, frontendCallback, redirectTo, brows
 	}
 }
 
-// GoogleEmailProfile 只投影严格验证后的声明，避免 HTTP 回调复制接纳规则。
+// GoogleEmailProfile 将已验证的 Google 声明转换为邮箱登录资料。
 func GoogleEmailProfile(c *GoogleIDTokenClaims) *EmailOAuthProfile {
 	metadata := map[string]any{"email_verified": true}
 	if c.Locale != "" {

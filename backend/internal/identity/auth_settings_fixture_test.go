@@ -52,7 +52,7 @@ func (s *authSettingsFixture) IsPromoCodeEnabled(ctx context.Context) bool {
 	return s.promotion.IsPromoCodeEnabled(ctx)
 }
 
-// authSettingsPort 保留旧可选具体指针的 nil 语义。
+// authSettingsPort 将 nil 夹具转换为 nil 接口。
 func authSettingsPort(value *authSettingsFixture) identity.AuthSettings {
 	if value == nil {
 		return nil

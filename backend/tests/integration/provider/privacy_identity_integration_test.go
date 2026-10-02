@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestPrivacyObservationIdentityAndOutbox 验证隐私观测沿用原 Extra/outbox 提交，身份改变或事件失败不得写入成功模式。
+// TestPrivacyObservationIdentityAndOutbox 检查隐私观测与 Extra/outbox 一起提交，身份变化或事件失败时拒绝成功模式写入。
 func TestPrivacyObservationIdentityAndOutbox(t *testing.T) {
 	for _, platform := range []string{provider.PlatformOpenAI, provider.PlatformAntigravity} {
 		for _, scenario := range []string{"success", "credential_changed", "status_changed", "outbox_failure"} {

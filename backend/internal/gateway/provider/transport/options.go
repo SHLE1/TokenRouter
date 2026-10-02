@@ -1,7 +1,7 @@
 package transport
 
-// Options 仅包含传输所需参数，由组合根按原读取时点提供。
-// nil 与显式零值的差异保留在参数解析中。
+// Options 包含 app 传入的传输参数。
+// 参数解析区分 nil 和零值。
 type Options struct {
 	ValidateResolvedIP          bool
 	ConnectionPoolIsolation     string

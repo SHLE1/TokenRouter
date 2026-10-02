@@ -479,7 +479,7 @@ func (h *GroupHandler) UpdateSortOrder(c *gin.Context) {
 	response.Success(c, gin.H{"message": "Sort order updated successfully"})
 }
 
-// GroupAdministration 仅包含路由管理用例，不把提供商、身份和调账聚合接口带入 HTTP。
+// GroupAdministration 提供路由管理所需的操作。
 type GroupAdministration interface {
 	ListGroups(context.Context, int, int, string, string, string, *bool, string, string) ([]routing.Group, int64, error)
 	GetAllGroups(context.Context) ([]routing.Group, error)

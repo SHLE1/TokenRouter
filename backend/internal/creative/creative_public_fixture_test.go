@@ -121,7 +121,7 @@ func newCreativeMediaCalculator() *billing.Calculator {
 	return billing.NewCalculator(creativeMediaCatalog{}, billing.CalculatorOptions{})
 }
 
-// creativePriceFixture 只投影可选目录/解析器，价格算法与回退仍调用 billing。
+// creativePriceFixture 将目录和解析器接入测试，使用 billing 计算价格并处理缺价回退。
 func creativePriceFixture(calculator *billing.Calculator, resolver *billing.PriceResolver) func(context.Context, *creative.GroupView, string, string) (float64, bool) {
 	return func(ctx context.Context, group *creative.GroupView, model, size string) (float64, bool) {
 		if group == nil {

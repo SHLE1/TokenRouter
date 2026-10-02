@@ -450,8 +450,8 @@ async function refresh(): Promise<void> {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* 历史面板走全局 pop-float,reduced-motion 由全局配方收敛;
-     这里只留本地 history-details 的折叠动画和入口弹跳。 */
+  /* 历史面板使用全局 pop-float，减少动态效果由全局样式处理。
+     本地样式处理 history-details 折叠动画和入口弹跳。 */
   .history-details-enter-active,
   .history-details-leave-active {
     transition-duration: 1ms;

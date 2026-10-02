@@ -15,7 +15,7 @@ import (
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// CompatBufferedOptions 只提供本次技术预算与原观察端口。
+// CompatBufferedOptions 配置缓冲读取的大小限制、超时和观测回调。
 type CompatBufferedOptions struct {
 	MaxLineSize      int
 	StreamInterval   func() time.Duration
@@ -24,7 +24,7 @@ type CompatBufferedOptions struct {
 	Log              func(string, error, time.Duration)
 }
 
-// NewCompatSSEScanner 保留独立 64 KiB 起始缓冲，不借此合并旧扫描池策略。
+// NewCompatSSEScanner 为扫描器分配 64 KiB 起始缓冲。
 func NewCompatSSEScanner(r io.Reader, maxLineSize int) *bufio.Scanner {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineSize)

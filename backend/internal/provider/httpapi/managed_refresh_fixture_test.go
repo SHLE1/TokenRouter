@@ -7,7 +7,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// newManagedRefreshFixture 保留原独立构造的单次协调，只注入当前测试的平台交换。
+// newManagedRefreshFixture 构造独立的刷新协调器，注入当前测试的平台交换函数。
 func newManagedRefreshFixture(source interface {
 	provider.ManagedCredentialStore
 	provider.ManagedCredentialPrivacy

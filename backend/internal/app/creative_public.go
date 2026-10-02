@@ -26,7 +26,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// provideCreativePublic 装配创作任务、资金及只读投影，共享应用存储实例。
+// provideCreativePublic 绑定创作任务、资金及查询接口，共享应用存储实例。
 func provideCreativePublic(repo creative.CreativeRunRepository, keys *keypostgres.KeyStore, users *identitypostgres.UserStore, providers *providerpostgres.ProviderStore, groups *routingpostgres.GroupStore, rates billing.UserGroupRateRepository, queue creative.CreativeRunQueue, transient creative.CreativeTransientStore, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, logs usage.UsageLogRepository, pricing *billing.PriceResolver, modelConfigs *routing.PricingConfigService, moderation *moderation.ContentModerationService, auth apikey.APIKeyAuthCacheInvalidator, settings *creative.RuntimeSettings, cfg *config.Config, outbox creative.CreativeRunOutboxRepository) *creative.Public {
 	ttl := 30 * time.Minute
 	if cfg.Creative.TransientTTLSeconds > 0 {
@@ -109,7 +109,7 @@ func provideCreativePublic(repo creative.CreativeRunRepository, keys *keypostgre
 	}
 }
 
-// 下列适配只转换已有查询结果，不再次查询或将凭据加入公开模型。
+// 下列函数将查询结果转换为公开模型字段。
 type creativeUsers struct{ store *identitypostgres.UserStore }
 
 func (r creativeUsers) GetByID(ctx context.Context, id int64) (creative.UserAccess, error) {

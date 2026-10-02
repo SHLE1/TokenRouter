@@ -17,7 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// ParsedRequest 是 HTTP 读取与严格字段验证后的只读请求投影。
+// ParsedRequest 是读取 HTTP 正文并校验字段后得到的只读请求数据。
 type ParsedRequest struct {
 	Body      []byte
 	Model     string
@@ -25,7 +25,7 @@ type ParsedRequest struct {
 	StartedAt time.Time
 }
 
-// HTTPFailure 只描述协议错误，不携带可变业务实体。
+// HTTPFailure 描述返回客户端的协议错误。
 type HTTPFailure struct {
 	Status        int
 	Type, Message string
@@ -34,7 +34,7 @@ type HTTPFailure struct {
 
 func (e *HTTPFailure) Error() string { return e.Message }
 
-// QoderChatHandler 的装配回调只加载已有认证/路由上下文；执行循环始终由 gateway 拥有。
+// QoderChatHandler 的装配回调加载认证和路由上下文，gateway 执行请求循环。
 type QoderChatHandler struct {
 	requestLifetime
 
@@ -49,7 +49,7 @@ type QoderChatHandler struct {
 	Failure        func(*gin.Context, error) *HTTPFailure
 }
 
-// ChatCompletions 保留原 Chat URL 的读取、错误 envelope 和 SSE 收尾。
+// ChatCompletions 读取 Chat 请求，写出协议错误或 SSE 响应。
 func (h *QoderChatHandler) ChatCompletions(c *gin.Context) {
 	done, accepted := h.beginRequest(c, "openai")
 	if !accepted {
@@ -120,6 +120,7 @@ func (h *QoderChatHandler) ChatCompletions(c *gin.Context) {
 		h.fail(c, err, stream)
 	}
 }
+
 func (h *QoderChatHandler) fail(c *gin.Context, err error, stream bool) {
 	if c.Request.Context().Err() != nil {
 		return
@@ -138,6 +139,7 @@ func (h *QoderChatHandler) fail(c *gin.Context, err error, stream bool) {
 	}
 	h.writeError(c, failure, stream)
 }
+
 func (h *QoderChatHandler) writeError(c *gin.Context, f *HTTPFailure, stream bool) {
 	if f.RetryAfter > 0 {
 		c.Header("Retry-After", strconv.Itoa(f.RetryAfter))
@@ -152,7 +154,7 @@ func (h *QoderChatHandler) writeError(c *gin.Context, f *HTTPFailure, stream boo
 
 const InvalidStreamFieldTypeMessage = "invalid stream field type"
 
-// ParseOpenAICompatibleStream 不宽松接受数字或字符串，保持既有缺省与 null 语义。
+// ParseOpenAICompatibleStream 读取布尔字段，缺省返回 false，包含 null 在内的其他类型返回校验失败。
 func ParseOpenAICompatibleStream(body []byte) (bool, bool) {
 	v := gjson.GetBytes(body, "stream")
 	if v.Exists() && v.Type != gjson.True && v.Type != gjson.False {
@@ -161,18 +163,19 @@ func ParseOpenAICompatibleStream(body []byte) (bool, bool) {
 	return v.Bool(), true
 }
 
-// BodyLimitLabel 和 BodyTooLargeMessage 供旧入口委托同一错误文本。
+// BodyLimitLabel 和 BodyTooLargeMessage 生成正文大小限制的错误文本。
 func BodyLimitLabel(limit int64) string {
 	if limit >= 1024*1024 {
 		return fmt.Sprintf("%dMB", limit/(1024*1024))
 	}
 	return fmt.Sprintf("%dB", limit)
 }
+
 func BodyTooLargeMessage(limit int64) string {
 	return fmt.Sprintf("Request body too large, limit is %s", BodyLimitLabel(limit))
 }
 
-// observedExecutionOutput 只同步报告 HTTP 状态，不流入异步完成输入。
+// observedExecutionOutput 同步报告 HTTP 状态。
 type observedExecutionOutput struct {
 	ResponseSink
 	gateway.ExecutionObserver

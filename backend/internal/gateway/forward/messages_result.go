@@ -42,7 +42,7 @@ type MessagesResult struct {
 	AudioUsage         *protocol.AudioUsage
 }
 
-// MessagesFromAttempt 按既有完成入口投影基础观测；Header 与媒体扩展仍由调用方按原时点附加。
+// MessagesFromAttempt 将本次尝试的基础观测转换为 Messages 结果，Header 和媒体数据由调用方补充。
 func MessagesFromAttempt(result upstream.AttemptResult) *MessagesResult {
 	return &MessagesResult{
 		RequestID:             result.RequestID,

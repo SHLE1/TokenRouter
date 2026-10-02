@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// CostWindowInput 是调度消费者的标准费用窗口投影，不包含凭据或旧提供商实体。
+// CostWindowInput 包含调度所需的费用窗口、额度和预留金额。
 type CostWindowInput struct {
 	ID             int64
 	Enabled        bool
@@ -37,7 +37,7 @@ type WindowCostGuardOptions struct {
 	Stats *WindowCostMetrics
 }
 
-// WindowCostGuard 复用既有 Redis 缓存，按需查询窗口标准费用；不会持有第二份缓存或写入资金。
+// WindowCostGuard 通过注入的 Redis 缓存和查询接口读取窗口标准费用。
 type WindowCostGuard struct {
 	cache  WindowCostCache
 	source WindowCostSource

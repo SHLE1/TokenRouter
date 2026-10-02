@@ -35,7 +35,7 @@ type databaseFixture struct {
 	port   int
 }
 
-// newDatabaseFixture 仅构造测试数据库，不装配应用 worker。
+// newDatabaseFixture 构造测试数据库。
 func newDatabaseFixture(t *testing.T) *databaseFixture {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -65,7 +65,7 @@ func TestStorageContracts(t *testing.T) {
 		store := settings.New(settingspostgres.NewSettingRepository(fixture.client))
 		require.Same(t, store, settings.New(store), "接口投影必须保留同一设置状态")
 		require.NoError(t, store.Set(ctx, "test_existing", "before"))
-		// 用临时触发器制造真实 SQL 失败，不改发布迁移或运行代码。
+		// 用临时触发器模拟 SQL 执行失败。
 		_, err := fixture.db.ExecContext(ctx, `CREATE FUNCTION test_reject_setting() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.key = 'test_reject' THEN RAISE EXCEPTION 'test injected failure'; END IF; RETURN NEW; END $$;
 CREATE TRIGGER test_setting_failure BEFORE INSERT OR UPDATE ON settings FOR EACH ROW EXECUTE FUNCTION test_reject_setting();`)
 		require.NoError(t, err)

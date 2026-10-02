@@ -6,7 +6,7 @@ import (
 	schedulerredis "github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache"
 )
 
-// provideSelectionSnapshots 发布原快照适配器的受控读取，缺省来源保持真正的 nil。
+// provideSelectionSnapshots 返回快照读取适配器，来源缺失时返回 nil 接口。
 func provideSelectionSnapshots(source *scheduler.SnapshotService) selection.Snapshots {
 	if source == nil {
 		return nil

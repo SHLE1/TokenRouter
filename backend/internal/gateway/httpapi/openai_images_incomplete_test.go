@@ -107,10 +107,10 @@ func TestSummarizeNoOutputBody_RespectsLogBodyConfig(t *testing.T) {
 	}
 }
 
-// TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameProviderRetry 验证软失败（上游 completed 但无图，如偶发路由到 mini 模型）应返回可重试的
-// UpstreamFailoverError 且优先同提供商重试，而非一次性失败。
+// TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameProviderRetry 验证上游 completed 却未产图时返回 UpstreamFailoverError，优先重试同一提供商。
+// 偶发路由到 mini 模型可能产生这种响应。
 func TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameProviderRetry(t *testing.T) {
-	// 上游 SSE：response.completed 但 output 为空（实测的真实失败形态）。
+	// 上游 SSE 返回 response.completed，output 为空。
 	upstreamSSE := "event: response.created\n" +
 		"data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_x\",\"status\":\"in_progress\",\"model\":\"gpt-5.4-mini-2026-03-17\",\"output\":[]}}\n\n" +
 		"event: response.completed\n" +
@@ -144,8 +144,7 @@ func TestImagesOAuthNonStreaming_CompletedNoImageTriggersSameProviderRetry(t *te
 	}
 }
 
-// TestImagesOAuthNonStreaming_ContentRefusalReturns400NoRetry 验证内容审核拒绝（模型未出图但输出文字拒绝）应返回 400 content_policy 错误且不重试，
-// 而非可重试的 UpstreamFailoverError。
+// TestImagesOAuthNonStreaming_ContentRefusalReturns400NoRetry 验证模型输出内容拒绝时返回 400 content_policy，并结束重试。
 func TestImagesOAuthNonStreaming_ContentRefusalReturns400NoRetry(t *testing.T) {
 	upstreamSSE := "event: response.created\n" +
 		"data: {\"type\":\"response.created\",\"response\":{\"id\":\"r\",\"status\":\"in_progress\",\"model\":\"gpt-5.4-mini\",\"output\":[]}}\n\n" +

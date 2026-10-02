@@ -49,8 +49,7 @@ func (o *ResponseObserver) ObserveAnthropic(payload []byte) {
 	o.ObserveServiceTier(tier, false)
 }
 
-// ObserveServiceTier 记录上游声明的服务档位；终止事件优先，互相矛盾的非终止
-// 声明全部作废，避免把不确定的档位用于计费。
+// ObserveServiceTier 记录上游声明的档位，终态优先；非终态声明相互冲突时清除该观测。
 func (o *ResponseObserver) ObserveServiceTier(tier string, terminal bool) {
 	if o == nil || tier == "" {
 		return

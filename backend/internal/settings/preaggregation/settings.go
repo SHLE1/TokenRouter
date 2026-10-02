@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"log"
 
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 	"golang.org/x/sync/singleflight"
@@ -277,13 +276,13 @@ type Repository interface {
 	Set(context.Context, string, string) error
 }
 
-// Options 是部署能力的只读投影，不引用全局 config。
+// Options 包含部署时的用量和 Ops 聚合开关。
 type Options struct {
 	Usage                             UsageOptions
 	OpsEnabled, OpsAggregationEnabled bool
 }
 
-// UsageOptions 保留原部署开关、周期和回填能力。
+// UsageOptions 配置用量聚合开关、周期和回填能力。
 type UsageOptions struct {
 	Enabled         bool
 	IntervalSeconds int

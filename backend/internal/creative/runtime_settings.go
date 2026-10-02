@@ -14,7 +14,7 @@ type RuntimeSettingsStore interface {
 	GetValue(context.Context, string) (string, error)
 }
 
-// RuntimeSettings 保留原即时读取与缺省规则，不增加缓存或后台任务。
+// RuntimeSettings 在调用时读取创作台设置并处理缺省值。
 type RuntimeSettings struct {
 	settingRepo RuntimeSettingsStore
 	notFound    error

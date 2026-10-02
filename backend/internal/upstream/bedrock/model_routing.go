@@ -129,7 +129,7 @@ func BedrockBaseModelID(modelID string) string {
 	return modelID
 }
 
-// BedrockInferenceProfile 的来源区域来自该精确 ID 的官方表，而非同系列模型的推断。
+// BedrockInferenceProfile 的来源区域按该推理 ID 对应的官方表记录。
 type BedrockInferenceProfile struct {
 	Id            string
 	SourceRegions []string

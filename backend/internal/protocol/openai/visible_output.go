@@ -62,7 +62,7 @@ func StreamDataStartsVisibleOutput(data, eventType string) bool {
 	return false
 }
 
-// ResponseBodyHasVisibleOutput 只读取实际 output 项，响应 ID 和 usage 不产生语义输出。
+// ResponseBodyHasVisibleOutput 检查 output 项中的文本、推理和工具输出。
 func ResponseBodyHasVisibleOutput(body []byte) bool {
 	for _, item := range gjson.GetBytes(body, "output").Array() {
 		if StreamItemHasVisibleOutput(item) {

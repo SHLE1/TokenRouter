@@ -78,7 +78,7 @@ func NewGeminiNativeHandler(options GeminiNativeOptions, backend GeminiNativeBac
 	return &GeminiNativeHandler{executor: executor, options: options, backend: backend, prompt: prompt, concurrency: concurrency, newID: newID}
 }
 
-// WriteGoogleError 保留原 Google JSON envelope，不执行认证或资金检查。
+// WriteGoogleError 写出 Google 格式的 JSON 错误。
 func WriteGoogleError(c *gin.Context, status int, message string) {
 	c.JSON(status, gin.H{"error": gin.H{"code": status, "message": message, "status": HTTPStatusToGoogleStatus(status)}})
 }
@@ -140,7 +140,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		return
 	}
 	// URL 里的模型名最终会被拼进上游 /v1beta/models/{model}:{action}，
-	// 先在入口通过端口校验片段合规性。
+	// 转发前校验请求片段的合规性。
 	if !h.backend.SafeModelSegment(modelName) {
 		WriteGoogleError(c, http.StatusBadRequest, "Invalid model in URL")
 		return
@@ -170,7 +170,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 	}
 	h.backend.ObserveRequest(c, modelName, stream)
 	h.backend.ObserveEndpoint(c, stream)
-	// 用户提示词替换必须早于内容审计、会话 hash 和转发，避免审计与上游请求不一致。
+	// 在内容审计、会话 hash 计算和转发前替换用户提示词，审计与转发使用同一请求体。
 	body = h.prompt.ApplyUserPromptReplacementToBody(c.Request.Context(), body, "gemini")
 
 	if decision := h.backend.Moderate(c, reqLog, apiKey, authSubject, modelName, body); decision != nil && decision.Blocked {
@@ -188,7 +188,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		modelName = groupMapping.MappedModel
 	}
 
-	// 读取可为空的订阅投影
+	// 读取订阅，未绑定订阅时结果为空。
 	subscription, _ := SubscriptionFromContext(c)
 
 	// Gemini 原生请求不发送 Claude 心跳帧。
@@ -203,7 +203,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 		WriteGoogleError(c, http.StatusTooManyRequests, err.Error())
 		return
 	}
-	// 确保请求取消时也会释放槽位，避免长连接被动中断造成泄漏
+	// 请求取消时释放槽位，长连接中断也会触发释放。
 	userReleaseFunc = scheduler.WrapRelease(c.Request.Context(), scheduler.ReleaseOnCancel, userReleaseFunc)
 	if userReleaseFunc != nil {
 		defer userReleaseFunc()
@@ -260,7 +260,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 	}
 
 	// === Gemini 内容摘要会话 Fallback 逻辑 ===
-	// 当原有会话标识无效时（sessionBoundProviderID == 0），尝试基于内容摘要链匹配
+	// 会话标识无效时（sessionBoundProviderID == 0），尝试按内容摘要链匹配。
 	var geminiDigestChain string
 	var geminiPrefixHash string
 	var geminiSessionUUID string

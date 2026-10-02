@@ -77,7 +77,7 @@ func (b *qoderCompatibleAttemptBridge) SelectionFailed(err error, pending, first
 func (b *qoderCompatibleAttemptBridge) Acquire(retry bool) bool {
 	var err error
 	if retry {
-		// 重试保持原时点：等待期间心跳同样改变当前尝试的字节边界。
+		// 重试等待期间的心跳会计入当前尝试的已写字节数。
 		b.writerSize = b.c.Writer.Size()
 		b.release, err = b.h.acquireQoderRetryProviderSlot(b.c, qoderTargetSnapshot(b.provider), b.selection, b.stream, b.streamStarted)
 	} else {
@@ -187,7 +187,7 @@ func (b *qoderCompatibleAttemptBridge) Switched() {
 	b.selection.Switched()
 }
 
-// qoderTargetSnapshot 不向等待逻辑暴露凭据，保留 nil 目标的原拒绝语义。
+// qoderTargetSnapshot 提供等待所需的目标数据，nil 目标返回拒绝结果。
 func qoderTargetSnapshot(target QoderCompatibleTarget) *providercore.ProviderSnapshot {
 	if target == nil {
 		return nil

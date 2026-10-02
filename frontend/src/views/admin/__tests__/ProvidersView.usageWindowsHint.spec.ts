@@ -76,7 +76,7 @@ const DataTableStub = {
   `
 }
 
-// 直接暴露传给 HelpTooltip 的内容，避免测试里处理 Teleport。
+// HelpTooltip 替身直接渲染传入内容。
 const HelpTooltipStub = {
   props: ['content', 'widthClass'],
   template: '<span data-test="usage-windows-hint">{{ content }}</span>'

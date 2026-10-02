@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestManagedRefreshSharesLockAndStopWithBackground 验证手动与后台入口真实使用同一个协调器，停止取消已接纳工作与锁等待。
+// TestManagedRefreshSharesLockAndStopWithBackground 检查手动与后台刷新共用协调器，停止时取消已接纳的工作和锁等待。
 func TestManagedRefreshSharesLockAndStopWithBackground(t *testing.T) {
 	repo := &lifecycleRefreshRepository{}
 	api := NewOAuthRefreshAPI(repo, nil, RefreshOptions{})

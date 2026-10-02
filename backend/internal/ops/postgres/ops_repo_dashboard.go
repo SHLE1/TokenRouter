@@ -572,7 +572,7 @@ func aggregateHourlyRows(rows []opsHourlyMetricsRow) opsDashboardPartial {
 			}
 		}
 
-		// 首 token 延迟仅来自记录 first_token_ms 的流式请求，不能用全部成功请求数加权。
+		// 首 token 延迟按记录了 first_token_ms 的流式请求数加权。
 		if row.ttftSampleCount > 0 {
 			if row.ttftP50.Valid {
 				ttftP50Sum += float64(row.ttftP50.Int64) * float64(row.ttftSampleCount)

@@ -220,7 +220,7 @@ func TestBuildCreativeOpenAIRequestBody(t *testing.T) {
 	require.Equal(t, "png", generateBody["output_format"])
 	require.NotContains(t, generateBody, "output_compression")
 	require.Equal(t, "opaque", generateBody["background"])
-	// DALL-E 仍使用旧版 response_format 契约。
+	// DALL-E 使用 response_format 字段选择响应格式。
 	dalleBody, _, err := BuildCreativeOpenAIRequestBody(run, payload, "dall-e-3")
 	require.NoError(t, err)
 	var dalleJSON map[string]any

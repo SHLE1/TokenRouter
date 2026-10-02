@@ -54,7 +54,7 @@ describe('默认价格查询', () => {
     expect(dialog.text()).toContain('2 USD/MTok')
     expect(dialog.text()).toContain('8 USD/MTok')
     expect(dialog.text()).not.toContain('16 USD/MTok')
-    // 切到 Fast 模式：展示 fast 单价而非倍率
+    // 切到 Fast 模式后展示 fast 单价。
     await tierSwitch.findAll('button').find(item => item.text() === 'admin.pricing.defaults.tiers.fast')!.trigger('click')
     expect(dialog.text()).toContain('4 USD/MTok')
     expect(dialog.text()).toContain('16 USD/MTok')

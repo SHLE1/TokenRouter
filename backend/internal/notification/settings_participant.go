@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// AdminSMTPSettings 是管理文档的明确投影，不承载用户或通知事件。
+// AdminSMTPSettings 包含管理员可配置的 SMTP 参数。
 type AdminSMTPSettings struct {
 	SMTPHost     string `json:"smtp_host"`
 	SMTPPort     int    `json:"smtp_port"`
@@ -41,7 +41,7 @@ func NormalizeAdminSMTPSettings(current, next AdminSMTPSettings) AdminSMTPSettin
 	return next
 }
 
-// PrepareSMTPSettings 保留独立存储规则：只有非空密码才写入，不新增通知或发送副作用。
+// PrepareSMTPSettings 生成 SMTP 待保存值，密码非空时才写入密码字段。
 func PrepareSMTPSettings(value AdminSMTPSettings) map[string]string {
 	result := map[string]string{
 		SettingKeySMTPHost: value.SMTPHost, SettingKeySMTPPort: strconv.Itoa(value.SMTPPort),
@@ -54,7 +54,7 @@ func PrepareSMTPSettings(value AdminSMTPSettings) map[string]string {
 	return result
 }
 
-// SMTPSettingsParticipant 接受已规范化的管理投影，仅生成实际提供字段的持久值。
+// SMTPSettingsParticipant 为请求中提供的 SMTP 字段生成待保存值。
 func SMTPSettingsParticipant() settings.Participant {
 	fields := []string{"smtp_host", "smtp_port", "smtp_username", "smtp_password", "smtp_from_email", "smtp_from_name", "smtp_use_tls"}
 	keys := []string{SettingKeySMTPHost, SettingKeySMTPPort, SettingKeySMTPUsername, SettingKeySMTPPassword, SettingKeySMTPFrom, SettingKeySMTPFromName, SettingKeySMTPUseTLS}

@@ -18,7 +18,7 @@ func DescribeImage(ctx context.Context, p Ports, o Options, in Input, imageURL s
 		return "", protocolopenai.ForwardUsage{}, err
 	}
 	upstreamCtx, releaseUpstreamCtx := p.Detach(ctx)
-	// 图片描述探测是辅助请求而非会话轮次，不能绑定调用方的 Grok 提示缓存身份。
+	// 图片描述探测使用独立的 Grok 提示缓存身份。
 	upstreamReq, err := p.Build(upstreamCtx, body, "", false)
 	releaseUpstreamCtx()
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
-// ErrorInput 是当前错误响应的事实与配置投影，不包含连接或旧实体。
+// ErrorInput 保存当前错误响应的数据和处理配置。
 type ErrorInput struct {
 	ProviderID                                      int64
 	ProviderName, ProviderType, Platform, RequestID string
@@ -17,7 +17,7 @@ type ErrorInput struct {
 	RequestedModels                                 []string
 }
 
-// ErrorPorts 把健康命令、规则查找和 HTTP 输出分开，核心决定调用顺序。
+// ErrorPorts 提供健康状态写入、规则查找和 HTTP 输出操作，错误处理流程决定调用顺序。
 type ErrorPorts interface {
 	ScheduleActivity()
 	ReadBody() ([]byte, error)
@@ -39,7 +39,7 @@ type ErrorPorts interface {
 	Sanitize(string) string
 }
 
-// applyAnthropicDisplayRule 复用唯一匹配服务，仅选择当前协议响应参数。
+// applyAnthropicDisplayRule 调用规则匹配服务，选择当前协议的响应参数。
 // 透传消息继续用原提取器，不扩大原始 body 暴露，也不改变监控/SLA 标记。
 func applyAnthropicDisplayRule(p ErrorPorts, platform string, upstreamStatus int, body []byte, defaultStatus int, defaultType, defaultMessage string) (int, string, string, bool) {
 	rule := p.MatchRule(platform, upstreamStatus, body)

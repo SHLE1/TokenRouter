@@ -2,11 +2,13 @@ package search
 
 import (
 	"encoding/json"
-) // AdminReadSettings 只包含本模块在综合管理页的展示投影。
+)
 
-type AdminReadSettings struct{ WebSearchEmulationEnabled bool } // ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
+// AdminReadSettings 包含搜索模拟的启用状态。
+type AdminReadSettings struct{ WebSearchEmulationEnabled bool }
+
+// ReadAdminSettings 从传入的设置值解析搜索模拟的启用状态。
 func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
-
 	result := &AdminReadSettings{}
 
 	if raw := settings[SettingKeyWebSearchEmulationConfig]; raw != "" {

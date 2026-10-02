@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-// ResponseHeaderOptions 是响应头策略的静态投影。
+// ResponseHeaderOptions 配置响应头的放行和移除规则。
 type ResponseHeaderOptions struct {
 	Enabled           bool
 	AdditionalAllowed []string

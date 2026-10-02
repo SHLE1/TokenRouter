@@ -1,6 +1,6 @@
 package provider
 
-// 邀请重置的查询和操作结果只保留既有公开表示；交换实现由执行端口提供。
+// 邀请重置结果使用公开的数据格式，交换操作由注入的执行接口完成。
 type CodexInviteResetStatus struct {
 	ReferralKey       string         `json:"referral_key"`
 	InviteEligibility map[string]any `json:"invite_eligibility,omitempty"`

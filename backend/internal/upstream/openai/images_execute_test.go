@@ -39,7 +39,7 @@ func (s *imagesContractSink) Emit(event upstream.OutputEvent) error {
 	return nil
 }
 
-// imagesCloseRecorder 验证真实网络响应体只在本次执行拥有者处释放。
+// imagesCloseRecorder 记录本次执行关闭网络响应体的次数。
 type imagesCloseRecorder struct {
 	io.ReadCloser
 	closed *atomic.Int32
@@ -198,7 +198,7 @@ func TestImagesExecuteOAuthProgressBeforeFailure(t *testing.T) {
 	require.Greater(t, sink.flushed, 0)
 }
 
-// imagesTestResponseOptions 只提供测试所需的 I/O 与观察端口，不复制任何图片解析或业务算法。
+// imagesTestResponseOptions 为测试提供响应读写和观测回调。
 func imagesTestResponseOptions() ImageResponseOptions {
 	return ImageResponseOptions{
 		ReadBody:          io.ReadAll,

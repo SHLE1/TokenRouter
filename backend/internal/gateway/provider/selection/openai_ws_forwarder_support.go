@@ -68,7 +68,7 @@ func (s *Compatible) selectProviderByPreviousResponseIDForCapability(
 	return nil, nil
 }
 
-// ResolveProviderIDByPreviousResponseIDForScheduler 使用提供商层模型解析可继续承载指定响应链的提供商。
+// ResolveProviderIDByPreviousResponseIDForScheduler 根据提供商层模型解析可继续指定响应链的提供商。
 func (s *Compatible) ResolveProviderIDByPreviousResponseIDForScheduler(
 	ctx context.Context,
 	groupID *int64,

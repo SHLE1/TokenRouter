@@ -485,18 +485,18 @@ func UnwrapGeminiResponse(raw []byte) ([]byte, error) {
 	return raw, nil
 }
 
-// ConvertGeminiToClaudeMessage 适配原有 ID 来源及旧网关用量投影。
+// ConvertGeminiToClaudeMessage 使用上游 ID 生成器转换响应，并转换网关用量类型。
 func ConvertGeminiToClaudeMessage(geminiResp map[string]any, originalModel string, rawData []byte, includeInlineData bool) (map[string]any, *upstream.TokenUsage) {
 	result, usage := bridge.NativeConvertGeminiToClaudeMessage(bridge.NativeGeminiRuntime{MessageID: upstream.GenerateAnthropicMsgID, RandomHex: upstream.RandomHex}, geminiResp, originalModel, rawData, includeInlineData)
 	return result, LegacyNativeGeminiUsage(usage)
 }
 
-// ExtractGeminiUsage 只转换用量类型，解析算法由协议桥接唯一拥有。
+// ExtractGeminiUsage 调用协议桥接解析用量，并转换为上游用量类型。
 func ExtractGeminiUsage(data []byte) *upstream.TokenUsage {
 	return LegacyNativeGeminiUsage(bridge.NativeExtractGeminiUsage(data))
 }
 
-// ExtractGeminiParts 委托原生 Gemini 方言的纯转换，调用顺序由旧平台保留。
+// ExtractGeminiParts 调用 Gemini 协议转换提取响应内容。
 func ExtractGeminiParts(geminiResp map[string]any) []map[string]any {
 	return bridge.NativeExtractGeminiParts(geminiResp)
 }

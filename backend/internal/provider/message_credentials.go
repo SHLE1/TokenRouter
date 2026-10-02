@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// MessageCredentialSource 固定绑定原 Claude/Vertex 凭据能力，不拥有第二份缓存或刷新状态。
+// MessageCredentialSource 绑定共享的 Claude 和 Vertex 凭据源。
 type MessageCredentialSource struct {
 	Claude func(context.Context, *Record) (string, error)
 }
@@ -18,7 +18,7 @@ type MessageCredentialSource struct {
 func (s *MessageCredentialSource) Resolve(ctx context.Context, provider *Record) (string, string, error) {
 	switch provider.Type {
 	case capability.ProviderTypeOAuth, capability.ProviderTypeSetupToken:
-		// OAuth 与 setup-token 保留原认证分支。
+		// 分别按 OAuth 与 setup-token 的认证规则读取凭据。
 		return s.oauth(ctx, provider)
 	case capability.ProviderTypeAPIKey:
 		apiKey := provider.GetCredential("api_key")

@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// provideBillingCalculator 用显式配置投影构造唯一计费实例。
+// provideBillingCalculator 从启动配置提取计费参数，构造共享的计算器。
 func provideBillingCalculator(cfg *config.Config, catalog *catalogprovider.Service, calendar timezone.Calendar) *billing.Calculator {
 	return billing.NewCalculator(catalog, billing.CalculatorOptions{DefaultRateMultiplier: cfg.Default.RateMultiplier, Now: calendar.Now, LoadLocation: billingadapter.LoadPricingLocation})
 }

@@ -119,7 +119,7 @@ func (u *User) CheckPassword(password string) bool {
 // NotifyEmailEntry 是已验证的通知邮箱值；验证流程归用户用例。
 type NotifyEmailEntry = contact.Entry
 
-// Principal 只描述验证后的安全主体，不携带资金和路由策略。
+// Principal 是通过认证的调用方身份。
 type Principal struct {
 	UserID         int64
 	Role           string

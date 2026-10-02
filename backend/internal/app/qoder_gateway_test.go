@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fixtureClient 只替代供应商网络，真实平台转换、网关循环和 Lease 均照常运行。
+// fixtureClient 模拟供应商网络，测试使用平台转换、网关循环和 Lease 的生产实现。
 type fixtureClient struct {
 	body    string
 	failure error
@@ -127,7 +127,7 @@ func TestQoderNativeGatewayCompletedFailureNeverRetriesSupplier(t *testing.T) {
 	require.EqualValues(t, 1, calls.Load())
 }
 
-// blockingSink 模拟同步背压；下一帧必须等待当前写入结束。
+// blockingSink 模拟同步背压，当前帧写入结束后才能写下一帧。
 type blockingSink struct {
 	entered, proceed chan struct{}
 	once             atomic.Bool
@@ -213,7 +213,7 @@ func TestQoderNativeGatewayNonstreamCancellation(t *testing.T) {
 func TestQoderNativeGatewayLeadingUsageFailureClosesRetryWithoutSemanticOutput(t *testing.T) {
 	var calls, completed atomic.Int32
 	body := `{"model":"auto","stream":true,"stream_options":{"include_usage":true},"messages":[{"role":"user","content":"hi"}]}`
-	// 只有前导和 usage；随后报错必须保留已提交 HTTP，不能视为已发生可结算服务。
+	// 收到前导和 usage 后报错时，HTTP 保持已提交状态，本次调用尚未产生可结算的服务。
 	_, tail, _ := strings.Cut(successfulQoderStream, "\n\n")
 	frames := strings.Replace(tail, "data: {\"body\":\"[DONE]\"}\n\n", qoderFailureFrame, 1)
 	target := &qoder.Target{Site: qoder.SiteGlobal, Session: func(context.Context) (*qoder.SessionContext, error) { return &qoder.SessionContext{}, nil }, Client: func() (qoder.StreamClient, error) { return fixtureClient{body: frames, calls: &calls}, nil }}

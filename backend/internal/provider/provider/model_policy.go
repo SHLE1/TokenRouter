@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// ModelDefaults 提供原平台目录的懒读取入口，不复制映射或建立新缓存。
+// ModelDefaults 提供平台默认模型目录的按需读取函数。
 func ModelDefaults() provider.ModelMappingDefaults {
 	return provider.ModelMappingDefaults{
 		Models:                DefaultProviderModels,
@@ -18,7 +18,7 @@ func ModelDefaults() provider.ModelMappingDefaults {
 	}
 }
 
-// ModelRules 仅在核心需要平台资格时读取站点；不提前解析或扩大提供商原生能力。
+// ModelRules 在检查平台资格时读取站点信息。
 func ModelRules(value *provider.Record) provider.ModelPlatformRules {
 	return provider.ModelPlatformRules{
 		NormalizeQoder:      qoder.NormalizeModelForWhitelist,

@@ -138,7 +138,7 @@ async function loadPaymentConfig() {
     const res = await adminPaymentAPI.getConfig()
     paymentConfig.value = res.data
   } catch {
-    // 支付配置只用于预览，加载失败不影响套餐管理。
+    // 支付配置供预览读取，加载失败后套餐管理仍可用。
   }
 }
 const plansLoading = ref(false)

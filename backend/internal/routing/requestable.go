@@ -13,7 +13,7 @@ import (
 
 // RequestableModel 描述客户端可请求的模型，以及模型广场应使用的定价模型。
 type RequestableModel struct {
-	// UpstreamModels 仅为展示保留已确认可请求的最终模型，不增加调度条件。
+	// UpstreamModels 保存已确认可请求的最终模型，供展示使用。
 	UpstreamModels   []string
 	Protocols        []capability.ProtocolID
 	ID               string
@@ -125,7 +125,7 @@ func filterRequestableModelProviders(providers []CatalogueProvider, platform str
 }
 
 // mergeRequestableModelCandidates 按既有候选、分组策略、提供商配置和默认模型的顺序合并候选。
-// 通配符只参与后续匹配，不会作为模型 ID 返回。
+// 通配符用于后续匹配，返回列表包含具体的模型 ID。
 func mergeRequestableModelCandidates(baseModels []string, providers []CatalogueProvider, policy *GroupPolicyView, platform string, defaults CatalogueDefaults) []string {
 	candidates := make([]string, 0, len(baseModels)+16)
 	seen := make(map[string]struct{}, len(baseModels)+16)
@@ -349,7 +349,7 @@ func RequestableModelIDs(models []RequestableModel) []string {
 	return ids
 }
 
-// CatalogueRules 封装平台专有资格及执行层模型观测，不暴露提供商凭据。
+// CatalogueRules 提供平台资格、模型映射和执行时观测到的模型信息。
 type CatalogueRules interface {
 	ConfiguredModels() []string
 	Mapping() map[string]string

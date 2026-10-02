@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// schedulerSharedState 由组合根持有跨平台唯一反馈、运行参数和粘性观测；构造不启动任务。
+// schedulerSharedState 保存跨平台共享的调度反馈、运行参数和粘性会话统计。
 type schedulerSharedState struct {
 	Feedback   *scheduler.RuntimeStats
 	Settings   *scheduler.SettingsRuntime
@@ -20,7 +20,8 @@ type schedulerSharedState struct {
 
 func provideSchedulerSharedState(cfg *config.Config, source settings.Repository) *schedulerSharedState {
 	state := &schedulerSharedState{Feedback: scheduler.NewRuntimeStats(time.Now), Settings: scheduler.NewSettingsRuntime(scheduler.Diagnostics{
-		Logf: logging.LegacyPrintf, Event: logging.Event},
+		Logf: logging.LegacyPrintf, Event: logging.Event,
+	},
 	), Sticky: &scheduler.StickyStats{}}
 	state.Parameters = scheduler.NewParameters(state.Settings, source, schedulerParameterDefaults(cfg))
 	return state

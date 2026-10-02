@@ -21,7 +21,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// provideAntigravityRetry 在健康配置绑定完成后组合唯一平台适配，尚存网关只持有同一实例。
+// provideAntigravityRetry 在健康配置绑定完成后构造平台重试组件，网关共用该实例。
 func provideAntigravityRetry(store *providerpostgres.ProviderStore, counter provider.Internal500CounterCache, runtime *providerHealthRuntime, snapshots *scheduler.SnapshotService, transport httpclient.UpstreamTransport, cfg *config.Config) *provideradapter.AntigravityRetry {
 	health := &provider.AntigravityHealth{
 		Store:     store,
@@ -65,12 +65,12 @@ func provideAntigravityRetry(store *providerpostgres.ProviderStore, counter prov
 	return core
 }
 
-// provideAntigravityProbe 与转发共用重试、提供商健康和尝试拥有者；不登记第二个后台实例。
+// provideAntigravityProbe 与转发共用重试、提供商健康状态和请求跟踪器。
 func provideAntigravityProbe(tokens *provider.AntigravityTokenSource, retry *provideradapter.AntigravityRetry, activity *gatewayRequestActivity) *provideradapter.AntigravityProbe {
 	return &provideradapter.AntigravityProbe{Tokens: tokens, Retry: retry, Enter: activity.Enter}
 }
 
-// provideAntigravityErrorObserver 复用重试器的健康拥有者，观测只按既有顺序写入提供商状态。
+// provideAntigravityErrorObserver 使用重试器的健康状态组件，按错误处理顺序更新提供商状态。
 func provideAntigravityErrorObserver(core *provideradapter.AntigravityRetry, store *providerpostgres.ProviderStore, runtime *providerHealthRuntime, cfg *config.Config) *provideradapter.AntigravityErrorObserver {
 	health := core.Health
 

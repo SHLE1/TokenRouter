@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 测试准备发生在启动前，直接使用所属模块状态，不复制旧服务或增加生产接口。
+// modelCatalogFixture 在服务启动前准备目录选项和模型价格数据。
 type modelCatalogFixture struct {
 	options     Options
 	pricingData map[string]*pricing.CatalogModelPricing

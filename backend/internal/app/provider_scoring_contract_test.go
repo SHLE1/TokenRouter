@@ -37,7 +37,7 @@ func TestRateLimitServiceAdvancedSchedulerScoreSnapshotUsesSharedRuntimeStats(t 
 		{ID: 7102, Platform: capability.PlatformGemini, Priority: 1},
 	}
 
-	// 没有样本时，共享统计和 nil 统计都必须把错误率按 0% 处理。
+	// 没有样本时，共享统计和 nil 统计都把错误率按 0% 处理。
 	neutral := options.Score(context.Background(), (*accessview.GroupConfig)(group), providers, nil)
 	neutralCore, _ := scheduler.ScoreCandidates(scoreFixtureProviders(providers), nil, nil, weights, scheduler.ScoreInput{}, time.Now())
 	require.Len(t, neutralCore, 2)

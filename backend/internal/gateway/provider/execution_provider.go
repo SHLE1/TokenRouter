@@ -8,14 +8,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// ExecutionProvider 的值复制保持记录字段独立；map 的复制仍只发生在原边界。
-// Route 不进入提供商表、认证或调度缓存，提供商规则只由 provider.Record 实现。
+// ExecutionProvider 保存提供商记录和本次请求的路线。
+// Route 用于本次请求，provider.Record 提供提供商规则。
 type ExecutionProvider struct {
 	Record provider.Record           `json:"-"`
 	Route  requeststate.AttemptRoute `json:"-"`
 }
 
-// View 供当前调用读取原生规则，保留旧 nil 接收者的判断及方法绑定语义。
+// View 返回提供商记录，接收者为 nil 时返回 nil。
 func (value *ExecutionProvider) View() *provider.Record {
 	if value == nil {
 		return nil
@@ -23,7 +23,7 @@ func (value *ExecutionProvider) View() *provider.Record {
 	return &value.Record
 }
 
-// NewExecutionProvider 只在已存在的存储/缓存边界复制，不新增查询或共享状态。
+// NewExecutionProvider 复制提供商记录并设置时钟函数。
 func NewExecutionProvider(value *provider.Record) *ExecutionProvider {
 	if value == nil {
 		return nil
@@ -45,7 +45,7 @@ func ExecutionRecord(value *ExecutionProvider) *provider.Record {
 	return out
 }
 
-// ApplyExecutionRecord 更新原持有者的记录，保留同一 Record 地址和本次路线。
+// ApplyExecutionRecord 原地更新记录，Record 地址和本次路线保持不变。
 func ApplyExecutionRecord(out *ExecutionProvider, value *provider.Record) {
 	if out == nil || value == nil {
 		return
@@ -152,7 +152,7 @@ func ExecutionRuntimeConfig(value *ExecutionProvider) *provider.RuntimeConfig {
 	return &provider.RuntimeConfig{Extra: v.Extra, Concurrency: v.Concurrency, SessionWindowStart: v.SessionWindowStart, SessionWindowEnd: v.SessionWindowEnd}
 }
 
-// ExecutionCompletionRecord 仅提供同步完成捕获需要的字段，不携带请求路线。
+// ExecutionCompletionRecord 返回完成记录需要的提供商字段。
 func ExecutionCompletionRecord(value *ExecutionProvider) *provider.Record {
 	if value == nil {
 		return nil

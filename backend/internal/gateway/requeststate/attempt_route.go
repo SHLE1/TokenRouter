@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// AttemptRoute 只保存当次候选的协议与模型计划，不持有提供商记录或执行凭据。
+// AttemptRoute 保存当前候选的协议和模型计划。
 // 值复制保持已选计划独立；模型映射在原调用时点由调用方传入。
 type AttemptRoute struct {
 	protocol  protocol.ProtocolID
@@ -23,7 +23,7 @@ func (a AttemptRoute) Candidate() (routing.CandidatePlan, bool) {
 	return a.candidate, a.planned
 }
 
-// ResolveAttempt 每次 fresh 读取后复核能力，保留分组回退使旧计划失效的规则。
+// ResolveAttempt 在刷新提供商后复核能力，分组回退后此前的计划失效。
 func (s RoutingState) ResolveAttempt(snapshot provider.ProviderSnapshot, previous AttemptRoute) (AttemptRoute, bool, error) {
 	plan, planned := s.plan, s.planSet
 	if planned && s.group != nil && plan.GroupID() != s.group.ID {

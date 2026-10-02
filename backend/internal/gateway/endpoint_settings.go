@@ -2,7 +2,7 @@ package gateway
 
 import "context"
 
-// GetGrokDefaultBaseURLMode 保留旧预算、默认 CLI 和单键读取时点。
+// GetGrokDefaultBaseURLMode 在读取预算内查询 Grok Base URL 模式，缺省使用 CLI。
 func (s *RuntimeSettings) GetGrokDefaultBaseURLMode(ctx context.Context) string {
 	if s == nil || s.settingRepo == nil {
 		return "cli"

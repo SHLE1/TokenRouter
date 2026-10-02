@@ -21,7 +21,7 @@ func AdaptOpenAIResponsesClientTools(body []byte) ([]byte, ResponsesClientToolMa
 }
 
 // AdaptOpenAIResponsesClientToolsWithMapping 支持在 bridge 多轮请求中继承工具映射。
-// body 已由上游请求解析过，但仍严格拒绝尾随 JSON，避免静默丢弃请求内容。
+// body 在请求入口已解析，此处仍检查尾随 JSON，存在额外内容时返回错误。
 func AdaptOpenAIResponsesClientToolsWithMapping(
 	body []byte,
 	inherited ResponsesClientToolMapping,

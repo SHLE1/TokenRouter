@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRefreshAttemptSnapshotIsolation 验证凭据交换失败后用于条件写入的快照必须保持交换前的嵌套值，不能被执行器改写。
+// TestRefreshAttemptSnapshotIsolation 检查失败交换的比较快照保存交换前的嵌套凭据。
 func TestRefreshAttemptSnapshotIsolation(t *testing.T) {
 	credentials := map[string]any{"refresh_token": "initial", "session": map[string]any{"cookie": "initial"}}
 	provider := &Record{ID: 1, Platform: PlatformOpenAI, Type: ProviderTypeOAuth, Credentials: credentials}

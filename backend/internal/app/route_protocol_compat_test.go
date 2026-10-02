@@ -15,8 +15,10 @@ const (
 
 var routeProtocol = gatewayhttp.RouteProtocol
 
-// 测试门禁只持有无状态适配函数，每次检查仍读取当前请求投影。
-var testRouteGuards = gatewayhttp.NewRouteGuards(legacyRouteMiddleware(nil, nil, nil, nil, nil, &config.Config{}))
-var requireGroupClientProtocol = testRouteGuards.RequireGroupClientProtocol
-var extendedRouteProtocol = gatewayhttp.ExtendedRouteProtocol
-var requireGeminiGenerateContentProtocol = testRouteGuards.RequireGeminiGenerateContentProtocol
+// 测试中的协议检查使用无状态适配函数，每次读取当前请求数据。
+var (
+	testRouteGuards                      = gatewayhttp.NewRouteGuards(legacyRouteMiddleware(nil, nil, nil, nil, nil, &config.Config{}))
+	requireGroupClientProtocol           = testRouteGuards.RequireGroupClientProtocol
+	extendedRouteProtocol                = gatewayhttp.ExtendedRouteProtocol
+	requireGeminiGenerateContentProtocol = testRouteGuards.RequireGeminiGenerateContentProtocol
+)

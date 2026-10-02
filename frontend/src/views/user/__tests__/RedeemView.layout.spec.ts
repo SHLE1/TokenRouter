@@ -9,7 +9,7 @@ const viewSource = readFileSync(viewPath, 'utf8')
 
 describe('RedeemView responsive layout', () => {
   it('locks the desktop viewport and keeps history inside its own card', () => {
-    // 宽屏锁定视口高度，历史在卡内滚动并分页，页面本身不再滚动。
+    // 宽屏按视口固定页面高度，历史记录在卡内滚动并分页。
     expect(viewSource).toContain('<AppLayout fit-viewport>')
     expect(viewSource).toContain(
       'grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[22.5rem_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]'
@@ -19,7 +19,7 @@ describe('RedeemView responsive layout', () => {
     expect(viewSource).toContain('<Pagination')
     // 根容器位于 flex 列中，mx-auto 会让内容收缩并与页头错位。
     expect(viewSource).not.toMatch(/class="[^"]*\bmx-auto\b/)
-    // 历史行使用分隔线列表，不再嵌套灰底卡片。
+    // 历史记录用分隔线划分列表项。
     expect(viewSource).toContain('divide-y divide-gray-100')
   })
 
@@ -31,7 +31,7 @@ describe('RedeemView responsive layout', () => {
   })
 
   it('omits supplementary redeem guidance', () => {
-    // 页面只保留兑换操作与历史，避免再次加入重复说明或大小写提示。
+    // 兑换页展示兑换操作与历史。
     expect(viewSource).not.toContain("t('redeem.redeemCodeHint')")
     expect(viewSource).not.toContain("t('redeem.aboutCodes')")
     expect(viewSource).not.toContain('contactInfo')

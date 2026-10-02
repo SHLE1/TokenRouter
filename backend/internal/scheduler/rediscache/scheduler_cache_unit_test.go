@@ -601,7 +601,7 @@ func TestSchedulerCacheBucketRetirementFencesWritersAndReopen(t *testing.T) {
 	require.True(t, token.ValidFor(bucket))
 	require.NoError(t, cache.SetSnapshot(ctx, bucket, token, []providercore.Record{provider}))
 
-	// token 绑定完整桶标识，而不只是 epoch 数值。
+	// token 同时绑定完整桶标识和 epoch。
 	err = cache.SetSnapshot(ctx, otherBucket, token, []providercore.Record{provider})
 	require.ErrorIs(t, err, scheduler.ErrSchedulerBucketWriteFenced)
 	_, err = cache.rdb.Get(ctx, schedulerBucketKey(schedulerVersionPrefix, otherBucket)).Result()
@@ -619,7 +619,7 @@ func TestSchedulerCacheBucketRetirementFencesWritersAndReopen(t *testing.T) {
 	require.NoError(t, err)
 	require.Greater(t, retiredEpoch, token.Epoch)
 
-	// 重复退休保持幂等，不会再次推进 epoch。
+	// 重复退休保持当前 epoch。
 	require.NoError(t, cache.RetireBucket(ctx, bucket))
 	retiredEpochAgain, err := cache.rdb.Get(ctx, schedulerBucketKey(schedulerEpochPrefix, bucket)).Int64()
 	require.NoError(t, err)
@@ -1107,7 +1107,7 @@ func TestBuildSchedulerMetadataProvider_KeepsExplicitModelScopeForPassthrough(t 
 
 			meta := buildSchedulerMetadataProvider(provider)
 
-			// 走一遍真实的序列化/反序列化路径（写入 sched:meta 再由 decodeCachedProvider 读回）。
+			// 写入 sched:meta 后由 decodeCachedProvider 读回，检查序列化后的模型范围。
 			payload, err := codec.MarshalProviderRecord(&meta)
 			require.NoError(t, err)
 			restored, err := codec.UnmarshalProviderRecord(payload)
@@ -1123,7 +1123,7 @@ func TestBuildSchedulerMetadataProvider_KeepsExplicitModelScopeForPassthrough(t 
 	}
 }
 
-// TestSchedulerProtocolProjection 验证轻量与完整提供商投影均保留原生集合及认证方式，避免候选过滤扩大能力。
+// TestSchedulerProtocolProjection 检查轻量和完整提供商快照都保存支持的协议集合及认证方式。
 func TestSchedulerProtocolProjection(t *testing.T) {
 	provider := providercore.Record{ID: 72, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Credentials: map[string]any{"upstream_protocols": []string{"openai_responses_websocket"}, "auth_mode": "personalAccessToken", "access_token": "hidden"}}
 	metadata := buildSchedulerMetadataProvider(provider)

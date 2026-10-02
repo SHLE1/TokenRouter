@@ -207,7 +207,7 @@ func TestBatchUpdateCredentials_AccountUUID_NullValue(t *testing.T) {
 		"account_uuid 传入 null 应返回 200")
 }
 
-// 凭据批量契约只提供原预读取与更新响应，错误由各用例的覆盖端口注入。
+// 凭据批量测试提供预读和更新响应，通过用例接口注入错误。
 type managementCredentialFixture struct{ ProviderManagement }
 
 func (s *managementCredentialFixture) GetProvider(_ context.Context, id int64) (*provider.Record, error) {

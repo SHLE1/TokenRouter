@@ -19,7 +19,7 @@ const emit = defineEmits<{
   'update:thresholdType': [value: QuotaThresholdType | null]
 }>()
 
-// 通知阈值类型只允许固定金额或百分比，避免 Select 回传其他类型时污染字段。
+// 通知阈值可选择固定金额或百分比。
 const thresholdTypeOptions = computed(() => [
   { value: QUOTA_THRESHOLD_TYPE_FIXED, label: usdUnitSymbol },
   { value: QUOTA_THRESHOLD_TYPE_PERCENTAGE, label: '%' }

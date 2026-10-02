@@ -33,14 +33,14 @@ type AdminSettings struct {
 	UserPromptReplacementConfig            *promptpolicy.UserPromptReplacementConfig `json:"user_prompt_replacement_config"`
 }
 
-// AdminSettingsRules 由 app 投影平台纯规则；不接收具体供应商服务或完整配置。
+// AdminSettingsRules 接收 app 提供的平台设置校验函数。
 type AdminSettingsRules struct {
 	GrokDefaultTextModel       string
 	NormalizeUserAgentVersion  func(string) string
 	ValidateClaudePromptBlocks func(string) error
 }
 
-// 网关综合设置沿用原持久键。
+// 网关综合设置使用以下持久化键。
 const (
 	SettingKeyAntigravityUserAgentVersion      = "antigravity_user_agent_version"
 	SettingKeyBackendModeEnabled               = "backend_mode_enabled"
@@ -53,7 +53,7 @@ const (
 	SettingKeyUserPromptReplacementConfig      = promptpolicy.SettingKeyUserPromptReplacementConfig
 )
 
-// PrepareAdminSettings 只规范化和编码配置，不改变请求执行、缓存或重试。
+// PrepareAdminSettings 规范化管理配置并编码为待写入的键值。
 func PrepareAdminSettings(settings *AdminSettings, rules AdminSettingsRules) (map[string]string, error) {
 	updates := map[string]string{}
 	if model := strings.TrimSpace(settings.GrokDefaultTextModel); model != "" {
@@ -95,7 +95,7 @@ func PrepareAdminSettings(settings *AdminSettings, rules AdminSettingsRules) (ma
 	return updates, nil
 }
 
-// NormalizeGrokDefaultBaseURLMode 保留原默认 CLI 和五种管理选项。
+// NormalizeGrokDefaultBaseURLMode 规范化五种 Grok Base URL 模式，缺省时使用 CLI。
 func NormalizeGrokDefaultBaseURLMode(mode string) string {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
 	case "api":

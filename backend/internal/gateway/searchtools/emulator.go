@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/search/contract"
 )
 
-// Searcher 由 search 的唯一 Manager 实现，配额预占和回滚不在网关重复实现。
+// Searcher 由 search.Manager 实现，由该实例管理配额预占和回滚。
 type Searcher interface {
 	SearchWithBestProvider(context.Context, contract.SearchRequest) (*contract.SearchResponse, string, error)
 }
@@ -120,7 +120,7 @@ func (s *Emulator) Search(ctx context.Context, proxyURL, query string) (*contrac
 	return response, provider, nil
 }
 
-// Execute 在本地搜索前释放串行资源；写失败停止合成输出，保留原零用量完成结果。
+// Execute 在本地搜索前释放串行资源，写入失败时停止合成输出并返回零用量完成结果。
 func (s *Emulator) Execute(ctx context.Context, in Request, out Output) (*Result, error) {
 	started := s.now()
 	if in.OnAccepted != nil {

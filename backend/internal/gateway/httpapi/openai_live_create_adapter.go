@@ -67,7 +67,7 @@ func (p *liveCreatePorts) Observe(record *session.LiveCallRecord) {
 	})
 }
 
-// liveCreateTarget 保存本次选择取得的凭据视图，后续执行不再查询提供商。
+// liveCreateTarget 保存本次选择取得的凭据，供后续执行使用。
 type liveCreateTarget struct {
 	service  *OpenAILiveExecutor
 	provider *gatewayprovider.ExecutionProvider

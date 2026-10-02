@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newNativeCompactWriterTestContext 使用隔离 recorder 验证包装器的零值边界，不改动 Gin 全局模式。
+// newNativeCompactWriterTestContext 使用独立 recorder 测试包装器零值。
 func newNativeCompactWriterTestContext(t *testing.T) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
 	rec := httptest.NewRecorder()

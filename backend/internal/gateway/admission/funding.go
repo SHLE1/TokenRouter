@@ -13,7 +13,7 @@ const (
 	FundingSourceBalance      = "balance"
 )
 
-// FundingInput 不包含身份实体、Key 凭据或可修改的共享缓存。
+// FundingInput 保存付款主体、Key 和分组的计费信息。
 type FundingInput struct {
 	Mode                    string
 	HasPayer                bool
@@ -22,7 +22,7 @@ type FundingInput struct {
 	IsComposite             bool
 }
 
-// SubscriptionReader 保持原查询、校验及 nil 服务降级边界。
+// SubscriptionReader 提供订阅查询和校验，可选服务缺失时按默认规则处理。
 type SubscriptionReader interface {
 	GetUsableSubscription(context.Context, int64, ...int64) (*billing.UserSubscription, bool, error)
 	GetSubscriptionForAPIKey(context.Context, int64, int64) (*billing.UserSubscription, error)
@@ -30,7 +30,7 @@ type SubscriptionReader interface {
 }
 
 // ResolveFunding 统一解析 API Key 的结算来源。
-// auto 保留现有的可用订阅优先策略；subscription 和 balance 则绝不发生隐式回退。
+// auto 优先选择可用订阅，subscription 和 balance 分别使用指定的资金来源。
 func ResolveFunding(ctx context.Context, input FundingInput, subscriptionService SubscriptionReader, enforce bool) (*billing.APIKeyBillingContext, error) {
 	mode := input.Mode
 	result := &billing.APIKeyBillingContext{Mode: mode, Source: FundingSourceBalance, Available: true}
@@ -95,7 +95,7 @@ func ResolveFunding(ctx context.Context, input FundingInput, subscriptionService
 	}
 }
 
-// ResolveFundingFromKey 只投影已认证的请求 Key，不读取凭据或额外存储。
+// ResolveFundingFromKey 从已认证的请求 Key 提取付款和权益信息。
 func ResolveFundingFromKey(ctx context.Context, key *apikey.APIKey, reader SubscriptionReader, enforce bool) (*billing.APIKeyBillingContext, error) {
 	input := FundingInput{Mode: apikey.APIKeyEffectiveBillingMode(key)}
 	if key != nil {

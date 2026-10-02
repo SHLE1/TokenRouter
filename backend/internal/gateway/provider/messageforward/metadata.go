@@ -30,9 +30,8 @@ func metadataUserID(parsed *requeststate.ParsedRequest, provider *gatewayprovide
 		userID = claude.GenerateClientID()
 	}
 
-	// session_id 用"会话级稳定种子"派生（提供商 + 客户端区分因子 + 首条 user 文本）：
-	// 随对话在尾部追加 messages 时保持不变，贴近真实 CC 进程级稳定的 session_id。
-	// 不复用 GenerateSessionHash —— 后者是粘性路由键、按设计逐轮变化（见其测试）。
+	// session_id 根据提供商、客户端区分因子和首条 user 文本派生，追加消息后保持不变。
+	// GenerateSessionHash 用于粘性路由，值会随对话轮次变化。
 	var firstUserText string
 	if parsed.Body != nil {
 		firstUserText = claude.ExtractFirstUserText(parsed.Body.Bytes())

@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
-// PublicQuoteInput 是公开展示所需的价卡与倍率投影，FreeFastApplicable 表示该报价场景允许展示免费 Fast。
+// PublicQuoteInput 包含公开报价的价卡和倍率，FreeFastApplicable 表示该场景允许展示免费 Fast。
 type PublicQuoteInput struct {
 	PricingInput
 	RateMultiplier     float64

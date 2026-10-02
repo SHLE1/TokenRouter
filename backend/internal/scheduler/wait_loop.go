@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// ConcurrencyError 保留槽位类别和超时区分。
+// ConcurrencyError 记录槽位类别和等待是否超时。
 type ConcurrencyError struct {
 	SlotType  string
 	IsTimeout bool
@@ -29,21 +29,21 @@ func (e *WaitQueueFullError) Error() string {
 	return "Too many pending requests, please retry later"
 }
 
-// 等待退避沿用原有边界和随机源。
+// 等待间隔从 100 毫秒开始，按 1.5 倍增长，最大为 2 秒。
 const (
 	InitialBackoff    = 100 * time.Millisecond
 	MaxBackoff        = 2 * time.Second
 	backoffMultiplier = 1.5
 )
 
-// WaitObserver 同步通知输出；Begin 仅在实际进入等待后运行，保留快速获取路径。
+// WaitObserver 同步发送等待事件，Begin 在进入等待时调用。立即取得槽位时跳过 Begin。
 type WaitObserver struct {
 	Interval  time.Duration
 	Begin     func() error
 	Heartbeat func() error
 }
 
-// WaitForSlot 保留首次尝试、退避、父取消与等待超时的原有次序。
+// WaitForSlot 可先立即尝试获取槽位，失败后按退避间隔重试，直到取得槽位、父 context 取消或超时。
 func (s *ConcurrencyService) WaitForSlot(parent context.Context, slotType string, id int64, limit int, timeout time.Duration, immediate bool, observer WaitObserver) (func(), error) {
 	operation, finish, err := s.runtime.Enter(parent, "slot-wait")
 	if err != nil {
@@ -145,7 +145,7 @@ func (s *ConcurrencyService) AcquireUser(ctx context.Context, options UserAcquir
 			return nil, waited, err
 		}
 	}
-	// 先接管用户槽，统计槽采用原有尽力登记语义；取消绑定仍由调用方选择。
+	// 先登记用户槽的释放函数，再尝试登记统计槽。调用方选择取消时的释放方式。
 	lease := NewLease(context.Background(), ReleaseOnCompletion, release)
 	if options.APIKeyID > 0 {
 		keyRelease := s.TrackAPIKeySlot(ctx, options.APIKeyID)
@@ -168,7 +168,7 @@ func NextBackoff(current time.Duration) time.Duration {
 		next = MaxBackoff
 	}
 	// 添加 ±20% 的随机抖动（jitter 范围 0.8 ~ 1.2）
-	// 抖动可以分散多个请求的重试时间点，避免同时冲击 Redis
+	// 抖动将多个请求的 Redis 重试分散到不同时间点。
 	jitter := 0.8 + rand.Float64()*0.4
 	jittered := time.Duration(float64(next) * jitter)
 	if jittered < InitialBackoff {

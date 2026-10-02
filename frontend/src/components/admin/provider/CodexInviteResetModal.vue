@@ -240,7 +240,7 @@ const availableCredits = computed(() => {
       return !state || state === 'available'
     })
     .sort((a, b) => {
-      // 优先使用最早到期的重置机会，避免可用 credit 在后台过期。
+      // 优先使用最早到期的重置机会。
       const expiryOrder = compareCreditExpiry(a.expires_at ?? '', b.expires_at ?? '')
       return expiryOrder !== 0 ? expiryOrder : a.id.localeCompare(b.id)
     })

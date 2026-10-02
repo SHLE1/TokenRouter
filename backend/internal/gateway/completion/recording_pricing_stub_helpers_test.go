@@ -8,8 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// openAILadderCatalogJSON 模拟同步目录：长上下文使用 above_272k 绝对价字段，
-// 由解析层折算为统一计费核心使用的阈值和倍率。
+// openAILadderCatalogJSON 提供带 above_272k 绝对价格的测试目录，解析层将其转换为计费阈值和倍率。
 const openAILadderCatalogJSON = `{
 	"gpt-5.4": {"provider": "openai", "mode": "chat", "fast_multiplier": 2, "flex_multiplier": 0.5,
 		"input_cost_per_token": 2.5e-06, "output_cost_per_token": 1.5e-05,

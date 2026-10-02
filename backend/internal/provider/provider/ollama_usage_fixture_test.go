@@ -17,7 +17,7 @@ const (
 	ollamaCloudUsageLeaderLockKey   = "ollama:cloud:usage:leader"
 )
 
-// 测试只持有所需提供商行，查询返回独立副本以模拟原存储边界。
+// 夹具保存测试需要的提供商行，查询返回独立副本。
 type ollamaUsageRows struct {
 	mu        sync.Mutex
 	providers map[int64]*provider.Record
@@ -34,7 +34,7 @@ func (r *ollamaUsageRows) GetByID(_ context.Context, id int64) (*provider.Record
 	return &copy, nil
 }
 
-// 设置替身仅提供原生读取器使用的两个键值操作。
+// 设置替身提供读取器使用的两个键值操作。
 type ollamaUsageSettings struct {
 	settings.Repository
 	mu     sync.Mutex
@@ -65,7 +65,7 @@ type ollamaUsageTransport interface {
 	Do(*http.Request, string, int64, int) (*http.Response, error)
 }
 
-// 可调时钟与锁替身只注入原生选项，夹具不实现查询、缓存或生命周期算法。
+// 夹具注入可调时钟和锁替身，查询、缓存和启停使用生产实现。
 type ollamaUsageContract struct {
 	*provider.OllamaCloudUsageService
 	now       func() time.Time
@@ -94,7 +94,7 @@ func newOllamaUsageContract(repo provider.OllamaProviderReader, transport ollama
 	return s
 }
 
-// 内存 leader 只模拟同一 key 的所有者比较，真实 Redis 行为另有集成测试。
+// 内存 leader 模拟同一键的持有者比较，Redis 行为由集成测试覆盖。
 type ollamaUsageLeader struct {
 	mu     sync.Mutex
 	owners map[string]string

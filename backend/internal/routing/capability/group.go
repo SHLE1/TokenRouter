@@ -58,7 +58,7 @@ func ValidateGroupClientProtocols(platform string, protocols []ProtocolID) ([]Pr
 	return out, nil
 }
 
-// SetGroupClientProtocol 更新单个协议并保持公共契约规定的顺序。
+// SetGroupClientProtocol 更新单个协议，并按协议目录顺序返回集合。
 func SetGroupClientProtocol(protocols []ProtocolID, target ProtocolID, enabled bool) []ProtocolID {
 	selected := make(map[ProtocolID]struct{}, len(protocols)+1)
 	for _, protocol := range protocols {

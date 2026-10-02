@@ -130,7 +130,7 @@ func ParseOpenAIResetCreditAvailableCount(values ...json.RawMessage) *int {
 	return nil
 }
 
-// FirstPresentResetCreditPayload 返回第一个实际出现的列表，空列表也必须保留存在性。
+// FirstPresentResetCreditPayload 返回首个存在的列表，空列表也按存在处理。
 func FirstPresentResetCreditPayload(values ...json.RawMessage) ([]*OpenAIRateLimitResetCreditDetailPayload, bool, error) {
 	for _, value := range values {
 		trimmed := bytes.TrimSpace(value)

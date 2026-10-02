@@ -299,17 +299,9 @@ func (s *OpenAIImagesExecutor) forwardOpenAIImagesOAuth(
 	return gatewayprovider.ImagesForwardResult(result, parsed, imageCount), err
 }
 
-// shouldCoolOpenAIImagesToolForError 判断 image_generation_unavailable 判定是否足够持久，
-// 可以将提供商图片工具置于 openAIImagesOAuthUnavailableCooldown 冷却期。
-//
-// 只有上游错误帧明确指出该状态时才符合条件。网关从模型纯文本回复合成的判定不符合：
-// 它仅说明当前提示词得到文字而非图片，取决于提示词，健康提供商也可能出现。为此写入
-// 30 分钟提供商级冷却尤其不合理，因为同一错误会被判定为可重试
-// （IsOpenAIImagesRetryableUpstreamError：状态码 >= 500）并驱动 newOpenAIProviderFailoverError，
-// 使一次回复沿提供商池重试并冷却所有被触及的提供商。
-//
-// 这与 alpha/search 路径已有的规则一致：工具端点故障“仍允许本次请求换号，但不修改任何提供商状态”
-// （参见 shouldApplyOpenAIAlphaSearchProviderErrorSideEffects）。
+// shouldCoolOpenAIImagesToolForError 在上游错误帧报告 image_generation_unavailable 时启用 openAIImagesOAuthUnavailableCooldown 冷却。
+// 模型仅返回文字可能由提示词引起，健康提供商也会出现。该结果按 >= 500 的可重试错误换号，提供商状态保持原样。
+// 若为文字响应设置 30 分钟冷却，换号会逐个冷却池中的提供商。alpha/search 的工具端点故障也使用请求换号、保留提供商状态的处理。
 func shouldCoolOpenAIImagesToolForError(upstreamErr *openai.OpenAIImagesUpstreamError) bool {
 	return upstreamErr != nil && !upstreamErr.SynthesizedFromModelText
 }
@@ -326,8 +318,8 @@ func (s *OpenAIImagesExecutor) handleOpenAIImagesOAuthResponseError(
 ) error {
 	responseWritten := c != nil && c.Writer != nil && OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c) != writerSizeBeforeResponse
 	if code, message, ok := openai.OpenAIUpstreamStreamReadErrorDetails(err); ok {
-		// HTTP 已成功但响应体传输中断时，仅在尚未输出真实图片内容前允许重试；
-		// 同时克隆上游响应头，避免后续释放响应后污染 failover 诊断信息。
+		// HTTP 成功后响应体传输中断时，在首个图片内容输出前允许重试。
+		// 复制上游响应头，供响应释放后的 failover 诊断使用。
 		headers := http.Header(nil)
 		requestID := ""
 		statusCode := http.StatusBadGateway

@@ -136,7 +136,7 @@ func IsGrokMediaFamilyModel(native string) bool {
 }
 
 // ConfigTierOverridePrice 根据模型目录中的层级比例推导价卡层级价格。
-// 价卡只覆盖普通价时，不能把 priority/Fast 价格也压成普通价。
+// 价卡覆盖普通价时，priority/Fast 价格仍按对应服务层级计算。
 func ConfigTierOverridePrice(baseStandard, baseTier, configStandard float64) float64 {
 	if baseStandard > 0 && baseTier > 0 {
 		return configStandard * (baseTier / baseStandard)
@@ -489,7 +489,7 @@ func DisplayPricingFromResolved(model string, rateMultiplier float64, resolved *
 	}
 }
 
-// WithoutLongContextDisplayPricing 只移除内置长上下文展示元数据，不改变基础单价。
+// WithoutLongContextDisplayPricing 移除内置长上下文展示元数据，保留基础单价。
 func WithoutLongContextDisplayPricing(pricing *ModelPricing) *ModelPricing {
 	if pricing == nil {
 		return nil
@@ -655,7 +655,7 @@ func ApplyLongContextDisplayMultipliers(pricing *ModelPricing) *ModelPricing {
 		return nil
 	}
 	adjusted := *pricing
-	// 与结算路径保持一致：覆盖文件只声明一侧倍率时，另一侧按 1x 展示，不能显示为免费。
+	// 与结算计算一致，覆盖文件省略的单侧倍率按 1x 展示。
 	inputMultiplier := LongContextMultiplierOrOne(pricing.LongContextInputMultiplier)
 	outputMultiplier := LongContextMultiplierOrOne(pricing.LongContextOutputMultiplier)
 	adjusted.InputPricePerToken *= inputMultiplier

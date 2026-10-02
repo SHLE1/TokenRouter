@@ -678,7 +678,7 @@ function optionalBillingLabel(key: 'country' | 'postalCode' | 'line1' | 'city' |
   return `${t(`payment.billing.${key}`)}${t('payment.billing.optionalMark')}`
 }
 
-// 默认使用用户名作为账单抬头，未设置用户名时回退到邮箱，避免 Stripe 账单信息看起来未填。
+// 账单抬头默认使用用户名，未设置用户名时使用邮箱。
 function fillBillingNameFromUser() {
   const nextName = defaultBillingName.value
   if (!nextName) return
@@ -786,7 +786,7 @@ function roundMoneyForCurrency(value: number, currency: string): number {
 
 function ceilMoneyForCurrency(value: number, currency: string): number {
   const scale = currencyScale(currency)
-  // 比例手续费向上取到最小货币单位，避免前端预览低估实际应付金额。
+  // 比例手续费向上取到最小货币单位，预览采用实际应付金额的精度。
   return Math.ceil(value * scale - 1e-9) / scale
 }
 
@@ -1429,7 +1429,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 只在横向翻页期间裁剪内容，静止时保留摘要吸顶和浮层的原有布局。 */
+/* 横向翻页期间裁剪内容，静止时恢复摘要吸顶和浮层布局。 */
 .purchase-viewport:has(.purchase-slide-enter-active, .purchase-slide-leave-active) {
   overflow: clip;
 }
@@ -1439,7 +1439,7 @@ onMounted(async () => {
   transition: transform var(--motion-layout) var(--motion-ease);
 }
 
-/* 旧面板退出时与新面板重叠，避免两个页面上下排列。 */
+/* 退出面板绝对定位，与进入面板重叠在同一视窗。 */
 .purchase-slide-leave-active {
   position: absolute;
   inset: 0 0 auto;

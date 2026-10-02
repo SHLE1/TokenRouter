@@ -52,7 +52,7 @@ func (s *PromoService) ValidatePromoCode(ctx context.Context, code string) (*Pro
 
 	promoCode, err := s.promoRepo.GetByCode(ctx, code)
 	if err != nil {
-		// 保留原始错误类型，不要统一映射为 NotFound
+		// 返回查询错误，供调用方区分查询失败和优惠码不存在。
 		return nil, err
 	}
 
@@ -220,7 +220,7 @@ func (s *PromoService) ListUsages(ctx context.Context, promoCodeID int64, params
 	return s.promoRepo.ListUsagesByPromoCode(ctx, promoCodeID, params)
 }
 
-// background 由组合根登记后置工作；测试未提供调度器时同步执行。
+// background 通过注入的调度函数登记后台工作，未提供调度函数时同步执行。
 func (s *PromoService) background(name string, fn func()) {
 	if s.runtime.Background != nil {
 		s.runtime.Background(name, fn)

@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// schedulerParameterDefaults 只做进程配置投影，显式零值保持原意。
+// schedulerParameterDefaults 从进程配置读取调度默认参数，零值直接传给调度器。
 func schedulerParameterDefaults(cfg *config.Config) scheduler.ParameterDefaults {
 	defaults := scheduler.DefaultParameters()
 	if cfg == nil {

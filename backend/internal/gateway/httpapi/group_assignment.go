@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GroupAssignmentAccess 是 HTTP 门禁的只读资格投影，不包含凭据或余额。
+// GroupAssignmentAccess 是 HTTP 门禁使用的只读分组资格数据。
 type (
 	GroupAssignmentAccess  struct{ Loaded, Assigned, CompositeNoGroup bool }
 	GroupAssignmentOptions struct {

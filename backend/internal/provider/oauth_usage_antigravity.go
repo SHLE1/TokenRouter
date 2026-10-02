@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// AntigravityUsageOptions 只提供供应商资格、查询与报文诊断，不持有缓存、规则或后台状态。
+// AntigravityUsageOptions 提供供应商资格检查、额度查询和报文诊断函数。
 type AntigravityUsageOptions struct {
 	CanFetch func(*Record) bool
 	Fetch    func(context.Context, *Record) (*UsageInfo, error)
@@ -14,7 +14,7 @@ type AntigravityUsageOptions struct {
 	Enrich   func(*UsageInfo, *Record)
 }
 
-// antigravityUsageFlightResult 保留原提供商 flight key，等待者必须核对结果的来源身份。
+// antigravityUsageFlightResult 保存共享查询结果，等待者需要核对结果的来源身份。
 type antigravityUsageFlightResult struct {
 	Usage    *UsageInfo
 	Identity string
@@ -51,14 +51,14 @@ func (s *OAuthUsageService) GetAntigravityUsage(ctx context.Context, provider *R
 				ttl := AntigravityCacheTTL(cache.UsageInfo)
 				if s.options.Now().Sub(cache.Timestamp) < ttl {
 					usage := CloneUsageInfo(cache.UsageInfo)
-					// 重新计算 RemainingSeconds，避免返回过时的剩余秒数
+					// 按当前时间重新计算 RemainingSeconds。
 					RecalcAntigravityRemainingSeconds(usage, s.options.Now)
 					return antigravityUsageFlightResult{CloneUsageInfo(usage), identity}, nil
 				}
 			}
 		}
 
-		// 使用独立 context，避免调用方 cancel 导致所有共享 flight 的请求失败
+		// 共享查询使用独立 context，每个等待方可单独取消。
 		fetchCtx, fetchCancel, beginErr := s.BeginDetached(ctx, 30*time.Second)
 		if beginErr != nil {
 			return nil, beginErr

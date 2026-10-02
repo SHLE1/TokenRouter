@@ -9,7 +9,7 @@ import (
 	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 )
 
-// contractTimeLocation 合同测试只提供显式时区，校验与倍率计算使用实际定价实现。
+// contractTimeLocation 为定价接口测试加载时区，配置校验和倍率计算由生产实现执行。
 func contractTimeLocation(value *pricing.TimePricingConfig) *time.Location {
 	if value == nil {
 		return nil

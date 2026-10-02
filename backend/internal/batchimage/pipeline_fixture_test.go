@@ -50,7 +50,7 @@ func newBatchSettlementFixture(repo batchimage.BatchImageRepository, funds batch
 	return core
 }
 
-// nativeTaskFundingFixture 只绑定测试资金端口，不复制预占或结算规则。
+// nativeTaskFundingFixture 为批量任务资金操作绑定测试存储。
 func nativeTaskFundingFixture(store batchimage.FundingStore) batchimage.Funding {
 	return batchimage.Funding{Store: store}
 }

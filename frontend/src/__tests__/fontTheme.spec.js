@@ -10,7 +10,7 @@ const mainSource = readFileSync(resolve(currentDir, '../main.ts'), 'utf8')
 const globalStyleSource = readFileSync(resolve(currentDir, '../style.css'), 'utf8')
 const onboardingStyleSource = readFileSync(resolve(currentDir, '../styles/onboarding.css'), 'utf8')
 
-// 固定全站英文字体与中文回退契约，避免局部样式重新使用旧系统字体。
+// 检查全站英文字体和中文回退字体，包括局部样式。
 describe('OpenRouter 字体主题', () => {
   const fontFamily = tailwindConfig.theme.extend.fontFamily
 

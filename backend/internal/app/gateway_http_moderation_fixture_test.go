@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// newHTTPModeration 仅装配实际审核核心与本地协议客户端；后台工作由当前测试等待。
+// newHTTPModeration 组合审核用例与本地协议客户端，测试结束前等待后台任务完成。
 func newHTTPModeration(t *testing.T, settings moderation.SettingRepository, repo moderation.ContentModerationRepository) *moderation.ContentModerationService {
 	t.Helper()
 	var background sync.WaitGroup

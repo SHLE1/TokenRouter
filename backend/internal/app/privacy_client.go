@@ -8,7 +8,7 @@ import (
 	"github.com/imroc/req/v3"
 )
 
-// providePrivacyClientFactory 保留隐私请求原有超时、Chrome 指纹与共享池。
+// providePrivacyClientFactory 为隐私请求配置超时、Chrome 指纹和共享连接池。
 func providePrivacyClientFactory() openai.PrivacyClientFactory {
 	return func(proxyURL string) (*req.Client, error) {
 		return httpclient.GetSharedReqClient(httpclient.ReqClientOptions{

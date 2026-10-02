@@ -12,8 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// resolveOpenAITextProtocolForAttempt 解析当前提供商的实际文本协议，并在转发前
-// 覆盖 attempt 级端点元数据，避免故障转移后沿用上一提供商的端点。
+// resolveOpenAITextProtocolForAttempt 解析当前提供商的文本协议，并在转发前写入当前尝试的端点元数据。
 func resolveOpenAITextProtocolForAttempt(
 	c *gin.Context,
 	provider *gatewayprovider.ExecutionProvider,

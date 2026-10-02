@@ -18,7 +18,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// messageAttemptBindings 固定生产调用端口，HTTP 输出与每次尝试状态归 textattempt。
+// messageAttemptBindings 绑定执行函数，textattempt 管理 HTTP 输出和每次尝试的状态。
 func messageAttemptBindings(
 	cooldown *provider.RetryCooldown,
 	digest *session.DigestSessionStore,
@@ -108,7 +108,7 @@ func messageAttemptBindings(
 	return b
 }
 
-// provideMessageAttemptRuntime 固定依赖投影只构造一次；Wire 入口直接创建原生执行器。
+// provideMessageAttemptRuntime 为消息执行组件绑定共享依赖。
 func provideMessageAttemptRuntime(
 	cooldown *provider.RetryCooldown,
 	digest *session.DigestSessionStore,

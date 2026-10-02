@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// CodexIdentityNamespace 在原 Header/metadata 投影时点读取当前凭据，不提前冻结命名空间。
+// CodexIdentityNamespace 在构造 Header 和 metadata 时读取当前凭据并计算命名空间。
 func CodexIdentityNamespace(provider *providercore.Record) string {
 	if provider == nil || !provider.IsOpenAIOAuthLike() {
 		return ""

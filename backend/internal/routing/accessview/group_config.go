@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
-// GroupConfig 是无递归关联的分组值契约，供提供商等消费者按需投影。
+// GroupConfig 保存分组配置值，供提供商等模块读取。
 type GroupConfig struct {
 	RoutingPolicy GroupRoutingPolicy
 	ID            int64
@@ -25,7 +25,7 @@ type GroupConfig struct {
 	IsExclusive                bool
 	Status                     string
 	Hydrated                   bool // indicates the group was loaded from a trusted repository source
-	// DuplicateOperationID 仅用于恢复已提交的一键复制结果，不得映射到 API DTO。
+	// DuplicateOperationID 用于恢复已提交的分组复制结果，存于内部配置。
 	DuplicateOperationID string
 
 	// SessionIsolationEnabled 表示目标分组是否拒绝其它分组已归属的显式会话切入。

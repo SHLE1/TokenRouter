@@ -52,7 +52,7 @@ func TestImageModeKeepsExplicitDefaultPrice(t *testing.T) {
 	require.Equal(t, base, price)
 }
 
-// TestConstantRequestIntervalsKeepExplicitFreeQuote 相同区间价可以安全投影，不能把整张免费价卡误报缺价。
+// TestConstantRequestIntervalsKeepExplicitFreeQuote 检查区间价格相同时可返回固定报价，免费价卡返回零价。
 func TestConstantRequestIntervalsKeepExplicitFreeQuote(t *testing.T) {
 	base, tier, multiplier := 0.2, 0.4, 0.0
 	resolved := ResolvePriceCards(&ModelPricingEntry{BillingMode: BillingModePerRequest, PerRequestPrice: &base, PriceMultiplier: &multiplier, Intervals: []PricingInterval{{MinTokens: 0, PerRequestPrice: &tier}}}, nil, PricingSourceUnpriced, true)

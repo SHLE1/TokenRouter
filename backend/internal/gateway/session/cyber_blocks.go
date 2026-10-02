@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// CyberLookup 只携带本次查询；显式键惰性解析，关闭功能或无存储时不读取报文。
+// CyberLookup 保存本次查询，指定会话键按需解析。功能关闭或存储缺失时跳过报文读取。
 type CyberLookup struct {
 	APIKeyID            int64
 	Body                []byte
@@ -23,17 +23,20 @@ type CyberBlocks struct {
 func NewCyberBlocks(store CyberSessionBlockStore, settings func(context.Context) (bool, time.Duration), log func(string, ...any)) *CyberBlocks {
 	return &CyberBlocks{store: store, settings: settings, log: log}
 }
+
 func (s *CyberBlocks) Runtime(ctx context.Context) (bool, time.Duration) {
 	if s == nil || s.settings == nil {
 		return false, time.Hour
 	}
 	return s.settings(ctx)
 }
+
 func (s *CyberBlocks) logf(format string, args ...any) {
 	if s != nil && s.log != nil {
 		s.log(format, args...)
 	}
 }
+
 func (s *CyberBlocks) MarkCyberSessionBlocked(ctx context.Context, scopeKey string, keys []string) {
 	if s == nil || len(keys) == 0 {
 		return

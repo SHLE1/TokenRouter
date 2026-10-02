@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// VoiceRequest 是完成原鉴权/审核后的报文投影，不负责重新读取请求体。
+// VoiceRequest 保存已通过鉴权和审核的语音请求数据。
 type VoiceRequest struct {
 	Endpoint, ContentType string
 	Body                  []byte

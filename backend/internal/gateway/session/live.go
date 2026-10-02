@@ -83,7 +83,7 @@ type LiveCallRecord struct {
 	AttestationCiphertext string
 }
 
-// LiveCallStore 由 GatewayCache 的 Redis 实现可选提供，避免扩大旧缓存接口。
+// LiveCallStore 是 GatewayCache 的 Redis 适配器可提供的 Live 会话存取接口。
 type LiveCallStore interface {
 	SaveLiveCall(ctx context.Context, record *LiveCallRecord, ttl time.Duration) error
 	GetLiveCall(ctx context.Context, callHash string) (*LiveCallRecord, error)

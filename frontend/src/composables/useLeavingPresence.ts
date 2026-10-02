@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue'
 
-/** 按需创建弹窗，并把组件卸载延后到外壳退出完成，避免提前截断动画。 */
+/** 按需创建弹窗，外壳退出动画完成后卸载组件。 */
 export function useLeavingPresence(visible: () => boolean) {
   const present = ref(visible())
   watch(visible, (open) => {

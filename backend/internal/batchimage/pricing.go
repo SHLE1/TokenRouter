@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-// ImagePrices 只提供已投影价卡的报价，不要求读取完整业务服务。
+// ImagePrices 根据价卡和模型返回图片单价。
 type ImagePrices interface {
 	ResolveImageUnitPrice(context.Context, billing.PricingInput, string) (float64, error)
 }

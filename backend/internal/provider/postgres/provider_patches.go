@@ -25,7 +25,7 @@ func (r *ProviderStore) updateExtra(ctx context.Context, id int64, updates map[s
 		return nil
 	}
 
-	// 使用 JSONB 合并操作实现原子更新，避免读-改-写的并发丢失更新问题
+	// 使用 JSONB 合并在一条语句中更新字段。
 	payload, err := json.Marshal(updates)
 	if err != nil {
 		return err
@@ -191,7 +191,7 @@ func (r *ProviderStore) BulkUpdate(ctx context.Context, ids []int64, updates acc
 		idx++
 	}
 	if updates.ProxyID != nil {
-		// 0 表示清除代理（前端发送 0 而不是 null 来表达清除意图）
+		// 0 表示清除代理，前端通过这个值提交清除操作。
 		if *updates.ProxyID == 0 {
 			setClauses = append(setClauses, "proxy_id = NULL")
 			ollamaProxyIdentityChanged = "proxy_id IS NOT NULL"
@@ -237,7 +237,7 @@ func (r *ProviderStore) BulkUpdate(ctx context.Context, ids []int64, updates acc
 		args = append(args, *updates.Schedulable)
 		idx++
 	}
-	// JSONB 需要合并而非覆盖，使用 raw SQL 保持旧行为。
+	// 使用 raw SQL 按键合并 JSONB。
 	credentialPlaceholder := ""
 	if len(updates.Credentials) > 0 {
 		payload, err := json.Marshal(updates.Credentials)
@@ -423,7 +423,7 @@ func codexFingerprintSeedValidSQL(extraExpr string) string {
 	return "(" + value + " ~ '" + codexFingerprintSeedCanonicalPattern + "' AND " + value + " <> '" + codexFingerprintNilSeed + "')"
 }
 
-// ensureCodexFingerprintSeedSQL 在同一条 SQL 中保留合法 seed，避免并发更新产生身份漂移。
+// ensureCodexFingerprintSeedSQL 在更新 SQL 中复用已有合法 seed，并发更新后身份保持稳定。
 func ensureCodexFingerprintSeedSQL(extraExpr string) string {
 	return "CASE WHEN platform = 'openai' AND type = 'oauth' THEN " +
 		"jsonb_set(" + extraExpr + ", '{codex_fingerprint_seed}', " +

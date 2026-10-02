@@ -118,7 +118,7 @@ func TestExtractClientSessionID_GrokConversationHeaderForForcedRoute(t *testing.
 }
 
 func TestExtractClientSessionID_InjectionHeaderDropped(t *testing.T) {
-	// 支持的请求头一旦携带 CRLF 注入内容，必须整值拒绝，不能清理后持久化。
+	// 支持的请求头携带 CRLF 时，整个值被拒绝。
 	c := newSessionHeaderContext(t, map[string]string{"session_id": "abc"})
 	c.Request.Header.Set("session_id", "abc\r\nX-Injected: 1")
 	require.Equal(t, "", ExtractClientSessionID(c))

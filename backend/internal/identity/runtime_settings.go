@@ -40,7 +40,7 @@ const (
 	SettingKeyUserEmailChangeEnabled              = "user_email_change_enabled"
 )
 
-// RuntimeSettingsStore 只暴露身份设置所需的存取，不接收完整配置或旧实体。
+// RuntimeSettingsStore 提供身份设置的按键读取、批量读取、写入和删除。
 type RuntimeSettingsStore interface {
 	GetValue(context.Context, string) (string, error)
 	GetMultiple(context.Context, []string) (map[string]string, error)
@@ -48,18 +48,18 @@ type RuntimeSettingsStore interface {
 	Delete(context.Context, string) error
 }
 
-// RuntimeSettings 解释注册、安全和 captcha 的动态设置，不建立第二份缓存。
+// RuntimeSettings 读取并解析注册、安全和验证码设置。
 type RuntimeSettings struct {
 	settingRepo RuntimeSettingsStore
 	notFound    error
 }
 
-// NewRuntimeSettings 构造不回源，动态值继续在原调用时点读取。
+// NewRuntimeSettings 绑定设置存储，动态值在调用读取方法时查询。
 func NewRuntimeSettings(repo RuntimeSettingsStore, notFound error) *RuntimeSettings {
 	return &RuntimeSettings{settingRepo: repo, notFound: notFound}
 }
 
-// IsRegistrationEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsRegistrationEnabled 读取注册开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsRegistrationEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyRegistrationEnabled)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *RuntimeSettings) IsRegistrationEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// IsEmailVerifyEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsEmailVerifyEnabled 读取邮箱验证开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsEmailVerifyEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyEmailVerifyEnabled)
 	if err != nil {
@@ -78,7 +78,7 @@ func (s *RuntimeSettings) IsEmailVerifyEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// IsRegistrationEmailDomainQuotaEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsRegistrationEmailDomainQuotaEnabled 读取注册邮箱域名配额开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsRegistrationEmailDomainQuotaEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyRegistrationEmailDomainQuotaEnabled)
 	if err != nil {
@@ -87,7 +87,7 @@ func (s *RuntimeSettings) IsRegistrationEmailDomainQuotaEnabled(ctx context.Cont
 	return value == "true"
 }
 
-// IsUserEmailChangeEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsUserEmailChangeEnabled 读取邮箱换绑开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsUserEmailChangeEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyUserEmailChangeEnabled)
 	if err != nil {
@@ -96,7 +96,7 @@ func (s *RuntimeSettings) IsUserEmailChangeEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// GetRegistrationEmailSuffixWhitelist 保留身份设置的原读取时点、缺省和失败语义。
+// GetRegistrationEmailSuffixWhitelist 读取邮箱后缀白名单，读取失败时返回空列表。
 func (s *RuntimeSettings) GetRegistrationEmailSuffixWhitelist(ctx context.Context) []string {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyRegistrationEmailSuffixWhitelist)
 	if err != nil {
@@ -105,7 +105,7 @@ func (s *RuntimeSettings) GetRegistrationEmailSuffixWhitelist(ctx context.Contex
 	return ParseRegistrationEmailSuffixWhitelist(value)
 }
 
-// IsPasswordResetEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsPasswordResetEnabled 检查邮箱验证和密码重置开关均已开启。
 func (s *RuntimeSettings) IsPasswordResetEnabled(ctx context.Context) bool {
 	// Password reset requires email verification to be enabled
 	if !s.IsEmailVerifyEnabled(ctx) {
@@ -118,7 +118,7 @@ func (s *RuntimeSettings) IsPasswordResetEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// IsTotpEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsTotpEnabled 读取 TOTP 开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsTotpEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyTotpEnabled)
 	if err != nil {
@@ -127,7 +127,7 @@ func (s *RuntimeSettings) IsTotpEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// IsSessionBindingEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsSessionBindingEnabled 读取会话绑定开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsSessionBindingEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeySessionBindingEnabled)
 	if err != nil {
@@ -136,7 +136,7 @@ func (s *RuntimeSettings) IsSessionBindingEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// IsStepUpEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsStepUpEnabled 读取二次验证开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsStepUpEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyStepUpEnabled)
 	if err != nil {
@@ -145,7 +145,7 @@ func (s *RuntimeSettings) IsStepUpEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// GetDefaultUserRPMLimit 保留身份设置的原读取时点、缺省和失败语义。
+// GetDefaultUserRPMLimit 读取默认用户 RPM 上限，读取失败或值非法时返回零。
 func (s *RuntimeSettings) GetDefaultUserRPMLimit(ctx context.Context) int {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyDefaultUserRPMLimit)
 	if err != nil || value == "" {
@@ -157,7 +157,7 @@ func (s *RuntimeSettings) GetDefaultUserRPMLimit(ctx context.Context) int {
 	return 0
 }
 
-// GetDefaultUserAPIKeyLimit 保留身份设置的原读取时点、缺省和失败语义。
+// GetDefaultUserAPIKeyLimit 读取默认 Key 数量上限，缺少设置或值非法时返回默认值。
 func (s *RuntimeSettings) GetDefaultUserAPIKeyLimit(ctx context.Context) int {
 	if s == nil || s.settingRepo == nil {
 		return DefaultUserAPIKeyLimit
@@ -172,7 +172,7 @@ func (s *RuntimeSettings) GetDefaultUserAPIKeyLimit(ctx context.Context) int {
 	return DefaultUserAPIKeyLimit
 }
 
-// IsTurnstileEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsTurnstileEnabled 读取 Turnstile 开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsTurnstileEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyTurnstileEnabled)
 	if err != nil {
@@ -181,7 +181,7 @@ func (s *RuntimeSettings) IsTurnstileEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// GetTurnstileSecretKey 保留身份设置的原读取时点、缺省和失败语义。
+// GetTurnstileSecretKey 读取 Turnstile 密钥，读取失败时返回空字符串。
 func (s *RuntimeSettings) GetTurnstileSecretKey(ctx context.Context) string {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyTurnstileSecretKey)
 	if err != nil {
@@ -190,7 +190,7 @@ func (s *RuntimeSettings) GetTurnstileSecretKey(ctx context.Context) string {
 	return value
 }
 
-// GetCaptchaProviderConfig 保留身份设置的原读取时点、缺省和失败语义。
+// GetCaptchaProviderConfig 批量读取并解析验证码提供方设置。
 func (s *RuntimeSettings) GetCaptchaProviderConfig(ctx context.Context) (CaptchaProviderConfig, error) {
 	values, err := s.settingRepo.GetMultiple(ctx, []string{
 		SettingKeyTurnstileEnabled,
@@ -231,7 +231,7 @@ func (s *RuntimeSettings) GetCaptchaProviderConfig(ctx context.Context) (Captcha
 	}, nil
 }
 
-// GetTencentCaptchaConfig 保留身份设置的原读取时点、缺省和失败语义。
+// GetTencentCaptchaConfig 读取腾讯验证码配置，读取失败时返回零值。
 func (s *RuntimeSettings) GetTencentCaptchaConfig(ctx context.Context) TencentCaptchaConfig {
 	config, err := s.GetCaptchaProviderConfig(ctx)
 	if err != nil {
@@ -240,7 +240,7 @@ func (s *RuntimeSettings) GetTencentCaptchaConfig(ctx context.Context) TencentCa
 	return config.Tencent
 }
 
-// GenerateAdminAPIKey 保留身份设置的原读取时点、缺省和失败语义。
+// GenerateAdminAPIKey 生成带 admin- 前缀的随机密钥并保存到设置表。
 func (s *RuntimeSettings) GenerateAdminAPIKey(ctx context.Context) (string, error) {
 	// 生成 32 字节随机数 = 64 位十六进制字符
 	bytes := make([]byte, 32)
@@ -258,7 +258,7 @@ func (s *RuntimeSettings) GenerateAdminAPIKey(ctx context.Context) (string, erro
 	return key, nil
 }
 
-// GetAdminAPIKeyStatus 保留身份设置的原读取时点、缺省和失败语义。
+// GetAdminAPIKeyStatus 查询管理员密钥是否存在，并返回掩码值。
 func (s *RuntimeSettings) GetAdminAPIKeyStatus(ctx context.Context) (maskedKey string, exists bool, err error) {
 	key, err := s.settingRepo.GetValue(ctx, SettingKeyAdminAPIKey)
 	if err != nil {
@@ -281,7 +281,7 @@ func (s *RuntimeSettings) GetAdminAPIKeyStatus(ctx context.Context) (maskedKey s
 	return maskedKey, true, nil
 }
 
-// GetAdminAPIKey 保留身份设置的原读取时点、缺省和失败语义。
+// GetAdminAPIKey 读取管理员密钥，未配置时返回空字符串。
 func (s *RuntimeSettings) GetAdminAPIKey(ctx context.Context) (string, error) {
 	key, err := s.settingRepo.GetValue(ctx, SettingKeyAdminAPIKey)
 	if err != nil {
@@ -293,12 +293,12 @@ func (s *RuntimeSettings) GetAdminAPIKey(ctx context.Context) (string, error) {
 	return key, nil
 }
 
-// DeleteAdminAPIKey 保留身份设置的原读取时点、缺省和失败语义。
+// DeleteAdminAPIKey 删除已保存的管理员密钥。
 func (s *RuntimeSettings) DeleteAdminAPIKey(ctx context.Context) error {
 	return s.settingRepo.Delete(ctx, SettingKeyAdminAPIKey)
 }
 
-// IsRegistrationEmailNormalizationEnabled 保留身份设置的原读取时点、缺省和失败语义。
+// IsRegistrationEmailNormalizationEnabled 读取注册邮箱归一化开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsRegistrationEmailNormalizationEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyRegistrationEmailNormalization)
 	if err != nil {

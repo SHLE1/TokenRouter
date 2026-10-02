@@ -7,13 +7,13 @@ import (
 	"strings"
 )
 
-// OpenAIAlphaMetadataPorts 保留旧调用方先更新请求副本、再持久化的顺序。
+// OpenAIAlphaMetadataPorts 按先更新请求副本、再持久化的顺序处理元数据。
 type OpenAIAlphaMetadataPorts struct {
 	Apply   func(map[string]any)
 	Persist func(context.Context, map[string]any) error
 }
 
-// EnsureAlphaSearchMetadata 只补全缺失的 PAT 元数据，不改变原已有元数据或其它认证模式。
+// EnsureAlphaSearchMetadata 补齐 PAT 缺失的元数据，已有字段保持当前值。
 func (s *OpenAIAuthorization) EnsureAlphaSearchMetadata(ctx context.Context, record *Record, token, proxyURL string, ports OpenAIAlphaMetadataPorts) error {
 	if record == nil || !record.IsOpenAIPersonalAccessToken() || strings.TrimSpace(record.GetChatGPTAccountID()) != "" {
 		return nil

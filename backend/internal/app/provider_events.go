@@ -69,7 +69,7 @@ func providerSchedulerEventName(event providerpostgres.ProviderEvent) string {
 	}
 }
 
-// providerUsageEvents 保留提供商累计入口原有事件与尽力发布顺序。
+// providerUsageEvents 为提供商累计用量绑定事件写入和快照发布函数。
 func providerUsageEvents(reader providerRecordsReader, cache scheduler.SnapshotCache, exec postgresinfra.Executor) billingpostgres.ProviderUsageOptions {
 	events := newProviderEvents(reader, cache)
 	return billingpostgres.ProviderUsageOptions{

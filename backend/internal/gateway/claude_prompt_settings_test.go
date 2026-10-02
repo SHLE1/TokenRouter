@@ -36,7 +36,7 @@ func TestSettingService_GetClaudeOAuthSystemPromptInjectionSettings(t *testing.T
 	})
 }
 
-// promptSettingsFixture 只提供本测试读取的转发设置，不持有缓存实现。
+// promptSettingsFixture 提供测试中的转发设置。
 type promptSettingsFixture struct {
 	gateway.RuntimeSettingsStore
 	data map[string]string

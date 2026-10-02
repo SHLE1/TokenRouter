@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center gap-1.5">
       <slot name="pre-actions" />
 
-      <!-- fork 只保留查询和次数展示，避免在提供商列表里误触真实上游重置。 -->
+      <!-- 提供商列表展示重置次数，并提供查询入口。 -->
       <button
         type="button"
         class="inline-flex min-w-[54px] items-center justify-center gap-0.5 rounded-compact px-1.5 py-0.5 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-500 dark:hover:bg-primary-500/8"
@@ -103,7 +103,7 @@ const warning = ref<string | null>(null)
 const data = ref<OpenAIQuotaUsage | null>(null)
 const showResetCreditDetails = ref(false)
 
-// 只水合仍有有效到期明细的正数快照，避免过期次数继续显示为可用。
+// 读取正数缓存快照，其中的到期明细需要仍然有效。
 const readCachedResetCredits = (provider: Provider): OpenAIQuotaUsage | null => {
   const cached = provider.extra?.codex_reset_credit_snapshot
   if (!cached || typeof cached !== 'object' || Array.isArray(cached)) return null
@@ -122,7 +122,7 @@ const readCachedResetCredits = (provider: Provider): OpenAIQuotaUsage | null => 
       const expiresAt = (credit as { expires_at?: unknown }).expires_at
       if (typeof expiresAt !== 'string' || expiresAt.trim() === '') continue
       const expiryTime = new Date(expiresAt).getTime()
-      // 无法解析的时间仍保留原文，避免静默少报上游返回的可用次数。
+      // 无法解析的到期时间按上游返回值保留并计入可用次数。
       if (!Number.isNaN(expiryTime) && expiryTime <= now) continue
       credits.push({ expires_at: expiresAt })
     }

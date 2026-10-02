@@ -26,13 +26,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 非法 service_tier 必须在两个 OpenAI 端点（/v1/responses、/v1/chat/completions）
-// 上以 OpenAI 兼容错误结构返回 HTTP 400。这些用例在 handler 的 service_tier
-// 校验处短路，不会进入提供商选择/重试。
+// 非法 service_tier 在 /v1/responses 和 /v1/chat/completions 入口
+// 返回 OpenAI 格式的 HTTP 400 错误，handler 在字段校验时结束请求。
 //
-// 合法值（fast/priority/flex/auto/default/scale/ultrafast）与省略/null 的接受语义由
-// service 层纯校验函数 TestValidateOpenAIServiceTierField 覆盖，避免 handler
-// 测试走入真实提供商选择/重试路径。
+// 合法值（fast/priority/flex/auto/default/scale/ultrafast）及省略、null 的处理
+// 由纯校验测试 TestValidateOpenAIServiceTierField 覆盖。
 
 func newServiceTierHandlerTest(t *testing.T) *gatewayHTTPEndpointsFixture {
 	t.Helper()

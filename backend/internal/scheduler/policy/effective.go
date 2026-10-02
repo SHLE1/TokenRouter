@@ -16,8 +16,8 @@ type EffectiveSettings struct {
 	StickyEscape                StickyEscapeConfig
 }
 
-// ValidateGroupOverrides 校验分组稀疏覆盖的单字段边界。
-// 基础权重允许全部显式设为零，此时 Top-K 使用稳定并列规则并等权抽样。
+// ValidateGroupOverrides 校验分组覆盖字段的取值范围。
+// 基础权重允许全部设为零，此时 Top-K 使用稳定并列规则并等权抽样。
 func ValidateGroupOverrides(overrides GroupAdvancedSchedulerOverrides) error {
 	if overrides.LBTopK != nil && *overrides.LBTopK <= 0 {
 		return fmt.Errorf("lb_top_k must be a positive integer")
@@ -69,7 +69,7 @@ func ValidateGroupOverrides(overrides GroupAdvancedSchedulerOverrides) error {
 }
 
 // ValidateEffectiveWeights 校验合并后的完整权重。
-// 基础权重总和可以为零，但基础和完整总和都必须保持有限，避免评分出现 NaN 或 Inf。
+// 基础权重总和可以为零，基础权重和全部权重的总和都需要是有限值。
 func ValidateEffectiveWeights(Weights ScoreWeights) error {
 	values := []struct {
 		name  string
@@ -114,7 +114,7 @@ func HasWeightOverrides(overrides GroupAdvancedSchedulerOverrides) bool {
 		overrides.WeightSessionSticky != nil
 }
 
-// ApplyGroupWeightOverrides 只替换分组显式提供的权重字段。
+// ApplyGroupWeightOverrides 替换分组提供的权重字段。
 func ApplyGroupWeightOverrides(
 	Weights ScoreWeights,
 	overrides GroupAdvancedSchedulerOverrides,
@@ -150,7 +150,7 @@ func ApplyGroupWeightOverrides(
 }
 
 // ResolveEffective 以全局生效配置为基线合并分组覆盖。
-// 分组显式零值保持生效，不因最终基础权重全零而静默恢复全局参数。
+// 分组设置的零值也参与覆盖，基础权重全部为零时仍使用分组权重。
 func ResolveEffective(
 	baseTopK int,
 	baseWeights ScoreWeights,
@@ -205,7 +205,7 @@ func ResolveEffective(
 	effective.StickyEscape = NormalizeStickyEscape(effective.StickyEscape)
 	effective.Weights = ApplyGroupWeightOverrides(effective.Weights, overrides)
 	if validateErr := ValidateEffectiveWeights(effective.Weights); validateErr != nil {
-		// 历史异常数据不能进入评分；仅回退权重，保留分组其它有效覆盖。
+		// 权重异常时回退到默认权重，分组的其他有效覆盖继续生效。
 		effective.Weights = globalWeights
 	}
 	return effective
@@ -217,7 +217,7 @@ type ScoreWeights struct {
 	Queue     float64
 	ErrorRate float64
 	TTFT      float64
-	// Reset 倾向「会话窗口最早重置」的提供商；0 表示关闭（默认）。
+	// Reset 为会话窗口更早重置的提供商加分，默认为 0，表示关闭。
 	Reset float64
 	// QuotaHeadroom 倾向 Codex 7d 剩余额度更健康的提供商；0 表示关闭（默认）。
 	QuotaHeadroom float64
@@ -249,11 +249,11 @@ type StickyEscapeConfig struct {
 	ErrorRate float64
 }
 
-// NormalizeStickyEscape 保证健康逃逸配置始终使用可执行的边界值。
+// NormalizeStickyEscape 将健康逃逸配置限制在允许的取值范围内。
 func NormalizeStickyEscape(value StickyEscapeConfig) StickyEscapeConfig {
 	thresholdsUnset := value.TtftMs == 0 && value.ErrorRate == 0
 	if !value.Enabled && value.TtftMs == 0 && value.ErrorRate == 0 {
-		// 兼容未注册配置结构体时的零值，保持历史默认开启。
+		// 未注册配置结构体时使用零值，默认开启健康逃逸。
 		value.Enabled = true
 	}
 	if value.TtftMs <= 0 || math.IsNaN(value.TtftMs) || math.IsInf(value.TtftMs, 0) {
@@ -319,7 +319,7 @@ func NormalizeFeedback(value FeedbackConfig) FeedbackConfig {
 	return value
 }
 
-// BaseWeightSum 与原配置相同顺序求和，避免浮点组合顺序变化。
+// BaseWeightSum 按配置字段顺序累加基础权重，浮点加法的顺序会影响结果。
 func (w ScoreWeights) BaseWeightSum() float64 {
 	return w.Priority + w.Load + w.Queue + w.ErrorRate + w.TTFT + w.Reset + w.QuotaHeadroom
 }
@@ -328,7 +328,7 @@ func (w ScoreWeights) TotalWeightSum() float64 {
 	return w.BaseWeightSum() + w.Previous + w.SessionSticky
 }
 
-// ValidGlobal 保持全局权重须有正基础和；分组完整校验允许零基础和。
+// ValidGlobal 检查全局基础权重之和为正，分组权重另行校验并允许总和为零。
 func (w ScoreWeights) ValidGlobal() bool {
 	return ValidateEffectiveWeights(w) == nil && w.BaseWeightSum() > 0
 }

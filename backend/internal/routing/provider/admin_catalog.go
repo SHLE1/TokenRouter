@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// AdminCatalogOptions 在读取时投影平台目录，不复制目录缓存或模型资格规则。
+// AdminCatalogOptions 提供管理端按需读取平台模型目录的函数。
 func AdminCatalogOptions() routing.AdminCatalogOptions {
 	return routing.AdminCatalogOptions{Defaults: func(kind routing.AdminCatalogKind, site string) ([]routing.AdminCatalogModel, error) {
 		var out []routing.AdminCatalogModel

@@ -2,8 +2,9 @@ package routing
 
 import (
 	settingvalues "github.com/TokenFlux/TokenRouter/internal/settings"
-) // AdminReadSettings 只包含本模块在综合管理页的展示投影。
+)
 
+// AdminReadSettings 包含模型回退和市场可用性展示设置。
 type AdminReadSettings struct {
 	EnableModelFallback                  bool
 	FallbackModelAnthropic               string
@@ -14,7 +15,7 @@ type AdminReadSettings struct {
 	MarketplaceAvailabilityWindowDays    int
 }
 
-// ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
+// ReadAdminSettings 从传入的设置值解析模型回退和市场可用性展示设置。
 func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
 	result := &AdminReadSettings{}
 

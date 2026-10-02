@@ -95,7 +95,7 @@ func TestRateLimitServiceHandleOpenAIImageCapabilityLoss_RespectsPlatformAndErro
 	})
 }
 
-// 健康替身只记录模型范围的状态写入，未用端口保持未配置。
+// 健康替身记录模型范围的状态写入，其他接口留空。
 type imageHealthStore struct {
 	providercore.HealthStore
 	modelRateLimitCalls []imageHealthWrite

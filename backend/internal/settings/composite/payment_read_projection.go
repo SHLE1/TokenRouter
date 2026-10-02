@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/payment"
 
-// ApplyPaymentAdminReadSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyPaymentAdminReadSettings 将支付读取结果写入综合快照。
 func (s *Snapshot) ApplyPaymentAdminReadSettings(value *payment.AdminReadSettings) {
 	s.PaymentVisibleMethodAlipayEnabled = value.PaymentVisibleMethodAlipayEnabled
 	s.PaymentVisibleMethodAlipaySource = value.PaymentVisibleMethodAlipaySource

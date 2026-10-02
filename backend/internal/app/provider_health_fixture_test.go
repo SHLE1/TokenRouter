@@ -8,7 +8,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// newAppHealthObserverFixture 只组合原生健康组件与当前测试替身。
+// newAppHealthObserverFixture 组合健康状态组件和当前测试的替身。
 func newAppHealthObserverFixture(store gatewayprovider.ExecutionProviderStore, cfg *config.Config) *provideradapter.UpstreamHealth {
 	options := provider.HealthOptions{}
 	if cfg != nil {

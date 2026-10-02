@@ -10,7 +10,7 @@ import (
 )
 
 // ConvergedInstallationID 返回提供商级恒定的 installation_id。
-// 优先使用管理员配置的真实 device_id，无则从系统管理的提供商随机种子确定性派生。
+// 优先使用管理员配置的 device_id，缺省时从提供商随机种子派生。
 func ConvergedInstallationID(value *acctcore.Record, seed string) string {
 	if value == nil {
 		return ""
@@ -21,7 +21,7 @@ func ConvergedInstallationID(value *acctcore.Record, seed string) string {
 	if seed == "" {
 		return ""
 	}
-	// 哈希种子保留旧值，确保升级后已有设备、会话及调用身份不变。
+	// 哈希使用兼容的种子值，升级后设备、会话及调用身份保持不变。
 	return openai.DeriveStableUUIDv4("sub2api:codex-install-id:v2:" + seed)
 }
 

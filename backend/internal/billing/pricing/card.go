@@ -248,7 +248,7 @@ func ClonePricingAmounts(fields ...**float64) {
 //     按 MinTokens 排序后无重叠，无界区间（MaxTokens=nil）必须是最后一个。
 //   - BillingModePerRequest：先匹配非空 tier_label，再按配置顺序匹配无标签的上下文区间。
 //   - BillingModeImage / BillingModeVideo：按 tier_label（尺寸或分辨率）分层。
-//     以上三种模式只检查单条字段自洽，不套用 token 模式的区间排序与重叠限制。
+//     这三种模式逐条校验字段，token 模式另行检查区间排序和重叠。
 //
 // 通用规则：MinTokens >= 0；MaxTokens 若非 nil 则 > 0 且 > MinTokens；
 // 所有价格字段 >= 0。
@@ -268,7 +268,7 @@ func ValidateIntervals(intervals []PricingInterval, mode BillingMode) error {
 		}
 	}
 
-	// 非 token 模式保留标签或配置顺序语义，不做 token 区间重叠校验
+	// 非 token 模式按标签或配置顺序处理，区间重叠检查用于 token 模式。
 	if mode == BillingModePerRequest || mode == BillingModeImage || mode == BillingModeVideo {
 		return nil
 	}

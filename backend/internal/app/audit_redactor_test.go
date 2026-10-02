@@ -42,8 +42,8 @@ func TestRedactAuditBody_JSONRedactsSecrets(t *testing.T) {
 	}
 }
 
-// TestRedactAuditBody_BareSessionKeyRedacted 验证裸键 "session"（Ollama Cloud 会话保存的请求体字段）值整体就是浏览器 Cookie 明文，
-// 必须命中键级脱敏；session_id 等运行态标识不受影响，保留以便追责。
+// TestRedactAuditBody_BareSessionKeyRedacted 检查 session 字段中的 Ollama Cloud 浏览器 Cookie 被整段脱敏。
+// session_id 等运行状态标识保留在审计记录中，供追溯使用。
 func TestRedactAuditBody_BareSessionKeyRedacted(t *testing.T) {
 	redactor := provideAuditRedactor()
 	raw := []byte(`{"session": "wos-session=cookie-canary", "session_id": "sid-visible"}`)
@@ -57,7 +57,7 @@ func TestRedactAuditBody_BareSessionKeyRedacted(t *testing.T) {
 	}
 }
 
-// TestRedactAuditBody_AuthoritativeTablesSynced 覆盖曾经漏网的凭证字段：
+// TestRedactAuditBody_AuthoritativeTablesSynced 检查以下凭据字段的脱敏：
 // 提供商 credentials 敏感子键、支付渠道无分隔符密钥、字符串值内嵌凭证的 proxy_key / custom_key，
 // 以及 camelCase 等命名变体（归一化比对）。
 func TestRedactAuditBody_AuthoritativeTablesSynced(t *testing.T) {
@@ -92,7 +92,7 @@ func TestRedactAuditBody_AuthoritativeTablesSynced(t *testing.T) {
 			t.Fatalf("redacted body still contains secret %q: %s", secret, out)
 		}
 	}
-	// provider_key 是渠道标识而非密钥，必须保留以便追责。
+	// provider_key 是渠道标识，保留在审计记录中供追溯使用。
 	if !strings.Contains(out, `"provider_key":"stripe"`) {
 		t.Fatalf("provider_key should be preserved for providerability: %s", out)
 	}
@@ -101,7 +101,7 @@ func TestRedactAuditBody_AuthoritativeTablesSynced(t *testing.T) {
 	}
 }
 
-// TestAuditSensitiveKeys_CoverCredentialTable 验证SensitiveCredentialKeys 中的每个键都必须被审计脱敏判定命中（防两表漂移的守卫）。
+// TestAuditSensitiveKeys_CoverCredentialTable 检查 SensitiveCredentialKeys 中的每个键都在审计脱敏范围内。
 func TestAuditSensitiveKeys_CoverCredentialTable(t *testing.T) {
 	redactor := provideAuditRedactor()
 	for _, k := range providercore.SensitiveCredentialKeys {

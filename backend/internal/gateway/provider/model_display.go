@@ -37,7 +37,7 @@ func (ModelDisplayCatalogue) GrokModels() []modeldisplay.GrokModel {
 }
 func (ModelDisplayCatalogue) GrokModelIDs() []string { return grok.DefaultModelIDs() }
 
-// GrokModelAlias 只为已知精确别名补充厂商信息，通配映射不决定模型品牌。
+// GrokModelAlias 根据精确匹配的已知别名解析模型厂商。
 func (ModelDisplayCatalogue) GrokModelAlias(id string) (modeldisplay.GrokModel, bool) {
 	target, ok := grok.DefaultModelMapping()[id]
 	if !ok {

@@ -29,7 +29,7 @@ export function formatPoolModeRetryStatusCodes(value: unknown): string {
   return collectStatusCodes(value).join(', ')
 }
 
-// normalizePoolModeRetryCount 把重试次数收敛到 0 到上限之间的整数。
+// normalizePoolModeRetryCount 将重试次数限制为 0 到上限之间的整数。
 export function normalizePoolModeRetryCount(value: number): number {
   if (!Number.isFinite(value)) {
     return DEFAULT_POOL_MODE_RETRY_COUNT

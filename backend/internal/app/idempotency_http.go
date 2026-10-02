@@ -17,7 +17,7 @@ import (
 type idempotencyHTTPReady struct{}
 
 // provideIdempotencyHTTP 在开放 HTTP 前把全部幂等入口绑定到应用唯一协调器。
-// 无全局发布，构造失败无需恢复其他应用实例的依赖。
+// 各应用实例持有独立的协调器绑定。
 func provideIdempotencyHTTP(
 	coordinator *idempotency.IdempotencyCoordinator,
 	providers *providerhttp.ManagementHandler,

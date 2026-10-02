@@ -8,7 +8,7 @@ import (
 )
 
 // AnthropicToChatCompletionsRequest 直接把 Anthropic Messages 请求转换为 Chat Completions 请求。
-// 其语义等价于依次调用 AnthropicToResponses 与 ResponsesToChatCompletionsRequest，
+// 结果等价于依次调用 AnthropicToResponses 和 ResponsesToChatCompletionsRequest，
 // 但不会创建中间 ResponsesRequest，也省去额外的序列化往返。
 func AnthropicToChatCompletionsRequest(req *AnthropicRequest, options RequestOptions) (*ChatCompletionsRequest, error) {
 	if req == nil {
@@ -41,7 +41,7 @@ func AnthropicToChatCompletionsRequest(req *AnthropicRequest, options RequestOpt
 	}
 
 	// Anthropic input_schema 本身就是 JSON Schema，可直接作为 Chat function parameters。
-	// web_search_* 等 server tool 没有 Chat Completions 等价表示，因此与旧桥一致地丢弃。
+	// web_search_* 等服务端工具在 Chat Completions 中缺少对应表示，转换时丢弃。
 	if len(req.Tools) > 0 {
 		tools := anthropicToolsToChatTools(req.Tools)
 		if len(tools) > 0 {
@@ -70,7 +70,7 @@ func AnthropicToChatCompletionsRequest(req *AnthropicRequest, options RequestOpt
 		}
 	}
 
-	// output_config.effort 复用当前 Responses 桥的按模型映射；thinking.type 与旧桥一致地忽略。
+	// 根据模型映射 output_config.effort，推理档位由该字段决定。
 	effort := "medium"
 	if req.OutputConfig != nil && req.OutputConfig.Effort != "" {
 		effort = req.OutputConfig.Effort
@@ -128,7 +128,7 @@ func anthropicMsgToChatMessages(m AnthropicMessage) ([]ChatMessage, error) {
 
 // anthropicUserToChatMessages 处理字符串或 block 数组形式的 Anthropic user 消息。
 // tool_result 会拆成独立 tool 消息，其中的图片提升到后续 user 消息的 image_url；
-// function_call_output 只能承载字符串，因此图片必须单独传递。
+// function_call_output 使用字符串，图片单独传递。
 func anthropicUserToChatMessages(raw json.RawMessage) ([]ChatMessage, error) {
 	// 纯字符串直接生成单条 user 消息。
 	var s string
@@ -165,8 +165,8 @@ func anthropicUserToChatMessages(raw json.RawMessage) ([]ChatMessage, error) {
 		}
 	}
 
-	// 剩余 text/image 组成 user 消息。纯文本按旧桥用空行拼成字符串；只有存在图片时才使用
-	// parts 数组，避免严格 Chat 上游拒绝无图片的数组 content。
+	// 剩余 text/image 组成 user 消息。纯文本用空行拼接为字符串，含图片时使用 parts 数组。
+	// 部分 Chat 上游会拒绝没有图片的数组 content。
 	var textParts []string
 	var parts []ChatContentPart
 	hasImage := false
@@ -210,7 +210,7 @@ func anthropicUserToChatMessages(raw json.RawMessage) ([]ChatMessage, error) {
 }
 
 // anthropicAssistantToChatMessages 把文本与 tool_use 合并到 assistant 消息的 content/tool_calls；
-// thinking 块仅在同一消息包含工具调用时写入 reasoning_content，避免污染纯文本轮次。
+// 同一消息包含工具调用时，将 thinking 块写入 reasoning_content。
 func anthropicAssistantToChatMessages(raw json.RawMessage) ([]ChatMessage, error) {
 	// 纯字符串直接生成单条 assistant 消息。
 	var s string
@@ -298,7 +298,7 @@ func anthropicToolsToChatTools(tools []AnthropicTool) []ChatTool {
 }
 
 // convertAnthropicToolChoiceToChat 映射 Anthropic tool_choice；返回 nil 表示丢弃选择。
-// 与旧桥一致，未知类型或指向未声明工具的具名选择不向 Chat 上游转发。
+// 未知类型或指向未声明工具的具名选择返回 nil。
 //
 //	{"type":"auto"}            → "auto"
 //	{"type":"any"}             → "required"
@@ -351,7 +351,7 @@ func joinResponsesContentPartText(parts []ResponsesContentPart) string {
 }
 
 // ChatCompletionsResponseToAnthropic 直接把 Chat Completions 响应转换为 Anthropic Messages 响应，
-// 语义等价于 ChatCompletionsResponseToResponses + ResponsesToAnthropic。
+// 结果等价于依次调用 ChatCompletionsResponseToResponses 和 ResponsesToAnthropic。
 func ChatCompletionsResponseToAnthropic(runtime Runtime, resp *ChatCompletionsResponse, model string) *AnthropicResponse {
 	out := &AnthropicResponse{
 		Type:  "message",
@@ -379,11 +379,11 @@ func ChatCompletionsResponseToAnthropic(runtime Runtime, resp *ChatCompletionsRe
 	if len(out.Content) == 0 {
 		out.Content = []AnthropicContentBlock{{Type: "text", Text: ""}}
 	}
-	// 空 choices 或 nil 响应也必须与旧桥一致地生成 end_turn；完成态的非流式响应不能使用 null 或空 stop_reason。
+	// choices 为空或响应为 nil 时生成 end_turn，非流式完成响应需要有效的 stop_reason。
 	if AnthropicStopReasonString(out.StopReason) == "" {
 		out.StopReason = AnthropicStopReasonPtr(chatFinishReasonToAnthropicStopReason("", out.Content))
 	}
-	// 上游省略响应 ID 时与旧桥一致地补齐，因为客户端把该字段视为必需。
+	// 上游省略响应 ID 时生成一个 ID，客户端需要该字段。
 	if out.ID == "" {
 		out.ID = generateResponsesID(runtime)
 	}
@@ -405,7 +405,7 @@ func chatMessageToAnthropicBlocks(message ChatMessage) []AnthropicContentBlock {
 	}
 
 	text := chatMessageContentText(message.Content)
-	// DeepSeek 仅返回 reasoning 且没有 tool call 时，把 reasoning 同时作为可见文本，避免空响应。
+	// DeepSeek 仅返回 reasoning 且没有 tool call 时，将 reasoning 同时写入可见文本。
 	if text == "" && strings.TrimSpace(reasoning) != "" && len(message.ToolCalls) == 0 {
 		text = reasoning
 	}
@@ -435,7 +435,7 @@ func chatMessageToAnthropicBlocks(message ChatMessage) []AnthropicContentBlock {
 //	"tool_calls" → "tool_use"
 //	其它值       → "end_turn"（存在 tool_use block 时为 "tool_use"）
 //
-// stop、content_filter 和未知原因在旧桥中都视为已完成响应，再根据 blocks 推导 stop_reason。
+// stop、content_filter 和未知原因都按已完成响应处理，再根据 blocks 推导 stop_reason。
 func chatFinishReasonToAnthropicStopReason(reason string, blocks []AnthropicContentBlock) string {
 	switch reason {
 	case "length":
@@ -450,7 +450,7 @@ func chatFinishReasonToAnthropicStopReason(reason string, blocks []AnthropicCont
 	}
 }
 
-// chatUsageToAnthropicUsage 把 Chat token usage 转换为 Anthropic usage，口径与旧桥一致。
+// chatUsageToAnthropicUsage 把 Chat token 用量转换为 Anthropic usage。
 func chatUsageToAnthropicUsage(usage *ChatUsage) AnthropicUsage {
 	if usage == nil {
 		return AnthropicUsage{}
@@ -461,7 +461,7 @@ func chatUsageToAnthropicUsage(usage *ChatUsage) AnthropicUsage {
 	if usage.PromptTokensDetails != nil {
 		cachedTokens = usage.PromptTokensDetails.CachedTokens
 		// cache_write_tokens 与 cache_creation_tokens 是同一数量的两种字段名，不能相加；
-		// 与旧桥一致地优先使用 write，缺失时再使用 creation。
+		// 优先读取 write，缺失时读取 creation。
 		if usage.PromptTokensDetails.CacheWriteTokens > 0 {
 			cacheCreationTokens = usage.PromptTokensDetails.CacheWriteTokens
 		} else {
@@ -700,7 +700,7 @@ func bufferCCAnthropicToolCall(runtime Runtime, state *ChatCompletionsToAnthropi
 		if copyCall.Type == "" {
 			copyCall.Type = "function"
 		}
-		// 参数由下方共享逻辑累加，避免首帧被重复计入。
+		// 首帧参数和后续分片由下方代码一起累加。
 		copyCall.Function.Arguments = ""
 		state.toolCalls[idx] = &copyCall
 		stored = &copyCall
@@ -717,14 +717,14 @@ func bufferCCAnthropicToolCall(runtime Runtime, state *ChatCompletionsToAnthropi
 	}
 
 	if toolCall.Function.Arguments != "" {
-		// 参数分片只暂存，收尾时一次拼接，避免大参数反复复制。
+		// 参数分片暂存到收尾时一次拼接，减少大参数复制。
 		state.toolArgumentFragments[idx] = append(state.toolArgumentFragments[idx], toolCall.Function.Arguments)
 	}
 	state.HasToolCall = true
 }
 
 // finalizeCCAnthropicToolCalls 按工具 index 生成连续、闭合的 Anthropic tool_use blocks。
-// 每个工具只发送一个完整 JSON delta，确保并行参数分片不会跨越 block 生命周期。
+// 每个工具在自己的 block 内发送一个完整 JSON delta。
 func finalizeCCAnthropicToolCalls(runtime Runtime, state *ChatCompletionsToAnthropicStreamState) []AnthropicStreamEvent {
 	if state == nil || len(state.toolCalls) == 0 {
 		return nil

@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// newExecutionAvailabilityForTest 显式传递同一测试仓储和分组策略，不从执行服务反查依赖。
+// newExecutionAvailabilityForTest 为模型诊断绑定测试存储和分组策略。
 func newExecutionAvailabilityForTest(store gatewayprovider.ExecutionProviderStore, modelConfigs *routing.PricingConfigService, cfg *config.Config) *gatewayModelAvailability {
 	var source gatewayprovider.AvailabilityProviders
 	if store != nil {

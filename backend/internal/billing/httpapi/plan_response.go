@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
 
-// PlanRecordResponse 保留管理员套餐接口原 Ent JSON 形状，不暴露 Ent 实体。
+// PlanRecordResponse 是管理员套餐接口的 JSON 响应。
 type PlanRecordResponse struct {
 	ID                   int64             `json:"id,omitempty"`
 	Name                 string            `json:"name,omitempty"`

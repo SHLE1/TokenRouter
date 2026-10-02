@@ -408,7 +408,7 @@ func (r *GroupStore) ListWithFilters(ctx context.Context, params pagination.Pagi
 }
 
 func (r *GroupStore) listWithProviderCountSort(ctx context.Context, q *dbent.GroupQuery, params pagination.PaginationParams, total int) ([]routing.Group, *pagination.PaginationResult, error) {
-	// 第一步：只查 ID + sort_order（轻量，不做分页 — 需要全量排序 provider_count）。
+	// 先查询全部 ID 和 sort_order，供 provider_count 全量排序。
 	rows, err := q.Clone().
 		Select(group.FieldID, group.FieldSortOrder).
 		Order(dbent.Asc(group.FieldSortOrder), dbent.Asc(group.FieldID)).

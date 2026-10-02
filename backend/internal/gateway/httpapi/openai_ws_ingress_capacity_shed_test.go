@@ -41,13 +41,9 @@ func (r *openAIWSIngressCapacityShedRepo) UpdateExtra(context.Context, int64, ma
 	return nil
 }
 
-// TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient 验证ctx_pool 的 ingress 直写路径把 error / response.failed 交给 WS 客户端前，必须和
-// HTTP/SSE（openai_gateway_response_handling.go）与 http_bridge
-// （openai_ws_http_bridge.go）两条路径一样，把容量降载码改写为可重试的
-// server_error：Codex 按闭集判定，server_is_overloaded / slow_down 属致命集，
-// 客户端会打印 "Selected model is at capacity" 并直接终止会话而不是退避重试。
-//
-// 第二个用例锁住改写范围：非容量类错误码必须原样下发，客户端依赖原码各自处理。
+// TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient 验证 ctx_pool 将 error / response.failed 中的容量降载码改写为 server_error。
+// HTTP/SSE 与 http_bridge 使用相同规则。Codex 将 server_is_overloaded / slow_down 视为致命错误，打印 “Selected model is at capacity” 后终止会话；server_error 会触发退避重试。
+// 非容量类错误码原样下发，客户端根据错误码处理。
 func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -186,7 +182,7 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 	}
 }
 
-// TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn 验证ctx_pool 必须在错误早退前保存风控证据和用量，供 handler 的 AfterTurn 消费。
+// TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn 验证 ctx_pool 在错误返回前保存风控证据和用量，供 AfterTurn 使用。
 func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *testing.T) {
 	tests := []struct {
 		name          string

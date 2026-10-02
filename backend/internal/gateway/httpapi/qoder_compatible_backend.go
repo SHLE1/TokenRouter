@@ -109,7 +109,7 @@ func (h *QoderCompatibleRuntime) Execution(c *gin.Context, call QoderCompatibleC
 		inboundEndpoint := GetInboundEndpoint(c)
 		upstreamEndpoint := GetUpstreamEndpoint(c, provider.Snapshot().Platform)
 
-		// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
+		// 入队前捕获资金和报文数据，worker 使用这份快照。
 		completionInput := provider.Completion(CompletionContext(c), QoderCompletionCapture{
 			Result: result, Key: apiKey, Subscription: subscription,
 			InboundEndpoint: inboundEndpoint, UpstreamEndpoint: upstreamEndpoint, UserAgent: userAgent, ClientIP: clientIP,

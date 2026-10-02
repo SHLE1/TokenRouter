@@ -24,7 +24,7 @@ func (r *entryKeyReader) Reauthenticate(context.Context, *apikey.APIKey, apikey.
 	return nil, apikey.ErrAPIKeyNotFound
 }
 
-// TestEntryAccessKeepsProjectionIndependentAndLazy 验证投影不提前刷新策略；模型和 effort 映射不能因本次连接处理污染原认证快照。
+// TestEntryAccessKeepsProjectionIndependentAndLazy 验证策略按需刷新，模型和 effort 映射使用独立数据，认证快照保持原样。
 func TestEntryAccessKeepsProjectionIndependentAndLazy(t *testing.T) {
 	reader := &entryKeyReader{}
 	key := &apikey.APIKey{ID: 9, UserID: 7, Key: "fixture-key", ModelMapping: map[string]string{"alias": "original"}, Group: &routing.Group{ReasoningEffortMappings: []routing.ReasoningEffortMapping{{}}}}

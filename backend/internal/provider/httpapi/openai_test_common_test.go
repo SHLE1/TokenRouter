@@ -58,7 +58,7 @@ func (r *openAIProbeStore) SetError(_ context.Context, id int64, errorMsg string
 	return nil
 }
 
-// 输出夹具不保存 Gin 状态，使用真实请求和响应记录器。
+// 输出夹具使用 HTTP 请求和响应记录器。
 type openAIProbeOutput struct {
 	Request  *http.Request
 	recorder *httptest.ResponseRecorder

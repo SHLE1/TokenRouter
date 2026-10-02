@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// provideOpenAIQuota 直接组合提供商查询、原连接写入及共享 task 协调器。
+// provideOpenAIQuota 组合提供商查询、数据库写入和共享任务协调器。
 func provideOpenAIQuota(admin *provider.Admin, store *postgres.ProviderStore, proxies egress.ProxyRepository, transport httpclient.UpstreamTransport, token *provider.OpenAITokenSource, profiles *egressprovider.TLSProfiles, routers *egress.TLSFingerprintRouterService, connections *gatewayhttp.OpenAIWSConnections, coordinator *provider.OpenAITaskCoordinator) *provider.OpenAIQuotaService {
 	factory := &provideradapter.OpenAIQuotaFactory{
 		Proxy: proxies.GetByID, Transport: transport, Profiles: profiles, Routers: routers,

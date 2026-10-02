@@ -1,5 +1,5 @@
 <template>
-  <!-- 管理员配置的购买说明，按脚注样式左对齐展示，不再单独占一张居中卡片。 -->
+  <!-- 管理员配置的购买说明按脚注样式左对齐展示。 -->
   <div class="flex items-start gap-3 text-sm text-gray-500 dark:text-dark-400">
     <Icon name="infoCircle" size="sm" :animate-on-hover="false" class="mt-0.5 shrink-0 text-gray-400 dark:text-dark-500" />
     <div class="min-w-0 flex-1 space-y-3">

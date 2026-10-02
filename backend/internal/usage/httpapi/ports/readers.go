@@ -41,7 +41,7 @@ type Settings interface {
 	IsUserErrorViewAllowed(context.Context) bool
 }
 
-// 函数投影只适配调用结果，不增加查询、缓存或权限规则。
+// KeyQueries 将 Key 查询和所有权检查委托给注入的函数。
 type KeyQueries struct {
 	Lookup    func(context.Context, int64) (*KeyReference, error)
 	Ownership func(context.Context, int64, []int64) ([]int64, error)

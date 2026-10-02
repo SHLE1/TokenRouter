@@ -11,7 +11,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// provideBackgroundRefresh 直接绑定唯一刷新运行实例，构造不启动维护任务。
+// provideBackgroundRefresh 构造共享的刷新实例，维护任务由生命周期管理器启动。
 func provideBackgroundRefresh(store *postgres.ProviderStore, refresh *provider.OAuthRefreshAPI, cfg *config.Config, registrations providerRefreshRegistrations, post *provider.RefreshPostActions, observer provider.RefreshFailureObserver) *provider.BackgroundRefreshService {
 	v := cfg.TokenRefresh
 	tuning := &provider.RefreshTuning{

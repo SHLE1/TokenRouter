@@ -292,7 +292,7 @@ export const getUserSteps = (t: (key: string) => string): DriveStep[] => [
 
 /**
  * 团队功能导览流程
- * 只展示功能入口，不触发邀请、密钥创建等会写入数据的操作。
+ * 导览展示邀请、密钥创建等功能的入口。
  */
 export const getTeamSteps = (t: (key: string) => string, isOwner: boolean, hasTeam = true): RoutedDriveStep[] => {
   if (!hasTeam) {

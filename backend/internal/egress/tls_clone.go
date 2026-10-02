@@ -44,7 +44,7 @@ func clonePointer[T any](p *T) *T {
 	return &copied
 }
 
-// CloneTLSProfiles 用于缓存序列化边界，保留原数组的空值形状。
+// CloneTLSProfiles 为缓存序列化复制 TLS 配置数组，区分 nil 和空数组。
 func CloneTLSProfiles(values []*TLSFingerprintProfile) []*TLSFingerprintProfile {
 	if values == nil {
 		return nil
@@ -56,7 +56,7 @@ func CloneTLSProfiles(values []*TLSFingerprintProfile) []*TLSFingerprintProfile 
 	return out
 }
 
-// CloneTLSRouters 用于缓存序列化边界，保留原数组的空值形状。
+// CloneTLSRouters 为缓存序列化复制 TLS 路由数组，区分 nil 和空数组。
 func CloneTLSRouters(values []*TLSFingerprintRouter) []*TLSFingerprintRouter {
 	if values == nil {
 		return nil

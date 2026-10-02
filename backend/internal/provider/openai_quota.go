@@ -105,8 +105,8 @@ func (s *OpenAIQuotaService) QueryUsage(ctx context.Context, providerID int64) (
 	return &usage, nil
 }
 
-// CacheResetCreditsSnapshot 保存显式查询得到的完整重置次数快照。
-// 正数次数必须附带到期明细，否则保留旧缓存，避免前端长期展示无法自然失效的次数。
+// CacheResetCreditsSnapshot 保存手动查询得到的完整重置次数快照。
+// 正数次数附带到期明细时才更新缓存，前端按明细到期时间刷新次数。
 func (s *OpenAIQuotaService) CacheResetCreditsSnapshot(ctx context.Context, providerID int64, credits *wire.OpenAIRateLimitResetCredits) error {
 	ctx, done, activityErr := s.activity.begin(ctx, ErrOpenAIQuotaStopped)
 	if activityErr != nil {
@@ -222,7 +222,7 @@ func (s *OpenAIQuotaService) ResetCredit(ctx context.Context, providerID int64) 
 	if err != nil {
 		return nil, err
 	}
-	// 影子提供商共享母提供商凭据和额度，重置次数必须显式在母提供商上操作，避免误把影子操作扩散到全局额度。
+	// 影子提供商与母提供商共用凭据和额度，重置操作需要指定母提供商。
 	if provider.IsCredentialShadow() {
 		return nil, ErrSparkShadowResetNotSupported
 	}

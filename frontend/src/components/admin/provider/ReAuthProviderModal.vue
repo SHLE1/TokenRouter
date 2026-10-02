@@ -287,7 +287,7 @@ const currentError = computed(() => {
   return claudeOAuth.error.value
 })
 
-// 页脚“完成认证”只用于授权码交换流程，不适用于 SSO、密码或刷新令牌流程。
+// 授权码交换流程使用页脚“完成认证”按钮。
 const isManualInputMethod = computed(() => {
   const method = oauthFlowRef.value?.inputMethod
   if (method === 'sso_cookie' || method === 'email_password' || method === 'refresh_token') {

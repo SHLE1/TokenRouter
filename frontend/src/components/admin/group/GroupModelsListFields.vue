@@ -107,7 +107,7 @@ const props = defineProps<{
   state: ModelsListState
   loading: boolean
 }>()
-// 列表选择和排序写回页面持有的独立草稿，候选目录更新时沿用现有合并规则。
+// 列表选择和排序写回页面草稿，候选目录更新时合并模型列表。
 const emit = defineEmits<{
   enabled: [value: boolean]
   select: [id: string, value: boolean]

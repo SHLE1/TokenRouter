@@ -81,7 +81,7 @@ func UserFromIdentityShallow[K any](u *identity.User) *User[K] {
 	}
 }
 
-// UserFromIdentity 投影当前用户与已有订阅；Key 关联由消费者提供独立展示值。
+// UserFromIdentity 将用户、订阅和调用方提供的 Key 展示值转换为响应。
 func UserFromIdentity[K any](u *identity.User, keys []K) *User[K] {
 	out := UserFromIdentityShallow[K](u)
 	if out == nil {

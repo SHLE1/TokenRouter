@@ -4,7 +4,7 @@ import (
 	"maps"
 )
 
-// ModelMappingDefaults 按需投影平台默认目录，不建立第二份别名缓存。
+// ModelMappingDefaults 按需读取平台默认模型目录。
 type ModelMappingDefaults struct {
 	// Models 按提供商平台和认证类型提供当前默认模型目录。
 	Models                func(*Record) []string

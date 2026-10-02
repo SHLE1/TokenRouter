@@ -240,7 +240,7 @@ describe('GroupsView duplicate action', () => {
     await wrapper.vm.$nextTick()
 
     expect(duplicateGroup).toHaveBeenCalledTimes(1)
-    // 请求期间重新打开菜单仍禁用复制，避免重复提交。
+    // 请求期间复制按钮保持禁用，重新打开菜单时也使用此状态。
     await wrapper.get('[data-testid="group-more"]').trigger('click')
     const pendingButton = wrapper.get('[data-testid="group-duplicate"]')
     expect(pendingButton.attributes('disabled')).toBeDefined()

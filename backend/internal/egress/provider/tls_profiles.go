@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 )
 
-// TLSProfiles 把唯一策略实例的结果转换为传输指纹，不持有提供商或第二份缓存。
+// TLSProfiles 将 TLS 策略服务返回的配置转换为传输指纹。
 type TLSProfiles struct {
 	*egress.TLSFingerprintProfileService
 }
@@ -21,7 +21,7 @@ func (p *TLSProfiles) core() *egress.TLSFingerprintProfileService {
 	return p.TLSFingerprintProfileService
 }
 
-// ResolveRequestTLS 接收调用方已投影的资格与匹配结果，保持原优先级及 nil 短路。
+// ResolveRequestTLS 根据提供商资格和路由匹配结果解析 TLS 策略，再转换为传输指纹。
 func (p *TLSProfiles) ResolveRequestTLS(selection egress.TLSSelection) *tlsfingerprint.Profile {
 	return ToTLSProfile(p.core().ResolveRequestPolicy(selection).TLSProfile)
 }

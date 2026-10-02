@@ -7,8 +7,10 @@ import (
 )
 
 // DefaultRetentionDays 与存储键保持原值。
-const DefaultRetentionDays = 180
-const SettingKeyAuditLogRetentionDays = "audit_log_retention_days"
+const (
+	DefaultRetentionDays            = 180
+	SettingKeyAuditLogRetentionDays = "audit_log_retention_days"
+)
 
 // RetentionSettingsStore 只读取审计生命周期所需配置。
 type RetentionSettingsStore interface {
@@ -23,7 +25,7 @@ func NewRetentionSettings(repo RetentionSettingsStore) *RetentionSettings {
 	return &RetentionSettings{settingRepo: repo}
 }
 
-// GetAuditLogRetentionDays 保留原保留期读取及永久保留语义。
+// GetAuditLogRetentionDays 读取审计保留天数，零表示永久保留。
 func (s *RetentionSettings) GetAuditLogRetentionDays(ctx context.Context) int {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAuditLogRetentionDays)
 	if err != nil {

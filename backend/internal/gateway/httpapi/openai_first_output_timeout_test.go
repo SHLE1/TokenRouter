@@ -153,7 +153,7 @@ func TestOpenAIFirstOutputTimeoutForReasoningEffort(t *testing.T) {
 	require.Equal(t, 300*time.Second, svc.Output.FirstOutputTimeout("xhigh"))
 	require.Equal(t, 300*time.Second, svc.Output.FirstOutputTimeout("max"))
 
-	// 显式 max 已实际透传第三方上游，首输出等待应与其它高推理档位一致。
+	// 请求指定的 max 透传至第三方上游，首输出等待时间与其他高推理档位一致。
 	effort := requeststate.ExtractOpenAIReasoningEffortFromBody(
 		[]byte(`{"model":"deepseek-v4-flash","reasoning":{"effort":"max"}}`))
 	require.NotNil(t, effort)

@@ -14,14 +14,14 @@ const (
 	MaxPersistentUserAgentBytes = 512
 )
 
-// AuthSubject 只供旧 context 消费者投影；新身份使用 Principal。
+// AuthSubject 保存 Gin context 使用的用户 ID 和并发数，认证身份使用 Principal。
 type AuthSubject struct {
 	UserID      int64
 	Concurrency int
 }
 
 // authenticationRecord 是请求认证的唯一来源，兼容字段供直接读取请求上下文的调用方使用。
-// API Key 的行为身份与旧付款用户投影分开保存，不能把付款人的管理员角色赋给 Key 身份。
+// authenticationRecord 分别保存 API Key 的调用身份和付款用户资料，角色取自调用身份。
 type authenticationRecord struct {
 	Principal  identity.Principal
 	Subject    AuthSubject
@@ -77,7 +77,7 @@ func GetUserRoleFromContext(c *gin.Context) (string, bool) {
 	return role, ok
 }
 
-// SetAuthenticatedPrincipal 固定旧网关已完成的付款/并发投影，同时以真实行为身份保存 Principal。
+// SetAuthenticatedPrincipal 保存调用身份，并复制网关已解析的付款用户和并发资料。
 func SetAuthenticatedPrincipal(c *gin.Context, p identity.Principal) {
 	record := authenticationRecord{Principal: p}
 	if v, ok := c.Get(ContextKeyUser); ok {

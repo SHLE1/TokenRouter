@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// Tasks 只跟踪已有异步工作的完成，不改变其 context、并发数或重试策略。
+// Tasks 跟踪异步任务的完成状态，context、并发数和重试策略由调用方管理。
 // 等待期间允许在途任务继续派生子任务；全部完成后才封闭最终停止入口。
 type Tasks struct {
 	mu       sync.Mutex
@@ -25,7 +25,7 @@ func NewTasks() *Tasks {
 	return &Tasks{active: make(map[string]int), idle: idle}
 }
 
-// Go 的任务参数应在调用方提前求值，与原 go 语句保持一致。
+// Go 的任务参数需要在调用方提前求值，再传入闭包。
 func (t *Tasks) Go(name string, fn func()) bool {
 	t.mu.Lock()
 	if t.closed {
@@ -61,7 +61,7 @@ func (t *Tasks) complete(name string) {
 	}
 }
 
-// Wait 是消费层之间的完成屏障；后续消费层仍可提交原有异步副作用。
+// Wait 等待当前消费层派生的任务完成，后续消费层仍可提交异步任务。
 func (t *Tasks) Wait(ctx context.Context) error { return t.wait(ctx, false) }
 
 // Stop 在最后一个生产者完成后调用，最终封闭任务入口。

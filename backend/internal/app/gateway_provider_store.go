@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// executionProviderStore 不拥有连接或备用构造路径，只引用原生存储。
+// executionProviderStore 通过提供商存储执行读写操作。
 type executionProviderStore struct {
 	usage *billingpostgres.ProviderUsageStore
 	data  *providerpostgres.ProviderStore

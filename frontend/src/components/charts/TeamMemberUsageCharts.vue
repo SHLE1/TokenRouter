@@ -66,7 +66,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()
 
-// 颜色按成员稳定分配，避免日期刷新后折线颜色跳变。
+// 颜色按成员分配，刷新日期后使用同一颜色。
 // 成员配色是固定业务语义(跨图表按成员稳定取色),不入分布图色板。
 const palette = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#4d7c0f', '#475569', '#ea580c']
 const { colors: themeColors } = useChartTheme()

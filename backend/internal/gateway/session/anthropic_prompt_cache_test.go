@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAnthropicPromptCacheScopePrefixAndExpiry 验证摘要续接保持提供商/Key 隔离、最长前缀、旧链替换与原到期边界。
+// TestAnthropicPromptCacheScopePrefixAndExpiry 检查提供商和 Key 隔离、最长前缀匹配、旧链替换和到期清理。
 func TestAnthropicPromptCacheScopePrefixAndExpiry(t *testing.T) {
 	now := time.Date(2026, 9, 23, 0, 0, 0, 0, time.UTC)
 	store := NewAnthropicPromptCache(func() time.Time { return now })

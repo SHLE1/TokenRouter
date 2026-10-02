@@ -327,7 +327,7 @@ func TestCreativeWorkerRuntimeParallelProviderExecution(t *testing.T) {
 		t.Fatal("两个创作台任务未同时进入 platform")
 	}
 	executor.allow()
-	// 并行成功契约等待两条链完成，再单独验证停止；停止取消由专门回归覆盖。
+	// 等待两个并行任务成功后检查停止，停止时的取消行为由专门测试覆盖。
 	require.Eventually(t, func() bool {
 		first, e1 := repo.GetCreativeRunByRunID(context.Background(), "crun_parallel_1")
 		second, e2 := repo.GetCreativeRunByRunID(context.Background(), "crun_parallel_2")

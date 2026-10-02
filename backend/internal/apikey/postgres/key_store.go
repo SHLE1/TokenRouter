@@ -1134,7 +1134,7 @@ func (r *KeyStore) GetRateLimitData(ctx context.Context, id int64) (result *keyc
 	return billingpostgres.NewKeyUsageStore(r.client, r.sql).GetRateLimitData(ctx, id)
 }
 
-// UsageTotalsReader 提供用量排序所需的完整查询，保留过滤与回退语义。
+// UsageTotalsReader 按 Key ID 查询用于排序的用量汇总。
 type UsageTotalsReader func(context.Context, []int64) (map[int64]float64, error)
 
 func (r *KeyStore) KeyLoadAPIKeyUsageTotals(ctx context.Context, ids []int64) (map[int64]float64, error) {

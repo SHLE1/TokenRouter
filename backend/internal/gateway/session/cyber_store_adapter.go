@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// legacyCyberSessionBlockStore 兼容迁移前缓存接口，避免旧部署在升级后静默失去会话屏蔽。
+// legacyCyberSessionBlockStore 适配单键缓存接口，使使用该接口的部署继续支持会话屏蔽。
 type legacyCyberSessionBlockStore interface {
 	SetCyberSessionBlocked(ctx context.Context, key string, ttl time.Duration) error
 	IsCyberSessionBlocked(ctx context.Context, key string) (bool, error)
@@ -51,7 +51,7 @@ func (a legacyCyberSessionBlockStoreAdapter) FindCyberSessionBlocked(ctx context
 
 const cyberSessionTranscriptLookupOverflowBlockKey = "transcript_lookup_limit_exceeded"
 
-// AdaptCyberSessionBlockStore 保留可选能力与旧缓存的读取/写入语义，不创建缓存。
+// AdaptCyberSessionBlockStore 优先使用批量屏蔽接口，缺少该接口时适配单键缓存。
 func AdaptCyberSessionBlockStore(cache GatewayCache) CyberSessionBlockStore {
 	if cache == nil {
 		return nil

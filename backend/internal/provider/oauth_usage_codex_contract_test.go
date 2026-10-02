@@ -68,7 +68,7 @@ func TestShouldRefreshOpenAICodexSnapshot_SparkShadowIgnoresWSv2(t *testing.T) {
 		t.Fatal("expected stale spark shadow (no WSv2) to trigger refresh")
 	}
 
-	// 影子时间戳仍新鲜则不刷新，确保 TTL 生效。
+	// 影子快照时间戳在 TTL 内时使用缓存。
 	shadowFresh := &Record{
 		Platform:         capability.PlatformOpenAI,
 		Type:             capability.ProviderTypeOAuth,

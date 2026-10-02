@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ProviderManagement 只表达 HTTP 使用的提供商用例，不暴露具体存储。
+// ProviderManagement 提供 HTTP 管理入口需要的业务操作。
 type ProviderManagement interface {
 	BulkUpdateProviders(context.Context, *providercore.BulkUpdateProvidersInput) (*providercore.BulkUpdateProvidersResult, error)
 	SetProviderSchedulable(context.Context, int64, bool) (*providercore.Record, error)
@@ -35,7 +35,7 @@ func (f ProviderRuntimePresenterFunc) Present(ctx context.Context, v *providerco
 	return f(ctx, v)
 }
 
-// ManagementHandler 保留原管理员 HTTP 契约，运行投影与 Ollama 用量通过已装配端口取得。
+// ManagementHandler 处理管理员请求，通过绑定的接口读取运行状态和 Ollama 用量。
 type ManagementHandler struct {
 	idempotencyhttp.Executor
 
@@ -105,7 +105,7 @@ func (h *ManagementHandler) GetByID(c *gin.Context) {
 	response.Success(c, h.presenter.Present(c.Request.Context(), provider))
 }
 
-// Delete 删除提供商并保持原确认响应。
+// Delete 删除提供商并返回确认响应。
 // DELETE /api/v1/admin/providers/:id
 func (h *ManagementHandler) Delete(c *gin.Context) {
 	providerID, err := strconv.ParseInt(c.Param("id"), 10, 64)

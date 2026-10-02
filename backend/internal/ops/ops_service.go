@@ -474,7 +474,7 @@ func (s *OpsService) prepareErrorLogInput(ctx context.Context, entry *OpsInsertE
 		entry.ErrorType = "api_error"
 	}
 
-	// 凭据获取属于网关提供商认证阶段，而非推理 HTTP 尝试。
+	// 凭据获取错误归入网关提供商认证阶段。
 	// 在持久化边界强制该归属，避免较早的推理尝试状态或文本泄漏到顶层认证字段，
 	// 即使调用方传入了过期的单值上下文也不例外。
 	for i := len(entry.UpstreamErrors) - 1; i >= 0; i-- {
@@ -648,7 +648,7 @@ func (s *OpsService) ListUserErrorRequests(ctx context.Context, userID int64, fi
 	uid := userID
 	filter.UserID = &uid
 	// APIKeyID 透传：保留 handler 传入的值。安全由 buildOpsErrorLogsWhere 的
-	// "user_id = 自己 AND api_key_id = X" 双重约束保证——传入他人 key 只会得到空集，无泄露。
+	// “user_id = 自己 AND api_key_id = X”约束，传入他人 key 时查询返回空集。
 	filter.View = "all"
 	filter.ExcludeCountTokens = true
 	filter.ModelFuzzy = true // 用户端模型过滤走 ILIKE 模糊；管理端不设此字段，保持精确
@@ -656,10 +656,8 @@ func (s *OpsService) ListUserErrorRequests(ctx context.Context, userID int64, fi
 	filter.UserQuery = ""
 	filter.Owner = ""
 	filter.Source = ""
-	// 清空 Phase 是防御:用户端一律改走 category→ErrorPhasesAny/ErrorTypesAny
-	//（纯 ANY 过滤,不影响 status>=400 子句）。守卫豁免现在还需要
-	// IncludeRecoveredUpstream(用户端永不设置),recovered upstream
-	//（error_phase='upstream' 但 status<400,最终成功返回）记录对用户不可见——符合预期。
+	// 用户查询将 category 转换为 ErrorPhasesAny 和 ErrorTypesAny，并清空 Phase。
+	// 查询要求客户端状态码大于等于 400，最终成功的 recovered upstream 记录对用户隐藏。
 	filter.Phase = ""
 	filter.IncludeRecoveredUpstream = false
 

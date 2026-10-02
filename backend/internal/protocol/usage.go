@@ -1,6 +1,6 @@
 package protocol
 
-// ClaudeUsage 表示Claude API返回的usage信息
+// TokenUsage 保存输入、输出和缓存 token 用量。
 type TokenUsage struct {
 	InputTokens              int `json:"input_tokens"`
 	OutputTokens             int `json:"output_tokens"`
@@ -13,8 +13,7 @@ type TokenUsage struct {
 	Speed string `json:"speed,omitempty"`
 }
 
-// HasObservedTokens 区分已观测 token 和缺少计量，保留原判断。
-// HasObservedTokens 报告流式过程中是否已观测到任何上游计量 token。
+// HasObservedTokens 判断是否观测到正数 token 用量。
 func (u *TokenUsage) HasObservedTokens() bool {
 	if u == nil {
 		return false

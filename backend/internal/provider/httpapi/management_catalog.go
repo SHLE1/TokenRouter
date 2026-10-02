@@ -33,7 +33,7 @@ type grokCatalogModel struct {
 	DisplayName string `json:"display_name,omitempty"`
 }
 
-// GetAvailableModels 只读取提供商投影、组合目录用例并输出原 wire 变体。
+// GetAvailableModels 读取提供商数据，查询模型目录并编码为接口响应。
 func (h *ManagementHandler) GetAvailableModels(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

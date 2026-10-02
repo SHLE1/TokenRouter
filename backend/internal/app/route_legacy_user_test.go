@@ -16,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterUserRoutes 注册用户相关路由（需要认证）
+// RegisterUserRoutes 注册需要认证的用户路由。
 func RegisterUserRoutes(
 	v1 *gin.RouterGroup,
 	h *routeTestHandlers,

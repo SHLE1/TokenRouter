@@ -21,7 +21,7 @@ func NormalizeRecordedReasoningEffort(raw string) string {
 	case "max":
 		return value
 	default:
-		// 只记录已知档位，避免未知客户端字段污染使用记录。
+		// 使用记录接受已知档位，未知值返回空字符串。
 		return ""
 	}
 }

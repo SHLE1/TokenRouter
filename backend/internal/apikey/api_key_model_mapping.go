@@ -55,7 +55,7 @@ func NormalizeAPIKeyModelMapping(mapping map[string]string) (map[string]string, 
 	return normalized, nil
 }
 
-// ResolveModelMapping 只执行一次精确或最长尾通配匹配，不递归处理目标模型。
+// ResolveModelMapping 执行一次精确匹配或最长尾通配匹配，返回命中的目标模型。
 func ResolveModelMapping(mapping map[string]string, requestedModel string) (string, bool) {
 	requestedModel = strings.TrimSpace(requestedModel)
 	if requestedModel == "" || len(mapping) == 0 {

@@ -11,7 +11,7 @@ import (
 )
 
 // TestGetOpenAIProtocolAPIKey_CNProviders 验证 OpenAI 协议族密钥读取覆盖国产供应商，
-// 同时保持 IsOpenAIApiKey 的 openai-only 语义（调度倍率/WS 门控不受影响）。
+// IsOpenAIApiKey 在 OpenAI 平台返回 true，调度倍率和 WS 准入按平台判断。
 func TestGetOpenAIProtocolAPIKey_CNProviders(t *testing.T) {
 	t.Parallel()
 
@@ -31,7 +31,7 @@ func TestGetOpenAIProtocolAPIKey_CNProviders(t *testing.T) {
 	}
 	require.Equal(t, "", notAPIKey.GetOpenAIProtocolAPIKey())
 
-	// openai 原生提供商行为不变
+	// OpenAI 提供商使用 OpenAI API Key 分支。
 	openai := &Record{
 		Platform:    capability.PlatformOpenAI,
 		Type:        capability.ProviderTypeAPIKey,

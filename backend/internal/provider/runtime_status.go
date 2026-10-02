@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// RuntimeStatusOptions 复用原并发、会话、RPM 和用量读取，不维护第二份缓存。
+// RuntimeStatusOptions 绑定共享的并发、会话、RPM 和用量读取函数。
 type RuntimeStatusOptions struct {
 	RPMBatch      func(context.Context, []int64) (map[int64]int, error)
 	Now           func() time.Time

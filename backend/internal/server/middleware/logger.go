@@ -93,7 +93,7 @@ func Logger() gin.HandlerFunc {
 }
 
 // appendRequestStageFields 将请求入口、提供商槽位和出站 HTTP 阶段写入访问日志。
-// 这些字段只记录时间与计数，不记录请求体、凭据或上游响应内容。
+// 这些字段记录各阶段耗时与计数。
 func appendRequestStageFields(fields []zap.Field, c *gin.Context) []zap.Field {
 	if c == nil || c.Request == nil {
 		return fields

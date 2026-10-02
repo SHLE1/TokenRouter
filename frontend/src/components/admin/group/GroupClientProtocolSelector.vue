@@ -158,7 +158,7 @@ const emit = defineEmits<{
   'update:imagePolicy': [value: CodexImageToolMode]
 }>()
 const { t } = useI18n()
-// 分组单独说明继承来源和请求行为，选项值沿用现有四态契约。
+// 分组图片策略有继承、启用、禁用和拦截四种取值，选项说明各自的来源和请求行为。
 const imageModes = ['inherit', 'enabled', 'disabled', 'block'] as const
 const imageOptions = computed(() =>
   imageModes.map((value) => ({
@@ -256,7 +256,7 @@ function removeTarget(source: ProtocolID, index: number) {
 </script>
 
 <style scoped>
-/* 行内转换策略下拉压到 32px 与紧凑协议行同高，仅作用于本组件，不影响其他 Select。 */
+/* 组件内的转换策略下拉框高 32px，与紧凑协议行同高。 */
 .protocol-mode-select :deep(.input-trigger) {
   @apply min-h-8 px-3 py-1 text-xs;
 }

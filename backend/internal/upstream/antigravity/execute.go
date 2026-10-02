@@ -28,7 +28,7 @@ const (
 	ModeStaticClaudeResponse
 )
 
-// Target 只携带单次技术选项及受控端口，不包含提供商实体或凭据集合。
+// Target 配置单次请求的模型、输出格式、交换和响应处理回调。
 type Target struct {
 	OutputError    func(error)
 	ProviderID     int64
@@ -254,7 +254,7 @@ func (s *observedSink) Emit(event upstream.OutputEvent) error {
 		event.Semantic = event.Semantic || semantic || a.Semantic || g.Semantic
 		event.Terminal = event.Terminal || terminal || a.Terminal || g.Terminal
 	}
-	// 原 Antigravity 入口以实际写出字节关闭普通重试窗口；语义内容和 TTFT 单独报告。
+	// Antigravity 写出字节时关闭普通重试窗口，内容输出和 TTFT 分别记录。
 	event.CommitForRetry = event.CommitForRetry || len(event.Data) > 0
 	return s.OutputSink.Emit(event)
 }

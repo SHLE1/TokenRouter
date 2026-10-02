@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 )
 
-// SnapshotContext 只固化原有三个关联字段及模型链，不继承请求取消或 Gin。
+// SnapshotContext 将三个关联字段和模型映射复制到独立 context，供请求结束后记录使用。
 func SnapshotContext(source context.Context) context.Context {
 	return copyCompletionContext(context.Background(), source)
 }

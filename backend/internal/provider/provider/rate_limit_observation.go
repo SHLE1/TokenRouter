@@ -97,10 +97,8 @@ func (s *RateLimitObserver) Observe429(ctx context.Context, provider *providerco
 			}
 		}
 
-		// Anthropic 平台：没有限流重置时间的 429 可能是非真实限流（如 Extra usage required），
-		// 不适合按 5h/7d 窗口长时间封禁；但完全不标记会导致提供商永不冷却，
-		// 调度器会让每个请求反复命中同一批持续返回 429 的提供商并耗尽 failover 预算。
-		// 因此使用可配置的秒级兜底回避，管理端仍可调整或关闭。
+		// Anthropic 的 429 缺少重置时间时，使用管理端配置的秒级冷却。
+		// 这类响应可能来自 Extra usage required 等错误，短期停调后可重新尝试，管理员也可关闭该冷却。
 		if provider.Platform == capability.PlatformAnthropic {
 			slog.Warn("rate_limit_429_no_reset_time",
 				"provider_id", provider.ID,
@@ -110,7 +108,7 @@ func (s *RateLimitObserver) Observe429(ctx context.Context, provider *providerco
 			return
 		}
 
-		// 其他平台：没有重置时间，使用可配置的秒级默认回避，避免误伤长时间不可调度。
+		// 其他平台缺少重置时间时，使用配置的秒级冷却。
 		s.Health.Apply429Fallback(ctx, provider, "no_reset_time")
 		return
 	}
@@ -137,7 +135,7 @@ func (s *RateLimitObserver) Observe429(ctx context.Context, provider *providerco
 	slog.Info("provider_rate_limited", "provider_id", provider.ID, "reset_at", resetAt)
 }
 
-// PersistCodexSnapshot 先执行原影子/空头短路，再投影观测给提供商核心。
+// PersistCodexSnapshot 跳过影子提供商和空响应头，将有效观测写入提供商快照。
 func (s *RateLimitObserver) PersistCodexSnapshot(ctx context.Context, value *providercore.Record, headers http.Header) {
 	if s == nil || s.Health == nil || value == nil || headers == nil || value.IsShadow() {
 		return
@@ -145,7 +143,7 @@ func (s *RateLimitObserver) PersistCodexSnapshot(ctx context.Context, value *pro
 	s.Health.PersistCodexObservation(ctx, value, openaiupstream.ParseCodexRateLimitHeaders(headers))
 }
 
-// RateLimitObserver 组合供应商限流观测与原生健康写入；自身不持有缓存或存储客户端。
+// RateLimitObserver 解析供应商限流响应并调用健康状态写入函数。
 type RateLimitObserver struct {
 	Health          *providercore.HealthService
 	Plans           providercore.OpenAIPlanWriter

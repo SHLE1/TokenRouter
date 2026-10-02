@@ -29,7 +29,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// grokForwardAdapter 只持有本次受控凭据与旧能力引用，不保存新的会话/健康状态。
+// grokForwardAdapter 保存本次请求的凭据和执行接口引用。
 type grokForwardAdapter struct {
 	s               *GrokExecutor
 	c               *gin.Context

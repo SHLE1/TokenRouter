@@ -285,7 +285,7 @@ func registerPricingConfigRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
 	routerouting.RegisterPricingRoutes(admin, h.Admin.PricingConfig)
 }
 
-// registerSettingsRoutes 使用原生端点登记路由形状；此夹具不执行设置读写。
+// registerSettingsRoutes 用 HTTP 端点登记设置路由，供路由清单测试检查。
 func registerSettingsRoutes(admin *gin.RouterGroup, h *routeTestHandlers) {
 	group := admin.Group("/settings")
 	routesettings.RegisterSettingsSettingsRoutes(group, &routesettings.Handler{}, &routesettings.PreAggregationHandler{})

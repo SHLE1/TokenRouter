@@ -21,7 +21,7 @@
       </span>
     </div>
 
-    <!-- 右侧：负载、倍率、勾选同一行，避免负载胶囊下沉到第二行。 -->
+    <!-- 右侧同排展示负载、倍率和勾选状态。 -->
     <div class="flex shrink-0 flex-wrap items-start justify-end gap-2 pt-0.5">
       <GroupCapacityBadge
         v-if="capacity"

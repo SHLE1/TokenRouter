@@ -17,7 +17,7 @@ type ProviderWithConcurrency struct {
 	CurrentRPM        *int     `json:"current_rpm,omitempty"`         // 当前分钟 RPM 计数
 }
 
-// 调度展示值由提供商管理用例拥有，JSON 保持原契约。
+// 提供商管理用例计算调度展示值，HTTP 将其编码为 JSON。
 type (
 	ProviderSchedulerScore      = providercore.ProviderSchedulerScore
 	ProviderSchedulerGroupScore = providercore.ProviderSchedulerGroupScore

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCRSClientHTTPContract 验证使用本地服务器验证真实 HTTP 顺序、认证头与原错误/读取边界，不访问供应商。
+// TestCRSClientHTTPContract 通过本地服务器检查 HTTP 顺序、认证头、错误和响应读取上限。
 func TestCRSClientHTTPContract(t *testing.T) {
 	for _, mode := range []string{"success", "login_error", "blank_token", "login_oversize", "export_error", "export_oversize"} {
 		t.Run(mode, func(t *testing.T) {

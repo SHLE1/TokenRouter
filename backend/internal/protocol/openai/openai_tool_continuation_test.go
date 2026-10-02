@@ -9,7 +9,7 @@ import (
 )
 
 func TestNeedsToolContinuationSignals(t *testing.T) {
-	// 覆盖所有触发续链的信号来源，确保判定逻辑完整。
+	// 覆盖触发续接的各类信号。
 	cases := []struct {
 		name string
 		body map[string]any
@@ -40,7 +40,7 @@ func TestNeedsToolContinuationSignals(t *testing.T) {
 }
 
 func TestHasFunctionCallOutput(t *testing.T) {
-	// 所有 Codex 工具输出都应视为续链输出，避免 WS 续链时丢失 previous_response_id。
+	// Codex 工具输出参与续接判断，WS 据此保留 previous_response_id。
 	require.False(t, openai.HasFunctionCallOutput(nil))
 	for _, typ := range []string{
 		"function_call_output",
@@ -122,7 +122,7 @@ func TestHasItemReferenceForCallIDs(t *testing.T) {
 }
 
 func TestValidateFunctionCallOutputContextBytesMatchesMapValidation(t *testing.T) {
-	// handler 预校验走 raw JSON 扫描，语义必须与 service 内部 map 校验保持一致。
+	// handler 的 raw JSON 预校验与 service 的 map 校验应得到相同结果。
 	cases := []struct {
 		name string
 		body map[string]any
@@ -234,8 +234,8 @@ func TestAnalyzeToolCallOutputContextCoverageBytes(t *testing.T) {
 			coversAllIDs: true,
 		},
 		{
-			// 关键回归用例：input 内存在某一个上下文项，但另一个输出的 call_id
-			// 只能由上游会话链（previous_response_id）解析——不可剥离。
+			// input 含一个调用的上下文，另一个输出的 call_id 仍需通过 previous_response_id 解析。
+			// 这类请求需要保留上游会话 ID。
 			name: "partial_coverage_not_movable",
 			body: map[string]any{"input": []any{
 				map[string]any{"type": "function_call", "call_id": "call_a"},

@@ -348,7 +348,7 @@ func (r *creativeRunRepository) MarkCreativeRunSucceeded(ctx context.Context, ru
 }
 
 // MarkCreativeRunProviderSucceeded 在输出已经写入 Redis 后记录 platform 成功，
-// 后续只允许 settlement worker 重试计费和落库，不重新调用 platform。
+// 随后由 settlement worker 重试计费与落库，平台执行结果继续复用。
 func (r *creativeRunRepository) MarkCreativeRunProviderSucceeded(ctx context.Context, runID string, providerID int64, now time.Time) error {
 	current, err := r.client.CreativeRun.Query().Where(creativerun.RunIDEQ(runID)).Only(ctx)
 	if err != nil {

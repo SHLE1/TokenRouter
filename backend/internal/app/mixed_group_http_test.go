@@ -35,7 +35,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// mixedHTTPProviders 只提供持久提供商查询，资格与排序使用真实选择器。
+// mixedHTTPProviders 提供持久化提供商查询，生产选择器负责资格检查和排序。
 type mixedHTTPProviders struct {
 	gatewayadapter.ExecutionProviderStore
 	values []gatewayadapter.ExecutionProvider
@@ -85,7 +85,7 @@ func (s *mixedHTTPProviders) BatchUpdateLastUsed(context.Context, map[int64]time
 	return nil
 }
 
-// mixedHTTPTransport 真正经过本地 HTTP server，记录实际选择提供商和上游端点。
+// mixedHTTPTransport 通过本地 HTTP server 记录选中的提供商和上游端点。
 type mixedHTTPTransport struct {
 	mu        sync.Mutex
 	providers []int64

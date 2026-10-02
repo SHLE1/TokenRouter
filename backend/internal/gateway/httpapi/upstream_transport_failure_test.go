@@ -27,13 +27,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// openAITransportProviderRepoStub 只记录临时不可调度调用，其他仓储方法不应被触达。
+// openAITransportProviderRepoStub 记录临时不可调度调用，调用其他仓储方法会使测试失败。
 type openAITransportProviderRepoStub struct {
 	tempUnschedCalls []tempUnschedCall
 }
 
-// TestClassifyUpstreamTransportError 验证传输层上游错误的持久性分类。
-// 持久错误重试同一代理/提供商无意义，应摘除并告警；瞬时错误仅切换提供商，不摘除当前提供商。
+// TestClassifyUpstreamTransportError 验证传输错误按持久性分类。
+// 持久错误摘除提供商并告警，瞬时错误切换提供商，当前提供商保持可调度。
 func TestClassifyUpstreamTransportError(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -262,7 +262,7 @@ type tempUnschedCall struct {
 	reason     string
 }
 
-// transportHealthFixture 夹具保留共享运行状态及真实 Deferred，只组合本文件实际使用的能力。
+// transportHealthFixture 为传输健康测试提供共享运行状态和 Deferred。
 func transportHealthFixture(store *openAITransportProviderRepoStub, deferred *providercore.DeferredService) *GrokExecutor {
 	state := providercore.NewRuntimeBlockState(time.Now)
 	health := &provideradapter.TransportHealth{Runtime: state, Deferred: deferred}

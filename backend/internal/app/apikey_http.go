@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 )
 
-// provideKeyHTTP 直接绑定 Key 用例与容量展示投影，不创建额外认证缓存。
+// provideKeyHTTP 为 Key HTTP 入口绑定业务用例和容量展示数据。
 func provideKeyHTTP(keys *apikey.APIKeyService, capacity *routing.CapacityService, catalogue *routing.RequestableCatalogue, attributes *routing.ModelAttributeService) *keyhttp.APIKeyHandler[dto.Group] {
 	handler := keyhttp.NewAPIKeyHandler(keys, func(group *routing.Group, summary *accessview.GroupCapacitySummary) *dto.Group {
 		result := dto.GroupFromRouting(apikey.RoutingGroup(group))
@@ -44,7 +44,7 @@ func provideKeyHTTP(keys *apikey.APIKeyService, capacity *routing.CapacityServic
 	return handler
 }
 
-// provideKeyAdminHTTP 直接注入 Key 管理用例，管理展示不经过旧实体往返转换。
+// provideKeyAdminHTTP 为管理员 HTTP 入口注入 Key 管理用例。
 func provideKeyAdminHTTP(keys *apikey.Admin) *keyhttp.AdminAPIKeyHandler[dto.Group] {
 	return keyhttp.NewAdminAPIKeyHandler(keys, func(group *routing.Group) *dto.Group {
 		return dto.GroupFromRouting(apikey.RoutingGroup(group))

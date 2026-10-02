@@ -78,7 +78,7 @@ func TestRefreshSingleProviderRoutesGrokThroughGrokOAuthService(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, warning)
 	require.Equal(t, 1, grokOAuth.calls)
-	// 原始提供商的数据必须完整传入；原生记录的时钟函数不参与值比较。
+	// 传入完整的提供商记录，值比较跳过记录中的时钟函数。
 	require.Equal(t, provider, grokOAuth.provider)
 	require.Equal(t, "new-access", adminSvc.updatedCredentials["access_token"])
 	require.Equal(t, "new-refresh", adminSvc.updatedCredentials["refresh_token"])

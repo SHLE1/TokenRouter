@@ -541,7 +541,7 @@ func (r *UserStore) List(ctx context.Context, params pagination.PaginationParams
 }
 
 func (r *UserStore) ListWithFilters(ctx context.Context, params pagination.PaginationParams, filters identitycore.UserListFilters) ([]identitycore.User, *pagination.PaginationResult, error) {
-	// SkipSoftDelete 仅作用于 User 身份解析（下方 Count/All）；订阅、分组等关联实体沿用原始 ctx，避免穿透到这些同样带软删除的实体而带出已删除行。
+	// SkipSoftDelete 用于 User 的 Count/All 查询，订阅和分组使用传入的 ctx，继续过滤软删除记录。
 	userCtx := ctx
 	if filters.IncludeDeleted {
 		userCtx = mixins.SkipSoftDelete(ctx)

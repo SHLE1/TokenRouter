@@ -26,7 +26,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// wsPassthroughAdapter 仅持有本次平台执行凭据、握手参数与单次原语，不拥有 turn/retry 状态。
+// wsPassthroughAdapter 保存当前平台的执行凭据、握手参数和单次操作接口。
 type wsPassthroughAdapter struct {
 	gatewayws.RequestUsageDecoder
 	service  *OpenAIWebSocketExecutor

@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
 )
 
-// shouldEmulate 搜索资格由同一 Emulator 判断，执行结果保持 Messages 原有用量形状。
+// shouldEmulate 调用 Emulator 判断是否模拟搜索，执行结果使用 Messages 用量格式。
 func (r *Runtime) shouldEmulate(ctx context.Context, target *gatewayadapter.ExecutionProvider, group *int64, body []byte) bool {
 	return r.dependencies.Search.ShouldEmulate(ctx, searchtools.PolicyInput{
 		Body:     body,

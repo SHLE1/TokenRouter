@@ -190,7 +190,7 @@ func TestBackfillOpenAIImagesB64JSON(t *testing.T) {
 				require.Equal(t, want, items[i].Get("b64_json").String(), "data.%d.b64_json", i)
 			}
 			require.Len(t, tt.upstream.requests, tt.wantDownloads)
-			// 除 b64_json 外的字段必须原样保留。
+			// b64_json 更新后，其他字段保持原样。
 			original := gjson.Parse(tt.body)
 			original.Get("data").ForEach(func(key, item gjson.Result) bool {
 				item.ForEach(func(field, value gjson.Result) bool {
@@ -229,7 +229,7 @@ func TestBackfillOpenAIImagesB64JSON_DownloadRequestShape(t *testing.T) {
 	require.Equal(t, "http://127.0.0.1:7890", upstream.lastProxyURL)
 	_, hasDeadline := req.Context().Deadline()
 	require.True(t, hasDeadline)
-	// 目的地与重定向各跳都必须解析到公网地址；重定向本身保持跟随。
+	// 下载跟随重定向，并逐跳检查目的地是否解析为公网地址。
 	require.True(t, upstreamcore.HTTPUpstreamPublicHostsOnly(req.Context()))
 	require.False(t, upstreamcore.HTTPUpstreamRedirectsDisabled(req.Context()))
 }
@@ -259,7 +259,7 @@ func TestBackfillOpenAIImagesB64JSON_RejectsPrivateHosts(t *testing.T) {
 	}
 	require.Empty(t, upstream.requests, "private destinations must never be requested")
 
-	// 同一配置下公网主机照常下载，证明拒绝依据是目的地而非协议。
+	// 同一配置下公网主机下载成功，测试覆盖目的地地址检查。
 	got := svc.backfillOpenAIImagesB64JSON(context.Background(), provider, nil, []byte(`{"created":1,"data":[{"url":"http://cdn.example.com/a.png"}]}`))
 	require.Equal(t, base64.StdEncoding.EncodeToString(b64BackfillPNGBytes), gjson.GetBytes(got, "data.0.b64_json").String())
 	require.Len(t, upstream.requests, 1)

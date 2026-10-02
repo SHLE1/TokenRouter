@@ -175,7 +175,7 @@ func (s *OrderLifecycle) RecordPaymentCancelFailure(ctx context.Context, o *Orde
 		s.runtime.Audit(ctx, o.ID, "PAYMENT_CANCEL_FAILED", providerKey, detail)
 	}
 
-	// 每次失败都刷新时间戳，以便超时任务按固定冷却窗口重试而不是每分钟重复请求。
+	// 每次失败都刷新时间戳，使超时任务按固定冷却窗口重试。
 	if err := s.store.TouchPending(ctx, o.ID, s.runtime.Now()); err != nil {
 		s.runtime.Log("warn", "record payment cancellation retry time failed", "orderID", o.ID, "error", err)
 	}

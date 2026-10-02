@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestOpenAITokenAssemblyKeepsReadAndStopBoundaries 验证缺少依赖和停止后的拒绝仍先于报文读取，构造不需要旧生成 Handler。
+// TestOpenAITokenAssemblyKeepsReadAndStopBoundaries 检查 token 计数入口在读取报文前拒绝缺失依赖或已停止的请求。
 func TestOpenAITokenAssemblyKeepsReadAndStopBoundaries(t *testing.T) {
 	activity := &gatewayRequestActivity{Operations: lifecycle.NewOperations("token-contract")}
 	first := provideOpenAITokensHTTP(nil, nil, nil, nil, nil, nil, activity, nil, nil, nil, nil)

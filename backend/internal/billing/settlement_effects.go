@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// SettlementEffectInput 只包含已提交资金事实与缓存标识，不接收请求或提供商实体。
+// SettlementEffectInput 包含已提交的结算金额和待更新的缓存标识。
 type SettlementEffectInput struct {
 	UserID, KeyID             int64
 	HasUser, HasKeyRateLimits bool

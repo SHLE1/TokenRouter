@@ -74,18 +74,18 @@ onUnmounted(() => {
 
 .table-scroll-container :deep(.table-wrapper) {
   @apply flex-1 overflow-x-auto overflow-y-auto;
-  /* 确保横向滚动条显示在最底部 */
+  /* 横向滚动条位于容器底部。 */
   scrollbar-gutter: stable;
 }
 
 .table-scroll-container :deep(table) {
   @apply w-full;
-  min-width: max-content; /* 关键：确保表格宽度根据内容撑开，从而触发横向滚动 */
+  min-width: max-content; /* 表格按内容撑宽，超出容器时横向滚动。 */
   display: table; /* 使用标准 table 布局以支持 sticky 列 */
 }
 
 .table-scroll-container :deep(thead) {
-  /* sticky 表头使用不透明底色，避免合成层模糊表头文字边缘。 */
+  /* sticky 表头使用不透明底色，使合成层中的文字边缘清晰。 */
   @apply bg-gray-50 dark:bg-dark-900;
 }
 
@@ -126,7 +126,7 @@ onUnmounted(() => {
 
 /* 移动端：恢复正常滚动 */
 .table-page-layout.mobile-mode {
-  /* 移动端表格卡片高度由内容决定，避免固定视口高度导致后续区域被溢出内容覆盖。 */
+  /* 移动端表格卡片按内容撑高，后续区域排列在卡片下方。 */
   @apply h-auto flex-none;
 }
 

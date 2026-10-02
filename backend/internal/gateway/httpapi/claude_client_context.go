@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SetClaudeCodeClientContext 在 HTTP 边界固化识别结果，供后续请求处理读取。
+// SetClaudeCodeClientContext 将客户端识别结果写入 HTTP 请求上下文，供后续处理读取。
 func SetClaudeCodeClientContext(c *gin.Context, body []byte, parsed *requeststate.ParsedRequest) {
 	if c == nil || c.Request == nil {
 		return

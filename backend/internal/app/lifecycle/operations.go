@@ -48,7 +48,7 @@ func (o *Operations) Enter() (func(), error) {
 	}, nil
 }
 
-// StopContext 固定一次停止结果；超时不能被后续调用改写为成功。
+// StopContext 返回首次停止的结果，超时结果会传给后续调用。
 func (o *Operations) StopContext(ctx context.Context) error {
 	o.mu.Lock()
 	if o.closed {

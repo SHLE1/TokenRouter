@@ -1,6 +1,6 @@
 package provider
 
-// 持久化键沿用现有格式，旧平台消费者通过别名访问。
+// 持久化键通过常量和别名供各平台共用。
 const (
 	CNUsageMonitorSnapshotExtraKey   = "cn_usage_monitor_snapshot"
 	UpstreamUsageQueryExtraKey       = "upstream_usage_query"

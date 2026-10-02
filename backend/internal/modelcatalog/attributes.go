@@ -6,7 +6,7 @@ import (
 	"slices"
 )
 
-// Attributes 只描述模型信息，不能用于网关准入或请求参数变换。
+// Attributes 描述模型展示信息，网关准入和参数转换使用各自的规则。
 // 指针保留未知、显式 false 和空模态集合的区别。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_attributes
 type Attributes struct {

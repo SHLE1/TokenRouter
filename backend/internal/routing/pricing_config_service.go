@@ -108,7 +108,7 @@ func (r GroupMappingResult) BuildModelMappingChain(reqModel, upstreamModel strin
 	return BuildModelMappingChain(stages...)
 }
 
-// ToUsageFields 将分组模型链与计费元数据投影为使用记录字段
+// ToUsageFields 将分组模型映射和计费元数据转换为使用记录字段。
 func (r GroupMappingResult) ToUsageFields(reqModel, upstreamModel string) PricingUsageFields {
 	groupMappedModel := reqModel
 	if r.Mapped {

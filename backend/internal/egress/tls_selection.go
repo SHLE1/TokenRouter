@@ -4,7 +4,7 @@ import (
 	"strconv"
 )
 
-// TLSSelection 只投影提供商资格与本次 Router 命中，不接收提供商或平台服务。
+// TLSSelection 包含提供商 TLS 开关、绑定配置和本次 Router 匹配结果。
 type TLSSelection struct {
 	Enabled                   bool
 	DirectProfileID           int64
@@ -22,8 +22,8 @@ func (s *TLSFingerprintProfileService) ResolveRequestPolicy(input TLSSelection) 
 	return RequestPolicy(RequestPolicyInput{TLSProfile: s.ResolveTLSProfileByID(input.Enabled, input.DirectProfileID)})
 }
 
-// WebSocketTLSIdentity 保留原稳定配置键；随机模板不能令 continuation 每轮换池。
-// Router 命中但模板缺失时仍保留原 Router 键语义，不按实际回退结果改键。
+// WebSocketTLSIdentity 为连接池生成稳定配置键，随机模板共用同一个键。
+// Router 命中且回退配置可用时，配置键仍由 Router ID 和配置 ID 组成。
 func WebSocketTLSIdentity(input TLSSelection, hasProfile bool, profileCacheKey string) string {
 	if !hasProfile {
 		return ""

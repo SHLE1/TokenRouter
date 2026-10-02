@@ -943,7 +943,7 @@ type GatewayGrokConfig struct {
 }
 
 // GatewayCNProvidersConfig 配置国产供应商的周期性余额/额度探测。
-// 该任务默认关闭；开启后只处理活动的 API Key 提供商，不改变管理员手动查询语义。
+// 该任务默认关闭，开启后探测活动的 API Key 提供商。管理员手动查询独立执行。
 type GatewayCNProvidersConfig struct {
 	// MonitorEnabled 显式开启后才运行后台周期探测；手动查询不受此开关影响。
 	MonitorEnabled      bool    `mapstructure:"monitor_enabled"`
@@ -992,7 +992,7 @@ type GatewayOpenAIProxyStreamCircuitConfig struct {
 type UserMessageQueueConfig struct {
 	// Mode: 模式选择
 	// "serialize" = 提供商级串行锁 + RPM 自适应延迟
-	// "throttle" = 仅 RPM 自适应前置延迟，不阻塞并发
+	// "throttle" = RPM 自适应前置延迟，请求可并发执行
 	// "" = 禁用（默认）
 	Mode string `mapstructure:"mode"`
 	// Enabled: 已废弃，仅向后兼容（等同于 mode: "serialize"）
@@ -1029,7 +1029,7 @@ func (c *UserMessageQueueConfig) GetEffectiveMode() string {
 	return ""
 }
 
-// DefaultOpenAIWSClientFirstMessageTimeoutSeconds 保留原有的入站首消息截止时间。
+// DefaultOpenAIWSClientFirstMessageTimeoutSeconds 是入站首条消息的等待秒数。
 const DefaultOpenAIWSClientFirstMessageTimeoutSeconds = 30
 
 // GatewayOpenAIWSConfig OpenAI Responses WebSocket 配置。
@@ -2312,15 +2312,14 @@ func setDefaults() {
 	setEnvReachableDefaults()
 }
 
-// setEnvReachableDefaults 为配置示例中原本没有默认值的键注册零值默认项。
+// setEnvReachableDefaults 为配置键注册零值默认项，供环境变量赋值。
 //
 // viper.Unmarshal 只解码 AllKeys 返回的键；该集合由 SetDefault、配置文件键和
-// 显式 BindEnv 键组成。AutomaticEnv 只能覆盖已有键，不能加入新键，而构建使用
+// BindEnv 键组成。AutomaticEnv 覆盖这个集合中的键。构建使用
 // `-tags embed` 时也不会启用 viper_bind_struct。因此仅出现在示例文件中的键无法
 // 通过环境变量到达配置结构，纯环境变量部署会无提示地得到零值。
 //
-// 下列值刻意使用零值而非示例值：缺失键原本就会解码为零值，这样既保持行为不变，
-// 又让环境变量可以寻址；需要更丰富默认值的子系统仍在解码后应用自己的默认逻辑。
+// 缺失键解码为零值，各子系统在解码后应用自己的默认值。
 func setEnvReachableDefaults() {
 	viper.SetDefault("gateway.forced_codex_instructions_template_file", "")
 	viper.SetDefault("gateway.session_idle_timeout_minutes", 0)
@@ -2440,7 +2439,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("jwt.secret is required")
 	}
 	// NOTE: 按 UTF-8 编码后的字节长度计算。
-	// 选择 bytes 而不是 rune 计数，确保二进制/随机串的长度语义更接近“熵”而非“字符数”。
+	// JWT 密钥长度按字节检查，最少 32 字节。
 	if len([]byte(jwtSecret)) < 32 {
 		return fmt.Errorf("jwt.secret must be at least 32 bytes")
 	}

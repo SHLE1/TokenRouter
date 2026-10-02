@@ -4,7 +4,7 @@
     class="px-0.5"
   >
     <div class="flex items-start gap-2">
-      <!-- 只把复选框作为锚点，长条款文案换行时箭头也不会偏移。 -->
+      <!-- 提示以复选框为锚点，条款文案独立换行。 -->
       <HelpTooltip
         trigger="manual"
         :open="hintVisible && !accepted"

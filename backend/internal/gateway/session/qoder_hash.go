@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// QoderExplicitSessionSeed 保留 Header 优先级与首值语义，然后读取原报文的显式种子。
+// QoderExplicitSessionSeed 按列表顺序读取 Header 的首值，均为空时再读取请求体中的会话标识。
 func QoderExplicitSessionSeed(headers map[string][]string, body []byte) string {
 	for _, name := range []string{"session_id", "conversation_id", "x-session-id", "x-conversation-id", "X-Claude-Code-Session-Id"} {
 		values := headers[textproto.CanonicalMIMEHeaderKey(name)]
@@ -27,7 +27,7 @@ func QoderExplicitSessionSeed(headers map[string][]string, body []byte) string {
 	return ""
 }
 
-// QoderHashFromSeed 复用调度哈希格式，不建立新的缓存命名空间。
+// QoderHashFromSeed 为种子加 qoder: 前缀后计算调度会话哈希。
 func QoderHashFromSeed(seed string) string {
 	seed = strings.TrimSpace(seed)
 	if seed == "" {
@@ -37,7 +37,7 @@ func QoderHashFromSeed(seed string) string {
 	return hash
 }
 
-// QoderRequestHash 在缺少显式种子时复用原消息摘要及来源因子。
+// QoderRequestHash 优先使用请求指定的会话种子，缺失时根据消息摘要和来源计算哈希。
 func QoderRequestHash(headers map[string][]string, body []byte, wire string, identity *requeststate.SessionContext, observe func(string, ...any)) string {
 	if seed := QoderExplicitSessionSeed(headers, body); seed != "" {
 		return QoderHashFromSeed(seed)

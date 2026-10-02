@@ -186,7 +186,7 @@ func (b *geminiMessageAttemptBridge) Success() {
 
 // Complete 保留 Gemini Messages 的既有差异，循环复用 gateway/text。
 func (b *geminiMessageAttemptBridge) Complete(state textflow.AttemptState) {
-	// 捕获请求信息（用于异步记录，避免在 goroutine 中访问 gin.Context）
+	// 捕获请求信息，供异步任务记录。
 	userAgent := b.c.GetHeader("User-Agent")
 	clientIP := clientip.GetClientIP(b.c)
 	requestPayloadHash := billing.HashUsageRequestPayload(b.body)
@@ -204,13 +204,13 @@ func (b *geminiMessageAttemptBridge) Complete(state textflow.AttemptState) {
 		b.result.ReasoningEffort = gatewaycapture.DefaultEffortForThinkingEnabled(protocolModel)
 	}
 
-	// 使用量记录通过有界 worker 池提交，避免请求热路径创建无界 goroutine。
-	// ForceCacheBilling 提前拍成标量，避免 worker 闭包保活 failover 状态里的响应体。
+	// 用量记录通过有界 worker 池提交。
+	// 完成任务捕获 ForceCacheBilling 的布尔值，failover 响应体可随请求释放。
 	forceCacheBilling := state.ForceCacheBilling
 
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
 	gatewayhttp.StampForwardRequestedReasoningEffort(b.result, b.c)
-	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
+	// 入队前捕获资金和报文数据，worker 使用这份快照。
 	completionInput := gatewaycapture.CaptureMessages(gatewayhttp.CompletionContext(b.c), &gatewaycapture.MessagesCapture{
 		Result: b.result,
 

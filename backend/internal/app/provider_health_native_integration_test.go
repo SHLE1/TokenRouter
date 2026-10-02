@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNativeProviderHealthAssembly 验证通过真实组合根绑定 PostgreSQL；旧装配壳没有仓储，所有观测直接走原生入口。
+// TestNativeProviderHealthAssembly 检查应用装配的健康状态组件读写 PostgreSQL。
 func TestNativeProviderHealthAssembly(t *testing.T) {
 	f := newDatabaseFixture(t)
 	store := providerpostgres.NewProviderStore(f.client, f.db, providerpostgres.ProviderStoreOptions{})

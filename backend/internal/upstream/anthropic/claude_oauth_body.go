@@ -245,8 +245,7 @@ func NormalizeClaudeOAuthRequestBody(body []byte, modelID string, opts ClaudeOAu
 		}
 	}
 
-	// temperature：真实 Claude Code CLI 总是发送 temperature（默认 1，客户端可覆盖）。
-	// 之前的实现直接 delete 会导致 payload 缺字段，与真实 CLI 字节级不一致。
+	// temperature 使用 Claude Code CLI 的默认值 1，客户端可覆盖。
 	// 策略：客户端传了什么就透传；没传则补默认 1。
 	if !gjson.GetBytes(out, "temperature").Exists() {
 		if next, ok := SetJSONValueBytes(out, "temperature", 1); ok {
@@ -283,7 +282,7 @@ func NormalizeClaudeOAuthRequestBody(body []byte, modelID string, opts ClaudeOAu
 		}
 	}
 
-	// tool_choice：与 Parrot 对齐，不再无条件删除。
+	// tool_choice 按 Parrot 规则处理。
 	// - 客户端传了 {"type":"tool","name":"X"} → 保留结构，name 由
 	//   ApplyToolNameRewriteToBody 同步映射为假名
 	// - 其他形态（auto/any/none）原样透传
@@ -311,7 +310,7 @@ func NormalizeClaudeOAuthRequestBody(body []byte, modelID string, opts ClaudeOAu
 // 对话在尾部追加 messages 时这三者都不变，因此 generateSessionUUID(seed) 跨轮稳定。
 //
 // 注意：粘性路由键 GenerateSessionHash 按设计逐轮变化（见其测试），本函数与之独立、互不影响。
-// providerID 恒存在，故 seed 永不为空 —— 输出始终是确定性 UUID，而非随机值。
+// providerID 使 seed 非空，相同 seed 生成相同 UUID。
 func BuildStableSessionSeed(providerID int64, clientDiscriminator, firstUserText string) string {
 	var b strings.Builder
 	_, _ = b.WriteString(strconv.FormatInt(providerID, 10))

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNewQoderGatewayServiceUsesInjectedRefreshAPI 验证原构造器身份断言直接验证组合根，并确认运行时读取同一会话缓存。
+// TestNewQoderGatewayServiceUsesInjectedRefreshAPI 检查 app 注入的刷新接口与 Qoder 执行共用会话缓存。
 func TestNewQoderGatewayServiceUsesInjectedRefreshAPI(t *testing.T) {
 	tokens := provideQoderTokens(nil, nil)
 	t.Cleanup(func() { require.NoError(t, tokens.StopContext(context.Background())) })

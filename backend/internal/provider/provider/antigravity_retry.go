@@ -33,7 +33,7 @@ type AntigravityRetryRequest struct {
 	Changed                                               func(*provider.Record)
 }
 
-// AntigravityRetry 组合唯一平台循环和提供商状态端口，不持有 Gin 或旧提供商实体。
+// AntigravityRetry 组合平台重试循环和提供商状态接口。
 type AntigravityRetry struct {
 	Health         *provider.AntigravityHealth
 	Policy         *provider.HealthService

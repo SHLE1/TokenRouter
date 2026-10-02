@@ -54,7 +54,7 @@ func mixedGroupProvider(id int64, platform, model string, groupID int64) gateway
 	return *gatewayadapter.NewExecutionProvider(&value)
 }
 
-// TestMixedGroupSelectsModelOnActualProviderPlatform 验证每个入口先验证模型与协议，再在同组跨平台选择，保留分组成员边界。
+// TestMixedGroupSelectsModelOnActualProviderPlatform 检查各入口校验模型与协议后，是否在请求分组内跨平台选择。
 func TestMixedGroupSelectsModelOnActualProviderPlatform(t *testing.T) {
 	for _, mode := range []routing.GroupSchedulerType{routing.GroupSchedulerTypeBasic, routing.GroupSchedulerTypeAdvanced} {
 		t.Run(string(mode), func(t *testing.T) {

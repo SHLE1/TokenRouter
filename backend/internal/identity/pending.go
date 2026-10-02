@@ -135,7 +135,7 @@ func HashPendingAuthCode(code string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// PendingAuthSession 是不携带 Ent 行为的持久状态投影。
+// PendingAuthSession 保存待完成认证会话的持久状态。
 type PendingAuthSession struct {
 	ID                       int64          `json:"id,omitempty"`
 	CreatedAt                time.Time      `json:"created_at,omitempty"`
@@ -161,7 +161,7 @@ type PendingAuthSession struct {
 	ConsumedAt               *time.Time     `json:"consumed_at,omitempty"`
 }
 
-// IdentityAdoptionDecision 是不携带 Ent 行为的持久状态投影。
+// IdentityAdoptionDecision 保存用户采纳身份资料的决定。
 type IdentityAdoptionDecision struct {
 	ID                   int64     `json:"id,omitempty"`
 	CreatedAt            time.Time `json:"created_at,omitempty"`

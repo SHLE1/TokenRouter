@@ -11,7 +11,7 @@ import (
 // TextFrame 保留文本帧类型；HTTP Adapter 负责与具体 WebSocket 库转换。
 const TextFrame = 1
 
-// FrameConn 是控制连接的同步帧端口，不拥有 HTTP 升级或协议库。
+// FrameConn 提供控制连接的同步帧读写。
 type FrameConn interface {
 	ReadFrame(context.Context) (int, []byte, error)
 	WriteFrame(context.Context, int, []byte) error
@@ -19,14 +19,14 @@ type FrameConn interface {
 	Close() error
 }
 
-// Target 只提供已校验执行提供商的供应商连接和路由投影能力。
+// Target 为已校验的提供商提供连接操作和路由数据。
 // 提供商凭据始终留在适配层，不进入会话记录或公共输出。
 type Target interface {
 	Dial(context.Context) (FrameConn, error)
 	Rewrite(context.Context, []byte) ([]byte, string, []string, error)
 }
 
-// Ports 提供会话、调度租约及生命周期能力；不持有数据库或 HTTP 客户端。
+// Ports 提供会话、调度租约和生命周期操作。
 type Ports interface {
 	Store() (session.LiveCallStore, error)
 	Leases() (scheduler.LiveConcurrencyCache, error)

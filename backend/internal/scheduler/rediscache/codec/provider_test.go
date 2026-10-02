@@ -27,7 +27,7 @@ func TestProviderWirePreservesHistoricalFields(t *testing.T) {
 	require.NotNil(t, decoded.ProviderGroups)
 	require.Empty(t, decoded.ProviderGroups)
 	require.Equal(t, value.Groups, decoded.Groups)
-	// 公开提供商 JSON 仍不包含执行凭据，只有存储编码显式保留。
+	// 存储编码保存执行凭据，公开提供商 JSON 使用脱敏格式。
 	public, err := json.Marshal(value)
 	require.NoError(t, err)
 	require.NotContains(t, string(public), "fixture-only")

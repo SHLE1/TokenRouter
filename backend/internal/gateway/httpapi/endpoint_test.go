@@ -45,7 +45,7 @@ func TestNormalizeInboundEndpoint(t *testing.T) {
 		{"/openai/v1/images/edits", EndpointImagesEdits},
 		{"/antigravity/v1beta/models/gemini:generateContent", EndpointGeminiModels},
 
-		// 带平台前缀的 Compact 路径必须归为独立入站端点，不能并入根 Responses。
+		// 带平台前缀的 Compact 路径归为独立入站端点。
 		{"/openai/v1/responses/compact", EndpointResponsesCompact},
 		{"/openai/v1/responses/compact/detail", EndpointResponsesCompact},
 
@@ -101,7 +101,7 @@ func TestDeriveUpstreamEndpoint(t *testing.T) {
 		{"openai responses root", EndpointResponses, "/v1/responses", capability.PlatformOpenAI, EndpointResponses},
 		{"openai responses input tokens", EndpointResponsesInputTokens, "/v1/responses/input_tokens", capability.PlatformOpenAI, EndpointResponsesInputTokens},
 
-		// OpenAI Compact 原始路径可派生后缀时，上游端点必须保留该后缀。
+		// 从 OpenAI Compact 原始路径提取的后缀会保存在上游端点中。
 		{"openai responses compact", EndpointResponsesCompact, "/openai/v1/responses/compact", capability.PlatformOpenAI, "/v1/responses/compact"},
 		{"openai responses nested", EndpointResponsesCompact, "/openai/v1/responses/compact/detail", capability.PlatformOpenAI, "/v1/responses/compact/detail"},
 		{"openai bare responses compact", EndpointResponsesCompact, "/responses/compact", capability.PlatformOpenAI, "/v1/responses/compact"},
@@ -129,11 +129,11 @@ func TestDeriveUpstreamEndpoint(t *testing.T) {
 		{"grok video extensions", EndpointVideosExtensions, "/videos/extensions", capability.PlatformGrok, EndpointVideosExtensions},
 		{"grok video status", EndpointVideos, "/videos/req_123", capability.PlatformGrok, EndpointVideos},
 
-		// Antigravity — uses inbound to pick Claude vs Gemini upstream.
+		// Antigravity 根据入站端点选择 Claude 或 Gemini 上游。
 		{"antigravity claude", EndpointMessages, "/antigravity/v1/messages", capability.PlatformAntigravity, EndpointMessages},
 		{"antigravity gemini", EndpointGeminiModels, "/antigravity/v1beta/models", capability.PlatformAntigravity, EndpointGeminiModels},
 
-		// Unknown platform — passthrough.
+		// 未知平台按传入值处理。
 		{"unknown platform", "/v1/embeddings", "/v1/embeddings", "unknown", "/v1/embeddings"},
 	}
 	for _, tt := range tests {
@@ -220,13 +220,13 @@ func TestGetInboundEndpoint_FallbackWithoutMiddleware(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodPost, "/antigravity/v1/messages", nil)
 
-	// Middleware did not run — fallback to normalizing c.Request.URL.Path.
+	// 中间件未运行时，规范化 c.Request.URL.Path。
 	got := GetInboundEndpoint(c)
 	require.Equal(t, EndpointMessages, got)
 }
 
-// TestInboundEndpointMiddleware_WildcardRoutes 验证 Gin 通配路由使用真实请求路径
-// 归一化，而不是使用 c.FullPath() 返回的路由模式；否则 Compact 请求会被错误归为根端点。
+// TestInboundEndpointMiddleware_WildcardRoutes 验证 Gin 通配路由按请求 URL 规范化。
+// 使用 c.FullPath() 的路由模式会将 Compact 请求误归为根端点。
 func TestInboundEndpointMiddleware_WildcardRoutes(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -293,7 +293,7 @@ func TestInboundEndpointMiddleware_WildcardRoutes(t *testing.T) {
 }
 
 // TestInboundEndpointMiddleware_GeminiWildcardRoute 验证 Gemini 通配路由同样
-// 使用真实请求路径，并归一化为 EndpointGeminiModels。
+// 使用请求 URL 路径，规范化为 EndpointGeminiModels。
 func TestInboundEndpointMiddleware_GeminiWildcardRoute(t *testing.T) {
 	router := gin.New()
 	router.Use(InboundEndpointMiddleware())
@@ -313,14 +313,14 @@ func TestInboundEndpointMiddleware_GeminiWildcardRoute(t *testing.T) {
 }
 
 // TestGetInboundEndpoint_FallbackWildcardRouteWithoutMiddleware 验证中间件未运行时，
-// 回退逻辑仍优先使用 c.Request.URL.Path，避免通配路由下的 Compact 请求被归为根端点。
+// 回退时优先使用 c.Request.URL.Path，通配路由下的 Compact 请求据此归类。
 func TestGetInboundEndpoint_FallbackWildcardRouteWithoutMiddleware(t *testing.T) {
 	router := gin.New()
 	// 此处刻意不注册 InboundEndpointMiddleware。
 
 	var captured string
 	router.POST("/v1/responses/*subpath", func(c *gin.Context) {
-		// 通配路由命中时，FullPath 返回路由模式而不是真实请求路径。
+		// 通配路由命中时，FullPath 返回路由模式。
 		require.Equal(t, "/v1/responses/*subpath", c.FullPath())
 		captured = GetInboundEndpoint(c)
 		c.Status(http.StatusOK)

@@ -19,7 +19,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// liveFixtureInputs 仅组合Live合同所需的存储、帧连接及身份端口。
+// liveFixtureInputs 提供 Live 测试使用的存储、帧连接和身份接口。
 type liveFixtureInputs struct {
 	transport   httpclient.UpstreamTransport
 	providers   gatewayadapter.ExecutionProviderStore

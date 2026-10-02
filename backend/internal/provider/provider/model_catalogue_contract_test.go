@@ -272,7 +272,7 @@ func TestBuildUpstreamModelsRequestsForAPIKeyProviders(t *testing.T) {
 	require.Equal(t, "https://xai.example.com/v1/models", grokReq.URL.String())
 	require.Equal(t, "Bearer xai-key", grokReq.Header.Get("Authorization"))
 
-	// 未配置地址时必须复用 Grok API Key 真实转发使用的官方默认地址。
+	// 未配置地址时使用 Grok API Key 转发所用的官方默认地址。
 	defaultGrokReq, err := svc.buildUpstreamModelsRequest(ctx, &providercore.Record{
 		Platform: capability.PlatformGrok,
 		Type:     capability.ProviderTypeAPIKey,
@@ -527,7 +527,7 @@ func TestFetchUpstreamSupportedModelsDoesNotExposeUpstreamBody(t *testing.T) {
 	require.Contains(t, syncErr.SafeMessage(), "HTTP 502")
 }
 
-// upstreamModelSyncTestConfig 测试仅投影既有 URL 策略与读取上限，不构造旧配置或业务服务。
+// upstreamModelSyncTestConfig 为测试提供 URL 策略和响应读取上限。
 func upstreamModelSyncTestConfig() ModelCatalogueOptions {
 	policy := egress.OperatorURLPolicy{}
 	return ModelCatalogueOptions{ValidateURL: policy.Validate, OperatorValidator: policy.Validate, BodyLimit: 8 << 20, CodexModelsURL: DefaultCodexModelsURL}

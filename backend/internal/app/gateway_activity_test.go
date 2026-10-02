@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestGatewayRequestActivityTimeoutKeepsCompletionAndStorageOpen 验证同一应用拥有者覆盖 HTTP 请求和嵌套上游尝试；任一未结束时不得停止完成队列或共享存储。
+// TestGatewayRequestActivityTimeoutKeepsCompletionAndStorageOpen 检查 HTTP 请求和嵌套上游调用共用任务跟踪器，任一未结束时完成队列和共享存储保持打开。
 func TestGatewayRequestActivityTimeoutKeepsCompletionAndStorageOpen(t *testing.T) {
 	manager := lifecycle.New()
 	activity := provideGatewayRequestActivity(manager)

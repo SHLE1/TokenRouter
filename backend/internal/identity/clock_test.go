@@ -47,7 +47,7 @@ func (c *clockEmailCache) SetNotifyVerifyCode(_ context.Context, _ string, data 
 	return nil
 }
 
-// TestNotifyClockKeepsSeparateReadPoints 保留原 CreatedAt 和 ExpiresAt 的两次取时，不在装配时缓存时间。
+// TestNotifyClockKeepsSeparateReadPoints 检查 CreatedAt 和 ExpiresAt 分别读取时钟。
 func TestNotifyClockKeepsSeparateReadPoints(t *testing.T) {
 	base := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
 	calls := 0

@@ -210,8 +210,7 @@ func TestForwardStreaming_ServiceTierPropagatedToResult(t *testing.T) {
 	require.NotNil(t, result)
 	require.NotNil(t, result.ServiceTier)
 	require.Equal(t, "priority", *result.ServiceTier, "streaming billing context must carry the normalized tier")
-	// /v1/responses 流是上游 SSE 原样透传：上游没回 service_tier 就不该出现；
-	// 网关只在计费结果里携带请求侧 tier，不往下游流里注入。
+	// Responses SSE 原样透传上游 service_tier，省略该字段时下游也省略。计费另行记录请求中的 tier。
 	require.Contains(t, rec.Body.String(), `"delta":"hi"`, "streamed content must reach the client")
 	require.NotContains(t, rec.Body.String(), `"service_tier"`, "upstream did not return service_tier, client stream must stay untouched")
 }

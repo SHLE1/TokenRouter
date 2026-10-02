@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RecordOpenAIStreamKeepaliveBytes 只登记原有流心跳字节，不改业务输出计数。
+// RecordOpenAIStreamKeepaliveBytes 单独记录流心跳字节数。
 func RecordOpenAIStreamKeepaliveBytes(c *gin.Context, written int) {
 	if c == nil || written <= 0 {
 		return

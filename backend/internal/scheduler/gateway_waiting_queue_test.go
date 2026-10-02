@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestDecrementWaitCount_NilCache 确保 nil cache 不会 panic
+// TestDecrementWaitCount_NilCache 检查缓存缺失时的释放调用。
 func TestDecrementWaitCount_NilCache(t *testing.T) {
 	svc := &ConcurrencyService{cache: nil}
 	// 不应 panic
@@ -19,7 +19,7 @@ func TestDecrementWaitCount_NilCache(t *testing.T) {
 	wait.Release()
 }
 
-// TestDecrementWaitCount_CacheError 确保 cache 错误不会传播
+// TestDecrementWaitCount_CacheError 检查释放时的缓存错误处理。
 func TestDecrementWaitCount_CacheError(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{waitAllowed: true}
 	svc := NewConcurrencyService(cache)
@@ -29,7 +29,7 @@ func TestDecrementWaitCount_CacheError(t *testing.T) {
 	wait.Release()
 }
 
-// TestDecrementProviderWaitCount_NilCache 确保 nil cache 不会 panic
+// TestDecrementProviderWaitCount_NilCache 检查提供商缓存缺失时的释放调用。
 func TestDecrementProviderWaitCount_NilCache(t *testing.T) {
 	svc := &ConcurrencyService{cache: nil}
 	wait, err := svc.EnterProviderWait(context.Background(), 1, 25)
@@ -37,7 +37,7 @@ func TestDecrementProviderWaitCount_NilCache(t *testing.T) {
 	wait.Release()
 }
 
-// TestDecrementProviderWaitCount_CacheError 确保 cache 错误不会传播
+// TestDecrementProviderWaitCount_CacheError 检查释放提供商等待计数时的缓存错误处理。
 func TestDecrementProviderWaitCount_CacheError(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{waitAllowed: true}
 	svc := NewConcurrencyService(cache)

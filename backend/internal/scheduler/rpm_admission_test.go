@@ -52,7 +52,7 @@ func (s *userRPMCacheStub) GetUserRPM(_ context.Context, _ int64) (int, error) {
 	return 0, nil
 }
 
-// rpmOverrideRepoStub 专用于 checkRPM 分支测试，只实现必要方法。
+// rpmOverrideRepoStub 提供 RPMAdmission.Check 测试中的分组覆盖值。
 type rpmOverrideRepoStub struct {
 	override *int
 	err      error
@@ -69,13 +69,13 @@ func (s *rpmOverrideRepoStub) GetRPMOverrideByUserAndGroup(_ context.Context, _,
 
 func newRPMAdmissionFixture(t *testing.T, cache UserRPMCache, rateRepo RPMOverrides) *RPMAdmission {
 	t.Helper()
-	// 直接构造唯一 RPM 用例，不启动与这些断言无关的资金队列。
+	// 测试直接构造 RPMAdmission。
 	return NewRPMAdmission(cache, rateRepo, Diagnostics{})
 }
 
 func TestBillingCacheService_CheckRPM_OverrideTakesPrecedenceOverGroup(t *testing.T) {
 	override := 2
-	// user-group 计数: 1, 2, 3；user 计数: 默认返回 1（远小于 RPMLimit=100，不干扰）
+	// user-group 计数依次为 1、2、3，user 计数固定为 1，低于 RPMLimit=100。
 	cache := &userRPMCacheStub{userGroupCounts: []int{1, 2, 3}}
 	repo := &rpmOverrideRepoStub{override: &override}
 	svc := newRPMAdmissionFixture(t, cache, repo)
@@ -88,7 +88,7 @@ func TestBillingCacheService_CheckRPM_OverrideTakesPrecedenceOverGroup(t *testin
 	require.ErrorIs(t, svc.Check(context.Background(), user, group), ErrGroupRPMExceeded)
 
 	require.EqualValues(t, 3, atomic.LoadInt32(&cache.userGroupCalls), "override 命中分支应走 user-group 计数")
-	// 并行设计：前 2 次 override 未超→继续检查 user；第 3 次 override 超了→直接 return，不检查 user
+	// 前两次通过 override 检查后继续检查用户总限额，第三次因 override 超限直接返回。
 	require.EqualValues(t, 2, atomic.LoadInt32(&cache.userCalls), "override 超限前 user 计数器应被调用")
 	require.EqualValues(t, 3, atomic.LoadInt32(&repo.calls))
 }
@@ -145,7 +145,7 @@ func TestBillingCacheService_CheckRPM_OverrideZeroAndUserZeroIsFullyUnlimited(t 
 }
 
 func TestBillingCacheService_CheckRPM_NilOverrideFallsThroughToGroup(t *testing.T) {
-	// user-group 计数: 5, 6；user 计数: 默认 1（不干扰）
+	// user-group 计数依次为 5、6，user 计数固定为 1。
 	cache := &userRPMCacheStub{userGroupCounts: []int{5, 6}}
 	repo := &rpmOverrideRepoStub{override: nil}
 	svc := newRPMAdmissionFixture(t, cache, repo)
@@ -157,7 +157,7 @@ func TestBillingCacheService_CheckRPM_NilOverrideFallsThroughToGroup(t *testing.
 	require.ErrorIs(t, svc.Check(context.Background(), user, group), ErrGroupRPMExceeded) // ug=6 > 5
 
 	require.EqualValues(t, 2, atomic.LoadInt32(&cache.userGroupCalls))
-	// 并行模式：第 1 次 group 没超 → 继续检查 user；第 2 次 group 超了 → 直接 return，不检查 user
+	// 第一次通过分组检查后继续检查用户总限额，第二次因分组超限直接返回。
 	require.EqualValues(t, 1, atomic.LoadInt32(&cache.userCalls), "group 未超时 user 也应检查；group 超时直接返回")
 }
 
@@ -169,7 +169,7 @@ func TestBillingCacheService_CheckRPM_OverrideLookupErrorFallsThroughToGroup(t *
 	user := &RPMUser{ID: 1, RPMLimit: 0}
 	group := &RPMGroup{ID: 10, RPMLimit: 10}
 
-	// override 查询失败后应继续尝试 group 分支（不直接拒绝）
+	// override 查询失败后继续检查 group 限额。
 	require.NoError(t, svc.Check(context.Background(), user, group))
 	require.EqualValues(t, 1, atomic.LoadInt32(&cache.userGroupCalls))
 	require.EqualValues(t, 1, atomic.LoadInt32(&repo.calls))
@@ -214,7 +214,7 @@ func TestBillingCacheService_CheckRPM_RedisErrorFailOpen(t *testing.T) {
 	user := &RPMUser{ID: 1, RPMLimit: 0}
 	group := &RPMGroup{ID: 10, RPMLimit: 5}
 
-	// Redis 故障时应 fail-open，不拒绝请求
+	// Redis 故障时放行请求。
 	require.NoError(t, svc.Check(context.Background(), user, group))
 	require.EqualValues(t, 1, atomic.LoadInt32(&cache.userGroupCalls))
 }
@@ -226,7 +226,7 @@ func TestBillingCacheService_CheckRPM_NoGroupUsesUserOnly(t *testing.T) {
 
 	user := &RPMUser{ID: 1, RPMLimit: 2}
 
-	// 无 group（纯用户级限流场景），不应查询 rpm_override。
+	// 无 group 时直接检查用户总限额。
 	require.NoError(t, svc.Check(context.Background(), user, nil))
 	require.NoError(t, svc.Check(context.Background(), user, nil))
 	require.ErrorIs(t, svc.Check(context.Background(), user, nil), ErrUserRPMExceeded)

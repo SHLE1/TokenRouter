@@ -25,7 +25,7 @@ func (s *LocalBackupStore) Upload(ctx context.Context, key string, body io.Reade
 	if _, err := s.safePath(key); err != nil {
 		return 0, err
 	}
-	if err := os.MkdirAll(s.basePath, 0755); err != nil {
+	if err := os.MkdirAll(s.basePath, 0o755); err != nil {
 		return 0, err
 	}
 	root, path, err := s.rooted(key)
@@ -33,7 +33,7 @@ func (s *LocalBackupStore) Upload(ctx context.Context, key string, body io.Reade
 		return 0, err
 	}
 	defer func() { _ = root.Close() }()
-	if err := root.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	if err := root.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return 0, fmt.Errorf("create backup directory: %w", err)
 	}
 	out, err := root.Create(path)
@@ -76,7 +76,7 @@ func (s *LocalBackupStore) Delete(_ context.Context, key string) error {
 		return err
 	}
 	defer func() { _ = root.Close() }()
-	// 删除保留原最终符号链接语义；只解析父目录，不能误删链接指向的根内对象。
+	// 解析父目录后删除目标路径。目标为符号链接时删除链接本身。
 	full, err := s.safePath(key)
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func (s *LocalBackupStore) PresignURL(_ context.Context, key string, _ time.Dura
 }
 
 func (s *LocalBackupStore) HeadBucket(_ context.Context) error {
-	if err := os.MkdirAll(s.basePath, 0755); err != nil {
+	if err := os.MkdirAll(s.basePath, 0o755); err != nil {
 		return fmt.Errorf("create local backup directory: %w", err)
 	}
 	testFile, err := os.CreateTemp(s.basePath, ".write-test-*")

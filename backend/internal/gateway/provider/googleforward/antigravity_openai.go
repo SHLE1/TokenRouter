@@ -177,7 +177,7 @@ func (s *Antigravity) validateAntigravityCompatProvider(c *attempt, provider *ga
 	)
 }
 
-// prepareAntigravityCompatTools 保留 fork 的工具名混淆与缓存断点语义，并刷新回程映射。
+// prepareAntigravityCompatTools 处理工具名混淆和缓存断点，并更新响应的工具名映射。
 func prepareAntigravityCompatTools(c *attempt, body []byte) []byte {
 	rewrite := anthropic.BuildToolNameRewriteFromBody(body)
 	if c != nil {

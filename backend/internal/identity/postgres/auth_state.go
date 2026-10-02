@@ -639,7 +639,7 @@ func (s *AuthState) AuthUseOAuthRegistrationInvitation(ctx context.Context, invi
 	return s.Redeem.Use(ctx, invitationID, userID)
 }
 
-// AuthState 保留原 Ent 事务划分；业务规则通过同一身份用例调用。
+// AuthState 通过 Ent 持久化认证状态，业务校验调用注入的 AuthService。
 type AuthState struct {
 	*identitycore.AuthDependencies
 	entClient *dbent.Client
@@ -733,7 +733,7 @@ func AuthEnsureBoundEmailAuthIdentityWithClient(
 	return nil
 }
 
-// registrationInvitationsForContext 沿用原 Ent context 选定同一个资金参与连接。
+// registrationInvitationsForContext 优先使用 context 中的 Ent 事务创建注册邀请存储。
 func registrationInvitationsForContext(ctx context.Context, client *dbent.Client) *billingpostgres.RegistrationInvitations {
 	if tx := dbent.TxFromContext(ctx); tx != nil {
 		return billingpostgres.RegistrationInvitationsInTx(tx)

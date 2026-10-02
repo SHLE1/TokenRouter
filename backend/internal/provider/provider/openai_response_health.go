@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// OpenAIResponseHealth 复用选号的运行状态，统一处理 HTTP 和流内语义错误的提供商副作用。
+// OpenAIResponseHealth 共用调度运行状态，处理 HTTP 及流内错误引起的提供商状态更新。
 type OpenAIResponseHealth struct {
 	Health         *UpstreamHealth
 	Runtime        *providercore.RuntimeBlockState
@@ -44,8 +44,8 @@ func (s *OpenAIResponseHealth) Apply(ctx context.Context, provider *providercore
 	if s != nil {
 		s.recordActivity(provider)
 	}
-	// 容量降载只描述当前请求，不代表提供商健康异常；交给请求级重试预算恢复，
-	// 保持提供商可调度，避免误写提供商冷却状态。
+	// 容量降载由请求级重试处理，
+	// 提供商保持可调度状态。
 	if provider != nil && provider.Platform == capability.PlatformOpenAI && openai.IsOpenAIRequestScopedCapacityShed("", responseBody) {
 		return providercore.UpstreamErrorDecision{Policy: providercore.ErrorPolicyNone}
 	}
@@ -194,7 +194,7 @@ func (s *OpenAIResponseHealth) markOAuth429(ctx context.Context, value *provider
 	s.Runtime.ResetRetry(value.ID)
 }
 
-// RetryOAuth429 保留已停调、影子与非 transient 429 的拒绝边界。
+// RetryOAuth429 在已停调、影子提供商或非瞬时 429 时拒绝重试。
 func (s *OpenAIResponseHealth) RetryOAuth429(value *providercore.Record, status int, disabled bool, headers http.Header, body []byte) bool {
 	if s == nil || disabled || status != http.StatusTooManyRequests {
 		return false

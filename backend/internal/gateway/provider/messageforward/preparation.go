@@ -20,8 +20,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
-// Dependencies 固定连接原生拥有者，不接受旧网关、配置聚合或 HTTP Context。
-// Prepare 与执行共用这些实例，构造不启动任务或提前读取动态设置。
+// Dependencies 包含请求准备和执行共用的凭据、传输和策略依赖。
+// Prepare 与执行共用这些实例，动态设置在请求处理中读取。
 type Dependencies struct {
 	Credentials   *provider.MessageCredentialSource
 	Fingerprint   *anthropic.RequestFingerprint
@@ -43,18 +43,18 @@ type BedrockGroupPolicies interface {
 	GetGroupPolicy(context.Context, int64) (*routing.GroupPolicyView, error)
 }
 
-// ProviderState 只提供本条执行链原有的持久停调动作，不开放提供商配置或资金写入。
+// ProviderState 定义提供商临时停调状态的写入方法。
 type ProviderState interface {
 	SetTempUnschedulable(context.Context, int64, time.Time, string) error
 }
 
-// DebugObserver 只接收本次请求的调试快照；文件及日志资源由观察实现持有。
+// DebugObserver 接收本次请求的调试快照，实现方管理文件和日志资源。
 type DebugObserver interface {
 	Snapshot(string, http.Header, []byte, map[string]string)
 	Capture(*http.Request, []byte, *gatewayadapter.ExecutionProvider, string, bool, bool) string
 }
 
-// Runtime 只持有 Messages 单次执行的固定依赖；状态、凭据及响应属于各次尝试。
+// Runtime 包含 Messages 执行依赖，每次尝试分别保存状态、凭据和响应。
 type Runtime struct {
 	dependencies Dependencies
 	options      Options
@@ -79,7 +79,7 @@ func (r *Runtime) checkBeta(ctx context.Context, state *AttemptState, target *ga
 	return nil
 }
 
-// betaFilters 保留计数入口按需读取的行为，不把一次未缓存查询变成请求级缓存。
+// betaFilters 优先读取已保存的 Beta 过滤结果，缺少结果时查询设置。
 func (r *Runtime) betaFilters(ctx context.Context, state *AttemptState, target *gatewayadapter.ExecutionProvider, model string) map[string]struct{} {
 	if state.BetaEvaluated {
 		return state.BetaFilters
@@ -98,7 +98,7 @@ func (r *Runtime) evaluateBeta(ctx context.Context, target *gatewayadapter.Execu
 	return anthropic.EvaluateBetaPolicy(gatewayadapter.AnthropicBetaPolicy(settings), header, target.View().IsOAuth(), target.View().IsBedrock(), model)
 }
 
-// validateBaseURL 保留格式检查与受允许列表约束两条路径及原错误前缀。
+// validateBaseURL 根据配置执行 URL 格式检查或允许列表校验。
 func (r *Runtime) validateBaseURL(raw string) (string, error) {
 	var normalized string
 	var err error

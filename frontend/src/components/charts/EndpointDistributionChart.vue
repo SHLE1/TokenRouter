@@ -62,7 +62,7 @@
       </div>
     </div>
     <ChartSkeleton v-if="loading" variant="distribution" />
-    <!-- 桌面端顶部对齐，避免数据较少时表格被圆环图垂直居中。 -->
+    <!-- 桌面端表格与圆环图顶部对齐。 -->
     <div v-else-if="displayEndpointStats.length > 0 && chartData" class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6">
       <div class="h-48 w-48 shrink-0">
         <Bar v-if="chartType === 'bar'" :data="chartData" :options="barOptions" />
@@ -160,7 +160,7 @@ const { balanceUnitSymbol, usdUnitSymbol } = useBalanceDisplay()
 
 type DistributionMetric = 'tokens' | 'actual_cost'
 type EndpointSource = 'inbound' | 'upstream' | 'path'
-// 图表形态：默认圆环；用户用量页传 bar，避免同页多个卡片都是圆环图。
+// 图表默认为圆环图，用户用量页使用水平条形图。
 type EndpointChartType = 'doughnut' | 'bar'
 
 const props = withDefaults(

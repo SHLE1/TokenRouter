@@ -190,9 +190,8 @@ func opsErrorLogsOrderBy(filter *ops.OpsErrorLogFilter) string {
 	case "model":
 		column = "COALESCE(NULLIF(TRIM(e.requested_model), ''), e.model)"
 	case "status_code":
-		// 与展示列/过滤保持同义:列表展示 COALESCE(upstream_status_code, status_code, 0),
-		// status_code 过滤也用同一表达式,故排序必须一致——否则 recovered upstream 行
-		//（status_code<400 但展示上游 5xx）排序键与显示值/分页切分不符。
+		// 列表展示、status_code 过滤和排序共用 COALESCE(upstream_status_code, status_code, 0)。
+		// 请求最终成功但曾收到上游 5xx 时，排序和分页仍按展示的上游状态码处理。
 		column = "COALESCE(e.upstream_status_code, e.status_code, 0)"
 	default:
 		column = "e.created_at"

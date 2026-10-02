@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// ExpiryRepository 只维护启用自动暂停的过期提供商，不读取凭据或更改其他停调状态。
+// ExpiryRepository 暂停已到期且启用自动暂停的提供商。
 type ExpiryRepository interface {
 	AutoPauseExpiredProviders(context.Context, time.Time) (int64, error)
 }

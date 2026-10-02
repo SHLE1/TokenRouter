@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// 转发配置沿用原持久化键及 TTFT 值域。
+// 转发设置的持久化键和 TTFT 模式值如下。
 const (
 	SettingKeyClaudeOAuthSystemPrompt                = "claude_oauth_system_prompt"
 	SettingKeyClaudeOAuthSystemPromptBlocks          = "claude_oauth_system_prompt_blocks"
@@ -56,12 +56,16 @@ type cachedGatewayForwardingSettings struct {
 	expiresAt                        int64 // unix nano
 }
 
-const gatewayForwardingCacheTTL = 60 * time.Second
-const gatewayForwardingErrorTTL = 5 * time.Second
+const (
+	gatewayForwardingCacheTTL = 60 * time.Second
+	gatewayForwardingErrorTTL = 5 * time.Second
+)
 
-// ForwardingSettingsReadTimeout 保留转发设置及兼容读取的原回源预算。
-const ForwardingSettingsReadTimeout = 5 * time.Second
-const gatewayForwardingDBTimeout = ForwardingSettingsReadTimeout
+// ForwardingSettingsReadTimeout 限制转发设置读取的回源时长。
+const (
+	ForwardingSettingsReadTimeout = 5 * time.Second
+	gatewayForwardingDBTimeout    = ForwardingSettingsReadTimeout
+)
 
 type gatewayForwardingSettingsResult struct {
 	openAITTFTMode                                                                        string
@@ -84,7 +88,7 @@ type ForwardingSnapshot struct {
 	ClientDatelineNormalization      bool
 }
 
-// NormalizeOpenAITTFTMode 保留原兼容口径。
+// NormalizeOpenAITTFTMode 接受 visible，其他值使用 semantic。
 func NormalizeOpenAITTFTMode(mode string) string {
 	if strings.EqualFold(strings.TrimSpace(mode), OpenAITTFTModeVisible) {
 		return OpenAITTFTModeVisible
@@ -92,7 +96,7 @@ func NormalizeOpenAITTFTMode(mode string) string {
 	return OpenAITTFTModeSemantic
 }
 
-// getGatewayForwardingSettingsCached 复用本实例配置缓存，保持原 TTL、回源与取消边界。
+// getGatewayForwardingSettingsCached 读取实例内的转发设置缓存，过期后合并并发查询。
 func (s *RuntimeSettings) getGatewayForwardingSettingsCached(ctx context.Context) gatewayForwardingSettingsResult {
 	if cached, ok := s.gatewayForwardingCache.Load().(*cachedGatewayForwardingSettings); ok && cached != nil {
 		if time.Now().UnixNano() < cached.expiresAt {
@@ -216,39 +220,39 @@ func (s *RuntimeSettings) getGatewayForwardingSettingsCached(ctx context.Context
 	return gatewayForwardingSettingsResult{openAITTFTMode: OpenAITTFTModeSemantic, fp: true, claudeOAuthSystemPromptInjection: true, clientDatelineNormalization: true}
 }
 
-// GetOpenAITTFTMode 复用本实例配置缓存，保持原 TTL、回源与取消边界。
+// GetOpenAITTFTMode 从转发设置缓存读取并规范化首 token 计时模式。
 func (s *RuntimeSettings) GetOpenAITTFTMode(ctx context.Context) string {
 	return NormalizeOpenAITTFTMode(s.getGatewayForwardingSettingsCached(ctx).openAITTFTMode)
 }
 
-// GetGatewayForwardingSettings 复用本实例配置缓存，保持原 TTL、回源与取消边界。
+// GetGatewayForwardingSettings 返回指纹统一、元数据透传和 CCH 签名开关。
 func (s *RuntimeSettings) GetGatewayForwardingSettings(ctx context.Context) (fingerprintUnification, metadataPassthrough, cchSigning bool) {
 	result := s.getGatewayForwardingSettingsCached(ctx)
 	return result.fp, result.mp, result.cch
 }
 
-// IsAnthropicCacheTTL1hInjectionEnabled 复用本实例配置缓存，保持原 TTL、回源与取消边界。
+// IsAnthropicCacheTTL1hInjectionEnabled 读取 Anthropic 一小时缓存 TTL 注入开关。
 func (s *RuntimeSettings) IsAnthropicCacheTTL1hInjectionEnabled(ctx context.Context) bool {
 	return s.getGatewayForwardingSettingsCached(ctx).cacheTTL1h
 }
 
-// IsRewriteMessageCacheControlEnabled 复用本实例配置缓存，保持原 TTL、回源与取消边界。
+// IsRewriteMessageCacheControlEnabled 读取消息 cache_control 改写开关。
 func (s *RuntimeSettings) IsRewriteMessageCacheControlEnabled(ctx context.Context) bool {
 	return s.getGatewayForwardingSettingsCached(ctx).rewriteMessageCacheControl
 }
 
-// IsClientDatelineNormalizationEnabled 复用本实例配置缓存，保持原 TTL、回源与取消边界。
+// IsClientDatelineNormalizationEnabled 读取客户端日期行规范化开关。
 func (s *RuntimeSettings) IsClientDatelineNormalizationEnabled(ctx context.Context) bool {
 	return s.getGatewayForwardingSettingsCached(ctx).clientDatelineNormalization
 }
 
-// GetClaudeOAuthSystemPromptInjectionSettings 复用本实例配置缓存，保持原 TTL、回源与取消边界。
+// GetClaudeOAuthSystemPromptInjectionSettings 返回 Claude OAuth 提示词注入开关、文本和内容块。
 func (s *RuntimeSettings) GetClaudeOAuthSystemPromptInjectionSettings(ctx context.Context) (enabled bool, prompt string, blocks string) {
 	result := s.getGatewayForwardingSettingsCached(ctx)
 	return result.claudeOAuthSystemPromptInjection, result.claudeOAuthSystemPrompt, result.claudeOAuthSystemPromptBlocks
 }
 
-// GetClaudeCodeVersionBounds 复用本实例配置缓存，保持原 TTL、回源与取消边界。
+// GetClaudeCodeVersionBounds 读取版本范围缓存，过期后查询 Claude Code 的最低和最高允许版本。
 func (s *RuntimeSettings) GetClaudeCodeVersionBounds(ctx context.Context) (min, max string) {
 	if cached, ok := s.versionBoundsCache.Load().(*cachedVersionBounds); ok {
 		if time.Now().UnixNano() < cached.expiresAt {
@@ -258,13 +262,13 @@ func (s *RuntimeSettings) GetClaudeCodeVersionBounds(ctx context.Context) (min, 
 	// singleflight: 同一时刻只有一个 goroutine 查询 DB，其余复用结果
 	type bounds struct{ min, max string }
 	result, err, _ := s.versionBoundsSF.Do("version_bounds", func() (any, error) {
-		// 二次检查，避免排队的 goroutine 重复查询
+		// 进入合并查询后再次检查缓存，前一个查询可能已填充结果。
 		if cached, ok := s.versionBoundsCache.Load().(*cachedVersionBounds); ok {
 			if time.Now().UnixNano() < cached.expiresAt {
 				return bounds{cached.min, cached.max}, nil
 			}
 		}
-		// 使用独立 context：断开请求取消链，避免客户端断连导致空值被长期缓存
+		// 使用独立 context 完成配置查询，客户端断开后仍可取得有效值并填充缓存。
 		dbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), versionBoundsDBTimeout)
 		defer cancel()
 		values, err := s.settingRepo.GetMultiple(dbCtx, []string{
@@ -322,7 +326,7 @@ func (s *RuntimeSettings) PublishForwarding(minVersion, maxVersion string, value
 	})
 }
 
-// InvalidateForwarding 使此实例下一次读取回源，不影响其它实例或请求。
+// InvalidateForwarding 使当前实例的缓存失效，下次读取重新查询存储。
 func (s *RuntimeSettings) InvalidateForwarding() {
 	s.gatewayForwardingSF.Forget("gateway_forwarding")
 	s.gatewayForwardingCache.Store(&cachedGatewayForwardingSettings{})

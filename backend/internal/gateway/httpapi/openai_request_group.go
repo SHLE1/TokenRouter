@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// openAIRequestGroup 读取当前请求已投影的分组，不重新认证或查询存储。
+// openAIRequestGroup 读取当前请求保存的分组。
 func openAIRequestGroup(c *gin.Context) *routing.Group {
 	if c == nil {
 		return nil

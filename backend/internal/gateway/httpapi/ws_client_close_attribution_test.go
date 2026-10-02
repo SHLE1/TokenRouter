@@ -11,25 +11,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// issue #6105：入站 Responses WebSocket 的正常结束会被记成提供商故障。
-//
-// 归因发生在 openai_gateway_handler.go 的 ingress 收尾处：只有
-// *service.OpenAIWSClientCloseError 且状态码为 1000 被认作正常关闭，其余一律落到
-// shouldReportOpenAIWSProxyProviderFailure —— 而它只排除 model-switch 与
-// session-preempted 两种。于是客户端干净关闭（底层直接回裸 coderws.CloseError{1000}）
-// 与客户端中途断开（context.Canceled，收尾用 1001 关闭）都会喂给
-// ObserveOpenAIAPIKeyHealthFailure 与 scheduler.ReportResult(success=false)，
-// 累积到阈值即把上游提供商熔断出调度池。
-//
-// 这些用例钉住判定本身，与既有的 TestShouldReportOpenAIWSProxyProviderFailure 同一层级：
-// 调用点位于一个需要真实上游 WS 才能进入的巨型 handler 循环内，仓库既有约定就是直接测判定函数。
+// 这些测试检查 Responses WebSocket 的客户端结束归因（#6105）。
+// 客户端正常关闭可返回 coderws.CloseError{1000}，中途取消可返回 context.Canceled 并以 1001 关闭。
+// 两者都按客户端结束处理，提供商故障由 shouldReportOpenAIWSProxyProviderFailure 判断，供健康状态和 scheduler.ReportResult 使用。
 
 // TestOpenAIWSIngressEndedByClient_BareNormalClosureIsNotProviderFailure 验证缺陷主复现之一：客户端干净关闭。底层 conn.Read 的错误被 ReadOpenAIWSClientMessage
 // 原样返回，没有任何地方把它包成 *OpenAIWSClientCloseError，所以旧断言看不见它。
 func TestOpenAIWSIngressEndedByClient_BareNormalClosureIsNotProviderFailure(t *testing.T) {
 	err := coderws.CloseError{Code: coderws.StatusNormalClosure, Reason: "client done"}
 
-	// 前提：这正是旧判据漏掉它的原因——类型不匹配，不是状态码不匹配。
+	// 裸 CloseError 与 OpenAIWSClientCloseError 的类型不同，关闭码都为 1000。
 	var closeErr *OpenAIWSClientCloseError
 	require.False(t, errors.As(err, &closeErr),
 		"裸 coderws.CloseError 不是 *OpenAIWSClientCloseError，旧的 errors.As 必然为假")
@@ -39,7 +30,7 @@ func TestOpenAIWSIngressEndedByClient_BareNormalClosureIsNotProviderFailure(t *t
 	require.True(t, ResponsesWSEndedByClient(err, ResponsesWSCloseInfo(err)))
 }
 
-// TestOpenAIWSIngressEndedByClient_WrappedBareNormalClosureIsNotProviderFailure 验证同一形状被包一层（例如 ingress 把 read 错误裹进上下文）时也必须认得。
+// TestOpenAIWSIngressEndedByClient_WrappedBareNormalClosureIsNotProviderFailure 验证带包装的正常关闭错误也归为客户端结束。
 func TestOpenAIWSIngressEndedByClient_WrappedBareNormalClosureIsNotProviderFailure(t *testing.T) {
 	err := fmt.Errorf("ingress turn 3: %w",
 		coderws.CloseError{Code: coderws.StatusNormalClosure, Reason: "client done"})
@@ -82,8 +73,8 @@ func TestOpenAIWSIngressEndedByClient_GoingAwayWithoutCancellationStillReported(
 	require.True(t, gatewayws.EntryShouldReportFailure(err), "真实上游故障仍须归因提供商")
 }
 
-// TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportProviderFailure 验证契约没有丢：真正的故障仍然惩罚提供商。判定组合与调用点一致——
-// openAIWSIngressEndedByClient 为假才会走到 shouldReportOpenAIWSProxyProviderFailure。
+// TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportProviderFailure 验证异常关闭进入提供商故障判断。
+// 调用顺序为先检查 openAIWSIngressEndedByClient，再调用 shouldReportOpenAIWSProxyProviderFailure。
 func TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportProviderFailure(t *testing.T) {
 	cases := []struct {
 		name string
@@ -109,7 +100,7 @@ func TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportProviderFailure
 			err:  errors.New("upstream websocket read failed"),
 		},
 		{
-			// 空闲超时之外的 deadline 是真实停滞：不豁免。
+			// 空闲超时之外的 deadline 按停滞故障处理。
 			name: "deadline_without_normal_close",
 			err:  fmt.Errorf("upstream stalled: %w", context.DeadlineExceeded),
 		},
@@ -123,7 +114,7 @@ func TestOpenAIWSIngressEndedByClient_AbnormalClosuresStillReportProviderFailure
 	}
 }
 
-// TestOpenAIWSIngressEndedByClient_MatchesCloseCodeReportedInLog 验证不变式：同一条错误，日志侧与归因侧必须给出一致的结论。
+// TestOpenAIWSIngressEndedByClient_MatchesCloseCodeReportedInLog 验证日志关闭码与客户端结束归因一致。
 // summarizeWSCloseErrorForLog 一直用 coderws.CloseStatus 读关闭码，这正是缺陷时期
 // WARN 打印 close_status=1000(StatusNormalClosure) 却同时把提供商记为故障的原因。
 // 以后任何一侧改了读法，这条会红。

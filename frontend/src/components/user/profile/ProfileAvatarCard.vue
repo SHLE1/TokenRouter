@@ -180,7 +180,7 @@ async function prepareAvatarUpload(file: File): Promise<File> {
   return compressAvatarFile(file)
 }
 
-// 选中图片后不再经过本地草稿，压缩完成直接提交更新。
+// 选中的图片压缩完成后直接提交更新。
 async function handleAvatarFileChange(event: Event) {
   const input = event.target as HTMLInputElement | null
   const file = input?.files?.[0]

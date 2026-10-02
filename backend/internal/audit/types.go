@@ -83,8 +83,7 @@ type AuditLogList struct {
 	PageSize int
 }
 
-// AuditLogRepository 审计日志持久化端口。
-// 注意：接口刻意不提供单条删除能力——审计日志只允许追加与全量清空。
+// AuditLogRepository 提供审计日志的追加、查询和全量清空操作。
 type AuditLogRepository interface {
 	BatchInsert(ctx context.Context, logs []*AuditLog) (int64, error)
 	// Insert 同步写入单条（用于清空留痕等必须落库的记录）。

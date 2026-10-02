@@ -20,8 +20,8 @@ type openAICyberTranscriptBlockKeys struct {
 // 限制单请求的 Redis 查询工作量，保留最可能匹配续接的近期转录前缀。
 const maxOpenAICyberTranscriptLookupKeys = 256
 
-// deriveOpenAICyberTranscriptBlockKeys 返回累计语义历史散列和最新用户轮次前的上下文键。
-// 上下文键必须观察到模型生成历史，避免共享首轮模板误屏蔽无关会话。
+// deriveOpenAICyberTranscriptBlockKeys 返回累计对话内容哈希和最新用户轮次前的上下文键。
+// 上下文键需要包含模型生成历史，共享的首轮模板跳过该匹配。
 func deriveOpenAICyberTranscriptBlockKeys(apiKeyID int64, body []byte) openAICyberTranscriptBlockKeys {
 	if len(body) == 0 {
 		return openAICyberTranscriptBlockKeys{}
@@ -60,8 +60,7 @@ func deriveOpenAICyberTranscriptBlockKeys(apiKeyID int64, body []byte) openAICyb
 		nextLookupKey := 0
 		lookupKeysRotated := false
 		lastLookupKey := ""
-		// 这里只使用熵启发式，不能证明来源；若要准确区分固定 few-shot 助手条目，
-		// 需要经过认证的服务端历史。
+		// 此处按熵估计判断内容变化。准确区分固定 few-shot 助手条目需要经认证的服务端历史。
 		hasModelGeneratedItem := false
 		sequence.ForEach(func(_, item gjson.Result) bool {
 			canonical := item.Raw

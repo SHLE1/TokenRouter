@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 )
 
-// OpenAIWSOptions 只保存WS执行的静态参数；nil保留未配置时的原缺省语义。
+// OpenAIWSOptions 保存 WS 执行的静态参数，nil 表示使用默认配置。
 type OpenAIWSOptions struct {
 	Enabled, OAuthEnabled, APIKeyEnabled, ForceHTTP                      bool
 	ResponsesWebsockets, ResponsesWebsocketsV2, ModeRouterV2Enabled      bool
@@ -35,7 +35,7 @@ type OpenAIWSSelection interface {
 	SessionStickyTTL() time.Duration
 }
 
-// OpenAIWSDependencies 固定技术端口，不持有连接池、取消表或重试计数的副本。
+// OpenAIWSDependencies 保存 WS 执行使用的接口。
 type OpenAIWSDependencies struct {
 	Options     *OpenAIWSOptions
 	Connections *OpenAIWSConnections
@@ -65,7 +65,7 @@ func NewOpenAIWebSocketExecutor(deps OpenAIWSDependencies) *OpenAIWebSocketExecu
 	return out
 }
 
-// EnsureSessionIsolation 投影当前认证Key，不重新读取用户或分组。
+// EnsureSessionIsolation 使用当前请求的认证 Key 检查会话隔离。
 func (s *OpenAIWebSocketExecutor) EnsureSessionIsolation(ctx context.Context, key *apikey.APIKey, userID int64, source, hash string) error {
 	if key == nil {
 		return nil

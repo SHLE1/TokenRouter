@@ -107,7 +107,7 @@ func TestManualBackfillPreservesConcurrentState(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, got.ManualBackfillStart.Equal(newTarget))
 	require.True(t, got.LiveWatermark.Equal(next))
-	// 反向顺序中，旧实时快照只能写实时字段，不覆盖手工请求。
+	// 逆序写入时，实时快照更新实时字段，手工请求保持当前值。
 	_, err = base.ApplyUsageAnalyticsState(ctx, usage.AnalyticsStateChange{Kind: usage.AnalyticsLiveSuccess, State: usage.UsageAnalyticsAggregationState{LiveWatermark: next.Add(time.Hour), Phase: "idle"}})
 	require.NoError(t, err)
 	got, err = base.GetUsageAnalyticsAggregationState(ctx)

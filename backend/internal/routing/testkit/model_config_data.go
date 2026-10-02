@@ -36,7 +36,7 @@ type ModelPattern struct {
 	Target string
 }
 
-// ModelConfigData 模型配置测试输入，不持有运行缓存或查价算法
+// ModelConfigData 包含模型配置测试的分组策略和价格配置。
 type ModelConfigData struct {
 	GroupPolicies  map[int64]routing.GroupRoutingPolicy
 	Configurations []Configuration
@@ -93,7 +93,7 @@ func ModelConfigFromData(fixture *ModelConfigData) *routing.PricingConfigService
 		for _, gid := range ids {
 			ch := fixture.ByGroup[gid].Clone()
 			ch.GroupIDs = []int64{gid}
-			// 展平价卡夹具只作数据反投影，不复制查找或定价算法。
+			// 将展平的测试价格按分组还原为价卡数据。
 			keys := make([]ModelKey, 0, len(fixture.Prices))
 			for key := range fixture.Prices {
 				if key.GroupID == gid {

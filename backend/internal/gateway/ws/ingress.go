@@ -55,8 +55,7 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			state.StoreDisabled,
 		))
 		currentBridgePayload := firstPayload
-		// 首轮请求固定作为稳定会话种子；后续每轮会重新解析映射模型，避免连接内切换模型时
-		// 复用其它模型的上游缓存身份。
+		// 首轮请求提供会话种子，后续每轮重新解析模型映射，并使用对应模型的缓存身份。
 		grokCacheSeedPayload := firstPayload.PayloadRaw
 		var bridgeReplayInput []json.RawMessage
 		bridgeReplayInputExists := false
@@ -367,8 +366,8 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			return false
 		}
 		if isStrictAffinityTurn(currentPayload) {
-			// Layer 2：严格亲和链路命中 previous_response_not_found 时，降级为“去掉 previous_response_id 后重放一次”。
-			// 该错误说明续链锚点已失效，继续 strict fail-close 只会直接中断本轮请求。
+			// 固定提供商续接遇到 previous_response_not_found 时，删除 previous_response_id 并重放一次。
+			// 该错误表示上游续接点已失效。
 			p.Log(fmt.Sprintf(
 				"ingress_ws_prev_response_recovery_layer2 provider_id=%d turn=%d conn_id=%s store_disabled_conn_mode=%s action=drop_previous_response_id_retry",
 				o.ProviderID,
@@ -494,8 +493,7 @@ func (s *IngressSession) Run(ctx context.Context, firstMessage []byte) error {
 			}
 		}
 		hasFunctionCallOutput := toolSignals.HasFunctionCallOutput
-		// store=false + function_call_output 场景必须有续链锚点。
-		// 若客户端未传 previous_response_id，优先回填上一轮响应 ID，避免上游报 call_id 无法关联。
+		// store=false 的工具输出需要续接点，客户端缺少 previous_response_id 时填入上一轮响应 ID，供上游关联 call_id。
 		if codec.ShouldInfer(
 			state.StoreDisabled,
 			turn,

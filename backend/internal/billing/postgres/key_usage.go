@@ -109,7 +109,7 @@ func (r *KeyUsageStore) GetRateLimitData(ctx context.Context, id int64) (result 
 	return data, rows.Err()
 }
 
-// KeyUsageStore 只写消费累计及资金窗口，不修改 Key 的访问配置。
+// KeyUsageStore 写入 Key 的消费累计和资金窗口。
 type KeyUsageStore struct {
 	client *dbent.Client
 	sql    KeyUsageSQL

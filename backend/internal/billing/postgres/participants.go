@@ -35,6 +35,7 @@ type RedeemParticipant struct {
 func (p *RedeemParticipant) ApplyBalance(ctx context.Context, id int64, amount float64) error {
 	return p.mutations.ApplyBalance(dbent.NewTxContext(ctx, p.tx), id, amount)
 }
+
 func (p *RedeemParticipant) ApplyConcurrency(ctx context.Context, id int64, delta int) error {
 	return p.mutations.ApplyConcurrency(dbent.NewTxContext(ctx, p.tx), id, delta)
 }
@@ -45,7 +46,7 @@ func (r *BalanceStore) DeductRefundBalance(ctx context.Context, id int64, amount
 	return deducted, err
 }
 
-// CompensateRefundBalance 保留旧退款补偿的正数累计充值语义。
+// CompensateRefundBalance 补回退款余额，正数金额同时计入累计充值。
 func (r *BalanceStore) CompensateRefundBalance(ctx context.Context, id int64, amount float64) error {
 	return r.UpdateBalance(ctx, id, amount)
 }

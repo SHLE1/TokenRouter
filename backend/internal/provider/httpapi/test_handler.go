@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// TestHandler 绑定管理 HTTP 字段、SSE 输出和连接测试成功后的恢复端口。
+// TestHandler 绑定测试请求字段、SSE 输出及测试成功后的恢复函数。
 type TestHandler struct {
 	tests   *provider.TestService
 	recover func(context.Context, int64) error
@@ -26,7 +26,7 @@ type TestProviderRequest struct {
 	Mode    string `json:"mode"`
 	// Protocol 只作用于本次文字测试：OpenAI 选择 Responses 或 Chat，国产平台选择已启用的原生协议。
 	Protocol string `json:"protocol"`
-	// TestType 由管理端明确指定测试文字或图片，避免服务端猜测模型能力。
+	// TestType 指定文字或图片测试。
 	TestType string `json:"test_type"`
 	// TestMode 兼容早期客户端使用的字段名，优先级低于 test_type。
 	TestMode string `json:"test_mode"`
@@ -45,7 +45,7 @@ func (h *TestHandler) Test(c *gin.Context) {
 	// Allow empty body, model_id is optional
 	_ = c.ShouldBindJSON(&req)
 
-	// 使用唯一原生测试用例，HTTP 输出器同步写入 SSE 事件。
+	// 调用共享测试用例，HTTP 输出器同步写入 SSE 事件。
 	testType := req.TestType
 	if testType == "" {
 		testType = req.TestMode

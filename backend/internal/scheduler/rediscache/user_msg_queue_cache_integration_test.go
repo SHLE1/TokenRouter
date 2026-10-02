@@ -152,8 +152,8 @@ func (s *UserMsgQueueCacheSuite) TestAcquireLockBusyPathReindexesUnindexedLiveLo
 }
 
 func (s *UserMsgQueueCacheSuite) TestAcquireLockBusyPathMakesNoTTLLockReconcilable() {
-	// PTTL == -1 的异常锁若不在索引中，永远不会被 reconcile 发现；
-	// 争锁失败路径必须以“已到期候选”的 score 回填它，形成自愈闭环。
+	// PTTL 为 -1 的锁若缺少索引，reconcile 会跳过它。
+	// 争锁失败时将它按已到期候选回填到索引，等待后台删除。
 	providerID := int64(706)
 	require.NoError(s.T(), s.rdb.Set(s.ctx, umqLockKey(providerID), "holder-706", 0).Err())
 

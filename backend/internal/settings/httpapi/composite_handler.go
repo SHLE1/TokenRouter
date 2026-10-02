@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings/composite"
 )
 
-// CompositeSettings 仅描述综合读取与已注册更新流程；不暴露具体旧服务、配置或存储。
+// CompositeSettings 提供综合设置读取和已登记的更新流程。
 type CompositeSettings interface {
 	GetAllSettings(context.Context) (*composite.Snapshot, error)
 	GetAuthSourceDefaultSettings(context.Context) (*identity.AuthSourceDefaultSettings, error)

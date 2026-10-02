@@ -9,10 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ResolveOpenAIUpstreamEndpoint 返回 OpenAI 兼容提供商的实际上游端点。
-// 同一入站路由可能在运行时选择原始 Chat 或 Responses 桥接，因此优先采用转发结果；
-// 尚未报告端点的转发路径则回退到当前 attempt 上下文和平台规范端点；这里不再
-// 根据提供商配置猜测实际路径，避免与 Responses、Messages 或专用传输的真实分支漂移。
+// ResolveOpenAIUpstreamEndpoint 返回 OpenAI 兼容提供商实际使用的上游端点。
+// 同一入站可选择 Chat 或 Responses，因此优先读取转发结果，缺失时读取当前尝试上下文，再使用平台规范端点。
 func ResolveOpenAIUpstreamEndpoint(c *gin.Context, provider *gatewayprovider.ExecutionProvider, result *forwardcore.OpenAIResult) string {
 	if result != nil {
 		if endpoint := strings.TrimSpace(result.UpstreamEndpoint); endpoint != "" {

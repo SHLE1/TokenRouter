@@ -42,14 +42,14 @@ func (r *OpenAITokenRefresher) NeedsRefresh(provider *Record, refreshWindow time
 }
 
 // Refresh 执行token刷新
-// 保留原有credentials中的所有字段，只更新token相关字段
+// 将 token 字段合并进 credentials，其余字段保持当前值。
 func (r *OpenAITokenRefresher) Refresh(ctx context.Context, provider *Record) (map[string]any, error) {
 	tokenInfo, err := r.Authorization.RefreshProviderToken(ctx, provider)
 	if err != nil {
 		return nil, err
 	}
 
-	// 使用服务提供的方法构建新凭证，并保留原有字段
+	// 构建刷新后的凭据，再补齐已有的其他字段。
 	newCredentials := BuildOpenAIProviderCredentials(tokenInfo)
 	newCredentials = MergeCredentials(provider.Credentials, newCredentials)
 	newCredentials = NormalizeOpenAIPersonalAccessTokenCredentials(provider, tokenInfo, newCredentials)

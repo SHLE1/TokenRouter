@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 )
 
-// provideOpenAIResponseState 由 app 持有唯一会话存储；构造只分配原状态，不打开连接或启动任务。
+// provideOpenAIResponseState 构造由 app 管理的共享会话存储。
 func provideOpenAIResponseState(cache session.GatewayCache) session.OpenAIWSStateStore {
 	return session.NewOpenAIWSStateStore(cache, gatewayprovider.LogOpenAIWSModeInfo)
 }

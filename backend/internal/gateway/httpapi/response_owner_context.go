@@ -4,10 +4,10 @@ import "github.com/gin-gonic/gin"
 
 const responseOwnerContextKey = "openai_http_response_owner"
 
-// HTTPResponseOwner 只记录成功续接应绑定的下游主体，不含上游提供商凭据。
+// HTTPResponseOwner 记录成功续接绑定的下游主体。
 type HTTPResponseOwner struct{ UserID, APIKeyID int64 }
 
-// SetHTTPResponseOwner 只接受已通过认证入口提供的有效标识，保留原上下文字段。
+// SetHTTPResponseOwner 将认证入口提供的有效标识写入请求上下文。
 func SetHTTPResponseOwner(c *gin.Context, userID, keyID int64) {
 	if c == nil || userID <= 0 || keyID <= 0 {
 		return
@@ -15,7 +15,7 @@ func SetHTTPResponseOwner(c *gin.Context, userID, keyID int64) {
 	c.Set(responseOwnerContextKey, HTTPResponseOwner{UserID: userID, APIKeyID: keyID})
 }
 
-// ResponseOwnerFromContext 不从未经认证的 Key 加载投影补造归属。
+// ResponseOwnerFromContext 从认证后的请求上下文读取归属。
 func ResponseOwnerFromContext(c *gin.Context) (HTTPResponseOwner, bool) {
 	value, ok := c.Get(responseOwnerContextKey)
 	if !ok {

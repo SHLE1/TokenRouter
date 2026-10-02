@@ -15,13 +15,13 @@ import (
 // 连接池和超时参数由配置提供：
 // 1. PoolSize: 控制最大并发连接数（默认 128）
 // 2. MinIdleConns: 保持最小空闲连接，减少冷启动延迟（默认 10）
-// 3. DialTimeout/ReadTimeout/WriteTimeout: 精确控制各阶段超时
+// 3. DialTimeout/ReadTimeout/WriteTimeout: 分别控制建连、读取和写入超时
 func InitRedis(cfg *config.Config) *redis.Client {
 	return redisinfra.NewClient(buildRedisOptions(cfg), cfg.Server.EnableServerTiming)
 }
 
 // buildRedisOptions 构建 Redis 连接选项
-// 从配置文件读取连接池和超时参数，支持生产环境调优
+// 连接池和超时参数从配置读取。
 func buildRedisOptions(cfg *config.Config) *redis.Options {
 	opts := &redis.Options{
 		Addr:         cfg.Redis.Address(),

@@ -34,7 +34,7 @@ func TestNewUpstreamDialerHasBoundedTimeout(t *testing.T) {
 }
 
 // TestBuildUpstreamTransportKeepsDialTimeoutWithHTTPProxy 验证建连超时对 HTTP 代理同样生效：Transport.Proxy 走的仍是 DialContext，
-// 代理地址不可达时必须快速失败而不是挂满内核超时。
+// 代理地址不可达时按配置的建连超时返回。
 func TestBuildUpstreamTransportKeepsDialTimeoutWithHTTPProxy(t *testing.T) {
 	proxyURL, err := url.Parse("http://127.0.0.1:1080")
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestBuildUpstreamTransportKeepsDialContextWithSOCKS5Proxy(t *testing.T) {
 }
 
 // TestUpstreamDialerRespectsContextCancellation 验证Timeout 字段确实被 net.Dialer 用于建连：拨一个已被 close 的本地监听端口，
-// 断言 Dialer 走的是自己的超时路径而不是无限等待。
+// 检查 Dialer 响应超时或取消。
 // （不依赖外网可达性，CI 中确定性执行。）
 func TestUpstreamDialerRespectsContextCancellation(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

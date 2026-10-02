@@ -12,7 +12,7 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// ReasoningHistory 复用既有缓存端口，保留两秒独立操作预算和七天有效期。
+// ReasoningHistory 通过传入的缓存存取推理历史，操作超时为两秒，缓存有效期为七天。
 type ReasoningHistory struct {
 	Cache ReasoningContentCache
 	Warn  func(string, error)
@@ -20,8 +20,7 @@ type ReasoningHistory struct {
 
 const responsesReasoningCacheTTL = 7 * 24 * time.Hour
 
-// Lookup 按 reasoning item id 回查缓存。缓存不可用或未命中时
-// 返回空字符串，保持桥接原有 fail-open 行为。
+// Lookup 按 reasoning item ID 读取缓存，缓存不可用或未命中时返回空字符串。
 func (s *ReasoningHistory) Lookup(itemID string) string {
 	if s == nil || s.Cache == nil {
 		return ""
@@ -89,8 +88,7 @@ func (s *ReasoningHistory) cacheItem(item *protocolopenai.ResponsesOutput) {
 	}
 }
 
-// Store 使用 detached context 写入缓存，客户端断连后仍可完成
-// 上游 drain；缓存失败只记录日志，不影响当前响应。
+// Store 在独立 context 中写入推理缓存，客户端断开后仍可完成上游排水。写入失败时记录日志，响应继续输出。
 func (s *ReasoningHistory) Store(itemID, content string) {
 	if s == nil || s.Cache == nil {
 		return

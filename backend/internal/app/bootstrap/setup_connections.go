@@ -78,7 +78,7 @@ func TestSetupDatabaseConnection(cfg *SetupDatabaseConfig) error {
 
 	// 目标数据库不存在时创建它。
 	if !exists {
-		// 注意：数据库名不能参数化，依赖前置输入校验保障安全。
+		// 数据库名通过前置输入校验后写入 SQL，驱动的参数绑定用于值参数。
 		_, err := db.ExecContext(ctx, fmt.Sprintf("CREATE DATABASE %s", cfg.DBName))
 		if err != nil {
 			return fmt.Errorf("failed to create database '%s': %w", cfg.DBName, err)
@@ -86,7 +86,7 @@ func TestSetupDatabaseConnection(cfg *SetupDatabaseConfig) error {
 		logger.LegacyPrintf("setup", "Database '%s' created successfully", cfg.DBName)
 	}
 
-	// 再连接目标数据库，验证创建后的真实可用性。
+	// 连接目标数据库，检查创建结果。
 	if err := db.Close(); err != nil {
 		logger.LegacyPrintf("setup", "failed to close postgres connection: %v", err)
 	}
@@ -147,9 +147,7 @@ func TestSetupRedisConnection(cfg *SetupRedisConfig) error {
 	return nil
 }
 
-// Install performs the installation with the given configuration
-
-// InitializeSetupDatabase 只执行迁移并在任何出口关闭连接。
+// InitializeSetupDatabase 执行迁移，并在返回前关闭连接。
 func InitializeSetupDatabase(ctx context.Context, cfg *SetupDatabaseConfig, timeout time.Duration) error {
 	db, err := postgresinfra.Open(BuildPostgresDSN(cfg, cfg.DBName), false)
 	if err != nil {
@@ -161,7 +159,7 @@ func InitializeSetupDatabase(ctx context.Context, cfg *SetupDatabaseConfig, time
 	return ApplyMigrations(ctx, db)
 }
 
-// InitializeSetupAdmin 保持管理员初始化的独立连接和原五秒预算。
+// InitializeSetupAdmin 用独立连接初始化管理员，操作预算为五秒。
 func InitializeSetupAdmin(ctx context.Context, cfg *SetupDatabaseConfig, input identity.InitialAdminInput, password func() (string, error)) (bool, string, error) {
 	db, err := postgresinfra.Open(BuildPostgresDSN(cfg, cfg.DBName), false)
 	if err != nil {

@@ -48,7 +48,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-// 菜单动作统一先关闭浮层，避免打开弹窗后仍残留透明遮罩。
+// 菜单动作先关闭浮层，再打开操作弹窗。
 const emitAction = (event: 'details' | 'statistics' | 'dissolve') => {
   if (!props.team) return
   if (event === 'details') emit('details', props.team)

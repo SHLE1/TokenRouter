@@ -74,7 +74,7 @@ func UpstreamUsageWalletEndpoint(base string) (string, error) {
 }
 
 // UpstreamUsageUserSelfEndpoint 构造官方 New API 用户自查询端点。
-// 该端点需要用户级 Access Token，而不是 relay API Key。
+// 该端点使用用户级 Access Token 认证。
 func UpstreamUsageUserSelfEndpoint(base string) (string, error) {
 	return UpstreamUsageRootEndpoint(base, "/api/user/self")
 }

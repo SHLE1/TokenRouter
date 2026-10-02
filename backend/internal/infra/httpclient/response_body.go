@@ -6,12 +6,12 @@ import (
 	"io"
 )
 
-// DefaultResponseReadMaxBytes 保留上游非流响应的原默认读取上限。
+// DefaultResponseReadMaxBytes 是上游非流响应的默认读取上限。
 const DefaultResponseReadMaxBytes int64 = 128 * 1024 * 1024
 
 var ErrResponseBodyTooLarge = errors.New("upstream response body too large")
 
-// ReadResponseBodyLimited 保留多读一个字节判定超限、nil 与底层读取错误语义；关闭仍由调用方负责。
+// ReadResponseBodyLimited 多读一个字节判断是否超限，nil reader 与读取失败均返回错误。调用方负责关闭 reader。
 func ReadResponseBodyLimited(reader io.Reader, maxBytes int64) ([]byte, error) {
 	if reader == nil {
 		return nil, errors.New("response body is nil")

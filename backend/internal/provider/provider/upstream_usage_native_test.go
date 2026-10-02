@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 包装真实本地 TLS 响应，核对查询 Adapter 持有的每个响应体都已释放。
+// 包装本地 TLS 响应，检查查询适配器关闭每个响应体。
 type usageTrackedBody struct {
 	io.ReadCloser
 	closed *atomic.Int64
@@ -27,7 +27,7 @@ type usageTrackedBody struct {
 
 func (b *usageTrackedBody) Close() error { b.closed.Add(1); return b.ReadCloser.Close() }
 
-// TestNativeUsageAdaptersLocalTLS 验证通过本地 TLS 完成七种原生适配器的实际请求，保留固定端点、认证覆盖顺序和计量口径。
+// TestNativeUsageAdaptersLocalTLS 通过本地 TLS 检查七种用量适配器的请求端点、认证头覆盖顺序和计量结果。
 func TestNativeUsageAdaptersLocalTLS(t *testing.T) {
 	tests := []struct {
 		name                string

@@ -37,7 +37,7 @@ func (p groupModelPolicy) allowsUpstream(model string) bool {
 	return p.view.RestrictionSource() != routing.BillingModelSourceUpstream || !p.view.IsModelRestricted(model)
 }
 
-// candidates 合并可枚举的请求名称；通配符只用于匹配，不作为可选模型返回。
+// candidates 合并可枚举的请求名称，返回可选模型列表。通配符留给后续匹配使用。
 func (p groupModelPolicy) candidates(platform string, configured []string, providers []CatalogProvider) []string {
 	models := make(map[string]struct{})
 	add := func(values ...string) {

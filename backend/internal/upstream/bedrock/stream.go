@@ -416,7 +416,7 @@ func BedrockReadUint16(b []byte) uint16 {
 	return uint16(b[0])<<8 | uint16(b[1])
 }
 
-// StreamOptions 只包含执行技术参数与外层观测回调，不接收提供商或配置实体。
+// StreamOptions 配置流读取的提供商标识、间隔和观测回调。
 type StreamOptions struct {
 	Observe    func(anthropic.Observation)
 	ProviderID int64

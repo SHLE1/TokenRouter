@@ -105,7 +105,7 @@ func (Provider) Fields() []ent.Field {
 			Default(50),
 
 		// rate_multiplier: 提供商计费倍率（>=0，允许 0 表示该提供商计费为 0）
-		// 仅影响提供商维度计费口径，不影响用户/API Key 扣费（分组倍率）
+		// 提供商成本使用此倍率，用户与 API Key 扣费使用分组倍率。
 		field.Float("rate_multiplier").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
 			Default(1.0),

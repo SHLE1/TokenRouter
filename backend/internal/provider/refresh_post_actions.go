@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// RefreshPostActions 拥有成功后的清理、失效、同步与隐私调用顺序，不持有独立缓存。
+// RefreshPostActions 依次执行刷新成功后的清理、缓存失效、同步和隐私设置。
 type RefreshPostActions struct {
 	Now                       func() time.Time
 	Info, Warn, Debug         func(string, ...any)
@@ -64,7 +64,7 @@ func (s *RefreshPostActions) Run(ctx context.Context, provider *Record) {
 			}
 		}
 	}
-	// 身份或健康窗口冲突后仍清理旧 token，但不发布旧快照或继续维护旧身份。
+	// 身份或健康窗口冲突后清理已交换的 token 缓存，随后结束本次后置处理。
 	if changed {
 		syncActions.SyncProvider = nil
 	}
@@ -104,7 +104,7 @@ func (s *RefreshPostActions) Sync(ctx context.Context, provider *Record) {
 			s.Debug("token_refresh.token_cache_invalidated", "provider_id", provider.ID)
 		}
 	}
-	// 同步更新调度器缓存，确保调度获取的 Provider 对象包含最新的 credentials
+	// 同步更新调度缓存中的提供商凭据。
 	if s.SyncProvider != nil {
 		if err := s.SyncProvider(ctx, provider); err != nil {
 			s.Warn("token_refresh.sync_scheduler_cache_failed",

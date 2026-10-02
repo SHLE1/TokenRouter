@@ -42,7 +42,7 @@ func TestConfigurationUsesCurrentWindowAndIsolatedValues(t *testing.T) {
 	}
 }
 
-// TestConfigurationSensitiveCredentialIntent 验证未提供的秘密继承最新值，显式清空和旋转则保持管理员意图。
+// TestConfigurationSensitiveCredentialIntent 检查省略的密钥继承最新值，传入的空值或新密钥按输入保存。
 func TestConfigurationSensitiveCredentialIntent(t *testing.T) {
 	for _, mode := range []string{"omitted", "clear", "rotate"} {
 		t.Run(mode, func(t *testing.T) {

@@ -385,7 +385,7 @@ func TestBackupService_EphemeralKeyAllowsExistingSecretReuse(t *testing.T) {
 	seedS3Config(t, repo)
 	svc := newTestBackupServiceWithEncryptionKey(t, repo, &mockDumper{}, newMockObjectStore(), false)
 
-	// 省略密钥时只复用已有密文，不会生成依赖当前临时密钥的新密文。
+	// 省略密钥时复用已有密文。
 	_, err := svc.UpdateS3Config(context.Background(), backup.BackupS3Config{
 		Bucket:      "my-bucket",
 		AccessKeyID: "AKID-NEW",
@@ -622,7 +622,7 @@ func TestBackupService_UpdateStorageConfig_LocalPreservesS3Config(t *testing.T) 
 	})
 	require.NoError(t, err)
 
-	// 切到本地只改变当前写入目标，不能清空已配置的远程存储参数。
+	// 切到本地后，写入目标变为本地，远程存储参数仍保存在配置中。
 	_, err = svc.UpdateStorageConfig(context.Background(), backup.BackupStorageConfig{Type: backup.BackupStorageTypeLocal})
 	require.NoError(t, err)
 

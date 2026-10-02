@@ -26,7 +26,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// wsRequestAdapter 只投影提供商/分组资格并调用唯一平台 codec，不拥有逐轮处理顺序。
+// wsRequestAdapter 提供提供商和分组资格数据，并调用平台 codec。
 type wsRequestAdapter struct {
 	*wsPassthroughAdapter
 	client  *coderws.Conn
@@ -39,7 +39,7 @@ func (p *wsRequestAdapter) Mutate(current []byte, path, value string) ([]byte, e
 		return next, nil
 	}
 
-	// 仅在确实需要修改 payload 且 sjson 失败时，退回 map 路径确保兼容性。
+	// 需要修改 payload 且 sjson 失败时，使用 map 改写。
 	payload := make(map[string]any)
 	if unmarshalErr := json.Unmarshal(current, &payload); unmarshalErr != nil {
 		return nil, err

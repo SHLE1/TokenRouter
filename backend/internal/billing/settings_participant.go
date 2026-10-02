@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// SettingsParticipant 只准备配置；不会变更用户余额、订阅、额度累计或缓存。
+// SettingsParticipant 准备计费管理设置的待保存值。
 func SettingsParticipant() settings.Participant {
 	fields := []string{"balance_icon_svg", "balance_low_notify_enabled", "balance_low_notify_recharge_url", "balance_low_notify_threshold", "balance_unit_name", "balance_unit_symbol", "default_balance", "default_subscriptions", "reasoning_point_rmb_unit_price", "subscription_expiry_notify_enabled", "usd_exchange_rate"}
 	keys := []string{SettingKeyBalanceIconSVG, SettingKeyBalanceLowNotifyEnabled, SettingKeyBalanceLowNotifyRechargeURL, SettingKeyBalanceLowNotifyThreshold, SettingKeyBalanceUnitName, SettingKeyBalanceUnitSymbol, SettingKeyDefaultBalance, SettingKeyDefaultSubscriptions, SettingKeyReasoningPointRMBUnitPrice, SettingKeySubscriptionExpiryNotifyEnabled, SettingKeyUSDExchangeRate}

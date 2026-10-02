@@ -212,7 +212,7 @@ func TestInvalidateAvailableModelsCache_ByDimensions(t *testing.T) {
 	})
 }
 
-// newModelListFixture 共用原生提供商投影，只为原缓存断言指定一分钟 TTL。
+// newModelListFixture 使用提供商查询夹具创建模型列表，缓存 TTL 为一分钟。
 func newModelListFixture(rows catalogueRows) *routing.ModelList {
 	catalogue := newCatalogueFixture(rows, nil, nil)
 	return routing.NewModelList(catalogue.Read, time.Minute)

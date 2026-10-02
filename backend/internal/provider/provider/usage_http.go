@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usagecontract"
 )
 
-// UsageHTTPOptions 只接受查询技术端口与出站策略，不持有旧提供商服务或完整配置。
+// UsageHTTPOptions 保存用量查询接口和出站策略。
 type UsageHTTPOptions struct {
 	Available  bool
 	Policy     egress.UsageURLPolicy

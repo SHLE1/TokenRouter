@@ -86,7 +86,7 @@ func TestTotpDisableAdminUsesPasswordEvenWithEmailVerifyEnabled(t *testing.T) {
 	require.NoError(t, admin.SetPassword("correct-password"))
 	svc, userRepo := newTotpVMService(t, admin, true)
 
-	// 缺密码 → 要求密码（而非邮箱验证码）。
+	// 未设置密码时仍要求提供密码。
 	err := svc.Disable(context.Background(), admin.ID, "", "")
 	require.ErrorIs(t, err, identity.ErrPasswordRequired)
 

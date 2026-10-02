@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRoutePlannerWithoutGroupDoesNotReadConfiguration 验证未绑定分组时保留请求模型，并且不访问分组或价格存储。
+// TestRoutePlannerWithoutGroupDoesNotReadConfiguration 检查未绑定分组时是否返回请求模型，存储读取次数为零。
 func TestRoutePlannerWithoutGroupDoesNotReadConfiguration(t *testing.T) {
 	planner := NewRoutePlanner(routing.NewPricingConfigService(nil, nil))
 	plan := planner.PlanRoute(context.Background(), nil, nil, "request-model")

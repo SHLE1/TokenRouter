@@ -23,7 +23,7 @@ func TestAnthropicNegativeUsageCacheDoesNotCrossCredentialIdentity(t *testing.T)
 	require.ErrorIs(t, err, context.Canceled)
 }
 
-// 已发起查询的旧身份不得在返回后把主动用量写到管理员的新身份。
+// 查询期间管理员修改身份后，条件写入会拒绝此前身份的用量结果。
 type activePassiveIdentityRepo struct {
 	sessionWindowSyncRepo
 	current Record
@@ -51,7 +51,7 @@ func TestAnthropicActiveUsageDoesNotWriteNewCredentialIdentity(t *testing.T) {
 	require.Empty(t, repo.sessionWindowEnds)
 }
 
-// UpdateUsageExtraIfUnchanged 与旧复现保持相同查询断言；替身补齐生产条件端口，真实 SQL 另行验证。
+// UpdateUsageExtraIfUnchanged 为查询测试模拟条件写入，SQL 行为由数据库测试覆盖。
 func (r *activePassiveIdentityRepo) UpdateUsageExtraIfUnchanged(ctx context.Context, v UsageObservationVersion, updates map[string]any) (bool, error) {
 	if !MatchesCredentialVersion(&r.current, v.CredentialVersion) {
 		return false, nil

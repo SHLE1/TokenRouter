@@ -33,7 +33,7 @@ func PrepareAdminSettings(value AdminSettings) (AdminSettings, map[string]string
 	return value, values, nil
 }
 
-// SettingsParticipant 静态声明写入所有权，只准备已经投影的实际字段。
+// SettingsParticipant 声明风险控制和 Cyber 会话封禁的存储键，并准备请求中提供的设置。
 func SettingsParticipant() settings.Participant {
 	fields := []string{"risk_control_enabled", "cyber_session_block_enabled", "cyber_session_block_ttl_seconds"}
 	keys := []string{SettingKeyRiskControlEnabled, SettingKeyCyberSessionBlockEnabled, SettingKeyCyberSessionBlockTTLSeconds}

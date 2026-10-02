@@ -11,7 +11,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// grokImportQuotaProbe 只把旧额度服务的观测投影给提供商导入探测器。
+// grokImportQuotaProbe 将 Grok 额度查询结果转换为导入探测摘要。
 type grokImportQuotaProbe struct{ source *provider.GrokQuotaService }
 
 func (p grokImportQuotaProbe) QueryQuota(ctx context.Context, id int64) (*provider.GrokImportProbeResult, error) {
@@ -22,7 +22,7 @@ func (p grokImportQuotaProbe) QueryQuota(ctx context.Context, id int64) (*provid
 	return &provider.GrokImportProbeResult{Model: value.Model, StatusCode: value.StatusCode, HeadersObserved: value.HeadersObserved}, err
 }
 
-// provideProviderArchive 显式组合文件用例，代理、提供商、探测和隐私使用唯一生产实例。
+// provideProviderArchive 为文件导入导出绑定共享的代理、提供商、探测和隐私组件。
 func provideProviderArchive(admin *provider.Admin, proxies *egress.ProxyTransfer, privacy *provider.PrivacyService, settings *provider.RuntimeSettings, probes *provider.GrokImportProbeScheduler, grok *provider.GrokQuotaService, tasks *lifecycle.Tasks) *provider.Archive {
 	options := provider.ArchiveOptions{
 		Now: time.Now, Info: slog.Info, Error: slog.Error, Debug: slog.Debug, DecodeIDToken: provideradapter.DecodeArchiveIDToken, Background: tasks.Go, ForcePrivacy: privacy.ForceAntigravityPrivacy, Defaults: settings.GetOpenAIOAuthImportDefaults,

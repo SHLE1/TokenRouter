@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
 
-// GroupMembership 只表达提供商与分组的原关联，不引入分组业务或调度优先级。
+// GroupMembership 保存提供商与分组的关联。
 type GroupMembership struct {
 	ProviderID int64
 	GroupID    int64

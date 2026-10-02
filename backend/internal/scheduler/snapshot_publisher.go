@@ -2,13 +2,13 @@ package scheduler
 
 import "context"
 
-// SnapshotPublicationCache 保留同事务写 outbox、提交后尽力同步快照的独立边界。
+// SnapshotPublicationCache 在事务提交后同步提供商快照，变更事件由写入方在事务中记录到 outbox。
 type SnapshotPublicationCache interface {
 	SetProvider(context.Context, SnapshotProvider) error
 	DeleteProvider(context.Context, int64) error
 }
 
-// SnapshotPublisher 不持有额外状态，只执行原批量去重与逐项发布规则。
+// SnapshotPublisher 将批量提供商 ID 去重后逐项发布。
 type SnapshotPublisher struct {
 	Read        func(context.Context, int64) (SnapshotProvider, error)
 	ReadMany    func(context.Context, []int64) ([]SnapshotProvider, error)

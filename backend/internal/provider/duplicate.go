@@ -43,7 +43,7 @@ func cloneProviderJSONMap(value map[string]any) (map[string]any, error) {
 }
 
 var duplicateProviderDiscardedExtraKeys = map[string]struct{}{
-	// 重试标识只属于创建当前复制件的操作，不得传递给后续复制件。
+	// 重试标识用于当前复制操作，后续复制使用各自的标识。
 	duplicateProviderOperationIDExtraKey: {},
 	// 外部同步标识只属于一个本地提供商。
 	"crs_account_id": {},
@@ -182,8 +182,8 @@ func cloneProviderValuePointer[T any](value *T) *T {
 }
 
 // DuplicateProvider 从源配置创建已暂停调度的提供商，不携带一级运行态字段。
-// 凭据与 Extra 配置会深拷贝，避免新提供商规范化时修改内存中的源提供商。
-// 链接型凭据影子提供商不持有凭据，必须继续通过 CreateShadow 创建，因此不允许复制。
+// 复制凭据与 Extra 的嵌套数据，新提供商规范化时操作独立副本。
+// 链接型影子通过 CreateShadow 创建，复制操作会拒绝这类提供商。
 func (s *Admin) DuplicateProvider(ctx context.Context, id int64, actorScope, operationKey string) (*Record, error) {
 	operationID := duplicateProviderOperationID(id, actorScope, operationKey)
 	existing, err := s.RecoverDuplicateProvider(ctx, id, actorScope, operationKey)

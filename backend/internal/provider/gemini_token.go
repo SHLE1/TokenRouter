@@ -26,7 +26,7 @@ type GeminiTokenOptions struct {
 	Logf         func(string, ...any)
 }
 
-// GeminiTokenSource 固定请求侧端口，自动 project 回填仍使用原用例。
+// GeminiTokenSource 绑定请求所需的凭据接口，并调用 project 自动回填操作。
 type GeminiTokenSource struct {
 	Options GeminiTokenOptions
 }

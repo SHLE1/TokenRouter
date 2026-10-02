@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 首次存储调用改动自身输入且失败时，同步兜底仍应取得原始事实。
+// mutatingUsageWriter 在首次写入时修改输入并失败，测试检查同步重试仍取得原始数据。
 type mutatingUsageWriter struct {
 	bestCalls int
 	syncCalls int
@@ -20,11 +20,13 @@ func (w *mutatingUsageWriter) CreateBestEffort(_ context.Context, row *UsageLog)
 	row.ActualCost = 99
 	return errors.New("queue rejected")
 }
+
 func (w *mutatingUsageWriter) Create(_ context.Context, row *UsageLog) (bool, error) {
 	w.syncCalls++
 	w.recorded = row
 	return true, nil
 }
+
 func TestSnapshotLogWriterKeepsFallbackFactIsolated(t *testing.T) {
 	target := &mutatingUsageWriter{}
 	row := &UsageLog{ActualCost: 1.25}

@@ -115,23 +115,9 @@ func openAIWSPassthroughPolicyModelForFrame(provider *gatewayprovider.ExecutionP
 	return gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(gatewayprovider.ExecutionModelPolicy(provider).Mapped(original))
 }
 
-// openAIWSPassthroughPolicyModelFromSessionFrame returns the upstream model
-// derived from a session.update frame's session.model field. Returns "" when
-// the frame is not a session.update event or carries no session.model. Used
-// by the per-frame policy filter (client→upstream direction) to keep
-// capturedSessionModel in sync with the session-level model the client may
-// rotate mid-session.
-//
-// Realtime / Responses WS lets the client change the session model after
-// the WS handshake via:
-//
-//	{"type":"session.update","session":{"model":"gpt-5.5", ...}}
-//
-// If we only capture the model from the very first frame, a client can ship
-// gpt-4o on the first response.create (whitelisted as pass), then
-// session.update to gpt-5.5, then send response.create without "model" so
-// the per-frame resolver returns "" and the stale capturedSessionModel falls
-// back to gpt-4o — defeating the gpt-5.5 fast-policy filter.
+// openAIWSPassthroughPolicyModelFromSessionFrame 从 session.update 的 session.model 解析上游模型。
+// 其他事件或缺少该字段时返回空字符串。上行过滤器据此更新 capturedSessionModel。
+// 客户端从 gpt-4o 更新为 gpt-5.5 后，省略 model 的 response.create 使用 gpt-5.5，Fast 策略按更新后的模型匹配。
 func openAIWSPassthroughPolicyModelFromSessionFrame(provider *gatewayprovider.ExecutionProvider, payload []byte) string {
 	if provider == nil || len(payload) == 0 {
 		return ""
@@ -150,7 +136,7 @@ func openAIWSPassthroughPolicyModelFromSessionFrame(provider *gatewayprovider.Ex
 	return gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(gatewayprovider.ExecutionModelPolicy(provider).Mapped(original))
 }
 
-// 旧方法名仅委托原子会话元数据，不保留另一份状态。
+// 此方法委托会话元数据的原子操作。
 type openAIWSPassthroughUsageMeta struct {
 	*gatewayws.UsageMeta
 	// 测试取得同一原子字段的指针，不复制会话状态。
@@ -180,7 +166,7 @@ func (m *openAIWSPassthroughUsageMeta) updateFromResponseCreate(body []byte, map
 	}
 }
 
-// 兼容方法只委托共享的 turn 屏障，不复制状态。
+// 兼容方法使用共享的 turn 屏障。
 type openAIWSPassthroughTurnLifecycle struct{ *gatewayws.TurnLifecycle }
 
 func newOpenAIWSPassthroughTurnLifecycle(inFlight bool) *openAIWSPassthroughTurnLifecycle {

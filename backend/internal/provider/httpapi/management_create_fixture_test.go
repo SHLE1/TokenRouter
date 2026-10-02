@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// 创建契约仅记录提交给用例的输入，其它能力不提供默认业务实现。
+// 创建测试记录提交给用例的输入，其他接口留空。
 type managementCreateFixture struct {
 	ProviderManagement
 	mu                sync.Mutex
@@ -33,7 +33,7 @@ func (s *managementCreateFixture) ForceAntigravityPrivacy(context.Context, *prov
 	return ""
 }
 
-// newManagementCreateFixtureHandler 测试使用同一原生 HTTP、批处理和展示实现，不构造旧管理员聚合。
+// newManagementCreateFixtureHandler 组合管理 HTTP、批量操作和展示组件。
 func newManagementCreateFixtureHandler(source *managementCreateFixture) *ManagementHandler {
 	presenter := NewRuntimePresenter(provider.NewRuntimeStatusReader(provider.RuntimeStatusOptions{}), source, nil)
 	batch := provider.NewManagementBatch(source, nil, provider.ManagementCreationOptions{Privacy: source})

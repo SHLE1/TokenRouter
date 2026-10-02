@@ -166,7 +166,7 @@ type ObserverFunc func(component, message string)
 
 func (f ObserverFunc) Observe(component, message string) { f(component, message) }
 
-// notifyObserver 只调用当前拥有者的观察出口，不安装进程全局绑定。
+// notifyObserver 调用当前实例的观察函数。
 func notifyObserver(observer Observer, component, message string) {
 	if observer != nil {
 		observer.Observe(component, message)

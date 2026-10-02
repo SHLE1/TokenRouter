@@ -99,7 +99,8 @@ func NewDashboardAggregationService(repo DashboardAggregationRepository, timingW
 		aggCfg = cfg.DashboardAgg
 	}
 	runCtx, runCancel := context.WithCancel(context.Background())
-	return &DashboardAggregationService{reporter: usageReporter(cfg), runCtx: runCtx, runCancel: runCancel, stopDone: make(chan struct{}),
+	return &DashboardAggregationService{
+		reporter: usageReporter(cfg), runCtx: runCtx, runCancel: runCancel, stopDone: make(chan struct{}),
 		repo:        repo,
 		timingWheel: timingWheel,
 		cfg:         aggCfg,
@@ -107,7 +108,7 @@ func NewDashboardAggregationService(repo DashboardAggregationRepository, timingW
 	}
 }
 
-// SetSingletonLocker 绑定原有锁策略，核心只负责使用与释放。
+// SetSingletonLocker 设置聚合作业使用的单实例锁。
 func (s *DashboardAggregationService) SetSingletonLocker(locker SingletonLocker) { s.locker = locker }
 
 // Start 启动定时聚合作业；实际启停和周期由统一运行时配置决定。

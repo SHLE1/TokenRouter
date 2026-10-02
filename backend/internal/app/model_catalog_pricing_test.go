@@ -33,7 +33,7 @@ func TestModelsCatalogMediaQuotes(t *testing.T) {
 			}
 		})
 	}
-	// 已知专用媒体报价与 Gemini 图文 token 费率继续保留。
+	// 检查专用媒体报价和 Gemini 图文 token 费率。
 	require.Equal(t, "video", rows["grok-imagine-video"].BillingMode)
 	require.Equal(t, "image", rows["gemini-3-pro-image"].BillingMode)
 	values := map[string]float64{}

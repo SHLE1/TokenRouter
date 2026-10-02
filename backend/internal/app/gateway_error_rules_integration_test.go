@@ -16,7 +16,7 @@ import (
 	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-// TestErrorRulesStorageAndSubscription 验证使用原迁移和真实 Redis 验证规则发布、兼容键与失败写入语义。
+// TestErrorRulesStorageAndSubscription 使用迁移后的数据库和 Redis 检查规则发布、兼容键及写入失败的处理。
 func TestErrorRulesStorageAndSubscription(t *testing.T) {
 	f := newDatabaseFixture(t)
 	ctx := context.Background()

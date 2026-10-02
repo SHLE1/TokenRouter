@@ -913,7 +913,7 @@ func newGrokCredentialFailoverHandler(t *testing.T, mode string) (*gatewayHTTPEn
 	if mode == "all_revoked" {
 		providers[1].Record.Credentials["expires_at"] = time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)
 	}
-	// 该夹具验证凭据恢复；显式开放请求别名，不依赖默认模型目录。
+	// 凭据恢复夹具在模型配置中开放请求别名。
 	for i := range providers {
 		providers[i].Record.Credentials["model_whitelist"] = []string{"*"}
 		providers[i].Record.GroupIDs = []int64{groupID}

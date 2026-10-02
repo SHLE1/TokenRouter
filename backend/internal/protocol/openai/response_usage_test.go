@@ -166,7 +166,7 @@ func TestReplaceModelInSSEBody(t *testing.T) {
 func TestParseSSEUsage_SelectiveParsing(t *testing.T) {
 	usage := &protocolopenai.ForwardUsage{InputTokens: 9, OutputTokens: 8, CacheReadInputTokens: 7}
 
-	// 非终态事件中的显式 usage 作为兼容 fallback，非零字段会被合并。
+	// 非终态事件携带 usage 时合并其中的非零字段。
 	protocolopenai.ParseSSEUsageBytes([]byte(`{"type":"response.in_progress","response":{"usage":{"input_tokens":1,"output_tokens":2}}}`), usage)
 	require.Equal(t, 1, usage.InputTokens)
 	require.Equal(t, 2, usage.OutputTokens)

@@ -8,7 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// ManagementListReader 保留原分页与服务端排序入口。
+// ManagementListReader 提供分页查询和服务端排序。
 type ManagementListReader interface {
 	ListProviders(context.Context, int, int, string, string, string, string, int64, string, string, string) ([]Record, int64, error)
 }
@@ -66,7 +66,7 @@ func (s *ManagementList) List(ctx context.Context, input ManagementListInput) (*
 	var windowCosts map[int64]float64
 	var activeSessions map[int64]int
 	var rpmCounts map[int64]int
-	// 用户显式请求该列时才进入昂贵的高级调度候选池打分路径。
+	// 用户请求该列时才计算高级调度候选评分。
 	var schedulerScores map[int64]*ProviderSchedulerScore
 	var schedulerGroupScores map[int64][]ProviderSchedulerGroupScore
 	if includeSchedulerScore && len(providers) > 0 {

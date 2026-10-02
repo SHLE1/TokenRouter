@@ -22,7 +22,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// conversionAttempt 仅保存本次提供商的受控凭据和网络句柄，不持有转换状态。
+// conversionAttempt 保存本次转换的状态、凭据和网络句柄。
 type conversionAttempt struct {
 	s                          *Runtime
 	c                          HTTPBoundary

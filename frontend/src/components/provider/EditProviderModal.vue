@@ -56,7 +56,7 @@
             </div>
           </SettingsSection>
 
-          <!-- 编辑站点只改路由上下文，不擅自改写令牌来源。 -->
+          <!-- 编辑站点用于设置请求路由上下文，令牌来源由凭据记录。 -->
           <SettingsSection v-if="isQoderCosyProvider" :title="t('admin.providers.qoder.site.label')">
             <SettingsSegmented
               v-model="qoderSite"
@@ -637,7 +637,7 @@
             data-provider-field="header-override"
           />
 
-          <!-- Grok OAuth：自定义上游地址只改写转发端点，OAuth 授权与刷新不受影响。 -->
+          <!-- Grok OAuth 的自定义地址用于请求转发，授权与刷新使用各自的端点。 -->
           <SettingsSection v-if="provider.platform === 'grok' && provider.type === 'oauth'" :title="t('admin.providers.sections.grok')">
             <SettingToggleRow
               id="edit-grok-custom-base-url"
@@ -875,7 +875,7 @@
 <script setup lang="ts">
 import Collapse from '@/components/common/Collapse.vue'
 
-// 统一协议选择只保存原生集合，不在提供商侧配置转换。
+// 协议选择保存提供商支持的协议集合。
 const upstreamProtocols = ref<ProtocolID[] | undefined>(undefined)
 
 import { normalizeLegacyOpenAIExtra, normalizeOpenAICompactMode } from '@/utils/openaiLegacyConfiguration'
@@ -1088,7 +1088,7 @@ const editAdaptiveBaseUrls = ref<Record<CnNativeApiProtocol, string>>({
   responses: ''
 })
 // 回填窗口标志：syncFormFromProvider 会同步改写 editProviderMode / editApiProtocol，
-// 而 watcher（pre-flush）在同步代码执行完之后才触发——若不抑制，会把刚恢复的
+// watcher（pre-flush）在同步代码执行完之后才触发，若未暂停，会把刚恢复的
 // 存储版 base_url（可能是用户自定义/中转地址）覆盖为官方预设并在下次保存时持久化。
 // nextTick 后解除，此后用户主动切换模式/协议仍正常联动重置。
 const syncingForm = ref(false)
@@ -1199,7 +1199,7 @@ const headerOverrideCapable = computed(
   () => !!props.provider && isHeaderOverrideCapable(props.provider.platform, props.provider.type)
 )
 
-// Grok OAuth 自定义上游地址（仅转发端点；OAuth 授权/令牌刷新不受影响）
+// Grok OAuth 自定义转发地址，授权与刷新使用各自的端点。
 const grokOAuthCustomBaseUrlEnabled = ref(false)
 const grokOAuthBaseUrl = ref('')
 // Grok Free OAuth 提供商默认使用客户端工具提示缓存；extra 中的显式 false 作为退出信号。
@@ -1567,7 +1567,7 @@ const hydrateQoderModelRestrictionFromMapping = (
 
 const applyPersistedModelRestriction = (credentials: Record<string, unknown>) => {
   // 普通提供商将请求侧映射与最终白名单分开持久化。
-  // 这里即使白名单为空，也要显式写入 []，避免后端回退到 legacy 的自映射白名单解析。
+  // 空白名单也写入 []，后端据此使用空列表；字段缺失时后端会解析自映射白名单。
   const persisted = buildPersistedModelRestriction(allowedModels.value, modelMappings.value)
   if (persisted.modelMapping) {
     credentials.model_mapping = persisted.modelMapping
@@ -1601,7 +1601,7 @@ const applyOpenAIModelMappingCredentials = (credentials: Record<string, unknown>
 
   if (shouldApplyModelMapping) {
     if (isSparkShadow.value) {
-      // Spark 影子提供商只允许持久化请求侧映射，不能写入独立白名单字段。
+      // Spark 影子提供商持久化请求侧映射。
       const modelMapping = buildModelMappingObject(modelRestrictionMode.value, allowedModels.value, modelMappings.value)
       if (modelMapping) {
         credentials.model_mapping = modelMapping
@@ -1818,7 +1818,7 @@ const syncFormFromProvider = (newProvider: Provider | null) => {
     const rawAgMapping = credentials?.model_mapping as Record<string, string> | undefined
     if (rawAgMapping && typeof rawAgMapping === 'object') {
       const entries = Object.entries(rawAgMapping)
-      // 无论是白名单样式(key===value)还是真正的映射，都统一转换为映射列表
+      // 自映射（key===value）和不同模型之间的映射都转换为映射列表。
       antigravityModelMappings.value = entries.map(([from, to]) => ({ from, to }))
     } else {
       // 兼容旧数据：从 model_whitelist 读取，转换为映射格式
@@ -1949,7 +1949,7 @@ const syncFormFromProvider = (newProvider: Provider | null) => {
       ? editAdaptiveBaseUrls.value.chat_completions
       : (credentials.base_url as string) || platformDefaultUrl
 
-    // 统一从 model_mapping 恢复白名单与映射两个视图，避免配置映射后把白名单误判为空。
+    // 从 model_mapping 恢复白名单与映射视图。
     const existingMappings = credentials.model_mapping as Record<string, string> | undefined
     hydrateModelRestrictionFromMapping(existingMappings, credentials.model_whitelist)
 
@@ -2479,7 +2479,7 @@ const handleSubmit = async () => {
 
   const updatePayload: Record<string, unknown> = { ...form }
   try {
-    // 后端期望 proxy_id: 0 表示清除代理，而不是 null
+    // 后端用 proxy_id: 0 表示清除代理。
     if (updatePayload.proxy_id === null) {
       updatePayload.proxy_id = 0
     }
@@ -2577,7 +2577,7 @@ const handleSubmit = async () => {
         }
       }
 
-      // Add model mapping if configured（OpenAI 开启自动透传时保留现有映射，不再编辑）
+      // 保存配置的模型映射，OpenAI 开启自动透传时使用已有映射。
       if (shouldApplyModelMapping) {
         if (props.provider.platform === 'qoder') {
           applyQoderModelRestriction(newCredentials)
@@ -2682,7 +2682,7 @@ const handleSubmit = async () => {
         return
       }
 
-      // SA JSON 已脱敏不再随 credentials 返回，存在性优先读 credentials_status。
+      // 服务端对 SA JSON 脱敏，是否已配置优先读取 credentials_status。
       // 若后端尚未升级（无 credentials_status），回退读旧结构 service_account_json / service_account。
       const credentialsStatus = props.provider.credentials_status
       const hasExistingServiceAccountJson = credentialsStatus
@@ -2832,7 +2832,7 @@ const handleSubmit = async () => {
       const newExtra: Record<string, unknown> = {
         ...((props.provider.extra as Record<string, unknown>) || {})
       }
-      // 两种状态都持久化，避免后端对缺失值应用默认启用策略后重新开启已关闭提供商。
+      // 开关的 true 和 false 均持久化，字段缺失会触发后端默认启用。
       newExtra[GROK_CLIENT_TOOL_CACHE_EXTRA_KEY] = grokClientToolCacheEnabled.value
       updatePayload.extra = newExtra
     }
@@ -3026,7 +3026,7 @@ const handleSubmit = async () => {
         delete newExtra.openai_passthrough
         delete newExtra.openai_oauth_passthrough
       }
-      // 关闭时删除默认项，避免提供商 extra 堆积无意义的 false。
+      // 关闭时删除 extra 中的默认项。
       if (props.provider.type === 'oauth' && openaiFlattenNamespacesEnabled.value) {
         newExtra.openai_responses_flatten_namespaces = true
       } else {
@@ -3071,7 +3071,7 @@ const handleSubmit = async () => {
         if (openAIOAuthClientPolicy.value === 'codex_only') {
           newExtra.codex_cli_only = true
         } else if (hadCodexCLIOnlyEnabled || currentExtra.openai_oauth_client_policy != null) {
-          // 关闭时显式写 false，避免 extra 为空被后端忽略导致旧值无法清除
+          // 关闭时写入 false，后端合并 extra 时据此清除已启用状态。
           newExtra.codex_cli_only = false
         } else {
           delete newExtra.codex_cli_only
@@ -3179,7 +3179,7 @@ const handleSubmit = async () => {
       updatePayload.extra = newExtra
     }
 
-    // 上游ID头名只在改动时写回 extra，避免用弹窗打开时的快照覆盖运行态键。
+    // 上游 ID 头名发生改动后写回 extra，其他运行状态沿用当前值。
     const nextUpstreamRequestIdHeader = upstreamRequestIdHeader.value.trim()
     if (nextUpstreamRequestIdHeader !== readUpstreamRequestIdHeader(props.provider.extra)) {
       const currentExtra = (updatePayload.extra as Record<string, unknown>) || (props.provider.extra as Record<string, unknown>) || {}

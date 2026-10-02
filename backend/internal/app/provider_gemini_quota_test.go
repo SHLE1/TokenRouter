@@ -53,7 +53,7 @@ func TestGeminiThirdPartyAPIKeySkipsLocalQuota(t *testing.T) {
 	require.Nil(t, usage.GeminiProDaily)
 	require.Nil(t, usage.GeminiFlashDaily)
 
-	// 官方免费档位的 Pro 日配额为 50；由原统计接口回源后必须被预检拦截。
+	// 免费档位的 Pro 日配额在此用例中为 50，从统计接口读取用量后预检拒绝满额请求。
 	rateLimitSvc := provideGeminiPrecheck(quotaService, &geminiFullLocalUsage{})
 	officialAllowed, err := rateLimitSvc.PreCheckUsage(ctx, official, "gemini-2.5-pro")
 	require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestGeminiThirdPartyAPIKeySkipsLocalQuota(t *testing.T) {
 	require.True(t, thirdPartyAllowed)
 }
 
-// 满额夹具只提供原 SQL 查询投影，不直接修改实现的缓存。
+// 满额夹具通过 SQL 查询返回配额用量。
 type geminiFullLocalUsage struct{ usagecore.UsageLogRepository }
 
 func (r *geminiFullLocalUsage) GetModelStatsWithFilters(context.Context, time.Time, time.Time, int64, int64, int64, int64, *int16, *bool, *int8) ([]usagecore.ModelStat, error) {

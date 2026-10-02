@@ -18,8 +18,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
-	// 本文件承载 /v1/responses 透传转发及其流式、非流式响应与错误处理。
-
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
@@ -172,14 +170,12 @@ func (p *OpenAIResponseOutput) PassthroughError(
 		UpstreamResponseBody: upstreamDetail,
 	})
 	if clientInvalidRequest {
-		// 参数型 400 使用安全响应头并透传完整脱敏错误对象，不再改写成 upstream_error。
+		// 参数型 400 使用安全响应头，并透传完整的脱敏错误对象。
 		WriteForwardPassthroughErrorHeaders(c.Writer.Header(), resp.Header)
 		c.Data(http.StatusBadRequest, "application/json; charset=utf-8", body)
 		return fmt.Errorf("upstream invalid request: %d message=%s", resp.StatusCode, upstreamMsg)
 	}
-	// context-window 超限是确定性请求失败（shouldFailoverOpenAIPassthroughResponse
-	// 已保证不切号），其文案对客户端可操作（如触发自动压缩）；在净化信封内保留
-	// 脱敏后的上游消息，而不是抹成通用文案。
+	// context-window 超限按确定性请求错误处理，清洗后的上游消息保存在错误响应中，供客户端触发自动压缩等恢复动作。
 	if openai.IsOpenAIContextWindowError(upstreamMsg, body) && upstreamMsg != "" {
 		writeOpenAIPassthroughErrorEnvelope(c, resp.StatusCode, resp.Header, upstreamMsg)
 	} else {
@@ -260,9 +256,9 @@ func openAIStreamFailedEventPassthroughBody(payload []byte, failedMessage string
 	return body
 }
 
-// ApplyOpenAIStreamFailedErrorRule 对 response.failed 事件应用错误透传规则：
-// 归一化 body 供关键词匹配/消息提取，并推断语义状态码使按错误码配置的规则可以命中。
-// platform 必须传 provider.Platform——本服务同时承载 openai 与 grok 平台提供商，规则按平台匹配。
+// ApplyOpenAIStreamFailedErrorRule 对 response.failed 应用错误透传规则。
+// 归一化 body 用于关键词匹配和消息提取，错误状态从事件内容推断。
+// 调用方传入 provider.Platform，OpenAI 与 Grok 的规则按各自平台匹配。
 func ApplyOpenAIStreamFailedErrorRule(
 	c *gin.Context,
 	platform string,
@@ -314,9 +310,7 @@ func (p *OpenAIResponseOutput) TerminalProviderEffects(
 		}
 		return statusCode, gatewayprovider.ApplyOpenAIResponseHealth(ctx, p.Health, provider, statusCode, providerHeaders, payload, false, model).StopScheduling
 	default:
-		// response.failed 可携带管理员自定义的非默认状态码（例如 422）。
-		// 只有命中显式策略或池模式重试状态时才进入提供商策略，普通请求级
-		// 校验错误仍保持无副作用。
+		// response.failed 可携带自定义状态码，例如 422。命中管理员策略或池模式重试条件时更新提供商，普通请求校验错误保持提供商状态原样。
 		customMatched := provider != nil && provider.View().IsCustomErrorCodesEnabled() && provider.View().ShouldHandleErrorCode(statusCode)
 		poolRetryable := provider != nil && provider.View().IsPoolMode() && provider.View().IsPoolModeRetryableStatus(statusCode)
 		if customMatched || poolRetryable {
@@ -422,7 +416,7 @@ func (p *OpenAIResponseOutput) NewStreamFailureWithModel(
 }
 
 // NewStreamPolicyFailure 构造应用提供商策略后的流内故障转移错误。
-// 下游错误体保持统一封装，同时保留语义状态和上游响应头供 handler 最终处理。
+// 返回封装后的客户端错误体、事件状态码和上游响应头，供 handler 处理。
 func (p *OpenAIResponseOutput) NewStreamPolicyFailure(
 	c *gin.Context,
 	provider *gatewayprovider.ExecutionProvider,
@@ -467,8 +461,8 @@ func (p *OpenAIResponseOutput) NewStreamPolicyFailureWithModel(
 	if statusCode < http.StatusBadRequest {
 		statusCode = openai.OpenAIStreamFailureStatus(payload, message)
 	}
-	// 流内 failed 事件承载于 HTTP 200；使用事件的语义状态更新提供商健康，
-	// 再由 failover 引擎按 StatusCode/RetryableOnSameProvider 决定恢复策略。
+	// HTTP 200 流中的 failed 事件按事件状态更新提供商健康，
+	// failover 引擎再根据 StatusCode 和 RetryableOnSameProvider 选择恢复方式。
 	message = p.RecordStreamError(c, provider, passthrough, upstreamRequestID, "failover", payload, message)
 	errType := "upstream_error"
 	if statusCode == http.StatusTooManyRequests {
@@ -481,9 +475,8 @@ func (p *OpenAIResponseOutput) NewStreamPolicyFailureWithModel(
 		},
 	})
 	retryable := gatewayprovider.OpenAIStreamFailureRetryable(provider, payload, message)
-	// 流终止事件承载在 HTTP 200 内，外层响应头描述的是成功流状态，而不是语义上的
-	// 429 事件。仅在配额分类时忽略这些头；故障转移错误仍保留它们，使 Retry-After
-	// 和请求 ID 能继续传递给后续处理。
+	// HTTP 200 的响应头表示流已建立，配额分类使用终止事件中的 429 等状态。
+	// 故障转移错误保存这些头，供后续读取 Retry-After 和请求 ID。
 	classificationHeaders := headers
 	if statusCode == http.StatusTooManyRequests {
 		classificationHeaders = nil

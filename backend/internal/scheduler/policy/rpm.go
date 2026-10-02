@@ -1,6 +1,6 @@
 package policy
 
-// RPMAllowance 保留旧三区模型的数值标识；调用方将其投影为原展示类型。
+// RPMAllowance 表示允许请求、仅允许粘性请求或拒绝请求三种状态。
 type RPMAllowance int
 
 const (
@@ -9,7 +9,8 @@ const (
 	RPMBlocked
 )
 
-// CheckRPM 保留严格小于边界和 sticky_exempt 不设红区的语义。
+// CheckRPM 在计数达到 base 时限制为粘性请求，达到 base+buffer 时拒绝请求。
+// sticky_exempt 策略在超过 base 后仍允许粘性请求。
 func CheckRPM(current, base, buffer int, strategy string) RPMAllowance {
 	if base <= 0 || current < base {
 		return RPMAllowed
@@ -23,7 +24,8 @@ func CheckRPM(current, base, buffer int, strategy string) RPMAllowance {
 	return RPMBlocked
 }
 
-// RPMStickyBuffer 保留并发加会话容量、显式 override 与 base/5 下限。
+// RPMStickyBuffer 优先使用正数 override，否则将并发数与会话数相加。
+// base 为正时，缓冲至少为 base/5 且至少为 1；base 非正时返回零。
 func RPMStickyBuffer(base, concurrency, sessions, override int) int {
 	if override > 0 {
 		return override

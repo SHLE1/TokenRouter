@@ -123,7 +123,7 @@ export async function getCreativeModels(): Promise<CreativeModelOption[]> {
   return Array.isArray(data) ? data : []
 }
 
-/** 获取服务端输入限制，前端校验只使用该契约。 */
+/** 获取服务端输入限制，供前端校验使用。 */
 export async function getCreativeCapabilities(): Promise<CreativeCapabilities> {
   const { data } = await apiClient.get<CreativeCapabilities>('/creative/capabilities')
   return {

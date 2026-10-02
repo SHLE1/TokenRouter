@@ -2,7 +2,7 @@ package composite
 
 import "github.com/TokenFlux/TokenRouter/internal/routing"
 
-// RoutingAdminSettings 仅转换所属模块值，不读取设置或发布状态。
+// RoutingAdminSettings 从综合快照提取路由设置。
 func (s *Snapshot) RoutingAdminSettings() routing.AdminSettings {
 	return routing.AdminSettings{
 		EnableModelFallback:                  s.EnableModelFallback,
@@ -15,7 +15,7 @@ func (s *Snapshot) RoutingAdminSettings() routing.AdminSettings {
 	}
 }
 
-// ApplyRoutingAdminSettings 仅转换所属模块值，不读取设置或发布状态。
+// ApplyRoutingAdminSettings 将路由设置写入综合快照。
 func (s *Snapshot) ApplyRoutingAdminSettings(value routing.AdminSettings) {
 	s.EnableModelFallback = value.EnableModelFallback
 	s.FallbackModelAnthropic = value.FallbackModelAnthropic

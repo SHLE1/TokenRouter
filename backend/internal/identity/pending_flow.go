@@ -106,7 +106,7 @@ func (f *PendingFlow) AdoptionDecision(ctx context.Context, sessionID int64, cho
 	return out, nil
 }
 
-// FinalizeCreatedAccount 保留原来的注册提交与后续绑定事务，不扩大成新的大事务。
+// FinalizeCreatedAccount 在注册提交后执行绑定事务，绑定失败时补偿已创建的用户。
 func (f *PendingFlow) FinalizeCreatedAccount(ctx context.Context, p PendingAccountFinalization) error {
 	if err := f.Database.FinalizeCreatedAccount(ctx, p); err != nil {
 		return f.compensateCreatedAccount(ctx, p, err)
@@ -117,7 +117,7 @@ func (f *PendingFlow) FinalizeCreatedAccount(ctx context.Context, p PendingAccou
 // WeChatIdentityChannel 仅表达已有身份通道复合键。
 type WeChatIdentityChannel struct{ Mode, AppID string }
 
-// CompleteSecondFactorBinding 延续旧两段绑定/消费边界，不改变登录挑战的删除时机。
+// CompleteSecondFactorBinding 先提交身份绑定，再消费浏览器会话。
 func (f *PendingFlow) CompleteSecondFactorBinding(ctx context.Context, b *PendingOAuthBindLoginSession, userID int64) error {
 	if !f.Available() {
 		return infraerrors.ServiceUnavailable("PENDING_AUTH_NOT_READY", "pending auth service is not ready")

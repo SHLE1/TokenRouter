@@ -109,7 +109,7 @@ const UsageBillingMonetaryScale = 8
 //	balance:    10000 - 0.000078125 = 9999.999921875 → 9999.99992188（delta 0.00007812）
 //	quota_used:     0 + 0.000078125 =     0.000078125 →     0.00007813（delta 0.00007813）
 //
-// 两个 delta 相差 1e-8，且方向相反——余额少扣、Key 配额多记，随请求量线性累积，
+// 两个 delta 相差 1e-8，余额少扣、Key 配额多记，差额随请求量累积，
 // 使余额、API Key 配额与用量记录无法精确对账（需要 epsilon 比较才能勉强吻合）。
 //
 // 在参数进入 SQL 之前量化一次，两条语句就都拿到已经落在 8 位刻度上的同一个金额，
@@ -123,7 +123,7 @@ func (c *UsageBillingCommand) quantizeMonetaryFields() {
 // QuantizeUsageBillingAmount 把金额舍入到 UsageBillingMonetaryScale 位小数，
 // 采用与 PostgreSQL NUMERIC 一致的 half-away-from-zero 规则。
 //
-// 走 decimal 而不是 math.Round(v*1e8)/1e8：后者在乘除过程中会引入额外的二进制
+// 使用 decimal 计算。math.Round(v*1e8)/1e8 的乘除过程会引入额外的二进制
 // 误差，边界值可能被推到错误的一侧。decimal.NewFromFloat 取 float64 的最短十进制
 // 表示，正是 PostgreSQL 把 float8 参数转成 numeric 时所用的表示。
 func QuantizeUsageBillingAmount(v float64) float64 {
@@ -486,7 +486,7 @@ func CloneBillingAllocation(allocation BillingAllocation, amount float64) Billin
 	return cloned
 }
 
-// TaskScope 是装配时登记的任务投影命名空间，资金核心不解释具体任务种类。
+// TaskScope 标识装配时登记的任务类型，供资金操作选择任务存储。
 type TaskScope string
 
 // TaskReference 显式携带原预占动作 ID；新增路由字段不参与历史指纹。

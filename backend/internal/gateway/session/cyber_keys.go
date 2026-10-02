@@ -28,8 +28,7 @@ func CyberSessionTranscriptLookupKeys(apiKeyID int64, body []byte) []string {
 	return deriveOpenAICyberTranscriptBlockKeys(apiKeyID, body).lookupKeys
 }
 
-// CyberSessionScopeKey 是不直接屏蔽请求的粗粒度指纹，
-// 避免对从未命中的来源解析转录或执行 MGET。
+// CyberSessionScopeKey 标记曾命中的请求来源，命中后再解析转录并执行 MGET，最终屏蔽由内容键决定。
 func CyberSessionScopeKey(apiKeyID int64, clientIP, userAgent string) string {
 	if apiKeyID <= 0 {
 		return ""

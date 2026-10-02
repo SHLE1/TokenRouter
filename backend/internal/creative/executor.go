@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// ExecutionGroup 提供当前分组的模型策略与本次调度所需的协议投影。
+// ExecutionGroup 提供当前分组的模型策略和本次调度所需的协议配置。
 type ExecutionGroup struct {
 	RoutingPolicy    routing.GroupRoutingPolicy
 	AllowsOperation  func(string, string) bool

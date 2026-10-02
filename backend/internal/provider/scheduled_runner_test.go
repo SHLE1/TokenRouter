@@ -97,7 +97,7 @@ func TestScheduledRunnerStopsPermanently(t *testing.T) {
 	}
 }
 
-// TestScheduledRunnerCancelsOffsetBeforeClaim 验证十秒偏移必须被停止立即取消，不能等偏移结束后再读取到期计划。
+// TestScheduledRunnerCancelsOffsetBeforeClaim 检查停止信号取消十秒偏移等待，随后跳过到期计划读取。
 func TestScheduledRunnerCancelsOffsetBeforeClaim(t *testing.T) {
 	plans := &scheduledPlansStub{}
 	schedule := &scheduledScheduleStub{}
@@ -118,7 +118,7 @@ func TestScheduledRunnerCancelsOffsetBeforeClaim(t *testing.T) {
 	require.Zero(t, plans.reads.Load())
 }
 
-// TestScheduledRunnerReportsUnfinishedExecution 验证忽略取消的在途执行必须报告未完成，迟到结束也不能抹掉首次超时结果。
+// TestScheduledRunnerReportsUnfinishedExecution 检查在途测试忽略取消时返回未完成结果，迟到结束后仍返回首次超时。
 func TestScheduledRunnerReportsUnfinishedExecution(t *testing.T) {
 	plans := &scheduledPlansStub{plans: []*ScheduledTestPlan{{ID: 1, ProviderID: 2}}}
 	executor := scheduledExecutorStub{entered: make(chan struct{}), release: make(chan struct{})}
@@ -160,7 +160,7 @@ func (s *scheduledBlockedStop) Stop(context.Context) error {
 	return nil
 }
 
-// TestScheduledRunnerBoundsSchedulerStop 验证调度器端口忽略取消时，执行器仍必须有界返回并报告具体未完成阶段。
+// TestScheduledRunnerBoundsSchedulerStop 检查调度器忽略取消时，执行器按预算返回并报告尚未完成的阶段。
 func TestScheduledRunnerBoundsSchedulerStop(t *testing.T) {
 	schedule := &scheduledBlockedStop{release: make(chan struct{}), done: make(chan struct{})}
 	release := sync.OnceFunc(func() { close(schedule.release) })

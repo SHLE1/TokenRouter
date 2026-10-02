@@ -35,7 +35,7 @@ func clientFromContext(ctx context.Context, defaultClient *dbent.Client) *dbent.
 //
 // 这是 Repository 层的核心错误处理函数，确保数据库细节不会泄露到业务层。
 // 通过统一的错误翻译，业务层可以使用语义明确的错误类型（如 ErrUserNotFound）
-// 而不是依赖于特定数据库的错误（如 sql.ErrNoRows）。
+// sql.ErrNoRows 等数据库错误在此转换为业务错误。
 //
 // 参数：
 //   - err: 原始数据库错误
@@ -95,13 +95,13 @@ func derefString(s *string) string {
 	return *s
 }
 
-// sqlExecutor 只用于存储适配层内部，不暴露给业务核心。
+// sqlExecutor 提供存储适配层使用的 SQL 执行和查询方法。
 type sqlExecutor interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }
 
-// userSummaryFromEntity 保留原权益 eager-load 的浅层用户投影与空值。
+// userSummaryFromEntity 从预加载的用户实体提取权益查询资料，nil 返回 nil。
 func userSummaryFromEntity(u *dbent.User) *billing.UserSummary {
 	if u == nil {
 		return nil
@@ -123,7 +123,8 @@ func userSummaryFromEntity(u *dbent.User) *billing.UserSummary {
 		BalanceNotifyThreshold:     u.BalanceNotifyThreshold,
 		TotalRecharged:             u.TotalRecharged,
 		APIKeyLimit:                u.APIKeyLimit,
-		DeletedAt:                  u.DeletedAt, RPMLimit: u.RpmLimit}
+		DeletedAt:                  u.DeletedAt, RPMLimit: u.RpmLimit,
+	}
 	if u.BalanceNotifyExtraEmails != "" && u.BalanceNotifyExtraEmails != "[]" {
 		out.BalanceNotifyExtraEmails = billing.ParseNotifyEmails(u.BalanceNotifyExtraEmails)
 	}

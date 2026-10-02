@@ -77,11 +77,8 @@ func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUser
 	originalModel := strings.TrimSpace(values[1].String())
 	modelMissing := originalModel == ""
 	if originalModel == "" {
-		// 入站 WS 长会话里，部分客户端只在第一轮 response.create 上声明
-		// model，后续 turn 复用同一 session-level model。为避免因省略
-		// model 直接断开用户连接，这里回落到上一轮已通过校验的客户端模型，
-		// 并在下方写回上游 payload，保证提供商模型映射/fast policy/图片权限
-		// 仍按同一模型执行。
+		// 客户端可能仅在首轮 response.create 指定 model，后续省略时复用上一轮已校验的客户端模型。
+		// 随后把映射结果写入上游 payload，模型映射、Fast 策略和图片权限使用同一模型。
 		originalModel = s.State.OriginalModel
 		if originalModel == "" {
 			return ClientPayload{}, p.CloseError(
@@ -91,7 +88,7 @@ func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUser
 			)
 		}
 	}
-	// 分组映射模型必须在提供商映射之前逐轮解析；originalModel 继续保留客户端请求语义。
+	// 每轮先解析分组映射，再解析提供商映射，originalModel 保存客户端请求的模型。
 	routingModel, upstreamModel, resolveModelErr := p.Models(turn, originalModel, normalized)
 	if resolveModelErr != nil {
 		return ClientPayload{}, resolveModelErr
@@ -185,14 +182,8 @@ func (s *RequestNormalizer) Normalize(ctx context.Context, raw []byte, applyUser
 		imageInputSize = imageCfg.InputSize
 	}
 
-	// Apply OpenAI Fast Policy on the response.create frame using the same
-	// evaluator/normalize/scope rules as the HTTP entrypoints. This is the
-	// single integration point for all WS ingress turns (first + follow-up
-	// frames flow through here).
-	//
-	// 模型兜底：首轮在 handler 层仍要求 model；后续 response.create 帧
-	// 可以省略并复用 s.State.OriginalModel。进入策略评估前总会写入
-	// 具体上游模型，保证白名单和 filter 行为稳定。
+	// 所有 WebSocket turn 在此应用与 HTTP 相同的 Fast 评估、规范化和适用范围规则。
+	// 首轮需要 model，后续省略时使用 s.State.OriginalModel。策略评估前写入上游模型，供白名单和 filter 使用。
 	policyCtx := ctx
 	policyApplied, blocked, policyErr := p.FastPolicy(policyCtx, turn, upstreamModel, normalized, true)
 	if policyErr != nil {

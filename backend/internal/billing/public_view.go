@@ -6,7 +6,7 @@ type APIKeyBillingContext struct {
 	Available    bool
 }
 
-// SubscriptionRemainingForDisplay 保留无额度上限时返回 -1 的旧公开契约。
+// SubscriptionRemainingForDisplay 返回展示用剩余额度，无上限时返回 -1。
 func SubscriptionRemainingForDisplay(sub *UserSubscription) float64 {
 	if sub == nil {
 		return 0

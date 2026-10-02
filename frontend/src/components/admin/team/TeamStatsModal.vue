@@ -94,7 +94,7 @@ let requestSequence = 0
 
 const formatNumber = (value: number) => Number(value || 0).toLocaleString()
 
-// 管理员统计与团队所有者看到的图表使用同一套成员口径和展示组件。
+// 管理员统计和团队所有者的图表使用相同的成员统计数据与展示组件。
 const loadStatistics = async () => {
   const team = props.team
   if (!team) return

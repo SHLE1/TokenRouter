@@ -16,7 +16,7 @@ type GrokQuotaStore interface {
 	provider.GrokRateLimitWriter
 }
 
-// NewGrokQuota 组合唯一探测运行时和平台端口，不另建目录缓存或后台轮询。
+// NewGrokQuota 组合共享额度探测实例和平台接口。
 func NewGrokQuota(store GrokQuotaStore, token *provider.GrokTokenSource, requests *GrokQuotaTransport, stats provider.LocalUsageStats) *provider.GrokQuotaService {
 	// 未配置传输时仍保留重置等本地错误入口，不执行网络请求。
 	if requests == nil {

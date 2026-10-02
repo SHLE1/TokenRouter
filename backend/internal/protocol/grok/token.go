@@ -11,7 +11,7 @@ type TokenResponse struct {
 }
 
 // PasswordLoginResult 表示临时的密码登录结果。
-// SSOToken 绝不持久化，只能传给 ConvertSSOToBuild。
+// SSOToken 是传给 ConvertSSOToBuild 的临时凭据，调用方需要在转换后丢弃。
 type PasswordLoginResult struct {
 	Email    string `json:"email,omitempty"`
 	SSOToken string `json:"sso_token"`

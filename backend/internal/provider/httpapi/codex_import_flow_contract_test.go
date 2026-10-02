@@ -288,7 +288,7 @@ func newCodexImportMemoryAdminService(providers []provider.Record) *codexImportM
 	}
 }
 
-// newCodexImportFixture 直接组合原生提供商导入与备份查询。
+// newCodexImportFixture 组合提供商导入和备份查询组件。
 func newCodexImportFixture(svc *codexImportMemoryAdminService) *provider.CodexImporter {
 	archive := provider.NewArchive(svc, nil, provider.ArchiveOptions{Now: time.Now})
 	return provider.NewCodexImporter(svc, archive, codexImportFixtureOptions())
@@ -411,7 +411,7 @@ func buildCodexImportTestJWT(t *testing.T, exp time.Time, extraClaims map[string
 	return base64.RawURLEncoding.EncodeToString(headerBytes) + "." + base64.RawURLEncoding.EncodeToString(claimBytes) + "."
 }
 
-// codexImportFixtureOptions 复用供应商真实密钥解析，时钟与 OAuth client 与原入口相同。
+// codexImportFixtureOptions 使用供应商密钥解析函数，并注入测试时钟和 OAuth client。
 func codexImportFixtureOptions() provider.CodexImportOptions {
 	return provider.CodexImportOptions{Now: time.Now, OAuthClientID: openai.ClientID, ValidatePrivateKey: func(value string) error { _, err := openai.ParseAgentIdentityPrivateKey(value); return err }}
 }

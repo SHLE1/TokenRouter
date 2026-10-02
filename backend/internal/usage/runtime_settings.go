@@ -6,7 +6,7 @@ import (
 	"log/slog"
 )
 
-// 用量展示设置沿用原存储键。
+// 以下键保存用量展示设置。
 const (
 	SettingKeyAllowUserViewErrorRequests  = "allow_user_view_error_requests"
 	SettingKeyUsageRankingEnabled         = "usage_ranking_enabled"
@@ -57,7 +57,7 @@ func ParseRankingSettings(values map[string]string) UsageRankingSettings {
 	return NormalizeUsageRankingSettings(settings)
 }
 
-// GetUsageRankingSettings 只使用用量展示需要的设置投影。
+// GetUsageRankingSettings 批量读取并解析用量排行设置。
 func (s *RuntimeSettings) GetUsageRankingSettings(ctx context.Context) (UsageRankingSettings, error) {
 	if s == nil || s.settingRepo == nil {
 		return DefaultRankingSettings(), nil
@@ -76,7 +76,7 @@ func (s *RuntimeSettings) GetUsageRankingSettings(ctx context.Context) (UsageRan
 	return ParseRankingSettings(values), nil
 }
 
-// IsUserErrorViewAllowed 只使用用量展示需要的设置投影。
+// IsUserErrorViewAllowed 读取用户错误记录的展示开关，读取失败时返回 false。
 func (s *RuntimeSettings) IsUserErrorViewAllowed(ctx context.Context) bool {
 	vals, err := s.settingRepo.GetMultiple(ctx, []string{SettingKeyAllowUserViewErrorRequests})
 	if err != nil {

@@ -172,7 +172,7 @@ func (s *Settlement) Settle(ctx context.Context, batchID string) (*BatchImageSet
 }
 
 // IsBatchImageSettlementRetryExhausted 判断 settling job 是否已达重试上限。
-// 必须覆盖所有 SETTLEMENT_* 失败码（而非仅 SETTLEMENT_BILLING_FAILED），
+// 重试上限覆盖所有 SETTLEMENT_* 失败码，
 // 否则 SETTLEMENT_COST_EXCEEDS_HOLD / SETTLEMENT_INVALID_COUNTS 等错误会无限 requeue。
 func IsBatchImageSettlementRetryExhausted(job *BatchImageJob) bool {
 	return job != nil &&

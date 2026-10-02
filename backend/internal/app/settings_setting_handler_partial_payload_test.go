@@ -22,9 +22,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 设置保存接口采用整份文档 PUT 语义，但客户端只发送关心的字段时不能重置其余设置。
-// 例如仅发送 `{"risk_control_enabled":true}` 曾会清空 site_name，随后
-// getStringOrDefault 会把空值渲染成内置默认值，导致登录页名称被静默修改。
+// 设置 PUT 请求省略的字段保持存储值，发送的字段按输入更新。
+// 例如只发送 `{"risk_control_enabled":true}` 时，site_name 保持不变。
+// 清空 site_name 后，getStringOrDefault 会返回内置默认名称。
 
 func TestUpdateSettingsPartialPayloadKeepsUnsentKeys(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
@@ -48,7 +48,7 @@ func TestUpdateSettingsPartialPayloadKeepsUnsentKeys(t *testing.T) {
 	require.Equal(t, "true", repo.values[identity.SettingKeyTurnstileEnabled])
 }
 
-// TestUpdateSettingsFullPayloadStillClearsSentEmptyFields 验证完整载荷仍保留整份文档语义：明确发送的零值字段仍应被清空。
+// TestUpdateSettingsFullPayloadStillClearsSentEmptyFields 检查请求发送零值字段时清空对应设置。
 func TestUpdateSettingsFullPayloadStillClearsSentEmptyFields(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		site.SettingKeySiteName: "Example Gateway",
@@ -62,7 +62,7 @@ func TestUpdateSettingsFullPayloadStillClearsSentEmptyFields(t *testing.T) {
 }
 
 // TestUpdateSettingsSMTPFromAliasIsWritable 验证smtp_from_email 是唯一一个 JSON 名称与持久化设置键不同的请求字段，
-// 别名映射可避免它被误判为始终未发送。
+// 别名映射用于识别请求中的 smtp_from_email 字段。
 func TestUpdateSettingsSMTPFromAliasIsWritable(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		notification.SettingKeySMTPFrom: "old@example.com",
@@ -74,7 +74,7 @@ func TestUpdateSettingsSMTPFromAliasIsWritable(t *testing.T) {
 	require.Equal(t, "new@example.com", repo.values[notification.SettingKeySMTPFrom])
 }
 
-// TestUpdateSettingsCreativeEnabledPartialSemantics 验证创作台开关与 team 同款部分更新语义：显式发送时写入，省略时保留存储值。
+// TestUpdateSettingsCreativeEnabledPartialSemantics 检查创作台开关在请求携带字段时写入，省略时保持存储值。
 func TestUpdateSettingsCreativeEnabledPartialSemantics(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		creative.SettingKeyCreativeEnabled: "true",
@@ -99,12 +99,12 @@ func TestUpdateSettingsCreativeModelSettingsPartialSemantics(t *testing.T) {
 		creative.SettingKeyCreativeModelSettings: stored,
 	})
 
-	// 省略字段时保持现有白名单，不因整份设置表单的其它字段而清空。
+	// 请求省略白名单字段时，保持当前白名单。
 	rec := doUpdateSettings(t, h, map[string]any{"risk_control_enabled": true}, nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.JSONEq(t, stored, repo.values[creative.SettingKeyCreativeModelSettings])
 
-	// 显式空数组表示管理员主动关闭全部生图模型。
+	// 空数组表示管理员关闭全部生图模型。
 	rec = doUpdateSettings(t, h, map[string]any{"creative_model_settings": []any{}}, nil)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.JSONEq(t, "[]", repo.values[creative.SettingKeyCreativeModelSettings])
@@ -121,7 +121,7 @@ func TestUpdateSettingsCreativeModelSettingsPartialSemantics(t *testing.T) {
 	require.JSONEq(t, "[]", repo.values[creative.SettingKeyCreativeModelSettings])
 }
 
-// TestUpdateSettingsCreativeWorkerCountPartialSemantics 验证 worker 数量可部分更新且保留旧值。
+// TestUpdateSettingsCreativeWorkerCountPartialSemantics 检查 worker 数量在请求省略字段时保持存储值。
 func TestUpdateSettingsCreativeWorkerCountPartialSemantics(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{
 		creative.SettingKeyCreativeWorkerCount: "4",
@@ -310,7 +310,7 @@ func TestUpdateSettingsRetainsStoredTencentCaptchaCredentialsWhenInputsEmpty(t *
 	require.Equal(t, "stored-cloud-secret-key", repo.values[identity.SettingKeyTencentCaptchaCloudSecretKey])
 }
 
-// TestUpdateSettingsPartialPayloadKeepsTencentCaptchaRegion 验证天御站点决定前端加载哪个 SDK 与服务端打哪个接入点，两端必须一致。
+// TestUpdateSettingsPartialPayloadKeepsTencentCaptchaRegion 检查部分更新保持天御站点，前后端按同一站点选择 SDK 和接入点。
 // 部分载荷把它重置回中国站，会让已配国际站的部署在下一次任意保存后整体失效。
 func TestUpdateSettingsPartialPayloadKeepsTencentCaptchaRegion(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{

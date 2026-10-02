@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 保留原 JSON 类型错误中的结构名；对核心仍转换为独立请求值。
+// JSON 类型错误使用此结构名，执行前转换为独立请求值。
 type grokStandaloneSearchRequest searchtools.StandaloneRequest
 
 type SearchAccess struct {
@@ -26,7 +26,7 @@ type SearchHTTPFailure struct {
 	RetryAfter    int
 }
 
-// SearchHTTPRun 只在当前 HTTP 请求内持有平台执行 Adapter；完成入队必须同步转换为独立快照。
+// SearchHTTPRun 在当前 HTTP 请求中使用平台 Adapter，完成入队前同步捕获独立快照。
 type SearchHTTPRun interface {
 	searchtools.StandalonePorts
 	Complete(*gin.Context, searchtools.StandaloneRequest, searchtools.StandaloneResult, bool)
@@ -56,11 +56,12 @@ func (h *SearchHandler) XSearch(c *gin.Context) {
 	c.Set("grok_x_search_endpoint", true)
 	h.WebSearch(c)
 }
+
 func searchError(c *gin.Context, status int, code, message string) {
 	c.JSON(status, gin.H{"error": gin.H{"type": code, "message": message}})
 }
 
-// WebSearch 保留原解析、鉴权、资金检查、审核与选号的顺序。
+// WebSearch 依次解析请求、鉴权、检查资金、审核并选择提供商。
 func (h *SearchHandler) WebSearch(c *gin.Context) {
 	done, accepted := h.beginRequest(c, "openai")
 	if !accepted {

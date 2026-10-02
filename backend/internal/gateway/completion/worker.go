@@ -40,8 +40,8 @@ type UsageRecordSubmitMode string
 const (
 	UsageRecordSubmitModeEnqueued UsageRecordSubmitMode = "enqueued"
 	UsageRecordSubmitModeDropped  UsageRecordSubmitMode = "dropped"
-	// UsageRecordSubmitModeDroppedStopped 表示任务因池已停止而未执行。
-	// 它与运维显式配置的 drop/sample 溢出丢弃分开，便于计费任务在关停窗口同步兜底。
+	// UsageRecordSubmitModeDroppedStopped 表示任务因池停止而未执行。
+	// 计费任务据此在关闭期间转为同步执行，drop/sample 配置导致的溢出仍按配置丢弃。
 	UsageRecordSubmitModeDroppedStopped UsageRecordSubmitMode = "dropped_stopped"
 	UsageRecordSubmitModeSync           UsageRecordSubmitMode = "sync_fallback"
 )
@@ -85,14 +85,13 @@ type UsageRecordWorkerPoolStats struct {
 	SyncFallbackTasks  uint64
 }
 
-// UsageRecordWorkerPool 提供“有界队列 + 固定 worker”的异步执行器。
-// 用于替代请求路径里的直接 goroutine，避免高并发时无界堆积。
-// Event 只携带原完成执行器的技术诊断，日志后端由 app 注入。
+// Event 记录完成执行器的诊断信息，app 提供日志回调。
 type Event struct {
 	Level, Message string
 	Fields         map[string]any
 }
 
+// UsageRecordWorkerPool 通过有界队列和 worker 执行异步任务，限制请求高峰时的积压。
 type UsageRecordWorkerPool struct {
 	observe               func(Event)
 	pool                  pond.Pool
@@ -116,7 +115,7 @@ type UsageRecordWorkerPool struct {
 	lastScaleNanos        atomic.Int64
 	autoScaleCancel       context.CancelFunc
 	lifecycleWg           sync.WaitGroup
-	// stateMu 将任务登记与停止封闭放在同一屏障内，避免 Wait 与 Add 交错。
+	// stateMu 同时保护任务登记和停止状态，Wait 开始前完成 Add。
 	stateMu          sync.Mutex
 	started, stopped bool
 	active           sync.WaitGroup
@@ -232,7 +231,7 @@ func (p *UsageRecordWorkerPool) Stats() UsageRecordWorkerPoolStats {
 // finishTask 只归还一次已确认的完成任务登记。
 func (p *UsageRecordWorkerPool) finishTask() { p.activeCount.Add(-1); p.active.Done() }
 
-// Stop 保留旧调用者的等待入口，应用关闭使用带总预算的 StopContext。
+// Stop 等待工作池停止，应用关闭时通过 StopContext 传入剩余预算。
 func (p *UsageRecordWorkerPool) Stop() { _ = p.StopContext(context.Background()) }
 
 // StopContext 等待队列、扩缩容和同步溢出任务，超时不报告 drain 成功。
@@ -328,7 +327,7 @@ func (p *UsageRecordWorkerPool) autoScaleTick() {
 		return
 	}
 
-	// 缩容：仅在队列为空且运行利用率低时收缩，避免高负载下“无排队误缩容”导致震荡。
+	// 队列为空且运行利用率低时缩容，高利用率下保留 worker 数量。
 	if queuePercent <= p.autoScaleDownPercent && waiting == 0 &&
 		runningPercent <= p.autoScaleDownPercent &&
 		current > p.autoScaleMinWorkers {
@@ -396,9 +395,7 @@ func NormalizeOptions(opts UsageRecordWorkerPoolOptions) UsageRecordWorkerPoolOp
 		opts.TaskTimeout = time.Duration(defaultUsageRecordTaskTimeoutSeconds) * time.Second
 	}
 	switch strings.ToLower(strings.TrimSpace(opts.OverflowPolicy)) {
-	case "drop",
-		"sample",
-		"sync":
+	case "drop", "sample", "sync":
 		opts.OverflowPolicy = strings.ToLower(strings.TrimSpace(opts.OverflowPolicy))
 	default:
 		opts.OverflowPolicy = defaultUsageRecordOverflowPolicy
@@ -464,7 +461,7 @@ func (s UsageRecordWorkerPoolStats) String() string {
 	return fmt.Sprintf("running=%d waiting=%d submitted=%d dropped=%d", s.RunningWorkers, s.WaitingTasks, s.SubmittedTasks, s.DroppedTasks)
 }
 
-// Start 与 Stop 共用屏障；停止后不再开启扩缩容任务。
+// Start 与 Stop 共用锁，停止后跳过扩缩容任务的启动。
 func (p *UsageRecordWorkerPool) Start() {
 	p.stateMu.Lock()
 	defer p.stateMu.Unlock()

@@ -2,11 +2,11 @@
  * 浮层层级与面板尺寸的唯一来源(JS 侧)。
  *
  * 层级梯队与 style.css :root 的 --z-* 变量、tailwind.config.js 的 zIndex 扩展三轨同源,
- * 由 src/__tests__/zIndexTheme.spec.ts 契约测试锁定,改值必须三处同步。
+ * src/__tests__/zIndexTheme.spec.ts 检查三处取值一致，修改数值时需要同步三处。
  * 梯队语义(低 → 高):内容区局部堆叠(0-20,DataTable 内部自治不入表) → 图表 tooltip 与
  * 侧栏遮罩(30) → 侧栏(40) → 顶栏与弹窗(50,同级靠 DOM 顺序与 teleport 决胜) →
  * 嵌套弹窗(60) → 提示与公告(100-140,公告梯队递增有意) → 菜单捕获层/通知(9998/9999) →
- * 帮助提示(99999) → 引导层(100000000,driver.js 外部约束,仅登记不消费) →
+ * 帮助提示(99999) → 引导层(100000000,由 driver.js 设置，此处登记数值) →
  * teleported 下拉(100000020,必须压过引导层)。
  */
 export const Z_INDEX = {

@@ -3323,7 +3323,7 @@ var (
 	_ settingscore.Repository            = (*stubSettingRepo)(nil)
 )
 
-// contractProviderBulkStore 只桥接原契约的批量写入观察，提供商规则仍由真实 Admin 执行。
+// contractProviderBulkStore 将批量写入转交测试存储，提供商规则由 Admin 执行。
 type contractProviderBulkStore struct {
 	providercore.AdminStore
 	source *stubProviderRepo

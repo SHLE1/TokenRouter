@@ -16,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// newGatewayAuthorization 不执行业务规则；装配同一原生 Key 与订阅实例。
+// newGatewayAuthorization 为网关认证绑定共享的 Key 和订阅实例。
 func newGatewayAuthorization(keys *apikey.APIKeyService, subscriptions *billing.SubscriptionService, cfg *config.Config, google bool) gin.HandlerFunc {
 	options := gatewayhttp.APIKeyAuthorizationOptions{
 		Authentication: keyhttp.AuthenticationOptions{
@@ -54,7 +54,7 @@ func newGatewayAuthorization(keys *apikey.APIKeyService, subscriptions *billing.
 	return gatewayhttp.NewAPIKeyAuthorization(nativeKeys, reader, options)
 }
 
-// provideAPIKeyAuth 构造唯一原生认证链，旧实体只在适配回调中投影。
+// provideAPIKeyAuth 构造共享的 Key 认证中间件，并在适配回调中转换数据。
 func provideAPIKeyAuth(keys *apikey.APIKeyService, subscriptions *billing.SubscriptionService, cfg *config.Config) keyhttp.APIKeyAuthMiddleware {
 	return keyhttp.APIKeyAuthMiddleware(newGatewayAuthorization(keys, subscriptions, cfg, false))
 }

@@ -426,7 +426,7 @@ func readVertexAPIError(resp *http.Response) error {
 	return &VertexAPIError{StatusCode: resp.StatusCode, Code: code, Message: message}
 }
 
-// NewCombinedJSONLReadCloser 按对象顺序懒读取，并在对象间保留原换行边界。
+// NewCombinedJSONLReadCloser 按对象顺序打开流读取，并在相邻对象之间补齐换行。
 func NewCombinedJSONLReadCloser(ctx context.Context, token string, objects []string, store VertexBatchObjectStore) io.ReadCloser {
 	return &vertexCombinedJSONLReadCloser{ctx: ctx, accessToken: token, objects: objects, store: store}
 }

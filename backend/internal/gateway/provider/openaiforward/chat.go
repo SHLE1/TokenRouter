@@ -20,7 +20,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// CursorResponsesUnsupportedFields 保留原 Responses 形状的专属过滤字段。
+// CursorResponsesUnsupportedFields 列出 Cursor Responses 请求需要过滤的字段。
 var CursorResponsesUnsupportedFields = []string{"prompt_cache_retention", "safety_identifier", "metadata", "stream_options"}
 
 func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedModel string, compatPromptCacheTenantIsolated bool, p ChatPorts) (*Result, error) {
@@ -153,7 +153,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 		if err != nil {
 			return nil, fmt.Errorf("rewrite model in responses-shape body: %w", err)
 		}
-		// 原文直转不会像结构体重建那样丢弃未知字段，因此显式移除 Codex 不支持的参数。
+		// 原文转换保留未知字段，因此在此移除 Codex 不支持的参数。
 		for _, field := range CursorResponsesUnsupportedFields {
 			if stripped, derr := sjson.DeleteBytes(responsesBody, field); derr == nil {
 				responsesBody = stripped
@@ -288,7 +288,7 @@ func RunChat(ctx context.Context, body []byte, promptCacheKey, defaultMappedMode
 		upstreamReq.Header.Set("session_id", p.SessionUUID(sessionKey))
 	}
 
-	// 发送前固定本次代理投影，保留重试复用的范围。
+	// 发送前取得代理信息，本次重试复用该值。
 	p.PrepareTransport()
 	resp, err := p.Send(upstreamReq)
 	if err != nil {

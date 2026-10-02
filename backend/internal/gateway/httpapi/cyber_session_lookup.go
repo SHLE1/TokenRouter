@@ -13,10 +13,11 @@ func CyberSessionExplicitBlockKey(id int64, c *gin.Context, body []byte) string 
 	return session.HashCyberSessionBlockKey(id, ExplicitOpenAISessionID(c, body))
 }
 
-// FindCyberSessionForRequest 在 HTTP 边界提供惰性显式标识，不让会话核心依赖 Gin。
+// FindCyberSessionForRequest 为会话查询提供延迟读取的客户端标识。
 func FindCyberSessionForRequest(ctx context.Context, core *session.CyberBlocks, id int64, c *gin.Context, body []byte, ip, agent string) string {
 	return core.Find(ctx, session.CyberLookup{APIKeyID: id, Body: body, ClientIP: ip, UserAgent: agent, ExplicitKey: func() string { return CyberSessionExplicitBlockKey(id, c, body) }})
 }
+
 func FindBlockedCyberSession(ctx context.Context, core *session.CyberBlocks, id int64, c *gin.Context, body []byte) string {
 	if core == nil {
 		return ""

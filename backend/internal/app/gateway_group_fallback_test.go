@@ -61,7 +61,7 @@ func (r fallbackSubscriptionRepository) GetByID(context.Context, int64) (*billin
 	return r.value, nil
 }
 
-// 只替换存储读写，目标组授权、订阅覆盖和会话隔离仍执行生产用例。
+// 测试用存储替身提供数据，目标组授权、订阅覆盖和会话隔离由生产用例执行。
 type fallbackIsolationCache struct {
 	session.GatewayCache
 	ownerID, userID int64
@@ -178,7 +178,7 @@ func (r *clientFallbackRPM) Check(context.Context, *scheduler.RPMUser, *schedule
 	return nil
 }
 
-// TestClientGroupFallbackAuthorizesWholeChain 验证每一跳检查授权和协议，最终入口才计 RPM；任何拒绝都不改共享 Key。
+// TestClientGroupFallbackAuthorizesWholeChain 检查每一跳的授权和协议校验，最终入口才计 RPM，被拒绝时共享 Key 保持不变。
 func TestClientGroupFallbackAuthorizesWholeChain(t *testing.T) {
 	for _, outcome := range []string{"allowed", "exclusive", "protocol", "subscription", "cycle", "composite", "missing_target"} {
 		t.Run(outcome, func(t *testing.T) {

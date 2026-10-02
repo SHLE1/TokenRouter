@@ -5,13 +5,13 @@ import (
 	"strings"
 )
 
-// DingTalkProfileSnapshot 只包含同步资料所需字段，不携带提供方客户端。
+// DingTalkProfileSnapshot 包含钉钉资料同步所需的用户字段。
 type DingTalkProfileSnapshot struct {
 	UserID, Name, Nickname, Email string
 	DeptIDs                       []int64
 }
 
-// DingTalkSyncOptions 是每次登录取得的动态设置投影。
+// DingTalkSyncOptions 保存本次登录读取的资料同步设置。
 type DingTalkSyncOptions struct {
 	CorpRestrictionPolicy                                         string
 	SyncCorpEmail, SyncDisplayName, SyncDept                      bool
@@ -44,7 +44,7 @@ func (s *DingTalkProfileSync) log(level, message string, args ...any) {
 
 // Sync 在 internal_only 模式下，按三个 sync 开关把钉钉身份信息
 // 同步到用户属性表（以及 users.username）。
-// 任何错误仅记日志，不中断登录流程（最终一致性）。
+// 同步出错时记录日志，登录流程继续执行。
 func (s *DingTalkProfileSync) Sync(ctx context.Context, cfg DingTalkSyncOptions, client DingTalkDepartmentReader, userID int64, staff *DingTalkProfileSnapshot, syncUsername bool) {
 	s.log("info", "dingtalk sync: entry",
 		"user_id", userID,

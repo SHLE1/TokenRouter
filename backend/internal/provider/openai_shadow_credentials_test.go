@@ -30,7 +30,7 @@ func TestGetAccessToken_SparkShadowResolvesToParent(t *testing.T) {
 		Platform:         capability.PlatformOpenAI,
 		Type:             capability.ProviderTypeOAuth,
 		ParentProviderID: &parentID,
-		// 影子提供商不持凭据，与生产语义一致
+		// 影子提供商的凭据来自母提供商。
 	}
 
 	svc := &OpenAIExecutionCredentials{Parent: func(ctx context.Context, id int64) (*Record, error) {
@@ -38,7 +38,7 @@ func TestGetAccessToken_SparkShadowResolvesToParent(t *testing.T) {
 		return &parent, nil
 	}}
 
-	// 影子自身不持凭据，必须由唯一原生解析器读取母提供商。
+	// 解析器从母提供商读取影子所用的凭据。
 	// 返回母提供商的现有 token，不执行额外刷新或查询。
 	token, tokenType, err := svc.Resolve(ctx, &shadow)
 	require.NoError(t, err)

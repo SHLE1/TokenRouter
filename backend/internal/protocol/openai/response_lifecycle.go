@@ -16,7 +16,7 @@ type ResponseLifecycleNormalizer struct {
 	completedID  string
 }
 
-// IsResponseLifecycleEvent 标识携带完整 Response 对象的事件，不包含内容增量或独立 error 事件。
+// IsResponseLifecycleEvent 识别携带完整 Response 对象的生命周期事件。
 func IsResponseLifecycleEvent(eventType string) bool {
 	switch strings.TrimSpace(eventType) {
 	case "response.created", "response.in_progress", "response.completed", "response.done",
@@ -43,7 +43,7 @@ func (n *ResponseLifecycleNormalizer) Normalize(data []byte, eventType string) (
 	response := gjson.GetBytes(data, "response")
 	changed := false
 	if !response.IsObject() {
-		// 仅接受有明确 Response 身份的裸对象，避免把缺字段的任意事件包装成成功响应。
+		// 裸对象带有 Response 身份字段时才补上成功响应包装。
 		if gjson.GetBytes(data, "object").String() != "response" || gjson.GetBytes(data, "id").String() == "" {
 			return data, eventType, false
 		}

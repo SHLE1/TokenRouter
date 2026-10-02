@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// grokModelStateProviderRepo 记录 Grok 模型级状态，避免测试依赖真实存储库。
+// grokModelStateProviderRepo 在测试中记录 Grok 模型级状态。
 type grokModelStateProviderRepo struct {
 	gatewayprovider.ExecutionProviderStore
 
@@ -129,7 +129,7 @@ func TestGrokRuntimeModelKeysUseFinalUpstreamID(t *testing.T) {
 	require.Equal(t, xai.DefaultResponsesModel, (&provideradapter.ModelHealth{}).LimitKey(gatewayprovider.ExecutionRecord(provider), xai.DefaultResponsesModel, nil))
 }
 
-// TestGrokModelNotFoundWritesFinalUpstreamID 验证 Grok 默认错误链路会写入最终上游模型键。
+// TestGrokModelNotFoundWritesFinalUpstreamID 验证 Grok 默认错误处理写入最终上游模型键。
 func TestGrokModelNotFoundWritesFinalUpstreamID(t *testing.T) {
 	repo := &grokModelStateProviderRepo{}
 	svc := newWSFixture(wsFixtureInputs{health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil)})

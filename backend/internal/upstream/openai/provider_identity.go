@@ -66,7 +66,7 @@ func ScopeCodexProviderIdentityValue(namespace string, apiKeyID int64, kind, raw
 	if raw == "" || namespace == "" {
 		return raw
 	}
-	// 哈希种子保留旧值，确保升级后已有设备、会话及调用身份不变。
+	// 身份哈希前缀需要保持稳定，改变前缀会改变同一提供商和用户的身份值。
 	return DeriveStableUUIDv4(fmt.Sprintf(
 		"sub2api:codex-account-identity:%s:user:%d:account:%s:kind:%s:value:%s",
 		codexProviderIdentityNamespaceVersion,

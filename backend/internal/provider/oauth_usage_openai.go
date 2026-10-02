@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// OpenAIUsageOptions 提供供应商探测及影子提供商的报文转换端口。
+// OpenAIUsageOptions 提供供应商探测和影子提供商的数据转换接口。
 type OpenAIUsageOptions struct {
 	Probe  func(context.Context, *Record) (map[string]any, error)
 	Shadow func(context.Context, int64, time.Time) (map[string]any, error)

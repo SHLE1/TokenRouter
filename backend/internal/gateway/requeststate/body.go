@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	// 这些字节模式用于 fast-path 判断，避免每次 []byte("...") 产生临时分配。
+	// 预先保存快速判断使用的字节模式，省去每次将字符串转换为字节切片的分配。
 
 	// Fast-path patterns for empty text blocks: {"type":"text","text":""}
 
@@ -25,9 +25,8 @@ var (
 	sessionUserAgentVersionPattern = regexp.MustCompile(`\bv?\d+(?:\.\d+){1,3}\b`)
 )
 
-// SessionContext 粘性会话上下文，用于区分不同来源的请求。
-// 仅在 GenerateSessionHash 第 3 级 fallback（消息内容 hash）时混入，
-// 避免不同用户发送相同消息产生相同 hash 导致提供商集中。
+// SessionContext 保存区分请求来源的信息。
+// GenerateSessionHash 使用第三级内容哈希回退时混入该信息，使不同用户的相同消息分配到不同哈希。
 type SessionContext struct {
 	ClientIP  string
 	UserAgent string
@@ -155,7 +154,7 @@ func normalizeClaudeCodeLongContextModel(model string) string {
 	return model
 }
 
-// parseGatewayRequestCurrentBody 只做标量和 raw range 轻量解析，不恢复 system/messages 对象图。
+// parseGatewayRequestCurrentBody 解析标量和原始字节区间，system 和 messages 以原始字节保存。
 func parseGatewayRequestCurrentBody(parsed *ParsedRequest, protocol string) error {
 	if parsed == nil || parsed.Body == nil {
 		return fmt.Errorf("empty request body")
@@ -240,16 +239,14 @@ func DescribeInvalidJSON(body []byte) error {
 	return fmt.Errorf("invalid json (len=%d)", len(body))
 }
 
-// ParsedRequest 保存网关请求的预解析结果
-//
-// HTTP 入口通过 ParseGatewayRequest 解析一次，执行和会话计算复用同一结果，
-// 避免为读取 model、stream、messages 和 metadata 反复解析请求体。
+// ParsedRequest 保存网关请求的预解析结果。
+// HTTP 入口调用 ParseGatewayRequest 一次，执行和会话计算共用 model、stream、messages 和 metadata 的解析结果。
 type ParsedRequest struct {
 	Body            *RequestBodyRef // 原始请求体引用（保留用于转发）；替换内容请走 ReplaceBody
 	Model           string          // 请求的模型名称
 	Stream          bool            // 是否为流式请求
 	MetadataUserID  string          // metadata.user_id（用于会话亲和）
-	HasSystem       bool            // 是否包含 system 字段（包含 null 也视为显式传入）
+	HasSystem       bool            // system 字段是否存在，null 也算存在。
 	ThinkingEnabled bool            // 是否开启 thinking（部分平台会影响最终模型名）
 	OutputEffort    string          // output_config.effort（Claude API 的推理强度控制）
 	MaxTokens       int             // max_tokens 值（用于探测请求拦截）
@@ -263,8 +260,8 @@ type ParsedRequest struct {
 	// GroupID 请求所属分组 ID（来自 API Key）
 	GroupID *int64
 
-	// OnUpstreamAccepted 上游接受请求后立即调用（用于提前释放串行锁）
-	// 流式请求在收到 2xx 响应头后调用，避免持锁等流完成
+	// OnUpstreamAccepted 在上游接受请求后调用，用于提前释放串行锁。
+	// 流式请求收到 2xx 响应头时调用。
 	OnUpstreamAccepted func()
 }
 
@@ -357,7 +354,7 @@ func (p *ParsedRequest) SystemValue() (any, bool) {
 	return system, true
 }
 
-// CloneForBody 为单次提供商尝试创建独立 body 视图，避免 failover 复用已改写的 ParsedRequest。
+// CloneForBody 为每次提供商尝试创建独立的 body 视图。
 func (p *ParsedRequest) CloneForBody(body []byte) (*ParsedRequest, error) {
 	if p == nil {
 		return nil, fmt.Errorf("parse request: empty request")
@@ -371,7 +368,7 @@ func (p *ParsedRequest) CloneForBody(body []byte) (*ParsedRequest, error) {
 	return &clone, nil
 }
 
-// ReplaceBody 统一刷新当前 body 和 raw range，保证后续 helper 读取的是最新请求体。
+// ReplaceBody 更新当前 body 和原始字节区间，后续读取使用这份请求体。
 func (p *ParsedRequest) ReplaceBody(data []byte) error {
 	if p == nil {
 		return fmt.Errorf("parse request: empty request")

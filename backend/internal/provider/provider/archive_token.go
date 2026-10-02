@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// DecodeArchiveIDToken 沿用原 OpenAI 导入的非认证解码，不新增过期或签名验证。
+// DecodeArchiveIDToken 解码 OpenAI 导入的身份提示，调用方负责身份验证。
 func DecodeArchiveIDToken(token string) (*provider.ArchiveIdentityHints, error) {
 	claims, err := openai.DecodeIDToken(token)
 	if err != nil {

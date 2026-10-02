@@ -134,13 +134,13 @@ func TestGrokResponsesBillingPingFilterPreservesNonPingFrames(t *testing.T) {
 	require.Equal(t, input, filterGrokPingTestInput(t, input))
 }
 
-// TestGrokResponsesBillingPingFilterPassesThroughPingFrameWithUnknownField 验证携带意外 SSE 字段的候选帧不是供应商计费或保活 ping，必须逐字节回放。
+// TestGrokResponsesBillingPingFilterPassesThroughPingFrameWithUnknownField 验证带未知 SSE 字段的候选帧逐字节回放。
 func TestGrokResponsesBillingPingFilterPassesThroughPingFrameWithUnknownField(t *testing.T) {
 	input := "event: ping\nid: 7\ndata: {\"type\":\"ping\",\"cost\":\"0\"}\n\n"
 	require.Equal(t, input, filterGrokPingTestInput(t, input))
 }
 
-// TestGrokResponsesBillingPingFilterPassesThroughOversizedPingFrame 验证超过行数或字节上限的候选帧应原样直通，避免无界占用内存。
+// TestGrokResponsesBillingPingFilterPassesThroughOversizedPingFrame 验证超过行数或字节上限后停止缓冲，候选帧原样直通。
 func TestGrokResponsesBillingPingFilterPassesThroughOversizedPingFrame(t *testing.T) {
 	lines := []string{"event: ping"}
 	for i := 0; i < grok.ResponsesPingFrameMaxLines; i++ {

@@ -120,7 +120,7 @@ func (s *ModelCatalogue) buildUpstreamModelsRequest(ctx context.Context, value *
 	}
 }
 
-// buildGrokUpstreamModelsRequest 为 Grok 提供商构造与真实转发地址一致的模型列表请求。
+// buildGrokUpstreamModelsRequest 按 Grok 转发地址规则构造模型列表请求。
 func (s *ModelCatalogue) buildGrokUpstreamModelsRequest(ctx context.Context, value *providercore.Record) (*http.Request, error) {
 	if value == nil {
 		return nil, newUpstreamModelSyncConfigError("Provider is required", nil)
@@ -263,7 +263,7 @@ func (s *ModelCatalogue) buildAnthropicUpstreamModelsRequest(ctx context.Context
 	} else {
 		claude.SetAPIKeyAuthHeader(req.Header, value.GetAnthropicAPIKeyAuthScheme() == providercore.AnthropicAPIKeyAuthSchemeAuthorizationBearer, apiKeyAuthToken)
 	}
-	// 提供商级请求头覆写：模型列表探测与真实转发保持一致的最终头
+	// 模型列表查询与转发按相同顺序应用提供商请求头覆盖。
 	applyGrokQuotaHeaders(value, req.Header)
 	return req, nil
 }
@@ -339,7 +339,7 @@ func (s *ModelCatalogue) buildOpenAIUpstreamModelsRequest(ctx context.Context, v
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
-	// 提供商级请求头覆写：模型列表探测与真实转发保持一致的最终头
+	// 模型列表查询与转发按相同顺序应用提供商请求头覆盖。
 	applyGrokQuotaHeaders(value, req.Header)
 	return req, nil
 }
@@ -623,7 +623,7 @@ func grokUpstreamModelEntryID(entry upstreamModelEntry) string {
 			)
 		}
 	}
-	// `name` 在 Grok 模型目录中是展示名称，只作为协议模型 ID 之后的兼容兜底。
+	// Grok 模型目录中的 name 是展示名称，缺少协议模型 ID 时使用该字段。
 	candidates = append(candidates, entry.Name)
 	for _, candidate := range candidates {
 		modelID := strings.TrimSpace(candidate)
@@ -676,7 +676,7 @@ func buildCodexModelsManifestURL(endpoint string, appendModelsPath bool, clientV
 	return requestURL, nil
 }
 
-// ModelCatalogueOptions 仅包含启动投影与技术端点，不引用完整配置。
+// ModelCatalogueOptions 包含模型查询所需的启动参数和请求端点。
 type ModelCatalogueOptions struct {
 	ValidateURL       func(string) (string, error)
 	OperatorValidator grok.BaseURLValidator

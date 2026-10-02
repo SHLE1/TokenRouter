@@ -19,7 +19,7 @@ const CLIVersionEnv = "TOKENROUTER_CLAUDE_CLI_VERSION"
 
 // resolvedCLIVersion 在包初始化时解析一次。
 //
-// ⚠️ 故意不做成"每次调用读一次环境变量"：伪装身份必须在一个进程的生命周期内保持恒定。
+// 伪装版本在进程内固定，环境变量在包初始化时读取。
 // User-Agent 头与请求体 billing attribution 块里的 cc_version 由不同代码路径写入，
 // 若两次读到不同的值（例如进程运行中有人改了环境变量），同一个请求就会自相矛盾，
 // 被上游判为非正版客户端。
@@ -27,20 +27,18 @@ var resolvedCLIVersion = resolveCLIVersion(cliVersionOverride())
 
 // CLIVersion 返回对外伪装的 Claude Code CLI 版本号（三段 semver）。
 //
-// 所有需要该版本号的位置都必须走本函数，不要直接引用 CLICurrentVersion——
-// 后者只是"没有覆盖时的内置基线"。
+// 调用方需要通过本函数读取版本号，CLICurrentVersion 是未配置覆盖时的默认值。
 func CLIVersion() string {
 	return resolvedCLIVersion
 }
 
-// IsSupportedCLIVersion 注入平台基线，环境读取和日志保持在旧装配入口。
+// IsSupportedCLIVersion 使用内置版本检查版本号是否受支持。
 func IsSupportedCLIVersion(version string) bool {
 	return clientmeta.IsSupportedClaudeCLIVersion(version, CLICurrentVersion)
 }
 
 // resolveCLIVersion 把环境变量的原始值解析成可用的版本号。
-// 空值静默回落（未配置是正常状态）；非空但不合法则回落并告警——
-// 静默忽略一个显式配置会让运维以为已经生效。
+// 空值使用内置版本，非空非法值使用内置版本并记录告警。
 func resolveCLIVersion(raw string) string {
 	version := strings.TrimSpace(raw)
 	if version == "" {

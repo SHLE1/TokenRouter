@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 回归夹具只在驱动边界返回受控结果，不改变生产实现。
+// 测试驱动返回预设结果，供生命周期用例控制执行进度。
 type paymentDriver struct {
 	dialect.Driver
 	calls   atomic.Int32

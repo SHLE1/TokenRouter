@@ -4,8 +4,7 @@ import (
 	"time"
 )
 
-// AdvancedSchedulerScoreDiagnosticRequest 描述管理员希望模拟的安全请求上下文。
-// 不接受 session hash、响应正文或任何凭据相关字段。
+// AdvancedSchedulerScoreDiagnosticRequest 描述管理员希望模拟的分组、模型和粘性提供商。
 type AdvancedSchedulerScoreDiagnosticRequest struct {
 	GroupID                    int64  `json:"group_id"`
 	RequestedModel             string `json:"requested_model,omitempty"`
@@ -79,7 +78,7 @@ type AdvancedSchedulerScoreDiagnosticCandidatePool struct {
 	Candidates          []AdvancedSchedulerScoreDiagnosticCandidate `json:"candidates"`
 }
 
-// AdvancedSchedulerScoreDiagnosticRanges 记录评分核心实际使用的候选池归一化范围。
+// AdvancedSchedulerScoreDiagnosticRanges 记录评分使用的候选池归一化范围。
 type AdvancedSchedulerScoreDiagnosticRanges struct {
 	PriorityMin     int      `json:"priority_min"`
 	PriorityMax     int      `json:"priority_max"`

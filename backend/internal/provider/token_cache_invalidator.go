@@ -7,12 +7,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// TokenCacheInvalidator 使用提供商快照清理各平台原有凭据缓存。
+// TokenCacheInvalidator 根据提供商快照清理各平台的凭据缓存。
 type TokenCacheInvalidator interface {
 	InvalidateToken(ctx context.Context, provider *Record) error
 }
 
-// SessionInvalidator 只暴露提供商会话失效，不依赖具体供应商构建器。
+// SessionInvalidator 提供提供商会话的失效操作。
 type SessionInvalidator interface {
 	Invalidate(int64)
 }
@@ -48,7 +48,7 @@ func (c *CompositeTokenCacheInvalidator) InvalidateToken(ctx context.Context, pr
 	case capability.PlatformGemini:
 		// Gemini 可能有两种缓存键：project_id 或 provider_id
 		// 首次获取 token 时可能没有 project_id，之后自动检测到 project_id 后会使用新 key
-		// 刷新时需要同时删除两种可能的 key，确保不会遗留旧缓存
+		// 刷新时删除两种缓存键。
 		keysToDelete = append(keysToDelete, GeminiOAuthTokenCacheKey(provider))
 		keysToDelete = append(keysToDelete, "gemini:"+providerIDKey)
 	case capability.PlatformAntigravity:

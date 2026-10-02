@@ -19,12 +19,12 @@ const (
 	SettingKeyPromoCodeEnabled              = "promo_code_enabled"
 )
 
-// RuntimeSettingsStore 仅提供运行设置读取，不访问身份或资金实体。
+// RuntimeSettingsStore 按键读取推广设置。
 type RuntimeSettingsStore interface {
 	GetValue(context.Context, string) (string, error)
 }
 
-// RuntimeSettings 保持每个入口的原有回源时机，不新增缓存。
+// RuntimeSettings 在每次调用时读取推广设置。
 type RuntimeSettings struct{ settingRepo RuntimeSettingsStore }
 
 // NewRuntimeSettings 构造无副作用的推广设置读取器。
@@ -32,7 +32,7 @@ func NewRuntimeSettings(repo RuntimeSettingsStore) *RuntimeSettings {
 	return &RuntimeSettings{settingRepo: repo}
 }
 
-// IsPromoCodeEnabled 保留原设置的缺省、边界和读取时点。
+// IsPromoCodeEnabled 读取优惠码开关，读取失败时默认启用。
 func (s *RuntimeSettings) IsPromoCodeEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyPromoCodeEnabled)
 	if err != nil {
@@ -41,7 +41,7 @@ func (s *RuntimeSettings) IsPromoCodeEnabled(ctx context.Context) bool {
 	return value != "false"
 }
 
-// IsInvitationCodeEnabled 保留原设置的缺省、边界和读取时点。
+// IsInvitationCodeEnabled 读取邀请码开关，读取失败时默认关闭。
 func (s *RuntimeSettings) IsInvitationCodeEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyInvitationCodeEnabled)
 	if err != nil {
@@ -50,7 +50,7 @@ func (s *RuntimeSettings) IsInvitationCodeEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// IsAffiliateEnabled 保留原设置的缺省、边界和读取时点。
+// IsAffiliateEnabled 读取推广开关，读取失败时返回默认值。
 func (s *RuntimeSettings) IsAffiliateEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateEnabled)
 	if err != nil {
@@ -59,7 +59,7 @@ func (s *RuntimeSettings) IsAffiliateEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
-// IsAffiliateAdminRechargeEnabled 保留原设置的缺省、边界和读取时点。
+// IsAffiliateAdminRechargeEnabled 读取管理员充值返利开关，读取失败时返回默认值。
 func (s *RuntimeSettings) IsAffiliateAdminRechargeEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateAdminRechargeEnabled)
 	if err != nil {
@@ -68,7 +68,7 @@ func (s *RuntimeSettings) IsAffiliateAdminRechargeEnabled(ctx context.Context) b
 	return value == "true"
 }
 
-// GetAffiliateRebateRatePercent 保留原设置的缺省、边界和读取时点。
+// GetAffiliateRebateRatePercent 读取返利比例，读取或解析失败时返回默认值。
 func (s *RuntimeSettings) GetAffiliateRebateRatePercent(ctx context.Context) float64 {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateRebateRate)
 	if err != nil {
@@ -81,7 +81,7 @@ func (s *RuntimeSettings) GetAffiliateRebateRatePercent(ctx context.Context) flo
 	return ClampRebateRate(rate)
 }
 
-// GetAffiliateRebateFreezeHours 保留原设置的缺省、边界和读取时点。
+// GetAffiliateRebateFreezeHours 读取返利冻结小时数，读取失败或值非法时返回默认值。
 func (s *RuntimeSettings) GetAffiliateRebateFreezeHours(ctx context.Context) int {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateRebateFreezeHours)
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *RuntimeSettings) GetAffiliateRebateFreezeHours(ctx context.Context) int
 	return hours
 }
 
-// GetAffiliateRebateDurationDays 保留原设置的缺省、边界和读取时点。
+// GetAffiliateRebateDurationDays 读取返利有效天数，读取失败或值非法时返回默认值。
 func (s *RuntimeSettings) GetAffiliateRebateDurationDays(ctx context.Context) int {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateRebateDurationDays)
 	if err != nil {
@@ -113,7 +113,7 @@ func (s *RuntimeSettings) GetAffiliateRebateDurationDays(ctx context.Context) in
 	return days
 }
 
-// GetAffiliateRebatePerInviteeCap 保留原设置的缺省、边界和读取时点。
+// GetAffiliateRebatePerInviteeCap 读取每位受邀人的返利上限，读取失败或值非法时返回默认值。
 func (s *RuntimeSettings) GetAffiliateRebatePerInviteeCap(ctx context.Context) float64 {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyAffiliateRebatePerInviteeCap)
 	if err != nil {

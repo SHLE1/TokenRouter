@@ -18,7 +18,7 @@ import { useI18n } from 'vue-i18n'
 import { GROK_BASE_URL_PRESETS, type GrokBaseUrlPreset } from './credentialsBuilder'
 
 // Grok 快捷端点：点击把预设地址填入调用方的输入框。
-// 仅是快速填充，不限制可填值——输入框仍接受任意第三方转发地址。
+// 预设用于快速填充，输入框也接受任意第三方转发地址。
 const emit = defineEmits<{
   (e: 'select', url: string): void
 }>()

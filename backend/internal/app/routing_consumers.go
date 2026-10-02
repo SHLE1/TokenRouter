@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// keyGroups 投影旧路由能力，直接读取新 routing；不持有分组或认证缓存。
+// keyGroups 从 routing 读取 Key 需要的分组数据。
 type keyGroups struct{ Repository routing.GroupRepository }
 
 func (p keyGroups) GetByID(ctx context.Context, id int64) (*routing.Group, error) {
@@ -38,7 +38,7 @@ func keyGroupFastPolicy(raw string, force bool) string {
 	return (&routing.Group{OpenAIFastPolicy: raw, ForceOpenAIFast: force}).EffectiveOpenAIFastPolicy()
 }
 
-// identityAdminGroups 只提供用户管理所需分组字段，直接读取新 routing。
+// identityAdminGroups 从 routing 读取用户管理需要的分组字段。
 type identityAdminGroups struct{ Repository routing.GroupRepository }
 
 func (p identityAdminGroups) GetByID(ctx context.Context, id int64) (*identity.AdminGroup, error) {
@@ -58,7 +58,7 @@ func identityAdminGroup(v *routing.Group) *identity.AdminGroup {
 	return &identity.AdminGroup{ID: v.ID, Name: v.Name, Status: v.Status, IsExclusive: v.IsExclusive, RPMLimit: v.RPMLimit}
 }
 
-// billingGroups 只读取套餐展示所需名称，直接读取新 routing。
+// billingGroups 从 routing 读取套餐展示需要的分组名称。
 type billingGroups struct{ Repository routing.GroupRepository }
 
 func (b billingGroups) GetByIDLite(ctx context.Context, id int64) (*billing.SubscriptionPlanGroup, error) {

@@ -7,5 +7,5 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// TestMain 在测试进程运行前统一设置模式，测试及并行夹具不再写 Gin 全局变量。
+// TestMain 在测试进程开始时设置 Gin 模式，后续测试共用该设置。
 func TestMain(m *testing.M) { gin.SetMode(gin.TestMode); os.Exit(m.Run()) }

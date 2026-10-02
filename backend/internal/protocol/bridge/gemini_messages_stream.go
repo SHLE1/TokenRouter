@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// NativeMessageEvent 描述一个输出或 HTTP 外层需要执行的时序动作，不持有 Writer。
+// NativeMessageEvent 描述待输出的事件或 HTTP 层需要执行的 Flush、首 token 标记。
 type NativeMessageEvent struct {
 	Name       string
 	Data       any
@@ -14,8 +14,7 @@ type NativeMessageEvent struct {
 	FirstToken bool
 }
 
-// NativeGeminiMessagesStream 保存原生 Gemini 到 Messages 的独立流状态。
-// 与 OpenAI 兼容链保留不同的 thinking/index 契约，不统一原有行为。
+// NativeGeminiMessagesStream 保存 Gemini 转 Messages 的流状态，跟踪 thinking 内容和块索引。
 type NativeGeminiMessagesStream struct {
 	runtime        NativeGeminiRuntime
 	finishReason   string
@@ -36,7 +35,7 @@ func NewNativeGeminiMessagesStream(runtime NativeGeminiRuntime) *NativeGeminiMes
 	return &NativeGeminiMessagesStream{runtime: runtime, openBlockIndex: -1, openToolIndex: -1}
 }
 
-// Usage 返回已观测用量的独立投影。
+// Usage 返回已观测用量的副本。
 func (s *NativeGeminiMessagesStream) Usage() *NativeGeminiUsage {
 	value := s.usage
 	return &value
@@ -242,7 +241,7 @@ func (s *NativeGeminiMessagesStream) Process(geminiResp map[string]any, raw []by
 	}
 }
 
-// Finish 保留原有块关闭、终态用量与消息结束顺序。
+// Finish 依次关闭内容块、输出终态用量和消息结束事件。
 func (s *NativeGeminiMessagesStream) Finish() iter.Seq[NativeMessageEvent] {
 	return func(yield func(NativeMessageEvent) bool) {
 		emit := func(name string, data any) bool { return yield(NativeMessageEvent{Name: name, Data: data}) }

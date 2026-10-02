@@ -516,7 +516,7 @@ func (s *DashboardService) GetBatchAPIKeyUsageStats(ctx context.Context, apiKeyI
 	return stats, nil
 }
 
-// DashboardReaders 保留原可选范围和公开统计查询。
+// DashboardReaders 提供按时间范围查询和公开统计查询。
 type DashboardReaders struct {
 	Range  dashboardStatsRangeFetcher
 	Public dashboardPublicStatsFetcher

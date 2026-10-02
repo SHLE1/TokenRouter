@@ -121,7 +121,7 @@ func TestOpenAITokenRefreshUsesOriginalCAS(t *testing.T) {
 	}
 }
 
-// 测试传输只把已构造的官方 token 请求送到本地 TLS 夹具，不访问真实供应商。
+// 测试传输将已构造的 token 请求发送到本地 TLS 夹具。
 type openAILocalTransport struct {
 	client *http.Client
 	target *url.URL

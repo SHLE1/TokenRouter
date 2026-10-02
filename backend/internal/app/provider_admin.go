@@ -22,7 +22,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// provideProviderAdmin 绑定唯一管理用例与原平台执行端口，构造不运行后台任务。
+// provideProviderAdmin 绑定共享的提供商管理用例和平台执行接口。
 func provideProviderAdmin(store *providerpostgres.ProviderStore, usage *billingpostgres.ProviderUsageStore, blocker provider.RuntimeUnblocker, privacy *provider.PrivacyService, groups *routingpostgres.GroupStore, proxies *egresspostgres.ProxyStore, tasks *lifecycle.Tasks, upstream httpclient.UpstreamTransport, tls *egressadapter.TLSProfiles) *provider.Admin {
 	return provider.NewAdmin(store, provider.AdminOptions{ShadowModels: provideradapter.DefaultSparkShadowModels, Duplicates: store, Quotas: usage, RuntimeBlocker: blocker, Privacy: privacy, Groups: providerGroupReferences{groups}, Proxies: proxies, Creation: provider.CreationOptions{Now: time.Now, LoadLocation: time.LoadLocation, NewSeed: uuid.NewString}, Credentials: provideradapter.CreateCredentialHooks(upstream, tls), Background: tasks.Go, Error: slog.Error})
 }

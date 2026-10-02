@@ -48,7 +48,7 @@ func (r providerLocalStatsBatch) GetProviderWindowStatsBatch(ctx context.Context
 	return out, err
 }
 
-// newProviderLocalUsageStats 投影 usage 查询；批量失败回退由 provider 拥有。
+// newProviderLocalUsageStats 绑定 usage 查询，批量查询失败后的处理由 provider 决定。
 func newProviderLocalUsageStats(source usage.UsageLogRepository) provider.LocalUsageStats {
 	reader := providerLocalStats{source}
 	if batch, ok := source.(providerLocalStatsBatchSource); ok {

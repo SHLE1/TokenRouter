@@ -196,7 +196,7 @@ function metricGridStyle(metricCount: number): Record<string, string> {
   return { gridTemplateColumns: `repeat(${Math.max(metricCount, 1)}, minmax(0, 1fr))` }
 }
 
-// 桌面端为每类指标保留固定列宽，避免各行因数值长度不同而横向漂移。
+// 桌面端各指标列使用固定宽度，行间数值对齐。
 function rankingMetricWidthClass(metric: UsageRankingMetric): string {
   switch (metric) {
     case 'requests':

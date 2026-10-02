@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// HTTP 故障切换夹具只投影存储返回值，不复制刷新行为。
+// HTTP 故障切换夹具转换存储返回的 token 数据，刷新由凭据组件处理。
 type grokCredentialTokenReader struct{ source *grokCredentialHandlerRepo }
 
 func (r grokCredentialTokenReader) GetByID(ctx context.Context, id int64) (*provider.Record, error) {

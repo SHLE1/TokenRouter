@@ -5,7 +5,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// ConversionOptionsForModel 在网关边界选择既有型号策略；协议转换器只接收行为开关。
+// ConversionOptionsForModel 根据模型策略生成协议转换选项。
 func ConversionOptionsForModel(model string) bridge.RequestOptions {
 	return bridge.RequestOptions{
 		DropSampling:      capability.ResponsesBridgeDropsSampling(model),

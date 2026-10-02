@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// Recording 保存测试显式设置的原生依赖，不拥有算法、缓存副本或旧网关实体。
+// Recording 保存用量记录测试配置的依赖。
 type Recording struct {
 	Dependencies   completion.Dependencies
 	Options        completion.RecorderOptions
@@ -25,7 +25,7 @@ type Recording struct {
 	ProviderLookup func(context.Context, int64) (*provider.Record, error)
 }
 
-// NewRecording 保留原记录夹具的默认倍率、缓存期限与原生计算器构造。
+// NewRecording 配置记录夹具的默认倍率和缓存期限，并构造计费计算器。
 func NewRecording(logs usage.UsageLogRepository, funds completion.Store, rates billing.UserGroupRateRepository, withResolver bool) *Recording {
 	calculator := billingtestkit.Calculator(1.1, nil, nil)
 	fixture := &Recording{
@@ -52,7 +52,7 @@ func NewRecording(logs usage.UsageLogRepository, funds completion.Store, rates b
 	return fixture
 }
 
-// Core 在与原独立夹具相同的时点绑定输入引用，状态仍沿用 Dependencies 中的同一实例。
+// Core 绑定测试输入并使用 Dependencies 中的共享实例构造记录器。
 func (f *Recording) Core(updater gatewayadapter.QuotaUpdater, openAI bool) *completion.Recorder {
 	deps := f.Dependencies
 	deps.Subscriptions, _ = deps.Funds.(completion.SubscriptionReader)

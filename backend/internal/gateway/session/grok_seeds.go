@@ -18,7 +18,7 @@ func GrokPreviousResponseSeed(body []byte) string {
 	if protocolopenai.ClassifyOpenAIPreviousResponseIDKind(id) != protocolopenai.OpenAIPreviousResponseIDKindResponseID {
 		return ""
 	}
-	// 增加命名空间，避免内容派生种子与响应 ID 冲突。
+	// 为内容种子添加前缀，与响应 ID 区分。
 	return "grok-prev-resp:" + id
 }
 

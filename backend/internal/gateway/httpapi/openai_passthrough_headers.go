@@ -6,7 +6,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
-	// 本文件承载 /v1/responses 透传转发及其流式、非流式响应与错误处理。
 )
 
 // WriteOpenAIPassthroughResponseHeaders 保留配额头强制放行和旧回合状态清理顺序。
@@ -17,14 +16,13 @@ func WriteOpenAIPassthroughResponseHeaders(dst http.Header, src http.Header, fil
 	if filter != nil {
 		egressadapter.WriteFilteredHeaders(dst, src, filter)
 	} else {
-		// 兜底：尽量保留最基础的 content-type
+		// 未配置过滤器时透传 content-type。
 		if v := strings.TrimSpace(src.Get("Content-Type")); v != "" {
 			dst.Set("Content-Type", v)
 		}
 	}
-	// 透传模式强制放行 x-codex-* 响应头（若上游返回）。
-	// 注意：真实 http.Response.Header 的 key 一般会被 canonicalize；但为了兼容测试/自建响应，
-	// 这里用 EqualFold 做一次大小写不敏感的查找。
+	// 透传 x-codex-* 响应头时，用 EqualFold 查找大小写变体。
+	// 标准 http.Response.Header 通常使用规范化键，测试和自建响应也可能保留小写键。
 	getCaseInsensitiveValues := func(h http.Header, want string) []string {
 		if h == nil {
 			return nil

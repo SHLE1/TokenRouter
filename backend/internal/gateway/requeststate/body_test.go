@@ -58,7 +58,7 @@ func TestParseGatewayRequest_SystemNull(t *testing.T) {
 	body := []byte(`{"model":"claude-3","system":null}`)
 	parsed, err := ParseGatewayRequest(NewRequestBodyRef(body), "")
 	require.NoError(t, err)
-	// 显式传入 system:null 也应视为“字段已存在”，避免默认 system 被注入。
+	// system:null 按字段已存在处理，跳过默认 system 注入。
 	require.True(t, parsed.HasSystem)
 	require.Equal(t, []byte("null"), parsed.SystemRaw())
 }
@@ -208,7 +208,7 @@ func TestParseGatewayRequest_AnthropicIgnoresGeminiFields(t *testing.T) {
 	require.Equal(t, "real content", messages[0].Get("content").String())
 }
 
-// TestParseGatewayRequest_TypeValidation 验证Task 7.1 — 类型校验边界测试
+// TestParseGatewayRequest_TypeValidation 检查字段类型错误。
 func TestParseGatewayRequest_TypeValidation(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -281,7 +281,7 @@ func TestParseGatewayRequest_TypeValidation(t *testing.T) {
 	}
 }
 
-// TestParseGatewayRequest_OptionalFieldsMissing 验证Task 7.2 — 可选字段缺失测试
+// TestParseGatewayRequest_OptionalFieldsMissing 检查可选字段缺失时的默认值。
 func TestParseGatewayRequest_OptionalFieldsMissing(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -350,7 +350,7 @@ func TestParseGatewayRequest_OptionalFieldsMissing(t *testing.T) {
 	}
 }
 
-// TestParseGatewayRequest_MaxTokensBoundary 验证Task 7.4 — max_tokens 边界测试
+// TestParseGatewayRequest_MaxTokensBoundary 检查 max_tokens 的取值范围。
 func TestParseGatewayRequest_MaxTokensBoundary(t *testing.T) {
 	tests := []struct {
 		name          string

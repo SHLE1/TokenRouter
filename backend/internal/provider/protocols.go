@@ -51,12 +51,12 @@ func ParseProtocolSet(raw any) ([]capability.ProtocolID, error) {
 	return out, nil
 }
 
-// UpstreamProtocols 读取统一结构；缺字段的旧记录只在兼容边界推导默认值。
+// UpstreamProtocols 读取协议集合，历史记录缺少该字段时推导默认值。
 func (a *Record) UpstreamProtocols() []capability.ProtocolID {
 	return a.UpstreamProtocolsForLegacy(a.ConfiguredAPIProtocol())
 }
 
-// UpstreamProtocolsForLegacy 读取显式协议集合；历史记录缺少该字段时按传入的协议变体推导默认值。
+// UpstreamProtocolsForLegacy 读取配置的协议集合，缺失时按传入的协议变体推导默认值。
 func (a *Record) UpstreamProtocolsForLegacy(legacyMode string) []capability.ProtocolID {
 	if a == nil {
 		return []capability.ProtocolID{}

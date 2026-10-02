@@ -109,10 +109,8 @@ func TestBuildCodexUsageExtraUpdates_UsesSnapshotUpdatedAt(t *testing.T) {
 	}
 }
 
-// TestBuildCodexUsageExtraUpdates_FreshProviderUsedPercentNotInverted_Issue2994 固定 5h
-// 窗口的标准 used% 语义。新提供商上游只报告很小的 secondary_used_percent（约 1%），
-// 本地 codex_5h_used_percent 必须直接保存该值，不能反转成约 99%。这是 issue #2994
-// 和已回滚 b65dde63（PR #2918）的回归保护，避免新提供商被误判耗尽并触发自动暂停。
+// TestBuildCodexUsageExtraUpdates_FreshProviderUsedPercentNotInverted_Issue2994 检查 5h 已用比例直接保存上游数值。
+// 上游 secondary_used_percent 约为 1% 时，codex_5h_used_percent 也为约 1%（issue #2994、PR #2918）。
 func TestBuildCodexUsageExtraUpdates_FreshProviderUsedPercentNotInverted_Issue2994(t *testing.T) {
 	secondaryUsed := 1.0 // 5h 窗口：几乎未使用
 	secondaryWindow := 300

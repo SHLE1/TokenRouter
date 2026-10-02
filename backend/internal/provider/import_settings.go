@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider/transfer"
 )
 
-// 导入模板只保存允许的提供商缺省配置，不保存认证身份。
+// 导入模板保存允许的提供商默认配置。
 type (
 	OpenAIOAuthImportProviderDefaults = transfer.OpenAIOAuthImportProviderDefaults
 	OpenAIOAuthImportDefaults         = transfer.OpenAIOAuthImportDefaults
@@ -21,7 +21,7 @@ type (
 // SettingKeyOpenAIOAuthImportDefaults 保留已有模板存储键。
 const SettingKeyOpenAIOAuthImportDefaults = "openai_oauth_import_defaults"
 
-// GetOpenAIOAuthImportDefaults 沿用导入模板的独立存取语义。
+// GetOpenAIOAuthImportDefaults 读取 OpenAI OAuth 导入模板。
 func (s *RuntimeSettings) GetOpenAIOAuthImportDefaults(ctx context.Context) (*OpenAIOAuthImportDefaults, error) {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyOpenAIOAuthImportDefaults)
 	if err != nil {
@@ -45,7 +45,7 @@ func (s *RuntimeSettings) GetOpenAIOAuthImportDefaults(ctx context.Context) (*Op
 	return FillOpenAIOAuthImportDefaults(&settings), nil
 }
 
-// SetOpenAIOAuthImportDefaults 沿用导入模板的独立存取语义。
+// SetOpenAIOAuthImportDefaults 保存 OpenAI OAuth 导入模板。
 func (s *RuntimeSettings) SetOpenAIOAuthImportDefaults(ctx context.Context, settings *OpenAIOAuthImportDefaults) error {
 	if settings == nil {
 		return fmt.Errorf("settings cannot be nil")
@@ -53,7 +53,7 @@ func (s *RuntimeSettings) SetOpenAIOAuthImportDefaults(ctx context.Context, sett
 	if err := ValidateOpenAIOAuthImportDefaults(settings); err != nil {
 		return err
 	}
-	// 模板和提供商写入使用同一兼容边界，不修改调用方持有的原始对象。
+	// 模板副本与提供商写入使用相同的兼容清理规则。
 	normalized := *settings
 	normalized.Extra = maps.Clone(settings.Extra)
 	NormalizeLegacyOpenAIProviderExtra(normalized.Extra)
@@ -66,14 +66,14 @@ func (s *RuntimeSettings) SetOpenAIOAuthImportDefaults(ctx context.Context, sett
 	return s.settingRepo.Set(ctx, SettingKeyOpenAIOAuthImportDefaults, string(data))
 }
 
-// FillOpenAIOAuthImportDefaults 保留原模板校验及兼容规范化。
+// FillOpenAIOAuthImportDefaults 补齐模板缺省字段，并规范化兼容配置。
 func FillOpenAIOAuthImportDefaults(settings *OpenAIOAuthImportDefaults) *OpenAIOAuthImportDefaults {
 	if settings == nil {
 		return DefaultOpenAIOAuthImportDefaults()
 	}
 
 	defaults := DefaultOpenAIOAuthImportDefaults()
-	// 读取历史模板也只向调用方暴露明确配置，不再传播旧自动模式和探测字段。
+	// 读取模板时清理自动模式和探测字段，返回管理员保存的配置。
 	settings.Extra = maps.Clone(settings.Extra)
 	NormalizeLegacyOpenAIProviderExtra(settings.Extra)
 	if len(defaults.Credentials) > 0 {
@@ -81,7 +81,7 @@ func FillOpenAIOAuthImportDefaults(settings *OpenAIOAuthImportDefaults) *OpenAIO
 			settings.Credentials = map[string]any{}
 		}
 		for key, value := range defaults.Credentials {
-			// 已显式保存的键保持原样；空数组可用于表达“不限制模型”。
+			// 已保存的键保持当前值，空数组表示“不限制模型”。
 			if _, exists := settings.Credentials[key]; !exists {
 				settings.Credentials[key] = value
 			}
@@ -90,7 +90,7 @@ func FillOpenAIOAuthImportDefaults(settings *OpenAIOAuthImportDefaults) *OpenAIO
 	return settings
 }
 
-// FindForbiddenImportField 保留原模板校验及兼容规范化。
+// FindForbiddenImportField 返回模板中禁止保存的字段名。
 func FindForbiddenImportField(fields map[string]any, forbidden map[string]struct{}) (string, bool) {
 	for key := range fields {
 		normalized := strings.ToLower(strings.TrimSpace(key))
@@ -101,7 +101,7 @@ func FindForbiddenImportField(fields map[string]any, forbidden map[string]struct
 	return "", false
 }
 
-// ValidateOpenAIOAuthImportDefaults 保留原模板校验及兼容规范化。
+// ValidateOpenAIOAuthImportDefaults 校验导入默认模板。
 func ValidateOpenAIOAuthImportDefaults(settings *OpenAIOAuthImportDefaults) error {
 	if settings.Provider.Concurrency != nil && *settings.Provider.Concurrency < 0 {
 		return fmt.Errorf("provider.concurrency must be >= 0")
@@ -144,7 +144,7 @@ func ValidateOpenAIOAuthImportDefaults(settings *OpenAIOAuthImportDefaults) erro
 	return nil
 }
 
-// DefaultOpenAIOAuthImportDefaults 保留原内置模型白名单。
+// DefaultOpenAIOAuthImportDefaults 返回包含内置模型白名单的默认模板。
 func DefaultOpenAIOAuthImportDefaults() *OpenAIOAuthImportDefaults {
 	return &OpenAIOAuthImportDefaults{
 		Credentials: map[string]any{

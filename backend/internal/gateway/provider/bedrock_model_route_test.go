@@ -81,7 +81,7 @@ func TestResolveBedrockModelRoute_RegionMatrix(t *testing.T) {
 	}
 }
 
-// TestResolveBedrockModelRoute_OpaqueIDsAndProviderMapping 验证显式资源标识保持透传；此处特意覆盖旧错误后缀，确保不会引入历史提供商迁移兼容。
+// TestResolveBedrockModelRoute_OpaqueIDsAndProviderMapping 检查资源 ID 和提供商映射结果是否原样透传。
 func TestResolveBedrockModelRoute_OpaqueIDsAndProviderMapping(t *testing.T) {
 	t.Parallel()
 	for _, modelID := range []string{

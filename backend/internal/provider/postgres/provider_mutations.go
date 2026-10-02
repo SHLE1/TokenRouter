@@ -80,7 +80,7 @@ func (r *ProviderStore) updateLockedProvider(ctx context.Context, client *dbent.
 
 	schedulable := provider.Schedulable
 	if provider.Status == acctcore.StatusError {
-		// 错误状态提供商必须退出调度池，避免后台更新把失效提供商重新放回可用列表。
+		// 处于错误状态的提供商从调度池排除。
 		schedulable = false
 	}
 
@@ -114,7 +114,7 @@ func (r *ProviderStore) updateLockedProvider(ctx context.Context, client *dbent.
 	}
 
 	// 使用时间、限流/过载和会话窗口只由各自的运行写入口维护。
-	// 普通配置更新不能写回加载时的旧快照，也不能借 nil 清除并发变化。
+	// 普通配置更新按字段合并锁内的最新记录，nil 字段保持当前值。
 	if provider.ExpiresAt != nil {
 		builder.SetExpiresAt(*provider.ExpiresAt)
 	} else {

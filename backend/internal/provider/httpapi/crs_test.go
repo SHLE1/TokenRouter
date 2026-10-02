@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 真实 handler 与核心组合检查默认值、字段形状和故障响应。
+// 通过 handler 和用例检查默认值、响应字段和故障响应。
 type crsHTTPStore struct{ provider.CRSProviderStore }
 
 func (crsHTTPStore) ListCRSAccountIDs(context.Context) (map[string]int64, error) {

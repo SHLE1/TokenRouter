@@ -112,7 +112,7 @@ func (s *Admin) ResetProviderQuota(ctx context.Context, id int64) error {
 		return err
 	}
 	// spark 影子提供商不持自有配额(凭据透传母提供商、spark 用量走独立 codex_* 维度由 QueryUsage 维护),
-	// 通用 quota 重置对其无意义且语义不一致——明确 400 拒绝(与 OpenAI reset-credit 对影子一致)。
+	// 影子共用母提供商额度，额度重置需要指定母提供商，此处返回 400。
 	if provider.IsCredentialShadow() {
 		return infraerrors.New(infraerrors.CategoryBadRequest, "SPARK_SHADOW_NO_QUOTA_RESET",
 			"cannot reset quota for a spark shadow provider; manage it on the parent provider")

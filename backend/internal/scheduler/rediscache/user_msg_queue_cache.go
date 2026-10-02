@@ -11,7 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Redis Key 模式（使用 hash tag 确保 Redis Cluster 下同一 providerID 的 key 落入同一 slot）
+// Redis key 使用 providerID 作为 hash tag，同一提供商的键落在同一个 Redis Cluster slot。
 // 格式: umq:{providerID}:lock / umq:{providerID}:last
 const (
 	umqKeyPrefix  = "umq:"
@@ -24,11 +24,10 @@ const (
 	umqLockIndexCleanupBatchSize = 1000
 )
 
-// Lua 脚本：原子获取串行锁（SET NX PX + 重入安全）
-// 返回 {是否获取成功, 锁预计过期时间毫秒}，让 Go 侧用同一 Redis 时间源更新索引。
-// 获取失败（锁被他人持有）时也返回观测到的到期时间，供 Go 侧回填锁索引：
-// 这让升级窗口遗留、索引写失败、释放竞态误删索引的存量锁在下一次被争用时自动重新入索引，
-// 是替代旧 SCAN 兜底的自愈机制。PTTL == -1 的异常锁返回当前时间，使其立即成为 reconcile 候选。
+// acquireLockScript 原子获取串行锁，支持同一请求重入。
+// 返回是否取得锁及 Redis 观测的到期毫秒数，获取失败时也返回到期时间，供 Go 侧回填索引。
+// 升级遗留、索引写失败或释放竞态造成的索引缺项，在下一次争锁时补回。
+// PTTL 为 -1 的锁返回当前时间，立即进入清理候选。
 var acquireLockScript = redis.NewScript(`
 redis.replicate_commands()
 local cur = redis.call('GET', KEYS[1])
@@ -54,7 +53,7 @@ local ms = tonumber(t[1])*1000 + math.floor(tonumber(t[2])/1000)
 return {1, ms + ttl}
 `)
 
-// Lua 脚本：原子释放锁 + 记录完成时间（使用 Redis TIME 避免时钟偏差）
+// releaseLockScript 原子释放锁，并使用 Redis TIME 记录完成时间。
 var releaseLockScript = redis.NewScript(`
 -- 兼容 3.2-4.x：脚本使用 TIME，需启用按效果复制，确保写入能同步到从库。
 -- 5.0 及以上默认按效果复制；保留调用不改变行为。
@@ -94,18 +93,18 @@ func NewUserMsgQueueCache(rdb *redis.Client) scheduler.UserMsgQueueCache {
 }
 
 func umqLockKey(providerID int64) string {
-	// 格式: umq:{123}:lock — 花括号确保 Redis Cluster hash tag 生效
+	// 格式为 umq:{123}:lock，花括号中的提供商 ID 是 Redis Cluster hash tag。
 	return umqKeyPrefix + "{" + strconv.FormatInt(providerID, 10) + "}" + umqLockSuffix
 }
 
 func umqLastKey(providerID int64) string {
-	// 格式: umq:{123}:last — 与 lockKey 同一 hash slot
+	// 格式为 umq:{123}:last，与 lockKey 位于同一个 hash slot。
 	return umqKeyPrefix + "{" + strconv.FormatInt(providerID, 10) + "}" + umqLastSuffix
 }
 
 // AcquireLock 尝试获取提供商级串行锁
 // 无论成功与否都尽力写入锁索引：成功时登记自己的锁，失败时回填观测到的持有者锁，
-// 保证任何被争用的锁都能被后台 reconcile 发现，无需扫描所有锁 key。
+// 后台 reconcile 根据索引发现被争用的锁。
 func (c *userMsgQueueCache) AcquireLock(ctx context.Context, providerID int64, requestID string, lockTtlMs int) (bool, error) {
 	key := umqLockKey(providerID)
 	result, err := acquireLockScript.Run(ctx, c.rdb, []string{key}, requestID, lockTtlMs).Result()
@@ -132,7 +131,7 @@ func (c *userMsgQueueCache) AcquireLock(ctx context.Context, providerID int64, r
 }
 
 // ReleaseLock 释放锁并记录完成时间
-// 只有 requestID 匹配时才删除锁索引，避免误删其他请求重入后写入的新锁。
+// requestID 匹配时删除锁索引，其他请求写入的新锁继续保留。
 func (c *userMsgQueueCache) ReleaseLock(ctx context.Context, providerID int64, requestID string) (bool, error) {
 	lockKey := umqLockKey(providerID)
 	lastKey := umqLastKey(providerID)
@@ -167,7 +166,7 @@ func (c *userMsgQueueCache) GetLastCompletedMs(ctx context.Context, providerID i
 	return ms, nil
 }
 
-// GetCurrentTimeMs 通过 Redis TIME 命令获取当前服务器时间（毫秒），确保与锁记录的时间源一致
+// GetCurrentTimeMs 返回 Redis TIME 的服务器时间（毫秒），与锁记录共用时间源。
 func (c *userMsgQueueCache) GetCurrentTimeMs(ctx context.Context) (int64, error) {
 	t, err := c.rdb.Time(ctx).Result()
 	if err != nil {

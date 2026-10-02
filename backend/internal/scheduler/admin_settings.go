@@ -11,14 +11,14 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// AdminDefaults 只包含调度的启动参数，不接收完整配置或具体网关服务。
+// AdminDefaults 保存调度的启动参数。
 type AdminDefaults struct {
 	TopK    int
 	Weights policy.ConfigScoreWeights
 	Process policy.RuntimeSettings
 }
 
-// DefaultAdminSettingsDefaults 保留旧无配置构造的默认值。
+// DefaultAdminSettingsDefaults 返回未提供配置时的管理默认值。
 func DefaultAdminSettingsDefaults() AdminDefaults {
 	return AdminDefaults{TopK: 7, Weights: policy.ConfigScoreWeights{Priority: 1, Load: 1, Queue: 0.7, ErrorRate: 0.8, TTFT: 0.5, Reset: 0, QuotaHeadroom: 0, PreviousResponse: 5, SessionSticky: 3}, Process: policy.RuntimeSettings{EwmaErrorRateAlpha: DefaultErrorRateAlpha, EwmaTTFTAlpha: DefaultTTFTAlpha, StickyEscape: policy.NormalizeStickyEscape(policy.StickyEscapeConfig{Enabled: true, TtftMs: 15000, ErrorRate: 0.5})}}
 }
@@ -29,6 +29,7 @@ func EffectiveAdminWeights(defaults AdminDefaults) policy.ConfigScoreWeights {
 	}
 	return DefaultAdminSettingsDefaults().Weights
 }
+
 func EffectiveAdminTopK(defaults AdminDefaults) string {
 	if defaults.TopK > 0 {
 		return strconv.Itoa(defaults.TopK)
@@ -36,7 +37,7 @@ func EffectiveAdminTopK(defaults AdminDefaults) string {
 	return "7"
 }
 
-// AdminSettings 是调度管理覆盖值，保留显式空字符串和布尔存在性。
+// AdminSettings 是调度管理覆盖值，区分空字符串、布尔零值和未设置。
 type AdminSettings struct {
 	AdvancedSchedulerEWMAErrorRateAlpha          string `json:"advanced_scheduler_ewma_error_rate_alpha"`
 	AdvancedSchedulerEWMATTFTAlpha               string `json:"advanced_scheduler_ewma_ttft_alpha"`
@@ -188,7 +189,7 @@ func NormalizeOptionalRateString(raw string) (string, error) {
 	return strconv.FormatFloat(value, 'f', -1, 64), nil
 }
 
-// PrepareAdminSettings 生成原持久化表示，不刷新评分、反馈或缓存。
+// PrepareAdminSettings 将管理设置转换为待持久化的键值。
 func PrepareAdminSettings(settings *AdminSettings, defaults AdminDefaults) (map[string]string, error) {
 	if err := NormalizeAdminSettings(settings, defaults); err != nil {
 		return nil, err
@@ -219,7 +220,7 @@ func PrepareAdminSettings(settings *AdminSettings, defaults AdminDefaults) (map[
 	return updates, nil
 }
 
-// ParticipantFields 不把未设置的逃逸开关变成显式 false。
+// ParticipantFields 在逃逸开关已设置时输出其布尔值，未设置时省略该字段。
 func (value AdminSettings) ParticipantFields() (map[string]json.RawMessage, error) {
 	raw, err := json.Marshal(value)
 	if err != nil {

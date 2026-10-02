@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// 维护锁测试的内存替身只实现存取端口；不复制生产幂等协调实现。
+// inMemoryIdempotencyRepo 为维护锁测试保存幂等记录。
 type inMemoryIdempotencyRepo struct {
 	mu     sync.Mutex
 	nextID int64

@@ -9,7 +9,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage/httpapi/ports"
 )
 
-// contractUsageKeys 只投影 API 契约所需的 Key 读取与所有权能力。
+// contractUsageKeys 将 APIKeyService 的查询和所有权检查接入用量接口测试。
 func contractUsageKeys(keys *apikey.APIKeyService) ports.KeyReader {
 	if keys == nil {
 		return nil

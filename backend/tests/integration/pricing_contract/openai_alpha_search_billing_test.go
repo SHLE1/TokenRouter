@@ -74,7 +74,7 @@ func TestCalculateOpenAIRecordUsageCostWebSearchPerCall(t *testing.T) {
 	require.InDelta(t, 0.005, cost.ActualCost, 1e-12)
 
 	// WebSearchCalls = 0 时不得走按次分支（无定价数据会返回 pricing 错误，
-	// 证明回落到了 token 路径而不是被按次分支吞掉）。
+	// 确认使用 token 计费分支）。
 	result.WebSearchCalls = 0
 	_, err = svc.CalculateOpenAIRecordUsageCostAt(context.Background(), gatewaycapture.ProjectOpenAICompletionResult(result, nil), apiKey, []string{"gpt-5.6-sol"}, 1.0, 1.0, 1.0, 1.0, pricing.UsageTokens{InputTokens: 10}, "", time.Time{})
 	require.Error(t, err)

@@ -169,7 +169,7 @@ func TestAntigravityRetryLoop_PreCheck_SwitchesWhenRemainingLong(t *testing.T) {
 	require.Equal(t, 0, upstream.calls, "should not call upstream when switching on pre-check")
 }
 
-// 记录两个测试端点，证明原生循环不会按 URL 切换提供商。
+// 记录两个测试端点，检查重试期间使用同一提供商。
 type stubAntigravityUpstream struct {
 	firstBase, secondBase string
 	calls                 []string

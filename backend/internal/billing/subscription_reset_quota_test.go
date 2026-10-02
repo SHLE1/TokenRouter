@@ -235,7 +235,7 @@ func TestAdminResetQuota_ReturnsRefreshedSub(t *testing.T) {
 
 	require.NoError(t, err)
 	// ResetUsageWindows stub 会将 sub.DailyUsageUSD 归零，
-	// 服务应返回第二次 GetByID 的刷新值而非初始的 99.9
+	// 服务返回第二次 GetByID 读到的已归零值。
 	require.Equal(t, float64(0), result.DailyUsageUSD, "返回的订阅应反映已归零的用量")
 	require.True(t, stub.resetDailyCalled)
 }

@@ -7,7 +7,7 @@ import (
 	settingvalues "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
-// AdminReadSettings 只包含本模块在综合管理页的展示投影。
+// AdminReadSettings 包含运维监控及额度自动暂停设置。
 type AdminReadSettings struct {
 	OpenAIQuotaAutoPauseSettings OpsOpenAIProviderQuotaAutoPauseSettings
 	OpsMetricsIntervalSeconds    int
@@ -15,7 +15,7 @@ type AdminReadSettings struct {
 	OpsRealtimeMonitoringEnabled bool
 }
 
-// ReadAdminSettings 解释同一批已读持久值，不新增查询或改变缺省语义。
+// ReadAdminSettings 从传入的设置值解析运维监控及额度自动暂停设置。
 func ReadAdminSettings(settings map[string]string) *AdminReadSettings {
 	result := &AdminReadSettings{}
 

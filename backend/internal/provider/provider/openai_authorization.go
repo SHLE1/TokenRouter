@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// OpenAIOAuthClient 是授权 Adapter 使用的供应商交换端口。
+// OpenAIOAuthClient 是授权组件调用供应商交换凭据的接口。
 type OpenAIOAuthClient interface {
 	ExchangeCode(context.Context, string, string, string, string, string, ...openai.OAuthTokenRequestOptions) (*wire.OAuthTokenResponse, error)
 	RefreshToken(context.Context, string, string, ...openai.OAuthTokenRequestOptions) (*wire.OAuthTokenResponse, error)
@@ -27,7 +27,7 @@ type OpenAITokenProfileResolver interface {
 	ResolveTokenTLSProfileByID(int64) (*tlsfingerprint.Profile, bool)
 }
 
-// OpenAIAuthorizationDependencies 由组合根提供技术依赖，不包含授权会话或缓存。
+// OpenAIAuthorizationDependencies 接收 app 提供的基础设施依赖。
 type OpenAIAuthorizationDependencies struct {
 	Proxies          egress.ProxyRepository
 	Client           OpenAIOAuthClient
@@ -106,7 +106,7 @@ func OpenAIAuthorizationOptions(deps *OpenAIAuthorizationDependencies) provider.
 	}
 }
 
-// tokenRequestOptions 仅投影已选择 Router 的令牌用途配置，保留空配置不注入的行为。
+// tokenRequestOptions 提取已选 TLS Router 的 token 请求配置，配置为空时使用空选项。
 func (deps *OpenAIAuthorizationDependencies) tokenRequestOptions(ctx context.Context, routerID int64, value *provider.Record) []openai.OAuthTokenRequestOptions {
 	if routerID <= 0 || deps.Routers == nil {
 		return nil

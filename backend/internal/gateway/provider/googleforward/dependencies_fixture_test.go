@@ -19,7 +19,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 )
 
-// 夹具只组合原生依赖，规则、缓存与流状态仍来自实际拥有者。
+// geminiDependencies 包含测试所需的令牌源、传输和健康观测器。
 type geminiDependencies struct {
 	cfg                  *googleforward.Options
 	providerRepo         gatewayadapter.ExecutionProviderStore

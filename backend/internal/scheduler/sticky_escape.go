@@ -2,7 +2,7 @@ package scheduler
 
 import "github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 
-// ShouldEscapeSticky 共用本次固化策略与唯一反馈，保留 TTFT 优先。
+// ShouldEscapeSticky 使用本次请求的策略和共享反馈，先检查 TTFT。
 func ShouldEscapeSticky(stats *RuntimeStats, providerID int64, cfg policy.StickyEscapeConfig) (reason string, errorRate float64, ttft float64, shouldEscape bool) {
 	if !cfg.Enabled || stats == nil || providerID <= 0 {
 		return "", 0, 0, false

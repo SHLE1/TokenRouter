@@ -10,7 +10,7 @@ import (
 )
 
 // Serve 为正式服务与 setup 提供同一条监听失败和信号关闭路径。
-// HTTP 的五秒预算独立于后续后台 drain，不会把已取消的运行 context 传给 Shutdown。
+// HTTP Shutdown 使用独立的 context 和五秒预算，之后另行等待后台任务排空。
 func Serve(ctx context.Context, server *http.Server) error {
 	var lc net.ListenConfig
 	listener, err := lc.Listen(ctx, "tcp", server.Addr)

@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 捕获查询投影入参，并返回包含已删除用户的结果。
+// searchUsersAdminStub 记录查询参数，并返回包含已删除用户的结果。
 type searchUsersAdminStub struct {
 	gotFilters ports.UserListFilters
 }
@@ -30,7 +30,6 @@ func (s *searchUsersAdminStub) ListUsers(ctx context.Context, page, pageSize int
 }
 
 func TestAdminUsageSearchUsers_IncludesDeletedAndFlags(t *testing.T) {
-
 	stub := &searchUsersAdminStub{}
 	handler := NewUsageHandler(nil, nil, stub, nil, nil, timezone.NewCalendar(time.Local))
 	router := gin.New()

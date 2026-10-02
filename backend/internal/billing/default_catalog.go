@@ -16,7 +16,7 @@ func (s *Calculator) WithPriceCatalog(catalog PriceCatalog) *Calculator {
 	return &out
 }
 
-// DefaultModelPrice 直接投影实际基础计费规则，显式零价仍是已定价。
+// DefaultModelPrice 返回模型的基础计费规则，配置的零价按已定价处理。
 func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.DefaultModelPrice {
 	result := pricing.DefaultModelPrice{Model: model, Platform: platform, BillingMode: "token", PriceStatus: "unpriced", Prices: []pricing.DefaultPriceValue{}}
 	add := func(key string, value float64, unit string) {

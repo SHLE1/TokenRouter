@@ -307,7 +307,7 @@ func TestRetryLoop_ErrorPolicy_NilRateLimitService(t *testing.T) {
 	saveAndSetBaseURLs(t)
 
 	upstream := &epFixedUpstream{statusCode: 429, body: `{"error":"rate limited"}`}
-	// rateLimitService is nil — must not panic
+	// rateLimitService 为 nil 时请求仍能结束。
 	svc := newAntigravityRetryFixture()
 
 	provider := &acct.Record{
@@ -377,7 +377,7 @@ func TestRetryLoop_ErrorPolicy_NoPolicy_OriginalBehavior(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// epTrackingRepo — records SetRateLimited / SetError calls for verification.
+// epTrackingRepo 记录 SetRateLimited 和 SetError 调用，供断言检查。
 // ---------------------------------------------------------------------------
 
 type epTrackingRepo struct {
@@ -411,7 +411,7 @@ func (r *epTrackingRepo) SetTempUnschedulable(_ context.Context, _ int64, _ time
 //
 // 核心场景：自定义错误码设为 [599]（一个不会真正出现的错误码），
 // 当上游返回 429/500/503/401 时：
-//   - 返回给客户端的状态码必须是 500（而不是透传原始状态码）
+// - 返回给客户端的状态码为 500。
 //   - 不调用 SetRateLimited（不进入限流状态）
 //   - 不调用 SetError（不停止调度）
 //   - 不调用 handleError
@@ -483,7 +483,7 @@ func TestCustomErrorCode599_SkippedErrors_Return500_NoRateLimit(t *testing.T) {
 	}
 }
 
-// SetModelRateLimit 原用例只检查切号及副作用数量；模型窗口端口保持原成功返回。
+// SetModelRateLimit 返回成功，测试分别检查提供商切换和状态写入次数。
 func (r *epProviderRepo) SetModelRateLimit(context.Context, int64, string, time.Time, ...string) error {
 	return nil
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// SelectionErrorResponse 保留原错误 envelope 的状态、类别和消息。
+// SelectionErrorResponse 包含错误响应的状态、类别和消息。
 type SelectionErrorResponse struct {
 	Status           int
 	ErrType, Message string
@@ -26,10 +26,11 @@ func selectionErrorResponse(problem admission.SelectionProblem) SelectionErrorRe
 	}
 }
 
-// ClassifySelectionError 将核心诊断投影成原客户端错误；不执行存储写入。
+// ClassifySelectionError 将提供商诊断结果转换为客户端错误。
 func ClassifySelectionError(ctx context.Context, diag routing.ModelAvailabilityDiagnoser, groupID *int64, routingModel, displayModel, platform string) SelectionErrorResponse {
 	return selectionErrorResponse(admission.DiagnoseSelection(ctx, diag, groupID, routingModel, displayModel, platform))
 }
+
 func RefineSelectionError(err error, fallback SelectionErrorResponse) SelectionErrorResponse {
 	kind := admission.SelectionUnavailable
 	if fallback.ModelNotFound {

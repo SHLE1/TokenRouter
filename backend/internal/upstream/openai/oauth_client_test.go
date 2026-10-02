@@ -210,7 +210,7 @@ func (s *OpenAIOAuthServiceSuite) TestRefreshToken_FormFields() {
 }
 
 // TestRefreshToken_DefaultsToOpenAIClientID 验证未指定 client_id 时默认使用 OpenAI ClientID，
-// 且只发送一次请求（不再盲猜多个 client_id）。
+// 且发送一次请求。
 func (s *OpenAIOAuthServiceSuite) TestRefreshToken_DefaultsToOpenAIClientID() {
 	var seenClientIDs []string
 	s.setupServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

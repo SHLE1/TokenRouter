@@ -14,7 +14,7 @@ import (
 
 type promotionAuthSettings = promotion.RuntimeSettings
 
-// authSettingsFixture 组合真实设置读取器；站点名是此认证集合固定的外部展示投影。
+// authSettingsFixture 组合认证设置读取器，并为认证测试提供固定站点名。
 type authSettingsFixture struct {
 	*identity.RuntimeSettings
 	*identity.GrantSettings

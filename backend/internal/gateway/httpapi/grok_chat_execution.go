@@ -52,9 +52,8 @@ func (s *GrokExecutor) ChatResponses(
 	billingModel := gatewayprovider.ExecutionModelPolicy(provider).ForwardModel(originalModel, defaultMappedModel)
 	upstreamModel := gatewayprovider.ExecutionModelPolicy(provider).NormalizeOpenAI(billingModel)
 	cacheIdentity := ResolveGrokCacheIdentity(c, body, promptCacheKey, upstreamModel)
-	// 图片输入必须通过 Responses 桥接：原始 Chat Completions 路径无法把 image_url
-	// 转发给非 Composer 模型的 Grok 原生视觉能力，否则图片会被静默丢弃；
-	// 因此即使没有 prompt-cache 身份也要路由到 Responses。
+	// 图片输入使用 Responses 桥接，普通 Chat Completions 路径会丢弃非 Composer 模型的 image_url。
+	// 因此缺少 prompt-cache 身份的图片请求也使用 Responses。
 	hasImageInput := protocolopenai.JSONValueMayContainImageInput(gjson.GetBytes(body, "messages"))
 	if provider.Route.Protocol() == "" && !gatewayprovider.GrokBodyCodec().GrokChatResponsesRuntimeEligible(upstreamModel, cacheIdentity) && (!hasImageInput || !gatewayprovider.GrokBodyCodec().GrokChatResponsesBridgeModel(upstreamModel)) {
 		return nil, false, nil
@@ -67,7 +66,7 @@ func (s *GrokExecutor) ChatResponses(
 	responsesReq.Model = upstreamModel
 	responsesReq.Stream = true
 	// 让 Chat 与原生 Responses 对 OpenAI 兼容的 service_tier 别名保持一致；共享
-	// 规范化器会丢弃未知值，避免其到达 xAI。
+	// 规范化器删除未知值后再发往 xAI。
 	responsesReq.ServiceTier = protocolopenai.ServiceTierValue(responsesReq.ServiceTier)
 	// 这些字段对 Codex 有用，但 Grok CLI 协议不需要；桥接请求应尽量贴近原生 Grok。
 	responsesReq.Include = nil
@@ -77,8 +76,7 @@ func (s *GrokExecutor) ChatResponses(
 	if err != nil {
 		return nil, true, fmt.Errorf("marshal grok responses bridge request: %w", err)
 	}
-	// 在 Grok 能力清理前保留转换后的 Responses 意图；缓存路由必须看到真实客户端函数工具，
-	// 而不是嵌套的 Chat Completions 声明或无工具副本。
+	// 在 Grok 能力清理前保存转换后的 Responses 工具意图，缓存路由使用这份客户端函数工具声明。
 	intentBody, err := gatewayprovider.GrokBodyCodec().GrokChatResponsesCacheIntentBody(responsesBody)
 	if err != nil {
 		return nil, true, fmt.Errorf("normalize grok responses bridge cache intent: %w", err)

@@ -71,7 +71,7 @@ func (s *OpenAIRequests) ResponseOptions(ctx context.Context, c *gin.Context, pr
 	}
 }
 
-// Build 保留旧签名，仅投影目标与原生请求选项。
+// Build 将执行目标和请求选项传给请求构造器。
 func (s *OpenAIRequests) Build(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, body []byte, token string, isStream bool, promptCacheKey string, isCodexCLI bool, routerMatch ...egress.TLSFingerprintRouterMatchResult) (*http.Request, error) {
 	return forward.BuildResponsesRequest(ctx, body, promptCacheKey, s.Target(c, provider, false), func(path string) { SetActualOpenAIUpstreamEndpoint(c, path) }, func(b []byte) []byte {
 		return forward.NormalizeCNResponsesBody(provider != nil && gatewayprovider.ExecutionProtocolTarget(provider).UsesNativeCNResponses(), b)

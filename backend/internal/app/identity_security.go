@@ -18,12 +18,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
-// provideTotp 直接使用身份存储，通知与设置只作为窄接口注入。
+// provideTotp 绑定身份存储、通知接口和设置接口。
 func provideTotp(users *identitypostgres.UserStore, encryptor identity.SecretEncryptor, cache identity.TotpCache, settings *identityAuthSettings, email *identity.EmailChallenges, queue *notification.EmailQueueService) *identity.TotpService {
 	return identity.NewTotpService(users, encryptor, cache, settings, email, queue, time.Now)
 }
 
-// providePasskey 在装配阶段创建 SDK 验证器，HTTP 解析及主体投影由原生 Adapter 持有。
+// providePasskey 创建 SDK 验证器，HTTP 适配器负责解析请求和转换用户数据。
 func providePasskey(cfg *config.Config, repo identity.PasskeyRepository, sessions identity.PasskeySessionStore, users *identitypostgres.UserStore) (*identity.PasskeyService, error) {
 	options := identityadapter.PasskeyOptions{Enabled: cfg.WebAuthn.Enabled, RPID: cfg.WebAuthn.RPID, RPDisplayName: cfg.WebAuthn.RPDisplayName, RPOrigins: cfg.WebAuthn.RPOrigins}
 	verifier, e := identityadapter.NewPasskeyVerifier(options)

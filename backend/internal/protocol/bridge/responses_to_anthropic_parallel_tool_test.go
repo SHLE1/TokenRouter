@@ -99,7 +99,7 @@ func TestStreamingParallelToolUseNoGhostDelta(t *testing.T) {
 		}
 	}
 
-	// 每个 content_block_delta 都必须指向已启动的 block，不得出现幽灵 delta。
+	// 每个 content_block_delta 指向已启动的 block。
 	for _, e := range allAnthropicEvents {
 		if e.Type != "content_block_delta" || e.Index == nil {
 			continue
@@ -110,7 +110,7 @@ func TestStreamingParallelToolUseNoGhostDelta(t *testing.T) {
 			"content_block_delta on index %d which was never content_block_start'ed (ghost delta bug #4193)", idx)
 	}
 
-	// 每个 content_block_stop 也必须指向已启动的 block。
+	// 每个 content_block_stop 指向已启动的 block。
 	for _, e := range allAnthropicEvents {
 		if e.Type != "content_block_stop" || e.Index == nil {
 			continue
@@ -193,10 +193,10 @@ func TestStreamingParallelToolUseSecondToolPackedArgsDone(t *testing.T) {
 		Arguments:   `{"y":2}`,
 	}, state)
 
-	// 修复后 delta 必须指向工具 2 的 block 索引 1，而不是盲目使用 state.ContentBlockIndex。
+	// 工具 2 的 delta 应指向它的 block 索引 1。
 	// 在两个工具的简单情况下两者可能碰巧相等，但三个以上工具或 block 已关闭时会出错。
 	//
-	// 关键断言是 delta 必须位于索引 1，且同一索引上紧随 content_block_stop。
+	// 检查 delta 位于索引 1，随后同一索引收到 content_block_stop。
 	var sawDelta, sawStop bool
 	var deltaIndex, stopIndex int
 	for _, e := range eventsTool2Done {

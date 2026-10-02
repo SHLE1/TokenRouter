@@ -126,7 +126,7 @@ func TestOpenAIAPIKeyFastModeForceOffIgnoresMissingCapabilityMetadata(t *testing
 	require.False(t, gjson.GetBytes(updated, "service_tier").Exists())
 }
 
-// TestOpenAIAPIKeyFastModeForceOffPreservesNonFastTiers 验证强制关闭只删除 Fast tier，不能改变客户端选择的其它官方服务层级。
+// TestOpenAIAPIKeyFastModeForceOffPreservesNonFastTiers 检查强制关闭 Fast 时，其他官方服务层级是否原样保留。
 func TestOpenAIAPIKeyFastModeForceOffPreservesNonFastTiers(t *testing.T) {
 	svc := newFastPolicyContract(t, tierpolicy.Default())
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}

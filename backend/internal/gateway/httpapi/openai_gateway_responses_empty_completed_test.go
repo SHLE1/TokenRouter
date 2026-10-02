@@ -97,7 +97,7 @@ func TestOpenAIResponsesEmptyCompletedExemptions(t *testing.T) {
 	}
 }
 
-// TestOpenAIResponsesCompletedEventIsEmpty 覆盖空终态辅助判定的字段边界。
+// TestOpenAIResponsesCompletedEventIsEmpty 检查各字段组合下的空终态判定。
 func TestOpenAIResponsesCompletedEventIsEmpty(t *testing.T) {
 	tests := []struct {
 		name  string

@@ -2,9 +2,11 @@ package scheduler
 
 import "context"
 
-// 这些请求标记只控制选择副作用，不承载认证或存储事务。
-type selectOnlyKey struct{}
-type preservedStickyKey struct{}
+// selectOnlyKey 标记仅选择提供商的请求，preservedStickyKey 标记需要保留的粘性绑定。
+type (
+	selectOnlyKey      struct{}
+	preservedStickyKey struct{}
+)
 
 func WithSelectOnly(ctx context.Context) context.Context {
 	if ctx == nil {
@@ -12,6 +14,7 @@ func WithSelectOnly(ctx context.Context) context.Context {
 	}
 	return context.WithValue(ctx, selectOnlyKey{}, true)
 }
+
 func IsSelectOnly(ctx context.Context) bool {
 	if ctx == nil {
 		return false
@@ -19,12 +22,14 @@ func IsSelectOnly(ctx context.Context) bool {
 	v, _ := ctx.Value(selectOnlyKey{}).(bool)
 	return v
 }
+
 func WithPreservedSticky(ctx context.Context) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	return context.WithValue(ctx, preservedStickyKey{}, true)
 }
+
 func PreserveStickyFromContext(ctx context.Context) bool {
 	if ctx == nil {
 		return false

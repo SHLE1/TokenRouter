@@ -12,12 +12,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// provideAuthRouteMount 固定所属 HTTP 实例，只负责注册与跨模块投影。
+// provideAuthRouteMount 将认证 HTTP 处理器和跨模块读取函数绑定到路由注册函数。
 func provideAuthRouteMount(eModelMarketplace *routinghttp.MarketplaceHandler,
 	ePublicSettings *sitehttp.PublicHandler,
 	eNotification *notificationhttp.Handler,
 	ePasskey *identityhttp.PasskeyHandler,
-	eAuth *identityHTTP) authRouteMount {
+	eAuth *identityHTTP,
+) authRouteMount {
 	return func(v1 *gin.RouterGroup, security httpRouteSecurity) {
 		guards := identityhttp.AuthRouteMiddleware{JWT: security.JWT, Audit: security.Audit, BackendAuth: security.BackendAuth, BackendUser: security.BackendUser, Panel: security.Panel.Global(), Limit: func(key string, n int, window time.Duration) gin.HandlerFunc {
 			return security.AuthLimiter.LimitWithOptions(key, n, window, servermiddleware.RateLimitOptions{FailureMode: servermiddleware.RateLimitFailClose})
@@ -29,6 +30,5 @@ func provideAuthRouteMount(eModelMarketplace *routinghttp.MarketplaceHandler,
 		notificationhttp.RegisterUnsubscribeRoute(public, eNotification)
 		routinghttp.RegisterPublicMarketplaceRoutes(v1, eModelMarketplace)
 		identityhttp.RegisterSessionRoutes(v1, eAuth, guards)
-
 	}
 }

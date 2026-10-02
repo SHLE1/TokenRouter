@@ -75,7 +75,7 @@ func (s *ScheduledTestService) ListResults(ctx context.Context, planID int64, li
 	return s.resultRepo.ListByPlanID(ctx, planID, limit)
 }
 
-// SaveResult 先保存结果，再清理超出保留数的旧结果，保留原分步失败语义。
+// SaveResult 保存结果后清理超出保留数的记录，各步骤独立返回错误。
 func (s *ScheduledTestService) SaveResult(ctx context.Context, planID int64, maxResults int, result *ScheduledTestResult) error {
 	result.PlanID = planID
 	if _, err := s.resultRepo.Create(ctx, result); err != nil {

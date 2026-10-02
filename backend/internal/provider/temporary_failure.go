@@ -6,7 +6,7 @@ import (
 )
 
 // TempUnscheduleGoogleConfigError 对服务端配置类 400 错误触发临时封禁，
-// 避免短时间内反复调度到同一个有问题的提供商。
+// 停调期间，后续请求会跳过该提供商。
 func TempUnscheduleGoogleConfigError(ctx context.Context, repo TemporaryFailureStore, providerID int64, logPrefix string, logf func(string, ...any)) {
 	until := time.Now().Add(googleConfigErrorCooldown)
 	reason := "400: invalid project resource name (auto temp-unschedule 1m)"
@@ -18,7 +18,7 @@ func TempUnscheduleGoogleConfigError(ctx context.Context, repo TemporaryFailureS
 }
 
 // TempUnscheduleEmptyResponse 对空流式响应触发临时封禁，
-// 避免短时间内反复调度到同一个返回空响应的提供商。
+// 停调期间，后续请求会跳过这个返回空响应的提供商。
 func TempUnscheduleEmptyResponse(ctx context.Context, repo TemporaryFailureStore, providerID int64, logPrefix string, logf func(string, ...any)) {
 	until := time.Now().Add(emptyResponseCooldown)
 	reason := "empty stream response (auto temp-unschedule 1m)"
@@ -29,7 +29,7 @@ func TempUnscheduleEmptyResponse(ctx context.Context, repo TemporaryFailureStore
 	}
 }
 
-// TemporaryFailureStore 只写临时停调字段，保留原独立操作边界。
+// TemporaryFailureStore 独立写入临时停调字段。
 type TemporaryFailureStore interface {
 	SetTempUnschedulable(context.Context, int64, time.Time, string) error
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// isOfficialOpenAIModelsBaseURL 只识别官方 OpenAI 主机，避免兼容中继误用官方字段语义。
+// isOfficialOpenAIModelsBaseURL 判断目标是否为官方 OpenAI 主机。
 func isOfficialOpenAIModelsBaseURL(raw string) bool {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	return err == nil && strings.EqualFold(u.Hostname(), "api.openai.com")
@@ -36,7 +36,7 @@ func ShouldPreserveOpenAIResponsesNoneReasoningEffort(provider *providercore.Rec
 }
 
 // FilterOpenAIResponsesNoneReasoningEffortForProvider 删除兼容上游不应接收的目录占位值。
-// 官方 OpenAI 请求保留 none，避免改变其原生请求语义。
+// 官方 OpenAI 请求的 none 值原样发送。
 func FilterOpenAIResponsesNoneReasoningEffortForProvider(provider *providercore.Record, body []byte) ([]byte, error) {
 	if len(body) == 0 || ShouldPreserveOpenAIResponsesNoneReasoningEffort(provider) {
 		return body, nil

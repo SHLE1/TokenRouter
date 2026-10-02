@@ -70,7 +70,7 @@ describe('TokenUsageTrend', () => {
     )
     // 命中率 = 1500 / (500 + 1500 + 0) * 100 = 75%
     expect(hitRateDataset.data[0]).toBe(75)
-    // 缓存命中率曲线使用实线，避免与用户要求的虚线样式混淆。
+    // 缓存命中率曲线使用实线。
     expect(hitRateDataset.borderDash).toBeUndefined()
   })
 
@@ -167,7 +167,7 @@ describe('TokenUsageTrend', () => {
     await wrapper.vm.$nextTick()
 
     const lightOptions = JSON.parse(wrapper.find('.chart-options').text())
-    // 浅色主题下使用深色文字，避免图例和坐标轴融入白色背景。
+    // 浅色主题的图例和坐标轴使用深色文字。
     expect(lightOptions.plugins.legend.labels.color).toBe('#3F3F46')
     expect(lightOptions.scales.x.ticks.color).toBe('#3F3F46')
     expect(lightOptions.scales.y.ticks.color).toBe('#3F3F46')

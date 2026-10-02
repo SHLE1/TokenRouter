@@ -148,7 +148,7 @@ func TestBedrockRegionRouting_InvalidRouteStopsBeforeUpstream(t *testing.T) {
 	}
 }
 
-// 只记录本地签名请求，不访问真实 AWS。
+// 记录发往本地测试服务的签名请求。
 type bedrockRoutingTransport struct {
 	lastReq      *http.Request
 	lastBody     []byte

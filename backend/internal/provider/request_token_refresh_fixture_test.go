@@ -46,7 +46,7 @@ func (e claudeExchangeFixture) Refresh(ctx context.Context, value *Record) (map[
 	return RefreshClaudeCredentials(ctx, value, e.exchange.RefreshProviderToken)
 }
 
-// UpdateOAuthCredentialsIfUnchanged 存储替身保留原写失败注入，并实现真实协调器要求的条件写契约。
+// UpdateOAuthCredentialsIfUnchanged 模拟条件写入，并支持注入写入失败。
 func (r *openAIProviderRepoStub) UpdateOAuthCredentialsIfUnchanged(ctx context.Context, version CredentialVersion, credentials map[string]any) (bool, error) {
 	if r.provider == nil || !reflect.DeepEqual(FailureVersion(r.provider).CredentialVersion, version) {
 		return false, nil

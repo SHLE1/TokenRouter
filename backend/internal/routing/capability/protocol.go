@@ -46,7 +46,7 @@ func buildProtocolCatalog() []Protocol {
 	}
 }
 
-// NativeProtocolOptions 只表达认证方式具备的原生协议，不包含兼容转换入口。
+// NativeProtocolOptions 返回该认证方式直接支持的协议。
 func NativeProtocolOptions(platform, providerType, authMode string) []ProtocolID {
 	var selected []ProtocolID
 	switch platform {
@@ -164,7 +164,7 @@ func SupportsProtocolConversion(platform, providerType, authMode string, source,
 	return slices.Contains(NativeProtocolOptions(platform, providerType, authMode), target)
 }
 
-// ProtocolCatalog 返回深复制的只读投影，调用方不能修改进程能力定义。
+// ProtocolCatalog 返回协议目录的深复制副本，调用方修改副本时目录保持原值。
 func ProtocolCatalog() []Protocol {
 	out := slices.Clone(protocolCatalog)
 	for i := range out {

@@ -287,7 +287,7 @@ func TestEstimateOpenAIInputTokens_CompareWithOpenAIAPI(t *testing.T) {
 
 			actual, err := callOpenAIInputTokensAPIForTest(client, apiKey, prepared.Request)
 			if err != nil {
-				// 此处仅用于实时 API 对比，凭据或临时网络错误时应跳过而非使确定性测试失败。
+				// 实时 API 对比遇到凭据或临时网络错误时跳过。
 				var netErr net.Error
 				if strings.Contains(err.Error(), "status=401") ||
 					strings.Contains(err.Error(), "invalid_api_key") ||

@@ -71,7 +71,7 @@ vi.mock('@/api/admin', () => ({
   },
 }))
 
-// 生成默认筛选参数，避免用例之间共享可变对象。
+// 每个用例使用独立的默认筛选参数。
 const defaultFilters = () => ({
   user_id: undefined,
   api_key_id: undefined,

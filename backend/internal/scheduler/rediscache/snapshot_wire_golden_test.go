@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// historicalSchedulerPayload 历史快照编码作为固定测试数据；不能使用被测编码器生成期望值。
+// historicalSchedulerPayload 是固定的历史快照报文，供编码器输出比较使用。
 func historicalSchedulerPayload(t *testing.T, kind string) []byte {
 	t.Helper()
 	name := strings.ReplaceAll(t.Name(), "/", "_") + "-" + kind + ".json"

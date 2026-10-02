@@ -51,7 +51,7 @@ func LastFixedWeeklyReset(day, hour int, tz *time.Location, now time.Time) time.
 	return todayReset.AddDate(0, 0, -daysBack)
 }
 
-// ProviderWindowPeriod 只区分原提供商日/周日历窗口，不替代订阅或滚动窗口规则。
+// ProviderWindowPeriod 区分提供商的日历日窗口和日历周窗口。
 type ProviderWindowPeriod uint8
 
 const (
@@ -76,7 +76,7 @@ func (w FixedProviderWindow) normalized() FixedProviderWindow {
 	return w
 }
 
-// NextProviderFixedReset 保留原固定窗口计算和非固定模式删除重置点的语义。
+// NextProviderFixedReset 计算固定窗口的下一次重置时间，其他模式返回零值和 false。
 func NextProviderFixedReset(window FixedProviderWindow, tz *time.Location, now time.Time) (time.Time, bool) {
 	if window.Mode != "fixed" {
 		return time.Time{}, false
@@ -88,7 +88,7 @@ func NextProviderFixedReset(window FixedProviderWindow, tz *time.Location, now t
 	return NextFixedDailyReset(window.Hour, tz, now), true
 }
 
-// ReconcileProviderFixedWindow 只决定原提供商窗口是否应重置；调用方负责投影，存储参与者拥有写入。
+// ReconcileProviderFixedWindow 判断提供商窗口是否到期并返回重置时间，由调用方交给存储写入。
 func ReconcileProviderFixedWindow(window FixedProviderWindow, start time.Time, tz *time.Location, now time.Time) (time.Time, bool) {
 	if window.Mode != "fixed" || !(window.Limit > 0) {
 		return time.Time{}, false

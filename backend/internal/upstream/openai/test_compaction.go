@@ -7,8 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// CompactionTestPayload 构造原生 V2 的流式 Responses 请求。V2 的关键
-// 契约是最后一个 input 为 compaction_trigger，而非旧端点路径。
+// CompactionTestPayload 构造 V2 流式 Responses 请求，最后一个 input 为 compaction_trigger。
 func CompactionTestPayload(model string, isOAuth bool) map[string]any {
 	payload := map[string]any{
 		"model":        strings.TrimSpace(model),
@@ -30,8 +29,8 @@ func CompactionTestPayload(model string, isOAuth bool) map[string]any {
 	return payload
 }
 
-// LegacyCompactionTestPayload 保留旧端点的 unary 载荷形状。它只用于
-// 管理员显式兼容性测试，绝不能作为原生 V2 的能力依据。
+// LegacyCompactionTestPayload 构造旧端点的 unary 请求，供管理员测试兼容性。
+// V2 能力需要通过 CompactionTestPayload 测试。
 func LegacyCompactionTestPayload(model string) map[string]any {
 	return map[string]any{
 		"model":        strings.TrimSpace(model),

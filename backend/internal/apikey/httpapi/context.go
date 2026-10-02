@@ -35,7 +35,7 @@ func GetOpsFallbackAPIKey(c *gin.Context) (*apikey.APIKey, bool) {
 	return apiKey, ok
 }
 
-// Key 上下文保留原字段编码；fallback 仅用于观测，不能表示认证成功。
+// Key 上下文包含认证字段和排障用的 fallback 字段，认证结果由认证流程给出。
 const (
 	ContextKeyAPIKey            = "api_key"
 	ContextKeyOpsFallbackAPIKey = "ops_fallback_api_key"
@@ -71,5 +71,5 @@ func GetForcePlatformFromContext(c *gin.Context) (string, bool) {
 	return platform, ok
 }
 
-// APIKeyAuthMiddleware 表示 Key HTTP 认证入口，保留原函数类型与路由转换方式。
+// APIKeyAuthMiddleware 是 API Key 认证的 Gin 中间件。
 type APIKeyAuthMiddleware gin.HandlerFunc

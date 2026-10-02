@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RuntimeSettingsHandler 只处理网关管理策略，不引用旧设置聚合。
+// RuntimeSettingsHandler 处理网关策略设置的查询和更新。
 type RuntimeSettingsHandler struct{ settingService *gateway.RuntimeSettings }
 
 // NewRuntimeSettingsHandler 注入生产链共用的规则实例。
@@ -17,7 +17,7 @@ func NewRuntimeSettingsHandler(settings *gateway.RuntimeSettings) *RuntimeSettin
 	return &RuntimeSettingsHandler{settingService: settings}
 }
 
-// GetRectifierSettings 保留原策略管理端点的输入和响应。
+// GetRectifierSettings 返回请求修正策略设置。
 func (h *RuntimeSettingsHandler) GetRectifierSettings(c *gin.Context) {
 	settings, err := h.settingService.GetRectifierSettings(c.Request.Context())
 	if err != nil {
@@ -38,7 +38,7 @@ func (h *RuntimeSettingsHandler) GetRectifierSettings(c *gin.Context) {
 	})
 }
 
-// UpdateRectifierSettings 保留原策略管理端点的输入和响应。
+// UpdateRectifierSettings 更新请求修正策略设置。
 func (h *RuntimeSettingsHandler) UpdateRectifierSettings(c *gin.Context) {
 	var req UpdateRectifierSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -108,7 +108,7 @@ type UpdateRectifierSettingsRequest struct {
 	APIKeySignaturePatterns  []string `json:"apikey_signature_patterns"`
 }
 
-// GetBetaPolicySettings 保留原策略管理端点的输入和响应。
+// GetBetaPolicySettings 返回 beta 策略设置。
 func (h *RuntimeSettingsHandler) GetBetaPolicySettings(c *gin.Context) {
 	settings, err := h.settingService.GetBetaPolicySettings(c.Request.Context())
 	if err != nil {
@@ -123,7 +123,7 @@ func (h *RuntimeSettingsHandler) GetBetaPolicySettings(c *gin.Context) {
 	httpx.Success(c, gatewaydto.BetaPolicySettings{Rules: rules})
 }
 
-// UpdateBetaPolicySettings 保留原策略管理端点的输入和响应。
+// UpdateBetaPolicySettings 更新 beta 策略设置。
 func (h *RuntimeSettingsHandler) UpdateBetaPolicySettings(c *gin.Context) {
 	var req UpdateBetaPolicySettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

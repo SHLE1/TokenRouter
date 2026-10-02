@@ -96,7 +96,7 @@ func TestSyncActiveToPassive_WritesFableExtras(t *testing.T) {
 	}
 }
 
-// 写入替身仅记录真实核心输出，不复制窗口计算或同步规则。
+// 写入替身记录用量查询输出，窗口计算和同步规则由查询组件执行。
 type usageFableWriteFixture struct {
 	OAuthUsageReader
 	updates chan map[string]any

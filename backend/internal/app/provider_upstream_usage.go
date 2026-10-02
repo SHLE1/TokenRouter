@@ -17,7 +17,7 @@ import (
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 )
 
-// provideUpstreamUsage 将唯一提供商查询核心接到同一存储、平台执行和有界退出。
+// provideUpstreamUsage 为提供商用量查询绑定存储、平台执行器和有超时限制的关闭流程。
 func provideUpstreamUsage(store *providerpostgres.ProviderStore, upstream httpclient.UpstreamTransport, cfg *config.Config, tls *egressadapter.TLSProfiles, manager *lifecycle.Manager) *provider.UpstreamUsageService {
 	options := provideradapter.UsageHTTPOptions{Available: store != nil && upstream != nil}
 	if cfg != nil {

@@ -11,14 +11,13 @@ import (
 )
 
 // vertexSupportedBetaTokens 是 Vertex AI 的 Anthropic 端点接受的 anthropic-beta
-// 白名单。Vertex 对任何未知 token 直接 HTTP 400，故采用白名单（与 Bedrock 的
-// bedrockSupportedBetaTokens 同思路）而非黑名单：未来 Claude Code 新增的、Vertex 尚未
-// 支持的 token 天然被剥离。当 Vertex 新增支持某 beta 时在此补充。
+// 白名单。Vertex 对未知 token 返回 HTTP 400，此处与 Bedrock 的
+// bedrockSupportedBetaTokens 一样过滤清单外的 token。Vertex 支持新的 beta 时需要补充清单。
 //
 // 明确排除（issue #3358 中 Vertex 报 400 的 token）：advisor-tool-2026-03-01、
 // prompt-caching-scope-2026-01-05、redact-thinking-2026-02-12、
 // thinking-token-count-2026-05-13；以及 claude-code-20250219 / oauth-2025-04-20 等
-// 客户端身份 beta——Vertex service_account 走 Bearer 鉴权，不需要它们。
+// 客户端身份 beta。Vertex service_account 使用 Bearer 鉴权。
 var vertexSupportedBetaTokens = map[string]bool{
 	"context-1m-2025-08-07":                  true,
 	"context-management-2025-06-27":          true,
@@ -52,7 +51,7 @@ func FilterBetaTokens(header string, drop map[string]struct{}) string {
 	return strings.Join(out, ",")
 }
 
-// AnthropicRequestOptions 是现有 HTTP/提供商策略的显式投影，调用顺序保持。
+// AnthropicRequestOptions 配置请求头、项目、区域和 beta 策略。
 type AnthropicRequestOptions struct {
 	ClientBeta           string
 	ClientHeaders        http.Header
@@ -74,7 +73,7 @@ func BuildAnthropicRequest(ctx context.Context, body []byte, token, modelID stri
 	}
 
 	// 计算最终 outgoing anthropic-beta。Vertex AI 的 Anthropic 端点只接受一小撮
-	// beta token，未知 token 会直接 HTTP 400——近期 Claude Code CLI 透传的
+	// beta token，未知 token 返回 HTTP 400。Claude Code CLI 透传的
 	// advisor-tool-2026-03-01 / prompt-caching-scope-2026-01-05 /
 	// redact-thinking-2026-02-12 / thinking-token-count-2026-05-13 都不被 Vertex 接受
 	// （issue #3358）。这里复用 BetaPolicy 的 block 检查（与 Bedrock 的
@@ -87,7 +86,7 @@ func BuildAnthropicRequest(ctx context.Context, body []byte, token, modelID stri
 	}
 	finalBeta := FilterBetaTokens(clientBeta, drop)
 
-	// 能力维度 sanitize：基于最终 beta（而非原始 client 值）决定是否保留 body 中的
+	// 根据过滤后的 beta 决定是否保留 body 中的
 	// context_management，与 Anthropic 直连 / Bedrock 路径对称。
 	if sanitized, changed := options.SanitizeBody(vertexBody, finalBeta); changed {
 		vertexBody = sanitized

@@ -99,14 +99,13 @@ func TestClaudeCodeValidator_MessagesPathFullValid(t *testing.T) {
 }
 
 func TestClaudeCodeValidator_BillingBlockRecognizedWithoutIdentityPrompt(t *testing.T) {
-	// 真实抓取的完整安全监视器系统提示词（不含身份说明文本）。
+	// 使用抓取的安全监视器系统提示词，内容没有身份说明文本。
 	monitorPrompt, err := os.ReadFile("testdata/security_monitor_system_prompt.txt")
 	require.NoError(t, err)
 
 	validator := clientmeta.NewClaudeCodeValidator()
 
-	// 前提：完整监视器正文经 Dice 相似度远低于阈值，无法被身份说明文本机制识别——
-	// 故下面 Validate 的放行只可能来自计费归因块识别。
+	// 监视器正文与身份说明文本的 Dice 相似度低于阈值，此例由计费归因块识别放行。
 	require.Less(t, validator.BestSimilarityScore(string(monitorPrompt)), clientmeta.ClaudeCodeSystemPromptThreshold)
 
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/v1/messages", nil)
@@ -155,7 +154,7 @@ func TestClaudeCodeValidator_SecurityMonitorWithoutBillingBlock(t *testing.T) {
 			"metadata": map[string]any{"user_id": claudeCodeMetadataUserIDJSON},
 		}
 	}
-	// 真实 CLI 会在安全监视器提示词之外追加随会话变化的上下文块。
+	// CLI 会在安全监视器提示词之外追加随会话变化的上下文块。
 	sessionContext := "\n\n## Session Context\n\n- **User identity**: testuser\n" +
 		"- **Working directory**: /home/testuser/project\n- **Platform**: linux"
 
@@ -249,7 +248,7 @@ func TestClaudeCodeValidator_SecurityMonitorWithoutBillingBlock(t *testing.T) {
 			headers: validHeaders,
 			body: func() map[string]any {
 				body := validBody(string(monitorPrompt))
-				// 显式校验测试夹具类型，避免夹具结构变化时静默触发 panic。
+				// 先断言夹具类型，结构不符时报告测试失败。
 				system, ok := body["system"].([]any)
 				require.True(t, ok)
 				body["system"] = append(system, map[string]any{
@@ -313,15 +312,14 @@ func TestClaudeCodeValidator_SecurityMonitorWithoutBillingBlock(t *testing.T) {
 }
 
 func TestClaudeCodeValidator_BillingBlockVSCodeEntrypointRecognized(t *testing.T) {
-	// 回归：Claude Code 在 VSCode 扩展内运行时，计费块入口为 cc_entrypoint=claude-vscode
-	// 而非 cli。其安全监视器子请求同样不携带身份 prose，此前写死 cc_entrypoint=cli 的
-	// 快速通道无法识别它，导致 claude_code_only 分组误拒。入口值不应作为识别条件。
+	// Claude Code 的 VSCode 扩展使用 cc_entrypoint=claude-vscode，安全监视器请求也可能缺少身份文本。
+	// 此例检查识别接受不同入口值，固定匹配 cli 会误拒该请求。
 	monitorPrompt, err := os.ReadFile("testdata/security_monitor_system_prompt.txt")
 	require.NoError(t, err)
 
 	validator := clientmeta.NewClaudeCodeValidator()
 
-	// 前提：完整监视器正文经 Dice 相似度远低于阈值，放行只可能来自计费归因块识别。
+	// 监视器正文与身份说明文本的 Dice 相似度低于阈值，此例由计费归因块识别放行。
 	require.Less(t, validator.BestSimilarityScore(string(monitorPrompt)), clientmeta.ClaudeCodeSystemPromptThreshold)
 
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/v1/messages", nil)
@@ -401,8 +399,8 @@ func TestClaudeCodeValidator_BillingBlockStillRequiresClaudeCodeUA(t *testing.T)
 
 // TestClaudeCodeValidator_BillingBlockRecognizedWithoutCCH 验证新版 Claude Code CLI 已取消 cch=... 签名字段，billing block 形如
 // `x-anthropic-billing-header: cc_version=...; cc_entrypoint=cli;`（无 cch）。
-// 检测依赖前缀 + cc_entrypoint=cli，不依赖 cch，故无身份 prose 的子请求仍应被识别。
-// 这同时覆盖了本仓 mimicry 注入的新格式 block（见 buildBillingAttributionText）。
+// 检测使用计费前缀和 cc_entrypoint 字段，缺少 cch 和身份文本的子请求仍可识别。
+// 本测试同时覆盖 buildBillingAttributionText 注入的计费块格式。
 func TestClaudeCodeValidator_BillingBlockRecognizedWithoutCCH(t *testing.T) {
 	monitorPrompt, err := os.ReadFile("testdata/security_monitor_system_prompt.txt")
 	require.NoError(t, err)
@@ -436,8 +434,8 @@ func TestClaudeCodeValidator_BillingBlockRecognizedWithoutCCH(t *testing.T) {
 	require.True(t, ok, "无 cch 的新版 billing block 仍应被识别为 Claude Code")
 }
 
-// TestClaudeCodeValidator_NoCCHBlockStillRequiresClaudeCodeUA 验证安全回归：去掉 cch 后检测并未放松——非 claude-cli UA 即便携带无 cch 的 billing block
-// 仍在 Step 1 被拒，ClaudeCodeOnly group 不会因此被仿冒绕过。
+// TestClaudeCodeValidator_NoCCHBlockStillRequiresClaudeCodeUA 检查缺少 cch 的请求仍通过 claude-cli UA 校验。
+// 其他 UA 即使携带 billing block，也在第一步被拒绝。
 func TestClaudeCodeValidator_NoCCHBlockStillRequiresClaudeCodeUA(t *testing.T) {
 	validator := clientmeta.NewClaudeCodeValidator()
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/v1/messages", nil)
@@ -552,7 +550,7 @@ func TestCompareVersions(t *testing.T) {
 	}
 }
 
-// claudeCodeInputFixture 只将原 HTTP 夹具投影为纯识别输入，不解析报文或复制规则。
+// claudeCodeInputFixture 将 HTTP 测试数据转换为客户端识别输入。
 func claudeCodeInputFixture(r *http.Request) clientmeta.ClaudeCodeValidationInput {
 	bypass, _ := requeststate.IsMaxTokensOneHaikuRequestFromContext(r.Context())
 	return clientmeta.ClaudeCodeValidationInput{Path: r.URL.Path, UserAgent: r.Header.Get("User-Agent"), XApp: r.Header.Get("X-App"), AnthropicBeta: r.Header.Get("anthropic-beta"), AnthropicVersion: r.Header.Get("anthropic-version"), MaxTokensOneHaiku: bypass}

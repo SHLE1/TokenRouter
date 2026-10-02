@@ -27,7 +27,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// legacyRouteMiddleware 历史夹具只在构造边界转换 Key 服务，生产签名使用原生实例。
+// legacyRouteMiddleware 在夹具构造时将 Key 服务绑定到路由中间件。
 func legacyRouteMiddleware(auth keyhttp.APIKeyAuthMiddleware, keys *apikey.APIKeyService, subscriptions *billing.SubscriptionService, ops *opscore.OpsService, settings *routing.RuntimeSettings, cfg *config.Config) gatewayhttp.RouteMiddleware {
 	var native *apikey.APIKeyService
 	if keys != nil {
@@ -62,7 +62,7 @@ func RegisterGatewayRoutes(
 	settingService *routing.RuntimeSettings,
 	cfg *config.Config,
 ) {
-	// 路由契约直接使用原生 HTTP 与运行时；没有上游行为的夹具不构造旧聚合 Handler。
+	// 路由测试使用 HTTP 处理器和已绑定的执行组件。
 	var shared *messageHTTPBindings
 	var runtime *textattempt.Runtime
 	var activity *gatewayRequestActivity
@@ -144,7 +144,7 @@ func RegisterGatewayRoutes(
 	gatewayhttp.RegisterGatewayRoutes(r, gatewayhttp.RouteEndpoints{CountTokens: countTokensHTTP, QoderCompatible: qoderCompatibleHTTP, CompatibleText: compatibleTextHTTP, GeminiNative: geminiNativeHTTP, OpenAIText: openAITextHTTP, OpenAITokens: openAITokensHTTP, ResponsesWS: responsesWSHTTP, Models: modelsHTTP, Messages: messagesHTTP, Media: mediaHTTP, Auxiliary: auxiliaryHTTP, Live: liveHTTP, Search: searchHTTP, PublicUsage: publicUsage, QoderChat: qoderChat}, legacyRouteMiddleware(apiKeyAuth, apiKeyService, subscriptionService, opsService, settingService, cfg), func(group *gin.RouterGroup) { batchhttp.RegisterGatewayRoutes(group, h.BatchImage) })
 }
 
-// 空路由夹具不配置上游计数器，返回明确依赖错误而不是触发 nil 端口。
+// 空路由夹具的上游计数器缺失时，返回依赖错误。
 type routeCountUnavailable struct{}
 
 func (routeCountUnavailable) CheckKey(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error {

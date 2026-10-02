@@ -108,7 +108,7 @@ func TestHandleStreamingResponse_SpecialCharactersInJSON(t *testing.T) {
 }
 
 // TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover 验证上游中途读错误（如 HTTP/2 GOAWAY 触发的 unexpected EOF）发生在向客户端写入任何字节前：
-// 网关应返回 *UpstreamFailoverError 触发提供商 failover/重试，而不是把错误事件直接发给客户端。
+// 网关返回 *UpstreamFailoverError，由外层重试或更换提供商。
 func TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)
 
@@ -146,7 +146,7 @@ func TestHandleStreamingResponse_StreamReadErrorBeforeOutput_TriggersFailover(t 
 }
 
 // TestHandleStreamingResponse_StreamReadErrorAfterOutput_PassesThrough 验证上游已经发送过事件（c.Writer 已写过字节）后再发生读错误：
-// SSE 协议无 resume，网关只能透传 stream_read_error 错误事件给客户端，不能 failover。
+// SSE 流开始后发生读取错误时，向客户端发送 stream_read_error 事件并结束响应。
 func TestHandleStreamingResponse_StreamReadErrorAfterOutput_PassesThrough(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)
 
@@ -257,7 +257,7 @@ func TestHandleStreamingResponse_SSEErrorEvent_ReturnsTypedErrorWithRawData(t *t
 	require.Equal(t, "Anthropic upstream is overloaded", upstream.ExtractErrorMessage([]byte(sseErr.RawData)))
 }
 
-// TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine 验证上游只发 event:error 而没有 data 行时，也要返回 typed error，避免上层走不到 stream_error 分支。
+// TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine 检查缺少 data 行的 event:error 是否返回可识别的流错误。
 func TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)
 
@@ -282,7 +282,7 @@ func TestHandleStreamingResponse_SSEErrorEvent_EmptyDataLine(t *testing.T) {
 	require.Equal(t, "", sseErr.RawData)
 }
 
-// TestHandleStreamingResponse_SSEErrorEvent_AfterPartialStreamOutput 验证上游先发部分流输出再发 event:error 时，仍要保留真实错误体；
+// TestHandleStreamingResponse_SSEErrorEvent_AfterPartialStreamOutput 检查部分输出后的 event:error 是否保留上游错误体，
 // handler 层会因已写客户端响应而停止继续换号。
 func TestHandleStreamingResponse_SSEErrorEvent_AfterPartialStreamOutput(t *testing.T) {
 	svc := newStreamingRuntimeFixture(0)

@@ -176,7 +176,7 @@ func (b *openAIMessageAttemptBridge) Complete() {
 	upstreamEndpoint := ResolveOpenAIUpstreamEndpoint(b.c, b.provider, res)
 
 	clientSessionID := gatewayhttp.ExtractClientSessionID(b.c)
-	// 入队前固化资金与报文投影，worker 不再读取请求中的实体。
+	// 入队前捕获资金和报文数据，worker 使用这份快照。
 	completionInput := gatewaycapture.CaptureOpenAI(gatewayhttp.CompletionContext(b.c), &gatewaycapture.OpenAICapture{
 		Result:             res,
 		APIKey:             b.apiKey,

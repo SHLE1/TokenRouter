@@ -7,7 +7,7 @@ import (
 	"errors"
 )
 
-// 设置替身只存取单键，不复制运行配置缓存。
+// 设置替身提供单键读写，运行配置缓存使用生产实现。
 type cooldownSettingsStore struct{ data map[string]string }
 
 var errCooldownSettingMissing = errors.New("setting missing")

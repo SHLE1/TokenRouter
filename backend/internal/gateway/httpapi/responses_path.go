@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// OpenAIResponsesRequestPathSuffix 路径提取与协议白名单复用唯一实现，保持旧 Responses 子路径拒绝边界。
+// OpenAIResponsesRequestPathSuffix 提取 Responses 路径后缀并检查协议白名单。
 func OpenAIResponsesRequestPathSuffix(c *gin.Context) string {
 	suffix, ok := upstream.SanitizedUpstreamPathSuffix(RawOpenAIResponsesRequestPathSuffix(c))
 	if !ok {
@@ -28,7 +28,7 @@ func IsOpenAIResponsesInputTokensRequestPath(c *gin.Context) bool {
 	return OpenAIResponsesRequestPathSuffix(c) == "/input_tokens"
 }
 
-// RawOpenAIResponsesRequestPathSuffix 仅做提取，不做任何安全判断。
+// RawOpenAIResponsesRequestPathSuffix 提取路径后缀，调用方负责校验路径。
 func RawOpenAIResponsesRequestPathSuffix(c *gin.Context) string {
 	if c == nil || c.Request == nil || c.Request.URL == nil {
 		return ""

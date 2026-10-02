@@ -52,7 +52,7 @@ func TestOpenAIUpstreamRestrictionAppliesPricingConfigThenProviderMapping(t *tes
 	require.False(t, upstreamRestrictedForTest(svc, context.Background(), groupID, provider, "client-alias", false))
 }
 
-// TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel 验证 OAuth 归一化和自动透传都按真实上游模型限制。
+// TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel 检查 OAuth 归一化和自动透传是否按上游模型限制候选。
 func TestOpenAIUpstreamRestrictionUsesActuallyForwardedOAuthModel(t *testing.T) {
 	price := 0.01
 	tests := []struct {
@@ -170,7 +170,7 @@ func TestModelAvailabilityDiagnosisAcceptsPricingConfigAlias(t *testing.T) {
 
 // TestResolveOpenAIWSRoutingModelForProviderRejectsUnsupportedMappedModel 验证后续 turn 不能绕过固定提供商的最终白名单。
 
-// upstreamRestrictedForTest 保留分组映射先于提供商层限制的原组合顺序。
+// upstreamRestrictedForTest 先做分组映射，再检查提供商层的模型限制。
 func upstreamRestrictedForTest(s *Compatible, ctx context.Context, group int64, value *gatewayprovider.ExecutionProvider, model string, compact bool) bool {
 	return s.UpstreamRoutingModelRestricted(ctx, group, value, s.resolveGroupRoutingModel(ctx, &group, model), compact)
 }

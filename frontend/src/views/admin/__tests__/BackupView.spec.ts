@@ -95,7 +95,7 @@ function findDownloadButton(wrapper: ReturnType<typeof mountBackupView>) {
   )
 }
 
-// 分卷记录即使缺少 fork 的 storage_type，也必须走远程分卷下载契约。
+// 分卷记录缺少 storage_type 时仍使用远程分卷下载。
 describe('admin BackupView 分卷备份', () => {
   beforeEach(() => {
     getStorageConfig.mockResolvedValue({

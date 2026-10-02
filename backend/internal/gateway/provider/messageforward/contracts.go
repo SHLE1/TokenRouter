@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
-// Options 只保存启动时投影的传输参数；动态策略仍在原调用位置读取。
+// Options 保存启动时传入的传输参数，动态策略在请求处理中读取。
 type Options struct {
 	Configured           bool
 	InjectAPIKeyBeta     bool
@@ -31,7 +31,7 @@ type Options struct {
 	URLValidation        egress.ValidationOptions
 }
 
-// AttemptState 只属于一次准备与响应转换，不能放入提供商或跨请求缓存。
+// AttemptState 保存一次请求准备和响应转换的状态。
 // BetaEvaluated 区分尚未查询和已经得到空过滤集，保持 Messages 与 count 的读取差异。
 type AttemptState struct {
 	BetaEvaluated bool
@@ -48,7 +48,7 @@ const (
 	CountBody
 )
 
-// HTTPBoundary 仅提供当前 HTTP 交换与观察能力；不包含鉴权、选号、资金或设置操作。
+// HTTPBoundary 定义当前 HTTP 请求的交换与观测操作。
 // 实现由 HTTP Adapter 持有，provider 不获取 Gin Context 或通用 Get/Set 容器。
 type HTTPBoundary interface {
 	Present() bool

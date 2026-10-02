@@ -150,7 +150,7 @@ func TestApplyOpenAIFastPolicyToBody_ForcePriorityRewritesKnownTier(t *testing.T
 }
 
 // TestApplyOpenAIFastPolicyToBody_OfficialTiersBypassDefaultRule 验证默认配置
-// 下客户端显式发送的 OpenAI 官方合法 tier 能透传到上游而不被静默剥离。
+// 下，客户端发送的合法 OpenAI tier 会透传到上游。
 func TestApplyOpenAIFastPolicyToBody_OfficialTiersBypassDefaultRule(t *testing.T) {
 	svc := newFastPolicyContract(t, tierpolicy.Default())
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}}
@@ -172,7 +172,7 @@ func TestApplyOpenAIFastPolicyToBody_OfficialTiersBypassDefaultRule(t *testing.T
 
 // TestApplyOpenAIFastPolicyToBody_AllRuleStripsOfficialTiers 验证管理员显式配置
 // ServiceTier=all + Action=filter 规则后，auto/default/scale 等官方 tier 也会
-// 被剥离。这是符合预期的——首条匹配 short-circuit，"all" 覆盖任意已识别 tier。
+// 被剥离。首条匹配规则生效，all 匹配所有已识别的 tier。
 func TestApplyOpenAIFastPolicyToBody_AllRuleStripsOfficialTiers(t *testing.T) {
 	settings := &tierpolicy.OpenAIFastPolicySettings{
 		Rules: []tierpolicy.OpenAIFastPolicyRule{{
@@ -205,7 +205,7 @@ func TestApplyOpenAIFastPolicyToBody_UnknownTierStripped(t *testing.T) {
 	require.Nil(t, protocolopenai.NormalizeServiceTier("xxx"))
 
 	// applyOpenAIFastPolicyToBody 收到未识别 tier 时不报错，body 透传不变
-	// （不属于本函数职责——上层 normalizeResponsesBodyServiceTier 已剥离）
+	// （上层 normalizeResponsesBodyServiceTier 已剥离此字段）
 	body := []byte(`{"model":"gpt-5.5","service_tier":"xxx"}`)
 	updated, err := tierpolicy.ApplyBody(body, svc.Input(context.Background(), provider, "gpt-5.5"))
 	require.NoError(t, err)

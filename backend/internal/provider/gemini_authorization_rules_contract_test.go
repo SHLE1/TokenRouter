@@ -261,7 +261,7 @@ func TestInferGoogleOneTier(t *testing.T) {
 		storageBytes int64
 		want         string
 	}{
-		// 边界：<= 0
+		// 检查小于等于零的输入。
 		{name: "0 bytes -> unknown", storageBytes: 0, want: providercore.GeminiTierGoogleOneUnknown},
 		{name: "负数 -> unknown", storageBytes: -1, want: providercore.GeminiTierGoogleOneUnknown},
 

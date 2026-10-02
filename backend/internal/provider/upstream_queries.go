@@ -13,12 +13,12 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// UpstreamUsageReader 只读当前身份，不提供配置、健康或消费写入。
+// UpstreamUsageReader 读取当前提供商身份。
 type UpstreamUsageReader interface {
 	GetByID(context.Context, int64) (*Record, error)
 }
 
-// UpstreamUsageExecution 由具体平台 Adapter 实现固定协议；不得在查询中写健康或资金。
+// UpstreamUsageExecution 由平台适配器实现用量查询协议。
 type UpstreamUsageExecution interface {
 	Available() bool
 	Supports(string) bool
@@ -114,7 +114,7 @@ func (s *UpstreamUsageService) QueryProvider(ctx context.Context, providerID int
 	preflightCtx, cancelPreflight := context.WithDeadline(ctx, queryDeadline)
 	defer cancelPreflight()
 	// 先读取一次身份快照，用它生成 singleflight 指纹。这样凭据、代理或
-	// 查询配置发生变化时，不会把新请求错误地合并到旧请求中。
+	// 查询配置变化后，新请求使用新的 singleflight 标识。
 	provider, err := s.loadQueryProvider(preflightCtx, providerID)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func (s *UpstreamUsageService) QueryProvider(ctx context.Context, providerID int
 		return nil, ErrUpstreamUsageDisabled
 	}
 	// 国产供应商不允许管理员把协议适配器误选成通用站点适配器；按平台和
-	// provider_mode 自动选择只读适配器，保留现有查询开关与身份指纹语义。
+	// provider_mode 决定用量适配器，查询同时检查开关和身份指纹。
 	if provider.IsCNProvider() {
 		queryConfig.Adapter = CNUpstreamUsageAdapterName(provider)
 		if queryConfig.Adapter == "" {
@@ -238,8 +238,7 @@ func (s *UpstreamUsageService) queryProvider(ctx context.Context, providerID int
 	provider, err := s.loadQueryProvider(ctx, providerID)
 	if err != nil {
 		if errors.Is(err, ErrUpstreamUsageProviderInvalid) || errors.Is(err, ErrUpstreamUsageProviderDisabled) {
-			// 预读后提供商类型、状态或记录本身发生变化，应报告身份冲突，
-			// 而不是把一次进行中的查询误报为普通提供商参数错误。
+			// 预读后提供商类型、状态或记录发生变化时，返回身份冲突错误。
 			return nil, ErrUpstreamUsageIdentityChanged
 		}
 		return nil, err

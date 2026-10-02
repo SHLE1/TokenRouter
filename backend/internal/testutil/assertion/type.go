@@ -3,7 +3,7 @@ package assertion
 import "fmt"
 
 // MustType 检查测试替身或解码结果的类型；不符合时直接令当前测试失败。
-// 与直接类型断言一样保留 panic 语义，消息仅包含类型，不暴露测试值中的凭据。
+// 类型不匹配时 panic，消息包含预期类型和实际类型。
 func MustType[T any](value any) T {
 	result, ok := value.(T)
 	if !ok {

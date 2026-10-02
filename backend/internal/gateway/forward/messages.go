@@ -13,7 +13,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// Messages 保留单提供商请求准备、原生执行及错误/部分用量的原时序。
+// Messages 依次准备单个提供商的请求、执行上游调用并处理错误和部分用量。
 func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requeststate.ParsedRequest) (*Result, error) {
 	startTime := time.Now()
 	if parsed == nil {
@@ -68,7 +68,7 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 		p.DebugOriginal(body, reqModel, reqStream)
 	}
 
-	// 提供商模型映射必须先于平台模型规范化执行，确保调度、限制检查和实际转发使用同一条链路。
+	// 先应用提供商模型映射，再执行平台模型规范化，调度、限额检查和转发共用此顺序。
 	providerMappedModel := p.ProviderMappedModel(reqModel)
 	if providerMappedModel != reqModel {
 		if err := replaceBody(p.ReplaceModel(body, providerMappedModel)); err != nil {
@@ -100,9 +100,8 @@ func Messages(ctx context.Context, p MessagePorts, in MessageInput, parsed *requ
 			systemRewritten = true
 		}
 
-		// system 被重写时保留 CC prompt 的 cache_control: ephemeral（匹配真实 Claude Code 行为）；
-		// 未重写时（注入开关关闭）剥离客户端 cache_control，与原有行为一致。
-		// 两种情况下 enforceCacheControlLimit 都会兜底处理上限。
+		// system 改写后保留 CC prompt 的 cache_control: ephemeral；注入关闭时剥离客户端 cache_control。
+		// enforceCacheControlLimit 随后检查两种情况下的数量上限。
 		normalizeOpts := NormalizeOptions{StripSystemCacheControl: !systemRewritten}
 		if metadata := p.Metadata(ctx, parsed); metadata != "" {
 			normalizeOpts.InjectMetadata = true

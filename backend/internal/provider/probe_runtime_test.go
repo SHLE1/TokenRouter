@@ -49,7 +49,7 @@ func TestProbeRuntimeSharedCancellationAndStop(t *testing.T) {
 	require.False(t, runtime.Schedule("later", time.Minute, func(context.Context) { t.Error("停止后启动") }))
 }
 
-// TestProbeRuntimeBackgroundStopReportsUnfinished 验证停止必须等待忽略取消的任务并报告超时，不能被稍后完成覆盖首次结果。
+// TestProbeRuntimeBackgroundStopReportsUnfinished 检查停止等待超时后返回未完成结果，任务随后完成时仍返回首次结果。
 func TestProbeRuntimeBackgroundStopReportsUnfinished(t *testing.T) {
 	var runtime ProbeRuntime
 	entered, release, exited := make(chan struct{}), make(chan struct{}), make(chan struct{})

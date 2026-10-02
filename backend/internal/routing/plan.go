@@ -29,7 +29,7 @@ type RoutePlan struct {
 	fallbacks      map[capability.ProtocolID][]capability.ProtocolID
 }
 
-// Plan 复制已完成入口准入的分组投影，不改变原权限、模型或资金检查顺序。
+// Plan 复制已通过入口准入的分组数据，构造请求路由计划。
 func Plan(input PlanInput) RoutePlan {
 	plan := RoutePlan{
 		clientProtocol: input.ClientProtocol,
@@ -66,7 +66,7 @@ type CandidatePlan struct {
 	UpstreamProtocol capability.ProtocolID
 }
 
-// ResolveCandidate 保留原生优先和单步转换，每次 fresh/数据库复核重新调用。
+// ResolveCandidate 优先选择提供商直接支持的协议，其次尝试单步转换，每次候选刷新或数据库复核时重新调用。
 func (p RoutePlan) ResolveCandidate(candidate provider.ProviderSnapshot) (CandidatePlan, bool) {
 	target, ok := capability.ResolveRoute(candidate.Protocols(), p.clientProtocol, p.fallbacks)
 	if !ok {

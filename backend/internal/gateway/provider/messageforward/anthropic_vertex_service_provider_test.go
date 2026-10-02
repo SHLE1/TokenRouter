@@ -78,7 +78,7 @@ func readRequestBodyForTest(t *testing.T, req *http.Request) []byte {
 func TestGatewayService_BuildAnthropicVertexServiceAccount_StripsContextManagementWhenBetaMissing(t *testing.T) {
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
-	// 客户端 header 只带 interleaved-thinking，不带 context-management-2025-06-27
+	// 客户端 header 包含 interleaved-thinking。
 	c.Request.Header.Set("Anthropic-Beta", "interleaved-thinking-2025-05-14")
 
 	provider := &gatewayprovider.ExecutionProvider{

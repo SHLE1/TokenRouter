@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ForwardConversionOutput 持有本次 HTTP 输出；不共享转换状态或变更重试资格。
+// ForwardConversionOutput 保存当前 HTTP 输出和协议转换回调。
 type ForwardConversionOutput struct {
 	Context    *gin.Context
 	Filter     *egress.CompiledHeaderFilter
@@ -75,13 +75,13 @@ func (o ForwardConversionOutput) Observe(level, message string, err error, reque
 
 var _ forwardcore.Output = ForwardConversionOutput{}
 
-// WriteForwardMessageGenericError 保留 Messages 的通用错误 envelope 和提交标记。
+// WriteForwardMessageGenericError 标记响应提交，并写出 Messages 通用错误。
 func WriteForwardMessageGenericError(c *gin.Context, commit func()) {
 	commit()
 	c.JSON(http.StatusInternalServerError, gin.H{"type": "error", "error": gin.H{"type": "upstream_error", "message": "Upstream gateway error"}})
 }
 
-// WriteForwardCountSuccess 保留 passthrough 的类型透传与普通计数的 JSON 类型。
+// WriteForwardCountSuccess 在透传时使用上游 Content-Type，其他计数响应使用 JSON。
 func WriteForwardCountSuccess(c *gin.Context, status int, headers map[string][]string, body []byte, passthrough bool) {
 	contentType := "application/json"
 	if passthrough {
@@ -92,12 +92,12 @@ func WriteForwardCountSuccess(c *gin.Context, status int, headers map[string][]s
 	c.Data(status, contentType, body)
 }
 
-// WriteForwardCountError 沿用计数端点的 Anthropic 错误格式，不追加提交标记。
+// WriteForwardCountError 按 Anthropic 格式写出计数错误，提交标记由调用方管理。
 func WriteForwardCountError(c *gin.Context, status int, kind, message string) {
 	c.JSON(status, gin.H{"type": "error", "error": gin.H{"type": kind, "message": message}})
 }
 
-// WriteForwardGeminiErrorBody 只写调用方已判定的错误，不参与恢复判断。
+// WriteForwardGeminiErrorBody 写出调用方传入的 Gemini 错误。
 func WriteForwardGeminiErrorBody(c *gin.Context, status int, contentType string, body []byte, commit func()) {
 	commit()
 	c.Data(status, contentType, body)

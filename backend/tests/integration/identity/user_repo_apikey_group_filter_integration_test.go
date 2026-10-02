@@ -24,7 +24,7 @@ type UserRepoAPIKeyGroupFilterSuite struct {
 	repo   *postgres.UserStore
 }
 
-// SetupSuite 组合查询套件独占真实数据库，保留原清理顺序。
+// SetupSuite 为组合查询测试套件创建独立数据库。
 func (s *UserRepoAPIKeyGroupFilterSuite) SetupSuite() { s.db, s.client = identityDatabase(s.T()) }
 
 func (s *UserRepoAPIKeyGroupFilterSuite) SetupTest() {

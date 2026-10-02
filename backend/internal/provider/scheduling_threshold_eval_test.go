@@ -163,7 +163,7 @@ func TestEvaluateProviderSchedulingThreshold_OpenAIPreservesPercentageSemantics(
 	require.Equal(t, 91.0, openAIDecision.UsedPercent)
 }
 
-// TestEvaluateProviderSchedulingThreshold_OpenAISkipsStaleSnapshot 验证明确定时的旧快照不会继续暂停提供商。
+// TestEvaluateProviderSchedulingThreshold_OpenAISkipsStaleSnapshot 检查过期快照按可用处理。
 func TestEvaluateProviderSchedulingThreshold_OpenAISkipsStaleSnapshot(t *testing.T) {
 	t.Parallel()
 
@@ -182,7 +182,7 @@ func TestEvaluateProviderSchedulingThreshold_OpenAISkipsStaleSnapshot(t *testing
 	require.False(t, decision.ShouldPause)
 }
 
-// TestEvaluateProviderSchedulingThreshold_OpenAISkipsResetWindow 验证窗口到期后不再使用旧百分比。
+// TestEvaluateProviderSchedulingThreshold_OpenAISkipsResetWindow 检查窗口到期后丢弃该窗口的利用率。
 func TestEvaluateProviderSchedulingThreshold_OpenAISkipsResetWindow(t *testing.T) {
 	t.Parallel()
 
@@ -225,7 +225,7 @@ func TestEvaluateProviderSchedulingThreshold_OpenAIPausesFreshExhaustedSnapshot(
 	require.True(t, resetAt.Equal(*decision.Until))
 }
 
-// TestEvaluateProviderSchedulingThreshold_OpenAIPausesFreshExhaustedSevenDayWindow 验证新鲜 7d 快照保持相同语义。
+// TestEvaluateProviderSchedulingThreshold_OpenAIPausesFreshExhaustedSevenDayWindow 检查有效的满额 7d 快照触发暂停。
 func TestEvaluateProviderSchedulingThreshold_OpenAIPausesFreshExhaustedSevenDayWindow(t *testing.T) {
 	t.Parallel()
 

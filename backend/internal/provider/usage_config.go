@@ -118,7 +118,7 @@ func NormalizeUpstreamUsageExtra(extra map[string]any) error {
 }
 
 // NormalizedUpstreamUsageConfigValue 复制并规范化已有配置。
-// 旧记录若含敏感字段或任意请求模板，不得在一次无关编辑中被重新写回。
+// 保存时清除历史记录中的敏感字段和任意请求模板。
 func NormalizedUpstreamUsageConfigValue(value any) (any, bool) {
 	if value == nil {
 		return nil, false

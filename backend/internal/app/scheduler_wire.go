@@ -9,7 +9,7 @@ import (
 	"github.com/google/wire"
 )
 
-// schedulerProviders 构造唯一生产实例；Start/Stop 由既有生命周期绑定执行。
+// schedulerProviders 构造共享调度实例，生命周期管理器调用其 Start 和 Stop。
 var schedulerProviders = wire.NewSet(provideSelectionSnapshots, provideSelectionReads, provideSelectionShared, provideSelectionFreeQuota, provideSelectionModelTransient, provideSelectionProxyCircuit, provideGenericSelection, provideCompatibleSelection, provideGeminiSelection, provideSchedulerSharedState, provideUpstreamHealth, provideSchedulerDiagnosticsHTTP, provideSchedulerCache,
 	wire.Bind(new(scheduler.SnapshotCache), new(*schedulerredis.SnapshotCache)),
 	provideSchedulerSnapshot,

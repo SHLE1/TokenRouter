@@ -7,7 +7,7 @@ import (
 	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// ApplyObservedRateLimit 保留先通知内存阻断、再持久化的原失败边界。
+// ApplyObservedRateLimit 先设置内存阻断，再保存限流状态。
 func (s *HealthService) ApplyObservedRateLimit(ctx context.Context, value *Record, reset time.Time) bool {
 	s.notifyProviderSchedulingBlocked(value, reset, "429")
 	if err := s.providerRepo.SetRateLimited(ctx, value.ID, reset); err != nil {

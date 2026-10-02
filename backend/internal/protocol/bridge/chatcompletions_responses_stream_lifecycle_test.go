@@ -145,7 +145,7 @@ func TestStream_ReasoningThenToolCallDoesNotSynthesizeVisibleText(t *testing.T) 
 	}
 }
 
-// TestStream_ToolCallLifecycleComplete 确保工具调用会完整关闭，Codex 执行工具
+// TestStream_ToolCallLifecycleComplete 检查工具调用的关闭事件，Codex 执行工具
 // 前需要收到 function_call_arguments.done 和 output_item.done。
 func TestStream_ToolCallLifecycleComplete(t *testing.T) {
 	events := collectStreamEvents(t, []string{
@@ -298,7 +298,7 @@ func TestStream_SSEWireComplete(t *testing.T) {
 		}
 	}
 	require.NotEmpty(t, addedLine)
-	// function_call added 事件在 wire 上必须带 arguments:""。
+	// function_call 的 added 事件编码后带有 arguments:""。
 	require.True(t, strings.Contains(addedLine, `"arguments":""`), "added line missing arguments: %s", addedLine)
 	require.Contains(t, addedLine, `"call_id":"call_a"`)
 }

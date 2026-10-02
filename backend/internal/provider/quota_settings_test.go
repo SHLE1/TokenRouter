@@ -16,7 +16,7 @@ func TestGetOpenAIQuotaAutoPauseSettings_ReadsDefaultsFromOpsAdvancedSettings(t 
 	repo.values[ops.SettingKeyOpsAdvancedSettings] = `{"openai_provider_quota_auto_pause":{"default_threshold_5h":0.95,"default_threshold_7d":0.9}}`
 	svc := provider.NewQuotaSettingsCache(repo, settings.ErrSettingNotFound, ops.ParseRuntimeQuotaAutoPauseSettings)
 
-	// 同步预热内存缓存，确保下面的断言可确定。
+	// 同步预热内存缓存后执行断言。
 	// GetOpenAIQuotaAutoPauseSettings 在热路径上不阻塞（返回缓存值并异步刷新）；
 	// 测试和启动流程使用 Warm 这个同步入口，保证缓存已填充。
 	settings := svc.WarmOpenAIQuotaAutoPauseSettings(context.Background())
@@ -53,7 +53,7 @@ func TestGetOpenAIQuotaAutoPauseSettings_ColdCacheNonBlocking(t *testing.T) {
 	}
 }
 
-// TestSetOpenAIQuotaAutoPauseSettings_VisibleImmediately 验证显式缓存写入（例如来自 UpdateOpsAdvancedSettings）必须在下一次读取立即可见，
+// TestSetOpenAIQuotaAutoPauseSettings_VisibleImmediately 检查缓存写入后（例如 UpdateOpsAdvancedSettings 调用）下一次读取即可取得新值，
 // 且不需要任何 DB roundtrip。
 func TestSetOpenAIQuotaAutoPauseSettings_VisibleImmediately(t *testing.T) {
 	svc := provider.NewQuotaSettingsCache(newQuotaReadFixture(), settings.ErrSettingNotFound, ops.ParseRuntimeQuotaAutoPauseSettings)

@@ -55,7 +55,7 @@ func (s *TeamLinkedHealth) HandleWorkspaceDeactivated(ctx context.Context, provi
 	if len(targets) == 0 {
 		return
 	}
-	// 先全部进程内熔断（微秒级生效），再逐个落库，避免后面的提供商等待前面的 DB 写入。
+	// 先在进程内阻断全部关联提供商，再逐个写入数据库。
 	for _, acc := range targets {
 		s.options.Block(acc, time.Time{}, OpenAITeamLinkedErrorBlockReason)
 	}
@@ -98,13 +98,13 @@ func (s *TeamLinkedHealth) markOpenAITeamLinkedFired(teamID string) bool {
 	return true
 }
 
-// TeamLinkedStore 保留原平台列表过滤与逐提供商独立写入。
+// TeamLinkedStore 按平台筛选提供商，并逐个独立写入状态。
 type TeamLinkedStore interface {
 	ListByPlatform(context.Context, string) ([]Record, error)
 	SetError(context.Context, int64, string) error
 }
 
-// TeamLinkedOptions 由组合根绑定运行阻断和日志，不持有旧网关服务。
+// TeamLinkedOptions 接收 app 绑定的运行阻断和日志函数。
 type TeamLinkedOptions struct {
 	Now   func() time.Time
 	Warn  func(string, ...any)

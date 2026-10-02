@@ -31,7 +31,7 @@ var (
 	integrationEntClient *dbent.Client
 )
 
-// runPostgresTests 支付资金契约使用隔离 PostgreSQL 和真实迁移；退出前关闭连接及容器。
+// runPostgresTests 在隔离 PostgreSQL 中应用迁移并运行支付资金测试，退出前关闭连接和容器。
 func runPostgresTests(m *testing.M) int {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()

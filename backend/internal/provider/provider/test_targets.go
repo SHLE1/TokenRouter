@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// TestTargets 在一次原生提供商读取后选择固定的平台适配器，不建立缓存或第二套测试用例。
+// TestTargets 读取提供商后返回对应平台的测试组件。
 type TestTargets struct {
 	Read        func(context.Context, int64) (*provider.Record, error)
 	Qoder       *QoderProviderTest

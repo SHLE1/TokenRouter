@@ -7,7 +7,7 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// ExecutionProviderStore 只定义执行适配所需操作，实际持久化与资金写入由各原生存储负责。
+// ExecutionProviderStore 定义执行过程中读取和更新提供商的存储操作。
 type ExecutionProviderStore interface {
 	GetByID(ctx context.Context, id int64) (*ExecutionProvider, error)
 	// GetByIDs 保持单次批量查询，忽略缺失 ID。
@@ -44,7 +44,7 @@ type ExecutionProviderStore interface {
 	ClearAntigravityQuotaScopes(ctx context.Context, id int64) error
 	ClearModelRateLimits(ctx context.Context, id int64) error
 	UpdateSessionWindow(ctx context.Context, id int64, start, end *time.Time, status string) error
-	// UpdateSessionWindowEnd 仅更新 5h 窗口的结束时间，不动 start / status。
+	// UpdateSessionWindowEnd 更新 5h 窗口的结束时间。
 	// 用于 active poll 拿到新 ResetsAt 后回写，避免覆盖请求路径上记录的 status。
 	UpdateSessionWindowEnd(ctx context.Context, id int64, end time.Time) error
 	UpdateExtra(ctx context.Context, id int64, updates map[string]any) error

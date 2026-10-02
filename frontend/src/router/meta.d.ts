@@ -95,7 +95,7 @@ declare module 'vue-router' {
     hidePageHeading?: boolean
 
     /**
-     * 全屏工作区页面（如创作台）隐藏侧栏，内容区不再预留侧栏宽度。
+     * 全屏工作区页面（如创作台）隐藏侧栏，内容区占满可用宽度。
      */
     hideSidebar?: boolean
   }

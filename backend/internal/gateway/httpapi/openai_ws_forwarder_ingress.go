@@ -14,8 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// openAIWSImageIntentForRoutingModel 用分组映射模型 G 还原判定请求体，避免提供商模型 U 改写生图语义。
-// 宽泛意图供图片状态和计费使用，显式意图只负责权限门禁。
+// openAIWSImageIntentForRoutingModel 按分组映射模型 G 构造生图判定请求体。
+// 宽泛意图用于图片状态和计费，客户端声明的意图用于权限门禁。
 func openAIWSImageIntentForRoutingModel(routingModel, upstreamModel string, body []byte, platform string) ([]byte, bool, bool) {
 	imageIntentBody := body
 	if routingModel != upstreamModel {

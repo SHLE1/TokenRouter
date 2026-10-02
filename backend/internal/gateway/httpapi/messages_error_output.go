@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MessagesErrorOutput 只引用唯一规则实例；不保存请求、缓存或可变输出状态。
+// MessagesErrorOutput 使用共享规则实例生成 Messages 错误响应。
 type MessagesErrorOutput struct {
 	Rules *errorpolicy.ErrorPassthroughService
 }
@@ -58,12 +58,8 @@ func (h MessagesErrorOutput) EnsureResponse(c *gin.Context, streamStarted bool) 
 	return true
 }
 
-// ForwardErrorAlreadyCommunicated 判断 Forward 实现返回错误前是否已经
-// 向客户端写出了完整错误响应。
-//
-// 该判断有意比“writer size 变化”更窄：流式响应可能只发过保活 ping 或部分数据，
-// 此时 handler 仍需要追加协议级终止错误。Forward 写出的非 SSE 响应不同：
-// service 层辅助函数已经写出客户端可见的 JSON 响应体，再追加通用流式兜底会污染响应。
+// ForwardErrorAlreadyCommunicated 判断 Forward 返回错误前是否已写出完整错误响应。
+// 非 SSE 的 JSON 错误正文写出后视为已告知客户端。流式保活 ping 或部分数据仍需要追加协议终止错误。
 func ForwardErrorAlreadyCommunicated(c *gin.Context, writerSizeBeforeForward int, err error) bool {
 	if err == nil || c == nil || c.Writer == nil {
 		return false
@@ -89,7 +85,7 @@ func (h MessagesErrorOutput) ErrorWithCode(c *gin.Context, status int, errType, 
 	WriteAnthropicError(c, status, errType, code, message)
 }
 
-// Exhausted 只投影已分类失败，展示规则保持唯一实现。
+// Exhausted 将已分类的失败交给错误展示规则处理。
 func (h MessagesErrorOutput) Exhausted(c *gin.Context, failure *forwardcore.UpstreamFailoverError, platform string, started bool) {
 	var rules ErrorRuleMatcher
 	if h.Rules != nil {
@@ -212,7 +208,7 @@ func (h MessagesErrorOutput) GeminiExhausted(c *gin.Context, failoverErr *forwar
 		}
 	}
 
-	// 记录原始上游状态码，以便 ops 错误日志捕获真实的上游错误
+	// 记录上游状态码，供 Ops 错误日志使用。
 	upstreamMsg := upstream.ExtractErrorMessage(responseBody)
 	SetOpsUpstreamError(c, statusCode, upstreamMsg, "")
 

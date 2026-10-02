@@ -27,8 +27,7 @@ func NormalizeServiceTier(raw string) *string {
 	}
 }
 
-// InvalidServiceTierError 表示请求携带了未知的 service_tier。handler 会将其
-// 转换为 400 invalid_request_error，避免静默剥离字段而掩盖客户端意图。
+// InvalidServiceTierError 表示请求的 service_tier 无效，handler 将其转换为 400 invalid_request_error。
 type InvalidServiceTierError struct {
 	Value string
 }
@@ -49,7 +48,7 @@ func boundInvalidOpenAIServiceTierValue(raw string) string {
 // ValidateServiceTierField 校验 OpenAI 兼容请求体中的 service_tier 字段。
 //
 // 空值或 null 保持兼容；fast 归一化为 priority；priority、flex、auto、default、
-// scale、ultrafast 原样通过。显式的非字符串、空字符串或未知值返回校验错误。
+// scale、ultrafast 原样通过。非字符串、空字符串或未知值返回校验错误。
 func ValidateServiceTierField(body []byte) (string, error) {
 	tierResult := gjson.GetBytes(body, "service_tier")
 	if !tierResult.Exists() || tierResult.Type == gjson.Null {
@@ -69,7 +68,7 @@ func ValidateServiceTierField(body []byte) (string, error) {
 	return norm, nil
 }
 
-// ServiceTierValue 在不合法时返回空值，保留原归一化调用方的缺省判断。
+// ServiceTierValue 返回规范化后的服务档位，输入不合法时返回空字符串。
 func ServiceTierValue(raw string) string {
 	normalized := NormalizeServiceTier(raw)
 	if normalized == nil {

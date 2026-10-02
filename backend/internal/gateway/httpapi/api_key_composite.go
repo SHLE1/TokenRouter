@@ -24,7 +24,7 @@ import (
 
 const CompositeKeyNoGroupContextKey = "composite_key_no_group"
 
-// ResolveCompositeAPIKeyRequest 根据客户端模型选择复合 Key 分组，并改写为真实模型。
+// ResolveCompositeAPIKeyRequest 根据客户端模型选择复合 Key 分组，并改写为去除分组前缀的模型。
 // @project-doc docs/domains/composite_api_keys.md#group_selection
 func ResolveCompositeAPIKeyRequest(c *gin.Context, apiKeyService *apikey.APIKeyService, apiKey *apikey.APIKey) (*apikey.APIKey, error) {
 	if apiKey == nil || !apiKey.IsComposite {
@@ -74,7 +74,7 @@ func ResolveCompositeAPIKeyRequest(c *gin.Context, apiKeyService *apikey.APIKeyS
 	return selected, nil
 }
 
-// SetCompositeModelContext 记录客户端模型和内部真实模型，供日志及响应恢复使用。
+// SetCompositeModelContext 记录客户端模型和内部模型，供日志及响应恢复使用。
 func SetCompositeModelContext(c *gin.Context, clientModel, actualModel string) {
 	if c == nil {
 		return
@@ -92,7 +92,7 @@ func SetCompositeModelContext(c *gin.Context, clientModel, actualModel string) {
 	}
 }
 
-// CompositeModelResponseWriter 将常见协议响应中的真实模型恢复为客户端复合模型。
+// CompositeModelResponseWriter 将常见协议响应中的内部模型恢复为客户端复合模型。
 type CompositeModelResponseWriter struct {
 	gin.ResponseWriter
 	clientModel string
@@ -110,12 +110,12 @@ func (w *CompositeModelResponseWriter) WriteString(value string) (int, error) {
 	return w.Write([]byte(value))
 }
 
-// ReplaceCompositeResponseModel 只改写模型字段，避免影响正文中恰好相同的文本。
+// ReplaceCompositeResponseModel 改写协议模型字段，正文文本保持原样。
 func ReplaceCompositeResponseModel(data []byte, actualModel, clientModel string) []byte {
 	return modeltrace.ReplaceModelMetadata(data, actualModel, clientModel)
 }
 
-// GetCompositeModelFromContext 返回复合 Key 的客户端模型与真实模型。
+// GetCompositeModelFromContext 返回复合 Key 的客户端模型与内部模型。
 func GetCompositeModelFromContext(c *gin.Context) (clientModel, actualModel string, ok bool) {
 	if c == nil {
 		return "", "", false
@@ -147,7 +147,7 @@ func IsCompositeKeyModelListEndpoint(method, path string) bool {
 }
 
 // IsCompositeKeyBillingBypassEndpoint 仅识别按 Key 身份读取既有数据的入口。
-// 模型列表虽然不需要选择分组，但仍必须执行 Key 额度、余额和订阅校验。
+// 模型列表执行 Key 额度、余额和订阅校验。
 func IsCompositeKeyBillingBypassEndpoint(method, path string) bool {
 	if IsAPIKeyUsageRequest(method, path) {
 		return true
@@ -208,7 +208,7 @@ func CompositeGeminiModelFromParams(c *gin.Context) (string, error) {
 	return modelAction[:separator], nil
 }
 
-// RewriteCompositeGeminiParams 同步更新 Gin 参数，让现有处理器只看到真实模型。
+// RewriteCompositeGeminiParams 将 Gin 参数更新为去除分组前缀的模型。
 func RewriteCompositeGeminiParams(c *gin.Context, actualModel string) {
 	for i := range c.Params {
 		switch c.Params[i].Key {
@@ -306,7 +306,7 @@ func ReadAndRestoreRequestBody(request *http.Request) ([]byte, error) {
 		return rawBody, nil
 	}
 
-	// 使用临时请求解压，失败时原请求仍保留完整压缩体，便于后续处理器返回原有错误。
+	// 使用临时请求解压，失败时将完整压缩体交给后续处理器返回错误。
 	decodeRequest := request.Clone(request.Context())
 	decodeRequest.Body = io.NopCloser(bytes.NewReader(rawBody))
 	decodeRequest.ContentLength = int64(len(rawBody))

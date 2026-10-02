@@ -521,7 +521,7 @@ func SanitizeCodexImportCredentialExtras(input map[string]any) map[string]any {
 
 // BuildCodexImportIdentityKeys 生成导入条目的匹配键。refresh_token 缺失时
 // Codex session 只能作为 accessToken-only 凭据使用，此时以 access token
-// 指纹作为唯一稳定身份，避免同 workspace 下共享的 provider/user 标识误合并。
+// 使用指纹匹配身份，同 workspace 的 provider 和 user 标识可能共享。
 func BuildCodexImportIdentityKeys(providerID, userID, email, accessToken, refreshToken string) []string {
 	accessToken = strings.TrimSpace(accessToken)
 	refreshToken = strings.TrimSpace(refreshToken)

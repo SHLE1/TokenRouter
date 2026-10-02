@@ -14,11 +14,8 @@ import (
 // text/annotations/logprobs。Go 的 `omitempty` 会刚好丢掉这些零值，严格的
 // Codex CLI 会拒绝缺少必需字段的 item/delta。
 //
-// 这里不再依赖 omitempty 后补 JSON，而是显式构造每一种流式事件，作为
-// Responses SSE 字段存在性的单一来源，并统一作用于 Chat→Responses 桥和
-// Anthropic→Responses 转换器。
-//
-// 未列出的 event type 继续走默认结构体序列化，限制该方法的影响范围。
+// 此处逐种构造流式事件，Chat 转 Responses 和 Anthropic 转 Responses 共用这些字段规则。
+// 未列出的 event type 使用默认结构体序列化。
 func (e ResponsesStreamEvent) MarshalJSON() ([]byte, error) {
 	switch e.Type {
 	case "response.output_text.delta", "response.output_text.done":
@@ -102,7 +99,7 @@ func (e ResponsesStreamEvent) MarshalJSON() ([]byte, error) {
 		return json.Marshal(m)
 
 	default:
-		// response.created / completed / done / failed / incomplete 等未显式
+		// response.created / completed / done / failed / incomplete 等未单独
 		// 建模的事件继续保留默认结构体序列化。
 		type alias ResponsesStreamEvent
 		return json.Marshal(alias(e))
@@ -193,7 +190,7 @@ func responsesItemWire(item *ResponsesOutput) map[string]any {
 		m["input"] = item.Input
 	case "tool_search_call":
 		// tool_search 调用还原项：execution 必须为 "client"（否则 codex 忽略该
-		// 调用），arguments 在线上是 JSON 对象而非字符串。
+		// 调用），传输报文中的 arguments 为 JSON 对象。
 		m["call_id"] = item.CallID
 		m["execution"] = "client"
 		m["arguments"] = ToolSearchCallArgumentsJSON(item.Arguments)
@@ -201,7 +198,7 @@ func responsesItemWire(item *ResponsesOutput) map[string]any {
 	return m
 }
 
-// messageContentWire 渲染 message item 的 content 数组；结果永远是数组而非 null。
+// messageContentWire 渲染 message item 的 content 数组，空输入返回空数组。
 func messageContentWire(parts []ResponsesContentPart) []map[string]any {
 	out := make([]map[string]any, 0, len(parts))
 	for _, p := range parts {
@@ -229,7 +226,7 @@ func reasoningSummaryWire(summary []ResponsesSummary) []map[string]any {
 
 // ToolSearchCallArgumentsJSON 把降级 function 调用累积的 arguments 字符串还原为
 // tool_search_call 线上要求的 JSON 对象；模型未按 schema 输出（非法 JSON）时按
-// 字符串值兜底，交由 codex 解析报错后让模型重试。
+// 字符串返回，由 Codex 解析并报告错误后让模型重试。
 func ToolSearchCallArgumentsJSON(arguments string) json.RawMessage {
 	trimmed := strings.TrimSpace(arguments)
 	if trimmed == "" {

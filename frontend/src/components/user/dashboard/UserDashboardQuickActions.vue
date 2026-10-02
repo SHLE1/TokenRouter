@@ -106,7 +106,7 @@ const router = useRouter()
 const { t } = useI18n()
 const appStore = useAppStore()
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
-// 公共设置明确启用支付时才展示入口，避免加载失败时暴露不可用路由。
+// 公共设置开启支付后展示入口，加载失败时保持隐藏。
 const paymentEnabled = computed(() => appStore.cachedPublicSettings?.payment_enabled === true)
 
 onMounted(() => {

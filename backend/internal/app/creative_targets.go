@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
-// provideCreativeTargets 与 HTTP 入口共享凭据、身份和传输；任务不构造另一份网关状态。
+// provideCreativeTargets 为创作台任务绑定与 HTTP 入口共享的凭据、身份和传输实例。
 func provideCreativeTargets(cfg *config.Config, auxiliary *gatewayhttp.OpenAIAuxiliary, tokens *provider.GeminiTokenSource, activity *gatewayRequestActivity) *gatewayadapter.CreativeTargets {
 	requests := auxiliary.Requests
 	return &gatewayadapter.CreativeTargets{

@@ -25,12 +25,9 @@ type OllamaCloudUsageSettings struct {
 
 type OllamaCloudUsageData = usageview.OllamaCloudUsageData
 
-// OllamaCloudUsageSnapshot 是提供商 extra 中唯一持久化的用量观测数据。
-//
-// NextRefreshAt 作为兼容字段继续持久化。状态为 ok 时，它只标记最大等待边界；
-// 成功后的自动刷新由模型请求活动（分组 last_used_at + 防抖/最大等待）驱动，
-// 不会仅由该字段触发。状态为 failed/unauthorized 时，它表示失败后的最早重试时间
-// （Retry-After 或指数退避），实际到期时间取 activityDue 与 NextRefreshAt 的较晚者。
+// OllamaCloudUsageSnapshot 是保存在提供商 Extra 中的用量观测。
+// NextRefreshAt 随快照持久化。ok 状态下它表示最大等待时间，自动刷新由分组活动时间与防抖、最大等待共同决定。
+// failed 或 unauthorized 状态下它表示 Retry-After 或指数退避计算的最早重试时间，实际到期取它与 activityDue 的较晚值。
 type OllamaCloudUsageSnapshot struct {
 	Status        string                `json:"status"`
 	Data          *OllamaCloudUsageData `json:"data,omitempty"`

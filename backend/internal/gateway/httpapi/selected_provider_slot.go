@@ -26,7 +26,7 @@ type ProviderSlotHooks struct {
 	CapacityLimited func(*gin.Context)
 }
 
-// AcquireSelectedProviderSlot 只有取得的资源才交给请求释放，不变更原故障放行语义。
+// AcquireSelectedProviderSlot 将取得的槽位交给请求释放。
 func AcquireSelectedProviderSlot(c *gin.Context, groupID *int64, sessionHash string, selection *SelectedProviderSlot, reqStream bool, streamStarted *bool, reqLog *zap.Logger, writeError func(int, string, string, string), concurrency *ConcurrencyHelper, sticky SlotStickyBinder, hooks ProviderSlotHooks) (func(), bool) {
 	if selection == nil {
 		hooks.CapacityLimited(c)

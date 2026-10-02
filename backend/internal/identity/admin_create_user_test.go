@@ -189,7 +189,7 @@ func TestAdminService_CreateUser_AssignsDefaultSubscriptions(t *testing.T) {
 	require.Equal(t, int64(5), assigner.calls[0].PlanID)
 }
 
-// adminCreationSettingsStore 保留原设置替身的按键读取与缺键语义。
+// adminCreationSettingsStore 按键读取测试设置，缺键时返回 ErrSettingNotFound。
 type adminCreationSettingsStore struct{ authSourceDefaultsRepoStub }
 
 func (s *adminCreationSettingsStore) GetValue(_ context.Context, key string) (string, error) {
@@ -200,7 +200,7 @@ func (s *adminCreationSettingsStore) GetValue(_ context.Context, key string) (st
 	return value, nil
 }
 
-// adminCreationSettings 仅组合唯一配置解释器，不复制解析规则。
+// adminCreationSettings 组合认证运行设置和注册赠送设置读取器。
 type adminCreationSettings struct {
 	*identity.RuntimeSettings
 	*identity.GrantSettings

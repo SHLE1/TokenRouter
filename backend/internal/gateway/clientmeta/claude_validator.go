@@ -45,23 +45,21 @@ var claudeCodeSystemPrompts = []string{
 	// claudeOtherSystemPromptCompact - Compact (用于对话摘要)
 	"You are a helpful AI assistant tasked with summarizing conversations.",
 
-	// claudeOtherSystemPrompt2 - Secondary (长提示词的关键部分)
+	// claudeOtherSystemPrompt2 是长系统提示词中的辅助识别片段。
 	"You are an interactive CLI tool that helps users",
 }
 
 const (
-	// 这些标记用于识别 Claude Code 官方安全监视器请求，避免绑定提示词的每处措辞。
+	// 安全监视器请求按以下标记识别，其余提示词措辞可变化。
 	claudeCodeSecurityMonitorPromptPrefix = "You are a security monitor for autonomous AI coding agents."
 	claudeCodeSecurityMonitorPromptMinLen = 10_000
 
-	// claudeCodeBillingHeaderPrefix 是 Claude Code 在 system 数组首块注入的计费归因块前缀。
-	// 大多数真实 CLI 请求（含部分无身份说明文本的子请求）会携带该块；不携带该块的
-	// 固定官方辅助请求由独立规则识别。该格式比身份说明文本更稳定。
-	// 生成见 gateway_billing_block.go；同类识别见 protocol/bridge/anthropic_to_responses.go。
+	// claudeCodeBillingHeaderPrefix 是 Claude Code 在 system 首块注入的计费归因前缀。
+	// 多数 CLI 请求携带该块，包括部分缺少身份文本的子请求；缺少该块的固定辅助请求由单独规则识别。
+	// 生成位置见 gateway_billing_block.go，同类识别见 protocol/bridge/anthropic_to_responses.go。
 	claudeCodeBillingHeaderPrefix = wire.ClaudeCodeBillingHeaderPrefix
-	// claudeCodeEntrypointMarker 标识计费块携带入口归因字段。不绑定具体入口值
-	// （cli / claude-vscode / jetbrains / sdk 等都是真实入口）：入口值会随新增 IDE 漂移，
-	// 且伪造者同样可填任意值、不构成防伪边界，故仅要求该字段存在即可。
+	// claudeCodeEntrypointMarker 标识计费块的入口字段，检查字段存在即可。
+	// cli、claude-vscode、jetbrains、sdk 等入口值随客户端扩展，且该值可由请求方填写。
 	claudeCodeEntrypointMarker = wire.ClaudeCodeEntrypointMarker
 )
 
@@ -218,8 +216,8 @@ var claudeCodeSecurityMonitorMarkers = []string{
 	"<block>no</block>",
 }
 
-// isClaudeCodeSecurityMonitorPrompt 识别不携带计费块的官方安全监视器提示词。
-// 真实 CLI 可能在提示词前后追加独立的会话上下文块，因此需要逐块查找而不能限制 system 块数量。
+// isClaudeCodeSecurityMonitorPrompt 逐块识别缺少计费块的安全监视器提示词，
+// CLI 可以在提示词前后追加会话上下文块。
 func isClaudeCodeSecurityMonitorPrompt(systemEntries []any) bool {
 	for _, rawEntry := range systemEntries {
 		entry, ok := rawEntry.(map[string]any)
@@ -347,7 +345,7 @@ func (v *ClaudeCodeValidator) ExtractVersion(ua string) string {
 	return ExtractClaudeCLIVersion(ua)
 }
 
-// ClaudeCodeValidationInput 由 HTTP 同步投影，不在识别过程中读取 I/O 或业务 context。
+// ClaudeCodeValidationInput 保存 HTTP 层同步提取的客户端识别数据。
 type ClaudeCodeValidationInput struct {
 	Path              string
 	UserAgent         string

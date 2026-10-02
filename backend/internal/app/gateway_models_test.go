@@ -33,7 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 夹具仅提供原目录查询，不构造旧网关或其它业务能力。
+// 夹具提供模型目录查询所需的数据。
 type modelHTTPProviderRows interface {
 	ListSchedulable(context.Context) ([]provider.Record, error)
 	ListSchedulableByGroupID(context.Context, int64) ([]provider.Record, error)
@@ -114,7 +114,7 @@ func (s *gatewayModelsProviderRepoStub) ListSchedulableByGroupID(ctx context.Con
 			out[i].Schedulable = true
 		}
 		out[i].GroupIDs = []int64{groupID}
-		// 映射夹具明确声明可服务范围，测试不依赖“映射表兼作白名单”的旧假设。
+		// 映射夹具通过配置声明可服务的模型范围。
 		if _, configured := out[i].Credentials["model_whitelist"]; !configured {
 			var allowed []string
 			switch mapping := out[i].Credentials["model_mapping"].(type) {
@@ -499,7 +499,7 @@ func TestGatewayModels_QoderGroupFallsBackToQoderModels(t *testing.T) {
 	require.NotContains(t, modelIDsForTest(got.Data), "claude-sonnet-4-6")
 }
 
-// TestGatewayModels_Grok45AdvertisesReasoningEffortForGrokBuild 验证新增能力元数据不破坏旧兼容字段。
+// TestGatewayModels_Grok45AdvertisesReasoningEffortForGrokBuild 检查推理能力元数据与兼容字段同时返回。
 func TestGatewayModels_Grok45AdvertisesReasoningEffortForGrokBuild(t *testing.T) {
 	assertGrokGatewayReasoningEfforts(t, 4409, "grok-4.5", []gatewayReasoningEffortOptionForTest{
 		{Value: "low", Label: "Low"},
@@ -572,7 +572,7 @@ func assertGrokGatewayReasoningEfforts(t *testing.T, groupID int64, modelID stri
 	require.Equal(t, want, model.ReasoningEfforts)
 }
 
-// TestGatewayModels_GrokDefaultsExcludeBuiltinAliases 验证无显式提供商范围时只展示默认模型目录。
+// TestGatewayModels_GrokDefaultsExcludeBuiltinAliases 检查提供商未设置模型范围时展示默认目录。
 func TestGatewayModels_GrokDefaultsExcludeBuiltinAliases(t *testing.T) {
 	groupID := int64(4410)
 	h := newGatewayModelsHandlerForTest(

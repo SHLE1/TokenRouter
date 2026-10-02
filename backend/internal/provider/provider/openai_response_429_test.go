@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 测试只控制提供商运行时的时间输入，不访问私有缓存。
+// 测试通过提供商运行状态的时钟控制时间。
 type response429Clock struct{ nanos atomic.Int64 }
 
 func (c *response429Clock) Now() time.Time {

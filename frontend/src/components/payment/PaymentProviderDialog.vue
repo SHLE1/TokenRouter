@@ -347,7 +347,7 @@ function providerSupportsPaymentMode(providerKey: string): boolean {
   return providerKey === 'easypay' || providerKey === 'alipay'
 }
 
-/** 校验不同服务商允许的 payment_mode，避免旧数据或跨服务商数据让按钮处于未选中状态。 */
+/** 按服务商检查 payment_mode 是否为有效选项。 */
 function isValidPaymentMode(providerKey: string, mode: string): boolean {
   if (providerKey === 'easypay') {
     return mode === PAYMENT_MODE_QRCODE || mode === PAYMENT_MODE_POPUP

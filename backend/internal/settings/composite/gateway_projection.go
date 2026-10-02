@@ -4,7 +4,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 )
 
-// GatewayAdminSettings 仅转换所属模块值，不读取设置或发布状态。
+// GatewayAdminSettings 从综合快照提取网关设置。
 func (s *Snapshot) GatewayAdminSettings() gateway.AdminSettings {
 	return gateway.AdminSettings{
 		AntigravityUserAgentVersion:            s.AntigravityUserAgentVersion,

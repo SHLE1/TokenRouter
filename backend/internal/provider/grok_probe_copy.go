@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider/usageview"
 )
 
-// CloneGrokQuotaProbeResult 隔离共享探测返回的嵌套展示值；平台报文仍由旧适配层拥有。
+// CloneGrokQuotaProbeResult 深拷贝探测结果中嵌套的展示数据。
 func CloneGrokQuotaProbeResult(value *GrokQuotaProbeResult) *GrokQuotaProbeResult {
 	if value == nil {
 		return nil

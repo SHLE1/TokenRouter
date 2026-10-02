@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RuntimeSettingsHandler 只调用提供商设置用例，不访问仓储或旧设置聚合。
+// RuntimeSettingsHandler 通过提供商设置用例处理管理请求。
 type RuntimeSettingsHandler struct{ settingService *provider.RuntimeSettings }
 
 // NewRuntimeSettingsHandler 注入唯一的提供商设置及其缓存。
@@ -19,7 +19,7 @@ func NewRuntimeSettingsHandler(service *provider.RuntimeSettings) *RuntimeSettin
 	return &RuntimeSettingsHandler{settingService: service}
 }
 
-// GetOverloadCooldownSettings 保留原管理员设置的请求和响应语义。
+// GetOverloadCooldownSettings 返回过载冷却设置。
 func (h *RuntimeSettingsHandler) GetOverloadCooldownSettings(c *gin.Context) {
 	settings, err := h.settingService.GetOverloadCooldownSettings(c.Request.Context())
 	if err != nil {
@@ -33,7 +33,7 @@ func (h *RuntimeSettingsHandler) GetOverloadCooldownSettings(c *gin.Context) {
 	})
 }
 
-// UpdateOverloadCooldownSettings 保留原管理员设置的请求和响应语义。
+// UpdateOverloadCooldownSettings 校验并保存过载冷却设置。
 func (h *RuntimeSettingsHandler) UpdateOverloadCooldownSettings(c *gin.Context) {
 	var req UpdateOverloadCooldownSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -63,13 +63,13 @@ func (h *RuntimeSettingsHandler) UpdateOverloadCooldownSettings(c *gin.Context) 
 	})
 }
 
-// UpdateOverloadCooldownSettingsRequest 保留原字段存在性与 JSON 类型。
+// UpdateOverloadCooldownSettingsRequest 接收过载冷却设置。
 type UpdateOverloadCooldownSettingsRequest struct {
 	Enabled         bool `json:"enabled"`
 	CooldownMinutes int  `json:"cooldown_minutes"`
 }
 
-// GetRateLimit429CooldownSettings 保留原管理员设置的请求和响应语义。
+// GetRateLimit429CooldownSettings 返回 429 冷却设置。
 func (h *RuntimeSettingsHandler) GetRateLimit429CooldownSettings(c *gin.Context) {
 	settings, err := h.settingService.GetRateLimit429CooldownSettings(c.Request.Context())
 	if err != nil {
@@ -83,7 +83,7 @@ func (h *RuntimeSettingsHandler) GetRateLimit429CooldownSettings(c *gin.Context)
 	})
 }
 
-// UpdateRateLimit429CooldownSettings 保留原管理员设置的请求和响应语义。
+// UpdateRateLimit429CooldownSettings 校验并保存 429 冷却设置。
 func (h *RuntimeSettingsHandler) UpdateRateLimit429CooldownSettings(c *gin.Context) {
 	var req UpdateRateLimit429CooldownSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -113,13 +113,13 @@ func (h *RuntimeSettingsHandler) UpdateRateLimit429CooldownSettings(c *gin.Conte
 	})
 }
 
-// UpdateRateLimit429CooldownSettingsRequest 保留原字段存在性与 JSON 类型。
+// UpdateRateLimit429CooldownSettingsRequest 接收429 冷却设置。
 type UpdateRateLimit429CooldownSettingsRequest struct {
 	Enabled         bool `json:"enabled"`
 	CooldownSeconds int  `json:"cooldown_seconds"`
 }
 
-// GetOpenAIImagesOAuthUnavailableCooldownSettings 保留原管理员设置的请求和响应语义。
+// GetOpenAIImagesOAuthUnavailableCooldownSettings 返回 OAuth 图片不可用时的冷却设置。
 func (h *RuntimeSettingsHandler) GetOpenAIImagesOAuthUnavailableCooldownSettings(c *gin.Context) {
 	settings, err := h.settingService.GetOpenAIImagesOAuthUnavailableCooldownSettings(c.Request.Context())
 	if err != nil {
@@ -129,7 +129,7 @@ func (h *RuntimeSettingsHandler) GetOpenAIImagesOAuthUnavailableCooldownSettings
 	httpx.Success(c, providerdto.OpenAIImagesOAuthUnavailableCooldownSettings{CooldownMinutes: settings.CooldownMinutes})
 }
 
-// UpdateOpenAIImagesOAuthUnavailableCooldownSettings 保留原管理员设置的请求和响应语义。
+// UpdateOpenAIImagesOAuthUnavailableCooldownSettings 校验并保存 OAuth 图片不可用时的冷却设置。
 func (h *RuntimeSettingsHandler) UpdateOpenAIImagesOAuthUnavailableCooldownSettings(c *gin.Context) {
 	var req UpdateOpenAIImagesOAuthUnavailableCooldownSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -144,12 +144,12 @@ func (h *RuntimeSettingsHandler) UpdateOpenAIImagesOAuthUnavailableCooldownSetti
 	httpx.Success(c, providerdto.OpenAIImagesOAuthUnavailableCooldownSettings{CooldownMinutes: settings.CooldownMinutes})
 }
 
-// UpdateOpenAIImagesOAuthUnavailableCooldownSettingsRequest 保留原字段存在性与 JSON 类型。
+// UpdateOpenAIImagesOAuthUnavailableCooldownSettingsRequest 接收OAuth 图片不可用冷却设置。
 type UpdateOpenAIImagesOAuthUnavailableCooldownSettingsRequest struct {
 	CooldownMinutes int `json:"cooldown_minutes"`
 }
 
-// GetStreamTimeoutSettings 保留原管理员设置的请求和响应语义。
+// GetStreamTimeoutSettings 返回流式请求超时设置。
 func (h *RuntimeSettingsHandler) GetStreamTimeoutSettings(c *gin.Context) {
 	settings, err := h.settingService.GetStreamTimeoutSettings(c.Request.Context())
 	if err != nil {
@@ -166,7 +166,7 @@ func (h *RuntimeSettingsHandler) GetStreamTimeoutSettings(c *gin.Context) {
 	})
 }
 
-// UpdateStreamTimeoutSettings 保留原管理员设置的请求和响应语义。
+// UpdateStreamTimeoutSettings 校验并保存流式请求超时设置。
 func (h *RuntimeSettingsHandler) UpdateStreamTimeoutSettings(c *gin.Context) {
 	var req UpdateStreamTimeoutSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -203,7 +203,7 @@ func (h *RuntimeSettingsHandler) UpdateStreamTimeoutSettings(c *gin.Context) {
 	})
 }
 
-// UpdateStreamTimeoutSettingsRequest 保留原字段存在性与 JSON 类型。
+// UpdateStreamTimeoutSettingsRequest 接收流式请求超时设置。
 type UpdateStreamTimeoutSettingsRequest struct {
 	Enabled                bool   `json:"enabled"`
 	Action                 string `json:"action"`
@@ -212,7 +212,7 @@ type UpdateStreamTimeoutSettingsRequest struct {
 	ThresholdWindowMinutes int    `json:"threshold_window_minutes"`
 }
 
-// GetOpenAI403CooldownSettings 保留原管理员设置的请求和响应语义。
+// GetOpenAI403CooldownSettings 返回 OpenAI 403 冷却设置。
 func (h *RuntimeSettingsHandler) GetOpenAI403CooldownSettings(c *gin.Context) {
 	settings, err := h.settingService.GetOpenAI403CooldownSettings(c.Request.Context())
 	if err != nil {
@@ -229,7 +229,7 @@ func (h *RuntimeSettingsHandler) GetOpenAI403CooldownSettings(c *gin.Context) {
 	})
 }
 
-// UpdateOpenAI403CooldownSettings 保留原管理员设置的请求和响应语义。
+// UpdateOpenAI403CooldownSettings 校验并保存 OpenAI 403 冷却设置。
 func (h *RuntimeSettingsHandler) UpdateOpenAI403CooldownSettings(c *gin.Context) {
 	var req UpdateOpenAI403CooldownSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -279,7 +279,7 @@ func (h *RuntimeSettingsHandler) UpdateOpenAI403CooldownSettings(c *gin.Context)
 	})
 }
 
-// UpdateOpenAI403CooldownSettingsRequest 保留原字段存在性与 JSON 类型。
+// UpdateOpenAI403CooldownSettingsRequest 接收OpenAI 403 冷却设置。
 type UpdateOpenAI403CooldownSettingsRequest struct {
 	Enabled                 bool  `json:"enabled"`
 	CooldownMinutes         int   `json:"cooldown_minutes"`
@@ -288,7 +288,7 @@ type UpdateOpenAI403CooldownSettingsRequest struct {
 	ThresholdWindowMinutes  *int  `json:"threshold_window_minutes"`
 }
 
-// GetOpenAIOAuthImportDefaults 保留原管理员设置的请求和响应语义。
+// GetOpenAIOAuthImportDefaults 返回 OpenAI OAuth 导入默认设置。
 func (h *RuntimeSettingsHandler) GetOpenAIOAuthImportDefaults(c *gin.Context) {
 	settings, err := h.settingService.GetOpenAIOAuthImportDefaults(c.Request.Context())
 	if err != nil {
@@ -299,7 +299,7 @@ func (h *RuntimeSettingsHandler) GetOpenAIOAuthImportDefaults(c *gin.Context) {
 	httpx.Success(c, openAIOAuthImportDefaultsToDTO(settings))
 }
 
-// UpdateOpenAIOAuthImportDefaults 保留原管理员设置的请求和响应语义。
+// UpdateOpenAIOAuthImportDefaults 校验并保存 OpenAI OAuth 导入默认设置。
 func (h *RuntimeSettingsHandler) UpdateOpenAIOAuthImportDefaults(c *gin.Context) {
 	var raw map[string]json.RawMessage
 	if err := c.ShouldBindJSON(&raw); err != nil {

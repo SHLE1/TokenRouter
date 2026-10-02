@@ -510,7 +510,7 @@ export async function refreshCredentials(id: number): Promise<Provider> {
 
 /**
  * 重新授权后保存 OAuth 凭据
- * 该接口只增量合并 extra，避免覆盖提供商的持久化运行配置。
+ * 该接口增量合并 extra，未提交的运行配置字段继续保留。
  */
 export async function applyOAuthCredentials(
   id: number,

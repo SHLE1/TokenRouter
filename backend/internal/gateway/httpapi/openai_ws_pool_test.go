@@ -126,7 +126,7 @@ func (c *openAIWSBlockingConn) Close() error {
 	return nil
 }
 
-// TestOpenAIWSConnPoolShutdownSealsLazyCreation 验证应用关闭后不得通过按需入口创建第二个池，既有池也不得再次发起获取。
+// TestOpenAIWSConnPoolShutdownSealsLazyCreation 验证应用关闭后按需建池和连接获取均失败。
 func TestOpenAIWSConnPoolShutdownSealsLazyCreation(t *testing.T) {
 	svc := newWSFixture(wsFixtureInputs{})
 	svc.Connections.Close()

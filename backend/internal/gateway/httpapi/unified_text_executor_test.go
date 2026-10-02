@@ -118,7 +118,7 @@ func TestUnifiedNativeUsageSurvivesCaptureAndRecord(t *testing.T) {
 	require.Equal(t, "anthropic", row.Platform)
 	require.Equal(t, "priority", *row.ServiceTier)
 
-	// 同一数值明确标记为 OpenAI 总输入时，仍执行既有缓存扣除口径。
+	// 同一数值标记为 OpenAI 总输入时，扣除缓存读取用量。
 	input.Result.NativeUsage = false
 	require.NoError(t, recorder.Record(context.Background(), input, true))
 	require.Len(t, logs.rows, 2)
@@ -129,7 +129,7 @@ type unifiedSearchSource struct{}
 
 func (unifiedSearchSource) Current() searchtools.Searcher { return nil }
 
-// unifiedRecordFunds 让协议用量测试通过真实完成链调用结算端口。
+// unifiedRecordFunds 在协议用量测试中通过完成流程调用结算接口。
 type unifiedRecordFunds struct{}
 
 func (unifiedRecordFunds) Apply(_ context.Context, command *billing.UsageBillingCommand) (*billing.UsageBillingApplyResult, error) {

@@ -292,7 +292,7 @@ describe('CreateProviderModal OpenAI provider options', () => {
     expect(wrapper.get('[data-testid="create-openai-continuation-supported"]').attributes('role')).toBe('switch')
   })
 
-  // 开关需由管理员显式启用，创建请求持久化为布尔值。
+  // 管理员启用开关后，创建请求将其保存为布尔值。
   it('opts into image URL backfill for OpenAI API-key providers', async () => {
     const wrapper = mountModal()
     await selectButtonByText(wrapper, 'OpenAI')

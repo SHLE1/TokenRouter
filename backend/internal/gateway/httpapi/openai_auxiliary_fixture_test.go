@@ -14,7 +14,7 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
-// auxiliaryFixtureInputs 只组合辅助请求所需的原生依赖，不构造选择器或完成队列。
+// auxiliaryFixtureInputs 提供辅助请求测试所需的依赖。
 type auxiliaryFixtureInputs struct {
 	allowHTTP     bool
 	transport     httpclient.UpstreamTransport

@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
-// ValidationWeightSource 保持管理写入校验的单次批量读取，不使用热路径 TTL 缓存。
+// ValidationWeightSource 为管理写入校验提供单次批量读取，校验时读取数据库中的当前值。
 type ValidationWeightSource interface {
 	GetMultiple(context.Context, []string) (map[string]string, error)
 }

@@ -27,7 +27,7 @@ func UpstreamRequestIDFromHeaders(provider *acctcore.Record, h http.Header) stri
 }
 
 // usageUpstreamRequestIDPtr 生成落库到 usage_logs.upstream_request_id 的值。
-// WS 轮次没有 HTTP 响应头，保持 nil；超长时截断到列宽而不是让整条用量行失败。
+// WS 轮次的响应头为 nil。超长请求 ID 截断到数据库列宽后写入用量记录。
 func usageUpstreamRequestIDPtr(provider *acctcore.Record, h http.Header, wsMode bool) *string {
 	if wsMode {
 		return nil

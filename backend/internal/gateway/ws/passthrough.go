@@ -17,7 +17,7 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// Run 保留双向 relay，在同一核心中编排每轮策略、完成和失败边界。
+// Run 执行双向 relay，按轮处理策略检查、完成和失败。
 func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, firstClientMessage []byte) error {
 	p, o, hooks := s.Port, s.Options, s.Hooks
 	firstTurnStartedAt := time.Now()
@@ -62,14 +62,9 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 		len(firstClientMessage),
 	))
 
-	// 在首个 response.create 帧上应用 OpenAI Fast Policy。后续帧会通过下方的
-	// FrameConn 包装器过滤，确保每个 client -> upstream 帧都经过与 HTTP 入口相同的
-	// 策略评估、归一化和 scope 处理。
-	//
-	// 这里从首帧分别捕获分组映射模型 G 和最终模型 U，供后续省略 model 的帧回退使用。
-	// Realtime 客户端允许发送不重复声明 model 的 response.create，此时上游会使用
-	// session.update 协商得到的 model。没有这个 fallback 时，空 model 会绕过管理员
-	// 配置的模型白名单并被静默透传，导致首帧之后的每一帧都无法命中该策略。
+	// 首个 response.create 在此应用 Fast 策略，后续帧通过 FrameConn 包装器使用相同评估、规范化和适用范围规则。
+	// 首帧分别保存分组模型 G 和上游模型 U，后续省略 model 时复用。Realtime 可通过 session.update 协商模型，
+	// 策略仍需具体模型才能检查管理员白名单。
 	firstRoutingModel, firstUpstreamModel, resolveModelErr := p.Models(1, requestModel, firstClientMessage)
 	if resolveModelErr != nil {
 		return resolveModelErr
@@ -111,7 +106,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 	} else if compatibilityChanged {
 		firstClientMessage = normalized
 	}
-	// API-Key 兼容清理可能删除无工具请求的 parallel_tool_calls；Lite 契约要求该字段显式为 false。
+	// API Key 兼容清理会移除无工具请求的 parallel_tool_calls，Lite 请求随后将该字段设置为 false。
 	if firstMessageResponsesLite {
 		liteFirstMessage, liteErr := p.NormalizeLite(firstClientMessage)
 		if liteErr != nil {
@@ -150,18 +145,10 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 	}
 	firstClientMessage = updatedFirst
 
-	// 在 policy filter 之后再提取 service_tier / reasoning_effort 用于
-	// usage 上报：filter 命中时 service_tier 已经从 firstClientMessage 中删除，
-	// 最终出站 tier 应为 nil，而不是用户最初请求的 "priority"。观察到的回包
-	// tier 单独保存在 UpstreamResponseServiceTier，由 usage 阶段统一决策。
-	// HTTP 入口（line ~2728 requeststate.ExtractOpenAIServiceTier(reqBody)）
-	// 与 WS ingress（openai_ws_forwarder.go:2991 取自 payload）的语义一致。
-	//
-	// 多轮 passthrough：OpenAI Realtime / Responses WS 协议允许客户端在
-	// 同一连接的不同 response.create 帧上发送不同 service_tier（参考
-	// codex-rs/core/src/client.rs build_responses_request 每次重新填值）。
-	// filter 会把每轮值固化到 turn 队列；原子值仅保存最新会话状态，供缺失
-	// turn 快照的异常和最终汇总路径兜底使用。
+	// 策略 filter 后提取 service_tier 和 reasoning_effort 供用量记录使用，档位被删除时记录 nil。
+	// 响应声明的档位另存于 UpstreamResponseServiceTier，完成阶段据此结算。
+	// 同一连接各轮 response.create 可设置不同档位（见 codex-rs 的 build_responses_request）。
+	// filter 为每轮保存快照，原子值保存最新会话状态，供快照缺失时和最终汇总使用。
 	usageMeta.InitFromFirstFrame(firstClientMessage)
 	promptCacheKey := strings.TrimSpace(gjson.GetBytes(firstClientMessage, "prompt_cache_key").String())
 	turnPayloads := NewTurnPayloadQueue()
@@ -350,7 +337,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 				}
 			}
 
-			// 在写入 U 前先保存客户端会话模型 R，避免后续省略 model 时把上游模型当成新请求再次映射。
+			// 写入上游模型 U 前保存客户端模型 R，后续省略 model 时从 R 重新映射。
 			usageMeta.UpdateSessionRequestModel(payload)
 			requestModelForThisFrame := usageMeta.RequestModelForFrame(payload)
 			routingModel := loadCapturedModel(&capturedSessionRoutingModel)
@@ -386,20 +373,9 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 			}
 			out, blocked, policyErr := p.FastPolicy(ctx, turnNo, model, payload, eventType == "response.create")
 
-			// 多轮 passthrough usage：仅在成功（non-block / non-err）
-			// 的 response.create 帧上更新 usageMeta，使用
-			// filter 处理后的 payload，与首帧 policy-after-extract 语义
-			// 保持一致（参见上方 requeststate.ExtractOpenAIServiceTierFromBody 注释）。
-			//   - 非 response.create 帧（response.cancel /
-			//     conversation.item.create / session.update 等）不携带
-			//     per-response metadata，不应覆盖前一轮值。
-			//   - blocked != nil：该帧不会发送上游，usage metadata 应保持
-			//     上一轮值。
-			//   - policyErr != nil：异常路径，保持上一轮值。
-			//   - 不带 service_tier 的 response.create 会让
-			//     requeststate.ExtractOpenAIServiceTierFromBody 返回 nil；这里有意
-			//     覆盖（Store(nil)），因为 OpenAI 上游对该帧实际不传
-			//     service_tier 时按 default 处理，billing 应如实反映。
+			// 通过策略检查的 response.create 使用 filter 后的 payload 更新 usageMeta，与首帧处理相同。
+			// 其他事件、策略拒绝和策略错误保持前一轮 metadata。
+			// 本轮省略 service_tier 时写入 nil，表示上游使用默认档位。
 			if policyErr == nil && blocked == nil && isResponseCreate {
 				if hooks != nil && hooks.BeforeTurn != nil {
 					if err := hooks.BeforeTurn(turnNo); err != nil {
@@ -458,7 +434,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 		},
 		onBlock: func(blocked *PolicyBlocked) {
 			p.PolicyDenied()
-			// Conn.Write 会同步刷新帧，因此错误事件会先于关闭帧到达，无需显式刷新。
+			// Conn.Write 同步发送帧，错误事件在关闭帧之前到达客户端。
 			eventBytes := p.BlockedEvent(blocked)
 			if eventBytes == nil {
 				return
@@ -613,8 +589,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 				if !ok {
 					return
 				}
-				// 与 handler 的关闭路径保持一致，并限制在 WebSocket 控制帧大小内；
-				// 原因过长会导致 coder/websocket 跳过关闭帧，客户端只能收到 EOF 而非状态码。
+				// 关闭原因限制在 WebSocket 控制帧允许的大小内。超长原因会使 coder/websocket 跳过关闭帧，客户端收到 EOF。
 				reason = p.TruncateReason(reason, 120)
 				_ = clientConn.Close(status, reason)
 				_ = clientConn.CloseNow()
@@ -694,7 +669,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 			relayResult.DroppedDownstreamFrames,
 			turnCount,
 		))
-		// 正常路径按 terminal 事件逐 turn 已回调；仅在零 turn 场景兜底回调一次。
+		// 每个 turn 的 terminal 事件触发回调，零 turn 时在此回调一次。
 		if turnCount == 0 && hooks != nil && hooks.AfterTurn != nil {
 			turnPayload := turnPayloads.Pop()
 			hooks.AfterTurn(TurnCapture{

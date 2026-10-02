@@ -18,39 +18,26 @@ import (
 
 // InitEnt 初始化 Ent ORM 客户端并返回客户端实例和底层的 *sql.DB。
 //
-// 该函数执行以下操作：
-//  1. 初始化全局时区设置，确保时间处理一致性
-//  2. 建立 PostgreSQL 数据库连接
-//  3. 自动执行数据库迁移，确保 schema 与代码同步
-//  4. 创建并返回 Ent 客户端实例
+// 初始化使用 cfg 中的时区和数据库连接配置，依次设置时区、连接数据库、执行 SQL 迁移并创建 Ent 客户端。
 //
-// 重要提示：调用者必须负责关闭返回的 ent.Client（关闭时会自动关闭底层的 driver/db）。
+// 调用方需要关闭返回的 ent.Client，这会同时关闭底层 driver 和数据库连接。
 //
-// 参数：
-//   - cfg: 应用程序配置，包含数据库连接信息和时区设置
-//
-// 返回：
-//   - *ent.Client: Ent ORM 客户端，用于执行数据库操作
-//   - *sql.DB: 底层的 SQL 数据库连接，可用于直接执行原生 SQL
-//   - error: 初始化过程中的错误
+// 底层 *sql.DB 可用于直接执行 SQL，初始化失败时返回错误。
 func InitEnt(ctx context.Context, cfg *config.Config) (_ *ent.Client, _ *sql.DB, resultErr error) {
-	// 优先初始化时区设置，确保所有时间操作使用统一的时区。
-	// 这对于跨时区部署和日志时间戳的一致性至关重要。
+	// 先设置应用时区，后续数据库连接使用同一时区。
 	if err := InitTimezone(cfg.Timezone); err != nil {
 		return nil, nil, err
 	}
 
-	// 构建包含时区信息的数据库连接字符串 (DSN)。
-	// 时区信息会传递给 PostgreSQL，确保数据库层面的时间处理正确。
+	// DSN 将配置的时区传给 PostgreSQL。
 	dsn := cfg.Database.DSNWithTimezone(cfg.Timezone)
 
-	// 使用 Ent 的 SQL 驱动打开 PostgreSQL 连接。
-	// dialect.Postgres 指定使用 PostgreSQL 方言进行 SQL 生成。
+	// 连接 PostgreSQL，随后将连接交给 Ent 的 SQL 驱动。
 	db, err := postgresinfra.Open(dsn, cfg.Server.EnableServerTiming)
 	if err != nil {
 		return nil, nil, err
 	}
-	// 连接一经取得便登记失败回收；成功返回后只由 Ent 拥有底层 SQL 连接。
+	// 取得连接后登记失败回收，成功返回后由 Ent 关闭底层 SQL 连接。
 	defer func() {
 		if resultErr != nil {
 			resultErr = errors.Join(resultErr, db.Close())
@@ -59,9 +46,7 @@ func InitEnt(ctx context.Context, cfg *config.Config) (_ *ent.Client, _ *sql.DB,
 	drv := entsql.OpenDB(dialect.Postgres, db)
 	applyDBPoolSettings(drv.DB(), cfg)
 
-	// 确保数据库 schema 已准备就绪。
-	// SQL 迁移文件是 schema 的权威来源（source of truth）。
-	// 这种方式比 Ent 的自动迁移更可控，支持复杂的迁移场景。
+	// 按 SQL 迁移文件更新数据库结构，迁移和重试共用十分钟预算。
 	migrationCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 	if err := postgresinfra.InitializeWithRetry(migrationCtx, func(ctx context.Context) error {
@@ -73,12 +58,12 @@ func InitEnt(ctx context.Context, cfg *config.Config) (_ *ent.Client, _ *sql.DB,
 	// 创建 Ent 客户端，绑定到已配置的数据库驱动。
 	client := ent.NewClient(ent.Driver(drv))
 
-	// 启动阶段：从配置或数据库中确保系统密钥可用。
+	// 从配置或数据库中取得系统密钥。
 	if err := ensureBootstrapSecrets(migrationCtx, client, cfg); err != nil {
 		return nil, nil, err
 	}
 
-	// 在密钥补齐后执行完整配置校验，避免空 jwt.secret 导致服务运行时失败。
+	// 密钥补齐后校验完整配置，JWT 密钥缺失等错误会在启动阶段返回。
 	if err := cfg.Validate(); err != nil {
 		return nil, nil, fmt.Errorf("validate config after secret bootstrap: %w", err)
 	}

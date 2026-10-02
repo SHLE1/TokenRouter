@@ -7,7 +7,7 @@ import (
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 )
 
-// ProjectOpenAIFailoverError 只投影平台已确认的展示信息，规则解释在新 HTTP 层。
+// ProjectOpenAIFailoverError 提取平台确认的错误展示信息，HTTP 层应用展示规则。
 func ProjectOpenAIFailoverError(err *forwardcore.UpstreamFailoverError) *OpenAIFailoverError {
 	if err == nil {
 		return nil

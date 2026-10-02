@@ -33,7 +33,7 @@ func (h *ManagementHandler) List(c *gin.Context) {
 		search = search[:100]
 	}
 	lite := response.ParseBoolQueryWithDefault(c.Query("lite"), false)
-	// 调度分需要跨候选池批量打分并读取负载，默认列表不计算；只有前端列可见时才显式开启。
+	// 调度评分需要批量读取候选负载，前端展示该列时才请求计算。
 	includeSchedulerScore := response.ParseBoolQueryWithDefault(c.Query("include_scheduler_score"), false)
 
 	var groupID int64

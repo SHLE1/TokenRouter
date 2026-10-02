@@ -47,7 +47,7 @@ func (r *PriceResolver) ResolveBasePricing(model string) (*ModelPricing, string)
 }
 
 // LookupConfigPricingNormalized 优先匹配原始请求，再复用目录的明确身份候选。
-// 候选只解析同一型号的协议资源路径，不要求目录已经收录该型号。
+// 候选解析同一型号的协议资源路径，目录尚未收录的型号也可查询手动配置。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_metadata_lookup
 func (r *PriceResolver) LookupConfigPricingNormalized(ctx context.Context, groupID int64, model string) *ModelPricingEntry {
 	if r == nil || r.pricingConfigs == nil {

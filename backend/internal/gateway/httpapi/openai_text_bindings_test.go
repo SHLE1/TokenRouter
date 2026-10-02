@@ -25,7 +25,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// 嵌入实际投影适配，仅替换会发起用例 I/O 的端口；HTTP 读取和错误输出使用真实实现。
+// 测试嵌入 HTTP 适配器，I/O 接口使用替身，HTTP 读取和错误输出直接调用生产实现。
 type openAITextEntryProbe struct {
 	openAITextHTTPBackend
 	events                          []string

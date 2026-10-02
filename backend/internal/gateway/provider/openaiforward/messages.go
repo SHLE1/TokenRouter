@@ -214,7 +214,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 	}
 
 	// API Key 提供商也通过请求体传递 prompt_cache_key，供兼容 Responses 的上游
-	// 推导稳定会话标识，保持 Messages 桥与原生 Responses 客户端的缓存契约。
+	// 推导稳定会话标识，使 Messages 桥与 Responses 客户端使用相同的缓存标识。
 	if profile.Type == "apikey" {
 		if trimmedKey := strings.TrimSpace(promptCacheKey); trimmedKey != "" {
 			var reqBody map[string]any
@@ -231,8 +231,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 			}
 		}
 	}
-	// Messages 桥只在客户端显式提供 output_config.effort 时绑定策略；此处
-	// 在所有模型/提示词改写完成后统一执行，确保出站请求和计费结果一致。
+	// 客户端提供 output_config.effort 时绑定策略，在模型和提示词改写完成后应用到出站请求和计费结果。
 	if profile.Platform == "openai" {
 		policyBody, changed, policyErr := p.ApplyEffort(ctx, responsesBody)
 		if policyErr != nil {
@@ -247,7 +246,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 	}
 
 	// 4c. Apply OpenAI fast policy (may filter service_tier or block the request).
-	// 按请求体 service_tier 应用与 Claude fast-mode beta 对应的过滤语义。
+	// 按请求体 service_tier 应用 Claude fast-mode beta 的过滤规则。
 	updatedBody, policyErr := p.ApplyFast(ctx, upstreamModel, responsesBody)
 	if policyErr != nil {
 		return nil, policyErr
@@ -322,7 +321,7 @@ func RunMessages(ctx context.Context, body []byte, promptCacheKey, defaultMapped
 		upstreamReq.Header.Set("x-codex-turn-state", compatTurnState)
 	}
 
-	// 发送前固定本次代理投影，保留重试复用的范围。
+	// 发送前取得代理信息，本次重试复用该值。
 	p.PrepareTransport()
 	// Grok 可能拒绝在不同 OAuth 提供商或缓存身份下回放的加密推理。与
 	// forwardGrokResponses 保持一致：先剥离密文并重试一次，再将 400 作为硬失败

@@ -33,7 +33,7 @@ func TestWire_IndexFieldsPresentAtZero(t *testing.T) {
 	require.Contains(t, r, "summary_index")
 }
 
-// TestWire_FunctionCallItemAlwaysComplete 确保 function_call item 始终带
+// TestWire_FunctionCallItemAlwaysComplete 检查 function_call item 带有
 // call_id/name/arguments，包括 .added 时的 arguments:""。
 func TestWire_FunctionCallItemAlwaysComplete(t *testing.T) {
 	added := marshalEvent(t, ResponsesStreamEvent{
@@ -49,7 +49,7 @@ func TestWire_FunctionCallItemAlwaysComplete(t *testing.T) {
 	require.Equal(t, "", item["arguments"])
 }
 
-// TestWire_MessageItemContentAlwaysArray 确保 message item 始终带 content:[]。
+// TestWire_MessageItemContentAlwaysArray 检查空内容的 message item 带有 content:[]。
 func TestWire_MessageItemContentAlwaysArray(t *testing.T) {
 	m := marshalEvent(t, ResponsesStreamEvent{
 		Type:        "response.output_item.added",
@@ -63,7 +63,7 @@ func TestWire_MessageItemContentAlwaysArray(t *testing.T) {
 	require.True(t, ok, "content must be an array")
 }
 
-// TestWire_ReasoningItemSummaryAlwaysArray 确保 reasoning item 始终带 summary:[]。
+// TestWire_ReasoningItemSummaryAlwaysArray 检查空摘要的 reasoning item 带有 summary:[]。
 func TestWire_ReasoningItemSummaryAlwaysArray(t *testing.T) {
 	m := marshalEvent(t, ResponsesStreamEvent{
 		Type:        "response.output_item.added",
@@ -77,7 +77,7 @@ func TestWire_ReasoningItemSummaryAlwaysArray(t *testing.T) {
 	require.True(t, ok, "summary must be an array")
 }
 
-// TestWire_ContentPartCarriesAnnotationsLogprobs 确保 output_text part 字段完整。
+// TestWire_ContentPartCarriesAnnotationsLogprobs 检查 output_text part 带有 annotations 和 logprobs。
 func TestWire_ContentPartCarriesAnnotationsLogprobs(t *testing.T) {
 	m := marshalEvent(t, ResponsesStreamEvent{
 		Type: "response.content_part.added", OutputIndex: 0, ContentIndex: 0, ItemID: "msg_1",
@@ -91,7 +91,7 @@ func TestWire_ContentPartCarriesAnnotationsLogprobs(t *testing.T) {
 	require.Contains(t, part, "logprobs")
 }
 
-// TestWire_ArgumentsDonePresentEvenEmpty 确保 done 事件即使空参数也带 arguments。
+// TestWire_ArgumentsDonePresentEvenEmpty 检查空参数的 done 事件仍带 arguments。
 func TestWire_ArgumentsDonePresentEvenEmpty(t *testing.T) {
 	m := marshalEvent(t, ResponsesStreamEvent{
 		Type: "response.function_call_arguments.done", OutputIndex: 1, ItemID: "fc_1", CallID: "call_a", Name: "exec", Arguments: "",
@@ -100,7 +100,7 @@ func TestWire_ArgumentsDonePresentEvenEmpty(t *testing.T) {
 	require.Equal(t, "", m["arguments"])
 }
 
-// TestWire_CustomToolCallInputIndexPresentAtZero 确保 custom 工具位于首个输出项时，
+// TestWire_CustomToolCallInputIndexPresentAtZero 检查 custom 工具位于首个输出项时，
 // delta/done 事件仍会序列化值为 0 的 output_index。
 func TestWire_CustomToolCallInputIndexPresentAtZero(t *testing.T) {
 	d := marshalEvent(t, ResponsesStreamEvent{
@@ -119,7 +119,7 @@ func TestWire_CustomToolCallInputIndexPresentAtZero(t *testing.T) {
 	require.NotContains(t, done, "delta")
 }
 
-// TestWire_UnknownEventFallsBackToDefault 确保非流式 item 事件继续保留默认序列化。
+// TestWire_UnknownEventFallsBackToDefault 检查未列举的 item 事件使用默认序列化。
 func TestWire_UnknownEventFallsBackToDefault(t *testing.T) {
 	m := marshalEvent(t, ResponsesStreamEvent{
 		Type:     "response.completed",

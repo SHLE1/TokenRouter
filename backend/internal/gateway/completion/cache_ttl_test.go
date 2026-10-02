@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCacheOverrideProjection 验证完成投影只能写回缓存创建明细，图片输入等完成专属计量保持不变。
+// TestCacheOverrideProjection 检查缓存创建明细写回后，图片输入等其他计量值保持原值。
 func TestCacheOverrideProjection(t *testing.T) {
 	value := TokenUsage{InputTokens: 2, ImageInputTokens: 8, CacheCreationInputTokens: 12}
 	require.False(t, applyCacheOverride(&value, "5m"))

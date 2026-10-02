@@ -74,7 +74,7 @@ func openAIProviderModelTransientKey(providerID int64, model string) (openAIProv
 	return openAIProviderModelKey{ProviderID: providerID, Model: model}, true
 }
 
-// RecordFailure 记录一次失败并返回原有阶梯冷却决定。
+// RecordFailure 累加连续失败次数并返回对应的阶梯冷却时间。
 func (s *ModelTransientState) RecordFailure(providerID int64, model string, now time.Time) ModelTransientDecision {
 	key, ok := openAIProviderModelTransientKey(providerID, model)
 	if s == nil || !ok {
@@ -97,7 +97,7 @@ func (s *ModelTransientState) RecordFailure(providerID int64, model string, now 
 	if !exists {
 		s.evictOldestLocked()
 	}
-	// 成功结果负责清零连续失败；此处只在条目超过 TTL 或时钟回拨时丢弃旧状态。
+	// 成功时清零连续失败次数，条目超过 TTL 或时钟回拨时丢弃状态。
 	if !exists || entry.lastFailure.IsZero() || now.Sub(entry.lastFailure) > openAIModelTransientStreakTTL || now.Before(entry.lastFailure) {
 		entry.failureStreak = 0
 		entry.blockUntil = time.Time{}

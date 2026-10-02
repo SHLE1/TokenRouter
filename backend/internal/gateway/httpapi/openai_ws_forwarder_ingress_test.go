@@ -1043,7 +1043,7 @@ func TestCombineOpenAIWSReplayItems(t *testing.T) {
 		delta := []json.RawMessage{json.RawMessage(`{"b":2}`)}
 		combined := openaicore.CombineOpenAIWSReplayItems(history, delta)
 		require.Len(t, combined, 2)
-		// 头数组必须是新建的：对 combined 追加不影响 history。
+		// combined 使用独立的数组，追加元素后 history 保持原样。
 		require.NotSame(t, &history[0], &combined[0])
 		// 正文共享：不发生字节级深拷贝。
 		require.Same(t, &history[0][0], &combined[0][0])

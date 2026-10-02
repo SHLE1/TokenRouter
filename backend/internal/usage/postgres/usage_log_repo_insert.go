@@ -209,7 +209,7 @@ func (r *Store) CreateBestEffort(ctx context.Context, log *usage.UsageLog) error
 		}
 	}
 
-	// 队列满时阻塞等待而非立即丢弃：批处理器持续排空队列，短暂等待即可入队。
+	// 队列满时等待批处理器腾出空间后入队。
 	// 立即丢弃会造成“已扣费但无 usage_log”的永久数据缺口（issue #3656）；
 	// 阻塞上限由调用方 ctx 期限约束，超时后由上层同步兜底。
 	select {
@@ -355,7 +355,7 @@ func (r *Store) createBatched(ctx context.Context, log *usage.UsageLog) (bool, e
 		resultCh: make(chan usageLogCreateResult, 1),
 	}
 
-	// 队列满时阻塞等待而非立即报错：本路径是 best-effort 丢弃后的最后兜底，
+	// 同步补写在队列满时等待可用空间，
 	// 立即失败会让日志永久丢失；阻塞上限由调用方 ctx 期限约束。
 	select {
 	case r.createBatchCh <- req:

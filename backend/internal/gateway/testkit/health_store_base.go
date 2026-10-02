@@ -8,7 +8,7 @@ import (
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 )
 
-// HealthStoreBase 保留原健康夹具的缺失提供商和空写入行为，其余能力未配置即不可调用。
+// HealthStoreBase 提供缺失提供商和空写入的测试结果，其余方法由测试按需配置。
 type HealthStoreBase struct {
 	gatewayadapter.ExecutionProviderStore
 }
