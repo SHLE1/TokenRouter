@@ -95,7 +95,7 @@ creative、batchimage 的核心、HTTP、PostgreSQL、Redis 与平台 Adapter �
 
 前端使用 Vue 3、TypeScript、Pinia、Vue Router、Vue I18n 和项目组件。修改界面时：
 
-- 选择项使用 `frontend/src/components/common/Select.vue` 等自研选择框，不使用原生 `<select>`。
+- 组件、样式和选择框的约定见 [前端 UI 规范](../architecture/frontend_ui_conventions.md)。
 - 用户可见文案进入 `src/i18n/locales/`，中英文 key 保持同构。
 - API 类型和调用放在 `src/api/`，跨页面状态进入 store/composable，避免在 view 复制协议。
 - 修改依赖必须同步 `frontend/pnpm-lock.yaml`，CI 使用 frozen lockfile。

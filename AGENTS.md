@@ -42,10 +42,3 @@
 ## 计划模式
 
 - 使用 Codex 计划模式时，开始实施前把计划原样保存到 `.agents/plans/`，内容和定稿时一字不差，方便执行期间随时回看。执行期间把任务进度追加到计划文件末尾。计划文件留在本地，提交时排除它们。
-
-## 前端规范
-
-- 选择框使用项目自研的 `frontend/src/components/common/Select.vue`。原生 `<select>` 的样式和交互与项目组件对不上。
-- 圆角使用项目定义的 `rounded-compact/control/surface/dialog` 四个类名，以及 `rounded-full`、`rounded-none`。`npm run check:ui` 会拦下 `rounded-sm/md/lg/xl` 等旧尺度名、裸 `rounded` 和 `rounded-[...]` 任意值。
-- 字号最小用 `text-xs`（12px）。`npm run check:ui` 会拦下 `text-[9px]`、`text-[10px]`、`text-[11px]` 这类更小的任意字号。
-- 改了前端样式后，运行 `npm run check:ui` 校验上面的规则。完整约定见 `docs/architecture/frontend_ui_conventions.md`。
