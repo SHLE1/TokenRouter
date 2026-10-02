@@ -19,10 +19,12 @@ import (
 // TestResponseModelBatchRoundTrip 使用真实 PostgreSQL 检验批量 SQL 的列和参数顺序。
 func TestResponseModelBatchRoundTrip(t *testing.T) {
 	ctx := context.Background()
+	// 批量写入会提交到共享数据库，测试结束后由夹具清理数据。
+	client := testEntClient(t)
 	suffix := uuid.NewString()
-	user := mustCreateUser(t, integrationEntClient, &identity.User{Email: suffix + "@response-model.test"})
-	key := mustCreateApiKey(t, integrationEntClient, &apikey.APIKey{UserID: user.ID, Key: suffix, Name: "model"})
-	upstream := mustCreateProvider(t, integrationEntClient, &provider.Record{Name: suffix})
+	user := mustCreateUser(t, client, &identity.User{Email: suffix + "@response-model.test"})
+	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: suffix, Name: "model"})
+	upstream := mustCreateProvider(t, client, &provider.Record{Name: suffix})
 	repo := &Store{}
 	keys := []string{}
 	prepared := map[string]usageLogInsertPrepared{}
