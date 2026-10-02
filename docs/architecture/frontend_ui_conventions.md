@@ -31,7 +31,7 @@
 
 旧尺度名（`rounded-sm/md/lg/xl/2xl/3xl`）、裸 `rounded` 和 `rounded-[...]` 任意值会被门禁拦截；这些旧 key 已经从配置里删除，写了也不会生成样式。裸 CSS 里的 `border-radius` 只能写 `var(--radius-*)`、`0` 或 `9999px`。
 
-例外只有一种：边长不超过 16px 的微型装饰元素（例如用量热力图 12px 的格子）。最小档 compact 的 6px 已经是这类元素边长的一半，看起来接近椭圆，所以允许用组件级的局部变量设更小的半径（例如 `.heatmap-cell` 的 `--radius-cell: 4px`）。全局档位保持上表的几档。
+例外有两种。第一种是边长不超过 16px 的微型装饰元素（例如用量热力图 12px 的格子）。最小档 compact 的 6px 已经是这类元素边长的一半，看起来接近椭圆，所以允许用组件级的局部变量设更小的半径（例如 `.heatmap-cell` 的 `--radius-cell: 4px`）。第二种是创作台输入框 `CreativeComposer` 的外壳，它的 `--composer-radius` 取 `dialog` 和 `control` 之和（24px），让悬浮在画布底部的输入框更圆润。全局档位保持上表的几档。
 
 <a id="layout_spacing"></a>
 ## 间距约定
@@ -86,6 +86,7 @@
   - 面板里有输入框状态，或者测试需要直接访问字段时，传 `keep-mounted`；运维看板这类自定义按钮样式用 `trigger-class` 覆盖。
 - 日期范围用 `DateRangePicker`：左侧是分组的快捷范围，右侧是自绘的单月日历，原生 `type="date"` 输入不再使用。在日历上点两次确定起止日期，反向点选时自动对调。起止日期和主按钮同色，中间的日期用淡品牌青色带连起来，今天用小圆点标出。最晚可以选到明天，用来兼容时区差异。没点应用就取消、点外部或按 Esc 关闭时，改动全部丢弃，触发器只显示已经生效的范围。弹层由 `getFloatingPanelPosition` 定位：触发器在视口右半边时右对齐，在左半边时左对齐。
 - 表格行内的操作菜单（4 个 `*ActionMenu`）的浮层容器用 `.action-menu` 类（fixed 定位、层级和面板样式），宽度类（w-48/w-52）和 `action-menu-content` 钩子类写在调用处。
+- 创作台画布上的浮层（顶部工具条、设置、历史、输入框、空画布引导的胶囊）用 `.canvas-island`：85% 不透明的白底或 `dark-900` 底、淡描边、背景模糊和一档柔和阴影，深色模式减弱阴影。浮层里的 32px 图标按钮用 `.canvas-tool-btn`，选中态加 `.canvas-tool-btn-active`，按钮组之间用 `.canvas-tool-divider`。展开的菜单和弹层用实底的 `.dropdown` 或同等样式。
 - 遮罩透明度有两档，都来自 CSS 变量：浅色模式在 `:root` 定义常规遮罩 `--overlay-bg`（black/50）和媒体灯箱等使用的强遮罩 `--overlay-bg-strong`（black/70）；深色模式在 `html.dark` 中整体加深为 black/70 和 black/85。模板写 `bg-[var(--overlay-bg)]`，`bg-black/50` 这类字面值会被门禁拦截。
 - 浮层面板的最大高度有三档，来自 `:root` 的 `--max-h-menu-sm`（15rem）、`--max-h-menu`（20rem）、`--max-h-panel`（26.25rem），模板里对应 `max-h-menu-sm/menu/panel`。像素任意值 `max-h-[Npx]` 会被门禁拦截，局部特例（例如告警表的 520px）加 `check-ui-allow` 并写明原因。vh、dvh、calc 等相对视口的值含义不同，不归入这三档，门禁也不拦截。
 - 挂载到 body 的浮层，定位只有一个实现：`utils/floatingPanel.ts` 的 `getFloatingPanelPosition`。翻转、对齐、夹取和窄屏行为都通过 options 控制：固定高度的菜单用 `fixedHeight`，左对齐面板用 `align: 'left'`，菜单类传 `pinLeftOnMobile: false`。组件里自己计算 rect 和 spaceBelow 做翻转，会和这个实现产生分歧。JS 侧的面板尺寸常量在 `constants/overlay.ts`（`SELECT_PANEL_MAX_HEIGHT`、`MIN_COMFORTABLE_PANEL_HEIGHT`），和样式档位取值一致。
@@ -180,6 +181,8 @@
 导航、分段控件和列表选中行使用 `primary-500/8` 的淡品牌青底和 `primary-500` 文字，带边框的选中控件用 `primary-500/15`。侧栏和 Select 未选中项的 hover 用 `dark-800` 弱填充和品牌青文字；已选中项在 hover 或获得键盘焦点时保持选中底色。主操作、链接、开关和图表使用品牌青；状态色和徽章使用各自的配色。
 
 输入框焦点、次级按钮焦点和 Select 展开时，使用 `dark-400` 边线（灰白 30%）和 `white/6` 外圈。按钮在深色模式下的焦点环 offset 用 `dark-900`。深色遮罩由 `html.dark` 把 `--overlay-bg` 和 `--overlay-bg-strong` 加深到 0.7 和 0.85。
+
+新手引导的中英文 HTML 通过 `styles/onboarding.css` 的 `--tour-*` 变量读取提示框背景、操作提示和辅助文字颜色。深色提示框用 12% 透明度的状态色背景，正文继承弹窗文字色，操作提示用品牌青，辅助文字用 `dark-300`。
 
 ## 图表主题
 
