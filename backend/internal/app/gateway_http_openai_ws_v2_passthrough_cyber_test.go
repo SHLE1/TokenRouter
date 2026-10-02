@@ -387,7 +387,7 @@ func TestOpenAIResponsesWebSocketDeletedKeyRejectsFollowup(t *testing.T) {
 			reached <- false
 			return
 		}
-		defer conn.CloseNow()
+		defer func() { _ = conn.CloseNow() }()
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
 		if _, _, err = conn.Read(ctx); err != nil {
