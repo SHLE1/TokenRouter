@@ -21,7 +21,7 @@ return 1
 
 // MigrateProviderNames 在旧实例全部停止后迁移运行状态；扫描游标按批保存，失败后可重试。
 // 粘性绑定和 RPM 键本身不含 account，值为 ID，无需改写；快照由版本隔离后重建。
-// @project-doc docs/operations/deployment_and_migrations.md#provider_name_migration
+// @project-doc docs/operations/upgrade_notes.md#provider_name_migration
 func MigrateProviderNames(ctx context.Context, client *redis.Client) error {
 	done, err := client.HGet(ctx, providerMigrationState, "done").Result()
 	if err != nil && err != redis.Nil {

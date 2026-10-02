@@ -1,50 +1,50 @@
 # 上游提供商能力矩阵
 
-本文统一记录 TokenRouter 九个平台、七类提供商和公开网关协议的当前支持边界。它是提供商能力的路由入口，不替代各平台专题中的认证、转换、限流和诊断细节，也不把数据导入器能够保存的历史组合视为正式支持。
+本文汇总 TokenRouter 九个平台、七类提供商和公开网关协议目前的支持情况，是查找提供商能力的入口。认证、转换、限流和诊断的细节见各平台的文档。数据导入器能保存的历史组合，不等于正式支持。
 
 ## 章节导航
 
-- [判定口径](#判定口径)：理解矩阵中的支持等级。
-- [提供商支持矩阵](#提供商支持矩阵)：核对平台和提供商类型组合。
-- [公开网关协议](#公开网关协议)：从入口路由到平台专题。
-- [跨层约束](#跨层约束)：判断提供商为何创建成功但仍不可调度。
-- [已确认冲突](#已确认冲突)：查看尚未形成完整运行契约的组合。
+- [支持等级](#支持等级)：矩阵里各个等级的含义。
+- [提供商支持矩阵](#提供商支持矩阵)：平台和提供商类型的组合。
+- [公开网关协议](#公开网关协议)：从入口找到对应的平台文档。
+- [跨层约束](#跨层约束)：提供商创建成功、却仍然调度不到的原因。
+- [已确认冲突](#已确认冲突)：还没有形成完整运行约定的组合。
 
-## 判定口径
+## 支持等级
 
-后端常量定义九个平台 `anthropic`、`openai`、`gemini`、`antigravity`、`grok`、`qoder`、`kimi`、`zhipu`、`deepseek`，以及七类提供商 `oauth`、`setup-token`、`apikey`、`upstream`、`bedrock`、`service_account`、`cosy`。矩阵使用以下等级：
+后端常量定义了九个平台：`anthropic`、`openai`、`gemini`、`antigravity`、`grok`、`qoder`、`kimi`、`zhipu`、`deepseek`；七类提供商：`oauth`、`setup-token`、`apikey`、`upstream`、`bedrock`、`service_account`、`cosy`。矩阵使用以下等级：
 
-- 正式支持：管理端有创建或授权流程，平台运行时也有对应凭据、转发和维护契约。
-- 兼容保留：通用创建/导入层可以保存，或旧运行路径仍会识别，但管理端不推荐该组合；不能据此推导完整平台能力。
-- 不支持：创建校验明确拒绝，或该类型被限定给另一个平台。
-- 契约冲突：管理端与运行时对同一组合的类型解释不同；在实现统一前不作为正式支持承诺。
+- 正式支持：管理端有创建或授权流程，平台运行时也有对应的凭据、转发和维护实现。
+- 兼容保留：通用的创建或导入层可以保存，或者旧的运行路径还能识别，但管理端不推荐这个组合；它的平台能力并不完整。
+- 不支持：创建校验明确拒绝，或者这个类型只属于另一个平台。
+- 约定冲突：管理端和运行时对同一组合的类型理解不一致；统一之前，不作为正式支持。
 
-通用数据导入器除 Qoder/COSY 的双向限制外，会接受多种历史组合。这只是迁移兼容性；真正的可调度性仍由平台 token provider、协议处理器、提供商状态、模型和 endpoint 能力共同决定。分组可关联任意平台提供商；平台只属于提供商与实际执行记录，不由分组名称或模型族推断。
+除了 Qoder 和 COSY 的双向限制，通用数据导入器接受多种历史组合，这只是为了迁移兼容。能否调度，由平台的 token provider、协议处理器、提供商状态、模型和 endpoint 能力共同决定。分组可以关联任何平台的提供商；平台只属于提供商和实际的执行记录，分组名称和模型族都看不出平台。
 
 ## 提供商支持矩阵
 
 | 平台 | OAuth | Setup Token | API Key | Upstream | Bedrock | Service Account | Cosy |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Anthropic | 正式支持 | 正式支持 | 正式支持 | 兼容导入，无正式转发契约 | 正式支持 | 正式支持（Vertex AI） | 不支持 |
-| OpenAI | 正式支持 | 兼容导入，无正式转发契约 | 正式支持 | 兼容导入，无正式转发契约 | 兼容导入，无正式转发契约 | 兼容导入，无正式转发契约 | 不支持 |
-| Gemini | 正式支持 | 兼容导入，无正式转发契约 | 正式支持 | 兼容导入，无正式转发契约 | 兼容导入，无正式转发契约 | 正式支持（Vertex AI） | 不支持 |
-| Antigravity | 正式支持 | 兼容导入，无正式转发契约 | 契约冲突，见下文 | 兼容保留（旧 Claude 直连） | 兼容导入，无正式转发契约 | 兼容导入，无正式转发契约 | 不支持 |
-| Grok | 正式支持 | 兼容导入，无正式转发契约 | 正式支持 | 兼容导入，无正式转发契约 | 兼容导入，无正式转发契约 | 兼容导入，无正式转发契约 | 不支持 |
+| Anthropic | 正式支持 | 正式支持 | 正式支持 | 兼容导入，没有正式的转发实现 | 正式支持 | 正式支持（Vertex AI） | 不支持 |
+| OpenAI | 正式支持 | 兼容导入，没有正式的转发实现 | 正式支持 | 兼容导入，没有正式的转发实现 | 兼容导入，没有正式的转发实现 | 兼容导入，没有正式的转发实现 | 不支持 |
+| Gemini | 正式支持 | 兼容导入，没有正式的转发实现 | 正式支持 | 兼容导入，没有正式的转发实现 | 兼容导入，没有正式的转发实现 | 正式支持（Vertex AI） | 不支持 |
+| Antigravity | 正式支持 | 兼容导入，没有正式的转发实现 | 约定冲突，见下文 | 兼容保留（旧的 Claude 直连） | 兼容导入，没有正式的转发实现 | 兼容导入，没有正式的转发实现 | 不支持 |
+| Grok | 正式支持 | 兼容导入，没有正式的转发实现 | 正式支持 | 兼容导入，没有正式的转发实现 | 兼容导入，没有正式的转发实现 | 兼容导入，没有正式的转发实现 | 不支持 |
 | Qoder | 不支持 | 不支持 | 不支持 | 不支持 | 不支持 | 不支持 | 正式支持 |
 | Kimi | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
 | Zhipu | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
 | DeepSeek | 不支持 | 不支持 | 正式支持 | 不支持 | 不支持 | 不支持 | 不支持 |
 
-API Key 提供商可以在管理员列表配置并手动查询上游用量。普通兼容上游缺省使用 Sub2API 适配器，New API 和 Zivv 必须显式选择；Kimi、Zhipu、DeepSeek 则由平台与 `provider_mode` 自动选择固定只读适配器，Zhipu payg 因没有公开余额协议而明确不支持。手动查询协议错误只影响展示，不改变转发资格。API Key 行同时保留 TokenRouter 本地今日统计/本地配额和上游余额/周期限额两个来源；只有显式开启的 CN 周期监控可以把同一查询结果写入统一快照并形成身份绑定的临时停调，详见[API Key 上游用量查询](upstream_usage.md)。
+API Key 提供商可以在管理员列表里配置并手动查询上游用量。普通的兼容上游默认使用 Sub2API 适配器，New API 和 Zivv 需要手动选择；Kimi、Zhipu、DeepSeek 按平台和 `provider_mode` 自动选择固定的只读适配器，Zhipu payg 没有公开的余额协议，所以不支持查询。手动查询的协议错误只影响展示，转发资格不受影响。API Key 行同时展示两类数据：TokenRouter 本地的今日统计和本地配额，以及上游的余额和周期限额。只有手动开启的 CN 周期监控，才会把同样的查询结果写进统一快照，并据此对这个身份临时停调，详见 [API Key 上游用量查询](upstream_usage.md)。
 
 <a id="cn_provider_protocols"></a>
 ### 国产平台提供商协议
 
-Kimi、Zhipu 和 DeepSeek 只接受 `type=apikey`。提供商模式独立于原生协议集合：DeepSeek 仅 `payg`，Kimi/Zhipu 支持 `payg` 和 `coding`。DeepSeek/Kimi 原生集合包含 Messages、Responses、Chat；Zhipu 仅 Messages、Chat。原生集合统一保存为 `credentials.upstream_protocols`，可全部关闭；非法组合保持拒绝。
+Kimi、Zhipu 和 DeepSeek 只接受 `type=apikey`。提供商模式和原生协议集合互相独立：DeepSeek 只有 `payg`，Kimi 和 Zhipu 支持 `payg` 和 `coding`。DeepSeek 和 Kimi 的原生集合包括 Messages、Responses、Chat；Zhipu 只有 Messages 和 Chat。原生集合统一保存在 `credentials.upstream_protocols`，可以全部关闭；非法组合被拒绝。
 
-新建 CN 表单默认启用全部原生项。旧输入缺省仍按 `payg + chat_completions` 转换；旧 `adaptive` 转全部原生项，其余转对应单项。旧协议错误继续使用 HTTP 400 / `CN_PROVIDER_PROTOCOL_INVALID`。`api_base_urls` 保留自定义地址，详见[统一协议能力](protocol_capabilities.md#account_native_protocols)。用量查询和模型同步保持独立地址语义。
+新建 CN 提供商的表单默认启用全部原生项。旧输入缺省时，按 `payg + chat_completions` 转换；旧的 `adaptive` 转成全部原生项，其他值转成对应的单项。旧协议出错时返回 HTTP 400 / `CN_PROVIDER_PROTOCOL_INVALID`。`api_base_urls` 保存自定义地址，详见[统一协议能力](protocol_capabilities.md#account_native_protocols)。用量查询和模型同步各自使用自己的地址。
 
-### 平台专题
+### 平台文档
 
 - [Anthropic 上游](anthropic_upstream.md)
 - [OpenAI 上游](openai_upstream.md)
@@ -53,50 +53,50 @@ Kimi、Zhipu 和 DeepSeek 只接受 `type=apikey`。提供商模式独立于原�
 - [Grok / xAI 上游](grok_upstream.md)
 - [Qoder 原生上游](qoder_upstream.md)
 
-Kimi、Zhipu、DeepSeek 的提供商类型、模式与协议矩阵由本页和[API Key 上游用量查询](upstream_usage.md)共同拥有；新增独立认证、OAuth 或供应商专属管理 API 前必须先建立对应平台专题。
+Kimi、Zhipu、DeepSeek 的提供商类型、模式和协议矩阵，写在本页和 [API Key 上游用量查询](upstream_usage.md) 里；如果要为它们新增独立的认证、OAuth 或供应商专属的管理 API，先建立对应的平台文档。
 
 <a id="public_gateway_protocols"></a>
 ## 公开网关协议
 
-所有 21 个客户端业务入口使用分组 `allowed_protocols` 控制；另外 3 个上游专用项仅在提供商集合中显示。完整清单和认证边界见[统一协议能力](protocol_capabilities.md#protocol_catalog)。原生优先，无法原生承接时按分组的自动模式或有序目标列表选择现有单步转换；显式空目标列表只允许原生；HTTP/SSE 共用项，Responses WebSocket 独立。
+21 个客户端业务入口都由分组的 `allowed_protocols` 控制；另外 3 个上游专用项只出现在提供商的集合里。完整的清单和认证规则见[统一协议能力](protocol_capabilities.md#protocol_catalog)。原生协议优先；无法原生处理时，按分组的自动模式或有序的目标列表选择已有的单步转换；目标列表明确为空时，只允许原生协议。HTTP 和 SSE 共用一项，Responses WebSocket 单独一项。
 
-| 协议族或入口 | 当前平台边界 | 专题路由 |
+| 协议族或入口 | 平台支持情况 | 相关文档 |
 | --- | --- | --- |
-| Anthropic Messages：`/v1/messages` | 分组允许 Messages 后，从组内筛出可处理模型的提供商，再按实际提供商转换或原生转发 | 各平台契约；共同链路见[网关请求生命周期](../architecture/gateway_request_lifecycle.md) |
-| Anthropic token count：`/v1/messages/count_tokens`、`/messages/count_tokens` | Anthropic、OpenAI、Gemini 进入各自统计路径，Grok 与三个 CN 平台使用本地估算；Antigravity、Qoder 明确返回 `404`，Anthropic Bedrock 提供商也不支持 | 各平台契约；客户端仍应保留本地估算回退 |
-| OpenAI Responses：`/v1/responses`、`/responses` 及允许的子路径 | 最终分组允许 Responses 时，按选中提供商进入九个平台的既有适配；Kimi/Zhipu 不要求提供商拥有上游原生 Responses，DeepSeek 可显式使用其 `/responses`；Qoder 不支持 Responses 子路径和 WebSocket | 各平台契约；WebSocket/Realtime 重点见 [OpenAI 上游](openai_upstream.md) |
-| OpenAI Chat Completions：`/v1/chat/completions`、`/chat/completions` | 最终分组允许 Chat 后按组内候选的原生能力和允许转换路线选择提供商 | 各平台契约 |
-| 模型与用量：`/v1/models`、`/models`、`/v1/usage` | 按 Key、分组和提供商解析可请求模型与本地额度；不是上游模型列表或账单的原样代理 | [模型目录与市场](model_catalog_and_marketplace.md)及各平台专题 |
-| Embeddings：`/v1/embeddings`、`/embeddings` | 分组允许 Embeddings，候选提供商具备 OpenAI Embeddings 能力 | [OpenAI 上游](openai_upstream.md) |
-| Realtime、Live 与 Alpha Search | Live/sideband、Codex realtime 和 alpha search 仅 OpenAI 平台；是否可用还受分组和提供商能力限制 | [OpenAI 上游](openai_upstream.md) |
-| 同步图片生成/编辑 | 仅 OpenAI 与 Grok；对应 Images 生成/编辑入口和提供商能力继续收窄范围 | [OpenAI 上游](openai_upstream.md)、[Grok / xAI 上游](grok_upstream.md) |
-| 批量图片作业 | Gemini/Vertex 使用独立任务生命周期；供应商范围由批量图片领域契约定义 | [批量图片作业](../domains/batch_image_jobs.md) |
-| 视频生成、编辑、扩展、查询和下载 | 新任务仅 Grok；复合 Key 可凭持久任务绑定查询既有任务 | [Grok / xAI 上游](grok_upstream.md) |
-| Gemini v1beta：`/v1beta/models/*` | 分组允许 Gemini 协议，且候选 Gemini/Antigravity 提供商具备相应能力时承接生成、流式生成和 token 统计；模型列表 GET 不受开关影响 | [Gemini 上游](gemini_upstream.md)、[Antigravity 上游](antigravity_upstream.md) |
-| Antigravity 专用入口：`/antigravity/*` | 在当前分组成员中进一步限定 Antigravity 提供商 | [Antigravity 上游](antigravity_upstream.md) |
+| Anthropic Messages：`/v1/messages` | 分组允许 Messages 后，从组内选出能处理这个模型的提供商，再按实际的提供商转换或原生转发 | 各平台文档；共同链路见[网关请求生命周期](../architecture/gateway_request_lifecycle.md) |
+| Anthropic token count：`/v1/messages/count_tokens`、`/messages/count_tokens` | Anthropic、OpenAI、Gemini 走各自的统计路径，Grok 和三个 CN 平台在本地估算；Antigravity 和 Qoder 返回 `404`，Anthropic 的 Bedrock 提供商也不支持 | 各平台文档；客户端应保留本地估算作为回退 |
+| OpenAI Responses：`/v1/responses`、`/responses` 和允许的子路径 | 最终分组允许 Responses 时，按选中的提供商进入九个平台各自的适配；Kimi 和 Zhipu 不要求提供商有上游原生的 Responses，DeepSeek 可以手动使用它的 `/responses`；Qoder 不支持 Responses 子路径和 WebSocket | 各平台文档；WebSocket 和 Realtime 见 [OpenAI 上游](openai_upstream.md) |
+| OpenAI Chat Completions：`/v1/chat/completions`、`/chat/completions` | 最终分组允许 Chat 后，按组内候选的原生能力和允许的转换路线选择提供商 | 各平台文档 |
+| 模型和用量：`/v1/models`、`/models`、`/v1/usage` | 按 Key、分组和提供商解析可以请求的模型和本地额度；返回的是 TokenRouter 的结果，不是上游模型列表或账单的原样转发 | [模型目录与市场](model_catalog_and_marketplace.md) 和各平台文档 |
+| Embeddings：`/v1/embeddings`、`/embeddings` | 分组允许 Embeddings，并且候选提供商具备 OpenAI Embeddings 能力 | [OpenAI 上游](openai_upstream.md) |
+| Realtime、Live 和 Alpha Search | Live 和 sideband、Codex realtime、alpha search 只支持 OpenAI 平台；是否可用还受分组和提供商能力限制 | [OpenAI 上游](openai_upstream.md) |
+| 同步图片生成和编辑 | 只支持 OpenAI 和 Grok；对应的 Images 入口和提供商能力会进一步缩小范围 | [OpenAI 上游](openai_upstream.md)、[Grok / xAI 上游](grok_upstream.md) |
+| 批量图片作业 | Gemini 和 Vertex 使用独立的任务生命周期；供应商范围见批量图片文档 | [批量图片作业](../domains/batch_image_jobs.md) |
+| 视频生成、编辑、扩展、查询和下载 | 新任务只支持 Grok；复合 Key 可以凭持久化的任务绑定查询已有任务 | [Grok / xAI 上游](grok_upstream.md) |
+| Gemini v1beta：`/v1beta/models/*` | 分组允许 Gemini 协议，并且候选的 Gemini 或 Antigravity 提供商具备相应能力时，处理生成、流式生成和 token 统计；模型列表的 GET 不受开关影响 | [Gemini 上游](gemini_upstream.md)、[Antigravity 上游](antigravity_upstream.md) |
+| Antigravity 专用入口：`/antigravity/*` | 在当前分组的成员里，进一步限定为 Antigravity 提供商 | [Antigravity 上游](antigravity_upstream.md) |
 
-路由存在不代表任意分组或提供商类型都能承接。协议门禁在提供商选择前按最终分组执行；通过后按提供商快照校验模型、原生协议、允许转换、transport、endpoint capability、媒体资格和其它分组策略，选中提供商后再调用对应平台执行器。Gemini Responses 已有正式非流和 SSE 转换，保留 reasoning、工具调用、usage、结束原因与首次 Token 指标；首个客户端字节写出后不再 failover。
+路由存在，不代表任何分组或提供商类型都能处理。协议门禁在选择提供商之前，按最终分组执行；通过之后，按提供商快照校验模型、原生协议、允许的转换、transport、endpoint capability、媒体资格和其他分组策略，选中提供商后再调用对应平台的执行器。Gemini 的 Responses 已经有正式的非流式和 SSE 转换，保留 reasoning、工具调用、usage、结束原因和首 Token 指标；写出第一个客户端字节之后，不再 failover。
 
-公开协议不再包含 Key 账单自省或上游声明倍率入口。`GET /v1/sub2api/billing` 未注册并返回普通 `404`；提供商本地 `rate_multiplier` 和价格配置的上游计费模型来源仍属于结算配置，不代表从上游探测到的声明倍率。管理员 API Key 用量查询属于独立的手动展示接口，详见 [API Key 上游用量查询](upstream_usage.md)。
+公开协议里没有 Key 账单自省和上游声明倍率的入口；`GET /v1/sub2api/billing` 没有注册，返回普通的 `404`。提供商本地的 `rate_multiplier` 和价格配置里的上游计费模型来源属于结算配置，和从上游探测到的倍率无关。管理员的 API Key 用量查询是独立的手动展示接口，详见 [API Key 上游用量查询](upstream_usage.md)。
 
 ## 跨层约束
 
-一个提供商能够承接请求，需要同时满足：
+一个提供商要能处理请求，需要同时满足：
 
-1. 平台与提供商类型有实际 token/签名实现，而不只是导入器接受字段。
-2. 提供商 active、schedulable、未过期、未处于提供商或模型限流期，并属于目标分组。
-3. 分组允许对应协议或媒体能力，分组和提供商的模型规则均允许最终模型。
-4. OAuth-only、隐私状态、客户端限制、transport capability 和站点/区域等平台策略通过。
-5. 并发槽、等待队列和粘性约束允许本次选择。
+1. 平台和提供商类型有实际的 token 或签名实现，而不只是导入器能接受这些字段。
+2. 提供商处于 active、schedulable，没有过期，不在提供商级或模型级的限流期内，并且属于目标分组。
+3. 分组允许对应的协议或媒体能力，分组和提供商的模型规则都允许最终的模型。
+4. OAuth-only、隐私状态、客户端限制、transport capability 和站点、区域等平台策略都通过。
+5. 并发槽、等待队列和粘性约束允许这次选择。
 
-提供商模型白名单为空时使用所属平台及认证类型的默认目录，显式模型、映射或末尾通配符可以声明自定义范围。`*` 也不能绕过本页的认证、协议和端点能力。提供商可以不加入任何分组，standard/simple 两种模式都不会据此将它纳入其他分组。
+提供商的模型白名单为空时，使用所属平台和认证类型的默认目录；手动配置的模型、映射或末尾通配符可以声明自定义的范围。`*` 同样受本页的认证、协议和端点能力限制。提供商可以不加入任何分组，standard 和 simple 两种模式都不会因此把它加进别的分组。
 
-混合提供商不再触发 Anthropic/Antigravity 关联确认，也不需要 `mixed_scheduling` 开关。同一会话中的签名、上游响应 ID 和 WS/Live 状态仍按实际提供商约束处理，不能因同组而跨供应商复用。
+混合提供商不再触发 Anthropic 和 Antigravity 的关联确认，也不需要 `mixed_scheduling` 开关。同一个会话里的签名、上游响应 ID、WS 和 Live 状态，仍按实际的提供商约束；同一分组里的不同供应商之间不能复用这些状态。
 
-提供商选择和快照一致性见[提供商调度与缓存一致性](../architecture/provider_scheduling_and_cache.md)，分组/价格策略见[网关策略控制](../domains/gateway_policy_controls.md)，凭据和健康恢复见[提供商维护](../operations/provider_maintenance.md)。
+提供商选择和快照一致性见[提供商调度与缓存一致性](../architecture/provider_scheduling_and_cache.md)，分组和价格策略见[网关策略控制](../domains/gateway_policy_controls.md)，凭据和健康恢复见[提供商维护](../operations/provider_maintenance.md)。
 
 ## 已确认冲突
 
-Antigravity 管理端把“静态上游”表单保存为 `type=apikey`，但当前 Antigravity Claude 直连和 token provider 的静态分支只识别历史 `type=upstream`；OpenAI Chat/Responses 兼容路径又明确要求原生 OAuth。两者不能被描述为等价提供商类型。在代码和契约测试统一前，新的 Antigravity 静态提供商不应被视为完整正式支持。
+Antigravity 管理端把"静态上游"表单保存为 `type=apikey`，但目前 Antigravity 的 Claude 直连和 token provider 的静态分支只识别历史上的 `type=upstream`；OpenAI Chat 和 Responses 的兼容路径又要求原生的 OAuth。两者的提供商类型并不等价。代码和接口测试统一之前，新建的 Antigravity 静态提供商不算完整的正式支持。
 
 相关文档：[接口目录](index.md)、[提供商维护](../operations/provider_maintenance.md)、[上游传输安全](../operations/upstream_transport_security.md)。

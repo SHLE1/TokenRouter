@@ -49,7 +49,7 @@ nano .env
 ./apple-container.sh logs app
 ```
 
-环境文件使用字面量 `KEY=value` 语法。不要使用 `${VALUE:-default}` 等 Compose 表达式，也不要给值加引号，除非引号本身就是值的一部分。`BIND_HOST` 必须是 IPv4 地址，`SERVER_PORT` 必须介于 1025 与 65535 之间。
+环境文件使用字面量 `KEY=value` 语法。不要使用 `${VALUE:-default}` 等 Compose 表达式，也不要给值加引号，除非引号本身就是值的一部分。`BIND_HOST` 需要是 IPv4 地址，`SERVER_PORT` 需要在 1025 到 65535 之间。
 
 ## 常用命令
 
@@ -132,13 +132,13 @@ Apple 工作流对共用设置的处理如下：
 | 网络 | `tokenrouter-apple` |
 | 卷 | `tokenrouter-apple-data`、`tokenrouter-apple-postgres-data`、`tokenrouter-apple-redis-data` |
 
-PostgreSQL 卷挂载到 `/var/lib/postgresql`，从而保留 PostgreSQL 18 默认的子数据目录。TokenRouter 和 Redis 也把数据保存在各自 Apple 卷挂载点下的子目录中。Apple 命名卷不具备 Docker 的初始内容复制和挂载点所有权行为，因此必须采用这种目录结构。
+PostgreSQL 卷挂载到 `/var/lib/postgresql`，从而保留 PostgreSQL 18 默认的子数据目录。TokenRouter 和 Redis 也把数据保存在各自 Apple 卷挂载点下的子目录中。Apple 命名卷没有 Docker 那样的初始内容复制和挂载点所有权处理，所以需要使用这种目录结构。
 
 ## 网络
 
 Apple `container` 1.1 不提供 Compose 风格的网络内服务别名。PostgreSQL 和 Redis 启动后，脚本通过 `container inspect` 读取它们当前的私有网络 IPv4 地址，将地址注入新创建的应用容器，再启动 TokenRouter。脚本不会修改 `~/.config/container/config.toml` 或 macOS 宿主机解析器。
 
-三个服务只连接到私有 `tokenrouter-apple` 网络。只有应用发布宿主机端口，数据库和 Redis 端口不会公开。
+三个服务只连接到私有 `tokenrouter-apple` 网络。宿主机端口只由应用发布，数据库和 Redis 的端口留在私有网络里。
 
 每次执行 `up` 和 `restart` 都会重新创建应用容器，因为依赖虚拟机停止后地址可能变化。应用数据保留在 `tokenrouter-apple-data` 中。
 
@@ -218,12 +218,12 @@ container system start
 - 没有与 `restart: unless-stopped` 等价的机制。重启后需要运行 `up`，也可以自行配置 launchd 监督进程。
 - 健康探测只在 `up`、`restart` 和 `status` 期间运行；Apple `container` 不会持续调度探测。
 - Docker Compose、Testcontainers、Buildx 以及依赖 `/var/run/docker.sock` 的工具不能直接使用该运行时。
-- 将该工作流用于重要数据前，必须验证命名卷的备份和恢复流程。
+- 把这个工作流用于重要数据之前，先验证命名卷的备份和恢复流程。
 - 脚本面向原生 `linux/arm64` 镜像，TokenRouter 正常发布物包含 arm64 版本。
 - 包括凭据在内的运行环境值会保留在 Apple container 配置中，能够检查本地运行时的用户可以看到这些值。
 
 ## 旧命名资源兼容
 
-已有 `sub2api-apple*` 容器、网络和卷会原位复用，仍要求 `org.sub2api.stack=apple-container` 归属标签。新部署使用本文中的 `tokenrouter-apple*` 名称。新旧资源同时存在时命令失败，不会合并或删除其中一套。操作旧栈备份、恢复时，命令中的容器和卷名应使用实际旧名称。
+已有 `sub2api-apple*` 容器、网络和卷会原位复用，仍要求 `org.sub2api.stack=apple-container` 归属标签。新部署使用本文中的 `tokenrouter-apple*` 名称。新旧资源同时存在时，命令直接失败，两套资源都保持原样。操作旧栈备份、恢复时，命令中的容器和卷名应使用实际旧名称。
 
 `SUB2API_ENV_FILE` 和环境文件里的 `APPLE_CONTAINER_SUB2API_IMAGE` 仍可读取；非空 `TOKENROUTER_ENV_FILE` 优先，非空的新镜像配置优先。已有 `.env` 不自动改写，数据库用户、库名、密码和安全密钥继续保留。

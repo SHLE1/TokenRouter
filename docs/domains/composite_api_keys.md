@@ -27,7 +27,7 @@
 }
 ```
 
-更新接口对 `composite_groups` 使用完整替换语义。复合 Key 不能同时提交 `group_id`。从复合 Key 转回普通 Key 时必须提交 `is_composite: false` 和目标 `group_id`。
+更新接口对 `composite_groups` 整体替换。复合 Key 的更新请求如果同时带 `group_id`，会被拒绝。从复合 Key 转回普通 Key 时必须提交 `is_composite: false` 和目标 `group_id`。
 
 每个复合 Key 可配置 1 至 20 个映射。同一 Key 内分组不能重复，前缀按小写判重。前缀去除首尾空格后长度必须为 1 至 32，只能包含字母、数字、下划线和连字符。
 
@@ -80,6 +80,6 @@ POST /v1beta/models/Gemini/gemini-2.5-pro:generateContent
 
 ## 实时接口限制
 
-复合 Key 不支持 `/v1/live`、Codex Realtime、Responses WebSocket 和 Live sideband。这些入口可能在同一连接中切换模型，服务会返回 `COMPOSITE_KEY_ENDPOINT_UNSUPPORTED`，不会自动选择默认分组。
+复合 Key 不支持 `/v1/live`、Codex Realtime、Responses WebSocket 和 Live sideband。这些入口可能在同一个连接里切换模型，服务返回 `COMPOSITE_KEY_ENDPOINT_UNSUPPORTED`，请求在选组之前结束。
 
 相关文档：[API Key 模型重定向](api_key_model_redirects.md)、[路由与结算](routing_and_billing.md)、[网关请求生命周期](../architecture/gateway_request_lifecycle.md)。
