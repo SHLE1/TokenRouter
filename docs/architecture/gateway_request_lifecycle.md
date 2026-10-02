@@ -202,6 +202,8 @@ Live 与 sideband 的 HTTP 入口也由 app 直接构造，原生 LivePorts 共�
 
 Messages、Claude 的 Chat/Responses 转换及 `count_tokens` 使用 `gateway/provider/messageforward.Runtime`。app 固定绑定凭据来源、HTTP 池、健康反馈、TLS、分组策略和搜索实例；普通、API Key 透传、Vertex 与 Bedrock 分支继续调用各自的 upstream 执行器。每次尝试独立持有 Beta 过滤结果、工具名称映射和错误诊断，HTTP Adapter 负责响应提交、Header、Flush 与错误报文。
 
+Anthropic 上游承接 Chat Completions 或 Responses 时，独立转换读取器在改写客户端模型之前采集原始 `message_start` 模型声明。流式与缓冲路径均将声明写入转发结果，再经原生结果投影进入完成快照；未声明时保持为空，不使用转换器生成的模型补值。
+
 Messages、计数和 Qoder 的路由计划由 `gateway/provider.RoutePlanner` 连接分组策略读取与 routing，摘要和隔离直接使用 gateway/session；重试耗尽后的兼容冷却由 `provider.RetryCooldown` 读取最新池模式后决定。完成器直接绑定 app 的原生记录器。调试输出由同一个 `requestdebug.Trace` 持有文件句柄，请求和后台工作结束后再关闭。
 
 Gemini 与 Antigravity 的凭据来源、传输和动态读取端口由 app 注入 `gateway/provider/googleforward`。平台准备器不持有 Gin 或完整配置；`gateway/httpapi` 保留三种客户端协议的错误形状、规则覆盖和 Ops 写入顺序。图片计数与工具名恢复状态按 attempt 创建，图片仍取单个响应片段的最大内联图片数；没有观测到图片时才使用原模型名回退。
