@@ -177,6 +177,7 @@
 
 ## 图表主题
 
+- 模型、分组和端点分布表的名称与展开箭头默认使用普通文字色（浅色 `gray-900`、深色 `white`）。可展开的行在整行悬停时将名称和箭头显示为品牌色（浅色 `primary-600`、深色 `primary-500`）。关闭明细或分组 ID 小于等于 0 时使用普通文字色。
 - 饼图与圆环图按原始指标值绘制扇区，占比为该项数值除以图中所有项之和；tooltip 使用同一组数值计算百分比。禁止对扇区数据做对数压缩或设置最小占比，零值不占扇区。消费排行的“其他”汇总项也按实际费用参与计算。
 - 分组与端点分布的条形图、柱状图使用从零开始的线性数值轴，柱长与原始指标值成正比；禁止对数轴和数据压缩。
 - 图表主题的唯一入口是 `composables/useChartTheme.ts`：响应式 `colors`（text/muted/grid 三档语义，zinc 体系）+ `onThemeChange` 重绘钩子。禁止 `document.documentElement.classList.contains('dark')` 快照判断（门禁拦截）——它没有响应式依赖，切主题不重算，曾导致 8 处图表切主题不换色。vue-chartjs 场景 colors 变响应式即自动重绘；Stripe Elements 等命令式场景用 watch + `elements.update({ appearance })` 重应用。
