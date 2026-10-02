@@ -642,6 +642,22 @@ export default {
           unavailableDesc: '服务不可用 - 暂停 30 分钟'
         }
       },
+      usageStats: {
+        requests: '请求',
+        tokens: 'Token',
+        cost: '成本',
+        userCost: '扣费',
+        period: {
+          today: '今日',
+          window: '当前窗口内'
+        },
+        hints: {
+          requests: '{period}经此提供商转发的请求数',
+          tokens: '{period}经此提供商消耗的 Token 总数',
+          cost: '{period}提供商成本（美元），按提供商价格乘以提供商倍率计算',
+          userCost: '{period}向用户扣除的站内余额，已计入分组倍率'
+        }
+      },
       usageWindow: {
         statsTitle: '5小时窗口用量统计',
         statsTitleDaily: '每日用量统计',

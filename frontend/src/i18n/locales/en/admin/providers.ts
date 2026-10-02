@@ -1843,6 +1843,22 @@ export default {
         usageTrend: '30-Day Cost & Request Trend',
         noData: 'No usage data available for this provider'
       },
+      usageStats: {
+        requests: 'Reqs',
+        tokens: 'Tokens',
+        cost: 'Cost',
+        userCost: 'Billed',
+        period: {
+          today: 'today',
+          window: 'in the current window'
+        },
+        hints: {
+          requests: 'Requests routed through this provider {period}',
+          tokens: 'Tokens consumed through this provider {period}',
+          cost: 'Provider cost in USD {period}, using provider pricing times the provider rate multiplier',
+          userCost: 'Site balance charged to users {period}, including group rate multipliers'
+        }
+      },
       usageWindow: {
         statsTitle: '5-Hour Window Usage Statistics',
         statsTitleDaily: 'Daily Usage Statistics',
