@@ -19,6 +19,11 @@ func (r *entryKeyReader) GetByKey(context.Context, string) (*apikey.APIKey, erro
 	return nil, nil
 }
 
+func (r *entryKeyReader) Reauthenticate(context.Context, *apikey.APIKey, apikey.AuthenticationInput) (*apikey.APIKey, error) {
+	r.calls++
+	return nil, apikey.ErrAPIKeyNotFound
+}
+
 // TestEntryAccessKeepsProjectionIndependentAndLazy 验证投影不提前刷新策略；模型和 effort 映射不能因本次连接处理污染原认证快照。
 func TestEntryAccessKeepsProjectionIndependentAndLazy(t *testing.T) {
 	reader := &entryKeyReader{}
