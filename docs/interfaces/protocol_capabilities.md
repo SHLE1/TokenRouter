@@ -98,6 +98,14 @@ Responses 图片策略独立于 Images 入口：`inherit` 沿提供商/全局链
 | Live Sideband | 归属 Live 会话，不新增协议项 |
 | 自定义声音的读取、修改、删除、音频下载 | 归属自定义声音协议及其资源权限 |
 
+## 上游响应模型观测
+
+管理员用量记录按实际上游格式采集模型，而非按客户端入口猜测。Responses 的 JSON `model` 和流式 `response.model`、Chat 的顶层 `model`、Messages 的 `model`/`message_start.message.model`、Gemini 的 `modelVersion` 均在响应改写前读取。覆盖八个适用平台的原生、透传和转换分支；Bedrock 在 EventStream 解码后读取，Vertex 复用对应原生协议，Antigravity 在内部响应解包后读取。
+
+Responses WebSocket 包括连接池、透传、HTTP 桥接和 Grok 兼容路径，每轮单独保存观测。原生 V2 压缩随 Responses 处理；旧 Compact 只有实际响应含模型声明时才采集，标准 `response.compaction` 缺少模型字段时留空。
+
+Qoder 当前原始响应解析契约未确认模型声明，转换后生成的客户端模型不作为观测。本功能不扩展 Live/Realtime、Embeddings、独立搜索、媒体、批量任务或计数接口。模型声明仅表示直接上游返回的身份，不证明中转背后实际运行的模型。
+
 ## 输入边界与切换
 
 历史 `api_protocol`、OpenAI 文本路由和工作负载字段只在旧输入边界转换，新保存和导出使用原生集合。历史 `payg + chat_completions` 缺省值转成 Chat 单项；新 CN 表单默认启用全部原生项。旧 `allowed_client_protocols` 输入只修改文本部分，未表达的非文本入口保留；旧媒体/Live 开关仍接受兼容输入，新响应不再暴露它们。数据库内部保留派生布尔镜像供既有任务/计价消费者使用，不是第二份管理员配置。

@@ -88,8 +88,10 @@ var usageLogInsertArgTypes = [...]string{
 	"text",        // session_id
 	"timestamptz", // created_at
 	"text",        // requested_reasoning_effort
-	"boolean",     // native_compaction_v2, platform
+	"boolean",     // native_compaction_v2
 	"text",        // 实际执行平台快照
+	"text",        // upstream_response_model
+	"boolean",     // upstream_model_mismatch
 }
 
 const (
@@ -300,14 +302,16 @@ func (r *Store) createSingle(ctx context.Context, sqlq sqlExecutor, log *usage.U
 			created_at,
 			requested_reasoning_effort,
 			native_compaction_v2,
-			platform
+			platform,
+			upstream_response_model,
+			upstream_model_mismatch
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9,
 			$10, $11,
 			$12, $13, $14, $15,
 			$16, $17, $18, $19,
 			$20, $21, $22, $23, $24, $25,
-			$26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66
+			$26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68
 		)
 		ON CONFLICT (request_id, api_key_id) DO NOTHING
 		RETURNING id, created_at
@@ -813,7 +817,9 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 			created_at,
 			requested_reasoning_effort,
 			native_compaction_v2,
-			platform
+			platform,
+			upstream_response_model,
+			upstream_model_mismatch
 		) AS (VALUES `)
 
 	args := make([]any, 0, len(keys)*(len(usageLogInsertArgTypes)+1))
@@ -910,7 +916,9 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				created_at,
 				requested_reasoning_effort,
 				native_compaction_v2,
-				platform
+				platform,
+				upstream_response_model,
+				upstream_model_mismatch
 			)
 			SELECT
 				user_id,
@@ -978,7 +986,9 @@ func buildUsageLogBatchInsertQuery(keys []string, preparedByKey map[string]usage
 				created_at,
 				requested_reasoning_effort,
 				native_compaction_v2,
-				platform
+				platform,
+				upstream_response_model,
+				upstream_model_mismatch
 			FROM input
 			ON CONFLICT (request_id, api_key_id) DO NOTHING
 			RETURNING request_id, api_key_id, id, created_at
@@ -1086,7 +1096,9 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			created_at,
 				requested_reasoning_effort,
 				native_compaction_v2,
-				platform
+				platform,
+				upstream_response_model,
+				upstream_model_mismatch
 		) AS (VALUES `)
 
 	args := make([]any, 0, len(preparedList)*len(usageLogInsertArgTypes))
@@ -1180,7 +1192,9 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			created_at,
 				requested_reasoning_effort,
 				native_compaction_v2,
-				platform
+				platform,
+				upstream_response_model,
+				upstream_model_mismatch
 		)
 		SELECT
 			user_id,
@@ -1248,7 +1262,9 @@ func buildUsageLogBestEffortInsertQuery(preparedList []usageLogInsertPrepared) (
 			created_at,
 			requested_reasoning_effort,
 			native_compaction_v2,
-			platform
+			platform,
+			upstream_response_model,
+			upstream_model_mismatch
 		FROM input
 		ON CONFLICT (request_id, api_key_id) DO NOTHING
 	`)
@@ -1324,14 +1340,16 @@ func execUsageLogInsertNoResult(ctx context.Context, sqlq sqlExecutor, prepared 
 			created_at,
 			requested_reasoning_effort,
 			native_compaction_v2,
-			platform
+			platform,
+			upstream_response_model,
+			upstream_model_mismatch
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9,
 			$10, $11,
 			$12, $13, $14, $15,
 			$16, $17, $18, $19,
 			$20, $21, $22, $23, $24, $25,
-			$26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66
+			$26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68
 		)
 		ON CONFLICT (request_id, api_key_id) DO NOTHING
 	`, prepared.args...)
@@ -1473,6 +1491,8 @@ func prepareUsageLogInsert(log *usage.UsageLog) usageLogInsertPrepared {
 			requestedReasoningEffort,
 			log.NativeCompactionV2,
 			usagePlatformSnapshot(log.Platform),
+			nullString(log.UpstreamResponseModel),
+			log.UpstreamModelMismatch,
 		},
 	}
 }

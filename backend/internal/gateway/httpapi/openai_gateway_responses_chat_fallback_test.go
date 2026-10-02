@@ -60,6 +60,7 @@ func TestForwardResponses_ForceChatCompletionsRoutesNonStreamingToChatCompletion
 	require.NotNil(t, result.ServiceTier)
 	require.Equal(t, "priority", *result.ServiceTier)
 	require.Equal(t, "default", result.UpstreamResponseServiceTier)
+	require.Equal(t, "gpt-5.4", result.UpstreamResponseModel)
 	require.False(t, result.Stream)
 }
 

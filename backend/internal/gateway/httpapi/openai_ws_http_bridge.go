@@ -424,10 +424,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 	originalModel string,
 	args ...any,
 ) (*forwardcore.OpenAIResult, error) {
-	responseModelObserver := UpstreamResponseModelObserverFromContext(c)
-	if responseModelObserver == nil {
-		responseModelObserver = BeginUpstreamResponseModelObservation(c)
-	}
+	responseModelObserver := BeginUpstreamResponseModelObservation(c)
 	var routingModel, imageBillingModel, imageSizeTier, imageInputSize, grokCacheIdentity string
 	var turn int
 	var writeClientMessage func([]byte) error
@@ -715,6 +712,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 			BillingModel:                billingModel,
 			UpstreamModel:               mappedModel,
 			UpstreamResponseServiceTier: responseModelObserver.ServiceTier(),
+			UpstreamResponseModel:       responseModelObserver.Model(),
 			ServiceTier:                 ResolvedOpenAIUpstreamServiceTierFromObserver(responseModelObserver, requeststate.ExtractOpenAIServiceTierFromBody(body)),
 			ReasoningEffort:             gatewayprovider.ApplyThinkingEnabledFallback(requeststate.ExtractOpenAIReasoningEffortFromBody(body), body, mappedModel),
 			RequestedReasoningEffort:    requeststate.CanonicalRequestedReasoningEffort(body),

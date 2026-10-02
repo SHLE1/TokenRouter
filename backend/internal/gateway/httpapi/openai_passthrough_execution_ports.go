@@ -219,6 +219,7 @@ func (p *openAIPassthroughExecutionAdapter) BuildPass(ctx context.Context, body 
 }
 
 func (p *openAIPassthroughExecutionAdapter) SendPass(r *http.Request) (*http.Response, error) {
+	resetResponseModel(p.c)
 	return p.s.Requests.Transport.DoWithTLS(r, p.proxyURL, p.provider.Record.ID, p.provider.Record.Concurrency, p.s.Requests.TLSProfile(p.provider, p.tls...))
 }
 

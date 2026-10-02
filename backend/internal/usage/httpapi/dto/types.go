@@ -116,6 +116,9 @@ type AdminUsageLog struct {
 	// UpstreamModel is the actual model sent to the upstream provider after mapping.
 	// Omitted when no mapping was applied (requested model was used as-is).
 	UpstreamModel *string `json:"upstream_model,omitempty"`
+	// 上游模型观测仅向管理员公开。
+	UpstreamResponseModel *string `json:"upstream_response_model,omitempty"`
+	UpstreamModelMismatch *bool   `json:"upstream_model_mismatch,omitempty"`
 	// PricingConfigID 共享价格配置 ID
 	PricingConfigID *int64 `json:"pricing_config_id,omitempty"`
 	// ModelMappingChain 模型映射链，如 "a→b→c"

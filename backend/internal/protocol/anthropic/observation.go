@@ -3,15 +3,20 @@ package anthropic
 import (
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+
 	"github.com/tidwall/gjson"
 )
 
 // Observation 区分显式零用量、语义内容和终态；不推算缺失字段。
-type Observation struct{ HasUsage, Semantic, Terminal bool }
+type Observation struct {
+	HasUsage, Semantic, Terminal bool
+	Model                        string
+}
 
 func ObserveMessage(data string) Observation {
 	value := gjson.Parse(data)
-	observed := Observation{HasUsage: hasUsageFields(value.Get("usage")), Terminal: true}
+	observed := Observation{HasUsage: hasUsageFields(value.Get("usage")), Terminal: true, Model: protocol.NormalizeResponseModel(protocol.ResponseModelString([]byte(data), "model"))}
 	value.Get("content").ForEach(func(_, block gjson.Result) bool {
 		observed.Semantic = observed.Semantic || semanticBlock(block)
 		return true
@@ -29,6 +34,9 @@ func ObserveEvent(data string) Observation {
 	case "message_start":
 		observed = ObserveMessage(value.Get("message").Raw)
 		observed.Terminal = false
+		if !gjson.Valid(data) {
+			observed.Model = ""
+		}
 	case "message_delta":
 		observed.HasUsage = hasUsageFields(value.Get("usage"))
 	case "content_block_start":

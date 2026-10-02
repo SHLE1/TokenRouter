@@ -35,6 +35,7 @@ type RelayResult struct {
 	RequestModel string
 	// ResponseServiceTier 是终止响应声明的上游实际服务档位。
 	ResponseServiceTier     string
+	UpstreamResponseModel   string
 	Usage                   Usage
 	RequestID               string
 	TerminalEventType       string
@@ -46,14 +47,15 @@ type RelayResult struct {
 }
 
 type RelayTurnResult struct {
-	RequestModel        string
-	ResponseServiceTier string
-	Usage               Usage
-	RequestID           string
-	TerminalEventType   string
-	StartedAt           time.Time
-	Duration            time.Duration
-	FirstTokenMs        *int
+	RequestModel          string
+	ResponseServiceTier   string
+	UpstreamResponseModel string
+	Usage                 Usage
+	RequestID             string
+	TerminalEventType     string
+	StartedAt             time.Time
+	Duration              time.Duration
+	FirstTokenMs          *int
 }
 
 type RelayExit struct {
@@ -102,6 +104,7 @@ type relayState struct {
 	pendingTurnStart        atomic.Pointer[time.Time]
 	lastResponseID          string
 	lastResponseServiceTier string
+	lastResponseModel       string
 	terminalEventType       string
 	firstTokenMs            *int
 	turnTimingByID          map[string]*relayTurnTiming
@@ -121,6 +124,7 @@ type observedUpstreamEvent struct {
 	eventType           string
 	responseID          string
 	responseServiceTier string
+	responseModel       string
 	usage               Usage
 	startedAt           time.Time
 	duration            time.Duration
@@ -131,6 +135,7 @@ type relayTurnTiming struct {
 	startAt                     time.Time
 	firstTokenMs                *int
 	terminalResponseServiceTier string
+	modelObserver               protocol.ResponseModelObserver
 }
 
 func Relay(
@@ -779,10 +784,13 @@ func observeUpstreamMessage(
 			}
 		}
 	}
+	if turnTiming == nil {
+		turnTiming = state.activeTurn
+	}
+	if turnTiming != nil {
+		turnTiming.modelObserver.ObserveOpenAI(message, eventType)
+	}
 	if isTerminalEvent(eventType) {
-		if turnTiming == nil {
-			turnTiming = state.activeTurn
-		}
 		observeRelayTurnResponseServiceTier(turnTiming, firstRelayResponseServiceTier(message))
 	}
 	if !isTerminalEvent(eventType) {
@@ -844,6 +852,8 @@ func finalizeObservedRelayTerminal(state *relayState, observed observedUpstreamE
 	if responseID != "" {
 		state.lastResponseID = responseID
 		if turnTiming, ok := openAIWSRelayDeleteTurnTiming(state, responseID); ok {
+			observed.responseModel = turnTiming.modelObserver.Model()
+			state.lastResponseModel = observed.responseModel
 			observed.responseServiceTier = turnTiming.terminalResponseServiceTier
 			state.lastResponseServiceTier = observed.responseServiceTier
 			observed.startedAt = turnTiming.startAt
@@ -878,14 +888,15 @@ func emitTurnComplete(
 		requestModel = state.requestModel
 	}
 	onTurnComplete(RelayTurnResult{
-		RequestModel:        requestModel,
-		ResponseServiceTier: observed.responseServiceTier,
-		Usage:               observed.usage,
-		RequestID:           responseID,
-		TerminalEventType:   observed.eventType,
-		StartedAt:           observed.startedAt,
-		Duration:            observed.duration,
-		FirstTokenMs:        openAIWSRelayCloneIntPtr(observed.firstToken),
+		RequestModel:          requestModel,
+		ResponseServiceTier:   observed.responseServiceTier,
+		UpstreamResponseModel: observed.responseModel,
+		Usage:                 observed.usage,
+		RequestID:             responseID,
+		TerminalEventType:     observed.eventType,
+		StartedAt:             observed.startedAt,
+		Duration:              observed.duration,
+		FirstTokenMs:          openAIWSRelayCloneIntPtr(observed.firstToken),
 	})
 }
 
@@ -1152,6 +1163,7 @@ func enrichResult(result *RelayResult, state *relayState, duration time.Duration
 	}
 	result.RequestModel = state.requestModel
 	result.ResponseServiceTier = state.lastResponseServiceTier
+	result.UpstreamResponseModel = state.lastResponseModel
 	result.Usage = state.usage
 	result.RequestID = state.lastResponseID
 	result.TerminalEventType = state.terminalEventType

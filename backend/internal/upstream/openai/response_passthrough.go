@@ -21,6 +21,8 @@ import (
 
 // PassthroughOptions 沿用共享观察契约，独立保留透传的 HTTP 和 keepalive 规则。
 type PassthroughOptions struct {
+	// ObserveModel 在响应模型恢复前只观察原始模型，不改变服务档位。
+	ObserveModel func([]byte, string)
 	StreamOptions
 	NonStream                    NonStreamOptions
 	Headers                      func(http.Header, http.Header)
@@ -188,6 +190,9 @@ func ReadPassthroughStreaming(ctx context.Context, resp *http.Response, c *upstr
 			dataBytes := []byte(data)
 			trimmedData := strings.TrimSpace(data)
 			rawEventType := wire.EffectiveOpenAISSEEventType(dataBytes, pendingSSEEventType)
+			if options.ObserveModel != nil {
+				options.ObserveModel(dataBytes, rawEventType)
+			}
 			if needModelReplace && strings.Contains(data, mappedModel) {
 				line = wire.ReplaceModelInSSELine(line, mappedModel, originalModel)
 				if replacedData, replaced := wire.ExtractSSEDataLine(line); replaced {

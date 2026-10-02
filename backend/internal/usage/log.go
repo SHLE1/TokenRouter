@@ -23,6 +23,10 @@ type UsageLog struct {
 	// UpstreamModel is the actual model sent to the upstream provider after mapping.
 	// Nil means no mapping was applied (requested model was used as-is).
 	UpstreamModel *string
+	// UpstreamResponseModel 保存原始响应声明，不作为计费依据。
+	UpstreamResponseModel *string
+	// UpstreamModelMismatch 为空表示上游未声明模型。
+	UpstreamModelMismatch *bool
 	// PricingConfigID 共享价格配置 ID
 	PricingConfigID *int64
 	// ModelMappingChain 模型映射链，如 "a→b→c"

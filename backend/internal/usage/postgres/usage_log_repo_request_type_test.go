@@ -107,6 +107,8 @@ func TestUsageLogRepositoryCreateSyncRequestTypeAndLegacyFields(t *testing.T) {
 			sqlmock.AnyArg(), // requested_reasoning_effort
 			false,            // native_compaction_v2
 			"unknown",        // 平台快照
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(99), createdAt))
 
@@ -206,6 +208,8 @@ func TestUsageLogRepositoryCreate_PersistsServiceTier(t *testing.T) {
 			sqlmock.AnyArg(), // requested_reasoning_effort
 			false,            // native_compaction_v2
 			"unknown",        // 平台快照
+			sqlmock.AnyArg(),
+			sqlmock.AnyArg(),
 		).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(100), createdAt))
 
@@ -1023,6 +1027,8 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			sql.NullString{}, // requested_reasoning_effort
 			false,            // native_compaction_v2
 			"unknown",        // 平台快照
+			sql.NullString{},
+			sql.NullBool{},
 		}})
 		require.NoError(t, err)
 		require.Equal(t, 2, log.ImageCount)
@@ -1107,6 +1113,8 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			sql.NullString{}, // requested_reasoning_effort
 			false,            // native_compaction_v2
 			"unknown",        // 平台快照
+			sql.NullString{},
+			sql.NullBool{},
 		}})
 		require.NoError(t, err)
 		require.NotNil(t, log.ServiceTier)
@@ -1172,6 +1180,8 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			sql.NullString{}, // requested_reasoning_effort
 			false,            // native_compaction_v2
 			"unknown",        // 平台快照
+			sql.NullString{},
+			sql.NullBool{},
 		}})
 		require.NoError(t, err)
 		require.NotNil(t, log.ServiceTier)
@@ -1237,6 +1247,8 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			sql.NullString{}, // requested_reasoning_effort
 			false,            // native_compaction_v2
 			"unknown",        // 平台快照
+			sql.NullString{},
+			sql.NullBool{},
 		}})
 		require.NoError(t, err)
 		require.NotNil(t, log.ServiceTier)

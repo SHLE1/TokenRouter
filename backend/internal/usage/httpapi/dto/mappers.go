@@ -120,6 +120,8 @@ func FromUsageAdmin(l *usage.UsageLog) *AdminUsageLog {
 	return &AdminUsageLog{
 		UsageLog:               usageLog,
 		UpstreamModel:          l.UpstreamModel,
+		UpstreamResponseModel:  l.UpstreamResponseModel,
+		UpstreamModelMismatch:  l.UpstreamModelMismatch,
 		UpstreamRequestID:      l.UpstreamRequestID,
 		PricingConfigID:        l.PricingConfigID,
 		ModelMappingChain:      l.ModelMappingChain,

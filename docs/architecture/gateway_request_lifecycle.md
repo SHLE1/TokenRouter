@@ -159,6 +159,8 @@ client_model
 
 Codex 身份和指纹的请求内状态只由 HTTP Adapter 持有；提供商 provider 组合明确输入，平台库只执行纯派生和报文修改。状态发布保持原同步方式，Header 与请求体使用同一组本次 IDs，failover 覆盖顺序不变；异步完成不会持有该 HTTP 状态。
 
+上游响应模型通过协议层 `ResponseModelObserver` 采集，并随执行结果和完成快照按值交接。每次实际出站尝试独立观察；恢复或重试清空上一尝试的模型，WebSocket 按 turn/response ID 隔离。Responses 优先采用终态声明，Chat 和 Messages 保留首次有效声明，Gemini 保留最后一次有效版本。采集不读取正文、工具参数或转换器生成的模型，不改变既有失败记录与结算资格。
+
 <a id="account_selection_and_failover"></a>
 ## 提供商选择与故障转移
 

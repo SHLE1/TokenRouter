@@ -56,10 +56,7 @@ func (s *OpenAIWebSocketExecutor) forwardOpenAIWSV2(
 	if s == nil || provider == nil {
 		return nil, ws.WrapFallback("invalid_state", errors.New("service or provider is nil"))
 	}
-	responseModelObserver := UpstreamResponseModelObserverFromContext(c)
-	if responseModelObserver == nil {
-		responseModelObserver = BeginUpstreamResponseModelObservation(c)
-	}
+	responseModelObserver := BeginUpstreamResponseModelObservation(c)
 
 	wsURL, err := s.buildOpenAIResponsesWSURL(provider)
 	if err != nil {
@@ -813,6 +810,7 @@ func (s *OpenAIWebSocketExecutor) forwardOpenAIWSV2(
 		Model:                       originalModel,
 		UpstreamModel:               mappedModel,
 		UpstreamResponseServiceTier: responseModelObserver.ServiceTier(),
+		UpstreamResponseModel:       responseModelObserver.Model(),
 		ImageCount:                  imageCounter.Count(),
 		ImageOutputSizes:            imageCounter.Sizes(),
 		ServiceTier:                 ResolvedOpenAIUpstreamServiceTierFromObserver(responseModelObserver, requeststate.ExtractOpenAIServiceTier(reqBody)),

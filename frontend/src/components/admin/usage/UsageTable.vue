@@ -87,6 +87,15 @@
             </div>
           </div>
           <span v-else class="font-medium text-gray-900 dark:text-white">{{ row.model }}</span>
+          <!-- 响应声明独立于请求映射链，仅在最终出站模型不一致时展示。 -->
+          <div
+            v-if="row.upstream_model_mismatch === true && row.upstream_response_model"
+            data-testid="upstream-response-model"
+            class="break-all pl-3 text-xs text-orange-600 dark:text-orange-400"
+            :title="`${t('usage.upstreamResponseModel')}: ${row.upstream_model || row.model} → ${row.upstream_response_model}`"
+          >
+            <span class="mr-1">↳</span>{{ row.upstream_response_model }}
+          </div>
         </template>
 
         <template #cell-reasoning_effort="{ row }">
