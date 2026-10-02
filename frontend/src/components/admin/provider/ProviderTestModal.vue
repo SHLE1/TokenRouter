@@ -2,18 +2,19 @@
   <BaseDialog
     :show="show"
     :title="t('admin.providers.testDialog.title', { name: provider?.name ?? '' })"
-    :subtitle="t('admin.providers.testDialog.subtitle')"
     width="wide"
     :body-scroll="false"
     flush
     @close="handleClose"
   >
     <template #header-icon>
+      <!-- 与模型广场一致使用模型品牌图标，单色品牌跟随文字色显示为黑/白 -->
       <span
         v-if="provider"
-        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-950"
+        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-gray-200 bg-gray-50 text-gray-900 dark:border-dark-600 dark:bg-dark-950 dark:text-white"
       >
-        <PlatformIcon :platform="provider.platform" size="lg" :class="platformIconClass(provider.platform)" />
+        <ModelIcon v-if="headerBrandModel" :model="headerBrandModel" size="22px" />
+        <PlatformIcon v-else :platform="provider.platform" size="lg" :class="platformIconClass(provider.platform)" />
       </span>
     </template>
 
@@ -116,10 +117,10 @@
         />
       </aside>
 
-      <!-- 右侧：单模型结果或批量模型列表 -->
+      <!-- 右侧：单模型结果或批量模型列表；窄屏随左栏整体滚动，按内容撑高，避免被压缩后卡片贴住底栏 -->
       <section
         :aria-label="t('admin.providers.testDialog.results')"
-        class="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-5 sm:px-6"
+        class="flex min-w-0 flex-col px-4 py-5 sm:px-6 md:min-h-0 md:flex-1"
       >
         <ProviderTestResultView v-if="testScope === 'single'" :run="singleRun" />
         <ProviderTestBatchPanel v-else :batch="batch" />
@@ -188,6 +189,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import ModelIcon from '@/components/common/ModelIcon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import Select from '@/components/common/Select.vue'
 import TextArea from '@/components/common/TextArea.vue'
@@ -245,6 +247,18 @@ const selectedModelId = ref('')
 const loadingModels = ref(false)
 const testPrompt = ref('')
 let lastDefaultPrompt = ''
+
+// 平台到模型图标标识的映射；Antigravity、Qoder 等没有对应模型品牌的平台仍用平台图标。
+const PLATFORM_BRAND_MODELS: Partial<Record<string, string>> = {
+  anthropic: 'claude',
+  openai: 'gpt',
+  gemini: 'gemini',
+  grok: 'grok',
+  kimi: 'kimi',
+  zhipu: 'glm',
+  deepseek: 'deepseek'
+}
+const headerBrandModel = computed(() => PLATFORM_BRAND_MODELS[props.provider?.platform ?? ''] ?? '')
 
 const isOpenAIProvider = computed(() => props.provider?.platform === 'openai')
 const isCNProvider = computed(() => ['kimi', 'zhipu', 'deepseek'].includes(props.provider?.platform ?? ''))

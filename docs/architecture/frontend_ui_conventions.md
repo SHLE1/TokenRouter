@@ -57,7 +57,7 @@
 - 原生按钮、`role="button"` 和 `.btn` 禁止文字选取，按钮内图片禁止浏览器拖拽；正文、表格数据和输入内容仍可选取复制。
 - 图标按钮两档：`.btn-icon`（h-9 w-9）与 `.btn-icon-sm`（h-8 w-8），自带 `rounded-control` 与居中布局，站点只补 hover/颜色类；`.btn-sm` 用于表格行内等紧凑场景。
 - 下拉触发器（Select、DateRangePicker）模板组合 `input input-trigger` + 各自状态类，不复制基线配方。
-- 分段切换（两到五个互斥选项，如指标、时间范围、数据来源）统一用 `style.css` 的 `.segmented` 轨道、`.segmented-item` 选项和 `.segmented-item-active` 选中态，不再手写灰底白块。轨道加 `v-segmented`（`directives/segmented.ts`），共用一个选中背景；内边距、字号和高度由调用方补工具类；放进 36px 工具栏时给轨道加 `h-9 items-stretch`。选中项必须保留 1px 描边，浅色下只靠阴影和白底分不清边界。页面级大页签仍用 `.tabs`。
+- 分段切换（两到五个互斥选项，如指标、时间范围、数据来源）统一用 `style.css` 的 `.segmented` 轨道、`.segmented-item` 选项和 `.segmented-item-active` 选中态，不再手写灰底白块。轨道加 `v-segmented`（`directives/segmented.ts`），共用一个选中背景；内边距、字号和高度由调用方补工具类；放进 36px 工具栏时给轨道加 `h-9 items-stretch`。选中项必须保留 1px 描边，浅色下只靠阴影和白底分不清边界。选项和选中背景的圆角取 `--segmented-item-radius`（`control` 减去 1px 边框和 2px 内边距），与轨道外缘同心；调整轨道边框或内边距时要同步改这个值。页面级大页签仍用 `.tabs`。
 - 输入框图标/字符前后缀统一走 `input-icon-*` 机制（`style.css`）：容器 `input-icon-wrap`，图标位 `input-icon` / `input-icon-right`（可点击内容加 `input-icon-action`），输入框按侧加 `input-has-icon` / `input-has-icon-right`；文本留白由变量推导（`留白 = inset + slot`）。档位：默认（inset 0.75rem、留白 2.5rem）、`input-icon-lg`（auth 表单，inset 0.875rem、留白 2.75rem）、`input-icon-text`（`$` 等窄字符前缀，留白 2rem），紧凑搜索框内联 `--input-icon-slot:1.5rem`（留白 2.25rem）。
 - 价格管理和属性管理的页签栏与下方工具栏之间使用 16px 间距。搜索框使用同一图标布局，`sm` 及以上固定为 `w-64`，更窄时随工具栏剩余宽度伸缩，提示写明配置名称或模型名称。工具栏相邻控件统一使用 `gap-2`；配置页的状态筛选框使用 `w-32 shrink-0`，默认目录页的两个筛选条件收纳到 `FilterDropdown`（规则见[菜单与浮层](#菜单与浮层)）。两页的默认目录信息共用 `ModelCatalogInfo`，以辅助字号展示来源、短版本号和更新时间，窄屏自动换行。
 
@@ -113,7 +113,7 @@
 
 - 默认入口是 `BaseDialog`：宽度档位 narrow/normal/wide/extra-wide/full，Escape 关闭、点击外部关闭、焦点管理与背景滚动锁定全部内置，新弹窗不要再手写 `fixed inset-0` 外壳。
 - 标题需要说明或图标时，用 `subtitle` 在标题下加一行 `text-xs` 说明，用 `header-icon` 插槽在标题左侧放图标块；标题右侧的模式切换等控件放进 `header-actions` 插槽，位于关闭按钮之前。不要自己重写头部。
-- 贴边分栏的工作区弹窗传 `flush` 去掉内容区内边距，再配合 `bodyScroll=false` 由各栏自行滚动。侧栏用浅底（浅色 `gray-50/70`、深色 `dark-950`）和单侧分隔线贴住弹窗边缘，不再包一层卡片；底部操作区放在内容里，使用同样的浅底和 `rounded-b-surface sm:rounded-b-dialog`，避免盖住弹窗圆角。提供商连接测试弹窗是这种布局的参考实现。
+- 贴边分栏的工作区弹窗传 `flush` 去掉内容区内边距，再配合 `bodyScroll=false` 由各栏自行滚动。侧栏用浅底（浅色 `gray-50/70`、深色 `dark-950`）和单侧分隔线贴住弹窗边缘，不再包一层卡片；底部操作区放在内容里，使用同样的浅底和 `rounded-b-surface sm:rounded-b-dialog`，避免盖住弹窗圆角。窄屏下分栏改为上下堆叠、由外层整体滚动时，各栏按内容撑高，`min-h-0 flex-1` 只在分栏断点（`md:`）生效，否则栏会被压缩，内容溢出后丢掉底部留白、贴住底栏。提供商连接测试弹窗是这种布局的参考实现。
 - 分页表单可设置 `BaseDialog` 的 `bodyScroll=false`，由表单内部管理滚动；标题、页签和底部操作区保持可见。默认仍由弹窗内容区滚动。分组创建/编辑（`GroupSettingsForm`）和提供商创建/编辑/批量编辑都按[设置表单](#settings_form)约定分页。
 - 安全凭证流程（TOTP 设置/禁用/登录验证/提权）走 `AuthCardDialog`：居中图标头、无右上角关闭按钮、整卡 p-6，是与 BaseDialog 并存的独立风格族。它不 teleport、保持内联渲染，嵌套层级由 `z-index` prop 决胜。
 - 分诊标准：结构同构（标题头 + 内容 + 按钮行）的手写弹窗迁 BaseDialog；有定制视觉结构的保留并登记在下面的例外清单。
