@@ -51,8 +51,8 @@
           :aria-expanded="openPanel === 'model'"
           @click="togglePanel('model', $event)"
         >
-          <!-- 行首图标：已选模型显示厂家品牌 logo（ProviderIcon 解析，未知品牌回落首字母），未选模型用 sparkles -->
-          <ProviderIcon v-if="modelBrandName" :brand="modelBrandName" size="14px" class="flex-shrink-0" />
+          <!-- ModelIcon 根据模型 ID 选择图形和配色。 -->
+          <ModelIcon v-if="selectedModelName" :model="selectedModelName" size="14px" class="flex-shrink-0" />
           <Icon v-else name="sparkles" size="sm" class="flex-shrink-0" />
           <span class="max-w-32 truncate">{{ modelChipLabel }}</span>
           <Icon
@@ -81,7 +81,7 @@
                 :class="studio.selectedOptionKey.value === creativeOptionKey(option) && 'composer-option-active'"
                 @click="selectModel(option)"
               >
-                <ProviderIcon :brand="option.model" size="16px" class="flex-shrink-0" />
+                <ModelIcon :model="option.model" size="16px" class="flex-shrink-0" />
                 <span class="min-w-0 flex-1">
                   <span class="block truncate text-sm font-medium">{{ option.model }}</span>
                   <span class="block truncate text-xs font-normal text-gray-400 dark:text-dark-400">{{ option.group_name }}</span>
@@ -304,7 +304,7 @@ import { useI18n } from 'vue-i18n'
 import { onClickOutside, useEventListener } from '@vueuse/core'
 import Collapse from '@/components/common/Collapse.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
-import ProviderIcon from '@/components/common/ProviderIcon.vue'
+import ModelIcon from '@/components/common/ModelIcon.vue'
 import SettingsSegmented from '@/components/common/settings/SettingsSegmented.vue'
 import Icon from '@/components/icons/Icon.vue'
 import type { IconName } from '@/components/icons/registry'
@@ -492,8 +492,8 @@ const modelsEmptyHintText = computed(() =>
     : t('creative.panel.noModelsAvailable'),
 )
 
-// 模型 chip 行首图标：已选模型名（供 ProviderIcon 解析厂家 logo，未知品牌回落首字母），未选中为 null 显示 sparkles
-const modelBrandName = computed(() => studio.selectedOption.value?.model ?? null)
+// 未选择模型时，按钮显示 sparkles 图标。
+const selectedModelName = computed(() => studio.selectedOption.value?.model ?? null)
 
 const modelChipLabel = computed(() => {
   const option = studio.selectedOption.value

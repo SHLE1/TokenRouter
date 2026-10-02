@@ -13,7 +13,7 @@
         v-if="provider"
         class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control border border-gray-200 bg-gray-50 text-gray-900 dark:border-dark-600 dark:bg-dark-950 dark:text-white"
       >
-        <ModelIcon v-if="headerBrandModel" :model="headerBrandModel" size="22px" />
+        <ProviderIcon v-if="hasProviderBrandIcon" :brand="provider.platform" size="22px" />
         <PlatformIcon v-else :platform="provider.platform" size="lg" :class="platformIconClass(provider.platform)" />
       </span>
     </template>
@@ -189,7 +189,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import ModelIcon from '@/components/common/ModelIcon.vue'
+import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import Select from '@/components/common/Select.vue'
 import TextArea from '@/components/common/TextArea.vue'
@@ -197,6 +197,7 @@ import SettingsSegmented from '@/components/common/settings/SettingsSegmented.vu
 import { Icon } from '@/components/icons'
 import { adminAPI } from '@/api/admin'
 import { platformIconClass } from '@/utils/platformColors'
+import { resolveProviderBrand } from '@/utils/providerBrand'
 import type { Provider, ClaudeModel } from '@/types'
 import ProviderTestBatchPanel from './ProviderTestBatchPanel.vue'
 import ProviderTestResultView from './ProviderTestResultView.vue'
@@ -248,17 +249,8 @@ const loadingModels = ref(false)
 const testPrompt = ref('')
 let lastDefaultPrompt = ''
 
-// 平台到模型图标标识的映射；Antigravity、Qoder 等没有对应模型品牌的平台仍用平台图标。
-const PLATFORM_BRAND_MODELS: Partial<Record<string, string>> = {
-  anthropic: 'claude',
-  openai: 'gpt',
-  gemini: 'gemini',
-  grok: 'grok',
-  kimi: 'kimi',
-  zhipu: 'glm',
-  deepseek: 'deepseek'
-}
-const headerBrandModel = computed(() => PLATFORM_BRAND_MODELS[props.provider?.platform ?? ''] ?? '')
+// Antigravity、Qoder 等未配置品牌图形的平台使用 PlatformIcon。
+const hasProviderBrandIcon = computed(() => Boolean(resolveProviderBrand(props.provider?.platform).iconKey))
 
 const isOpenAIProvider = computed(() => props.provider?.platform === 'openai')
 const isCNProvider = computed(() => ['kimi', 'zhipu', 'deepseek'].includes(props.provider?.platform ?? ''))
