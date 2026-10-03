@@ -2,6 +2,7 @@ import { defineComponent, nextTick } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ModelMarketplaceView from '../ModelMarketplaceView.vue'
+import { modelIconData } from '@/utils/modelIconData'
 import type { MarketplaceGroup, MarketplaceModelPricing } from '@/types'
 
 const getMarketplaceModels = vi.hoisted(() => vi.fn())
@@ -373,6 +374,33 @@ describe('ModelMarketplaceView', () => {
       .find((section) => section.get('h2').text() === 'Grok')
     expect(grokGroup?.find('.provider-icon[width="28px"]').exists()).toBe(true)
     expect(grokGroup?.find('.provider-icon-fallback').exists()).toBe(false)
+  })
+
+  // 分组名和展示品牌都可以提供智谱名称，两个尺寸的图标共用品牌映射。
+  it.each([
+    ['GLM', ''],
+    ['zai', ''],
+    ['Z.AI', ''],
+    ['zai Pro', ''],
+    ['自定义分组', '智谱'],
+    ['自定义分组', 'zai'],
+    ['自定义分组', 'z.ai'],
+  ])('分组 %s、展示品牌 %s 显示智谱图标', async (name, displayBrand) => {
+    getMarketplaceModels.mockResolvedValue([{
+      ...marketplaceGroup(1, name, [marketplaceModel('glm-5', 'GLM 5', tokenPricing)]),
+      display_brand: displayBrand,
+    }])
+
+    const wrapper = await mountMarketplace()
+    const group = wrapper.get('[data-testid="marketplace-group-section"]')
+
+    for (const size of ['14px', '28px']) {
+      const icon = group.get(`svg.provider-icon[width="${size}"]`)
+      expect(icon.findAll('path').map((path) => path.attributes('d'))).toEqual(modelIconData.zhipu.paths)
+    }
+    expect(group.find('.provider-icon-fallback').exists()).toBe(false)
+    expect(group.text()).toContain('智谱')
+    wrapper.unmount()
   })
 
   it('只展示统一分组倍率', async () => {

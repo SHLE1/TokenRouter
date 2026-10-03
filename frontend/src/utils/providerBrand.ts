@@ -320,7 +320,8 @@ const providerBrandAliases: Record<ProviderBrandKey, string[]> = {
   google: ['google', 'gemini', 'gemma', 'vertex', 'google ai studio', 'imagen', 'veo', 'nano-banana'],
   moonshot: ['moonshot', 'kimi'],
   openai: ['openai', 'open ai', 'chatgpt', 'gpt', 'dalle', 'sora'],
-  zhipu: ['智谱', 'zhipu', 'glm', 'chatglm', 'cogview'],
+  // Z.ai 和 GLM 共用智谱品牌名称与图标。
+  zhipu: ['智谱', 'zhipu', 'zai', 'z.ai', 'glm', 'chatglm', 'cogview'],
   alibaba: ['阿里巴巴', '阿里', 'alibaba', 'aliyun', '通义', '通义千问', 'tongyi', 'qwen', 'qwq', 'wanx'],
   xai: ['xai', 'x.ai', 'grok'],
   midjourney: ['midjourney', 'mj'],
