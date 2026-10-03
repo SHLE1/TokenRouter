@@ -136,7 +136,7 @@
 - 设置行：布尔项用 `SettingToggleRow`（左侧是标题、说明和可选的 `HelpTooltip`，右侧是 `Toggle size="md"` 默认的 inset 变体）。右侧是选择框或输入框时用 `SettingRow` 并传 `field`，控件宽度固定 `sm:w-56`，窄屏改成上下排列。
 - 依赖字段：开关打开后才需要的字段，放进用 `Collapse` 包裹的 `SettingsSubpanel`（`rounded-surface`、淡边框、浅底、`p-4`），展开时有过渡动画。
 - 选择与提示：两到五个互斥选项用 `SettingsSegmented`（基于 `.segmented` 和 `v-segmented`）；带图标和说明的类型选择用卡片，选中时显示品牌色描边和浅底。说明、风险提示和错误用 `SettingsNotice` 的 `info`、`warning`、`error` 三种语气，颜色由组件决定。字段说明用 `.input-hint`。
-- 整页设置：系统设置页这类整页表单，每组设置放在 `SettingsCard` 里。卡片头部是 `text-lg` 标题和说明，内容区 `p-6`，`SettingsSection` 之间相隔 24px。调用独立接口保存的卡片，保存按钮放在 `footer` 插槽，显示在卡片底部右侧。
+- 整页设置：系统设置页这类整页表单，每组设置放在 `SettingsCard` 里。卡片头部是 `text-lg` 标题和说明，内容区 `p-6`，`SettingsSection` 之间相隔 24px。调用独立接口保存的卡片，保存按钮放在 `footer` 插槽，显示在卡片底部右侧。刷新、测试连接这类工具按钮和控制整张卡片的总开关放在 `actions` 插槽，显示在标题右侧。设置行下方需要提醒权限或风险时，在 `SettingToggleRow` 的 `hint` 插槽里放 `SettingsNotice`。
 - 字段布局：开关、选择框和短数字用 `SettingRow`，标题在左，控件在右。设置行没有说明文字时，标题和控件垂直居中。URL、密钥、长文本和多行文本用上下布局：`.input-label` 在上，输入框占满宽度，`.input-hint` 在输入框下方。两个以上这样的字段可以放进 `md:grid-cols-2` 网格。一组同类的短字段（各平台的阈值、调度权重、和提供商弹窗对应的默认值）也用上下布局的网格并排。
 - 标签输入：逐个录入的字符串列表（邮箱后缀白名单、转发 IP 请求头）用 `SettingsTagInput`。组件负责展示标签和转发输入事件，分隔、去重和规范化由调用方处理。
 - 整页保存：整页一起提交的设置用 `useDirtyTracker` 记录每个数据源加载或保存后的快照，有未保存的修改时显示 `SettingsSaveBar`，保存按钮吸附在视口底部。数据源各自加载完成后调用 `markClean(key)`。快照里去掉只读的展示数据，例如联网搜索的已用额度。
