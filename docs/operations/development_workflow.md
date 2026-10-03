@@ -111,6 +111,8 @@ HTTP、用例、存储和后台资源，由 app 装配各模块的实现。业�
 - API 的类型和调用放在 `src/api/`，跨页面的状态放进 store 或 composable，view 里不重复写协议。
 - 修改依赖时同步更新 `frontend/pnpm-lock.yaml`，CI 使用 frozen lockfile。
 
+支付页动态导入 Stripe 和 Airwallex SDK，`frontend/vite.config.ts` 将它们分别放进独立的 vendor 包。Airwallex 在模块加载时会预取远程支付脚本，因此它和同命名空间的依赖一起分包。调整分包规则后，检查生产构建的依赖关系，确认支付 SDK 由支付流程触发加载。
+
 ## 生成代码与迁移
 
 `backend/ent/` 的大部分文件由 Ent 生成，`backend/internal/app/wire_gen.go` 由 Wire 生成。统一使用：

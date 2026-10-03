@@ -144,6 +144,11 @@ export default defineConfig(({ mode }) => {
               return 'vendor-stripe'
             }
 
+            // Airwallex 在模块加载时预取支付脚本，独立分包让支付页按需触发。
+            if (id.includes('/@airwallex/')) {
+              return 'vendor-airwallex'
+            }
+
             // 其他小型第三方库合并
             return 'vendor-misc'
           }
