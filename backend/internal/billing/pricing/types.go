@@ -91,6 +91,10 @@ type ModelDisplayPricing struct {
 	FastCacheReadPricePerToken    float64
 	FastImageOutputPricePerToken  float64
 	ContextIntervals              []ModelDisplayPricingInterval
+	// MaxReasoningEffortMultiplier 是最终推理档位为 max 时乘到全部 token 单价上的倍率，未配置或为 1 时为 nil。
+	MaxReasoningEffortMultiplier *float64
+	// TimePricing 是价格配置的分时规则，结算时按请求时刻乘到 token 单价上；上面的单价按 1x 计算。
+	TimePricing *TimePricingConfig
 	// ImagePriceSizes 标记确有报价的尺寸，区分显式零价与缺价。
 	ImagePriceSizes []string
 	ImagePrice1K    float64

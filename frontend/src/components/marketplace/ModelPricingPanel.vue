@@ -18,9 +18,9 @@
     <!-- 收起后保留上下文区间和 fast mode，退出期间同步折叠高度。 -->
     <Collapse :open="expanded">
       <div class="pt-3">
-        <!-- 右上角：上下文区间 / fast mode 切换，定价行随选择联动。 -->
+        <!-- 右上角：上下文区间、fast mode、推理档位和分时切换，定价行随选择联动。 -->
         <div
-          v-if="selectableIntervals.length > 0 || hasFastPricing"
+          v-if="selectableIntervals.length > 0 || hasFastPricing || hasMaxEffortPricing || timeOptions.length > 0"
           class="mb-3 flex flex-wrap items-center justify-end gap-2"
         >
           <div
@@ -63,6 +63,47 @@
               {{ t('marketplace.pricingFast') }}
             </button>
           </div>
+          <div
+            v-segmented
+            v-if="hasMaxEffortPricing"
+            class="segmented max-w-full flex-wrap"
+            data-testid="pricing-effort-switch"
+          >
+            <button
+              type="button"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': !maxEffortMode }"
+              @click="maxEffortMode = false"
+            >
+              {{ t('marketplace.pricingDefaultEffort') }}
+            </button>
+            <button
+              type="button"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold"
+              :class="{ 'segmented-item-active': maxEffortMode }"
+              :title="t('marketplace.pricingMaxEffortHint')"
+              @click="maxEffortMode = true"
+            >
+              {{ t('marketplace.pricingMaxEffort') }}
+            </button>
+          </div>
+          <div
+            v-segmented
+            v-if="timeOptions.length > 0"
+            class="segmented max-w-full flex-wrap"
+            data-testid="pricing-time-switch"
+          >
+            <button
+              v-for="(option, index) in timeOptions"
+              :key="option.key"
+              type="button"
+              class="segmented-item px-2 py-0.5 text-xs font-semibold tabular-nums"
+              :class="{ 'segmented-item-active': index === activeTimeIndex }"
+              @click="selectedTimeIndex = index"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </div>
 
         <!-- 定价信息在窄卡片内换行，抽屉宽度随父网格收缩。 -->
@@ -78,6 +119,15 @@
         </div>
         <p v-else class="text-sm text-gray-400 dark:text-dark-500">
           {{ t('marketplace.pricingUnavailable') }}
+        </p>
+
+        <!-- 分时价格的时区和生效日写在价格行下方，切换项只放时段。 -->
+        <p
+          v-if="timePricingNote"
+          class="mt-2.5 text-xs leading-relaxed text-gray-400 dark:text-dark-500"
+          data-testid="pricing-time-note"
+        >
+          {{ timePricingNote }}
         </p>
       </div>
     </Collapse>
@@ -104,6 +154,7 @@ const { balanceUnitName } = useBalanceDisplay()
 
 const expanded = ref(false)
 const fastMode = ref(false)
+const maxEffortMode = ref(false)
 const selectedIntervalIndex = ref(0)
 
 
@@ -134,8 +185,9 @@ function formatPrice(value: number): string {
   return `${formatPriceNumber(value)} ${balanceUnitName.value}`
 }
 
+// token 单价乘上当前选中的推理档位和分时倍率。
 function formatPerMillion(value: number): string {
-  return `${formatPrice(value * 1_000_000)} ${t('usage.perMillionTokens')}`
+  return `${formatPrice(value * tokenPriceFactor.value * 1_000_000)} ${t('usage.perMillionTokens')}`
 }
 
 function formatPerImage(value: number): string {
@@ -283,6 +335,112 @@ const fastRows = computed(() => fastTokenPricingRows(activeSource.value))
 
 // 当前定价来源存在 fast mode 加价时才展示切换。
 const hasFastPricing = computed(() => pricingKind(props.model.pricing) === 'token' && fastRows.value.length > 0)
+
+// 分时切换项：multiplier 是该时段乘到 token 单价上的倍率，其他时段为 1。
+interface TimeOption {
+  key: string
+  label: string
+  multiplier: number
+  start: number
+  end: number
+}
+
+const SECONDS_PER_DAY = 24 * 60 * 60
+
+// 后端接受 HH:mm 和 HH:mm:ss，整分钟的时刻统一显示为 HH:mm，结束时间 00:00 显示为 24:00。
+function formatPeriodTime(value: string, end: boolean): string {
+  const short = value.endsWith(':00') && value.length === 8 ? value.slice(0, 5) : value
+  return end && short === '00:00' ? '24:00' : short
+}
+
+function periodSeconds(value: string, end: boolean): number {
+  const [hours = 0, minutes = 0, seconds = 0] = value.split(':').map(Number)
+  const total = hours * 3600 + minutes * 60 + seconds
+  return end && total === 0 ? SECONDS_PER_DAY : total
+}
+
+// 读取规则时区下的当前时刻；时区无效时返回 null，切换默认停在其他时段。
+function currentZonedTime(timezone: string): { weekend: boolean; second: number } | null {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(new Date())
+    const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ''
+    const weekday = part('weekday')
+    return {
+      weekend: weekday === 'Sat' || weekday === 'Sun',
+      second: Number(part('hour')) * 3600 + Number(part('minute')) * 60 + Number(part('second')),
+    }
+  } catch {
+    return null
+  }
+}
+
+// Max 推理档位有独立倍率时才展示档位切换。
+const hasMaxEffortPricing = computed(() =>
+  pricingKind(props.model.pricing) === 'token' && hasPositiveValue(props.model.pricing.max_reasoning_effort_multiplier)
+)
+
+const timeOptions = computed<TimeOption[]>(() => {
+  const timePricing = props.model.pricing.time_pricing
+  if (pricingKind(props.model.pricing) !== 'token' || !timePricing || timePricing.periods.length === 0) {
+    return []
+  }
+  const periods = timePricing.periods
+    .map((period) => ({
+      key: `${period.start_time}-${period.end_time}`,
+      label: `${formatPeriodTime(period.start_time, false)}-${formatPeriodTime(period.end_time, true)}`,
+      multiplier: period.multiplier,
+      start: periodSeconds(period.start_time, false),
+      end: periodSeconds(period.end_time, true),
+    }))
+    .sort((a, b) => a.start - b.start)
+  const coveredSeconds = periods.reduce((sum, period) => sum + period.end - period.start, 0)
+  // 时段之外按 1x 计费；仅工作日生效时周末也属于其他时段。
+  if (timePricing.weekdays_only || coveredSeconds < SECONDS_PER_DAY) {
+    return [{ key: 'other', label: t('marketplace.timePricingOtherHours'), multiplier: 1, start: 0, end: 0 }, ...periods]
+  }
+  return periods
+})
+
+// 默认选中规则时区下当前所在的时段，展开面板看到的就是此刻的价格。
+const selectedTimeIndex = ref<number | null>(null)
+
+const currentTimeIndex = computed(() => {
+  const timePricing = props.model.pricing.time_pricing
+  const now = timePricing ? currentZonedTime(timePricing.timezone) : null
+  if (!timePricing || !now || (timePricing.weekdays_only && now.weekend)) {
+    return 0
+  }
+  const index = timeOptions.value.findIndex((option) => option.key !== 'other' && now.second >= option.start && now.second < option.end)
+  return Math.max(index, 0)
+})
+
+const activeTimeIndex = computed(() =>
+  Math.min(selectedTimeIndex.value ?? currentTimeIndex.value, Math.max(0, timeOptions.value.length - 1))
+)
+
+const tokenPriceFactor = computed(() => {
+  const timeMultiplier = timeOptions.value[activeTimeIndex.value]?.multiplier ?? 1
+  const effortMultiplier = maxEffortMode.value && hasMaxEffortPricing.value
+    ? props.model.pricing.max_reasoning_effort_multiplier ?? 1
+    : 1
+  return timeMultiplier * effortMultiplier
+})
+
+const timePricingNote = computed(() => {
+  const timePricing = props.model.pricing.time_pricing
+  if (timeOptions.value.length === 0 || !timePricing) {
+    return ''
+  }
+  const key = timePricing.weekdays_only ? 'marketplace.timePricingNoteWeekdays' : 'marketplace.timePricingNoteEveryDay'
+  return t(key, { timezone: timePricing.timezone })
+})
 
 const activeRows = computed(() => {
   if (fastMode.value && fastRows.value.length > 0) {

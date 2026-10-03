@@ -459,11 +459,11 @@ func DisplayPricingFromResolved(model string, rateMultiplier float64, resolved *
 			pricing = WithoutLongContextDisplayPricing(pricing)
 		}
 		if pricing != nil && (HasAnyDisplayTokenPricing(pricing) || resolved.HasEffectiveOverridePricing()) {
-			return BuildTokenDisplayPricing(pricing, rateMultiplier), true
+			return withTokenDisplayModifiers(BuildTokenDisplayPricing(pricing, rateMultiplier), resolved), true
 		}
 		intervals := ResolvedDisplayPricingIntervals(resolved, rateMultiplier)
 		if len(intervals) > 0 {
-			return BuildTokenIntervalDisplayPricing(intervals), true
+			return withTokenDisplayModifiers(BuildTokenIntervalDisplayPricing(intervals), resolved), true
 		}
 		return ModelDisplayPricing{}, false
 	case BillingModeImage, BillingModePerRequest:
@@ -487,6 +487,25 @@ func DisplayPricingFromResolved(model string, rateMultiplier float64, resolved *
 	default:
 		return ModelDisplayPricing{}, false
 	}
+}
+
+// withTokenDisplayModifiers 附上结算时按推理档位和请求时刻生效的 token 倍率。
+// 倍率为 1、分时规则为空或校验失败时，对应字段留空，和结算按 1x 处理的结果一致。
+func withTokenDisplayModifiers(display ModelDisplayPricing, resolved *ResolvedPricing) ModelDisplayPricing {
+	if resolved.BasePricing != nil {
+		multiplier := resolved.BasePricing.MaxReasoningEffortMultiplier
+		if multiplier != nil && *multiplier > 0 && *multiplier != 1 {
+			value := *multiplier
+			display.MaxReasoningEffortMultiplier = &value
+		}
+	}
+	if resolved.ConfigPricing != nil {
+		config := resolved.ConfigPricing.TimePricing
+		if config != nil && len(config.Periods) > 0 && ValidateTimePricingConfig(config) == nil {
+			display.TimePricing = resolved.ConfigPricing.Clone().TimePricing
+		}
+	}
+	return display
 }
 
 // WithoutLongContextDisplayPricing 移除内置长上下文展示元数据，保留基础单价。

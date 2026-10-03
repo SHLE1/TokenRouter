@@ -78,3 +78,66 @@ func TestCalculateCostUnifiedDoesNotApplyConfigTimeMultiplierToPerRequest(t *tes
 	require.InDelta(t, 0.15, cost.TotalCost, 1e-12)
 	require.InDelta(t, 0.30, cost.ActualCost, 1e-12)
 }
+
+func TestDisplayPricingCarriesConfigTimePricingAndMaxReasoningMultiplier(t *testing.T) {
+	maxMultiplier := 1.5
+	pricing := &routing.ModelPricingEntry{
+		BillingMode: routing.BillingModeToken,
+		InputPrice:  floatPtr(5e-6),
+		TimePricing: &routing.TimePricingConfig{
+			Timezone:     "Asia/Shanghai",
+			WeekdaysOnly: true,
+			Periods:      []routing.TimePricingPeriod{{StartTime: "09:00", EndTime: "12:00", Multiplier: 2}},
+		},
+	}
+	resolved := &billingpricing.ResolvedPricing{
+		Mode:   routing.BillingModeToken,
+		Source: billingpricing.PricingSourceConfig,
+		BasePricing: &billingpricing.ModelPricing{
+			InputPricePerToken:           5e-6,
+			OutputPricePerToken:          15e-6,
+			MaxReasoningEffortMultiplier: &maxMultiplier,
+		},
+		ConfigPricing: pricing,
+	}
+	service := billingtestkit.Calculator(0, nil, nil)
+
+	display := service.DisplayPricingWithResolvedMultipliers("claude-sonnet-4", 2, resolved)
+
+	// 单价按 1x 时段展示，分时规则和 Max 倍率交给前端单独说明。
+	require.InDelta(t, 10e-6, display.InputPricePerToken, 1e-15)
+	require.NotNil(t, display.MaxReasoningEffortMultiplier)
+	require.Equal(t, 1.5, *display.MaxReasoningEffortMultiplier)
+	require.Equal(t, pricing.TimePricing, display.TimePricing)
+	require.NotSame(t, pricing.TimePricing, display.TimePricing)
+}
+
+func TestDisplayPricingOmitsNeutralModifiers(t *testing.T) {
+	neutral := 1.0
+	resolved := &billingpricing.ResolvedPricing{
+		Mode:   routing.BillingModeToken,
+		Source: billingpricing.PricingSourceConfig,
+		BasePricing: &billingpricing.ModelPricing{
+			InputPricePerToken:           5e-6,
+			MaxReasoningEffortMultiplier: &neutral,
+		},
+		ConfigPricing: &routing.ModelPricingEntry{
+			BillingMode: routing.BillingModeToken,
+			InputPrice:  floatPtr(5e-6),
+			// 重叠时段在结算时按 1x 处理，展示同样省略。
+			TimePricing: &routing.TimePricingConfig{
+				Timezone: "UTC",
+				Periods: []routing.TimePricingPeriod{
+					{StartTime: "01:00", EndTime: "04:00", Multiplier: 2},
+					{StartTime: "03:00", EndTime: "05:00", Multiplier: 3},
+				},
+			},
+		},
+	}
+	service := billingtestkit.Calculator(0, nil, nil)
+
+	display := service.DisplayPricingWithResolvedMultipliers("claude-sonnet-4", 1, resolved)
+
+	require.Nil(t, display.MaxReasoningEffortMultiplier)
+	require.Nil(t, display.TimePricing)
+}

@@ -624,6 +624,17 @@ export interface MarketplacePricingInterval {
   fast_image_output_price_per_token?: number
 }
 
+// MarketplaceTimePricing 是价格配置的分时倍率，时段之外按 1x 计费；结束时间 00:00 表示当天 24:00。
+export interface MarketplaceTimePricing {
+  timezone: string
+  weekdays_only: boolean
+  periods: Array<{
+    start_time: string
+    end_time: string
+    multiplier: number
+  }>
+}
+
 export interface MarketplaceModelPricing {
   pricing_mode: MarketplacePricingMode
   price_status: MarketplacePriceStatus
@@ -642,6 +653,10 @@ export interface MarketplaceModelPricing {
   fast_cache_read_price_per_token?: number
   fast_image_output_price_per_token?: number
   context_intervals?: MarketplacePricingInterval[]
+  // 最终推理档位为 max 时乘到全部 token 单价上的倍率。
+  max_reasoning_effort_multiplier?: number
+  // 按请求时刻乘到 token 单价上的分时规则，上面的单价按 1x 计算。
+  time_pricing?: MarketplaceTimePricing
   image_price_1k?: number
   image_price_2k?: number
   image_price_4k?: number

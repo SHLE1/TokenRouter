@@ -33,6 +33,8 @@ type ModelMarketplacePricing struct {
 	FastCacheReadPricePerToken    float64                           `json:"fast_cache_read_price_per_token,omitempty"`
 	FastImageOutputPricePerToken  float64                           `json:"fast_image_output_price_per_token,omitempty"`
 	ContextIntervals              []ModelMarketplacePricingInterval `json:"context_intervals,omitempty"`
+	MaxReasoningEffortMultiplier  *float64                          `json:"max_reasoning_effort_multiplier,omitempty"`
+	TimePricing                   *ModelMarketplaceTimePricing      `json:"time_pricing,omitempty"`
 	ImagePrice1K                  *float64                          `json:"image_price_1k,omitempty"`
 	ImagePrice2K                  *float64                          `json:"image_price_2k,omitempty"`
 	ImagePrice4K                  *float64                          `json:"image_price_4k,omitempty"`
@@ -56,6 +58,20 @@ type ModelMarketplacePricingInterval struct {
 	FastCacheWrite1hPricePerToken float64 `json:"fast_cache_write_1h_price_per_token,omitempty"`
 	FastCacheReadPricePerToken    float64 `json:"fast_cache_read_price_per_token,omitempty"`
 	FastImageOutputPricePerToken  float64 `json:"fast_image_output_price_per_token,omitempty"`
+}
+
+// ModelMarketplaceTimePricing 是按请求时刻乘到 token 单价上的分时倍率，时段之外按 1x 计费。
+type ModelMarketplaceTimePricing struct {
+	Timezone     string                              `json:"timezone"`
+	WeekdaysOnly bool                                `json:"weekdays_only"`
+	Periods      []ModelMarketplaceTimePricingPeriod `json:"periods"`
+}
+
+// ModelMarketplaceTimePricingPeriod 是左闭右开的每日时段，结束时间 00:00 表示当天 24:00。
+type ModelMarketplaceTimePricingPeriod struct {
+	StartTime  string  `json:"start_time"`
+	EndTime    string  `json:"end_time"`
+	Multiplier float64 `json:"multiplier"`
 }
 
 type ModelMarketplaceModel struct {
@@ -232,9 +248,31 @@ func modelMarketplacePricingFromRouting(pricing pricing.ModelDisplayPricing) Mod
 		FastCacheReadPricePerToken:    pricing.FastCacheReadPricePerToken,
 		FastImageOutputPricePerToken:  pricing.FastImageOutputPricePerToken,
 		ContextIntervals:              intervals,
+		MaxReasoningEffortMultiplier:  pricing.MaxReasoningEffortMultiplier,
+		TimePricing:                   modelMarketplaceTimePricingFromRouting(pricing.TimePricing),
 		ImagePrice1K:                  imagePriceValue(pricing, "1K", pricing.ImagePrice1K),
 		ImagePrice2K:                  imagePriceValue(pricing, "2K", pricing.ImagePrice2K),
 		ImagePrice4K:                  imagePriceValue(pricing, "4K", pricing.ImagePrice4K),
+	}
+}
+
+// modelMarketplaceTimePricingFromRouting 将价格配置的分时规则转换为公开 DTO。
+func modelMarketplaceTimePricingFromRouting(config *pricing.TimePricingConfig) *ModelMarketplaceTimePricing {
+	if config == nil {
+		return nil
+	}
+	periods := make([]ModelMarketplaceTimePricingPeriod, 0, len(config.Periods))
+	for _, period := range config.Periods {
+		periods = append(periods, ModelMarketplaceTimePricingPeriod{
+			StartTime:  period.StartTime,
+			EndTime:    period.EndTime,
+			Multiplier: period.Multiplier,
+		})
+	}
+	return &ModelMarketplaceTimePricing{
+		Timezone:     config.Timezone,
+		WeekdaysOnly: config.WeekdaysOnly,
+		Periods:      periods,
 	}
 }
 
