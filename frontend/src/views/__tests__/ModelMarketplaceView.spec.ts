@@ -358,6 +358,33 @@ describe('ModelMarketplaceView', () => {
     }
   })
 
+  it('模型信息浮层按目录顺序列出可用协议并标出原生协议，没有属性时也显示入口', async () => {
+    getMarketplaceModels.mockResolvedValueOnce([
+      marketplaceGroup(1, 'Plus', [
+        { ...marketplaceModel('gpt-5.5', 'GPT 5.5', tokenPricing), protocols: ['openai_chat_completions', 'anthropic_messages'], native_protocols: ['openai_chat_completions'] },
+        marketplaceModel('legacy-unpriced', 'Legacy Unpriced', unpricedPricing),
+      ]),
+    ])
+    const wrapper = await mountMarketplace()
+    const triggers = wrapper.findAll('[data-testid="model-attributes-trigger"]')
+    expect(triggers).toHaveLength(1)
+
+    await triggers[0].trigger('click')
+    await nextTick()
+    const tooltip = visibleTooltips().find((el) => el.querySelector('[data-testid="model-protocols"]'))
+    expect(tooltip).toBeDefined()
+    const chips = Array.from(tooltip!.querySelectorAll<HTMLElement>('[data-protocol]'))
+    expect(chips.map((chip) => chip.dataset.protocol)).toEqual(['anthropic_messages', 'openai_chat_completions'])
+    expect(chips.map((chip) => chip.title)).toEqual([
+      'POST /v1/messages · marketplace.protocolConvertedHint',
+      'POST /v1/chat/completions · marketplace.protocolNativeHint',
+    ])
+    expect(chips.map((chip) => chip.dataset.native)).toEqual(['false', 'true'])
+    expect(tooltip!.querySelector('[data-testid="model-protocols-native-legend"]')).not.toBeNull()
+    expect(chips[0].textContent).toContain('marketplace.protocolNames.anthropic_messages')
+    wrapper.unmount()
+  })
+
   it('xAI 分组展示品牌图形', async () => {
     const fixture = marketplaceFixture()
     fixture[0] = {

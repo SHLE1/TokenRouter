@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 type ModelMarketplaceGroup struct {
@@ -37,6 +38,10 @@ type ModelMarketplaceModel struct {
 	// 查询不到时为 nil，前端能力标签降级为本地规则。
 	InputModalities  []string
 	OutputModalities []string
+	// Protocols 是该模型在分组里可以请求的客户端协议，顺序按组内提供商的解析结果。
+	Protocols []capability.ProtocolID
+	// NativeProtocols 是 Protocols 中不经过协议转换的那部分。
+	NativeProtocols []capability.ProtocolID
 }
 
 // MarketplaceListOptions 指定市场查询需要附带的观测数据。
@@ -397,6 +402,8 @@ func (s *Marketplace) buildPublicModels(ctx context.Context, group *Group, model
 			Pricing:          pricing,
 			InputModalities:  inputModalities,
 			OutputModalities: outputModalities,
+			Protocols:        modelDef.Protocols,
+			NativeProtocols:  modelDef.NativeProtocols,
 		})
 	}
 
@@ -465,6 +472,8 @@ func (s *Marketplace) resolveGroupModelsWithProviders(ctx context.Context, group
 
 type MarketplaceModelDef struct {
 	UpstreamModels   []string
+	Protocols        []capability.ProtocolID
+	NativeProtocols  []capability.ProtocolID
 	ID               string
 	DisplayName      string
 	PricingModel     string
@@ -477,6 +486,8 @@ func buildMarketplaceModelDefsFromRequestable(models []RequestableModel, display
 		defs = append(defs, MarketplaceModelDef{
 			ID:               model.ID,
 			UpstreamModels:   model.UpstreamModels,
+			Protocols:        model.Protocols,
+			NativeProtocols:  model.NativeProtocols,
 			DisplayName:      lookupMarketplaceDisplayName(model.ID, displayNames),
 			PricingModel:     model.PricingModel,
 			PricingAmbiguous: model.PricingAmbiguous,

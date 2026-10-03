@@ -9,11 +9,15 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 )
 
 // marketplaceLoadingModels 为部分分组返回空目录，覆盖属性和观测查询的分组筛选。
 type marketplaceLoadingModels struct{}
+
+// marketplaceLoadingProtocols 是解析器给 alias 返回的客户端协议。
+var marketplaceLoadingProtocols = []capability.ProtocolID{capability.ProtocolAnthropicMessages, capability.ProtocolOpenAIChatCompletions}
 
 func (marketplaceLoadingModels) Prefetch(context.Context) ([]routing.CatalogueProvider, bool, error) {
 	return nil, false, nil
@@ -23,7 +27,7 @@ func (marketplaceLoadingModels) ResolveRequestableModels(_ context.Context, id *
 	if *id > 2 {
 		return routing.RequestableModelsResult{}
 	}
-	return routing.RequestableModelsResult{Models: []routing.RequestableModel{{ID: "alias", PricingModel: "priced", UpstreamModels: []string{"upstream"}}}}
+	return routing.RequestableModelsResult{Models: []routing.RequestableModel{{ID: "alias", PricingModel: "priced", UpstreamModels: []string{"upstream"}, Protocols: marketplaceLoadingProtocols, NativeProtocols: marketplaceLoadingProtocols[:1]}}}
 }
 
 // marketplaceLoadingObservations 记录容量和可用率查询的分组。
@@ -60,7 +64,7 @@ func (p *marketplaceLoadingPrices) GetModelModalities(string) ([]string, []strin
 	return []string{"text"}, []string{"text"}
 }
 
-// TestMarketplaceBatchAttributesAndOptionalCapacity 覆盖批量读取、属性失败降级和容量开关。
+// TestMarketplaceBatchAttributesAndOptionalCapacity 覆盖批量读取、属性失败降级、容量开关和模型协议的透传。
 func TestMarketplaceBatchAttributesAndOptionalCapacity(t *testing.T) {
 	for _, attributesFail := range []bool{false, true} {
 		for _, includeCapacity := range []bool{false, true} {
@@ -103,6 +107,8 @@ func TestMarketplaceBatchAttributesAndOptionalCapacity(t *testing.T) {
 			require.Len(t, prices.requests, 2)
 			require.Equal(t, "priced", prices.requests[0].Model)
 			require.Equal(t, float64(2), result[0].Models[0].Pricing.InputPricePerToken)
+			require.Equal(t, marketplaceLoadingProtocols, result[0].Models[0].Protocols)
+			require.Equal(t, marketplaceLoadingProtocols[:1], result[0].Models[0].NativeProtocols)
 			require.Equal(t, []int64{1}, observations.availabilityGroups)
 			require.NotNil(t, result[1].Availability)
 			if includeCapacity {

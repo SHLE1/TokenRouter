@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
@@ -64,6 +65,8 @@ type ModelMarketplaceModel struct {
 	Pricing          ModelMarketplacePricing           `json:"pricing"`
 	InputModalities  []string                          `json:"input_modalities,omitempty"`
 	OutputModalities []string                          `json:"output_modalities,omitempty"`
+	Protocols        []protocol.ProtocolID             `json:"protocols,omitempty"`
+	NativeProtocols  []protocol.ProtocolID             `json:"native_protocols,omitempty"`
 }
 
 type ModelMarketplaceCapacity struct {
@@ -121,6 +124,8 @@ func ModelMarketplaceGroupsFromRouting(groups []routing.ModelMarketplaceGroup) [
 				InputModalities:  model.InputModalities,
 				Attributes:       model.Attributes,
 				OutputModalities: model.OutputModalities,
+				Protocols:        model.Protocols,
+				NativeProtocols:  model.NativeProtocols,
 			})
 		}
 

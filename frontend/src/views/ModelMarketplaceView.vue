@@ -223,9 +223,9 @@
                 <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
                   <div class="flex min-w-0 flex-1 basis-32 items-center">
                     <h3 class="min-w-0 truncate text-base font-semibold text-gray-950 dark:text-white">{{ model.display_name }}</h3>
-                    <!-- 模型属性收进标题旁的信息图标，悬停或点击后以浮层展示，不占用卡片高度。 -->
+                    <!-- 模型属性和可用协议收进标题旁的信息图标，悬停或点击后以浮层展示，不占用卡片高度。 -->
                     <HelpTooltip
-                      v-if="model.attributes"
+                      v-if="model.attributes || marketplaceProtocols(model.protocols).length > 0"
                       trigger="both"
                       width-class="w-72"
                       :closable="false"
@@ -241,7 +241,13 @@
                           <Icon name="infoCircle" size="sm" class="h-4 w-4" />
                         </button>
                       </template>
-                      <ModelAttributesSummary :attributes="model.attributes" variant="tooltip" />
+                      <ModelAttributesSummary v-if="model.attributes" :attributes="model.attributes" variant="tooltip" />
+                      <!-- 有属性时，协议段用和属性浮层相同的分隔线隔开。 -->
+                      <ModelProtocolChips
+                        :protocols="model.protocols"
+                        :native-protocols="model.native_protocols"
+                        :class="model.attributes ? 'mt-3 border-t border-white/10 pt-3 dark:border-dark-700' : ''"
+                      />
                     </HelpTooltip>
                   </div>
                   <ModelCapabilityTags :model="model" />
@@ -294,6 +300,7 @@ import GroupAvailabilityBar from '@/components/marketplace/GroupAvailabilityBar.
 import ModelCapabilityTags from '@/components/marketplace/ModelCapabilityTags.vue'
 import ModelAttributesSummary from '@/components/common/ModelAttributesSummary.vue'
 import ModelPricingPanel from '@/components/marketplace/ModelPricingPanel.vue'
+import ModelProtocolChips from '@/components/marketplace/ModelProtocolChips.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
@@ -306,6 +313,7 @@ import { initTheme, useTheme } from '@/composables/useTheme'
 import { getMarketplaceModels } from '@/api/marketplace'
 import { providerBrandDisplayName, providerBrandFilterKey, resolveProviderBrand } from '@/utils/providerBrand'
 import { formatCompactTokenRange } from '@/utils/formatters'
+import { marketplaceProtocols } from '@/utils/marketplaceProtocols'
 import { sanitizeUrl } from '@/utils/url'
 import type { MarketplaceGroup, MarketplaceModelPricing, MarketplacePricingInterval } from '@/types'
 import { useAppStore, useAuthStore } from '@/stores'

@@ -657,6 +657,10 @@ export interface MarketplaceModel {
   pricing: MarketplaceModelPricing
   input_modalities?: ModelModality[]
   output_modalities?: ModelModality[]
+  // protocols 是该模型在分组里可以请求的客户端协议。
+  protocols?: ProtocolID[]
+  // native_protocols 是 protocols 里不经过协议转换的那部分。
+  native_protocols?: ProtocolID[]
 }
 
 // 用户与市场接口可携带的分组容量快照，仅包含聚合后的负载数字。

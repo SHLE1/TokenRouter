@@ -45,6 +45,8 @@ Claude Code、Codex、Gemini、Grok、OpenCode 和 CC Switch 的配置，按用�
 
 模型级的数据附带 `attributes`，包括有效的显示名、长度、模态和能力信息；`input_modalities` 和 `output_modalities` 保留为兼容字段。新的属性数据里，未知的字段不会根据价格或名称猜测；只有旧接口没有返回 `attributes` 时，前端才使用历史的模态推断。属性读取失败不影响价格展示。
 
+模型级的 `protocols` 列出该模型在分组里可以请求的客户端协议，取自 `RequestableModel.Protocols`，和用户分组目录的 `model_protocols` 来自同一套可请求解析。`native_protocols` 是其中的原生协议：承接该模型的每个提供商，对这个协议解析出的路线都是协议本身，请求不经过转换；有一个提供商需要转换，这个协议就不算原生。模型广场把协议放进模型名旁的信息浮层：每个协议显示品牌图标和短名，原生协议用绿色描边标出，悬停时显示端点和是否原生；模型有属性或有协议时都会显示信息图标。未登录用户读不到管理员的协议目录，所以客户端协议的顺序、品牌和端点写在前端的 `utils/marketplaceProtocols.ts` 里，单元测试用 `protocol-catalog.json` 夹具核对它和后端目录是否一致。
+
 <a id="model_catalog_metadata_lookup"></a>
 ## 目录元数据查询
 

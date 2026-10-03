@@ -14,8 +14,10 @@ import (
 // RequestableModel 描述客户端可请求的模型，以及模型广场应使用的定价模型。
 type RequestableModel struct {
 	// UpstreamModels 保存已确认可请求的最终模型，供展示使用。
-	UpstreamModels   []string
-	Protocols        []capability.ProtocolID
+	UpstreamModels []string
+	Protocols      []capability.ProtocolID
+	// NativeProtocols 是 Protocols 里每个承接该模型的提供商都能直接处理的协议，请求按这些协议进入时不经过协议转换。
+	NativeProtocols  []capability.ProtocolID
 	ID               string
 	PricingModel     string
 	PricingAmbiguous bool
@@ -253,15 +255,19 @@ func (s *RequestableResolver) resolveRequestableModel(
 
 	upstreamModels := make([]string, 0, len(providers))
 	var protocols []capability.ProtocolID
+	// nativeByProtocol 记录协议是否在每个承接该模型的提供商上都走原生路线。
+	nativeByProtocol := map[capability.ProtocolID]bool{}
 	for i := range providers {
 		provider := &providers[i]
 		var candidateProtocols []capability.ProtocolID
+		var nativeCandidates []capability.ProtocolID
 		if policy != nil && policy.AllowedProtocols != nil {
 			if policy.RequireOAuthOnly && provider.Type == capability.ProviderTypeAPIKey {
 				continue
 			}
 			for _, source := range policy.AllowedProtocols {
-				if _, ok := capability.ResolveRoute(provider.Protocols(), source, policy.ProtocolFallbacks); !ok {
+				target, ok := capability.ResolveRoute(provider.Protocols(), source, policy.ProtocolFallbacks)
+				if !ok {
 					continue
 				}
 				if aware, ok := provider.Rules.(interface {
@@ -270,6 +276,9 @@ func (s *RequestableResolver) resolveRequestableModel(
 					continue
 				}
 				candidateProtocols = append(candidateProtocols, source)
+				if target == source {
+					nativeCandidates = append(nativeCandidates, source)
+				}
 			}
 			if len(candidateProtocols) == 0 {
 				continue
@@ -278,25 +287,40 @@ func (s *RequestableResolver) resolveRequestableModel(
 		if !provider.Rules.Supports(ctx, groupMappedModel) {
 			continue
 		}
+		contributed := false
 		for _, upstreamModel := range provider.Rules.UpstreamModels(ctx, groupMappedModel) {
 			if policy != nil && policy.RestrictModels && policy.RestrictionSource() == BillingModelSourceUpstream &&
 				s.requestableModelRestricted(ctx, groupID, upstreamModel) {
 				continue
 			}
 			upstreamModels = append(upstreamModels, upstreamModel)
-			for _, source := range candidateProtocols {
-				if !slices.Contains(protocols, source) {
-					protocols = append(protocols, source)
-				}
+			contributed = true
+		}
+		if !contributed {
+			continue
+		}
+		for _, source := range candidateProtocols {
+			native := slices.Contains(nativeCandidates, source)
+			if previous, seen := nativeByProtocol[source]; seen {
+				nativeByProtocol[source] = previous && native
+				continue
 			}
+			nativeByProtocol[source] = native
+			protocols = append(protocols, source)
 		}
 	}
 	if len(upstreamModels) == 0 {
 		return RequestableModel{}, false
 	}
 
+	var nativeProtocols []capability.ProtocolID
+	for _, source := range protocols {
+		if nativeByProtocol[source] {
+			nativeProtocols = append(nativeProtocols, source)
+		}
+	}
 	slices.Sort(upstreamModels)
-	resolved := RequestableModel{ID: requestedModel, Protocols: protocols, UpstreamModels: slices.Compact(upstreamModels)}
+	resolved := RequestableModel{ID: requestedModel, Protocols: protocols, NativeProtocols: nativeProtocols, UpstreamModels: slices.Compact(upstreamModels)}
 	switch billingSource {
 	case BillingModelSourceRequested:
 		resolved.PricingModel = requestedModel
