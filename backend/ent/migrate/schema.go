@@ -1439,6 +1439,7 @@ var (
 		{Name: "type", Type: field.TypeString, Size: 20, Default: "balance"},
 		{Name: "value", Type: field.TypeFloat64, Default: 0, SchemaType: map[string]string{"postgres": "decimal(20,8)"}},
 		{Name: "status", Type: field.TypeString, Size: 20, Default: "unused"},
+		{Name: "requires_payment", Type: field.TypeBool, Default: false},
 		{Name: "max_uses", Type: field.TypeInt, Default: 1},
 		{Name: "used_count", Type: field.TypeInt, Default: 0},
 		{Name: "expires_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"postgres": "timestamptz"}},
@@ -1456,13 +1457,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "redeem_codes_subscription_plans_redeem_codes",
-				Columns:    []*schema.Column{RedeemCodesColumns[11]},
+				Columns:    []*schema.Column{RedeemCodesColumns[12]},
 				RefColumns: []*schema.Column{SubscriptionPlansColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "redeem_codes_users_redeem_codes",
-				Columns:    []*schema.Column{RedeemCodesColumns[12]},
+				Columns:    []*schema.Column{RedeemCodesColumns[13]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -1476,17 +1477,17 @@ var (
 			{
 				Name:    "redeemcode_expires_at",
 				Unique:  false,
-				Columns: []*schema.Column{RedeemCodesColumns[7]},
+				Columns: []*schema.Column{RedeemCodesColumns[8]},
 			},
 			{
 				Name:    "redeemcode_used_by",
 				Unique:  false,
-				Columns: []*schema.Column{RedeemCodesColumns[12]},
+				Columns: []*schema.Column{RedeemCodesColumns[13]},
 			},
 			{
 				Name:    "redeemcode_plan_id",
 				Unique:  false,
-				Columns: []*schema.Column{RedeemCodesColumns[11]},
+				Columns: []*schema.Column{RedeemCodesColumns[12]},
 			},
 		},
 	}

@@ -53,6 +53,9 @@ func (s *redeemAdminFixture) GenerateRedeemCodes(ctx context.Context, input *bil
 
 func (s *redeemAdminFixture) UpdateRedeemCode(ctx context.Context, id int64, input *billing.UpdateRedeemCodeInput) (*billing.RedeemCode, error) {
 	code := billing.RedeemCode{ID: id, Code: "R-TEST", Status: billing.StatusUnused, MaxUses: 1}
+	if input.RequiresPayment != nil {
+		code.RequiresPayment = *input.RequiresPayment
+	}
 	if input.MaxUses != nil {
 		code.MaxUses = *input.MaxUses
 	}

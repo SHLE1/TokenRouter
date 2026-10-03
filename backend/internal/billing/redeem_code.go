@@ -7,18 +7,20 @@ import (
 )
 
 type RedeemCode struct {
-	ID        int64
-	Code      string
-	Type      string
-	Value     float64
-	Status    string
-	MaxUses   int
-	UsedCount int
-	ExpiresAt *time.Time
-	UsedBy    *int64
-	UsedAt    *time.Time
-	Notes     string
-	CreatedAt time.Time
+	ID     int64
+	Code   string
+	Type   string
+	Value  float64
+	Status string
+	// RequiresPayment 表示领取者需要有成功付款记录。
+	RequiresPayment bool
+	MaxUses         int
+	UsedCount       int
+	ExpiresAt       *time.Time
+	UsedBy          *int64
+	UsedAt          *time.Time
+	Notes           string
+	CreatedAt       time.Time
 
 	PlanID *int64
 

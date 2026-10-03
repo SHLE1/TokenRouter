@@ -1727,16 +1727,20 @@ func init() {
 	redeemcode.DefaultStatus = redeemcodeDescStatus.Default.(string)
 	// redeemcode.StatusValidator is a validator for the "status" field. It is called by the builders before save.
 	redeemcode.StatusValidator = redeemcodeDescStatus.Validators[0].(func(string) error)
+	// redeemcodeDescRequiresPayment is the schema descriptor for requires_payment field.
+	redeemcodeDescRequiresPayment := redeemcodeFields[4].Descriptor()
+	// redeemcode.DefaultRequiresPayment holds the default value on creation for the requires_payment field.
+	redeemcode.DefaultRequiresPayment = redeemcodeDescRequiresPayment.Default.(bool)
 	// redeemcodeDescMaxUses is the schema descriptor for max_uses field.
-	redeemcodeDescMaxUses := redeemcodeFields[4].Descriptor()
+	redeemcodeDescMaxUses := redeemcodeFields[5].Descriptor()
 	// redeemcode.DefaultMaxUses holds the default value on creation for the max_uses field.
 	redeemcode.DefaultMaxUses = redeemcodeDescMaxUses.Default.(int)
 	// redeemcodeDescUsedCount is the schema descriptor for used_count field.
-	redeemcodeDescUsedCount := redeemcodeFields[5].Descriptor()
+	redeemcodeDescUsedCount := redeemcodeFields[6].Descriptor()
 	// redeemcode.DefaultUsedCount holds the default value on creation for the used_count field.
 	redeemcode.DefaultUsedCount = redeemcodeDescUsedCount.Default.(int)
 	// redeemcodeDescCreatedAt is the schema descriptor for created_at field.
-	redeemcodeDescCreatedAt := redeemcodeFields[10].Descriptor()
+	redeemcodeDescCreatedAt := redeemcodeFields[11].Descriptor()
 	// redeemcode.DefaultCreatedAt holds the default value on creation for the created_at field.
 	redeemcode.DefaultCreatedAt = redeemcodeDescCreatedAt.Default.(func() time.Time)
 	redeemcodeusageFields := schema.RedeemCodeUsage{}.Fields()

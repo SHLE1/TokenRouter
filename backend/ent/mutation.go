@@ -38465,6 +38465,7 @@ type RedeemCodeMutation struct {
 	value                *float64
 	addvalue             *float64
 	status               *string
+	requires_payment     *bool
 	max_uses             *int
 	addmax_uses          *int
 	used_count           *int
@@ -38746,6 +38747,42 @@ func (m *RedeemCodeMutation) OldStatus(ctx context.Context) (v string, err error
 // ResetStatus resets all changes to the "status" field.
 func (m *RedeemCodeMutation) ResetStatus() {
 	m.status = nil
+}
+
+// SetRequiresPayment sets the "requires_payment" field.
+func (m *RedeemCodeMutation) SetRequiresPayment(b bool) {
+	m.requires_payment = &b
+}
+
+// RequiresPayment returns the value of the "requires_payment" field in the mutation.
+func (m *RedeemCodeMutation) RequiresPayment() (r bool, exists bool) {
+	v := m.requires_payment
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequiresPayment returns the old "requires_payment" field's value of the RedeemCode entity.
+// If the RedeemCode object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RedeemCodeMutation) OldRequiresPayment(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequiresPayment is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequiresPayment requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequiresPayment: %w", err)
+	}
+	return oldValue.RequiresPayment, nil
+}
+
+// ResetRequiresPayment resets all changes to the "requires_payment" field.
+func (m *RedeemCodeMutation) ResetRequiresPayment() {
+	m.requires_payment = nil
 }
 
 // SetMaxUses sets the "max_uses" field.
@@ -39296,7 +39333,7 @@ func (m *RedeemCodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RedeemCodeMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 13)
 	if m.code != nil {
 		fields = append(fields, redeemcode.FieldCode)
 	}
@@ -39308,6 +39345,9 @@ func (m *RedeemCodeMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, redeemcode.FieldStatus)
+	}
+	if m.requires_payment != nil {
+		fields = append(fields, redeemcode.FieldRequiresPayment)
 	}
 	if m.max_uses != nil {
 		fields = append(fields, redeemcode.FieldMaxUses)
@@ -39349,6 +39389,8 @@ func (m *RedeemCodeMutation) Field(name string) (ent.Value, bool) {
 		return m.Value()
 	case redeemcode.FieldStatus:
 		return m.Status()
+	case redeemcode.FieldRequiresPayment:
+		return m.RequiresPayment()
 	case redeemcode.FieldMaxUses:
 		return m.MaxUses()
 	case redeemcode.FieldUsedCount:
@@ -39382,6 +39424,8 @@ func (m *RedeemCodeMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldValue(ctx)
 	case redeemcode.FieldStatus:
 		return m.OldStatus(ctx)
+	case redeemcode.FieldRequiresPayment:
+		return m.OldRequiresPayment(ctx)
 	case redeemcode.FieldMaxUses:
 		return m.OldMaxUses(ctx)
 	case redeemcode.FieldUsedCount:
@@ -39434,6 +39478,13 @@ func (m *RedeemCodeMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case redeemcode.FieldRequiresPayment:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequiresPayment(v)
 		return nil
 	case redeemcode.FieldMaxUses:
 		v, ok := value.(int)
@@ -39623,6 +39674,9 @@ func (m *RedeemCodeMutation) ResetField(name string) error {
 		return nil
 	case redeemcode.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case redeemcode.FieldRequiresPayment:
+		m.ResetRequiresPayment()
 		return nil
 	case redeemcode.FieldMaxUses:
 		m.ResetMaxUses()

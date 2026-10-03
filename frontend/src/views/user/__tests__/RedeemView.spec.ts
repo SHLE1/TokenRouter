@@ -230,3 +230,18 @@ describe('兑换成功反馈', () => {
     }
   })
 })
+
+// 付款资格错误保留兑换码，付款后可以再次提交。
+describe('付款领取条件', () => {
+  it.each(['zh', 'en'])('按 %s 展示未付款提示', async (locale) => {
+    mocks.redeem.mockRejectedValue({ status: 403, reason: 'REDEEM_PAYMENT_REQUIRED' })
+    await mountView(locale)
+    await submit()
+    expect(mocks.app.showError).toHaveBeenCalledWith(
+      locale === 'zh' ? zh.redeem.paymentRequired : en.redeem.paymentRequired
+    )
+    expect((wrapper!.get('input').element as HTMLInputElement).value).toBe('GIFT-CODE')
+    expect(wrapper!.find('[data-testid="redeem-celebration"]').exists()).toBe(false)
+    expect(mocks.refreshUser).not.toHaveBeenCalled()
+  })
+})

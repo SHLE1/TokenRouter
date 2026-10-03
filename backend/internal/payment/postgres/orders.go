@@ -57,6 +57,19 @@ func (s *OrderStore) PaidOrders(ctx context.Context, start, end time.Time, statu
 	return orderValues(rows), e
 }
 
+// HasPaidOrder 根据付款确认时间判断历史付款，后续退款仍属于付过款。
+func (s *OrderStore) HasPaidOrder(ctx context.Context, userID int64) (bool, error) {
+	client := s.client
+	if tx := dbent.TxFromContext(ctx); tx != nil {
+		client = tx.Client()
+	}
+	return client.PaymentOrder.Query().Where(
+		paymentorder.UserIDEQ(userID),
+		paymentorder.PaidAtNotNil(),
+		paymentorder.PayAmountGT(0),
+	).Exist(ctx)
+}
+
 func (s *OrderStore) PendingCount(ctx context.Context) (int, error) {
 	return s.client.PaymentOrder.Query().Where(paymentorder.StatusIn(payment.OrderStatusPending, payment.OrderStatusProcessing)).Count(ctx)
 }

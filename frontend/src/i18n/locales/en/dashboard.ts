@@ -565,6 +565,7 @@ export default {
   },
 // Redeem
   redeem: {
+    paymentRequired: 'This code requires a previous successful payment. Please complete a payment first.',
     title: 'Redeem Code',
     description: 'Enter your redeem code to add balance, increase concurrency, or claim subscription access',
     currentBalance: 'Current Balance',

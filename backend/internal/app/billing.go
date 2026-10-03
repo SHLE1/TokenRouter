@@ -74,7 +74,18 @@ func provideBillingFunds(store *billingpostgres.SettlementStore) *billing.Funds 
 }
 
 func provideBillingRedeem(repo billing.RedeemCodeRepository, users *identitypostgres.UserStore, subs *billing.SubscriptionService, cache billing.RedeemCache, eligibility *billing.Eligibility, client *dbent.Client, auth apikey.APIKeyAuthCacheInvalidator, affiliate *promotion.AffiliateService, tasks *lifecycle.Tasks) *billing.RedeemService {
-	return billing.NewRedeemService(repo, billingIdentityUsers{Repository: users}, subs, cache, eligibility, billingpostgres.NewRedeemMutations(client, billingpostgres.RedeemWriters{Balances: billingpostgres.NewBalanceStore(client), Concurrency: identitypostgres.NewConcurrencyStore(client)}), auth, affiliate, billing.RedeemRuntime{Now: time.Now, Observe: logging.LegacyPrintf, Background: func(name string, fn func()) { tasks.Go(name, fn) }})
+	// 付款历史查询与兑换写入共用事务连接。
+	mutations := billingpostgres.NewRedeemMutations(client, billingpostgres.RedeemWriters{
+		Balances:    billingpostgres.NewBalanceStore(client),
+		Concurrency: identitypostgres.NewConcurrencyStore(client),
+	})
+	runtime := billing.RedeemRuntime{
+		HasPaidOrder: paymentpostgres.NewOrderStore(client).HasPaidOrder,
+		Now:          time.Now,
+		Observe:      logging.LegacyPrintf,
+		Background:   func(name string, fn func()) { tasks.Go(name, fn) },
+	}
+	return billing.NewRedeemService(repo, billingIdentityUsers{Repository: users}, subs, cache, eligibility, mutations, auth, affiliate, runtime)
 }
 
 func provideRedeemAdministration(repo billing.RedeemCodeRepository, client *dbent.Client) *billing.RedeemAdmin {

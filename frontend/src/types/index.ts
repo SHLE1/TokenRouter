@@ -1984,6 +1984,8 @@ export interface UsageCleanupTask {
 }
 
 export interface RedeemCode {
+  /** 领取者需要有成功付款记录。 */
+  requires_payment?: boolean
   id: number
   code: string
   type: RedeemCodeType
@@ -2003,6 +2005,8 @@ export interface RedeemCode {
 }
 
 export interface GenerateRedeemCodesRequest {
+  /** 领取者需要有成功付款记录。 */
+  requires_payment?: boolean
   code?: string
   count: number
   type: RedeemCodeType
@@ -2014,6 +2018,8 @@ export interface GenerateRedeemCodesRequest {
 }
 
 export interface UpdateRedeemCodeRequest {
+  /** 领取者需要有成功付款记录。 */
+  requires_payment?: boolean
   value?: number
   max_uses?: number
   expires_at?: number | null

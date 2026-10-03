@@ -226,7 +226,7 @@ describe('admin RedeemView batch update', () => {
     expect(showSuccess).toHaveBeenCalledWith('admin.redeem.batchUpdateSuccess')
   })
 
-  it('shows and submits max uses when generating redeem codes', async () => {
+  it.each([false, true])('提交生成兑换码的付款条件：%s', async (requiresPayment) => {
     const wrapper = mount(RedeemView, {
       attachTo: document.body,
       global: {
@@ -256,6 +256,10 @@ describe('admin RedeemView batch update', () => {
     const maxUsesInput = wrapper.get('[data-testid="generate-max-uses"]')
     expect(maxUsesInput.exists()).toBe(true)
 
+    expect(wrapper.get('#generateForm-requires-payment').attributes('aria-checked')).toBe('false')
+    if (requiresPayment) {
+      await wrapper.get('#generateForm-requires-payment').trigger('click')
+    }
     await maxUsesInput.setValue('5')
     await wrapper.get('[data-testid="generate-form"]').trigger('submit')
     await flushPromises()
@@ -267,7 +271,9 @@ describe('admin RedeemView batch update', () => {
       undefined,
       5,
       null,
-      undefined
+      undefined,
+      undefined,
+      requiresPayment
     )
   })
 })

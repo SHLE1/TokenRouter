@@ -240,6 +240,8 @@ export default {
     },
 // Redeem Codes
     redeem: {
+      requiresPayment: 'Requires a previous payment',
+      requiresPaymentHint: 'Users need at least one successful payment of any amount to redeem this code.',
       title: 'Redeem Code Management',
       description: 'Generate and manage redeem codes',
       generateCodes: 'Generate Codes',

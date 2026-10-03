@@ -71,12 +71,15 @@ export async function generate(
   maxUses?: number,
   expiresAt?: number | null,
   code?: string,
-  expiresInDays?: number | null
+  expiresInDays?: number | null,
+  requiresPayment: boolean = false
 ): Promise<RedeemCode[]> {
   const payload: GenerateRedeemCodesRequest = {
     count,
     type,
-    value
+    value,
+    // 由后端在领取时核对付款记录。
+    requires_payment: requiresPayment
   }
 
   if (maxUses !== undefined && maxUses >= 0) {

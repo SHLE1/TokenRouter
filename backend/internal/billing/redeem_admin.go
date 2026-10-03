@@ -29,21 +29,23 @@ func NewRedeemAdmin(repo RedeemCodeRepository, transactions RedeemAdminTransacti
 }
 
 type GenerateRedeemCodesInput struct {
-	Code      string
-	Count     int
-	Type      string
-	Value     float64
-	MaxUses   *int
-	ExpiresAt *time.Time
-	PlanID    *int64 // 订阅类型专用：关联的套餐ID
+	RequiresPayment bool // 领取前要求用户有成功付款记录
+	Code            string
+	Count           int
+	Type            string
+	Value           float64
+	MaxUses         *int
+	ExpiresAt       *time.Time
+	PlanID          *int64 // 订阅类型专用：关联的套餐ID
 }
 
 type UpdateRedeemCodeInput struct {
-	Value        *float64
-	MaxUses      *int
-	ExpiresAt    *time.Time
-	ExpiresAtSet bool
-	PlanID       *int64 // 订阅类型专用：关联的套餐ID
+	RequiresPayment *bool // nil 表示保持领取条件
+	Value           *float64
+	MaxUses         *int
+	ExpiresAt       *time.Time
+	ExpiresAtSet    bool
+	PlanID          *int64 // 订阅类型专用：关联的套餐ID
 }
 
 // ListRedeemCodes 按筛选条件分页查询兑换码，并返回总数。
@@ -61,6 +63,9 @@ func (s *RedeemAdmin) GetRedeemCode(ctx context.Context, id int64) (*RedeemCode,
 }
 
 func (s *RedeemAdmin) GenerateRedeemCodes(ctx context.Context, input *GenerateRedeemCodesInput) ([]RedeemCode, error) {
+	if input.Type == RedeemTypeInvitation && input.RequiresPayment {
+		return nil, ErrRedeemPaymentRequirementUnsupported
+	}
 	maxUses := 1
 	if input.MaxUses != nil {
 		if *input.MaxUses < 0 {
@@ -103,12 +108,13 @@ func (s *RedeemAdmin) GenerateRedeemCodes(ctx context.Context, input *GenerateRe
 			codeValue = generatedCode
 		}
 		code := RedeemCode{
-			Code:      codeValue,
-			Type:      input.Type,
-			Value:     input.Value,
-			Status:    StatusUnused,
-			MaxUses:   maxUses,
-			ExpiresAt: input.ExpiresAt,
+			RequiresPayment: input.RequiresPayment,
+			Code:            codeValue,
+			Type:            input.Type,
+			Value:           input.Value,
+			Status:          StatusUnused,
+			MaxUses:         maxUses,
+			ExpiresAt:       input.ExpiresAt,
 		}
 		if input.Type == RedeemTypeSubscription {
 			code.PlanID = input.PlanID
@@ -184,6 +190,13 @@ func (s *RedeemAdmin) UpdateRedeemCode(ctx context.Context, id int64, input *Upd
 		}
 		if !isEditableRedeemCodeType(code.Type) {
 			return apperror.Conflict("REDEEM_CODE_SYSTEM_RECORD", "system redeem records cannot be updated")
+		}
+
+		if input.RequiresPayment != nil {
+			if code.Type == RedeemTypeInvitation && *input.RequiresPayment {
+				return ErrRedeemPaymentRequirementUnsupported
+			}
+			code.RequiresPayment = *input.RequiresPayment
 		}
 
 		if input.MaxUses != nil {

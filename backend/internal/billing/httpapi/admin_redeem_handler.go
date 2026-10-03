@@ -46,22 +46,24 @@ func NewAdminRedeemHandler(adminService RedeemAdministrator, redeemService *bill
 
 // GenerateRedeemCodesRequest represents generate redeem codes request
 type GenerateRedeemCodesRequest struct {
-	Code          string  `json:"code" binding:"omitempty,max=32"`
-	Count         int     `json:"count" binding:"required,min=1,max=100"`
-	Type          string  `json:"type" binding:"required,oneof=balance concurrency subscription invitation"`
-	Value         float64 `json:"value"`
-	MaxUses       *int    `json:"max_uses" binding:"omitempty,min=0"`
-	ExpiresAt     *int64  `json:"expires_at" binding:"omitempty,min=0"`
-	ExpiresInDays *int    `json:"expires_in_days" binding:"omitempty,min=1,max=3650"`
-	PlanID        *int64  `json:"plan_id"` // 订阅类型必填
+	RequiresPayment bool    `json:"requires_payment"` // 默认允许所有用户领取
+	Code            string  `json:"code" binding:"omitempty,max=32"`
+	Count           int     `json:"count" binding:"required,min=1,max=100"`
+	Type            string  `json:"type" binding:"required,oneof=balance concurrency subscription invitation"`
+	Value           float64 `json:"value"`
+	MaxUses         *int    `json:"max_uses" binding:"omitempty,min=0"`
+	ExpiresAt       *int64  `json:"expires_at" binding:"omitempty,min=0"`
+	ExpiresInDays   *int    `json:"expires_in_days" binding:"omitempty,min=1,max=3650"`
+	PlanID          *int64  `json:"plan_id"` // 订阅类型必填
 }
 
 // UpdateRedeemCodeRequest 表示更新兑换码请求。
 type UpdateRedeemCodeRequest struct {
-	Value     *float64 `json:"value"`
-	MaxUses   *int     `json:"max_uses" binding:"omitempty,min=0"`
-	ExpiresAt *int64   `json:"expires_at" binding:"omitempty,min=0"`
-	PlanID    *int64   `json:"plan_id"` // 订阅类型专用
+	RequiresPayment *bool    `json:"requires_payment"` // 省略时保持领取条件
+	Value           *float64 `json:"value"`
+	MaxUses         *int     `json:"max_uses" binding:"omitempty,min=0"`
+	ExpiresAt       *int64   `json:"expires_at" binding:"omitempty,min=0"`
+	PlanID          *int64   `json:"plan_id"` // 订阅类型专用
 }
 
 // CreateAndRedeemCodeRequest represents creating a fixed code and redeeming it for a target user.
@@ -167,10 +169,11 @@ func (h *AdminRedeemHandler) Update(c *gin.Context) {
 	}
 
 	input := &billing.UpdateRedeemCodeInput{
-		Value:        req.Value,
-		MaxUses:      req.MaxUses,
-		PlanID:       req.PlanID,
-		ExpiresAtSet: req.ExpiresAt != nil,
+		RequiresPayment: req.RequiresPayment,
+		Value:           req.Value,
+		MaxUses:         req.MaxUses,
+		PlanID:          req.PlanID,
+		ExpiresAtSet:    req.ExpiresAt != nil,
 	}
 	if req.ExpiresAt != nil && *req.ExpiresAt > 0 {
 		// expires_at=0 表示清除过期时间；省略字段表示保持不变。
@@ -204,13 +207,14 @@ func (h *AdminRedeemHandler) Generate(c *gin.Context) {
 
 	h.ExecuteAdminIdempotentJSON(c, "admin.redeem_codes.generate", req, h.DefaultWriteIdempotencyTTL(), func(ctx context.Context) (any, error) {
 		codes, execErr := h.adminService.GenerateRedeemCodes(ctx, &billing.GenerateRedeemCodesInput{
-			Code:      req.Code,
-			Count:     req.Count,
-			Type:      req.Type,
-			Value:     req.Value,
-			MaxUses:   req.MaxUses,
-			ExpiresAt: expiresAt,
-			PlanID:    req.PlanID,
+			RequiresPayment: req.RequiresPayment,
+			Code:            req.Code,
+			Count:           req.Count,
+			Type:            req.Type,
+			Value:           req.Value,
+			MaxUses:         req.MaxUses,
+			ExpiresAt:       expiresAt,
+			PlanID:          req.PlanID,
 		})
 		if execErr != nil {
 			return nil, execErr

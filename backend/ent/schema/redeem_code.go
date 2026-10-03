@@ -47,6 +47,9 @@ func (RedeemCode) Fields() []ent.Field {
 		field.String("status").
 			MaxLen(20).
 			Default(billing.StatusUnused),
+		// 领取前检查用户是否有成功付款记录。
+		field.Bool("requires_payment").
+			Default(false),
 		field.Int("max_uses").
 			Default(1),
 		field.Int("used_count").

@@ -12,11 +12,13 @@ import (
 )
 
 var (
-	ErrRedeemCodeExpired     = apperror.BadRequest("REDEEM_CODE_EXPIRED", "redeem code has expired")
-	ErrRedeemCodeMaxUsed     = apperror.Conflict("REDEEM_CODE_MAX_USED", "redeem code has reached maximum uses")
-	ErrRedeemCodeAlreadyUsed = apperror.Conflict("REDEEM_CODE_ALREADY_USED", "you have already used this redeem code")
-	ErrRedeemRateLimited     = apperror.TooManyRequests("REDEEM_RATE_LIMITED", "too many failed attempts, please try again later")
-	ErrRedeemCodeLocked      = apperror.Conflict("REDEEM_CODE_LOCKED", "redeem code is being processed, please try again")
+	ErrRedeemPaymentRequired               = apperror.Forbidden("REDEEM_PAYMENT_REQUIRED", "a successful payment is required to redeem this code")
+	ErrRedeemPaymentRequirementUnsupported = apperror.BadRequest("REDEEM_PAYMENT_REQUIREMENT_UNSUPPORTED", "invitation codes cannot require a payment")
+	ErrRedeemCodeExpired                   = apperror.BadRequest("REDEEM_CODE_EXPIRED", "redeem code has expired")
+	ErrRedeemCodeMaxUsed                   = apperror.Conflict("REDEEM_CODE_MAX_USED", "redeem code has reached maximum uses")
+	ErrRedeemCodeAlreadyUsed               = apperror.Conflict("REDEEM_CODE_ALREADY_USED", "you have already used this redeem code")
+	ErrRedeemRateLimited                   = apperror.TooManyRequests("REDEEM_RATE_LIMITED", "too many failed attempts, please try again later")
+	ErrRedeemCodeLocked                    = apperror.Conflict("REDEEM_CODE_LOCKED", "redeem code is being processed, please try again")
 )
 
 const (
@@ -47,9 +49,11 @@ type (
 )
 
 type RedeemRuntime struct {
-	Now        func() time.Time
-	Observe    Observe
-	Background func(string, func())
+	// HasPaidOrder 查询用户成功付款的历史，查询失败时停止发放权益。
+	HasPaidOrder func(context.Context, int64) (bool, error)
+	Now          func() time.Time
+	Observe      Observe
+	Background   func(string, func())
 }
 
 // RedeemService 唯一拥有兑换规则，提交完成后才执行原有失效及尽力返利。
@@ -99,6 +103,9 @@ func (s *RedeemService) CreateCode(ctx context.Context, code *RedeemCode) error 
 		code.UsedCount = 0
 	}
 	if code.Type == RedeemTypeInvitation {
+		if code.RequiresPayment {
+			return ErrRedeemPaymentRequirementUnsupported
+		}
 		code.MaxUses = 1
 	}
 	code.Status = code.PersistedStatus()
@@ -222,6 +229,7 @@ func unsupportedRedeemTypeError(codeType string) error {
 }
 
 // Redeem 使用兑换码
+// @project-doc docs/domains/payments_and_entitlements.md#redeem_eligibility
 func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (*RedeemCode, error) {
 	code = strings.TrimSpace(code)
 	if code == "" {
@@ -290,6 +298,20 @@ func (s *RedeemService) redeemInTx(ctx, txCtx context.Context, userID int64, cod
 		}
 	default:
 		return nil, unsupportedRedeemTypeError(redeemCode.Type)
+	}
+
+	// 付款资格在权益和使用记录写入前检查，失败后可在付款成功时重试。
+	if redeemCode.RequiresPayment {
+		if s.runtime.HasPaidOrder == nil {
+			return nil, errors.New("payment history lookup is unavailable")
+		}
+		paid, err := s.runtime.HasPaidOrder(txCtx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("check redeem payment history: %w", err)
+		}
+		if !paid {
+			return nil, ErrRedeemPaymentRequired
+		}
 	}
 
 	_, err = s.userRepo.GetByID(ctx, userID)

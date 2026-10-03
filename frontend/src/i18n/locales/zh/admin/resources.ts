@@ -238,6 +238,8 @@ export default {
     },
 // Redeem Codes Management
     redeem: {
+      requiresPayment: '付过款才能领取',
+      requiresPaymentHint: '用户有过至少一笔成功付款记录即可领取，不限金额。',
       title: '兑换码管理',
       description: '生成和管理兑换码',
       generateCodes: '生成兑换码',

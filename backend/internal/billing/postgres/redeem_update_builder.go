@@ -12,6 +12,7 @@ func redeemUpdateBuilder(client *dbent.Client, code *billing.RedeemCode) *dbent.
 		SetType(code.Type).
 		SetValue(code.Value).
 		SetStatus(code.Status).
+		SetRequiresPayment(code.RequiresPayment).
 		SetMaxUses(code.MaxUses).
 		SetUsedCount(code.UsedCount).
 		SetNotes(code.Notes)

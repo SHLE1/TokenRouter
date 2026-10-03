@@ -570,6 +570,7 @@ export default {
   },
 // Redeem
   redeem: {
+    paymentRequired: '该兑换码需要有成功付款记录才能领取，请先完成一次付款。',
     title: '兑换码',
     description: '输入兑换码以充值余额、增加并发数或领取订阅权限',
     currentBalance: '当前余额',

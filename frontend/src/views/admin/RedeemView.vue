@@ -84,9 +84,12 @@
             />
           </template>
 
-          <template #cell-code="{ value }">
+          <template #cell-code="{ value, row }">
             <div class="flex items-center space-x-2">
               <code class="font-mono text-sm text-gray-900 dark:text-gray-100">{{ value }}</code>
+              <span v-if="row.requires_payment" class="badge badge-warning">
+                {{ t('admin.redeem.requiresPayment') }}
+              </span>
               <button
                 @click="copyToClipboard(value)"
                 :class="[
@@ -321,6 +324,15 @@
             />
           </div>
         </template>
+        <!-- 付款条件与兑换码一起保存，领取时由服务端检查。 -->
+        <SettingToggleRow
+          v-if="generateForm.type !== 'invitation'"
+          id="generateForm-requires-payment"
+          v-model="generateForm.requires_payment"
+          :label="t('admin.redeem.requiresPayment')"
+          :hint="t('admin.redeem.requiresPaymentHint')"
+        />
+
         <div>
           <label class="input-label">{{ t('admin.redeem.maxUses') }}</label>
           <input
@@ -428,6 +440,15 @@
             {{ t('admin.redeem.valueLockedHint') }}
           </p>
         </div>
+
+        <!-- 编辑时显示已保存的领取条件。 -->
+        <SettingToggleRow
+          v-if="editingCode?.type !== 'invitation'"
+          id="editForm-requires-payment"
+          v-model="editForm.requires_payment"
+          :label="t('admin.redeem.requiresPayment')"
+          :hint="t('admin.redeem.requiresPaymentHint')"
+        />
 
         <div>
           <label class="input-label">{{ t('admin.redeem.maxUses') }}</label>
@@ -652,6 +673,7 @@ import FilterDropdown from '@/components/common/FilterDropdown.vue'
 import FilterField from '@/components/common/FilterField.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -833,6 +855,7 @@ const generateForm = reactive({
   count: 1,
   plan_id: null as number | null,
   max_uses: 1,
+  requires_payment: false,
   expires_at_str: ''
 })
 const hasCustomCode = computed(() => generateForm.code.trim().length > 0)
@@ -841,6 +864,7 @@ const editForm = reactive({
   value: 0,
   plan_id: null as number | null,
   max_uses: 1,
+  requires_payment: false,
   expires_at_str: ''
 })
 
@@ -861,6 +885,7 @@ watch(
     if (newType === 'invitation') {
       generateForm.value = 0
       generateForm.max_uses = 1
+      generateForm.requires_payment = false
     } else if (newType === 'subscription') {
       generateForm.value = 0
     } else if (generateForm.value === 0) {
@@ -916,6 +941,7 @@ const resetGenerateForm = () => {
   generateForm.count = 1
   generateForm.plan_id = null
   generateForm.max_uses = 1
+  generateForm.requires_payment = false
   generateForm.expires_at_str = ''
 }
 
@@ -1072,7 +1098,9 @@ const handleGenerateCodes = async () => {
       generateForm.type === 'subscription' ? generateForm.plan_id : undefined,
       generateForm.max_uses,
       expiresAt,
-      customCode || undefined
+      customCode || undefined,
+      undefined,
+      generateForm.requires_payment
     )
     showGenerateDialog.value = false
     generatedCodes.value = result
@@ -1123,6 +1151,7 @@ const handleEdit = (code: RedeemCode) => {
   editForm.value = code.value
   editForm.plan_id = code.plan_id ?? null
   editForm.max_uses = code.max_uses
+  editForm.requires_payment = code.requires_payment ?? false
   editForm.expires_at_str = toDateTimeLocalString(code.expires_at)
   showEditDialog.value = true
 }
@@ -1151,9 +1180,11 @@ const handleUpdateCode = async () => {
   const payload: {
     value?: number
     plan_id?: number | null
+    requires_payment?: boolean
     max_uses?: number
     expires_at?: number | null
   } = {
+    requires_payment: code.type === 'invitation' ? false : editForm.requires_payment,
     max_uses: code.type === 'invitation' ? 1 : editForm.max_uses
   }
 

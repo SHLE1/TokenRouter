@@ -33,6 +33,7 @@ func (r *RedeemStore) Create(ctx context.Context, code *billing.RedeemCode) erro
 		SetType(code.Type).
 		SetValue(code.Value).
 		SetStatus(code.Status).
+		SetRequiresPayment(code.RequiresPayment).
 		SetMaxUses(code.MaxUses).
 		SetUsedCount(code.UsedCount).
 		SetNotes(code.Notes).
@@ -66,6 +67,7 @@ func (r *RedeemStore) CreateBatch(ctx context.Context, codes []billing.RedeemCod
 			SetType(c.Type).
 			SetValue(c.Value).
 			SetStatus(c.Status).
+			SetRequiresPayment(c.RequiresPayment).
 			SetMaxUses(c.MaxUses).
 			SetUsedCount(c.UsedCount).
 			SetNotes(c.Notes).
@@ -585,19 +587,20 @@ func RedeemFromEntity(model *dbent.RedeemCode) *billing.RedeemCode {
 		return nil
 	}
 	out := &billing.RedeemCode{
-		ID:        model.ID,
-		Code:      model.Code,
-		Type:      model.Type,
-		Value:     model.Value,
-		Status:    model.Status,
-		MaxUses:   model.MaxUses,
-		UsedCount: model.UsedCount,
-		ExpiresAt: model.ExpiresAt,
-		UsedBy:    model.UsedBy,
-		UsedAt:    model.UsedAt,
-		Notes:     derefString(model.Notes),
-		CreatedAt: model.CreatedAt,
-		PlanID:    model.PlanID,
+		ID:              model.ID,
+		Code:            model.Code,
+		Type:            model.Type,
+		Value:           model.Value,
+		Status:          model.Status,
+		RequiresPayment: model.RequiresPayment,
+		MaxUses:         model.MaxUses,
+		UsedCount:       model.UsedCount,
+		ExpiresAt:       model.ExpiresAt,
+		UsedBy:          model.UsedBy,
+		UsedAt:          model.UsedAt,
+		Notes:           derefString(model.Notes),
+		CreatedAt:       model.CreatedAt,
+		PlanID:          model.PlanID,
 	}
 	if model.Edges.User != nil {
 		out.User = userSummaryFromEntity(model.Edges.User)
