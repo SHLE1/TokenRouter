@@ -79,7 +79,7 @@ func TestOpenAIRequestContextLifetime(t *testing.T) {
 				})
 			}
 			require.NoError(t, err)
-			defer response.Body.Close()
+			defer func() { require.NoError(t, response.Body.Close()) }()
 			require.NoError(t, sent.Err())
 			body, err := io.ReadAll(response.Body)
 			require.NoError(t, err)

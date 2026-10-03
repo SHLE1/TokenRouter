@@ -117,10 +117,10 @@ func (p *keyLimitEntry) Select(context.Context, string, string, string, map[int6
 	return &EntrySelection{Provider: &EntryProvider{ProviderSnapshot: provider.ProviderSnapshot{ID: 1, Concurrency: 1, Type: "apikey"}}, Acquired: true, ReleaseFunc: func() {}, Target: p.target}, EntryDecision{}, nil
 }
 
-var keyLimitRetry = errors.New("retry provider")
+var errKeyLimitRetry = errors.New("retry provider")
 
 func (p *keyLimitEntry) Failover(err error) (*EntryFailure, bool) {
-	if errors.Is(err, keyLimitRetry) {
+	if errors.Is(err, errKeyLimitRetry) {
 		return &EntryFailure{Err: err, RetryNext: true}, true
 	}
 	return nil, false
@@ -168,9 +168,9 @@ func (target *keyLimitTarget) Run(ctx context.Context, _ ClientSocket, _ []byte,
 	}
 
 	if p.mode == "retry" && p.attempts == 1 {
-		hooks.AfterTurn(TurnCapture{Turn: 1, Err: keyLimitRetry})
+		hooks.AfterTurn(TurnCapture{Turn: 1, Err: errKeyLimitRetry})
 		require.Equal(p.t, 1, p.active, "故障转移期间持有本轮预占")
-		return keyLimitRetry
+		return errKeyLimitRetry
 	}
 	hooks.AfterTurn(TurnCapture{Turn: 1})
 	require.Zero(p.t, p.active, "空闲连接应释放 Key 槽")

@@ -46,6 +46,6 @@ func TestDetachWithoutAbort(t *testing.T) {
 	require.Nil(t, detached.Done())
 	cancel()
 	require.NoError(t, detached.Err())
-	require.NoError(t, Detach(nil).Err())
+	require.NoError(t, Detach(nil).Err()) //nolint:staticcheck // 覆盖 Detach 对 nil 输入的兼容处理。
 	require.True(t, AfterAbort(ctx, func() { t.Fatal("unexpected abort") })())
 }
