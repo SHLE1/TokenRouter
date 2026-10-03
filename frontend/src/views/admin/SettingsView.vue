@@ -5120,15 +5120,6 @@
                   </div>
                   <p class="input-hint">
                     {{ t("admin.settings.payment.enabledPaymentTypesHint") }}
-                    <a
-                      :href="paymentMethodsHref"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="ml-1 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                    >
-                      {{ t("admin.settings.payment.findProvider") }}
-                      <Icon name="externalLink" size="xs" class="mb-0.5 ml-0.5 inline h-3 w-3" />
-                    </a>
                   </p>
                 </div>
               </SettingsSection>
@@ -5632,9 +5623,6 @@ const adminSettingsStore = useAdminSettingsStore();
 // 支付帮助指向本仓库的支付配置指南。
 const paymentGuideHref =
   "https://github.com/TokenFlux/TokenRouter/blob/main/docs/guides/payments/configuration.md";
-
-const paymentMethodsHref =
-  "https://github.com/TokenFlux/TokenRouter/blob/main/docs/guides/payments/configuration.md#支持的支付方式";
 
 type SettingsTab =
   | "general"

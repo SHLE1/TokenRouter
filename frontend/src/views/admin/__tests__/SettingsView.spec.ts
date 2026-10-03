@@ -267,7 +267,6 @@ vi.mock("vue-i18n", async () => {
     "admin.settings.paymentVisibleMethods.sourceHint": "启用后必须明确选择一个来源；未配置状态不会对外展示该支付方式。",
     "admin.settings.paymentVisibleMethods.sourceRequiredError": "{title} 已启用，请先选择支付来源。",
     "admin.settings.payment.configGuide": "查看支付配置说明",
-    "admin.settings.payment.findProvider": "查看支持的支付方式",
     "admin.settings.gatewaySections.label": "网关设置分类",
     "admin.settings.gatewaySections.general": "通用",
     "admin.settings.gatewaySections.anthropic": "Anthropic",
@@ -1286,20 +1285,12 @@ describe("admin SettingsView payment visible method controls", () => {
 
     const paymentLinks = wrapper
       .findAll("a")
-      .filter((node) =>
-        ["查看支付配置说明", "查看支持的支付方式"].includes(node.text()),
-      );
+      .filter((node) => node.text() === "查看支付配置说明");
 
-    expect(paymentLinks).toHaveLength(2);
+    expect(paymentLinks).toHaveLength(1);
     expect(paymentLinks[0]?.attributes("href")).toBe(
       "https://github.com/TokenFlux/TokenRouter/blob/main/docs/guides/payments/configuration.md",
     );
-    expect(paymentLinks[1]?.attributes("href")).toBe(
-      "https://github.com/TokenFlux/TokenRouter/blob/main/docs/guides/payments/configuration.md#支持的支付方式",
-    );
-    for (const link of paymentLinks) {
-      expect(link.attributes("href")).toContain("docs/guides/payments/configuration.md");
-    }
   });
 
   it("does not submit legacy visible payment method settings", async () => {
