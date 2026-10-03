@@ -245,10 +245,16 @@ const endpointDistributionSource = ref<EndpointSource>('inbound')
 const inboundEndpointStats = ref<EndpointStat[]>([])
 const upstreamEndpointStats = ref<EndpointStat[]>([])
 const endpointPathStats = ref<EndpointStat[]>([])
-const endpointStatsLoading = ref(false)
+const inboundEndpointLoading = ref(false)
+const rawEndpointLoading = ref(false)
+const endpointStatsLoading = computed(() => endpointDistributionSource.value === 'inbound' ? inboundEndpointLoading.value : rawEndpointLoading.value)
+const loadedRawEndpoints = reactive({ upstream: false, path: false })
+let endpointReqSeq = 0
+let endpointAbortController: AbortController | null = null
 let abortController: AbortController | null = null; let exportAbortController: AbortController | null = null
 let chartReqSeq = 0
 let statsReqSeq = 0
+let statsAbortController: AbortController | null = null
 let modelStatsReqSeq = 0
 const exportProgress = reactive({ show: false, progress: 0, current: 0, total: 0, estimatedTime: '' })
 const cleanupDialogVisible = ref(false)
@@ -421,30 +427,64 @@ const loadLogs = async () => {
     if(!c.signal.aborted) { usageLogs.value = res.items; pagination.total = res.total }
   } catch (error: any) { if(error?.name !== 'AbortError') console.error('Failed to load usage logs:', error) } finally { if(abortController === c) loading.value = false }
 }
-const loadStats = async (force = false) => {
-  const seq = ++statsReqSeq
-  endpointStatsLoading.value = true
+// 摘要默认读取入站端点，原始端点图随当前选项加载。
+const statsParams = (source: EndpointSource, force: boolean) => {
+  const requestType = filters.value.request_type
+  const legacyStream = requestType ? requestTypeToLegacyStream(requestType) : filters.value.stream
+  return {
+    ...filters.value,
+    stream: legacyStream === null ? undefined : legacyStream,
+    endpoint_source: source,
+    ...(force ? { nocache: 1 } : {}),
+  }
+}
+
+const loadEndpointStats = async (source: EndpointSource, force = false) => {
+  endpointAbortController?.abort()
+  const seq = ++endpointReqSeq
+  if (source === 'inbound' || (!force && loadedRawEndpoints[source])) {
+    rawEndpointLoading.value = false
+    return
+  }
+  const controller = new AbortController()
+  endpointAbortController = controller
+  rawEndpointLoading.value = true
   try {
-    const requestType = filters.value.request_type
-    const legacyStream = requestType ? requestTypeToLegacyStream(requestType) : filters.value.stream
-    const s = await adminAPI.usage.getStats({
-      ...filters.value,
-      stream: legacyStream === null ? undefined : legacyStream,
-      ...(force ? { nocache: 1 } : {}),
-    })
+    const response = await adminAPI.usage.getStats(statsParams(source, force), { signal: controller.signal })
+    if (seq !== endpointReqSeq || controller.signal.aborted) return
+    if (source === 'upstream') upstreamEndpointStats.value = response.upstream_endpoints || []
+    else endpointPathStats.value = response.endpoint_paths || []
+    loadedRawEndpoints[source] = true
+  } catch (error) {
+    if (seq !== endpointReqSeq || controller.signal.aborted) return
+    console.error('加载端点统计失败:', error)
+  } finally {
+    if (seq === endpointReqSeq) rawEndpointLoading.value = false
+  }
+}
+
+const loadStats = async (force = false) => {
+  statsAbortController?.abort()
+  const controller = new AbortController()
+  statsAbortController = controller
+  const seq = ++statsReqSeq
+  loadedRawEndpoints.upstream = false
+  loadedRawEndpoints.path = false
+  upstreamEndpointStats.value = []
+  endpointPathStats.value = []
+  void loadEndpointStats(endpointDistributionSource.value, force)
+  inboundEndpointLoading.value = true
+  try {
+    const response = await adminAPI.usage.getStats(statsParams('inbound', force), { signal: controller.signal })
     if (seq !== statsReqSeq) return
-    usageStats.value = s
-    inboundEndpointStats.value = s.endpoints || []
-    upstreamEndpointStats.value = s.upstream_endpoints || []
-    endpointPathStats.value = s.endpoint_paths || []
+    usageStats.value = response
+    inboundEndpointStats.value = response.endpoints || []
   } catch (error) {
     if (seq !== statsReqSeq) return
-    console.error('Failed to load usage stats:', error)
+    console.error('加载用量统计失败:', error)
     inboundEndpointStats.value = []
-    upstreamEndpointStats.value = []
-    endpointPathStats.value = []
   } finally {
-    if (seq === statsReqSeq) endpointStatsLoading.value = false
+    if (seq === statsReqSeq) inboundEndpointLoading.value = false
   }
 }
 
@@ -924,7 +964,17 @@ onMounted(() => {
   loadSavedErrColumns()
   document.addEventListener('click', handleColumnClickOutside)
 })
-onUnmounted(() => { abortController?.abort(); exportAbortController?.abort(); document.removeEventListener('click', handleColumnClickOutside) })
+watch(endpointDistributionSource, (source) => { void loadEndpointStats(source) })
+
+onUnmounted(() => {
+  statsReqSeq += 1
+  endpointReqSeq += 1
+  statsAbortController?.abort()
+  endpointAbortController?.abort()
+  abortController?.abort()
+  exportAbortController?.abort()
+  document.removeEventListener('click', handleColumnClickOutside)
+})
 
 watch(modelDistributionSource, (source) => {
   void loadModelStats(source)

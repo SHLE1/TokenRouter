@@ -167,6 +167,8 @@ API Key 提供商的上游用量查询，只用于管理员展示，和调度、
 
 ## OAuth 用量查询
 
+管理端提供商统计弹窗将日期、模型、入站端点和上游端点放在同一次 `GROUPING SETS` 查询中，平均耗时按非空耗时记录数计算。查询在专用只读事务中设置 `SET LOCAL jit = off`，事务结束后设置自动恢复，减少行数估算偏高时的即时编译开销。提供商成本、用户扣费和标准费用分别返回。该报表的提供商维度使用原始用量记录。
+
 OAuth 用量入口、Anthropic 的主动和被动窗口、并发 6 的批量查询和生命周期，由 `provider.OAuthUsageService` 负责，app 直接绑定存储、平台查询和缓存（只有一个）。`OAuthUsageCache` 保存 Anthropic、Antigravity、Qoder、窗口统计，以及 OpenAI 和 Grok 探测的命名空间，每个命名空间有自己的 key、TTL、负缓存和 singleflight。缓存和 flight 返回请求私有的展示副本，修改嵌套的值或倒计时，不会影响之后的请求。
 
 Antigravity 和 Qoder 的共享抓取、降级缓存和倒计时，Gemini 的本地模型统计和固定 24 小时的展示窗口，Grok 计费快照的新鲜度和统计组合，OpenAI 主提供商和影子的查询选择和节流，都由核心编排。Codex 和 Anthropic 查询的技术参数和错误转换在 `provider/provider`，报文和 Header 的解析只在 upstream 实现。Grok 的管理探测直接绑定 `provider.GrokQuotaService` 和同一个 `ProbeRuntime`，账单、额度和模型目录的请求由 `provider/provider.GrokQuotaTransport` 执行，停止 hook 直接等待这些持有者。Gemini、Antigravity、Grok 的额度展示，直接使用 provider 的策略实例。

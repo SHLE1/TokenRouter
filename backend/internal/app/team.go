@@ -16,11 +16,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 	"github.com/TokenFlux/TokenRouter/internal/team"
 	teampostgres "github.com/TokenFlux/TokenRouter/internal/team/postgres"
+	usagepostgres "github.com/TokenFlux/TokenRouter/internal/usage/postgres"
 )
 
 // provideTeamRepository 把成员状态、Key 生命周期与资金窗口参与能力装在同一 SQL 连接来源上。
-func provideTeamRepository(db *sql.DB, calendar timezone.Calendar) team.TeamRepository {
-	return teampostgres.NewTeamRepository(db, keypostgres.NewTeamKeys(db), billingpostgres.NewMemberUsageStore(db, &calendar), &calendar)
+func provideTeamRepository(db *sql.DB, calendar timezone.Calendar, reports *usagepostgres.Store) team.TeamRepository {
+	return teampostgres.NewTeamRepositoryWithReports(db, keypostgres.NewTeamKeys(db), billingpostgres.NewMemberUsageStore(db, &calendar), calendar, reports)
 }
 
 type teamIdentityUsers struct{ Users identity.UserRepository }

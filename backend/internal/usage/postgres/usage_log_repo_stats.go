@@ -786,6 +786,9 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 	}
 	// endpoint 明细:best-effort(失败 log + 返空),不致命。
 	runEndpoints := func(c context.Context) {
+		if filters.EndpointSource != "" && filters.EndpointSource != "inbound" {
+			return
+		}
 		res, err := r.getEndpointStatsByColumnWithFilters(c, "inbound_endpoint", start, end, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.TeamID, filters.Model, filters.ModelFilterSource, filters.RequestType, filters.Stream, filters.BillingType, filters.BillingMode, filters.PersonalOnly, filters.IncludeOwnedTeam, filters.NativeCompactionV2)
 		if err != nil {
 			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
@@ -796,6 +799,9 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 		endpoints = res
 	}
 	runUpstream := func(c context.Context) {
+		if filters.EndpointSource != "" && filters.EndpointSource != "upstream" {
+			return
+		}
 		res, err := r.getEndpointStatsByColumnWithFilters(c, "upstream_endpoint", start, end, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.TeamID, filters.Model, filters.ModelFilterSource, filters.RequestType, filters.Stream, filters.BillingType, filters.BillingMode, filters.PersonalOnly, filters.IncludeOwnedTeam, filters.NativeCompactionV2)
 		if err != nil {
 			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
@@ -806,6 +812,9 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 		upstreamEndpoints = res
 	}
 	runPaths := func(c context.Context) {
+		if filters.EndpointSource != "" && filters.EndpointSource != "path" {
+			return
+		}
 		res, err := r.getEndpointPathStatsWithFilters(c, start, end, filters.UserID, filters.APIKeyID, filters.ProviderID, filters.GroupID, filters.TeamID, filters.Model, filters.ModelFilterSource, filters.RequestType, filters.Stream, filters.BillingType, filters.BillingMode, filters.PersonalOnly, filters.IncludeOwnedTeam, filters.NativeCompactionV2)
 		if err != nil {
 			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
@@ -1046,59 +1055,11 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 		daysCount = 30
 	}
 
-	// 提供商统计接口用 actual_cost 返回提供商成本，用 user_cost 返回用户实际扣费。
-	query := `
-		SELECT
-			TO_CHAR(created_at, 'YYYY-MM-DD') as date,
-			COUNT(*) as requests,
-			COALESCE(SUM(input_tokens + output_tokens + cache_creation_tokens + cache_read_tokens), 0) as tokens,
-			COALESCE(SUM(total_cost), 0) as cost,
-			COALESCE(SUM(COALESCE(provider_stats_cost, total_cost) * COALESCE(provider_rate_multiplier, 1)), 0) as actual_cost,
-			COALESCE(SUM(actual_cost), 0) as user_cost
-		FROM usage_logs
-		WHERE provider_id = $1 AND created_at >= $2 AND created_at < $3
-		GROUP BY date
-		ORDER BY date ASC
-	`
-
-	rows, err := r.sql.QueryContext(ctx, query, providerID, startTime, endTime)
+	data, err := r.readProviderReport(ctx, providerID, startTime, endTime)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		// 保持主错误优先；仅在无错误时回传 Close 失败。
-		// 同时清空返回值，避免误用不完整结果。
-		if closeErr := rows.Close(); closeErr != nil && err == nil {
-			err = closeErr
-			resp = nil
-		}
-	}()
-
-	history := make([]ProviderUsageHistory, 0)
-	for rows.Next() {
-		var date string
-		var requests int64
-		var tokens int64
-		var cost float64
-		var actualCost float64
-		var userCost float64
-		if err = rows.Scan(&date, &requests, &tokens, &cost, &actualCost, &userCost); err != nil {
-			return nil, err
-		}
-		t, _ := time.Parse("2006-01-02", date)
-		history = append(history, ProviderUsageHistory{
-			Date:       date,
-			Label:      t.Format("01/02"),
-			Requests:   requests,
-			Tokens:     tokens,
-			Cost:       cost,
-			ActualCost: actualCost,
-			UserCost:   userCost,
-		})
-	}
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
+	history := data.history
 
 	var totalProviderCost, totalUserCost, totalStandardCost float64
 	var totalRequests, totalTokens int64
@@ -1125,10 +1086,9 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 		actualDaysUsed = 1
 	}
 
-	avgQuery := "SELECT COALESCE(AVG(duration_ms), 0) as avg_duration_ms FROM usage_logs WHERE provider_id = $1 AND created_at >= $2 AND created_at < $3"
 	var avgDuration float64
-	if err := scanSingleRow(ctx, r.sql, avgQuery, []any{providerID, startTime, endTime}, &avgDuration); err != nil {
-		return nil, err
+	if data.durationCount > 0 {
+		avgDuration = float64(data.durationSum) / float64(data.durationCount)
 	}
 
 	summary := ProviderUsageSummary{
@@ -1198,27 +1158,12 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 		}
 	}
 
-	models, err := r.GetModelStatsWithFilters(ctx, startTime, endTime, 0, 0, providerID, 0, nil, nil, nil)
-	if err != nil {
-		models = []ModelStat{}
-	}
-	endpoints, endpointErr := r.GetEndpointStatsWithFilters(ctx, startTime, endTime, 0, 0, providerID, 0, "", nil, nil, nil)
-	if endpointErr != nil {
-		logger.LegacyPrintf("repository.usage_log", "GetEndpointStatsWithFilters failed in GetProviderUsageStats: %v", endpointErr)
-		endpoints = []EndpointStat{}
-	}
-	upstreamEndpoints, upstreamEndpointErr := r.GetUpstreamEndpointStatsWithFilters(ctx, startTime, endTime, 0, 0, providerID, 0, "", nil, nil, nil)
-	if upstreamEndpointErr != nil {
-		logger.LegacyPrintf("repository.usage_log", "GetUpstreamEndpointStatsWithFilters failed in GetProviderUsageStats: %v", upstreamEndpointErr)
-		upstreamEndpoints = []EndpointStat{}
-	}
-
 	resp = &ProviderUsageStatsResponse{
 		History:           history,
 		Summary:           summary,
-		Models:            models,
-		Endpoints:         endpoints,
-		UpstreamEndpoints: upstreamEndpoints,
+		Models:            data.models,
+		Endpoints:         data.endpoints,
+		UpstreamEndpoints: data.upstreamEndpoints,
 	}
 	return resp, nil
 }

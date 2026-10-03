@@ -61,7 +61,7 @@ import (
 
 // Injectors from wire.go:
 
-// initializeApplication 只构造和登记资源；运行由 Application.Run 统一启动。
+// initializeApplication 构造并登记资源，Application.Run 负责启动。
 func initializeApplication(ctx context.Context, cfg *config.Config, info BuildInfo, manager *lifecycle.Manager, restarter *lifecycle.Restarter, tasks *lifecycle.Tasks) (*Application, error) {
 	options := provideHTTPOptions(cfg)
 	client, err := provideEnt(ctx, cfg, manager)
@@ -99,7 +99,8 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	eligibility := provideBillingEligibility(cache, userStore, apiKeyRepository, cfg, tasks, calendar)
 	concurrencyCache := provideConcurrencyCache(redisClient, cfg)
 	concurrencyService := provideConcurrency(concurrencyCache, cfg)
-	teamRepository := provideTeamRepository(db, calendar)
+	postgresStore := provideUsageStore(client, db, preAggregationSettingsService, calendar)
+	teamRepository := provideTeamRepository(db, calendar, postgresStore)
 	apiKeyService := provideKeys(keyStore, userStore, groupStore, subscriptionStore, groupRateStore, apiKeyCache, cfg, eligibility, concurrencyService, teamRepository, calendar)
 	apiKeyAuthCacheInvalidator := provideKeyInvalidator(apiKeyService)
 	pricingConfigService := providePricingConfigService(pricingConfigStore, groupStore, apiKeyAuthCacheInvalidator)
@@ -119,7 +120,6 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	modelAttributeStore := postgres.NewModelAttributeStore(db)
 	modelAttributeService := provideModelAttributes(modelAttributeStore, service, apiKeyAuthCacheInvalidator)
 	marketplace := provideMarketplace(groupStore, store, requestableCatalogue, priceResolver, calculator, capacityService, groupAvailabilityProbeRepository, cfg, modelAttributeService)
-	postgresStore := provideUsageStore(client, db, preAggregationSettingsService, calendar)
 	dashboardAggregationRepository := provideUsageAggregationRepository(db, calendar)
 	dashboardStatsCache := provideUsageDashboardCache(redisClient, cfg)
 	usageOptions := provideUsageOptions(cfg, calendar)

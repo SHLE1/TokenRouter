@@ -196,6 +196,51 @@ describe('admin UsageView 路由筛选', () => {
     vi.useRealTimers()
   })
 
+  it('端点图按需加载，切换时取消旧请求且复用已加载结果', async () => {
+    const wrapper = mountRouteFilteredUsageView()
+    await flushPromises()
+    expect(getStats).toHaveBeenCalledTimes(1)
+    expect(getStats.mock.calls[0][0].endpoint_source).toBe('inbound')
+    const chart = wrapper.findComponent({ name: 'EndpointDistributionChart' })
+    chart.vm.$emit('update:source', 'upstream')
+    await flushPromises()
+    expect(getStats.mock.calls[1][0].endpoint_source).toBe('upstream')
+    let resolvePath!: (value: any) => void
+    getStats.mockImplementationOnce(() => new Promise((resolve) => { resolvePath = resolve }))
+    chart.vm.$emit('update:source', 'path')
+    await flushPromises()
+    expect(getStats.mock.calls[2][0].endpoint_source).toBe('path')
+    const signal = getStats.mock.calls[2][1].signal as AbortSignal
+    chart.vm.$emit('update:source', 'upstream')
+    await flushPromises()
+    expect(signal.aborted).toBe(true)
+    expect(getStats).toHaveBeenCalledTimes(3)
+    resolvePath({ endpoint_paths: [{ endpoint: 'stale', requests: 999 }] })
+    await flushPromises()
+    expect(chart.props('endpointPathStats')).toEqual([])
+    wrapper.unmount()
+  })
+
+  it('筛选变更后重新加载当前端点图，摘要独立更新', async () => {
+    const wrapper = mountRouteFilteredUsageView()
+    await flushPromises()
+    const chart = wrapper.findComponent({ name: 'EndpointDistributionChart' })
+    chart.vm.$emit('update:source', 'upstream')
+    await flushPromises()
+    getStats.mockClear()
+    getStats.mockImplementation((params) => params.endpoint_source === 'upstream'
+      ? new Promise(() => {})
+      : Promise.resolve({ total_requests: 17, endpoints: [] }))
+    wrapper.findComponent(UsageFiltersStub).vm.$emit('change')
+    await flushPromises()
+    expect(getStats.mock.calls.map((call) => call[0].endpoint_source)).toEqual(['upstream', 'inbound'])
+    expect(wrapper.findComponent({ name: 'UsageStatsCards' }).props('stats').total_requests).toBe(17)
+    expect(chart.props('loading')).toBe(true)
+    const rawCall = getStats.mock.calls.find((call) => call[0].endpoint_source === 'upstream')!
+    wrapper.unmount()
+    expect(rawCall[1].signal.aborted).toBe(true)
+  })
+
   it('导出上游响应模型并区分相同、不同和未知', async () => {
     exportMocks.list.mockResolvedValue({ total: 3, pages: 1, items: [
       { model: 'sent', upstream_response_model: 'runtime', upstream_model_mismatch: true },

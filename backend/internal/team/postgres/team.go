@@ -23,7 +23,19 @@ type TeamRepository struct {
 	calendar *timezone.Calendar
 	keys     TeamKeys
 	usage    MemberUsage
+	reports  UsageReports
 	db       *sql.DB
+}
+
+// UsageReports 读取经团队用例限制后的报表范围。
+type UsageReports interface {
+	GetTeamUsageSummary(context.Context, int64, team.TeamUsageQuery) (*team.TeamUsageSummary, error)
+	ListTeamMemberUsageSeries(context.Context, int64, team.TeamUsageQuery) ([]team.TeamMemberUsageSeries, error)
+}
+
+// NewTeamRepositoryWithReports 为生产团队仓储注入统一用量报表读取器。
+func NewTeamRepositoryWithReports(db *sql.DB, keys TeamKeys, usage MemberUsage, calendar timezone.Calendar, reports UsageReports) team.TeamRepository {
+	return &TeamRepository{db: db, keys: keys, usage: usage, calendar: &calendar, reports: reports}
 }
 
 // NewTeamRepository 创建使用事务保证成员和所有权约束的团队仓储。
@@ -700,10 +712,16 @@ func (r *TeamRepository) ListTeamKeyStrings(ctx context.Context, teamID int64) (
 }
 
 func (r *TeamRepository) GetUsageSummary(ctx context.Context, teamID int64, query team.TeamUsageQuery) (*team.TeamUsageSummary, error) {
+	if r.reports != nil {
+		return r.reports.GetTeamUsageSummary(ctx, teamID, query)
+	}
 	return usagequery.GetUsageSummary(ctx, r.db, teamID, query, r.dateCalendar())
 }
 
 func (r *TeamRepository) ListMemberUsageSeries(ctx context.Context, teamID int64, query team.TeamUsageQuery) ([]team.TeamMemberUsageSeries, error) {
+	if r.reports != nil {
+		return r.reports.ListTeamMemberUsageSeries(ctx, teamID, query)
+	}
 	return usagequery.ListMemberUsageSeries(ctx, r.db, teamID, query, r.dateCalendar())
 }
 

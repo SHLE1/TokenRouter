@@ -120,6 +120,7 @@ export async function list(
  * @returns Usage statistics
  */
 export async function getStats(params: {
+  endpoint_source?: 'all' | 'inbound' | 'upstream' | 'path'
   user_id?: number
   team_id?: number
   api_key_id?: number
@@ -134,9 +135,10 @@ export async function getStats(params: {
   timezone?: string
   nocache?: number
   native_compaction_v2?: boolean | null
-}): Promise<AdminUsageStatsResponse> {
+}, options?: { signal?: AbortSignal }): Promise<AdminUsageStatsResponse> {
   const { data } = await apiClient.get<AdminUsageStatsResponse>('/admin/usage/stats', {
-    params
+    params,
+    signal: options?.signal
   })
   return data
 }

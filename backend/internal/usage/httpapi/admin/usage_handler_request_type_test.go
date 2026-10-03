@@ -253,3 +253,22 @@ func TestAdminUsageStatsInvalidStream(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
+
+// TestAdminUsageEndpointSource 保留默认全部返回，并拒绝未知图表来源。
+func TestAdminUsageEndpointSource(t *testing.T) {
+	for _, source := range []string{"", "all", "inbound", "upstream", "path", "invalid"} {
+		repo := &adminUsageRepoCapture{}
+		router := newAdminUsageRequestTypeTestRouter(repo)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/usage/stats?endpoint_source="+source, nil))
+		if source == "invalid" {
+			require.Equal(t, http.StatusBadRequest, rec.Code)
+			continue
+		}
+		require.Equal(t, http.StatusOK, rec.Code)
+		if source == "all" {
+			source = ""
+		}
+		require.Equal(t, source, repo.statsFilters.EndpointSource)
+	}
+}

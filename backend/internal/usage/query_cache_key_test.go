@@ -29,4 +29,13 @@ func TestUsageStatsCacheKey_StableAndDistinct(t *testing.T) {
 	withTeam := base
 	withTeam.TeamID = 11
 	require.NotEqual(t, k1, usageStatsCacheKey(withTeam), "different team must change key")
+	// 同一范围的不同端点图分别缓存。
+	keys := map[string]bool{k1: true}
+	for _, source := range []string{"inbound", "upstream", "path"} {
+		filtered := base
+		filtered.EndpointSource = source
+		key := usageStatsCacheKey(filtered)
+		require.False(t, keys[key])
+		keys[key] = true
+	}
 }

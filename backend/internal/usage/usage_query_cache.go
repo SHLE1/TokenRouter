@@ -8,6 +8,7 @@ import (
 // 与 dashboard 查询缓存同款:30s TTL 进程内缓存,仅服务 /admin/usage/stats 读路径。
 
 type usageStatsCacheKeyData struct {
+	EndpointSource     string `json:"endpoint_source"`
 	StartTime          string `json:"start_time"`
 	EndTime            string `json:"end_time"`
 	UserID             int64  `json:"user_id"`
@@ -33,6 +34,7 @@ func usageStatsCacheKey(filters UsageLogFilters) string {
 		end = filters.EndTime.UTC().Format(time.RFC3339)
 	}
 	return mustMarshalDashboardCacheKey(usageStatsCacheKeyData{
+		EndpointSource:     filters.EndpointSource,
 		StartTime:          start,
 		EndTime:            end,
 		UserID:             filters.UserID,

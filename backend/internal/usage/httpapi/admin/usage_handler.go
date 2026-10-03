@@ -401,8 +401,18 @@ func (h *UsageHandler) Stats(c *gin.Context) {
 		endTime = now
 	}
 
-	// Build filters and call GetStatsWithFilters
+	// 空值兼容返回全部端点图，页面可按当前图表选择查询。
+	endpointSource := c.Query("endpoint_source")
+	switch endpointSource {
+	case "all":
+		endpointSource = ""
+	case "", "inbound", "upstream", "path":
+	default:
+		response.BadRequest(c, "Invalid endpoint_source")
+		return
+	}
 	filters := usage.UsageLogFilters{
+		EndpointSource:     endpointSource,
 		UserID:             userID,
 		APIKeyID:           apiKeyID,
 		ProviderID:         providerID,

@@ -292,11 +292,13 @@ type PlatformDashboardStats struct {
 
 // UsageLogFilters 表示用量日志查询过滤条件。
 type UsageLogFilters struct {
-	UserID     int64
-	APIKeyID   int64
-	ProviderID int64
-	GroupID    int64
-	TeamID     int64
+	// EndpointSource 选择统计中的端点图，空值返回全部端点维度。
+	EndpointSource string
+	UserID         int64
+	APIKeyID       int64
+	ProviderID     int64
+	GroupID        int64
+	TeamID         int64
 	// IncludeOwnedTeam 在查询当前用户记录时，同时纳入其作为 Owner 的团队记录。
 	IncludeOwnedTeam bool
 	// PersonalOnly 仅查询个人 Key 产生的记录，团队作用域使用独立接口。
