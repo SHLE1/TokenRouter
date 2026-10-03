@@ -3,7 +3,7 @@
 
   <h1>TokenRouter</h1>
 
-  <p>自托管的 AI API 网关，带用户、计费和运营后台</p>
+  <p>开源的大模型统一网关</p>
 
   <p>
     <a href="https://github.com/TokenFlux/TokenRouter/actions/workflows/backend-ci.yml"><img src="https://github.com/TokenFlux/TokenRouter/actions/workflows/backend-ci.yml/badge.svg" alt="CI" /></a>
@@ -17,54 +17,40 @@
 
 ## 简介
 
-TokenRouter 接入多家上游的模型服务，提供统一入口。管理员录入上游提供商（OAuth 账号、API Key、云厂商凭据），按分组配置可用模型、协议、倍率和限额；用户通过平台签发的 API Key 调用 Anthropic、OpenAI 或 Gemini 格式的接口。TokenRouter 负责认证、选提供商、转换协议、失败时切换提供商，并按用量扣费。
+TokenRouter 是一个开源的大模型统一网关。它把 Anthropic、OpenAI、Gemini 等多家厂商的模型服务接到同一个入口，用户用一个 API Key 就能调用不同厂商的模型。
 
-服务端是 Go 程序，数据存 PostgreSQL，缓存、限流和并发计数用 Redis。Vue 3 编写的用户控制台和管理后台在发布构建时嵌进同一个二进制文件。
+## 核心能力
 
-TokenRouter 从 [Sub2API](https://github.com/Wei-Shaw/sub2api) 分叉后持续开发，感谢上游项目和所有贡献者。
+| 方向    | 可以做什么                                                                                                           |
+|-------|-----------------------------------------------------------------------------------------------------------------|
+| 模型接入  | 兼容 Anthropic Messages、OpenAI Responses、Chat Completions 和 Gemini 协议，分组允许的协议之间可以互相转换                             |
+| 上游平台  | 接入 Anthropic、OpenAI、Gemini、Antigravity、Grok、Qoder、Kimi、智谱和 DeepSeek，支持 OAuth 账号、API Key、AWS Bedrock 和 Vertex AI |
+| 调度与重试 | 按模型、协议能力、限流状态和粘性会话选择上游，上游出错时自动换下一个                                                                              |
+| 访问控制  | 管理用户、团队、分组和 API Key 的额度、并发与 RPM。登录支持邮箱密码、Passkey、两步验证，以及 GitHub、Google、LinuxDo、OIDC、微信和钉钉                       |
+| 计费与支付 | 按用量计费，支持余额、订阅套餐、额度包、兑换码和邀请返利。内置易支付、支付宝、微信支付、Stripe 和 Airwallex                                                  |
+| 内容审核  | 按关键词和哈希规则拦截请求，可以自动封禁违规用户                                                                                        |
+| 管理后台  | 查看用量日志和统计、配置监控告警和邮件报表、在线升级和回滚，网页创作台可以生成和编辑图片。界面支持简体中文和英语                                                        |
 
-## 功能
+### 协议与接口
 
-网关：
+| 接口类型                    | 常用入口                                                                                              |
+|-------------------------|---------------------------------------------------------------------------------------------------|
+| Anthropic Messages      | `POST /v1/messages`                                                                               |
+| OpenAI Responses / Chat | `POST /v1/responses`、`POST /v1/chat/completions`                                                  |
+| Gemini                  | `POST /v1beta/models/{model}:generateContent`、`POST /v1beta/models/{model}:streamGenerateContent` |
+| WebSocket               | `GET /v1/responses`、`GET /v1/realtime`                                                            |
+| 向量                      | `POST /v1/embeddings`                                                                             |
+| 图片                      | `/v1/images/generations`、`/v1/images/edits`、`/v1/images/batches`                                  |
+| 视频                      | `/v1/videos/generations`、`/v1/videos/edits`、`/v1/videos/extensions`                               |
+| 语音                      | `/v1/tts`、`/v1/stt`、`/v1/custom-voices`                                                           |
+| 搜索                      | `/v1/web_search`、`/v1/x_search`、`/v1/alpha/search`                                                |
+| 模型与用量                   | `GET /v1/models`、`GET /v1/usage`                                                                  |
 
-- 客户端入口有 Anthropic Messages、OpenAI Responses（含 WebSocket）、Chat Completions、Embeddings、Images、Gemini v1beta 和 Grok 视频接口。分组允许的协议之间可以互相转换，一个分组里可以混用不同平台的提供商。
-- 调度器按模型、协议能力、限流状态和粘性会话挑选提供商。上游返回可重试错误时切换下一个提供商，开始向客户端输出内容后不再切换。
-- 每个 API Key 可以单独设置额度、并发、RPM 和模型重定向。复合 Key 绑定多个分组，用模型名前缀选组。
-- 内容审核支持关键词和哈希规则、同步拦截和自动封禁。
-
-用户和计费：
-
-- 登录方式有邮箱密码、Passkey、TOTP 双因素认证，以及 GitHub、Google、LinuxDo、OIDC、微信和钉钉。
-- 团队可以共享 Key 和额度，成员有各自的角色。
-- 计费按价格配置结算，用户可以用余额、订阅套餐、额度包和兑换码，邀请返利也算在内。
-- 内置支付，支持易支付、支付宝官方、微信支付官方、Stripe 和 Airwallex。
-- 创作台可以直接在网页上生成和编辑图片。
-
-运营：
-
-- 管理后台汇总每次请求的使用记录（模型链、Token 用量、费用和诊断信息），支持按用户、分组、提供商和模型查看。
-- Ops 面板采集请求错误、上游错误、提供商可用性和主机指标，支持配置告警规则和邮件日报、周报。
-- 管理后台支持在线检查新版本、升级和回滚。
-
-## 支持的上游
-
-| 平台 | 接入方式 |
-| --- | --- |
-| Anthropic | OAuth、Setup Token、API Key、AWS Bedrock、Vertex AI |
-| OpenAI | OAuth、API Key |
-| Gemini | OAuth、API Key、Vertex AI |
-| Antigravity | OAuth |
-| Grok / xAI | OAuth、API Key |
-| Qoder | Qoder COSY |
-| Kimi | API Key（按量付费、Coding 套餐） |
-| 智谱 | API Key（按量付费、Coding 套餐） |
-| DeepSeek | API Key（按量付费） |
-
-各平台支持的入口及仅限导入的组合，见[上游提供商能力矩阵](docs/interfaces/upstream_provider_matrix.md)。
+详细见[上游提供商能力矩阵](docs/interfaces/upstream_provider_matrix.md)。
 
 ## 快速开始
 
-用 Docker Compose 部署时，需要 Docker 20.10 和 Docker Compose v2 或更高版本：
+使用 Docker Compose 部署：
 
 ```bash
 mkdir -p tokenrouter-deploy && cd tokenrouter-deploy
@@ -75,41 +61,23 @@ curl -sSL https://raw.githubusercontent.com/TokenFlux/TokenRouter/main/deploy/do
 docker compose up -d
 ```
 
-启动后打开 `http://localhost:8080`。没有在 `.env` 里设置 `ADMIN_PASSWORD` 时，管理员密码是随机生成的，可以从日志里找到：
+启动后打开 `http://localhost:8080`。管理员密码可以在 `.env` 的 `ADMIN_PASSWORD` 里设置，没有设置时会随机生成并打印到日志：
 
 ```bash
 docker compose logs tokenrouter | grep "admin password"
 ```
 
-Compose 默认只监听本机地址。对外提供服务时，在前面加反向代理，或者修改 `.env` 里的 `BIND_HOST`。
-
-其他部署方式：
-
-- [安装脚本](docs/guides/deployment/index.md#脚本安装)：在 Linux 上安装二进制并注册 systemd 服务，需要自备 PostgreSQL 15+ 和 Redis 7+。
-- [单独的应用容器](deploy/DOCKER.md#独立容器)：连接已有的 PostgreSQL 和 Redis。
-- [Apple container](docs/guides/deployment/apple_container.md)：在 macOS 上本地运行。
-
-从 Sub2API 升级时，先看[部署指南](docs/guides/deployment/index.md#从旧名称部署升级)里的兼容说明，直接套用新的 Compose 模板会建出空数据卷。
+更多部署方式，见[部署指南](docs/guides/deployment/index.md)。
 
 ## 本地开发
 
-后端需要 Go 1.27，前端需要 Node.js 20 和 pnpm 9。
+后端使用 Go，前端用 Vue 3。从源码启动完整环境：
 
 ```bash
-# 后端
-cd backend
-go run ./cmd/server
-
-# 前端，开发服务器把 API 请求代理到后端
-cd frontend
-pnpm install --frozen-lockfile
-pnpm run dev
-
-# 或者用源码构建的完整环境
 docker compose -f deploy/docker-compose.dev.yml up --build
 ```
 
-`make build` 编译前后端，`make test` 运行后端测试、前端 lint、类型检查和关键测试。测试分层、生成代码和提交前的格式化要求见[开发、验证与上游同步](docs/operations/development_workflow.md)。
+环境要求、分别启动前后端的方法和测试命令，见[开发、验证与上游同步](docs/operations/development_workflow.md)。
 
 ## 文档
 
@@ -122,3 +90,12 @@ docker compose -f deploy/docker-compose.dev.yml up --build
 本项目依据 [GNU Lesser General Public License v3.0 或更高版本](LICENSE) 发布。
 
 Copyright (c) 2026 Wesley Liddick & TokenFlux
+
+## Star 趋势
+
+<a href="https://star-history.com/#TokenFlux/TokenRouter&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=TokenFlux/TokenRouter&type=Date&theme=dark" />
+    <img src="https://api.star-history.com/svg?repos=TokenFlux/TokenRouter&type=Date" alt="Star History Chart" />
+  </picture>
+</a>
