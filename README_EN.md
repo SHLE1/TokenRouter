@@ -19,6 +19,36 @@
 
 TokenRouter is an open source unified LLM gateway. It puts model services from Anthropic, OpenAI, Gemini, and other vendors behind one endpoint, so a client can call models from different vendors with a single API key.
 
+## Screenshots
+
+<details open>
+<summary>Light mode</summary>
+
+### Dashboard
+
+<img src="assets/screenshots/dashboard-light.jpg" alt="TokenRouter Dashboard · Light mode" width="1600" />
+
+### Model Marketplace
+
+<img src="assets/screenshots/models-light.jpg" alt="TokenRouter Model Marketplace · Light mode" width="1600" />
+
+</details>
+
+<details>
+<summary>Dark mode</summary>
+
+### Dashboard
+
+<img src="assets/screenshots/dashboard-dark.jpg" alt="TokenRouter Dashboard · Dark mode" width="1600" />
+
+### Model Marketplace
+
+<img src="assets/screenshots/models-dark.jpg" alt="TokenRouter Model Marketplace · Dark mode" width="1600" />
+
+</details>
+
+Try the live demo at [tokenflux.dev](https://tokenflux.dev).
+
 ## Capabilities
 
 | Area | What you can do |
