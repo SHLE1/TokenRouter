@@ -45,9 +45,26 @@
           <template #cell-groups="{ row }">{{ row.group_ids.length }}</template>
           <template #cell-rules="{ row }">{{ row.rules.length }}</template>
           <template #cell-actions="{ row }">
-            <div class="flex gap-2">
-              <button class="btn btn-secondary btn-icon" :aria-label="t('common.edit')" @click="edit(row)"><Icon name="edit" size="sm" /></button>
-              <button class="btn btn-secondary btn-icon" :aria-label="t('common.delete')" @click="deleting = row"><Icon name="trash" size="sm" /></button>
+            <!-- 行内操作和价格管理一致：图标在上、文字在下，删除悬停时变红。 -->
+            <div class="flex items-center gap-1">
+              <button
+                type="button"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:hover:bg-dark-700 dark:hover:text-primary-400"
+                :aria-label="t('common.edit')"
+                @click="edit(row)"
+              >
+                <Icon name="edit" size="sm" />
+                <span class="text-xs">{{ t('common.edit') }}</span>
+              </button>
+              <button
+                type="button"
+                class="flex flex-col items-center gap-0.5 rounded-control p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                :aria-label="t('common.delete')"
+                @click="deleting = row"
+              >
+                <Icon name="trash" size="sm" />
+                <span class="text-xs">{{ t('common.delete') }}</span>
+              </button>
             </div>
           </template>
         </DataTable>
