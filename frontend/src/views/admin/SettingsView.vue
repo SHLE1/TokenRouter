@@ -5468,7 +5468,7 @@
           <button
             type="button"
             :disabled="saving || discarding"
-            class="btn btn-sm h-9 bg-transparent text-white/75 hover:bg-white/10 hover:text-white focus:ring-offset-gray-900 dark:text-dark-200 dark:focus:ring-offset-dark-700"
+            class="btn bg-transparent text-white/70 hover:bg-white/10 hover:text-white focus:ring-offset-gray-900 dark:text-dark-200 dark:hover:bg-dark-800 dark:focus:ring-offset-dark-900"
             data-testid="settings-save-bar-discard"
             @click="discardAllSettings"
           >
@@ -5477,7 +5477,7 @@
           <button
             type="submit"
             :disabled="saving || discarding"
-            class="btn btn-primary btn-sm h-9 focus:ring-offset-gray-900 dark:focus:ring-offset-dark-700"
+            class="btn btn-primary focus:ring-offset-gray-900 dark:focus:ring-offset-dark-900"
           >
             <Icon
               name="loader"
