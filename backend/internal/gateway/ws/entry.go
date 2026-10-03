@@ -7,11 +7,11 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -21,7 +21,7 @@ import (
 // RunEntry 拥有入站升级后的准入、提供商尝试及每 turn 调度/资金/审核/完成编排。
 func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSocket, firstMessage []byte) {
 	// 逐轮租约失效时终止整个会话，HTTP 桥接的断连隔离仍能接收内部取消。
-	ctx, abortSession := apikey.WithRequestAbort(ctx)
+	ctx, abortSession := requestcontext.WithAbort(ctx)
 	defer abortSession()
 	apiKey, subject, reqLog := in.Key, in.Subject, p.Logger()
 	clientLifecycleCtx, firstTurnStartedAt := in.ClientLifecycleContext, in.FirstTurnStartedAt
@@ -186,7 +186,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 		if err != nil {
 			return err
 		}
-		stop := context.AfterFunc(admitted, abortSession)
+		stop := requestcontext.AfterAbort(admitted, abortSession)
 		keyRelease = func() {
 			stop()
 			release()

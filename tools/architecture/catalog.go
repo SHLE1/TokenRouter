@@ -296,6 +296,7 @@ internal/gateway/requeststate internal/routing internal/upstream`, Tests: ""},
 	"internal/pkg/oauthpkce":            {Production: "internal/pkg/oauthpkce", Tests: ""},
 	"internal/pkg/pagination":           {Production: "internal/pkg/pagination", Tests: ""},
 	"internal/pkg/querycache":           {Production: "internal/pkg/querycache", Tests: ""},
+	"internal/pkg/requestcontext":       {Production: "internal/pkg/requestcontext", Tests: ""},
 	"internal/pkg/timezone":             {Production: "internal/pkg/timezone", Tests: ""},
 	"internal/protocol":                 {Production: "internal/protocol", Tests: ""},
 	"internal/protocol/anthropic":       {Production: "internal/protocol internal/protocol/anthropic internal/protocol/wirejson", Tests: "internal/testutil/assertion"},
@@ -370,6 +371,8 @@ math net/textproto net/url reflect regexp slices sort strconv strings sync testi
 unsafe`
 
 var pureFileStandard = map[string]string{
+	// 请求取消测试使用虚拟时钟检查截止时间和异步回调。
+	"internal/pkg/requestcontext/context_test.go":                   "testing/synctest",
 	"internal/gateway/clientmeta/claude_detection_test.go":          "net/http/httptest",
 	"internal/gateway/clientmeta/claude_validator_contract_test.go": "net/http net/http/httptest os",
 	"internal/upstream/usagecontract/request.go":                    "net/http",

@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"testing/synctest"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
@@ -16,6 +19,7 @@ import (
 
 // keyLimitEntry 运行完整入站编排，外部系统使用可观测的请求槽替身。
 type keyLimitEntry struct {
+	cancelClient context.CancelFunc
 	EntryPorts
 	t                                              *testing.T
 	mode                                           string
@@ -101,7 +105,7 @@ func (p *keyLimitEntry) AcquireKey(ctx context.Context) (context.Context, func()
 	require.Zero(p.t, p.active, "上一轮完成后才能取得下一轮的 Key 槽")
 	p.acquired++
 	p.active++
-	ctx, abort := apikey.WithRequestAbort(ctx)
+	ctx, abort := requestcontext.WithAbort(ctx)
 	p.abortLease = abort
 	return ctx, func() {
 		p.active--
@@ -145,9 +149,15 @@ func (target *keyLimitTarget) Run(ctx context.Context, _ ClientSocket, _ []byte,
 	p.attempts++
 	require.Equal(p.t, 1, p.active)
 	require.NoError(p.t, hooks.BeforeTurn(1))
+	if p.mode == "client_disconnect" {
+		detached := requestcontext.Detach(ctx)
+		p.cancelClient()
+		synctest.Wait()
+		require.NoError(p.t, detached.Err(), "客户端断连后继续收集 HTTP 上游结果")
+		return nil
+	}
 	if p.mode == "lost_lease" {
-		detached, stop := apikey.DetachRequestContext(ctx)
-		defer stop()
+		detached := requestcontext.Detach(ctx)
 		p.abortLease()
 		select {
 		case <-detached.Done():
@@ -200,4 +210,15 @@ func TestEntryKeyLimits(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestEntryClientDisconnectKeepsUpstream 校验逐轮取消监听没有把普通断连转成内部终止。
+func TestEntryClientDisconnectKeepsUpstream(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		p := &keyLimitEntry{t: t, mode: "client_disconnect", cancelClient: cancel}
+		p.target = &keyLimitTarget{root: p}
+		RunEntry(ctx, p, EntryInput{Key: &EntryKey{ID: 1}}, nil, []byte(`{"model":"test","type":"response.create"}`))
+		require.Zero(t, p.active)
+	})
 }

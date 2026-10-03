@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
+
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
@@ -118,7 +120,7 @@ func (e *Executor) Execute(ctx context.Context, input upstream.AttemptInput, sin
 	}
 	executionCtx := ctx
 	if input.Stream {
-		executionCtx = context.WithoutCancel(ctx)
+		executionCtx = requestcontext.Detach(ctx)
 	}
 	executionCtx, cancel := context.WithTimeout(executionCtx, e.timeout)
 	defer cancel()

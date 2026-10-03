@@ -6,6 +6,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -94,15 +96,13 @@ func TestRequestLeaseRenewalFailure(t *testing.T) {
 		service := &APIKeyService{cache: cache}
 		ctx, release, _, err := service.AcquireRequest(context.Background(), &APIKey{ID: 1, ConcurrencyLimit: 1})
 		require.NoError(t, err)
-		detached, stopDetached := DetachRequestContext(ctx)
-		defer stopDetached()
+		detached := requestcontext.Detach(ctx)
 		synctest.Wait()
 		time.Sleep(31 * time.Second)
 		synctest.Wait()
 		require.ErrorIs(t, ctx.Err(), context.Canceled)
 		require.ErrorIs(t, detached.Err(), context.Canceled)
-		late, stopLate := DetachRequestContext(ctx)
-		defer stopLate()
+		late := requestcontext.Detach(ctx)
 		require.ErrorIs(t, late.Err(), context.Canceled)
 		require.Equal(t, 1, cache.refreshed)
 		release()
@@ -121,8 +121,7 @@ func TestRequestLeaseSurvivesClientCancellation(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		admitted, release, _, err := service.AcquireRequest(ctx, &APIKey{ID: 1, ConcurrencyLimit: 1})
 		require.NoError(t, err)
-		detached, stopDetached := DetachRequestContext(admitted)
-		defer stopDetached()
+		detached := requestcontext.Detach(admitted)
 		cancel()
 		synctest.Wait()
 		require.NoError(t, detached.Err())

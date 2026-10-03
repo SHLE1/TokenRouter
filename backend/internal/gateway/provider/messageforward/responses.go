@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
@@ -91,7 +93,7 @@ func detachedStreamContext(ctx context.Context, stream bool) (context.Context, c
 	if !stream {
 		return ctx, func() {}
 	}
-	return context.WithoutCancel(ctx), func() {}
+	return requestcontext.Detach(ctx), func() {}
 }
 
 // 固定时长用于平台重试预算。

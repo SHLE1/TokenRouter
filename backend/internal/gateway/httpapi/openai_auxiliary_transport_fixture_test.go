@@ -9,6 +9,8 @@ import (
 )
 
 type auxiliaryHTTPRecorder struct {
+	// checkContext 让传输替身按请求取消状态拒绝发送。
+	checkContext bool
 	lastReq      *http.Request
 	lastBody     []byte
 	lastProxyURL string
@@ -23,6 +25,9 @@ type auxiliaryHTTPRecorder struct {
 }
 
 func (u *auxiliaryHTTPRecorder) Do(req *http.Request, proxyURL string, providerID int64, providerConcurrency int) (*http.Response, error) {
+	if u.checkContext && req.Context().Err() != nil {
+		return nil, req.Context().Err()
+	}
 	u.lastReq = req
 	u.lastProxyURL = proxyURL
 	if req != nil && req.Body != nil {

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
 	"github.com/google/uuid"
 )
 
@@ -68,7 +69,7 @@ func (s *APIKeyService) AcquireRequest(ctx context.Context, key *APIKey) (contex
 		s.operations.leave()
 		return ctx, func() {}, 0, nil
 	}
-	requestCtx, abort := WithRequestAbort(ctx)
+	requestCtx, abort := requestcontext.WithAbort(ctx)
 	stop := make(chan struct{})
 	done := make(chan struct{})
 	go func() {
@@ -105,38 +106,4 @@ func (s *APIKeyService) AcquireRequest(ctx context.Context, key *APIKey) (contex
 		})
 	}
 	return requestCtx, release, 0, nil
-}
-
-// requestLeaseContextKey 保存内部租约的取消信号。
-type requestLeaseContextKey struct{}
-
-// WithRequestAbort 为请求添加能穿过客户端断连隔离的内部取消信号。
-func WithRequestAbort(ctx context.Context) (context.Context, context.CancelFunc) {
-	lease, abort := context.WithCancel(context.Background())
-	request, cancel := context.WithCancel(context.WithValue(ctx, requestLeaseContextKey{}, lease))
-	return request, func() {
-		abort()
-		cancel()
-	}
-}
-
-// DetachRequestContext 使上游继续处理客户端断连后的结果，同时响应 Key 租约失效。
-func DetachRequestContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	if ctx == nil {
-		return context.Background(), func() {}
-	}
-	detached := context.WithoutCancel(ctx)
-	lease, ok := ctx.Value(requestLeaseContextKey{}).(context.Context)
-	if !ok {
-		return detached, func() {}
-	}
-	detached, cancel := context.WithCancel(detached)
-	stop := context.AfterFunc(lease, cancel)
-	if lease.Err() != nil {
-		cancel()
-	}
-	return detached, func() {
-		stop()
-		cancel()
-	}
 }

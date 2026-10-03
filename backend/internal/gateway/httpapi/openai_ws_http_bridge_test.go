@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
+
 	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
@@ -1675,7 +1677,7 @@ func TestProxyResponsesWebSocketFromClientForGrokUsesXAIHTTPBridge(t *testing.T)
 			Body: io.NopCloser(strings.NewReader(sseBody)),
 		}
 	}
-	upstream := &auxiliaryHTTPRecorder{responses: []*http.Response{
+	upstream := &auxiliaryHTTPRecorder{checkContext: true, responses: []*http.Response{
 		bridgeResponse("resp_grok_ws_1", "xai-ws-req-1", 0),
 		bridgeResponse("resp_grok_ws_2", "xai-ws-req-2", 3),
 		bridgeResponse("resp_grok_ws_3", "xai-ws-req-3", 0),
@@ -1723,7 +1725,9 @@ func TestProxyResponsesWebSocketFromClientForGrokUsesXAIHTTPBridge(t *testing.T)
 		ginCtx.Request = req
 		ginCtx.Set("api_key", &apikey.APIKey{ID: 7101})
 
-		errCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "access-token", firstMessage, nil)
+		requestCtx, abort := requestcontext.WithAbort(r.Context())
+		defer abort()
+		errCh <- svc.ProxyResponsesWebSocketFromClient(requestCtx, ginCtx, conn, provider, "access-token", firstMessage, nil)
 	}))
 	defer wsServer.Close()
 

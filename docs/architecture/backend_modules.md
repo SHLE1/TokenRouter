@@ -174,6 +174,7 @@ backend/
 │   │   ├── oauthpkce/                                   OAuth PKCE 生成
 │   │   ├── pagination/                                  分页值与切片分页计算
 │   │   ├── querycache/                                  查询缓存、过期控制和返回值副本
+│   │   ├── requestcontext/                              请求断连隔离和服务端主动终止信号
 │   │   └── timezone/                                    Calendar 日期对象和时间文本解析
 │   ├── promotion/                                       邀请、优惠码、返利和转入余额
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
