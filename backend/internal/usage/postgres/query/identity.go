@@ -12,11 +12,14 @@ import (
 	"github.com/lib/pq"
 )
 
+// IdentityUserLastUsedAtOrder 按事务内维护的用户活动时间排序，无记录用户按空值排序。
+// @project-doc docs/operations/observability_and_data_lifecycle.md#user_activity_summary
 func IdentityUserLastUsedAtOrder(sortOrder string) []func(*entsql.Selector) {
 	orderExpr := func(direction, nulls string, tieOrder func(string) string) func(*entsql.Selector) {
 		return func(s *entsql.Selector) {
-			subquery := fmt.Sprintf("(SELECT MAX(created_at) FROM usage_logs WHERE user_id = %s)", s.C(dbuser.FieldID))
-			s.OrderExpr(entsql.Expr(subquery + " " + direction + " NULLS " + nulls))
+			activity := entsql.Table("usage_user_activity").As("user_activity")
+			s.LeftJoin(activity).On(s.C(dbuser.FieldID), activity.C("user_id"))
+			s.OrderExpr(entsql.Expr(activity.C("last_used_at") + " " + direction + " NULLS " + nulls))
 			s.OrderBy(tieOrder(s.C(dbuser.FieldID)))
 		}
 	}
@@ -31,6 +34,7 @@ func IdentityUserLastUsedAtOrder(sortOrder string) []func(*entsql.Selector) {
 	}
 }
 
+// GetLatestUsedAtByUserIDs 批量读取用户活动汇总，缺少记录的用户不进入结果。
 func GetLatestUsedAtByUserIDs(ctx context.Context, db infra.Executor, userIDs []int64) (map[int64]*time.Time, error) {
 	result := make(map[int64]*time.Time, len(userIDs))
 	if len(userIDs) == 0 {
@@ -41,10 +45,9 @@ func GetLatestUsedAtByUserIDs(ctx context.Context, db infra.Executor, userIDs []
 	}
 
 	const query = `
-		SELECT user_id, MAX(created_at) AS last_used_at
-		FROM usage_logs
+		SELECT user_id, last_used_at
+		FROM usage_user_activity
 		WHERE user_id = ANY($1)
-		GROUP BY user_id
 	`
 
 	rows, err := db.QueryContext(ctx, query, pq.Array(userIDs))

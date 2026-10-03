@@ -165,6 +165,8 @@ func (r *GroupAvailabilityProbeStore) SaveResultAndScheduleNext(ctx context.Cont
 	return tx.Commit()
 }
 
+// GetSummaryByGroupIDs 返回窗口内的可用率，并按分组索引读取最近一次探测。
+// @project-doc docs/interfaces/model_catalog_and_marketplace.md#group_availability_probe
 func (r *GroupAvailabilityProbeStore) GetSummaryByGroupIDs(ctx context.Context, groupIDs []int64, days int, bucketMinutes int, timezoneName string, now time.Time) (map[int64]*routing.GroupAvailabilitySummary, error) {
 	out := make(map[int64]*routing.GroupAvailabilitySummary, len(groupIDs))
 	if r == nil || r.db == nil || len(groupIDs) == 0 {
@@ -253,11 +255,15 @@ func (r *GroupAvailabilityProbeStore) GetSummaryByGroupIDs(ctx context.Context, 
 	}
 
 	lastRows, err := r.db.QueryContext(ctx, `
-		SELECT DISTINCT ON (group_id)
-			group_id, status, finished_at
-		FROM group_availability_probe_results
-		WHERE group_id = ANY($1)
-		ORDER BY group_id, started_at DESC, id DESC
+		SELECT requested.group_id, latest.status, latest.finished_at
+		FROM unnest($1::bigint[]) AS requested(group_id)
+		CROSS JOIN LATERAL (
+			SELECT status, finished_at
+			FROM group_availability_probe_results
+			WHERE group_id = requested.group_id
+			ORDER BY started_at DESC, id DESC
+			LIMIT 1
+		) latest
 	`, pq.Array(groupIDs))
 	if err != nil {
 		return nil, err

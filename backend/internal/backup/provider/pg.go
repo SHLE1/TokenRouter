@@ -1,12 +1,14 @@
 package provider
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/TokenFlux/TokenRouter/internal/backup"
@@ -66,9 +68,14 @@ func (d *PgDumper) Dump(ctx context.Context, opts backup.BackupDumpOptions) (io.
 	return &cmdReadCloser{ReadCloser: stdout, cmd: cmd}, nil
 }
 
-// Restore executes psql to restore from a streaming reader
+// Restore 在一个 psql 事务中清理派生表并恢复归档，输入损坏时取消事务。
 // @project-doc docs/operations/deployment_and_migrations.md#maintenance_execution
 func (d *PgDumper) Restore(ctx context.Context, data io.Reader) error {
+	// 空归档在执行派生表清理之前失败。
+	archive := bufio.NewReader(data)
+	if _, err := archive.Peek(1); err != nil {
+		return fmt.Errorf("读取备份归档: %w", err)
+	}
 	args := []string{
 		"-h", d.cfg.Host,
 		"-p", fmt.Sprintf("%d", d.cfg.Port),
@@ -100,7 +107,10 @@ func (d *PgDumper) Restore(ctx context.Context, data io.Reader) error {
 		_ = stdin.Close()
 		return err
 	}
-	_, copyErr := io.Copy(stdin, data)
+	// 旧备份没有活动汇总的 DROP，先解除它对用户主键的依赖。
+	// 此前缀与归档 SQL 同属 psql 的单事务，失败时一起回滚。
+	input := io.MultiReader(strings.NewReader("DROP TABLE IF EXISTS public.usage_user_activity;\n"), archive)
+	_, copyErr := io.Copy(stdin, input)
 	if copyErr != nil {
 		cancel()
 	}

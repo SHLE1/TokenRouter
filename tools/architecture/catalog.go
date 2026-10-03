@@ -111,7 +111,7 @@ internal/upstream/qoder internal/upstream/usagecontract internal/upstream/usagep
 internal/upstream/usageview internal/upstream/vertex internal/upstream/zhipu internal/usage`, Tests: `internal/config internal/gateway internal/gateway/forward internal/gateway/media
 internal/gateway/provider/modelidentity internal/gateway/requeststate internal/gateway/session
 internal/idempotency/testkit internal/identity/httpapi/authctx internal/infra/timingwheel/...
-internal/ops internal/routing/provider internal/testutil/assertion internal/testutil/rediscontainer`},
+internal/ops internal/routing/provider internal/testutil/assertion internal/testutil/rediscontainer internal/testutil/postgrescontainer`},
 	"internal/apikey": {Production: `ent/... internal/apikey/... internal/billing internal/billing/postgres internal/billing/pricing
 internal/config internal/idempotency/httpapi internal/identity internal/identity/contact
 internal/identity/httpapi/authctx internal/infra/postgres/... internal/pkg/ internal/protocol
@@ -178,7 +178,7 @@ internal/notification internal/notification/contract internal/pkg/ internal/prom
 internal/server/clientip internal/server/httpx internal/settings internal/site internal/team
 internal/usage/postgres/query`, Tests: `internal/apikey internal/apikey/httpapi/dto internal/audit internal/gateway
 internal/notification/smtp internal/routing internal/routing/capability internal/routing/httpapi/dto
-internal/scheduler internal/testutil/rediscontainer migrations`},
+internal/scheduler internal/testutil/rediscontainer internal/testutil/postgrescontainer migrations`},
 	"internal/infra": {Production: "internal/infra/... internal/pkg/", Tests: "migrations"},
 	"internal/moderation": {Production: `internal/infra/httpclient/... internal/infra/telemetry/... internal/moderation/...
 internal/notification/contract internal/pkg/ internal/server/httpx internal/settings

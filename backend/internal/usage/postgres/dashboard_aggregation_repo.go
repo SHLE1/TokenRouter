@@ -472,6 +472,7 @@ func (r *AggregationStore) dropUsageLogsPartitions(ctx context.Context, cutoff t
 	}()
 
 	cutoffMonth := truncateToMonthUTC(cutoff)
+	var obsolete []string
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
@@ -487,12 +488,22 @@ func (r *AggregationStore) dropUsageLogsPartitions(ctx context.Context, cutoff t
 		}
 		month = month.UTC()
 		if month.Before(cutoffMonth) {
-			if _, err := r.sql.ExecContext(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %s", pq.QuoteIdentifier(name))); err != nil {
-				return err
-			}
+			obsolete = append(obsolete, name)
 		}
 	}
-	return rows.Err()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	for _, name := range obsolete {
+		// 先释放结果集，事务执行器才能在同一连接上删除分区并重建活动汇总。
+		if _, err := r.sql.ExecContext(ctx, "SELECT usage_drop_partition_with_activity($1)", pq.QuoteIdentifier(name)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *AggregationStore) createUsageLogsPartition(ctx context.Context, month time.Time) error {

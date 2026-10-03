@@ -556,14 +556,7 @@ func (r *UserStore) ListWithFilters(ctx context.Context, params pagination.Pagin
 		q = q.Where(dbuser.RoleEQ(filters.Role))
 	}
 	if filters.Search != "" {
-		q = q.Where(
-			dbuser.Or(
-				dbuser.EmailContainsFold(filters.Search),
-				dbuser.UsernameContainsFold(filters.Search),
-				dbuser.NotesContainsFold(filters.Search),
-				dbuser.HasAPIKeysWith(apikey.KeyContainsFold(filters.Search)),
-			),
-		)
+		q = q.Where(identityUserSearch(filters.Search))
 	}
 
 	if filters.GroupName != "" {
@@ -671,6 +664,24 @@ func (r *UserStore) ListWithFilters(ctx context.Context, params pagination.Pagin
 	}
 
 	return outUsers, pagination.ResultFromTotal(int64(total), params), nil
+}
+
+// identityUserSearch 分字段查询候选 ID，各字段可独立使用模糊搜索索引。
+func identityUserSearch(search string) predicate.User {
+	return func(s *entsql.Selector) {
+		builder := entsql.Dialect(s.Dialect())
+		users := builder.Table(dbuser.Table).As("search_users")
+		keys := builder.Table(apikey.Table).As("search_keys")
+		matches := builder.Select(users.C(dbuser.FieldID)).From(users).
+			Where(entsql.ContainsFold(users.C(dbuser.FieldEmail), search))
+		for _, field := range []string{dbuser.FieldUsername, dbuser.FieldNotes} {
+			matches.Union(builder.Select(users.C(dbuser.FieldID)).From(users).
+				Where(entsql.ContainsFold(users.C(field), search)))
+		}
+		keyMatches := builder.Select(keys.C(apikey.FieldUserID)).From(keys).
+			Where(entsql.ContainsFold(keys.C(apikey.FieldKey), search))
+		s.Where(entsql.In(s.C(dbuser.FieldID), matches.Union(keyMatches)))
+	}
 }
 
 func IdentityUserListOrder(params pagination.PaginationParams) []func(*entsql.Selector) {

@@ -494,82 +494,44 @@ func (r *Store) getPerformanceStatsByAPIKey(ctx context.Context, apiKeyID int64)
 
 // GetAPIKeyDashboardStats 获取指定 API Key 的仪表盘统计（按 api_key_id 过滤）
 func (r *Store) GetAPIKeyDashboardStats(ctx context.Context, apiKeyID int64) (*UserDashboardStats, error) {
-	stats := &UserDashboardStats{}
-	today := r.calendar.Today()
-
-	// API Key 维度不需要统计 key 数量，设为 1
+	stats, aggregated, err := r.getAPIKeyDashboardStatsFromAnalytics(ctx, apiKeyID)
+	if err != nil {
+		r.logUsageAnalyticsFallback("api_key_dashboard", err)
+	}
+	if err != nil || !aggregated {
+		stats = &UserDashboardStats{}
+		// 累计和今日共用一次原始记录扫描，未来时间记录也参与统计。
+		query := `SELECT COUNT(*), COALESCE(SUM(input_tokens), 0), COALESCE(SUM(output_tokens), 0),
+			COALESCE(SUM(cache_creation_tokens), 0), COALESCE(SUM(cache_read_tokens), 0),
+			COALESCE(SUM(total_cost), 0), COALESCE(SUM(actual_cost), 0), COALESCE(AVG(duration_ms), 0),
+			COUNT(*) FILTER (WHERE created_at >= $2),
+			COALESCE(SUM(input_tokens) FILTER (WHERE created_at >= $2), 0),
+			COALESCE(SUM(output_tokens) FILTER (WHERE created_at >= $2), 0),
+			COALESCE(SUM(cache_creation_tokens) FILTER (WHERE created_at >= $2), 0),
+			COALESCE(SUM(cache_read_tokens) FILTER (WHERE created_at >= $2), 0),
+			COALESCE(SUM(total_cost) FILTER (WHERE created_at >= $2), 0),
+			COALESCE(SUM(actual_cost) FILTER (WHERE created_at >= $2), 0)
+			FROM usage_logs WHERE api_key_id = $1`
+		if err := scanSingleRow(ctx, r.sql, query, []any{apiKeyID, r.calendar.Today()},
+			&stats.TotalRequests, &stats.TotalInputTokens, &stats.TotalOutputTokens,
+			&stats.TotalCacheCreationTokens, &stats.TotalCacheReadTokens,
+			&stats.TotalCost, &stats.TotalActualCost, &stats.AverageDurationMs,
+			&stats.TodayRequests, &stats.TodayInputTokens, &stats.TodayOutputTokens,
+			&stats.TodayCacheCreationTokens, &stats.TodayCacheReadTokens,
+			&stats.TodayCost, &stats.TodayActualCost); err != nil {
+			return nil, err
+		}
+	}
 	stats.TotalAPIKeys = 1
 	stats.ActiveAPIKeys = 1
-
-	// 累计 Token 统计
-	totalStatsQuery := `
-		SELECT
-			COUNT(*) as total_requests,
-			COALESCE(SUM(input_tokens), 0) as total_input_tokens,
-			COALESCE(SUM(output_tokens), 0) as total_output_tokens,
-			COALESCE(SUM(cache_creation_tokens), 0) as total_cache_creation_tokens,
-			COALESCE(SUM(cache_read_tokens), 0) as total_cache_read_tokens,
-			COALESCE(SUM(total_cost), 0) as total_cost,
-			COALESCE(SUM(actual_cost), 0) as total_actual_cost,
-			COALESCE(AVG(duration_ms), 0) as avg_duration_ms
-		FROM usage_logs
-		WHERE api_key_id = $1
-	`
-	if err := scanSingleRow(
-		ctx,
-		r.sql,
-		totalStatsQuery,
-		[]any{apiKeyID},
-		&stats.TotalRequests,
-		&stats.TotalInputTokens,
-		&stats.TotalOutputTokens,
-		&stats.TotalCacheCreationTokens,
-		&stats.TotalCacheReadTokens,
-		&stats.TotalCost,
-		&stats.TotalActualCost,
-		&stats.AverageDurationMs,
-	); err != nil {
-		return nil, err
-	}
 	stats.TotalTokens = stats.TotalInputTokens + stats.TotalOutputTokens + stats.TotalCacheCreationTokens + stats.TotalCacheReadTokens
-
-	// 今日 Token 统计
-	todayStatsQuery := `
-		SELECT
-			COUNT(*) as today_requests,
-			COALESCE(SUM(input_tokens), 0) as today_input_tokens,
-			COALESCE(SUM(output_tokens), 0) as today_output_tokens,
-			COALESCE(SUM(cache_creation_tokens), 0) as today_cache_creation_tokens,
-			COALESCE(SUM(cache_read_tokens), 0) as today_cache_read_tokens,
-			COALESCE(SUM(total_cost), 0) as today_cost,
-			COALESCE(SUM(actual_cost), 0) as today_actual_cost
-		FROM usage_logs
-		WHERE api_key_id = $1 AND created_at >= $2
-	`
-	if err := scanSingleRow(
-		ctx,
-		r.sql,
-		todayStatsQuery,
-		[]any{apiKeyID, today},
-		&stats.TodayRequests,
-		&stats.TodayInputTokens,
-		&stats.TodayOutputTokens,
-		&stats.TodayCacheCreationTokens,
-		&stats.TodayCacheReadTokens,
-		&stats.TodayCost,
-		&stats.TodayActualCost,
-	); err != nil {
-		return nil, err
-	}
 	stats.TodayTokens = stats.TodayInputTokens + stats.TodayOutputTokens + stats.TodayCacheCreationTokens + stats.TodayCacheReadTokens
-
-	// 性能指标：RPM 和 TPM（最近5分钟，按 API Key 过滤）
+	// 短窗口读取原始记录，反映当前请求速率。
 	rpm, tpm, err := r.getPerformanceStatsByAPIKey(ctx, apiKeyID)
 	if err != nil {
 		return nil, err
 	}
 	stats.Rpm = rpm
 	stats.Tpm = tpm
-
 	return stats, nil
 }

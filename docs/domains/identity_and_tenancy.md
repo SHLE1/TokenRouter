@@ -40,6 +40,8 @@ Key 的使用方直接使用 `apikey.APIKey`、`APIKeyRepository` 和 `APIKeySer
 
 `User.role` 里的 `admin` 是全局后台角色；`TeamMember.role` 的 `owner` 和 `member` 只在一个团队内有效。两套角色互相独立。请求是否允许，由用户状态、团队状态、成员关系和具体资源的归属共同决定。
 
+管理员用户列表和详情的最近使用时间来自事务内维护的[用户活动汇总](../operations/observability_and_data_lifecycle.md#user_activity_summary)。排序在筛选后、分页前完成，升序把空时间放在前面，降序放在末尾；相同时间再按同方向的用户 ID 排序。搜索按邮箱、用户名、备注和 API Key 内容匹配，各字段分别查询候选用户 ID，再去重合并。计数和分页使用同一组条件。
+
 <a id="authentication_boundaries"></a>
 ## 认证入口
 

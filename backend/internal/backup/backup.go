@@ -56,6 +56,7 @@ var (
 var backupContentTableDataGroups = map[string][]string{
 	"usage_records": {
 		"public.usage_logs",
+		"public.usage_user_activity",
 		"public.usage_logs_*",
 		"public.billing_usage_entries",
 		"public.usage_billing_dedup",
