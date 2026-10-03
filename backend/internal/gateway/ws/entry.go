@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
@@ -19,6 +20,9 @@ import (
 
 // RunEntry 拥有入站升级后的准入、提供商尝试及每 turn 调度/资金/审核/完成编排。
 func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSocket, firstMessage []byte) {
+	// 逐轮租约失效时终止整个会话，HTTP 桥接的断连隔离仍能接收内部取消。
+	ctx, abortSession := apikey.WithRequestAbort(ctx)
+	defer abortSession()
 	apiKey, subject, reqLog := in.Key, in.Subject, p.Logger()
 	clientLifecycleCtx, firstTurnStartedAt := in.ClientLifecycleContext, in.FirstTurnStartedAt
 	var err error
@@ -166,6 +170,42 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 	if err := p.Eligibility(ctx); err != nil {
 		reqLog.Info("openai.websocket_billing_eligibility_check_failed", EntryError(err))
 		p.Close(1008, "billing check failed")
+		return
+	}
+
+	// Key 槽位在轮次之间释放，可重试的同一轮持有到最终完成。
+	var keyMu sync.Mutex
+	var keyRelease func()
+	acquireKey := func() error {
+		keyMu.Lock()
+		defer keyMu.Unlock()
+		if keyRelease != nil {
+			return nil
+		}
+		admitted, release, err := p.AcquireKey(ctx)
+		if err != nil {
+			return err
+		}
+		stop := context.AfterFunc(admitted, abortSession)
+		keyRelease = func() {
+			stop()
+			release()
+		}
+		return nil
+	}
+	releaseKey := func() {
+		keyMu.Lock()
+		release := keyRelease
+		keyRelease = nil
+		keyMu.Unlock()
+		if release != nil {
+			release()
+		}
+	}
+	defer releaseKey()
+	if err := acquireKey(); err != nil {
+		closed := p.CloseInfo(err)
+		p.Close(closed.Status, closed.Reason)
 		return
 	}
 
@@ -456,6 +496,12 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 					}
 					return p.CloseError(1008, "API key or billing eligibility changed; reconnect required", err)
 				}
+				if err := acquireKey(); err != nil {
+					if userReleaseFunc != nil {
+						userReleaseFunc()
+					}
+					return err
+				}
 				providerReleaseFunc, providerAcquired, err := p.AcquireProvider(ctx, provider.ID, providerMaxConcurrency)
 				if err != nil {
 					if userReleaseFunc != nil {
@@ -484,6 +530,9 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 				turn := capture.Turn
 				result := capture.Result
 				turnErr := capture.Err
+				if _, retryable := p.Failover(turnErr); turnErr == nil || !retryable {
+					releaseKey()
+				}
 				turnClientModel := strings.TrimSpace(capture.OriginalModel)
 				if turnClientModel == "" {
 					turnClientModel = clientReqModel

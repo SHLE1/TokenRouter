@@ -39,18 +39,21 @@ type APIKey[G any] struct {
 	CurrentConcurrency int `json:"current_concurrency"`
 
 	// Rate limit fields
-	RateLimit5h   float64    `json:"rate_limit_5h"`
-	RateLimit1d   float64    `json:"rate_limit_1d"`
-	RateLimit7d   float64    `json:"rate_limit_7d"`
-	Usage5h       float64    `json:"usage_5h"`
-	Usage1d       float64    `json:"usage_1d"`
-	Usage7d       float64    `json:"usage_7d"`
-	Window5hStart *time.Time `json:"window_5h_start"`
-	Window1dStart *time.Time `json:"window_1d_start"`
-	Window7dStart *time.Time `json:"window_7d_start"`
-	Reset5hAt     *time.Time `json:"reset_5h_at,omitempty"`
-	Reset1dAt     *time.Time `json:"reset_1d_at,omitempty"`
-	Reset7dAt     *time.Time `json:"reset_7d_at,omitempty"`
+	// ConcurrencyLimit 和 RPMLimit 为 0 时不限制请求。
+	ConcurrencyLimit int        `json:"concurrency_limit"`
+	RPMLimit         int        `json:"rpm_limit"`
+	RateLimit5h      float64    `json:"rate_limit_5h"`
+	RateLimit1d      float64    `json:"rate_limit_1d"`
+	RateLimit7d      float64    `json:"rate_limit_7d"`
+	Usage5h          float64    `json:"usage_5h"`
+	Usage1d          float64    `json:"usage_1d"`
+	Usage7d          float64    `json:"usage_7d"`
+	Window5hStart    *time.Time `json:"window_5h_start"`
+	Window1dStart    *time.Time `json:"window_1d_start"`
+	Window7dStart    *time.Time `json:"window_7d_start"`
+	Reset5hAt        *time.Time `json:"reset_5h_at,omitempty"`
+	Reset1dAt        *time.Time `json:"reset_1d_at,omitempty"`
+	Reset7dAt        *time.Time `json:"reset_7d_at,omitempty"`
 
 	// API Key 响应不能携带用户对象，避免团队 Key 暴露付款 Owner 的资产信息。
 	Group *G `json:"group,omitempty"`
@@ -90,6 +93,8 @@ func APIKeyFromKey[G any](k *apikey.APIKey, group func(*routing.Group) *G) *APIK
 		ExpiresAt:                    k.ExpiresAt,
 		CreatedAt:                    k.CreatedAt,
 		UpdatedAt:                    k.UpdatedAt,
+		ConcurrencyLimit:             k.ConcurrencyLimit,
+		RPMLimit:                     k.RPMLimit,
 		RateLimit5h:                  k.RateLimit5h,
 		RateLimit1d:                  k.RateLimit1d,
 		RateLimit7d:                  k.RateLimit7d,

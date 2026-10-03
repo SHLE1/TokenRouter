@@ -98,7 +98,7 @@ WS 执行使用静态选项，以及请求、输出、会话和选择接口，�
 
 凭据提取和认证错误展示由 `apikey/httpapi` 处理。Key、用户、团队和 IP 校验在 `apikey.Authenticate` 里完成，返回的 `AccessSnapshot` 区分 owner、payer、actor 和 team。`gateway/httpapi` 的通用认证入口和 Google 认证入口组合了复合 Key 选组、模型改写和 `gateway/admission` 的资金准入，HTTP 适配层负责请求上下文和观测数据。普通协议门禁在读取请求体之前执行；Google 入口和通用入口各自的错误检查顺序不同。
 
-认证缓存版本为 46。来源数据和请求里的嵌套 map、slice、指针都会复制，复合 Key 选组改动的是副本，共享快照保持不变；分组手动设置的 Fast 策略在缓存读写中完整保存。
+认证缓存版本为 47。来源数据和请求里的嵌套 map、slice、指针都会复制，复合 Key 选组改动的是副本，共享快照保持不变；分组手动设置的 Fast 策略在缓存读写中完整保存。
 
 通用认证入口在最终选组授权后绑定 `AccessSnapshot` 和 Fast 策略，付款用户取这个请求的付款主体；Google 分支在自己的时机绑定。认证失败时，供 Ops 使用的已加载 Key 信息和认证成功的快照分开存放，Key 能加载出来并不代表授权成功。
 
@@ -121,7 +121,7 @@ Responses WebSocket 的后续轮次，在拿到用户槽之后、转发上游之
 
 普通 Key 的协议门禁不读取请求体。复合 Key 在认证阶段先读取请求体并放回原处，用模型前缀确定最终分组，然后执行同一个门禁。被禁用的协议返回该客户端协议自己的 `403`，记录为 `LocalPolicyDenied`，请求在提供商选择、重试、fallback 和结算之前结束。
 
-进入协议 handler 后，请求体按端点的限制读取，JSON 和 Multipart 按宽容模式解析，然后依次做用户提示词替换、协议解析、客户端识别、内容审查和 Ops 元数据设置。HTTP 和 WS 使用 app 注入的同一个 promptpolicy 实例，规则回源和替换在这些调用点执行。用户并发槽在提供商选择之前获取，已经超过用户并发的请求不会占用调度资源。
+进入协议 handler 后，请求体按端点的限制读取，JSON 和 Multipart 按宽容模式解析，然后依次做用户提示词替换、协议解析、客户端识别、内容审查和 Ops 元数据设置。HTTP 和 WS 使用 app 注入的同一个 promptpolicy 实例，规则回源和替换在这些调用点执行。用户并发槽在提供商选择之前获取，已经超过用户并发的请求不会占用调度资源。Key 的并发和 RPM 在认证、资金检查之后预占，具体计数和释放规则见 [API Key 请求上限](../domains/routing_and_billing.md#api_key_request_limits)。
 
 ## 模型名称链
 

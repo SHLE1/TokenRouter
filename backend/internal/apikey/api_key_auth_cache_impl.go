@@ -16,7 +16,7 @@ import (
 	"github.com/dgraph-io/ristretto"
 )
 
-const KeyApiKeyAuthSnapshotVersion = 46
+const KeyApiKeyAuthSnapshotVersion = 47
 
 type KeyApiKeyAuthCacheConfig struct {
 	l1Size        int
@@ -413,6 +413,8 @@ func (s *APIKeyService) KeySnapshotFromAPIKey(ctx context.Context, apiKey *APIKe
 		Quota:                        apiKey.Quota,
 		QuotaUsed:                    apiKey.QuotaUsed,
 		ExpiresAt:                    clonePointer(apiKey.ExpiresAt),
+		ConcurrencyLimit:             apiKey.ConcurrencyLimit,
+		RPMLimit:                     apiKey.RPMLimit,
 		RateLimit5h:                  apiKey.RateLimit5h,
 		RateLimit1d:                  apiKey.RateLimit1d,
 		RateLimit7d:                  apiKey.RateLimit7d,
@@ -534,6 +536,8 @@ func (s *APIKeyService) KeySnapshotToAPIKey(key string, snapshot *APIKeyAuthSnap
 		Quota:                        snapshot.Quota,
 		QuotaUsed:                    snapshot.QuotaUsed,
 		ExpiresAt:                    clonePointer(snapshot.ExpiresAt),
+		ConcurrencyLimit:             snapshot.ConcurrencyLimit,
+		RPMLimit:                     snapshot.RPMLimit,
 		RateLimit5h:                  snapshot.RateLimit5h,
 		RateLimit1d:                  snapshot.RateLimit1d,
 		RateLimit7d:                  snapshot.RateLimit7d,

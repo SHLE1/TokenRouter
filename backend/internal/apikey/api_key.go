@@ -113,6 +113,9 @@ type APIKey struct {
 	Group          *routing.Group
 	// FallbackWhenGroupUnavailable 控制绑定分组停用时是否允许回退到管理员明确配置的目标。
 	FallbackWhenGroupUnavailable bool
+	// ConcurrencyLimit 和 RPMLimit 为 Key 的请求上限，0 表示不限制。
+	ConcurrencyLimit int
+	RPMLimit         int
 	// CurrentConcurrency 表示当前 API Key 的实时活跃请求数。
 	CurrentConcurrency int
 	// ManagedBy 标记服务端托管的隐藏 Key（如创作台执行 Key 'creative_studio'），

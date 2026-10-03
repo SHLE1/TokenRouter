@@ -930,6 +930,8 @@ describe('user KeysView column settings', () => {
     expect(fastSelect).toBeDefined()
     await groupSelect!.vm.$emit('update:modelValue', 42)
     await fastSelect!.vm.$emit('update:modelValue', 'force_on')
+    await wrapper.get('#key-concurrency-limit').setValue('2')
+    await wrapper.get('#key-rpm-limit').setValue('30')
     await wrapper.get('form#key-form').trigger('submit')
     await flushPromises()
 
@@ -937,6 +939,8 @@ describe('user KeysView column settings', () => {
       name: 'fast-key',
       group_id: 42,
       fast_mode_policy: 'force_on',
+      concurrency_limit: 2,
+      rpm_limit: 30,
     }))
   })
 
@@ -1169,6 +1173,31 @@ describe('user KeysView column settings', () => {
     await flushPromises()
 
     expect(updateKey).toHaveBeenCalledWith(1, expect.objectContaining({ model_mapping: {} }))
+  })
+
+  it('loads request limits and submits zero to remove them', async () => {
+    listKeys.mockResolvedValueOnce({
+      items: [{ ...createApiKey(), group_id: 42, concurrency_limit: 3, rpm_limit: 60 }],
+      total: 1, page: 1, page_size: 20, pages: 1,
+    })
+    const wrapper = await mountView()
+    await getButtonByText(wrapper, 'Edit').trigger('click')
+    expect((wrapper.get('#key-concurrency-limit').element as HTMLInputElement).value).toBe('3')
+    expect((wrapper.get('#key-rpm-limit').element as HTMLInputElement).value).toBe('60')
+    await wrapper.get('#key-concurrency-limit').setValue('0')
+    await wrapper.get('#key-rpm-limit').setValue('0')
+    await wrapper.get('form#key-form').trigger('submit')
+    await flushPromises()
+    expect(updateKey).toHaveBeenCalledWith(1, expect.objectContaining({ concurrency_limit: 0, rpm_limit: 0 }))
+  })
+
+  it.each(['-1', '1.5', '2147483648'])('rejects invalid request limit %s', async (value) => {
+    const wrapper = await mountView()
+    await getButtonByText(wrapper, 'Create API Key').trigger('click')
+    await wrapper.get('#key-rpm-limit').setValue(value)
+    await wrapper.get('form#key-form').trigger('submit')
+    expect(createKey).not.toHaveBeenCalled()
+    expect(showError).toHaveBeenCalledWith('keys.requestLimitsInvalid')
   })
 
   it('validates duplicate and wildcard model redirect sources in real time', async () => {

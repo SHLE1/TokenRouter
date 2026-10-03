@@ -113,6 +113,9 @@ type APIKeyUpdateFields struct {
 	QuotaUsed bool
 	// RateLimits 覆盖 rate_limit_5h / _1d / _7d 三个阈值。
 	RateLimits bool
+	// 请求上限分别更新，防止覆盖同时发生的另一个字段修改。
+	ConcurrencyLimit bool
+	RPMLimit         bool
 	// RateLimitUsage 覆盖 usage_5h/_1d/_7d 与三个窗口起点，
 	// 仅供"重置限流用量"路径声明；常规计费走 IncrementRateLimitUsage。
 	RateLimitUsage bool
@@ -237,6 +240,10 @@ type CreateAPIKeyRequest struct {
 	Quota         float64 `json:"quota"`           // Quota limit in USD (0 = unlimited)
 	ExpiresInDays *int    `json:"expires_in_days"` // Days until expiry (nil = never expires)
 
+	// Key 请求上限，0 表示不限制。
+	ConcurrencyLimit int `json:"concurrency_limit"`
+	RPMLimit         int `json:"rpm_limit"`
+
 	// Rate limit fields (0 = unlimited)
 	RateLimit5h float64 `json:"rate_limit_5h"`
 	RateLimit1d float64 `json:"rate_limit_1d"`
@@ -281,6 +288,10 @@ type UpdateAPIKeyRequest struct {
 	ClearExpiration bool       `json:"-"`           // Clear expiration (internal use)
 	ResetQuota      *bool      `json:"reset_quota"` // Reset quota_used to 0
 
+	// nil 保持配置，0 清除该项请求上限。
+	ConcurrencyLimit *int `json:"concurrency_limit"`
+	RPMLimit         *int `json:"rpm_limit"`
+
 	// Rate limit fields (nil = no change, 0 = unlimited)
 	RateLimit5h         *float64 `json:"rate_limit_5h"`
 	RateLimit1d         *float64 `json:"rate_limit_1d"`
@@ -311,6 +322,9 @@ func ValidateAPIKeyExpiresInDays(days int) error {
 }
 
 func KeyValidateCreateAPIKeyRequest(req CreateAPIKeyRequest) error {
+	if err := ValidateRequestLimits(&req.ConcurrencyLimit, &req.RPMLimit); err != nil {
+		return err
+	}
 	limits := []struct {
 		field string
 		value float64
@@ -332,6 +346,9 @@ func KeyValidateCreateAPIKeyRequest(req CreateAPIKeyRequest) error {
 }
 
 func KeyValidateUpdateAPIKeyRequest(req UpdateAPIKeyRequest) error {
+	if err := ValidateRequestLimits(req.ConcurrencyLimit, req.RPMLimit); err != nil {
+		return err
+	}
 	limits := []struct {
 		field string
 		value *float64
@@ -853,6 +870,8 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 		IPBlacklist:                  req.IPBlacklist,
 		Quota:                        req.Quota,
 		QuotaUsed:                    0,
+		ConcurrencyLimit:             req.ConcurrencyLimit,
+		RPMLimit:                     req.RPMLimit,
 		RateLimit5h:                  req.RateLimit5h,
 		RateLimit1d:                  req.RateLimit1d,
 		RateLimit7d:                  req.RateLimit7d,
@@ -1449,6 +1468,14 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 	}
 
 	// Update rate limit configuration
+	if req.ConcurrencyLimit != nil {
+		apiKey.ConcurrencyLimit = *req.ConcurrencyLimit
+		fields.ConcurrencyLimit = true
+	}
+	if req.RPMLimit != nil {
+		apiKey.RPMLimit = *req.RPMLimit
+		fields.RPMLimit = true
+	}
 	if req.RateLimit5h != nil {
 		apiKey.RateLimit5h = *req.RateLimit5h
 		fields.RateLimits = true

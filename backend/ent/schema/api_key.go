@@ -100,6 +100,10 @@ func (APIKey) Fields() []ent.Field {
 			Nillable().
 			Comment("Expiration time for this API key (null = never expires)"),
 
+		// Key 请求上限默认关闭，由网关在准入时检查。
+		field.Int("concurrency_limit").NonNegative().Default(0),
+		field.Int("rpm_limit").NonNegative().Default(0),
+
 		// ========== Rate limit fields ==========
 		// Rate limit configuration (0 = unlimited)
 		field.Float("rate_limit_5h").

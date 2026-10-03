@@ -2,7 +2,9 @@ package httpapi
 
 import (
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
@@ -159,6 +161,11 @@ func NewAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscriptionSer
 		_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
 
 		keyhttp.SetAccessPrincipal(c, access)
+		release, ok := acquireKeyRequest(c, apiKeyService, apiKey, options)
+		if !ok {
+			return
+		}
+		defer release()
 		c.Next()
 	}
 }
@@ -265,6 +272,11 @@ func NewGoogleAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscript
 		options.bind(c, apiKey)
 		_ = apiKeyService.TouchLastUsed(c.Request.Context(), apiKey.ID)
 		keyhttp.SetAccessPrincipal(c, access)
+		release, ok := acquireKeyRequest(c, apiKeyService, apiKey, options)
+		if !ok {
+			return
+		}
+		defer release()
 		c.Next()
 	}
 }
@@ -341,4 +353,51 @@ func abortAuthorizationGroupNotAllowed(c *gin.Context, key *apikey.APIKey, o API
 	o.reject(c, "group_not_allowed")
 	httpx.AbortWithError(c, 403, "GROUP_NOT_ALLOWED", "API Key 所属专属分组不再允许当前用户使用")
 	return true
+}
+
+// acquireKeyRequest 在协议处理前预占请求额度，非消费接口跳过检查。
+func acquireKeyRequest(c *gin.Context, keys *apikey.APIKeyService, key *apikey.APIKey, options APIKeyAuthorizationOptions) (func(), bool) {
+	if IsAPIKeyNonConsumingRequest(c.Request.Method, c.Request.URL.Path) || isResponsesTurnAdmission(c) {
+		return func() {}, true
+	}
+	ctx, release, retry, err := keys.AcquireRequest(c.Request.Context(), key)
+	if err == nil {
+		c.Request = c.Request.WithContext(ctx)
+		return release, true
+	}
+	status := http.StatusTooManyRequests
+	code := "API_KEY_RPM_LIMIT_EXCEEDED"
+	switch {
+	case errors.Is(err, apikey.ErrKeyConcurrencyExceeded):
+		code = "API_KEY_CONCURRENCY_LIMIT_EXCEEDED"
+	case errors.Is(err, apikey.ErrKeyRPMExceeded):
+	default:
+		status = http.StatusServiceUnavailable
+		code = "API_KEY_LIMITER_UNAVAILABLE"
+	}
+	if retry > 0 {
+		c.Header("Retry-After", strconv.Itoa(int(math.Ceil(retry.Seconds()))))
+	}
+	if status == http.StatusTooManyRequests && options.Authentication.BusinessLimited != nil {
+		options.Authentication.BusinessLimited(c, code)
+	}
+	if options.Authentication.Google {
+		keyhttp.AbortGoogleError(c, status, err.Error())
+	} else {
+		httpx.AbortWithError(c, status, code, err.Error())
+	}
+	return nil, false
+}
+
+// isResponsesTurnAdmission 将 Responses 升级请求的 Key 限制交给逐轮准入。
+func isResponsesTurnAdmission(c *gin.Context) bool {
+	if c.Request.Method != http.MethodGet || !IsResponsesWSUpgrade(c.Request) {
+		return false
+	}
+	switch strings.TrimRight(c.Request.URL.Path, "/") {
+	case "/responses", "/v1/responses", "/backend-api/codex/responses":
+		return true
+	default:
+		return false
+	}
 }

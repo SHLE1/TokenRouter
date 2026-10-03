@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -12,9 +13,11 @@ import (
 )
 
 type turnAuthentication struct {
-	key   *apikey.APIKey
-	err   error
-	input apikey.AuthenticationInput
+	key        *apikey.APIKey
+	err        error
+	input      apikey.AuthenticationInput
+	acquired   *apikey.APIKey
+	acquireErr error
 }
 
 func (a *turnAuthentication) GetByKey(context.Context, string) (*apikey.APIKey, error) {
@@ -24,6 +27,12 @@ func (a *turnAuthentication) GetByKey(context.Context, string) (*apikey.APIKey, 
 func (a *turnAuthentication) Reauthenticate(_ context.Context, _ *apikey.APIKey, input apikey.AuthenticationInput) (*apikey.APIKey, error) {
 	a.input = input
 	return a.key, a.err
+}
+
+// AcquireRequest 为未设置限制的认证用例提供可释放的准入结果。
+func (a *turnAuthentication) AcquireRequest(ctx context.Context, key *apikey.APIKey) (context.Context, func(), time.Duration, error) {
+	a.acquired = key
+	return ctx, func() {}, 0, a.acquireErr
 }
 
 // TestAuthorizeTurn 用当前快照检查资金；身份失败不得进入资金检查，也不得覆盖上一轮快照。
@@ -99,4 +108,24 @@ func TestAuthorizeTurnReloadsSubscription(t *testing.T) {
 	require.ErrorIs(t, adapter.AuthorizeTurn(context.Background()), denied)
 	require.Same(t, old, adapter.subscription)
 	require.Zero(t, old.DailyUsageUSD)
+}
+
+// TestKeyAdmissionUsesCurrentTurnLimits 后续轮次使用重新认证得到的上限。
+func TestKeyAdmissionUsesCurrentTurnLimits(t *testing.T) {
+	original := &apikey.APIKey{ID: 1, User: &identity.User{ID: 2}, BillingMode: billing.APIKeyBillingModeBalance, RPMLimit: 20}
+	current := apikey.CopyAPIKey(original)
+	current.RPMLimit = 1
+	auth := &turnAuthentication{key: current}
+	adapter := &openAIWSEntryAdapter{key: original, bindings: Bindings{Keys: auth, CheckFunding: func(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error { return nil }}}
+	_, release, err := adapter.AcquireKey(context.Background())
+	require.NoError(t, err)
+	release()
+	require.Same(t, original, auth.acquired)
+	require.NoError(t, adapter.AuthorizeTurn(context.Background()))
+	auth.acquireErr = apikey.ErrKeyRPMExceeded
+	_, _, err = adapter.AcquireKey(context.Background())
+	require.ErrorIs(t, err, apikey.ErrKeyRPMExceeded)
+	require.Equal(t, 1013, adapter.CloseInfo(err).Status)
+	require.Same(t, current, auth.acquired)
+	require.Equal(t, 20, original.RPMLimit)
 }

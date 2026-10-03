@@ -44,6 +44,7 @@ func newUpdateFieldsAPIKeyService(key *apikey.APIKey) (*apikey.APIKeyService, *u
 
 func TestAPIKeyUpdate_OnlyDeclaresRequestedColumns(t *testing.T) {
 	name := "renamed"
+	zero := 0
 	quota := 500.0
 	rateLimit := 42.0
 	whitelist := []string{"10.0.0.1"}
@@ -56,6 +57,16 @@ func TestAPIKeyUpdate_OnlyDeclaresRequestedColumns(t *testing.T) {
 		req  apikey.UpdateAPIKeyRequest
 		want apikey.APIKeyUpdateFields
 	}{
+		{
+			name: "clear concurrency limit",
+			req:  apikey.UpdateAPIKeyRequest{ConcurrencyLimit: &zero},
+			want: apikey.APIKeyUpdateFields{ConcurrencyLimit: true},
+		},
+		{
+			name: "clear rpm limit",
+			req:  apikey.UpdateAPIKeyRequest{RPMLimit: &zero},
+			want: apikey.APIKeyUpdateFields{RPMLimit: true},
+		},
 		{
 			name: "model mapping only",
 			req:  apikey.UpdateAPIKeyRequest{ModelMapping: &modelMapping},

@@ -71,6 +71,10 @@ type CreateAPIKeyRequest struct {
 	Quota                   *float64                           `json:"quota"`           // 配额限制 (USD)
 	ExpiresInDays           *int                               `json:"expires_in_days"` // 过期天数
 
+	// Key 请求上限，0 表示不限制。
+	ConcurrencyLimit int `json:"concurrency_limit"`
+	RPMLimit         int `json:"rpm_limit"`
+
 	// Rate limit fields (0 = unlimited)
 	RateLimit5h *float64 `json:"rate_limit_5h"`
 	RateLimit1d *float64 `json:"rate_limit_1d"`
@@ -96,6 +100,10 @@ type UpdateAPIKeyRequest struct {
 	Quota                   *float64                            `json:"quota"`         // 配额限制 (USD), 0=无限制
 	ExpiresAt               *string                             `json:"expires_at"`    // 过期时间 (ISO 8601)
 	ResetQuota              *bool                               `json:"reset_quota"`   // 重置已用配额
+
+	// nil 保持配置，0 清除该项请求上限。
+	ConcurrencyLimit *int `json:"concurrency_limit"`
+	RPMLimit         *int `json:"rpm_limit"`
 
 	// Rate limit fields (nil = no change, 0 = unlimited)
 	RateLimit5h         *float64 `json:"rate_limit_5h"`
@@ -268,6 +276,8 @@ func (h *APIKeyHandler[G]) Create(c *gin.Context) {
 		FastModePolicy:               req.FastModePolicy,
 		BillingMode:                  req.BillingMode,
 		PreferredSubscriptionID:      req.PreferredSubscriptionID,
+		ConcurrencyLimit:             req.ConcurrencyLimit,
+		RPMLimit:                     req.RPMLimit,
 		ModelMapping:                 req.ModelMapping,
 		ExpiresInDays:                req.ExpiresInDays,
 		FallbackWhenGroupUnavailable: req.FallbackWhenGroupUnavailable,
@@ -327,6 +337,8 @@ func (h *APIKeyHandler[G]) Update(c *gin.Context) {
 		FastModePolicy:               req.FastModePolicy,
 		BillingMode:                  req.BillingMode,
 		PreferredSubscriptionID:      req.PreferredSubscriptionID,
+		ConcurrencyLimit:             req.ConcurrencyLimit,
+		RPMLimit:                     req.RPMLimit,
 		ModelMapping:                 req.ModelMapping,
 		Quota:                        req.Quota,
 		ResetQuota:                   req.ResetQuota,

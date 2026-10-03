@@ -759,6 +759,21 @@
           </div>
         </div>
 
+        <!-- Key 请求限制与金额限额分别配置。 -->
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="key-concurrency-limit" class="input-label">{{ t('keys.concurrencyLimit') }}</label>
+              <input id="key-concurrency-limit" v-model.number="formData.concurrency_limit" type="number" min="0" max="2147483647" step="1" class="input" placeholder="0" />
+            </div>
+            <div>
+              <label for="key-rpm-limit" class="input-label">{{ t('keys.rpmLimit') }}</label>
+              <input id="key-rpm-limit" v-model.number="formData.rpm_limit" type="number" min="0" max="2147483647" step="1" class="input" placeholder="0" />
+            </div>
+          </div>
+          <p class="input-hint">{{ t('keys.requestLimitsHint') }}</p>
+        </div>
+
         <!-- Rate Limit Section -->
         <div class="space-y-3">
           <div class="flex items-center justify-between">
@@ -1528,6 +1543,8 @@ const formData = ref({
   quota: null as number | null,
   // Rate limit settings
   enable_rate_limit: false,
+  concurrency_limit: 0,
+  rpm_limit: 0,
   rate_limit_5h: null as number | null,
   rate_limit_1d: null as number | null,
   rate_limit_7d: null as number | null,
@@ -2028,6 +2045,8 @@ const editKey = (key: ApiKey) => {
     enable_quota: key.quota > 0,
     quota: key.quota > 0 ? key.quota : null,
     enable_rate_limit: (key.rate_limit_5h > 0) || (key.rate_limit_1d > 0) || (key.rate_limit_7d > 0),
+    concurrency_limit: key.concurrency_limit ?? 0,
+    rpm_limit: key.rpm_limit ?? 0,
     rate_limit_5h: key.rate_limit_5h || null,
     rate_limit_1d: key.rate_limit_1d || null,
     rate_limit_7d: key.rate_limit_7d || null,
@@ -2264,6 +2283,8 @@ const submitKeyForm = async () => {
         ip_blacklist: ipBlacklist,
         quota: quota,
         expires_at: expiresAt,
+        concurrency_limit: Number(formData.value.concurrency_limit || 0),
+        rpm_limit: Number(formData.value.rpm_limit || 0),
         rate_limit_5h: rateLimitData.rate_limit_5h,
         rate_limit_1d: rateLimitData.rate_limit_1d,
         rate_limit_7d: rateLimitData.rate_limit_7d,
@@ -2309,6 +2330,8 @@ const submitKeyForm = async () => {
         ip_blacklist: ipBlacklist,
         quota,
         expires_in_days: expiresInDays,
+        concurrency_limit: Number(formData.value.concurrency_limit || 0),
+        rpm_limit: Number(formData.value.rpm_limit || 0),
         rate_limit_5h: rateLimitData.rate_limit_5h,
         rate_limit_1d: rateLimitData.rate_limit_1d,
         rate_limit_7d: rateLimitData.rate_limit_7d,
@@ -2345,6 +2368,13 @@ const onScopeChange = () => {
 }
 
 const handleSubmit = async () => {
+  // 空输入按 0 提交，其余值需满足数据库整数范围。
+  const requestLimits = [formData.value.concurrency_limit, formData.value.rpm_limit]
+  if (requestLimits.some(value => !Number.isInteger(Number(value || 0)) || Number(value || 0) < 0 || Number(value || 0) > 2147483647)) {
+    appStore.showError(t('keys.requestLimitsInvalid'))
+    return
+  }
+
 	if (modelMappingFormError.value) {
 		appStore.showError(modelMappingFormError.value)
 		return
@@ -2425,6 +2455,8 @@ const closeModals = () => {
     enable_quota: false,
     quota: null,
     enable_rate_limit: false,
+    concurrency_limit: 0,
+    rpm_limit: 0,
     rate_limit_5h: null,
     rate_limit_1d: null,
     rate_limit_7d: null,

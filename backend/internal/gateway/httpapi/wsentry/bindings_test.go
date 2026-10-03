@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
@@ -22,6 +23,11 @@ func (r *entryKeyReader) GetByKey(context.Context, string) (*apikey.APIKey, erro
 func (r *entryKeyReader) Reauthenticate(context.Context, *apikey.APIKey, apikey.AuthenticationInput) (*apikey.APIKey, error) {
 	r.calls++
 	return nil, apikey.ErrAPIKeyNotFound
+}
+
+// AcquireRequest 为访问快照测试提供请求准入接口。
+func (r *entryKeyReader) AcquireRequest(ctx context.Context, _ *apikey.APIKey) (context.Context, func(), time.Duration, error) {
+	return ctx, func() {}, 0, nil
 }
 
 // TestEntryAccessKeepsProjectionIndependentAndLazy 验证策略按需刷新，模型和 effort 映射使用独立数据，认证快照保持原样。

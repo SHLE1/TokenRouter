@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
@@ -41,6 +42,7 @@ type Bindings struct {
 	Keys         interface {
 		GetByKey(context.Context, string) (*apikey.APIKey, error)
 		Reauthenticate(context.Context, *apikey.APIKey, apikey.AuthenticationInput) (*apikey.APIKey, error)
+		AcquireRequest(context.Context, *apikey.APIKey) (context.Context, func(), time.Duration, error)
 	}
 	Subscriptions   admission.SubscriptionReader
 	CheckFunding    func(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error
@@ -118,6 +120,7 @@ type openAIWSEntryAdapter struct {
 	c            *gin.Context
 	call         gatewayhttp.ResponsesWSCall
 	key          *apikey.APIKey
+	requestKey   *apikey.APIKey
 	subject      authctx.AuthSubject
 	subscription *billing.UserSubscription
 	log          *zap.Logger
@@ -220,6 +223,26 @@ func (p *openAIWSEntryAdapter) FeatureDenied() {
 	gatewayhttp.MarkOpsClientBusinessLimited(p.c, gatewayhttp.OpsClientBusinessLimitedReasonLocalFeatureGate)
 }
 
+// AcquireKey 为当前轮次预占 Key 请求额度，返回租约取消信号。
+func (p *openAIWSEntryAdapter) AcquireKey(ctx context.Context) (context.Context, func(), error) {
+	if p.bindings.Keys == nil {
+		return ctx, nil, p.CloseError(1011, "API key request limiter unavailable", apikey.ErrKeyLimiterUnavailable)
+	}
+	key := p.requestKey
+	if key == nil {
+		key = p.key
+	}
+	admitted, release, _, err := p.bindings.Keys.AcquireRequest(ctx, key)
+	if err != nil {
+		status := 1011
+		if errors.Is(err, apikey.ErrKeyConcurrencyExceeded) || errors.Is(err, apikey.ErrKeyRPMExceeded) {
+			status = 1013
+		}
+		return ctx, nil, p.CloseError(status, err.Error(), err)
+	}
+	return admitted, release, nil
+}
+
 func (p *openAIWSEntryAdapter) AcquireUser(ctx context.Context) (func(), bool, error) {
 	return p.bindings.Common.Support.Concurrency.TryAcquireUserSlotForAPIKey(ctx, p.subject.UserID, p.subject.Concurrency, p.key.ID)
 }
@@ -255,7 +278,11 @@ func (p *openAIWSEntryAdapter) AuthorizeTurn(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return p.bindings.CheckFunding(ctx, key, funding.Subscription, "", false)
+	if err := p.bindings.CheckFunding(ctx, key, funding.Subscription, "", false); err != nil {
+		return err
+	}
+	p.requestKey = key
+	return nil
 }
 
 func (p *openAIWSEntryAdapter) SessionHash(body []byte, seed string) string {

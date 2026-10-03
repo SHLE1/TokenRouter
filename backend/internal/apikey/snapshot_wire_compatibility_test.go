@@ -92,6 +92,8 @@ func migrateSnapshotPricingFields(value any) {
 		}
 		if _, ok := node["version"]; ok {
 			node["version"] = KeyApiKeyAuthSnapshotVersion
+			node["concurrency_limit"] = float64(0)
+			node["rpm_limit"] = float64(0)
 		}
 		for _, child := range node {
 			migrateSnapshotPricingFields(child)

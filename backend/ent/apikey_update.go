@@ -363,6 +363,48 @@ func (_u *APIKeyUpdate) ClearExpiresAt() *APIKeyUpdate {
 	return _u
 }
 
+// SetConcurrencyLimit sets the "concurrency_limit" field.
+func (_u *APIKeyUpdate) SetConcurrencyLimit(v int) *APIKeyUpdate {
+	_u.mutation.ResetConcurrencyLimit()
+	_u.mutation.SetConcurrencyLimit(v)
+	return _u
+}
+
+// SetNillableConcurrencyLimit sets the "concurrency_limit" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableConcurrencyLimit(v *int) *APIKeyUpdate {
+	if v != nil {
+		_u.SetConcurrencyLimit(*v)
+	}
+	return _u
+}
+
+// AddConcurrencyLimit adds value to the "concurrency_limit" field.
+func (_u *APIKeyUpdate) AddConcurrencyLimit(v int) *APIKeyUpdate {
+	_u.mutation.AddConcurrencyLimit(v)
+	return _u
+}
+
+// SetRpmLimit sets the "rpm_limit" field.
+func (_u *APIKeyUpdate) SetRpmLimit(v int) *APIKeyUpdate {
+	_u.mutation.ResetRpmLimit()
+	_u.mutation.SetRpmLimit(v)
+	return _u
+}
+
+// SetNillableRpmLimit sets the "rpm_limit" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableRpmLimit(v *int) *APIKeyUpdate {
+	if v != nil {
+		_u.SetRpmLimit(*v)
+	}
+	return _u
+}
+
+// AddRpmLimit adds value to the "rpm_limit" field.
+func (_u *APIKeyUpdate) AddRpmLimit(v int) *APIKeyUpdate {
+	_u.mutation.AddRpmLimit(v)
+	return _u
+}
+
 // SetRateLimit5h sets the "rate_limit_5h" field.
 func (_u *APIKeyUpdate) SetRateLimit5h(v float64) *APIKeyUpdate {
 	_u.mutation.ResetRateLimit5h()
@@ -762,6 +804,16 @@ func (_u *APIKeyUpdate) check() error {
 			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "APIKey.billing_mode": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.ConcurrencyLimit(); ok {
+		if err := apikey.ConcurrencyLimitValidator(v); err != nil {
+			return &ValidationError{Name: "concurrency_limit", err: fmt.Errorf(`ent: validator failed for field "APIKey.concurrency_limit": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.RpmLimit(); ok {
+		if err := apikey.RpmLimitValidator(v); err != nil {
+			return &ValidationError{Name: "rpm_limit", err: fmt.Errorf(`ent: validator failed for field "APIKey.rpm_limit": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ManagedBy(); ok {
 		if err := apikey.ManagedByValidator(v); err != nil {
 			return &ValidationError{Name: "managed_by", err: fmt.Errorf(`ent: validator failed for field "APIKey.managed_by": %w`, err)}
@@ -872,6 +924,18 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ExpiresAtCleared() {
 		_spec.ClearField(apikey.FieldExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ConcurrencyLimit(); ok {
+		_spec.SetField(apikey.FieldConcurrencyLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedConcurrencyLimit(); ok {
+		_spec.AddField(apikey.FieldConcurrencyLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RpmLimit(); ok {
+		_spec.SetField(apikey.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRpmLimit(); ok {
+		_spec.AddField(apikey.FieldRpmLimit, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.RateLimit5h(); ok {
 		_spec.SetField(apikey.FieldRateLimit5h, field.TypeFloat64, value)
@@ -1462,6 +1526,48 @@ func (_u *APIKeyUpdateOne) ClearExpiresAt() *APIKeyUpdateOne {
 	return _u
 }
 
+// SetConcurrencyLimit sets the "concurrency_limit" field.
+func (_u *APIKeyUpdateOne) SetConcurrencyLimit(v int) *APIKeyUpdateOne {
+	_u.mutation.ResetConcurrencyLimit()
+	_u.mutation.SetConcurrencyLimit(v)
+	return _u
+}
+
+// SetNillableConcurrencyLimit sets the "concurrency_limit" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableConcurrencyLimit(v *int) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetConcurrencyLimit(*v)
+	}
+	return _u
+}
+
+// AddConcurrencyLimit adds value to the "concurrency_limit" field.
+func (_u *APIKeyUpdateOne) AddConcurrencyLimit(v int) *APIKeyUpdateOne {
+	_u.mutation.AddConcurrencyLimit(v)
+	return _u
+}
+
+// SetRpmLimit sets the "rpm_limit" field.
+func (_u *APIKeyUpdateOne) SetRpmLimit(v int) *APIKeyUpdateOne {
+	_u.mutation.ResetRpmLimit()
+	_u.mutation.SetRpmLimit(v)
+	return _u
+}
+
+// SetNillableRpmLimit sets the "rpm_limit" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableRpmLimit(v *int) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetRpmLimit(*v)
+	}
+	return _u
+}
+
+// AddRpmLimit adds value to the "rpm_limit" field.
+func (_u *APIKeyUpdateOne) AddRpmLimit(v int) *APIKeyUpdateOne {
+	_u.mutation.AddRpmLimit(v)
+	return _u
+}
+
 // SetRateLimit5h sets the "rate_limit_5h" field.
 func (_u *APIKeyUpdateOne) SetRateLimit5h(v float64) *APIKeyUpdateOne {
 	_u.mutation.ResetRateLimit5h()
@@ -1874,6 +1980,16 @@ func (_u *APIKeyUpdateOne) check() error {
 			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "APIKey.billing_mode": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.ConcurrencyLimit(); ok {
+		if err := apikey.ConcurrencyLimitValidator(v); err != nil {
+			return &ValidationError{Name: "concurrency_limit", err: fmt.Errorf(`ent: validator failed for field "APIKey.concurrency_limit": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.RpmLimit(); ok {
+		if err := apikey.RpmLimitValidator(v); err != nil {
+			return &ValidationError{Name: "rpm_limit", err: fmt.Errorf(`ent: validator failed for field "APIKey.rpm_limit": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ManagedBy(); ok {
 		if err := apikey.ManagedByValidator(v); err != nil {
 			return &ValidationError{Name: "managed_by", err: fmt.Errorf(`ent: validator failed for field "APIKey.managed_by": %w`, err)}
@@ -2001,6 +2117,18 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if _u.mutation.ExpiresAtCleared() {
 		_spec.ClearField(apikey.FieldExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ConcurrencyLimit(); ok {
+		_spec.SetField(apikey.FieldConcurrencyLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedConcurrencyLimit(); ok {
+		_spec.AddField(apikey.FieldConcurrencyLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.RpmLimit(); ok {
+		_spec.SetField(apikey.FieldRpmLimit, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRpmLimit(); ok {
+		_spec.AddField(apikey.FieldRpmLimit, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.RateLimit5h(); ok {
 		_spec.SetField(apikey.FieldRateLimit5h, field.TypeFloat64, value)

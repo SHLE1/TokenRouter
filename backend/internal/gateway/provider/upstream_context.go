@@ -1,6 +1,10 @@
 package provider
 
-import "context"
+import (
+	"context"
+
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
+)
 
 // DetachStreamUpstreamContext 将流式上游请求与客户端取消信号分离。
 func DetachStreamUpstreamContext(ctx context.Context, stream bool) (context.Context, context.CancelFunc) {
@@ -10,12 +14,12 @@ func DetachStreamUpstreamContext(ctx context.Context, stream bool) (context.Cont
 	if !stream {
 		return ctx, func() {}
 	}
-	return context.WithoutCancel(ctx), func() {}
+	return apikey.DetachRequestContext(ctx)
 }
 
 func DetachUpstreamContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	if ctx == nil {
 		return context.Background(), func() {}
 	}
-	return context.WithoutCancel(ctx), func() {}
+	return apikey.DetachRequestContext(ctx)
 }

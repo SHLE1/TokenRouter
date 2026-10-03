@@ -45,9 +45,12 @@ type APIKeyAuthSnapshot struct {
 	ExpiresAt *time.Time `json:"expires_at,omitempty"` // Expiration time (nil = never expires)
 
 	// Rate limit configuration (only limits, not usage - usage read from Redis at KeyCheck time)
-	RateLimit5h float64 `json:"rate_limit_5h"`
-	RateLimit1d float64 `json:"rate_limit_1d"`
-	RateLimit7d float64 `json:"rate_limit_7d"`
+	// ConcurrencyLimit 和 RPMLimit 为 0 时不限制请求。
+	ConcurrencyLimit int     `json:"concurrency_limit"`
+	RPMLimit         int     `json:"rpm_limit"`
+	RateLimit5h      float64 `json:"rate_limit_5h"`
+	RateLimit1d      float64 `json:"rate_limit_1d"`
+	RateLimit7d      float64 `json:"rate_limit_7d"`
 	// FallbackWhenGroupUnavailable 控制停用分组请求级回退。
 	FallbackWhenGroupUnavailable bool `json:"fallback_when_group_unavailable"`
 }

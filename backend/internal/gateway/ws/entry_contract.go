@@ -141,6 +141,7 @@ type EntryPorts interface {
 	ImageDeniedMessage() string
 	PolicyDenied()
 	FeatureDenied()
+	AcquireKey(context.Context) (context.Context, func(), error)
 	AcquireUser(context.Context) (func(), bool, error)
 	AcquireProvider(context.Context, int64, int) (func(), bool, error)
 	WrapRelease(context.Context, func()) func()
