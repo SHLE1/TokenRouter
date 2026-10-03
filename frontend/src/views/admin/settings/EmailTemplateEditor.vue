@@ -1,16 +1,9 @@
 <template>
-  <div class="card">
-    <div
-      class="flex flex-col gap-3 border-b border-gray-100 px-6 py-4 dark:border-dark-700 lg:flex-row lg:items-end lg:justify-between"
-    >
-      <div>
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-          {{ t("admin.settings.emailTemplates.title") }}
-        </h2>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {{ t("admin.settings.emailTemplates.description") }}
-        </p>
-      </div>
+  <SettingsCard
+    :title="t('admin.settings.emailTemplates.title')"
+    :description="t('admin.settings.emailTemplates.description')"
+  >
+    <template #actions>
       <div class="flex flex-wrap gap-2">
         <button
           type="button"
@@ -28,18 +21,10 @@
         >
           {{ restoring ? t("admin.settings.emailTemplates.restoring") : t("admin.settings.emailTemplates.restoreOfficial") }}
         </button>
-        <button
-          type="button"
-          class="btn btn-primary btn-sm h-9"
-          :disabled="loadingTemplate || saving || !canSave"
-          @click="saveTemplate"
-        >
-          {{ saving ? t("admin.settings.emailTemplates.saving") : t("admin.settings.emailTemplates.save") }}
-        </button>
       </div>
-    </div>
+    </template>
 
-    <div class="space-y-6 p-6">
+    <div class="space-y-6">
       <ContentSkeleton v-if="loadingList" variant="form" :rows="4" class="py-4" />
 
       <template v-else>
@@ -202,7 +187,18 @@
         </div>
       </template>
     </div>
-  </div>
+
+    <template #footer>
+      <button
+        type="button"
+        class="btn btn-primary btn-sm h-9"
+        :disabled="loadingTemplate || saving || !canSave"
+        @click="saveTemplate"
+      >
+        {{ saving ? t("admin.settings.emailTemplates.saving") : t("admin.settings.emailTemplates.save") }}
+      </button>
+    </template>
+  </SettingsCard>
 </template>
 
 <script setup lang="ts">
@@ -215,6 +211,7 @@ import type {
   EmailTemplateOption,
 } from "@/api/admin/settings";
 import Select from "@/components/common/Select.vue";
+import SettingsCard from "@/components/common/settings/SettingsCard.vue";
 import { useAppStore } from "@/stores";
 import { extractApiErrorMessage } from "@/utils/apiError";
 

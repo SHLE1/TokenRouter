@@ -1,42 +1,35 @@
 <template>
-  <div class="card">
-    <!-- Header -->
-    <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700">
-      <div class="flex items-end justify-between">
-        <div>
-          <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-            {{ t('admin.settings.payment.providerManagement') }}
-          </h2>
-          <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.settings.payment.providerManagementDesc') }}
-          </p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            @click="emit('refresh')"
-            :disabled="loading"
-            class="btn btn-secondary btn-icon"
-            :title="t('common.refresh')"
-          >
-            <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
-          </button>
-          <button
-            type="button"
-            @click="emit('create')"
-            :disabled="!canCreate"
-            :class="canCreate
-              ? 'btn btn-primary btn-sm h-9'
-              : 'btn btn-secondary btn-sm h-9 cursor-not-allowed opacity-50'"
-          >
-            {{ t('admin.settings.payment.createProvider') }}
-          </button>
-        </div>
+  <SettingsCard
+    :title="t('admin.settings.payment.providerManagement')"
+    :description="t('admin.settings.payment.providerManagementDesc')"
+  >
+    <template #actions>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          @click="emit('refresh')"
+          :disabled="loading"
+          class="btn btn-secondary btn-icon"
+          :title="t('common.refresh')"
+          :aria-label="t('common.refresh')"
+        >
+          <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
+        </button>
+        <button
+          type="button"
+          @click="emit('create')"
+          :disabled="!canCreate"
+          :class="canCreate
+            ? 'btn btn-primary btn-sm h-9'
+            : 'btn btn-secondary btn-sm h-9 cursor-not-allowed opacity-50'"
+        >
+          {{ t('admin.settings.payment.createProvider') }}
+        </button>
       </div>
-    </div>
+    </template>
 
-    <!-- List -->
-    <div class="p-4">
+    <!-- 服务商列表 -->
+    <div>
       <!-- Loading -->
       <ContentSkeleton v-if="loading && !providers.length" variant="list" :rows="3" class="py-4" />
 
@@ -85,7 +78,7 @@
         </button>
       </div>
     </div>
-  </div>
+  </SettingsCard>
 </template>
 
 <script setup lang="ts">
@@ -94,6 +87,7 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { VueDraggable } from 'vue-draggable-plus'
 import Icon from '@/components/icons/Icon.vue'
+import SettingsCard from '@/components/common/settings/SettingsCard.vue'
 import ProviderCard from './ProviderCard.vue'
 import type { ProviderInstance } from '@/types/payment'
 import type { TypeOption } from './providerConfig'

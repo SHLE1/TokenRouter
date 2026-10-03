@@ -4856,15 +4856,10 @@
         <!-- Tab: Email -->
         <!-- Tab: Payment -->
         <div v-show="activeTab === 'payment'" v-content-reveal="activeTab === 'payment'" class="space-y-4">
-          <!-- Payment System Settings -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.payment.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <!-- 支付系统 -->
+          <SettingsCard :title="t('admin.settings.payment.title')">
+            <template #description>
+              <p class="mt-1 text-sm text-primary-900/80 dark:text-dark-300">
                 {{ t("admin.settings.payment.description") }}
                 <a
                   :href="paymentGuideHref"
@@ -4876,28 +4871,26 @@
                   {{ t("admin.settings.payment.configGuide") }}
                 </a>
               </p>
-            </div>
-            <div class="space-y-4 p-6">
-              <!-- Enable toggle -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.payment.enabled")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.payment.enabledHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.payment_enabled" />
-              </div>
-              <template v-if="form.payment_enabled">
-                <!-- Row 1: Product name -->
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            </template>
+
+            <SettingsSection>
+              <SettingToggleRow
+                id="payment-enabled"
+                v-model="form.payment_enabled"
+                :label="t('admin.settings.payment.enabled')"
+                :hint="t('admin.settings.payment.enabledHint')"
+              />
+            </SettingsSection>
+
+            <template v-if="form.payment_enabled">
+              <SettingsSection>
+                <div class="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.productNamePrefix")
-                    }}</label
-                    ><input
+                    <label for="payment-product-name-prefix" class="input-label">
+                      {{ t("admin.settings.payment.productNamePrefix") }}
+                    </label>
+                    <input
+                      id="payment-product-name-prefix"
                       v-model="form.payment_product_name_prefix"
                       type="text"
                       class="input"
@@ -4905,10 +4898,11 @@
                     />
                   </div>
                   <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.productNameSuffix")
-                    }}</label
-                    ><input
+                    <label for="payment-product-name-suffix" class="input-label">
+                      {{ t("admin.settings.payment.productNameSuffix") }}
+                    </label>
+                    <input
+                      id="payment-product-name-suffix"
                       v-model="form.payment_product_name_suffix"
                       type="text"
                       class="input"
@@ -4916,12 +4910,8 @@
                     />
                   </div>
                   <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.preview")
-                    }}</label>
-                    <div
-                      class="rounded-control border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300"
-                    >
+                    <p class="input-label">{{ t("admin.settings.payment.preview") }}</p>
+                    <div class="flex min-h-9 items-center rounded-control border border-primary-900/10 bg-gray-50 px-4 text-sm text-gray-600 dark:border-dark-600 dark:bg-dark-800 dark:text-dark-200">
                       {{
                         (form.payment_product_name_prefix || "TokenRouter") +
                         " 100 " +
@@ -4930,487 +4920,383 @@
                     </div>
                   </div>
                 </div>
-                <!-- Row 2: Balance toggle + amounts -->
-                <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              </SettingsSection>
+
+              <SettingsSection>
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.minAmount")
-                    }}</label
-                    ><input
-                      :value="form.payment_min_amount || ''"
-                      @input="
-                        form.payment_min_amount =
-                          parseFloat(
-                            ($event.target as HTMLInputElement).value,
-                          ) || 0
-                      "
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      class="input"
-                      :placeholder="t('admin.settings.payment.noLimit')"
-                    />
-                  </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.maxAmount")
-                    }}</label
-                    ><input
-                      :value="form.payment_max_amount || ''"
-                      @input="
-                        form.payment_max_amount =
-                          parseFloat(
-                            ($event.target as HTMLInputElement).value,
-                          ) || 0
-                      "
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      class="input"
-                      :placeholder="t('admin.settings.payment.noLimit')"
-                    />
-                  </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.dailyLimit")
-                    }}</label
-                    ><input
-                      :value="form.payment_daily_limit || ''"
-                      @input="
-                        form.payment_daily_limit =
-                          parseFloat(
-                            ($event.target as HTMLInputElement).value,
-                          ) || 0
-                      "
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      class="input"
-                      :placeholder="t('admin.settings.payment.noLimit')"
-                    />
-                  </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.balanceRechargeMultiplier")
-                    }}</label>
+                    <label for="payment-min-amount" class="input-label">
+                      {{ t("admin.settings.payment.minAmount") }}
+                    </label>
                     <input
+                      id="payment-min-amount"
+                      :value="form.payment_min_amount || ''"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      class="input"
+                      :placeholder="t('admin.settings.payment.noLimit')"
+                      @input="form.payment_min_amount = parseFloat(($event.target as HTMLInputElement).value) || 0"
+                    />
+                  </div>
+                  <div>
+                    <label for="payment-max-amount" class="input-label">
+                      {{ t("admin.settings.payment.maxAmount") }}
+                    </label>
+                    <input
+                      id="payment-max-amount"
+                      :value="form.payment_max_amount || ''"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      class="input"
+                      :placeholder="t('admin.settings.payment.noLimit')"
+                      @input="form.payment_max_amount = parseFloat(($event.target as HTMLInputElement).value) || 0"
+                    />
+                  </div>
+                  <div>
+                    <label for="payment-daily-limit" class="input-label">
+                      {{ t("admin.settings.payment.dailyLimit") }}
+                    </label>
+                    <input
+                      id="payment-daily-limit"
+                      :value="form.payment_daily_limit || ''"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      class="input"
+                      :placeholder="t('admin.settings.payment.noLimit')"
+                      @input="form.payment_daily_limit = parseFloat(($event.target as HTMLInputElement).value) || 0"
+                    />
+                  </div>
+                  <div>
+                    <label for="payment-balance-recharge-multiplier" class="input-label">
+                      {{ t("admin.settings.payment.balanceRechargeMultiplier") }}
+                    </label>
+                    <input
+                      id="payment-balance-recharge-multiplier"
                       :value="form.payment_balance_recharge_multiplier || ''"
-                      @input="
-                        form.payment_balance_recharge_multiplier =
-                          parseFloat(
-                            ($event.target as HTMLInputElement).value,
-                          ) || 1
-                      "
                       type="number"
                       step="0.01"
                       min="0.01"
                       class="input"
+                      @input="form.payment_balance_recharge_multiplier = parseFloat(($event.target as HTMLInputElement).value) || 1"
                     />
-                    <p class="mt-0.5 text-xs text-gray-400">
-                      {{
-                        t("admin.settings.payment.balanceRechargeMultiplierHint", { unitName: previewBalanceUnitName })
-                      }}
+                    <p class="input-hint">
+                      {{ t("admin.settings.payment.balanceRechargeMultiplierHint", { unitName: previewBalanceUnitName }) }}
                     </p>
-                    <p
-                      class="mt-1 text-xs font-medium text-primary-600 dark:text-primary-400"
-                    >
+                    <p class="mt-1 text-xs font-medium text-primary-600 dark:text-primary-400">
                       {{
-                        t("admin.settings.payment.balanceRechargePreview", { amount: (Number(form.payment_balance_recharge_multiplier) || 1).toFixed(2), unitName: previewBalanceUnitName })
-                      }}
-                    </p>
-                  </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.subscriptionUsdToCnyRate")
-                    }}</label>
-                    <input
-                      :value="form.payment_subscription_usd_to_cny_rate || ''"
-                      @input="
-                        form.payment_subscription_usd_to_cny_rate =
-                          parseFloat(
-                            ($event.target as HTMLInputElement).value,
-                          ) || 0
-                      "
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      class="input"
-                      :placeholder="
-                        t(
-                          'admin.settings.payment.subscriptionUsdToCnyRateDisabled',
-                        )
-                      "
-                    />
-                    <p class="mt-0.5 text-xs text-gray-400">
-                      {{
-                        t("admin.settings.payment.subscriptionUsdToCnyRateHint")
-                      }}
-                    </p>
-                  </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.rechargeFeeRate")
-                    }}</label>
-                    <div class="relative">
-                      <input
-                        :value="form.payment_recharge_fee_rate ?? ''"
-                        @input="
-                          form.payment_recharge_fee_rate = Math.min(
-                            100,
-                            Math.max(
-                              0,
-                              Math.round(
-                                parseFloat(
-                                  ($event.target as HTMLInputElement).value ||
-                                    '0',
-                                ) * 100,
-                              ) / 100,
-                            ),
-                          )
-                        "
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        class="input pr-8"
-                      />
-                      <span
-                        class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400"
-                        >%</span
-                      >
-                    </div>
-                    <p class="mt-0.5 text-xs text-gray-400">
-                      {{ t("admin.settings.payment.rechargeFeeRateHint") }}
-                    </p>
-                    <p
-                      v-if="(Number(form.payment_recharge_fee_rate) || 0) > 0"
-                      class="mt-1 text-xs font-medium text-primary-600 dark:text-primary-400"
-                    >
-                      {{
-                        t("admin.settings.payment.rechargeFeePreview", {
-                          fee: (
-                            Number(form.payment_recharge_fee_rate) || 0
-                          ).toFixed(2),
+                        t("admin.settings.payment.balanceRechargePreview", {
+                          amount: (Number(form.payment_balance_recharge_multiplier) || 1).toFixed(2),
+                          unitName: previewBalanceUnitName,
                         })
                       }}
                     </p>
                   </div>
-                  <div class="col-span-2 sm:col-span-5">
-                    <div class="rounded-control border border-gray-200 dark:border-dark-700">
-                      <div class="border-b border-gray-100 px-4 py-3 dark:border-dark-700">
-                        <p
-                          class="text-sm font-semibold text-gray-900 dark:text-white"
-                        >
-                          {{ t("admin.settings.payment.methodFeesTitle") }}
-                        </p>
-                        <p class="mt-0.5 text-xs text-gray-400">
-                          {{ t("admin.settings.payment.methodFeesHint") }}
-                        </p>
-                      </div>
-                      <div
-                        class="hidden grid-cols-[minmax(120px,1fr)_minmax(140px,180px)_minmax(140px,180px)_minmax(180px,1.2fr)] gap-4 bg-gray-50 px-4 py-2 text-xs font-medium text-gray-500 dark:bg-dark-800 dark:text-gray-400 md:grid"
-                      >
-                        <span>{{
-                          t("admin.settings.payment.paymentMethod")
-                        }}</span>
-                        <span>{{ t("admin.settings.payment.fixedFee") }}</span>
-                        <span>{{ t("admin.settings.payment.feeRate") }}</span>
-                        <span>{{
-                          t("admin.settings.payment.methodFeeResult")
-                        }}</span>
-                      </div>
-                      <div class="divide-y divide-gray-100 dark:divide-dark-700">
-                        <div
-                          v-for="method in paymentMethodFeeOptions"
-                          :key="method.value"
-                          class="grid gap-3 px-4 py-3 md:grid-cols-[minmax(120px,1fr)_minmax(140px,180px)_minmax(140px,180px)_minmax(180px,1.2fr)] md:items-center md:gap-4"
-                        >
-                          <label
-                            class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >
-                            <input
-                              type="checkbox"
-                              class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
-                              :checked="methodFeeEnabled(method.value)"
-                              @change="setMethodFeeEnabled(method.value, ($event.target as HTMLInputElement).checked)"
-                            />
-                            {{ method.label }}
-                          </label>
-                          <div class="min-w-0">
-                            <label
-                              class="mb-1 block text-xs text-gray-500 dark:text-gray-400 md:hidden"
-                              >{{ t("admin.settings.payment.fixedFee") }}</label
-                            >
-                            <div class="relative">
-                              <span
-                                class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"
-                                >¥</span
-                              >
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                class="input w-full pl-8"
-                                :disabled="!methodFeeEnabled(method.value)"
-                                :value="methodFeeValue(method.value, 'fixed_fee')"
-                                @input="setMethodFeeValue(method.value, 'fixed_fee', ($event.target as HTMLInputElement).value)"
-                              />
-                            </div>
-                          </div>
-                          <div class="min-w-0">
-                            <label
-                              class="mb-1 block text-xs text-gray-500 dark:text-gray-400 md:hidden"
-                              >{{ t("admin.settings.payment.feeRate") }}</label
-                            >
-                            <div class="relative">
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="100"
-                                class="input w-full pr-8"
-                                :disabled="!methodFeeEnabled(method.value)"
-                                :value="methodFeeValue(method.value, 'fee_rate')"
-                                @input="setMethodFeeValue(method.value, 'fee_rate', ($event.target as HTMLInputElement).value)"
-                              />
-                              <span
-                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400"
-                                >%</span
-                              >
-                            </div>
-                          </div>
-                          <div class="min-w-0 text-xs">
-                            <p
-                              class="mb-1 text-gray-500 dark:text-gray-400 md:hidden"
-                            >
-                              {{ t("admin.settings.payment.methodFeeResult") }}
-                            </p>
-                            <p
-                              :class="methodFeeEnabled(method.value)
-                                ? 'font-medium text-primary-600 dark:text-primary-400'
-                                : 'text-gray-400 dark:text-gray-500'"
-                            >
-                              {{
-                                methodFeeEnabled(method.value)
-                                  ? methodFeePreview(method.value)
-                                  : t("admin.settings.payment.methodFeeFallback")
-                              }}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  <div>
+                    <label for="payment-subscription-usd-to-cny-rate" class="input-label">
+                      {{ t("admin.settings.payment.subscriptionUsdToCnyRate") }}
+                    </label>
+                    <input
+                      id="payment-subscription-usd-to-cny-rate"
+                      :value="form.payment_subscription_usd_to_cny_rate || ''"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      class="input"
+                      :placeholder="t('admin.settings.payment.subscriptionUsdToCnyRateDisabled')"
+                      @input="form.payment_subscription_usd_to_cny_rate = parseFloat(($event.target as HTMLInputElement).value) || 0"
+                    />
+                    <p class="input-hint">{{ t("admin.settings.payment.subscriptionUsdToCnyRateHint") }}</p>
                   </div>
                   <div>
-                    <label class="input-label"
-                      >{{ t("admin.settings.payment.orderTimeout") }}
-                      <span class="text-red-500">*</span></label
-                    ><input
-                      v-model.number="form.payment_order_timeout_minutes"
-                      type="number"
-                      min="1"
-                      class="input"
-                      required
-                    />
-                    <p class="mt-0.5 text-xs text-gray-400">
-                      {{ t("admin.settings.payment.orderTimeoutHint") }}
+                    <label for="payment-recharge-fee-rate" class="input-label">
+                      {{ t("admin.settings.payment.rechargeFeeRate") }}
+                    </label>
+                    <!-- 手续费率限制在 0 到 100，保留两位小数。 -->
+                    <div class="input-icon-wrap">
+                      <input
+                        id="payment-recharge-fee-rate"
+                        :value="form.payment_recharge_fee_rate ?? ''"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        class="input input-has-icon-right"
+                        @input="
+                          form.payment_recharge_fee_rate = Math.min(
+                            100,
+                            Math.max(0, Math.round(parseFloat(($event.target as HTMLInputElement).value || '0') * 100) / 100),
+                          )
+                        "
+                      />
+                      <span class="input-icon-right text-sm text-gray-400 dark:text-dark-400" aria-hidden="true">%</span>
+                    </div>
+                    <p class="input-hint">{{ t("admin.settings.payment.rechargeFeeRateHint") }}</p>
+                    <p
+                      v-if="(Number(form.payment_recharge_fee_rate) || 0) > 0"
+                      class="mt-1 text-xs font-medium text-primary-600 dark:text-primary-400"
+                    >
+                      {{ t("admin.settings.payment.rechargeFeePreview", { fee: (Number(form.payment_recharge_fee_rate) || 0).toFixed(2) }) }}
                     </p>
                   </div>
                 </div>
-                <!-- Row 3: Pending orders + load balance + cancel rate limit (all in one row) -->
-                <div class="flex flex-wrap items-end gap-4">
-                  <div class="w-28">
-                    <label class="input-label">{{
-                      t("admin.settings.payment.maxPendingOrders")
-                    }}</label
-                    ><input
-                      v-model.number="form.payment_max_pending_orders"
-                      type="number"
-                      min="1"
-                      class="input"
-                    />
+              </SettingsSection>
+
+              <!-- 各支付方式单独设置的手续费，未勾选的方式使用通用费率。 -->
+              <SettingsSection
+                :title="t('admin.settings.payment.methodFeesTitle')"
+                :hint="t('admin.settings.payment.methodFeesHint')"
+              >
+                <div class="overflow-hidden rounded-surface border border-gray-200 dark:border-dark-600">
+                  <div
+                    class="hidden grid-cols-[minmax(120px,1fr)_minmax(140px,180px)_minmax(140px,180px)_minmax(180px,1.2fr)] gap-4 bg-gray-50 px-4 py-2 text-xs font-medium text-gray-500 dark:bg-dark-800 dark:text-dark-400 md:grid"
+                  >
+                    <span>{{ t("admin.settings.payment.paymentMethod") }}</span>
+                    <span>{{ t("admin.settings.payment.fixedFee") }}</span>
+                    <span>{{ t("admin.settings.payment.feeRate") }}</span>
+                    <span>{{ t("admin.settings.payment.methodFeeResult") }}</span>
                   </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.loadBalanceStrategy")
-                    }}</label>
-                    <Select
-                      v-model="form.payment_load_balance_strategy"
-                      :options="loadBalanceOptions"
-                      class="w-40"
-                    />
+                  <div class="divide-y divide-gray-100 dark:divide-dark-700">
+                    <div
+                      v-for="method in paymentMethodFeeOptions"
+                      :key="method.value"
+                      class="grid gap-3 px-4 py-3 md:grid-cols-[minmax(120px,1fr)_minmax(140px,180px)_minmax(140px,180px)_minmax(180px,1.2fr)] md:items-center md:gap-4"
+                    >
+                      <label class="flex items-center gap-2 text-sm font-medium text-primary-900 dark:text-dark-50">
+                        <input
+                          type="checkbox"
+                          class="rounded-compact border-gray-300 text-primary-600 focus:ring-primary-500"
+                          :checked="methodFeeEnabled(method.value)"
+                          @change="setMethodFeeEnabled(method.value, ($event.target as HTMLInputElement).checked)"
+                        />
+                        {{ method.label }}
+                      </label>
+                      <div class="min-w-0">
+                        <p class="mb-1 text-xs text-gray-500 dark:text-dark-400 md:hidden">
+                          {{ t("admin.settings.payment.fixedFee") }}
+                        </p>
+                        <div class="input-icon-wrap">
+                          <span class="input-icon input-icon-text text-sm text-gray-400 dark:text-dark-400" aria-hidden="true">¥</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            class="input input-has-icon input-icon-text"
+                            :aria-label="`${method.label} ${t('admin.settings.payment.fixedFee')}`"
+                            :disabled="!methodFeeEnabled(method.value)"
+                            :value="methodFeeValue(method.value, 'fixed_fee')"
+                            @input="setMethodFeeValue(method.value, 'fixed_fee', ($event.target as HTMLInputElement).value)"
+                          />
+                        </div>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="mb-1 text-xs text-gray-500 dark:text-dark-400 md:hidden">
+                          {{ t("admin.settings.payment.feeRate") }}
+                        </p>
+                        <div class="input-icon-wrap">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            class="input input-has-icon-right"
+                            :aria-label="`${method.label} ${t('admin.settings.payment.feeRate')}`"
+                            :disabled="!methodFeeEnabled(method.value)"
+                            :value="methodFeeValue(method.value, 'fee_rate')"
+                            @input="setMethodFeeValue(method.value, 'fee_rate', ($event.target as HTMLInputElement).value)"
+                          />
+                          <span class="input-icon-right text-sm text-gray-400 dark:text-dark-400" aria-hidden="true">%</span>
+                        </div>
+                      </div>
+                      <div class="min-w-0 text-xs">
+                        <p class="mb-1 text-gray-500 dark:text-dark-400 md:hidden">
+                          {{ t("admin.settings.payment.methodFeeResult") }}
+                        </p>
+                        <p
+                          :class="methodFeeEnabled(method.value)
+                            ? 'font-medium text-primary-600 dark:text-primary-400'
+                            : 'text-gray-400 dark:text-dark-500'"
+                        >
+                          {{
+                            methodFeeEnabled(method.value)
+                              ? methodFeePreview(method.value)
+                              : t("admin.settings.payment.methodFeeFallback")
+                          }}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.cancelRateLimit")
-                    }}</label>
-                    <div class="flex items-center gap-2">
-                      <Toggle v-model="form.payment_cancel_rate_limit_enabled" variant="flush" on-class="bg-primary-500" />
+                </div>
+              </SettingsSection>
+
+              <SettingsSection>
+                <SettingRow
+                  id="payment-order-timeout"
+                  field
+                  label-for="payment-order-timeout"
+                  :label="t('admin.settings.payment.orderTimeout')"
+                  :hint="t('admin.settings.payment.orderTimeoutHint')"
+                >
+                  <input
+                    id="payment-order-timeout"
+                    v-model.number="form.payment_order_timeout_minutes"
+                    type="number"
+                    min="1"
+                    class="input"
+                    required
+                  />
+                </SettingRow>
+                <SettingRow
+                  id="payment-max-pending-orders"
+                  field
+                  label-for="payment-max-pending-orders"
+                  :label="t('admin.settings.payment.maxPendingOrders')"
+                >
+                  <input
+                    id="payment-max-pending-orders"
+                    v-model.number="form.payment_max_pending_orders"
+                    type="number"
+                    min="1"
+                    class="input"
+                  />
+                </SettingRow>
+                <SettingRow
+                  id="payment-load-balance-strategy"
+                  field
+                  :label="t('admin.settings.payment.loadBalanceStrategy')"
+                >
+                  <Select
+                    v-model="form.payment_load_balance_strategy"
+                    :options="loadBalanceOptions"
+                    :aria-label="t('admin.settings.payment.loadBalanceStrategy')"
+                  />
+                </SettingRow>
+                <SettingToggleRow
+                  id="payment-cancel-rate-limit-enabled"
+                  v-model="form.payment_cancel_rate_limit_enabled"
+                  :label="t('admin.settings.payment.cancelRateLimit')"
+                />
+                <!-- 取消限流按“每 N 个时间单位最多 M 次”配置，控件按句子顺序排列。 -->
+                <Collapse :open="form.payment_cancel_rate_limit_enabled">
+                  <SettingsSubpanel>
+                    <div class="flex flex-wrap items-center gap-2 text-sm text-primary-900 dark:text-dark-100">
                       <Select
                         v-model="form.payment_cancel_rate_limit_window_mode"
                         :options="cancelRateLimitModeOptions"
-                        class="w-24"
-                        :disabled="!form.payment_cancel_rate_limit_enabled"
+                        class="w-28"
                       />
-                      <span
-                        :class="[
-                          'text-sm whitespace-nowrap',
-                          form.payment_cancel_rate_limit_enabled
-                            ? 'text-gray-700 dark:text-gray-300'
-                            : 'text-gray-400 dark:text-gray-600',
-                        ]"
-                        >{{
-                          t("admin.settings.payment.cancelRateLimitEvery")
-                        }}</span
-                      >
+                      <span class="whitespace-nowrap">{{ t("admin.settings.payment.cancelRateLimitEvery") }}</span>
                       <input
                         v-model.number="form.payment_cancel_rate_limit_window"
                         type="number"
                         min="1"
                         required
-                        class="input w-14 text-center"
-                        :disabled="!form.payment_cancel_rate_limit_enabled"
+                        class="input w-20 text-center"
                       />
                       <Select
                         v-model="form.payment_cancel_rate_limit_unit"
                         :options="cancelRateLimitUnitOptions"
                         class="w-28"
-                        :disabled="!form.payment_cancel_rate_limit_enabled"
                       />
-                      <span
-                        :class="[
-                          'text-sm whitespace-nowrap',
-                          form.payment_cancel_rate_limit_enabled
-                            ? 'text-gray-700 dark:text-gray-300'
-                            : 'text-gray-400 dark:text-gray-600',
-                        ]"
-                        >{{
-                          t("admin.settings.payment.cancelRateLimitAllowMax")
-                        }}</span
-                      >
+                      <span class="whitespace-nowrap">{{ t("admin.settings.payment.cancelRateLimitAllowMax") }}</span>
                       <input
                         v-model.number="form.payment_cancel_rate_limit_max"
                         type="number"
                         min="1"
                         required
-                        class="input w-14 text-center"
-                        :disabled="!form.payment_cancel_rate_limit_enabled"
+                        class="input w-20 text-center"
                       />
-                      <span
-                        :class="[
-                          'text-sm whitespace-nowrap',
-                          form.payment_cancel_rate_limit_enabled
-                            ? 'text-gray-700 dark:text-gray-300'
-                            : 'text-gray-400 dark:text-gray-600',
-                        ]"
-                        >{{
-                          t("admin.settings.payment.cancelRateLimitTimes")
-                        }}</span
-                      >
+                      <span class="whitespace-nowrap">{{ t("admin.settings.payment.cancelRateLimitTimes") }}</span>
                     </div>
-                  </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.alipayForceQRCode")
-                    }}</label>
-                    <div class="flex items-center gap-2">
-                      <Toggle
-                        :model-value="!!form.payment_alipay_force_qrcode"
-                        variant="flush"
-                        on-class="bg-primary-500"
-                        @update:model-value="form.payment_alipay_force_qrcode = $event"
-                      />
-                      <span class="text-sm text-gray-500 dark:text-gray-400">{{
-                        t("admin.settings.payment.alipayForceQRCodeHint")
-                      }}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.alipayMobilePrecreateDeepLink")
-                    }}</label>
-                    <div class="flex items-center gap-2">
-                      <Toggle
-                        :model-value="!!form.payment_alipay_mobile_precreate_deep_link"
-                        variant="flush"
-                        on-class="bg-primary-500"
-                        @update:model-value="form.payment_alipay_mobile_precreate_deep_link = $event"
-                      />
-                      <span class="text-sm text-gray-500 dark:text-gray-400">{{
-                        t("admin.settings.payment.alipayMobilePrecreateDeepLinkHint")
-                      }}</span>
-                    </div>
-                  </div>
-                </div>
-                <!-- Row 4: Enabled payment types (provider badges like sub2apipay) -->
+                  </SettingsSubpanel>
+                </Collapse>
+                <SettingToggleRow
+                  id="payment-alipay-force-qrcode"
+                  :model-value="!!form.payment_alipay_force_qrcode"
+                  :label="t('admin.settings.payment.alipayForceQRCode')"
+                  :hint="t('admin.settings.payment.alipayForceQRCodeHint')"
+                  @update:model-value="form.payment_alipay_force_qrcode = $event"
+                />
+                <SettingToggleRow
+                  id="payment-alipay-mobile-precreate-deep-link"
+                  :model-value="!!form.payment_alipay_mobile_precreate_deep_link"
+                  :label="t('admin.settings.payment.alipayMobilePrecreateDeepLink')"
+                  :hint="t('admin.settings.payment.alipayMobilePrecreateDeepLinkHint')"
+                  @update:model-value="form.payment_alipay_mobile_precreate_deep_link = $event"
+                />
+              </SettingsSection>
+
+              <SettingsSection>
                 <div>
-                  <label class="input-label">{{
-                    t("admin.settings.payment.enabledPaymentTypes")
-                  }}</label>
-                  <div class="mt-1.5 flex flex-wrap gap-2">
+                  <p class="input-label">{{ t("admin.settings.payment.enabledPaymentTypes") }}</p>
+                  <div class="flex flex-wrap gap-2">
                     <button
                       v-for="pt in allPaymentTypes"
                       :key="pt.value"
                       type="button"
-                      @click="togglePaymentType(pt.value)"
-                      :class="[
-                        'rounded-control border px-3 py-1.5 text-sm font-medium transition',
+                      class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors"
+                      :class="
                         isPaymentTypeEnabled(pt.value)
-                          ? 'border-primary-600 bg-primary-600 text-white shadow-sm'
-                          : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:bg-gray-50 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-dark-500',
-                      ]"
+                          ? 'border-primary-500/60 bg-primary-50 text-primary-700 dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-dark-600 dark:text-dark-300 dark:hover:border-dark-400 dark:hover:text-dark-100'
+                      "
+                      :aria-pressed="isPaymentTypeEnabled(pt.value)"
+                      @click="togglePaymentType(pt.value)"
                     >
+                      <Icon
+                        v-if="isPaymentTypeEnabled(pt.value)"
+                        name="check"
+                        size="xs"
+                        :animate-on-hover="false"
+                      />
                       {{ pt.label }}
                     </button>
                   </div>
-                  <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                  <p class="input-hint">
                     {{ t("admin.settings.payment.enabledPaymentTypesHint") }}
                     <a
                       :href="paymentMethodsHref"
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="ml-1 text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300"
+                      class="ml-1 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
                     >
                       {{ t("admin.settings.payment.findProvider") }}
                       <Icon name="externalLink" size="xs" class="mb-0.5 ml-0.5 inline h-3 w-3" />
                     </a>
                   </p>
                 </div>
-                <!-- Row 5: Help image + text -->
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              </SettingsSection>
+
+              <SettingsSection>
+                <div class="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.helpImage")
-                    }}</label>
+                    <p class="input-label">{{ t("admin.settings.payment.helpImage") }}</p>
                     <ImageUpload
                       v-model="form.payment_help_image_url"
                       :upload-label="t('admin.settings.site.uploadImage')"
                       :remove-label="t('admin.settings.site.remove')"
-                      :placeholder="
-                        t('admin.settings.payment.helpImagePlaceholder')
-                      "
+                      :placeholder="t('admin.settings.payment.helpImagePlaceholder')"
                     />
                   </div>
                   <div>
-                    <label class="input-label">{{
-                      t("admin.settings.payment.helpText")
-                    }}</label>
-                    <p class="mb-1 text-xs text-gray-400">
-                      {{ t("admin.settings.payment.helpTextHint") }}
-                    </p>
+                    <label for="payment-help-text" class="input-label">
+                      {{ t("admin.settings.payment.helpText") }}
+                    </label>
                     <textarea
+                      id="payment-help-text"
                       v-model="form.payment_help_text"
                       rows="3"
                       class="input"
-                      :placeholder="
-                        t('admin.settings.payment.helpTextPlaceholder')
-                      "
+                      :placeholder="t('admin.settings.payment.helpTextPlaceholder')"
                     ></textarea>
+                    <p class="input-hint">{{ t("admin.settings.payment.helpTextHint") }}</p>
                   </div>
                 </div>
-              </template>
-            </div>
-          </div>
+              </SettingsSection>
+            </template>
+          </SettingsCard>
 
           <!-- Provider Management -->
           <PaymentProviderList
@@ -5433,70 +5319,40 @@
         </div>
 
         <div v-show="activeTab === 'email'" v-content-reveal="activeTab === 'email'" class="space-y-4">
-          <!-- Email disabled hint - show when email_verify_enabled is off -->
-          <div v-if="!form.email_verify_enabled" class="card">
-            <div class="p-6">
-              <div class="flex items-start gap-3">
-                <Icon
-                  name="mail"
-                  size="md"
-                  class="mt-0.5 flex-shrink-0 text-gray-400 dark:text-gray-500"
-                />
-                <div>
-                  <h3 class="font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.emailTabDisabledTitle") }}
-                  </h3>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.emailTabDisabledHint") }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- 邮箱验证关闭时，SMTP 和测试邮件卡片隐藏，这里提示去哪里开启。 -->
+          <SettingsNotice v-if="!form.email_verify_enabled">
+            <p class="font-medium">{{ t("admin.settings.emailTabDisabledTitle") }}</p>
+            <p>{{ t("admin.settings.emailTabDisabledHint") }}</p>
+          </SettingsNotice>
 
-          <!-- SMTP Settings - Only show when email verification is enabled -->
           <Collapse :open="form.email_verify_enabled" unmount-on-hide>
-            <div class="card">
-              <div
-                class="flex items-end justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-              >
-                <div>
-                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    {{ t("admin.settings.smtp.title") }}
-                  </h2>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.smtp.description") }}
-                  </p>
-                </div>
+            <SettingsCard
+              :title="t('admin.settings.smtp.title')"
+              :description="t('admin.settings.smtp.description')"
+            >
+              <template #actions>
                 <button
                   type="button"
-                  @click="testSmtpConnection"
                   :disabled="testingSmtp || loadFailed"
                   class="btn btn-secondary btn-sm h-9"
+                  @click="testSmtpConnection"
                 >
                   <Icon
+                    v-if="testingSmtp"
                     name="loader"
                     size="sm"
                     :animate-on-hover="false"
-                    v-if="testingSmtp"
                     class="h-4 w-4 animate-spin"
                   />
-                  {{
-                    testingSmtp
-                      ? t("admin.settings.smtp.testing")
-                      : t("admin.settings.smtp.testConnection")
-                  }}
+                  {{ testingSmtp ? t("admin.settings.smtp.testing") : t("admin.settings.smtp.testConnection") }}
                 </button>
-              </div>
-              <div class="space-y-6 p-6">
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+              </template>
+              <SettingsSection>
+                <div class="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.smtp.host") }}
-                    </label>
+                    <label for="smtp-host" class="input-label">{{ t("admin.settings.smtp.host") }}</label>
                     <input
+                      id="smtp-host"
                       v-model="form.smtp_host"
                       type="text"
                       class="input"
@@ -5504,12 +5360,9 @@
                     />
                   </div>
                   <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.smtp.port") }}
-                    </label>
+                    <label for="smtp-port" class="input-label">{{ t("admin.settings.smtp.port") }}</label>
                     <input
+                      id="smtp-port"
                       v-model.number="form.smtp_port"
                       type="number"
                       min="1"
@@ -5519,12 +5372,9 @@
                     />
                   </div>
                   <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.smtp.username") }}
-                    </label>
+                    <label for="smtp-username" class="input-label">{{ t("admin.settings.smtp.username") }}</label>
                     <input
+                      id="smtp-username"
                       v-model="form.smtp_username"
                       type="text"
                       class="input"
@@ -5532,27 +5382,24 @@
                     />
                   </div>
                   <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.smtp.password") }}
-                    </label>
+                    <label for="smtp-password" class="input-label">{{ t("admin.settings.smtp.password") }}</label>
                     <input
+                      id="smtp-password"
                       v-model="form.smtp_password"
                       type="password"
                       class="input"
                       autocomplete="new-password"
                       autocapitalize="off"
                       spellcheck="false"
-                      @keydown="smtpPasswordManuallyEdited = true"
-                      @paste="smtpPasswordManuallyEdited = true"
                       :placeholder="
                         form.smtp_password_configured
                           ? t('admin.settings.smtp.passwordConfiguredPlaceholder')
                           : t('admin.settings.smtp.passwordPlaceholder')
                       "
+                      @keydown="smtpPasswordManuallyEdited = true"
+                      @paste="smtpPasswordManuallyEdited = true"
                     />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    <p class="input-hint">
                       {{
                         form.smtp_password_configured
                           ? t("admin.settings.smtp.passwordConfiguredHint")
@@ -5561,12 +5408,9 @@
                     </p>
                   </div>
                   <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.smtp.fromEmail") }}
-                    </label>
+                    <label for="smtp-from-email" class="input-label">{{ t("admin.settings.smtp.fromEmail") }}</label>
                     <input
+                      id="smtp-from-email"
                       v-model="form.smtp_from_email"
                       type="email"
                       class="input"
@@ -5574,12 +5418,9 @@
                     />
                   </div>
                   <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.smtp.fromName") }}
-                    </label>
+                    <label for="smtp-from-name" class="input-label">{{ t("admin.settings.smtp.fromName") }}</label>
                     <input
+                      id="smtp-from-name"
                       v-model="form.smtp_from_name"
                       type="text"
                       class="input"
@@ -5587,229 +5428,166 @@
                     />
                   </div>
                 </div>
-
-                <!-- Use TLS Toggle -->
-                <div
-                  class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">{{
-                      t("admin.settings.smtp.useTls")
-                    }}</label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.smtp.useTlsHint") }}
-                    </p>
-                  </div>
-                  <Toggle v-model="form.smtp_use_tls" />
-                </div>
-              </div>
-            </div>
+                <SettingToggleRow
+                  id="smtp-use-tls"
+                  v-model="form.smtp_use_tls"
+                  :label="t('admin.settings.smtp.useTls')"
+                  :hint="t('admin.settings.smtp.useTlsHint')"
+                />
+              </SettingsSection>
+            </SettingsCard>
           </Collapse>
 
-          <!-- Send Test Email - Only show when email verification is enabled -->
           <Collapse :open="form.email_verify_enabled" unmount-on-hide>
-            <div class="card">
-              <div
-                class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-              >
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  {{ t("admin.settings.testEmail.title") }}
-                </h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.testEmail.description") }}
-                </p>
-              </div>
-              <div class="p-6">
-                <div class="flex items-end gap-4">
-                  <div class="flex-1">
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.testEmail.recipientEmail") }}
-                    </label>
+            <SettingsCard
+              :title="t('admin.settings.testEmail.title')"
+              :description="t('admin.settings.testEmail.description')"
+            >
+              <SettingsSection>
+                <div>
+                  <label for="test-email-address" class="input-label">
+                    {{ t("admin.settings.testEmail.recipientEmail") }}
+                  </label>
+                  <div class="flex gap-2">
                     <input
+                      id="test-email-address"
                       v-model="testEmailAddress"
                       type="email"
                       class="input"
-                      :placeholder="
-                        t('admin.settings.testEmail.recipientEmailPlaceholder')
-                      "
+                      :placeholder="t('admin.settings.testEmail.recipientEmailPlaceholder')"
                     />
+                    <button
+                      type="button"
+                      :disabled="sendingTestEmail || !testEmailAddress || loadFailed"
+                      class="btn btn-secondary shrink-0"
+                      @click="sendTestEmail"
+                    >
+                      <Icon
+                        v-if="sendingTestEmail"
+                        name="loader"
+                        size="sm"
+                        :animate-on-hover="false"
+                        class="h-4 w-4 animate-spin"
+                      />
+                      {{ sendingTestEmail ? t("admin.settings.testEmail.sending") : t("admin.settings.testEmail.sendTestEmail") }}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    @click="sendTestEmail"
-                    :disabled="
-                      sendingTestEmail || !testEmailAddress || loadFailed
-                    "
-                    class="btn btn-secondary"
-                  >
-                    <Icon
-                      name="loader"
-                      size="sm"
-                      :animate-on-hover="false"
-                      v-if="sendingTestEmail"
-                      class="h-4 w-4 animate-spin"
-                    />
-                    {{
-                      sendingTestEmail
-                        ? t("admin.settings.testEmail.sending")
-                        : t("admin.settings.testEmail.sendTestEmail")
-                    }}
-                  </button>
                 </div>
-              </div>
-            </div>
+              </SettingsSection>
+            </SettingsCard>
           </Collapse>
 
           <!-- 订阅到期提醒 -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h3 class="text-base font-medium text-gray-900 dark:text-white">
-                {{ t("admin.settings.subscriptionExpiryNotify.title") }}
-              </h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.subscriptionExpiryNotify.description") }}
-              </p>
-            </div>
-            <div class="px-6 py-6">
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <label
-                    class="mb-0 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.subscriptionExpiryNotify.enabled") }}
-                  </label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.subscriptionExpiryNotify.enabledHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.subscription_expiry_notify_enabled" />
-              </div>
-            </div>
-          </div>
+          <SettingsCard
+            :title="t('admin.settings.subscriptionExpiryNotify.title')"
+            :description="t('admin.settings.subscriptionExpiryNotify.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="subscription-expiry-notify-enabled"
+                v-model="form.subscription_expiry_notify_enabled"
+                :label="t('admin.settings.subscriptionExpiryNotify.enabled')"
+                :hint="t('admin.settings.subscriptionExpiryNotify.enabledHint')"
+              />
+            </SettingsSection>
+          </SettingsCard>
 
           <EmailTemplateEditor />
 
-          <!-- Balance Low Notification -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h3 class="text-base font-medium text-gray-900 dark:text-white">
-                {{ t("admin.settings.balanceNotify.title") }}
-              </h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.balanceNotify.description") }}
-              </p>
-            </div>
-            <div class="px-6 py-6 space-y-4">
-              <div class="flex items-center justify-between">
-                <label
-                  class="mb-0 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >{{ t("admin.settings.balanceNotify.enabled") }}</label
-                >
-                <Toggle v-model="form.balance_low_notify_enabled" />
-              </div>
+          <!-- 余额不足提醒 -->
+          <SettingsCard
+            :title="t('admin.settings.balanceNotify.title')"
+            :description="t('admin.settings.balanceNotify.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="balance-low-notify-enabled"
+                v-model="form.balance_low_notify_enabled"
+                :label="t('admin.settings.balanceNotify.enabled')"
+              />
               <Collapse :open="form.balance_low_notify_enabled" unmount-on-hide>
-                <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >{{ t("admin.settings.balanceNotify.threshold") }}</label
+                <SettingsSubpanel>
+                  <SettingRow
+                    id="balance-low-notify-threshold"
+                    field
+                    label-for="balance-low-notify-threshold"
+                    :label="t('admin.settings.balanceNotify.threshold')"
+                    :hint="t('admin.settings.balanceNotify.thresholdHint')"
                   >
-                  <div class="relative">
-                    <span
-                      class="input-icon text-gray-400"
-                      >{{ previewBalanceUnitSymbol }}</span>
-                    <input
-                      v-model.number="form.balance_low_notify_threshold"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      class="input input-has-icon input-icon-text"
-                    />
-                  </div>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.balanceNotify.thresholdHint") }}
-                  </p>
-                </div>
+                    <div class="input-icon-wrap">
+                      <span class="input-icon input-icon-text text-sm text-gray-400 dark:text-dark-400" aria-hidden="true">{{ previewBalanceUnitSymbol }}</span>
+                      <input
+                        id="balance-low-notify-threshold"
+                        v-model.number="form.balance_low_notify_threshold"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="input input-has-icon input-icon-text"
+                      />
+                    </div>
+                  </SettingRow>
+                </SettingsSubpanel>
               </Collapse>
               <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >{{ t("admin.settings.balanceNotify.rechargeUrl") }}</label
-                >
+                <label for="balance-low-notify-recharge-url" class="input-label">
+                  {{ t("admin.settings.balanceNotify.rechargeUrl") }}
+                </label>
                 <input
+                  id="balance-low-notify-recharge-url"
                   v-model="form.balance_low_notify_recharge_url"
                   type="url"
                   class="input"
                   :placeholder="currentOrigin"
                 />
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.balanceNotify.rechargeUrlHint") }}
-                </p>
+                <p class="input-hint">{{ t("admin.settings.balanceNotify.rechargeUrlHint") }}</p>
               </div>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- Provider Quota Notification -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h3 class="text-base font-medium text-gray-900 dark:text-white">
-                {{ t("admin.settings.quotaNotify.title") }}
-              </h3>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.quotaNotify.description") }}
-              </p>
-            </div>
-            <div class="px-6 py-6 space-y-4">
-              <div class="flex items-center justify-between">
-                <label
-                  class="mb-0 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >{{ t("admin.settings.quotaNotify.enabled") }}</label
-                >
-                <Toggle v-model="form.provider_quota_notify_enabled" />
-              </div>
+          <!-- 提供商额度提醒 -->
+          <SettingsCard
+            :title="t('admin.settings.quotaNotify.title')"
+            :description="t('admin.settings.quotaNotify.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="provider-quota-notify-enabled"
+                v-model="form.provider_quota_notify_enabled"
+                :label="t('admin.settings.quotaNotify.enabled')"
+              />
               <Collapse :open="form.provider_quota_notify_enabled" unmount-on-hide>
-                <RuleListEditor
-                  :items="form.provider_quota_notify_emails || []"
-                  :title="t('admin.settings.quotaNotify.emails')"
-                  :hint="t('admin.settings.quotaNotify.emailsHint')"
-                  :add-label="t('admin.settings.quotaNotify.addEmail')"
-                  test-id="quota-notify-emails"
-                  @add="addQuotaNotifyEmail"
-                  @remove="form.provider_quota_notify_emails.splice($event, 1)"
-                >
-                  <template #row="{ item: entry }">
-                    <div class="flex items-center gap-2">
-                      <label
-                        class="relative inline-flex items-center cursor-pointer shrink-0"
-                      >
+                <SettingsSubpanel>
+                  <RuleListEditor
+                    :items="form.provider_quota_notify_emails || []"
+                    :title="t('admin.settings.quotaNotify.emails')"
+                    :hint="t('admin.settings.quotaNotify.emailsHint')"
+                    :add-label="t('admin.settings.quotaNotify.addEmail')"
+                    test-id="quota-notify-emails"
+                    @add="addQuotaNotifyEmail"
+                    @remove="form.provider_quota_notify_emails.splice($event, 1)"
+                  >
+                    <template #row="{ item: entry }">
+                      <div class="flex items-center gap-3">
                         <Toggle
                           :model-value="!entry.disabled"
-                          size="sm"
-                          off-class="bg-gray-200 dark:bg-gray-600"
+                          size="md"
+                          :aria-label="entry.email || t('admin.settings.quotaNotify.emailPlaceholder')"
                           @update:model-value="entry.disabled = !entry.disabled"
                         />
-                      </label>
-                      <input
-                        v-model="entry.email"
-                        type="email"
-                        class="input min-w-0 flex-1"
-                        :placeholder="
-                          t('admin.settings.quotaNotify.emailPlaceholder')
-                        "
-                      />
-                    </div>
-                  </template>
-                </RuleListEditor>
+                        <input
+                          v-model="entry.email"
+                          type="email"
+                          class="input min-w-0 flex-1"
+                          :aria-label="t('admin.settings.quotaNotify.emails')"
+                          :placeholder="t('admin.settings.quotaNotify.emailPlaceholder')"
+                        />
+                      </div>
+                    </template>
+                  </RuleListEditor>
+                </SettingsSubpanel>
               </Collapse>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
         </div>
         <!-- /Tab: Email -->
 
