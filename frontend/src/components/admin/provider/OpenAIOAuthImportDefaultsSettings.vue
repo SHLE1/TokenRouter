@@ -1,214 +1,191 @@
 <template>
-  <div id="openai-oauth-import-defaults" class="card">
-    <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-        {{ t('admin.providers.openAIOAuthImportDefaultsTitle') }}
-      </h2>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        {{ t('admin.providers.openAIOAuthImportDefaultsDescription') }}
-      </p>
-    </div>
+  <SettingsCard
+    id="openai-oauth-import-defaults"
+    :title="t('admin.providers.openAIOAuthImportDefaultsTitle')"
+    :description="t('admin.providers.openAIOAuthImportDefaultsDescription')"
+  >
+    <ContentSkeleton v-if="loading" variant="form" :rows="5" />
 
-    <div class="space-y-5 p-6">
-      <ContentSkeleton v-if="loading" variant="form" :rows="5" class="py-4" />
-
-      <template v-else>
-        <section class="space-y-3">
-          <div class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ t('admin.providers.openAIOAuthImportDefaultsProvider') }}
-          </div>
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div class="md:col-span-2">
-              <label class="input-label">{{ t('admin.providers.notes') }}</label>
-              <textarea v-model="form.notes" rows="2" class="input"></textarea>
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.concurrency') }}</label>
-              <input v-model="form.concurrency" type="number" min="0" step="1" class="input" />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.priority') }}</label>
-              <input v-model="form.priority" type="number" min="0" step="1" class="input" />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.billingRateMultiplier') }}</label>
-              <input v-model="form.rateMultiplier" type="number" min="0" step="0.01" class="input" />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.expiresAt') }}</label>
-              <input v-model="form.expiresAt" type="number" min="0" step="1" class="input" />
-            </div>
-            <div>
-              <label class="input-label">{{ t('admin.providers.autoPauseOnExpired') }}</label>
-              <Select v-model="form.autoPauseOnExpired" :options="autoPauseOnExpiredOptions" />
-            </div>
-          </div>
-        </section>
-
-        <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700">
-          <div class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ t('admin.providers.openAIOAuthImportDefaultsOpenAIOptions') }}
-          </div>
-          <div class="space-y-4">
-            <div class="flex items-center justify-between gap-4">
-              <div>
-                <label class="input-label mb-0">{{ t('admin.providers.openai.oauthPassthrough') }}</label>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t('admin.providers.openai.oauthPassthroughDesc') }}
-                </p>
-              </div>
-              <Toggle v-model="openaiPassthrough" />
-            </div>
-            <CodexImageToolModeSelector
-              v-model="codexImageToolMode"
-              test-id-prefix="openai-oauth-default-codex-image-tool"
-            />
-            <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div class="min-w-0">
-                <label class="input-label mb-0">{{ t('admin.providers.openai.wsMode') }}</label>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t('admin.providers.openai.wsModeDesc') }}
-                </p>
-              </div>
-              <Select v-model="wsMode" :options="wsModeOptions" class="w-full sm:w-52" />
-            </div>
-            <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <div class="min-w-0">
-                <label class="input-label mb-0">{{ t('admin.providers.openai.clientPolicy') }}</label>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t('admin.providers.openai.clientPolicyDesc') }}
-                </p>
-              </div>
-              <Select
-                v-model="openAIOAuthClientPolicy"
-                :options="openAIOAuthClientPolicyOptions"
-                class="w-full sm:w-64"
-                data-testid="openai-oauth-default-client-policy"
-              />
-            </div>
-            <div
-              v-if="openAIOAuthClientPolicy === 'codex_only'"
-              class="flex items-center justify-between gap-4 border-l-2 border-gray-200 pl-4 dark:border-dark-600"
-            >
-              <div>
-                <label class="input-label mb-0">
-                  {{ t('admin.providers.openai.codexCLIOnlyAllowClaudeCode') }}
-                </label>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t('admin.providers.openai.codexCLIOnlyAllowClaudeCodeDesc') }}
-                </p>
-              </div>
-              <Toggle
-                v-model="codexCLIOnlyAllowClaudeCode"
-                data-testid="openai-oauth-default-codex-allow-claude-code-toggle"
-              />
-            </div>
-            <div class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700">
-              <div class="space-y-2">
-                <div class="flex items-center justify-between gap-4">
-                  <label class="input-label mb-0">{{ t('admin.providers.autoPause5hDisabled') }}</label>
-                  <Toggle
-                    v-model="autoPause5hDisabled"
-                    data-testid="openai-oauth-default-auto-pause-5h-disabled"
-                  />
-                </div>
-                <p class="input-hint">{{ t('admin.providers.autoPauseDisabledHint') }}</p>
-              </div>
-              <div>
-                <label class="input-label">{{ t('admin.providers.autoPause5hThreshold') }}</label>
-                <input
-                  v-model="autoPause5hThreshold"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  class="input"
-                  :disabled="autoPause5hDisabled"
-                  data-testid="openai-oauth-default-auto-pause-5h-threshold"
-                />
-                <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
-              </div>
-              <div class="space-y-2">
-                <div class="flex items-center justify-between gap-4">
-                  <label class="input-label mb-0">{{ t('admin.providers.autoPause7dDisabled') }}</label>
-                  <Toggle
-                    v-model="autoPause7dDisabled"
-                    data-testid="openai-oauth-default-auto-pause-7d-disabled"
-                  />
-                </div>
-                <p class="input-hint">{{ t('admin.providers.autoPauseDisabledHint') }}</p>
-              </div>
-              <div>
-                <label class="input-label">{{ t('admin.providers.autoPause7dThreshold') }}</label>
-                <input
-                  v-model="autoPause7dThreshold"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  class="input"
-                  :disabled="autoPause7dDisabled"
-                  data-testid="openai-oauth-default-auto-pause-7d-threshold"
-                />
-                <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
-              </div>
-            </div>
-            <OpenAICompactionToggle v-model="nativeCompactV2Mode" test-id="openai-oauth-default-native-compaction-v2-mode"
-              :label="t('admin.providers.openai.nativeCompactV2Mode')" :hint="t('admin.providers.openai.nativeCompactV2ModeDesc')" />
-            <OpenAICompactionToggle v-model="compactMode" test-id="openai-oauth-default-compact-mode"
-              :label="t('admin.providers.openai.compactMode')" :hint="t('admin.providers.openai.compactModeDesc')" />
-            <div class="space-y-3 border-t border-gray-100 pt-4 dark:border-dark-700">
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <label class="input-label mb-0">
-                    {{ t('admin.providers.quotaControl.tlsFingerprint.label') }}
-                  </label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t('admin.providers.quotaControl.tlsFingerprint.hint') }}
-                  </p>
-                </div>
-                <Toggle v-model="tlsFingerprintEnabled" data-testid="openai-oauth-default-tls-fingerprint-toggle" />
-              </div>
-              <Select
-                v-if="tlsFingerprintEnabled"
-                v-model="tlsFingerprintProfileId"
-                :options="tlsFingerprintProfileOptions"
-                class="w-full md:w-64"
-                data-testid="openai-oauth-default-tls-fingerprint-profile"
-              />
-              <div v-if="tlsFingerprintEnabled" class="space-y-1">
-                <Select
-                  v-model="tlsFingerprintRouterId"
-                  :options="tlsFingerprintRouterOptions"
-                  class="w-full md:w-64"
-                  data-testid="openai-oauth-default-tls-fingerprint-router"
-                />
-                <p class="input-hint">{{ t('admin.providers.quotaControl.tlsFingerprint.routerHint') }}</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700">
-          <div class="text-sm font-medium text-gray-900 dark:text-white">
-            {{ t('admin.providers.modelWhitelist') }}
-          </div>
-          <ModelWhitelistSelector v-model="defaultAllowedModels" platform="openai" />
-        </section>
-
-        <section class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700">
-          <ProviderModelMappingEditor
-            v-model="defaultModelMappings"
-            :title="t('admin.providers.modelMapping')"
-            :presets="presetMappings"
-            @preset="addDefaultPresetMapping"
-          />
-        </section>
-
-        <section class="grid grid-cols-1 gap-4 border-t border-gray-100 pt-5 dark:border-dark-700 md:grid-cols-2">
+    <template v-else>
+      <SettingsSection :title="t('admin.providers.openAIOAuthImportDefaultsProvider')">
+        <div>
+          <label :for="`${uid}-notes`" class="input-label">{{ t('admin.providers.notes') }}</label>
+          <textarea :id="`${uid}-notes`" v-model="form.notes" rows="2" class="input"></textarea>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
           <div>
-            <label class="input-label">{{ t('admin.providers.openAIOAuthImportDefaultsCredentialsJson') }}</label>
+            <label :for="`${uid}-concurrency`" class="input-label">{{ t('admin.providers.concurrency') }}</label>
+            <input :id="`${uid}-concurrency`" v-model="form.concurrency" type="number" min="0" step="1" class="input" />
+          </div>
+          <div>
+            <label :for="`${uid}-priority`" class="input-label">{{ t('admin.providers.priority') }}</label>
+            <input :id="`${uid}-priority`" v-model="form.priority" type="number" min="0" step="1" class="input" />
+          </div>
+          <div>
+            <label :for="`${uid}-rate-multiplier`" class="input-label">{{ t('admin.providers.billingRateMultiplier') }}</label>
+            <input :id="`${uid}-rate-multiplier`" v-model="form.rateMultiplier" type="number" min="0" step="0.01" class="input" />
+          </div>
+          <div>
+            <label :for="`${uid}-expires-at`" class="input-label">{{ t('admin.providers.expiresAt') }}</label>
+            <input :id="`${uid}-expires-at`" v-model="form.expiresAt" type="number" min="0" step="1" class="input" />
+          </div>
+        </div>
+        <SettingRow
+          :id="`${uid}-auto-pause-expired`"
+          field
+          :label-for="`${uid}-auto-pause-expired`"
+          :label="t('admin.providers.autoPauseOnExpired')"
+        >
+          <Select
+            :id="`${uid}-auto-pause-expired`"
+            v-model="form.autoPauseOnExpired"
+            :options="autoPauseOnExpiredOptions"
+          />
+        </SettingRow>
+      </SettingsSection>
+
+      <SettingsSection :title="t('admin.providers.sections.openaiCompatibility')">
+        <SettingToggleRow
+          :id="`${uid}-passthrough`"
+          v-model="openaiPassthrough"
+          :label="t('admin.providers.openai.oauthPassthrough')"
+          :hint="t('admin.providers.openai.oauthPassthroughDesc')"
+        />
+        <CodexImageToolModeSelector
+          v-model="codexImageToolMode"
+          test-id-prefix="openai-oauth-default-codex-image-tool"
+        />
+        <SettingRow
+          :id="`${uid}-ws-mode`"
+          field
+          :label-for="`${uid}-ws-mode`"
+          :label="t('admin.providers.openai.wsMode')"
+          :hint="t('admin.providers.openai.wsModeDesc')"
+        >
+          <Select :id="`${uid}-ws-mode`" v-model="wsMode" :options="wsModeOptions" />
+        </SettingRow>
+      </SettingsSection>
+
+      <SettingsSection :title="t('admin.providers.sections.openaiClient')">
+        <SettingRow
+          :id="`${uid}-client-policy`"
+          field
+          :label-for="`${uid}-client-policy`"
+          :label="t('admin.providers.openai.clientPolicy')"
+          :hint="t('admin.providers.openai.clientPolicyDesc')"
+        >
+          <Select
+            :id="`${uid}-client-policy`"
+            v-model="openAIOAuthClientPolicy"
+            :options="openAIOAuthClientPolicyOptions"
+            data-testid="openai-oauth-default-client-policy"
+          />
+        </SettingRow>
+        <Collapse :open="openAIOAuthClientPolicy === 'codex_only'" unmount-on-hide>
+          <SettingsSubpanel>
+            <SettingToggleRow
+              :id="`${uid}-codex-allow-claude-code`"
+              v-model="codexCLIOnlyAllowClaudeCode"
+              :label="t('admin.providers.openai.codexCLIOnlyAllowClaudeCode')"
+              :hint="t('admin.providers.openai.codexCLIOnlyAllowClaudeCodeDesc')"
+              testid="openai-oauth-default-codex-allow-claude-code-toggle"
+            />
+          </SettingsSubpanel>
+        </Collapse>
+      </SettingsSection>
+
+      <SettingsSection :title="t('admin.providers.sections.autoPause')">
+        <SettingToggleRow
+          :id="`${uid}-auto-pause-5h-disabled`"
+          v-model="autoPause5hDisabled"
+          :label="t('admin.providers.autoPause5hDisabled')"
+          :hint="t('admin.providers.autoPauseDisabledHint')"
+          testid="openai-oauth-default-auto-pause-5h-disabled"
+        />
+        <SettingToggleRow
+          :id="`${uid}-auto-pause-7d-disabled`"
+          v-model="autoPause7dDisabled"
+          :label="t('admin.providers.autoPause7dDisabled')"
+          :hint="t('admin.providers.autoPauseDisabledHint')"
+          testid="openai-oauth-default-auto-pause-7d-disabled"
+        />
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label :for="`${uid}-auto-pause-5h`" class="input-label">{{ t('admin.providers.autoPause5hThreshold') }}</label>
+            <input
+              :id="`${uid}-auto-pause-5h`"
+              v-model="autoPause5hThreshold"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              class="input"
+              :disabled="autoPause5hDisabled"
+              data-testid="openai-oauth-default-auto-pause-5h-threshold"
+            />
+            <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
+          </div>
+          <div>
+            <label :for="`${uid}-auto-pause-7d`" class="input-label">{{ t('admin.providers.autoPause7dThreshold') }}</label>
+            <input
+              :id="`${uid}-auto-pause-7d`"
+              v-model="autoPause7dThreshold"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              class="input"
+              :disabled="autoPause7dDisabled"
+              data-testid="openai-oauth-default-auto-pause-7d-threshold"
+            />
+            <p class="input-hint">{{ t('admin.providers.autoPauseThresholdHint') }}</p>
+          </div>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection :title="t('admin.providers.sections.compaction')">
+        <OpenAICompactionToggle
+          v-model="nativeCompactV2Mode"
+          test-id="openai-oauth-default-native-compaction-v2-mode"
+          :label="t('admin.providers.openai.nativeCompactV2Mode')"
+          :hint="t('admin.providers.openai.nativeCompactV2ModeDesc')"
+        />
+        <OpenAICompactionToggle
+          v-model="compactMode"
+          test-id="openai-oauth-default-compact-mode"
+          :label="t('admin.providers.openai.compactMode')"
+          :hint="t('admin.providers.openai.compactModeDesc')"
+        />
+      </SettingsSection>
+
+      <TLSFingerprintFields
+        v-model:enabled="tlsFingerprintEnabled"
+        v-model:profile-id="tlsFingerprintProfileId"
+        v-model:router-id="tlsFingerprintRouterId"
+        :profile-options="tlsFingerprintProfileOptions"
+        :router-options="tlsFingerprintRouterOptions"
+        test-id-prefix="openai-oauth-default-tls-fingerprint"
+      />
+
+      <SettingsSection :title="t('admin.providers.modelWhitelist')">
+        <ModelWhitelistSelector v-model="defaultAllowedModels" platform="openai" />
+      </SettingsSection>
+
+      <SettingsSection>
+        <ProviderModelMappingEditor
+          v-model="defaultModelMappings"
+          :title="t('admin.providers.modelMapping')"
+          :presets="presetMappings"
+          @preset="addDefaultPresetMapping"
+        />
+      </SettingsSection>
+
+      <SettingsSection>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label :for="`${uid}-credentials-json`" class="input-label">{{ t('admin.providers.openAIOAuthImportDefaultsCredentialsJson') }}</label>
             <textarea
+              :id="`${uid}-credentials-json`"
               v-model="credentialsJson"
               rows="8"
               class="input font-mono text-xs"
@@ -216,24 +193,32 @@
             ></textarea>
           </div>
           <div>
-            <label class="input-label">{{ t('admin.providers.openAIOAuthImportDefaultsExtraJson') }}</label>
+            <label :for="`${uid}-extra-json`" class="input-label">{{ t('admin.providers.openAIOAuthImportDefaultsExtraJson') }}</label>
             <textarea
+              :id="`${uid}-extra-json`"
               v-model="extraJson"
               rows="8"
               class="input font-mono text-xs"
               spellcheck="false"
             ></textarea>
           </div>
-        </section>
-
-        <div class="flex justify-end">
-          <button type="button" class="btn btn-primary" :disabled="saving" @click="save">
-            {{ saving ? t('common.saving') : t('common.save') }}
-          </button>
         </div>
-      </template>
-    </div>
-  </div>
+      </SettingsSection>
+    </template>
+
+    <template v-if="!loading" #footer>
+      <button type="button" class="btn btn-primary btn-sm h-9" :disabled="saving" @click="save">
+        <Icon
+          v-if="saving"
+          name="loader"
+          size="sm"
+          :animate-on-hover="false"
+          class="mr-1 h-4 w-4 animate-spin"
+        />
+        {{ saving ? t('common.saving') : t('common.save') }}
+      </button>
+    </template>
+  </SettingsCard>
 </template>
 
 <script setup lang="ts">
@@ -242,7 +227,7 @@ import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappi
 import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import { normalizeLegacyOpenAIExtra, normalizeOpenAICompactMode } from '@/utils/openaiLegacyConfiguration'
 import OpenAICompactionToggle from '@/components/provider/OpenAICompactionToggle.vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api'
 import type { OpenAIOAuthImportDefaults } from '@/api/admin/settings'
@@ -254,7 +239,14 @@ import {
 import ModelWhitelistSelector from '@/components/provider/ModelWhitelistSelector.vue'
 import CodexImageToolModeSelector from '@/components/provider/CodexImageToolModeSelector.vue'
 import Select, { type SelectOption } from '@/components/common/Select.vue'
-import Toggle from '@/components/common/Toggle.vue'
+import Collapse from '@/components/common/Collapse.vue'
+import SettingRow from '@/components/common/settings/SettingRow.vue'
+import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
+import SettingsCard from '@/components/common/settings/SettingsCard.vue'
+import SettingsSection from '@/components/common/settings/SettingsSection.vue'
+import SettingsSubpanel from '@/components/common/settings/SettingsSubpanel.vue'
+import TLSFingerprintFields from '@/components/provider/form/TLSFingerprintFields.vue'
+import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores'
 import {
   applyCodexImageToolMode,
@@ -276,6 +268,7 @@ type AutoPauseDefault = 'unset' | 'true' | 'false'
 type NumberInputValue = string | number
 const { t } = useI18n()
 const appStore = useAppStore()
+const uid = useId()
 
 const loading = ref(true)
 const saving = ref(false)

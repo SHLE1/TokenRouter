@@ -1910,12 +1910,10 @@ describe("admin SettingsView payment visible method controls", () => {
     expect(
       wrapper.get('[data-testid="gateway-card-openai-oauth-defaults"]').isVisible(),
     ).toBe(true);
-    expect(wrapper.get('[data-testid="gateway-card-scheduling"]').isVisible()).toBe(true);
     expect(
-      wrapper
-        .get('[data-testid="gateway-scheduling-general-advanced"]')
-        .isVisible(),
-    ).toBe(false);
+      wrapper.get('[data-testid="gateway-card-openai-scheduling"]').isVisible(),
+    ).toBe(true);
+    expect(wrapper.get('[data-testid="gateway-card-scheduling"]').isVisible()).toBe(false);
     expect(
       wrapper
         .get('[data-testid="gateway-card-user-prompt-replacement"]')
@@ -2039,8 +2037,9 @@ describe("admin SettingsView payment visible method controls", () => {
     );
     expect(generalCard.isVisible()).toBe(true);
     expect(advancedCard.isVisible()).toBe(true);
-    expect(advancedCard.classes()).toContain("border-t");
-    expect(advancedCard.find("h3").text()).toBe("通用高级调度器");
+    // settings-section 类让它和前一个分区之间显示分隔线。
+    expect(advancedCard.classes()).toContain("settings-section");
+    expect(advancedCard.find("h4").text()).toBe("通用高级调度器");
     expect(
       advancedCard
         .get('[data-testid="advanced-scheduler-help"] button')

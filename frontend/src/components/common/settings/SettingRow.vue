@@ -1,7 +1,7 @@
 <template>
   <div
     class="flex justify-between gap-4"
-    :class="field ? 'flex-col gap-y-2 sm:flex-row sm:items-start' : 'items-start'"
+    :class="layoutClass"
     :data-setting-row="setting"
   >
     <div class="min-w-0">
@@ -44,11 +44,12 @@
 </template>
 
 <script setup lang="ts">
+import { computed, useSlots } from 'vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 // 设置行统一左侧标题说明、右侧控件的布局；field 用于右侧放选择框或输入框的行，窄屏改为上下排列。
-defineProps<{
+const props = defineProps<{
   id: string
   label: string
   hint?: string
@@ -58,4 +59,16 @@ defineProps<{
   labelFor?: string
   field?: boolean
 }>()
+
+const slots = useSlots()
+
+// 没有说明文字时，单行标题和控件垂直居中；有说明时控件和标题顶部对齐。
+// 输入框行在窄屏上下排列，只在 sm 及以上应用对齐方式。
+const layoutClass = computed(() => {
+  const hasHint = Boolean(props.hint || slots.hint)
+  if (!props.field) return hasHint ? 'items-start' : 'items-center'
+  return hasHint
+    ? 'flex-col gap-y-2 sm:flex-row sm:items-start'
+    : 'flex-col gap-y-2 sm:flex-row sm:items-center'
+})
 </script>

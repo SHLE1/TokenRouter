@@ -230,845 +230,571 @@
           ref="gatewayContentStartRef"
           class="gateway-settings-content space-y-4"
         >
-          <!-- Overload Cooldown (529) Settings -->
-          <div
+          <!-- 过载冷却（529） -->
+          <SettingsCard
             v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
-            class="card"
             data-testid="gateway-card-overload-cooldown"
+            :title="t('admin.settings.overloadCooldown.title')"
+            :description="t('admin.settings.overloadCooldown.description')"
           >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.overloadCooldown.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.overloadCooldown.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <ContentSkeleton v-if="overloadCooldownLoading" variant="form" :rows="3" />
-
-              <template v-else>
-                <div class="flex items-center justify-between">
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">{{
-                      t("admin.settings.overloadCooldown.enabled")
-                    }}</label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.overloadCooldown.enabledHint") }}
-                    </p>
-                  </div>
-                  <Toggle v-model="overloadCooldownForm.enabled" />
-                </div>
-
-                <Collapse :open="overloadCooldownForm.enabled" unmount-on-hide>
-                  <div
-
-                    class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
+            <ContentSkeleton v-if="overloadCooldownLoading" variant="form" :rows="3" />
+            <SettingsSection v-else>
+              <SettingToggleRow
+                id="overload-cooldown-enabled"
+                v-model="overloadCooldownForm.enabled"
+                :label="t('admin.settings.overloadCooldown.enabled')"
+                :hint="t('admin.settings.overloadCooldown.enabledHint')"
+              />
+              <Collapse :open="overloadCooldownForm.enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingRow
+                    id="overload-cooldown-minutes"
+                    field
+                    label-for="overload-cooldown-minutes"
+                    :label="t('admin.settings.overloadCooldown.cooldownMinutes')"
+                    :hint="t('admin.settings.overloadCooldown.cooldownMinutesHint')"
                   >
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.overloadCooldown.cooldownMinutes") }}
-                      </label>
-                      <input
-                        v-model.number="overloadCooldownForm.cooldown_minutes"
-                        type="number"
-                        min="1"
-                        max="120"
-                        class="input w-32"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          t("admin.settings.overloadCooldown.cooldownMinutesHint")
-                        }}
-                      </p>
-                    </div>
-                  </div>
-                </Collapse>
-
-                <div
-                  class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <button
-                    type="button"
-                    @click="saveOverloadCooldownSettings"
-                    :disabled="overloadCooldownSaving"
-                    class="btn btn-primary btn-sm h-9"
-                  >
-                    <Icon
-                      name="loader"
-                      size="sm"
-                      :animate-on-hover="false"
-                      v-if="overloadCooldownSaving"
-                      class="mr-1 h-4 w-4 animate-spin"
-                    />
-                    {{
-                      overloadCooldownSaving
-                        ? t("common.saving")
-                        : t("common.save")
-                    }}
-                  </button>
-                </div>
-              </template>
-            </div>
-          </div>
-
-          <!-- OpenAI OAuth 403 Cooldown Settings -->
-        <div
-          v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
-          class="card"
-          data-testid="gateway-card-openai-403-cooldown"
-        >
-          <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('admin.settings.openAI403Cooldown.title') }}
-            </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.settings.openAI403Cooldown.description') }}
-            </p>
-          </div>
-          <div class="space-y-5 p-6">
-            <ContentSkeleton v-if="openAI403CooldownLoading" variant="form" :rows="3" />
-
-            <template v-else>
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t('admin.settings.openAI403Cooldown.enabled')
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t('admin.settings.openAI403Cooldown.enabledHint') }}
-                  </p>
-                </div>
-                <Toggle v-model="openAI403CooldownForm.enabled" />
-              </div>
-
-              <Collapse :open="openAI403CooldownForm.enabled" unmount-on-hide>
-                <div
-
-                  class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {{ t('admin.settings.openAI403Cooldown.cooldownMinutes') }}
-                    </label>
                     <input
+                      id="overload-cooldown-minutes"
+                      v-model.number="overloadCooldownForm.cooldown_minutes"
+                      type="number"
+                      min="1"
+                      max="120"
+                      class="input"
+                    />
+                  </SettingRow>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+            <template v-if="!overloadCooldownLoading" #footer>
+              <button
+                type="button"
+                :disabled="overloadCooldownSaving"
+                class="btn btn-primary btn-sm h-9"
+                @click="saveOverloadCooldownSettings"
+              >
+                <Icon
+                  v-if="overloadCooldownSaving"
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
+                  class="mr-1 h-4 w-4 animate-spin"
+                />
+                {{ overloadCooldownSaving ? t("common.saving") : t("common.save") }}
+              </button>
+            </template>
+          </SettingsCard>
+
+          <!-- OpenAI OAuth 403 冷却 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
+            data-testid="gateway-card-openai-403-cooldown"
+            :title="t('admin.settings.openAI403Cooldown.title')"
+            :description="t('admin.settings.openAI403Cooldown.description')"
+          >
+            <ContentSkeleton v-if="openAI403CooldownLoading" variant="form" :rows="3" />
+            <SettingsSection v-else>
+              <SettingToggleRow
+                id="openai-403-cooldown-enabled"
+                v-model="openAI403CooldownForm.enabled"
+                :label="t('admin.settings.openAI403Cooldown.enabled')"
+                :hint="t('admin.settings.openAI403Cooldown.enabledHint')"
+              />
+              <Collapse :open="openAI403CooldownForm.enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingRow
+                    id="openai-403-cooldown-minutes"
+                    field
+                    label-for="openai-403-cooldown-minutes"
+                    :label="t('admin.settings.openAI403Cooldown.cooldownMinutes')"
+                    :hint="t('admin.settings.openAI403Cooldown.cooldownMinutesHint')"
+                  >
+                    <input
+                      id="openai-403-cooldown-minutes"
                       v-model.number="openAI403CooldownForm.cooldown_minutes"
                       type="number"
                       min="1"
                       max="120"
-                      class="input w-32"
+                      class="input"
                     />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t('admin.settings.openAI403Cooldown.cooldownMinutesHint') }}
-                    </p>
-                  </div>
-
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <label class="font-medium text-gray-900 dark:text-white">
-                        {{ t('admin.settings.openAI403Cooldown.errorOnThresholdEnabled') }}
-                      </label>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">
-                        {{ t('admin.settings.openAI403Cooldown.errorOnThresholdEnabledHint') }}
-                      </p>
-                    </div>
-                    <Toggle v-model="openAI403CooldownForm.error_on_threshold_enabled" />
-                  </div>
-
-                  <div
-                    v-if="openAI403CooldownForm.error_on_threshold_enabled"
-                    class="grid gap-4 sm:grid-cols-2"
-                  >
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t('admin.settings.openAI403Cooldown.thresholdCount') }}
-                      </label>
+                  </SettingRow>
+                  <SettingToggleRow
+                    id="openai-403-error-on-threshold"
+                    v-model="openAI403CooldownForm.error_on_threshold_enabled"
+                    :label="t('admin.settings.openAI403Cooldown.errorOnThresholdEnabled')"
+                    :hint="t('admin.settings.openAI403Cooldown.errorOnThresholdEnabledHint')"
+                  />
+                  <template v-if="openAI403CooldownForm.error_on_threshold_enabled">
+                    <SettingRow
+                      id="openai-403-threshold-count"
+                      field
+                      label-for="openai-403-threshold-count"
+                      :label="t('admin.settings.openAI403Cooldown.thresholdCount')"
+                      :hint="t('admin.settings.openAI403Cooldown.thresholdCountHint')"
+                    >
                       <input
+                        id="openai-403-threshold-count"
                         v-model.number="openAI403CooldownForm.threshold_count"
                         type="number"
                         min="1"
                         max="20"
-                        class="input w-32"
+                        class="input"
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t('admin.settings.openAI403Cooldown.thresholdCountHint') }}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t('admin.settings.openAI403Cooldown.thresholdWindowMinutes') }}
-                      </label>
+                    </SettingRow>
+                    <SettingRow
+                      id="openai-403-threshold-window"
+                      field
+                      label-for="openai-403-threshold-window"
+                      :label="t('admin.settings.openAI403Cooldown.thresholdWindowMinutes')"
+                      :hint="t('admin.settings.openAI403Cooldown.thresholdWindowMinutesHint')"
+                    >
                       <input
+                        id="openai-403-threshold-window"
                         v-model.number="openAI403CooldownForm.threshold_window_minutes"
                         type="number"
                         min="1"
                         max="1440"
-                        class="input w-32"
+                        class="input"
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t('admin.settings.openAI403Cooldown.thresholdWindowMinutesHint') }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                    </SettingRow>
+                  </template>
+                </SettingsSubpanel>
               </Collapse>
-
-              <div class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700">
-                <button
-                  type="button"
-                  @click="saveOpenAI403CooldownSettings"
-                  :disabled="openAI403CooldownSaving"
-                  class="btn btn-primary btn-sm h-9"
-                >
-                  <Icon
-                    name="loader"
-                    size="sm"
-                    :animate-on-hover="false"
-                    v-if="openAI403CooldownSaving"
-                    class="mr-1 h-4 w-4 animate-spin"
-                  />
-                  {{ openAI403CooldownSaving ? t('common.saving') : t('common.save') }}
-                </button>
-              </div>
+            </SettingsSection>
+            <template v-if="!openAI403CooldownLoading" #footer>
+              <button
+                type="button"
+                :disabled="openAI403CooldownSaving"
+                class="btn btn-primary btn-sm h-9"
+                @click="saveOpenAI403CooldownSettings"
+              >
+                <Icon
+                  v-if="openAI403CooldownSaving"
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
+                  class="mr-1 h-4 w-4 animate-spin"
+                />
+                {{ openAI403CooldownSaving ? t("common.saving") : t("common.save") }}
+              </button>
             </template>
+          </SettingsCard>
+
+          <div
+            v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
+            data-testid="gateway-card-openai-oauth-defaults"
+          >
+            <OpenAIOAuthImportDefaultsSettings />
           </div>
-        </div>
 
-        <div
-          v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
-          data-testid="gateway-card-openai-oauth-defaults"
-        >
-          <OpenAIOAuthImportDefaultsSettings />
-        </div>
-
-        <!-- Rate Limit Cooldown (429) Settings -->
-        <div
-          v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
-          class="card"
-          data-testid="gateway-card-rate-limit-cooldown"
-        >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.rateLimit429Cooldown.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.rateLimit429Cooldown.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <ContentSkeleton v-if="rateLimit429CooldownLoading" variant="form" :rows="3" />
-
-              <template v-else>
-                <div class="flex items-center justify-between">
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">{{
-                      t("admin.settings.rateLimit429Cooldown.enabled")
-                    }}</label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.rateLimit429Cooldown.enabledHint") }}
-                    </p>
-                  </div>
-                  <Toggle v-model="rateLimit429CooldownForm.enabled" />
-                </div>
-
-                <Collapse :open="rateLimit429CooldownForm.enabled" unmount-on-hide>
-                  <div
-
-                    class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
+          <!-- 限流冷却（429） -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
+            data-testid="gateway-card-rate-limit-cooldown"
+            :title="t('admin.settings.rateLimit429Cooldown.title')"
+            :description="t('admin.settings.rateLimit429Cooldown.description')"
+          >
+            <ContentSkeleton v-if="rateLimit429CooldownLoading" variant="form" :rows="3" />
+            <SettingsSection v-else>
+              <SettingToggleRow
+                id="rate-limit-429-cooldown-enabled"
+                v-model="rateLimit429CooldownForm.enabled"
+                :label="t('admin.settings.rateLimit429Cooldown.enabled')"
+                :hint="t('admin.settings.rateLimit429Cooldown.enabledHint')"
+              />
+              <Collapse :open="rateLimit429CooldownForm.enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingRow
+                    id="rate-limit-429-cooldown-seconds"
+                    field
+                    label-for="rate-limit-429-cooldown-seconds"
+                    :label="t('admin.settings.rateLimit429Cooldown.cooldownSeconds')"
+                    :hint="t('admin.settings.rateLimit429Cooldown.cooldownSecondsHint')"
                   >
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{
-                          t(
-                            "admin.settings.rateLimit429Cooldown.cooldownSeconds",
-                          )
-                        }}
-                      </label>
-                      <input
-                        v-model.number="rateLimit429CooldownForm.cooldown_seconds"
-                        type="number"
-                        min="1"
-                        max="7200"
-                        class="input w-32"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          t(
-                            "admin.settings.rateLimit429Cooldown.cooldownSecondsHint",
-                          )
-                        }}
-                      </p>
-                    </div>
-                  </div>
-                </Collapse>
-
-                <div
-                  class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <button
-                    type="button"
-                    @click="saveRateLimit429CooldownSettings"
-                    :disabled="rateLimit429CooldownSaving"
-                    class="btn btn-primary btn-sm h-9"
-                  >
-                    <Icon
-                      name="loader"
-                      size="sm"
-                      :animate-on-hover="false"
-                      v-if="rateLimit429CooldownSaving"
-                      class="mr-1 h-4 w-4 animate-spin"
+                    <input
+                      id="rate-limit-429-cooldown-seconds"
+                      v-model.number="rateLimit429CooldownForm.cooldown_seconds"
+                      type="number"
+                      min="1"
+                      max="7200"
+                      class="input"
                     />
-                    {{
-                      rateLimit429CooldownSaving
-                        ? t("common.saving")
-                        : t("common.save")
-                    }}
-                  </button>
-                </div>
-              </template>
-            </div>
-        </div>
+                  </SettingRow>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+            <template v-if="!rateLimit429CooldownLoading" #footer>
+              <button
+                type="button"
+                :disabled="rateLimit429CooldownSaving"
+                class="btn btn-primary btn-sm h-9"
+                @click="saveRateLimit429CooldownSettings"
+              >
+                <Icon
+                  v-if="rateLimit429CooldownSaving"
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
+                  class="mr-1 h-4 w-4 animate-spin"
+                />
+                {{ rateLimit429CooldownSaving ? t("common.saving") : t("common.save") }}
+              </button>
+            </template>
+          </SettingsCard>
 
-        <!-- Stream Timeout Settings -->
-        <div
-          v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
-          class="card"
-          data-testid="gateway-card-stream-timeout"
-        >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.streamTimeout.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.streamTimeout.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <!-- Loading State -->
-              <ContentSkeleton v-if="streamTimeoutLoading" variant="form" :rows="4" />
-
-              <template v-else>
-                <!-- Enable Stream Timeout -->
-                <div class="flex items-center justify-between">
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">{{
-                      t("admin.settings.streamTimeout.enabled")
-                    }}</label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.streamTimeout.enabledHint") }}
-                    </p>
-                  </div>
-                  <Toggle v-model="streamTimeoutForm.enabled" />
-                </div>
-
-                <!-- Settings - Only show when enabled -->
-                <Collapse :open="streamTimeoutForm.enabled" unmount-on-hide>
-                  <div
-
-                    class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
+          <!-- 流超时 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
+            data-testid="gateway-card-stream-timeout"
+            :title="t('admin.settings.streamTimeout.title')"
+            :description="t('admin.settings.streamTimeout.description')"
+          >
+            <ContentSkeleton v-if="streamTimeoutLoading" variant="form" :rows="4" />
+            <SettingsSection v-else>
+              <SettingToggleRow
+                id="stream-timeout-enabled"
+                v-model="streamTimeoutForm.enabled"
+                :label="t('admin.settings.streamTimeout.enabled')"
+                :hint="t('admin.settings.streamTimeout.enabledHint')"
+              />
+              <Collapse :open="streamTimeoutForm.enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingRow
+                    id="stream-timeout-action"
+                    field
+                    :label="t('admin.settings.streamTimeout.action')"
+                    :hint="t('admin.settings.streamTimeout.actionHint')"
                   >
-                    <!-- Action -->
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.streamTimeout.action") }}
-                      </label>
-                      <Select
-                        v-model="streamTimeoutForm.action"
-                        :options="streamTimeoutActionOptions"
-                        class="w-64"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.streamTimeout.actionHint") }}
-                      </p>
-                    </div>
-
-                    <!-- Temp Unsched Minutes (only show when action is temp_unsched) -->
-                    <div v-if="streamTimeoutForm.action === 'temp_unsched'">
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.streamTimeout.tempUnschedMinutes") }}
-                      </label>
-                      <input
-                        v-model.number="streamTimeoutForm.temp_unsched_minutes"
-                        type="number"
-                        min="1"
-                        max="60"
-                        class="input w-32"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          t("admin.settings.streamTimeout.tempUnschedMinutesHint")
-                        }}
-                      </p>
-                    </div>
-
-                    <!-- Threshold Count -->
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.streamTimeout.thresholdCount") }}
-                      </label>
-                      <input
-                        v-model.number="streamTimeoutForm.threshold_count"
-                        type="number"
-                        min="1"
-                        max="10"
-                        class="input w-32"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.streamTimeout.thresholdCountHint") }}
-                      </p>
-                    </div>
-
-                    <!-- Threshold Window Minutes -->
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{
-                          t("admin.settings.streamTimeout.thresholdWindowMinutes")
-                        }}
-                      </label>
-                      <input
-                        v-model.number="
-                          streamTimeoutForm.threshold_window_minutes
-                        "
-                        type="number"
-                        min="1"
-                        max="60"
-                        class="input w-32"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          t(
-                            "admin.settings.streamTimeout.thresholdWindowMinutesHint",
-                          )
-                        }}
-                      </p>
-                    </div>
-                  </div>
-                </Collapse>
-
-                <!-- Save Button -->
-                <div
-                  class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <button
-                    type="button"
-                    @click="saveStreamTimeoutSettings"
-                    :disabled="streamTimeoutSaving"
-                    class="btn btn-primary btn-sm h-9"
-                  >
-                    <Icon
-                      name="loader"
-                      size="sm"
-                      :animate-on-hover="false"
-                      v-if="streamTimeoutSaving"
-                      class="mr-1 h-4 w-4 animate-spin"
+                    <Select
+                      v-model="streamTimeoutForm.action"
+                      :options="streamTimeoutActionOptions"
+                      :aria-label="t('admin.settings.streamTimeout.action')"
                     />
-                    {{
-                      streamTimeoutSaving
-                        ? t("common.saving")
-                        : t("common.save")
-                    }}
-                  </button>
-                </div>
-              </template>
-            </div>
-          </div>
+                  </SettingRow>
+                  <!-- 临时停止调度的时长只在动作为 temp_unsched 时生效。 -->
+                  <SettingRow
+                    v-if="streamTimeoutForm.action === 'temp_unsched'"
+                    id="stream-timeout-temp-unsched-minutes"
+                    field
+                    label-for="stream-timeout-temp-unsched-minutes"
+                    :label="t('admin.settings.streamTimeout.tempUnschedMinutes')"
+                    :hint="t('admin.settings.streamTimeout.tempUnschedMinutesHint')"
+                  >
+                    <input
+                      id="stream-timeout-temp-unsched-minutes"
+                      v-model.number="streamTimeoutForm.temp_unsched_minutes"
+                      type="number"
+                      min="1"
+                      max="60"
+                      class="input"
+                    />
+                  </SettingRow>
+                  <SettingRow
+                    id="stream-timeout-threshold-count"
+                    field
+                    label-for="stream-timeout-threshold-count"
+                    :label="t('admin.settings.streamTimeout.thresholdCount')"
+                    :hint="t('admin.settings.streamTimeout.thresholdCountHint')"
+                  >
+                    <input
+                      id="stream-timeout-threshold-count"
+                      v-model.number="streamTimeoutForm.threshold_count"
+                      type="number"
+                      min="1"
+                      max="10"
+                      class="input"
+                    />
+                  </SettingRow>
+                  <SettingRow
+                    id="stream-timeout-threshold-window"
+                    field
+                    label-for="stream-timeout-threshold-window"
+                    :label="t('admin.settings.streamTimeout.thresholdWindowMinutes')"
+                    :hint="t('admin.settings.streamTimeout.thresholdWindowMinutesHint')"
+                  >
+                    <input
+                      id="stream-timeout-threshold-window"
+                      v-model.number="streamTimeoutForm.threshold_window_minutes"
+                      type="number"
+                      min="1"
+                      max="60"
+                      class="input"
+                    />
+                  </SettingRow>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+            <template v-if="!streamTimeoutLoading" #footer>
+              <button
+                type="button"
+                :disabled="streamTimeoutSaving"
+                class="btn btn-primary btn-sm h-9"
+                @click="saveStreamTimeoutSettings"
+              >
+                <Icon
+                  v-if="streamTimeoutSaving"
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
+                  class="mr-1 h-4 w-4 animate-spin"
+                />
+                {{ streamTimeoutSaving ? t("common.saving") : t("common.save") }}
+              </button>
+            </template>
+          </SettingsCard>
 
           <!-- 跨平台请求整流器 -->
-          <div
+          <SettingsCard
             v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
-            class="card"
             data-testid="gateway-card-request-rectifier"
+            :title="t('admin.settings.rectifier.title')"
+            :description="t('admin.settings.rectifier.description')"
           >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.rectifier.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.rectifier.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <!-- Loading State -->
-              <ContentSkeleton v-if="rectifierLoading" variant="form" :rows="4" />
-
-              <template v-else>
-                <!-- Master Toggle -->
-                <div class="flex items-center justify-between">
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">{{
-                      t("admin.settings.rectifier.enabled")
-                    }}</label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.rectifier.enabledHint") }}
-                    </p>
-                  </div>
-                  <Toggle v-model="rectifierForm.enabled" />
-                </div>
-
-                <!-- Sub-toggles (only show when master is enabled) -->
-                <Collapse :open="rectifierForm.enabled" unmount-on-hide>
-                  <div
-
-                    class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
-                  >
-                    <!-- Thinking Signature Rectifier -->
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <label
-                          class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >{{
-                            t("admin.settings.rectifier.thinkingSignature")
-                          }}</label
-                        >
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
-                          {{
-                            t("admin.settings.rectifier.thinkingSignatureHint")
-                          }}
-                        </p>
-                      </div>
-                      <Toggle
-                        v-model="rectifierForm.thinking_signature_enabled"
-                      />
-                    </div>
-
-                    <!-- Thinking Budget Rectifier -->
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <label
-                          class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >{{
-                            t("admin.settings.rectifier.thinkingBudget")
-                          }}</label
-                        >
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.rectifier.thinkingBudgetHint") }}
-                        </p>
-                      </div>
-                      <Toggle v-model="rectifierForm.thinking_budget_enabled" />
-                    </div>
-
-                    <!-- API Key Signature Rectifier -->
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <label
-                          class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                          >{{
-                            t("admin.settings.rectifier.apikeySignature")
-                          }}</label
-                        >
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.rectifier.apikeySignatureHint") }}
-                        </p>
-                      </div>
-                      <Toggle v-model="rectifierForm.apikey_signature_enabled" />
-                    </div>
-
-                    <!-- Custom Patterns (only when apikey_signature_enabled) -->
-                    <RuleListEditor
-                      v-if="rectifierForm.apikey_signature_enabled"
-                      class="ml-4 border-l-2 border-gray-200 pl-4 dark:border-dark-600"
-                      :items="rectifierForm.apikey_signature_patterns"
-                      :title="t('admin.settings.rectifier.apikeyPatterns')"
-                      :hint="t('admin.settings.rectifier.apikeyPatternsHint')"
-                      :add-label="t('admin.settings.rectifier.addPattern')"
-                      :animated="false"
-                      test-id="rectifier-patterns"
-                      @add="rectifierForm.apikey_signature_patterns.push('')"
-                      @remove="rectifierForm.apikey_signature_patterns.splice($event, 1)"
-                    >
-                      <template #row="{ index }">
-                        <input
-                          v-model="rectifierForm.apikey_signature_patterns[index]"
-                          type="text"
-                          class="input"
-                          :placeholder="
-                            t('admin.settings.rectifier.apikeyPatternPlaceholder')
-                          "
-                        />
-                      </template>
-                    </RuleListEditor>
-                  </div>
-                </Collapse>
-
-                <!-- Save Button -->
-                <div
-                  class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <button
-                    type="button"
-                    @click="saveRectifierSettings"
-                    :disabled="rectifierSaving"
-                    class="btn btn-primary btn-sm h-9"
-                  >
-                    <Icon
-                      name="loader"
-                      size="sm"
-                      :animate-on-hover="false"
-                      v-if="rectifierSaving"
-                      class="mr-1 h-4 w-4 animate-spin"
-                    />
-                    {{
-                      rectifierSaving ? t("common.saving") : t("common.save")
-                    }}
-                  </button>
-                </div>
-              </template>
-            </div>
-          </div>
-          <!-- Beta Policy Settings -->
-          <div
-            v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
-            class="card"
-            data-testid="gateway-card-beta-policy"
-          >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.betaPolicy.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.betaPolicy.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <!-- Loading State -->
-              <ContentSkeleton v-if="betaPolicyLoading" variant="form" :rows="5" />
-
-              <template v-else>
-                <!-- Rule Cards -->
-                <div
-                  v-for="rule in betaPolicyForm.rules"
-                  :key="rule.beta_token"
-                  class="rounded-control border border-gray-200 p-4 dark:border-dark-600"
-                >
-                  <div class="mb-3 flex items-center gap-2">
-                    <span
-                      class="text-sm font-medium text-gray-900 dark:text-white"
-                    >
-                      {{ getBetaDisplayName(rule.beta_token) }}
-                    </span>
-                    <span
-                      class="rounded-compact bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-dark-700 dark:text-gray-400"
-                    >
-                      {{ rule.beta_token }}
-                    </span>
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <!-- Action -->
-                    <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{ t("admin.settings.betaPolicy.action") }}
-                      </label>
-                      <Select
-                        :modelValue="rule.action"
-                        @update:modelValue="rule.action = $event as any"
-                        :options="betaPolicyActionOptions"
-                      />
-                    </div>
-
-                    <!-- Scope -->
-                    <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{ t("admin.settings.betaPolicy.scope") }}
-                      </label>
-                      <Select
-                        :modelValue="rule.scope"
-                        @update:modelValue="rule.scope = $event as any"
-                        :options="betaPolicyScopeOptions"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Error Message (only when action=block) -->
-                  <div v-if="rule.action === 'block'" class="mt-3">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.betaPolicy.errorMessage") }}
-                    </label>
-                    <input
-                      v-model="rule.error_message"
-                      type="text"
-                      class="input"
-                      :placeholder="
-                        t('admin.settings.betaPolicy.errorMessagePlaceholder')
-                      "
-                    />
-                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                      {{ t("admin.settings.betaPolicy.errorMessageHint") }}
-                    </p>
-                  </div>
-
-                  <!-- Quick Presets (only for tokens with presets) -->
-                  <div v-if="betaPresets[rule.beta_token]?.length" class="mt-3">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.betaPolicy.quickPresets") }}
-                    </label>
-                    <div class="flex flex-wrap gap-2">
-                      <button
-                        v-for="preset in betaPresets[rule.beta_token]"
-                        :key="preset.label"
-                        type="button"
-                        class="inline-flex items-center gap-1 rounded-compact border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-900/30 dark:text-primary-300 dark:hover:bg-primary-900/50"
-                        @click="applyBetaPreset(rule, preset)"
-                        :title="preset.description"
-                      >
-                        {{ preset.label }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Model Whitelist -->
+            <ContentSkeleton v-if="rectifierLoading" variant="form" :rows="4" />
+            <SettingsSection v-else>
+              <SettingToggleRow
+                id="rectifier-enabled"
+                v-model="rectifierForm.enabled"
+                :label="t('admin.settings.rectifier.enabled')"
+                :hint="t('admin.settings.rectifier.enabledHint')"
+              />
+              <Collapse :open="rectifierForm.enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingToggleRow
+                    id="rectifier-thinking-signature"
+                    v-model="rectifierForm.thinking_signature_enabled"
+                    :label="t('admin.settings.rectifier.thinkingSignature')"
+                    :hint="t('admin.settings.rectifier.thinkingSignatureHint')"
+                  />
+                  <SettingToggleRow
+                    id="rectifier-thinking-budget"
+                    v-model="rectifierForm.thinking_budget_enabled"
+                    :label="t('admin.settings.rectifier.thinkingBudget')"
+                    :hint="t('admin.settings.rectifier.thinkingBudgetHint')"
+                  />
+                  <SettingToggleRow
+                    id="rectifier-apikey-signature"
+                    v-model="rectifierForm.apikey_signature_enabled"
+                    :label="t('admin.settings.rectifier.apikeySignature')"
+                    :hint="t('admin.settings.rectifier.apikeySignatureHint')"
+                  />
+                  <!-- 自定义匹配规则只在 API Key 签名整流开启时生效。 -->
                   <RuleListEditor
-                    class="mt-3"
-                    :items="rule.model_whitelist || []"
-                    :title="t('admin.settings.betaPolicy.modelWhitelist')"
-                    :hint="t('admin.settings.betaPolicy.modelWhitelistHint')"
-                    :add-label="t('admin.settings.betaPolicy.addModelPattern')"
+                    v-if="rectifierForm.apikey_signature_enabled"
+                    :items="rectifierForm.apikey_signature_patterns"
+                    :title="t('admin.settings.rectifier.apikeyPatterns')"
+                    :hint="t('admin.settings.rectifier.apikeyPatternsHint')"
+                    :add-label="t('admin.settings.rectifier.addPattern')"
                     :animated="false"
-                    @add="if (!rule.model_whitelist) rule.model_whitelist = []; rule.model_whitelist.push('');"
-                    @remove="rule.model_whitelist!.splice($event, 1)"
+                    test-id="rectifier-patterns"
+                    @add="rectifierForm.apikey_signature_patterns.push('')"
+                    @remove="rectifierForm.apikey_signature_patterns.splice($event, 1)"
                   >
-                    <template #footer>
-                      <div class="flex flex-wrap items-center gap-1.5">
-                        <span class="text-xs text-gray-400 dark:text-gray-500"
-                          >{{
-                            t("admin.settings.betaPolicy.commonPatterns")
-                          }}:</span
-                        >
-                        <button
-                          v-for="pattern in commonModelPatterns"
-                          :key="pattern"
-                          type="button"
-                          class="rounded-compact border border-gray-200 px-2 py-0.5 text-xs text-gray-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-300"
-                          @click="addQuickPattern(rule, pattern)"
-                        >
-                          {{ pattern }}
-                        </button>
-                      </div>
-                    </template>
                     <template #row="{ index }">
                       <input
-                        v-model="rule.model_whitelist![index]"
+                        v-model="rectifierForm.apikey_signature_patterns[index]"
                         type="text"
                         class="input"
-                        :placeholder="
-                          t('admin.settings.betaPolicy.modelPatternPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.rectifier.apikeyPatternPlaceholder')"
                       />
                     </template>
                   </RuleListEditor>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+            <template v-if="!rectifierLoading" #footer>
+              <button
+                type="button"
+                :disabled="rectifierSaving"
+                class="btn btn-primary btn-sm h-9"
+                @click="saveRectifierSettings"
+              >
+                <Icon
+                  v-if="rectifierSaving"
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
+                  class="mr-1 h-4 w-4 animate-spin"
+                />
+                {{ rectifierSaving ? t("common.saving") : t("common.save") }}
+              </button>
+            </template>
+          </SettingsCard>
 
-                  <!-- Fallback Action (only when model_whitelist is non-empty) -->
-                  <div
-                    v-if="
-                      rule.model_whitelist && rule.model_whitelist.length > 0
-                    "
-                    class="mt-3"
-                  >
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.betaPolicy.fallbackAction") }}
+          <!-- Anthropic Beta 策略 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
+            data-testid="gateway-card-beta-policy"
+            :title="t('admin.settings.betaPolicy.title')"
+            :description="t('admin.settings.betaPolicy.description')"
+          >
+            <ContentSkeleton v-if="betaPolicyLoading" variant="form" :rows="5" />
+            <SettingsSection v-else>
+              <!-- 每个 beta token 一条固定规则。 -->
+              <SettingsSubpanel
+                v-for="rule in betaPolicyForm.rules"
+                :key="rule.beta_token"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-semibold text-primary-900 dark:text-dark-50">
+                    {{ getBetaDisplayName(rule.beta_token) }}
+                  </span>
+                  <span class="rounded-compact bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-500 dark:bg-dark-700 dark:text-dark-300">
+                    {{ rule.beta_token }}
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label :for="`beta-policy-${rule.beta_token}-action`" class="input-label">
+                      {{ t("admin.settings.betaPolicy.action") }}
                     </label>
                     <Select
-                      :modelValue="rule.fallback_action || 'pass'"
-                      @update:modelValue="rule.fallback_action = $event as any"
+                      :id="`beta-policy-${rule.beta_token}-action`"
+                      :modelValue="rule.action"
+                      @update:modelValue="rule.action = $event as any"
                       :options="betaPolicyActionOptions"
                     />
-                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                      {{ t("admin.settings.betaPolicy.fallbackActionHint") }}
-                    </p>
-                    <!-- Fallback Error Message (only when fallback_action=block) -->
-                    <div v-if="rule.fallback_action === 'block'" class="mt-2">
-                      <input
-                        v-model="rule.fallback_error_message"
-                        type="text"
-                        class="input"
-                        :placeholder="
-                          t(
-                            'admin.settings.betaPolicy.fallbackErrorMessagePlaceholder',
-                          )
-                        "
-                      />
-                      <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                        {{ t("admin.settings.betaPolicy.errorMessageHint") }}
-                      </p>
-                    </div>
+                  </div>
+                  <div>
+                    <label :for="`beta-policy-${rule.beta_token}-scope`" class="input-label">
+                      {{ t("admin.settings.betaPolicy.scope") }}
+                    </label>
+                    <Select
+                      :id="`beta-policy-${rule.beta_token}-scope`"
+                      :modelValue="rule.scope"
+                      @update:modelValue="rule.scope = $event as any"
+                      :options="betaPolicyScopeOptions"
+                    />
                   </div>
                 </div>
 
-                <!-- Save Button -->
-                <div
-                  class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <button
-                    type="button"
-                    @click="saveBetaPolicySettings"
-                    :disabled="betaPolicySaving"
-                    class="btn btn-primary btn-sm h-9"
-                  >
-                    <Icon
-                      name="loader"
-                      size="sm"
-                      :animate-on-hover="false"
-                      v-if="betaPolicySaving"
-                      class="mr-1 h-4 w-4 animate-spin"
-                    />
-                    {{
-                      betaPolicySaving ? t("common.saving") : t("common.save")
-                    }}
-                  </button>
+                <!-- 动作为拦截时填写返回给客户端的错误信息。 -->
+                <div v-if="rule.action === 'block'">
+                  <label :for="`beta-policy-${rule.beta_token}-error`" class="input-label">
+                    {{ t("admin.settings.betaPolicy.errorMessage") }}
+                  </label>
+                  <input
+                    :id="`beta-policy-${rule.beta_token}-error`"
+                    v-model="rule.error_message"
+                    type="text"
+                    class="input"
+                    :placeholder="t('admin.settings.betaPolicy.errorMessagePlaceholder')"
+                  />
+                  <p class="input-hint">
+                    {{ t("admin.settings.betaPolicy.errorMessageHint") }}
+                  </p>
                 </div>
-              </template>
-            </div>
-          </div>
-          <!-- OpenAI Fast/Flex Policy Settings -->
-          <div
+
+                <div v-if="betaPresets[rule.beta_token]?.length">
+                  <p class="input-label">
+                    {{ t("admin.settings.betaPolicy.quickPresets") }}
+                  </p>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="preset in betaPresets[rule.beta_token]"
+                      :key="preset.label"
+                      type="button"
+                      class="inline-flex items-center gap-1 rounded-compact border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100 dark:border-primary-800 dark:bg-primary-900/30 dark:text-primary-300 dark:hover:bg-primary-900/50"
+                      @click="applyBetaPreset(rule, preset)"
+                      :title="preset.description"
+                    >
+                      {{ preset.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <RuleListEditor
+                  :items="rule.model_whitelist || []"
+                  :title="t('admin.settings.betaPolicy.modelWhitelist')"
+                  :hint="t('admin.settings.betaPolicy.modelWhitelistHint')"
+                  :add-label="t('admin.settings.betaPolicy.addModelPattern')"
+                  :animated="false"
+                  @add="if (!rule.model_whitelist) rule.model_whitelist = []; rule.model_whitelist.push('');"
+                  @remove="rule.model_whitelist!.splice($event, 1)"
+                >
+                  <template #footer>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <span class="text-xs text-gray-500 dark:text-dark-400"
+                        >{{ t("admin.settings.betaPolicy.commonPatterns") }}:</span
+                      >
+                      <button
+                        v-for="pattern in commonModelPatterns"
+                        :key="pattern"
+                        type="button"
+                        class="rounded-compact border border-gray-200 px-2 py-0.5 text-xs text-gray-600 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-600 dark:text-gray-400 dark:hover:border-primary-700 dark:hover:bg-primary-900/30 dark:hover:text-primary-300"
+                        @click="addQuickPattern(rule, pattern)"
+                      >
+                        {{ pattern }}
+                      </button>
+                    </div>
+                  </template>
+                  <template #row="{ index }">
+                    <input
+                      v-model="rule.model_whitelist![index]"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.settings.betaPolicy.modelPatternPlaceholder')"
+                    />
+                  </template>
+                </RuleListEditor>
+
+                <!-- 模型白名单非空时，未命中白名单的模型按这里选择的动作处理。 -->
+                <div v-if="rule.model_whitelist && rule.model_whitelist.length > 0">
+                  <label :for="`beta-policy-${rule.beta_token}-fallback`" class="input-label">
+                    {{ t("admin.settings.betaPolicy.fallbackAction") }}
+                  </label>
+                  <Select
+                    :id="`beta-policy-${rule.beta_token}-fallback`"
+                    :modelValue="rule.fallback_action || 'pass'"
+                    @update:modelValue="rule.fallback_action = $event as any"
+                    :options="betaPolicyActionOptions"
+                  />
+                  <p class="input-hint">
+                    {{ t("admin.settings.betaPolicy.fallbackActionHint") }}
+                  </p>
+                  <div v-if="rule.fallback_action === 'block'" class="mt-2">
+                    <input
+                      v-model="rule.fallback_error_message"
+                      type="text"
+                      class="input"
+                      :aria-label="t('admin.settings.betaPolicy.errorMessage')"
+                      :placeholder="t('admin.settings.betaPolicy.fallbackErrorMessagePlaceholder')"
+                    />
+                    <p class="input-hint">
+                      {{ t("admin.settings.betaPolicy.errorMessageHint") }}
+                    </p>
+                  </div>
+                </div>
+              </SettingsSubpanel>
+            </SettingsSection>
+            <template v-if="!betaPolicyLoading" #footer>
+              <button
+                type="button"
+                :disabled="betaPolicySaving"
+                class="btn btn-primary btn-sm h-9"
+                @click="saveBetaPolicySettings"
+              >
+                <Icon
+                  v-if="betaPolicySaving"
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
+                  class="mr-1 h-4 w-4 animate-spin"
+                />
+                {{ betaPolicySaving ? t("common.saving") : t("common.save") }}
+              </button>
+            </template>
+          </SettingsCard>
+
+          <!-- OpenAI Fast/Flex 策略，随全局保存提交。 -->
+          <SettingsCard
             v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
-            class="card"
             data-testid="gateway-card-openai-fast-policy"
+            :title="t('admin.settings.openaiFastPolicy.title')"
+            :description="t('admin.settings.openaiFastPolicy.description')"
           >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.openaiFastPolicy.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.openaiFastPolicy.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
+            <SettingsSection>
               <RuleListEditor
                 :items="openaiFastPolicyForm.rules"
                 variant="card"
@@ -1082,76 +808,164 @@
                 @remove="removeOpenAIFastPolicyRule"
               >
                 <template #row="{ item: rule, index: ruleIndex }">
-                  <div
-                    class="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
-                    :data-testid="`openai-fast-policy-summary-${ruleIndex}`"
-                  >
-                    <span class="font-medium text-gray-700 dark:text-gray-300">
-                      {{
-                        t(
-                          hasOpenAIFastPolicyTargetModels(rule)
-                            ? "admin.settings.openaiFastPolicy.summaryTargetModels"
-                            : "admin.settings.openaiFastPolicy.summaryAllModels",
-                        )
-                      }}
-                    </span>
-                    <span aria-hidden="true">→</span>
-                    <span
-                      class="inline-flex items-center rounded-compact bg-primary-50 px-2 py-0.5 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                  <div class="space-y-4">
+                    <div
+                      class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-dark-400"
+                      :data-testid="`openai-fast-policy-summary-${ruleIndex}`"
                     >
-                      {{ openaiFastPolicyActionSummary(rule.action) }}
-                    </span>
-                    <template v-if="hasOpenAIFastPolicyTargetModels(rule)">
-                      <span aria-hidden="true">·</span>
-                      <span class="font-medium text-gray-700 dark:text-gray-300">
+                      <span class="font-medium text-gray-700 dark:text-dark-200">
                         {{
                           t(
-                            "admin.settings.openaiFastPolicy.summaryOtherModels",
+                            hasOpenAIFastPolicyTargetModels(rule)
+                              ? "admin.settings.openaiFastPolicy.summaryTargetModels"
+                              : "admin.settings.openaiFastPolicy.summaryAllModels",
                           )
                         }}
                       </span>
                       <span aria-hidden="true">→</span>
                       <span
-                        class="inline-flex items-center rounded-compact bg-gray-100 px-2 py-0.5 font-medium text-gray-700 dark:bg-dark-600 dark:text-gray-300"
+                        class="inline-flex items-center rounded-compact bg-primary-50 px-2 py-0.5 font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
                       >
-                        {{
-                          openaiFastPolicyActionSummary(
-                            rule.fallback_action || "pass",
-                          )
-                        }}
+                        {{ openaiFastPolicyActionSummary(rule.action) }}
                       </span>
-                    </template>
-                  </div>
-                  <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <!-- Service Tier -->
-                    <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{ t("admin.settings.openaiFastPolicy.serviceTier") }}
-                      </label>
-                      <Select
-                        :modelValue="rule.service_tier"
-                        @update:modelValue="
-                          rule.service_tier = $event as
-                            | 'all'
-                            | 'priority'
-                            | 'flex'
-                        "
-                        :options="openaiFastPolicyTierOptions"
-                      />
+                      <template v-if="hasOpenAIFastPolicyTargetModels(rule)">
+                        <span aria-hidden="true">·</span>
+                        <span class="font-medium text-gray-700 dark:text-dark-200">
+                          {{ t("admin.settings.openaiFastPolicy.summaryOtherModels") }}
+                        </span>
+                        <span aria-hidden="true">→</span>
+                        <span
+                          class="inline-flex items-center rounded-compact bg-gray-100 px-2 py-0.5 font-medium text-gray-700 dark:bg-dark-600 dark:text-gray-300"
+                        >
+                          {{ openaiFastPolicyActionSummary(rule.fallback_action || "pass") }}
+                        </span>
+                      </template>
                     </div>
-                    <!-- Action -->
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div>
+                        <label :for="`openai-fast-policy-tier-${ruleIndex}`" class="input-label">
+                          {{ t("admin.settings.openaiFastPolicy.serviceTier") }}
+                        </label>
+                        <Select
+                          :id="`openai-fast-policy-tier-${ruleIndex}`"
+                          :modelValue="rule.service_tier"
+                          @update:modelValue="
+                            rule.service_tier = $event as
+                              | 'all'
+                              | 'priority'
+                              | 'flex'
+                          "
+                          :options="openaiFastPolicyTierOptions"
+                        />
+                      </div>
+                      <div>
+                        <label :for="`openai-fast-policy-action-${ruleIndex}`" class="input-label">
+                          {{ t("admin.settings.openaiFastPolicy.action") }}
+                        </label>
+                        <Select
+                          :id="`openai-fast-policy-action-${ruleIndex}`"
+                          :modelValue="rule.action"
+                          @update:modelValue="
+                            rule.action = $event as
+                              | 'pass'
+                              | 'filter'
+                              | 'block'
+                              | 'force_priority'
+                              | 'force_ultrafast'
+                          "
+                          :options="openaiFastPolicyActionOptions"
+                        />
+                      </div>
+                      <div>
+                        <label :for="`openai-fast-policy-scope-${ruleIndex}`" class="input-label">
+                          {{ t("admin.settings.openaiFastPolicy.scope") }}
+                        </label>
+                        <Select
+                          :id="`openai-fast-policy-scope-${ruleIndex}`"
+                          :modelValue="rule.scope"
+                          @update:modelValue="
+                            rule.scope = $event as
+                              | 'all'
+                              | 'oauth'
+                              | 'apikey'
+                              | 'bedrock'
+                          "
+                          :options="openaiFastPolicyScopeOptions"
+                        />
+                      </div>
+                    </div>
                     <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+                      <p class="input-label">
+                        {{ t("admin.settings.openaiFastPolicy.userIds") }}
+                      </p>
+                      <OpenAIFastPolicyUserSelector
+                        :model-value="rule.user_ids || []"
+                        @update:model-value="rule.user_ids = $event"
+                      />
+                      <p class="input-hint">
+                        {{ t("admin.settings.openaiFastPolicy.userIdsHint") }}
+                      </p>
+                    </div>
+                    <div v-if="rule.action === 'block'">
+                      <label :for="`openai-fast-policy-error-${ruleIndex}`" class="input-label">
+                        {{ t("admin.settings.openaiFastPolicy.errorMessage") }}
+                      </label>
+                      <input
+                        :id="`openai-fast-policy-error-${ruleIndex}`"
+                        v-model="rule.error_message"
+                        type="text"
+                        class="input"
+                        :placeholder="t('admin.settings.openaiFastPolicy.errorMessagePlaceholder')"
+                      />
+                      <p class="input-hint">
+                        {{ t("admin.settings.openaiFastPolicy.errorMessageHint") }}
+                      </p>
+                    </div>
+                    <div
+                      role="group"
+                      :aria-labelledby="`openai-fast-policy-models-label-${ruleIndex}`"
+                      :aria-describedby="`openai-fast-policy-models-hint-${ruleIndex}`"
+                    >
+                      <p
+                        :id="`openai-fast-policy-models-label-${ruleIndex}`"
+                        class="input-label mb-0"
                       >
-                        {{ t("admin.settings.openaiFastPolicy.action") }}
+                        {{ t("admin.settings.openaiFastPolicy.modelWhitelist") }}
+                      </p>
+                      <p
+                        :id="`openai-fast-policy-models-hint-${ruleIndex}`"
+                        class="input-hint mb-2"
+                      >
+                        {{ t("admin.settings.openaiFastPolicy.modelWhitelistHint") }}
+                      </p>
+                      <RuleListEditor
+                        :items="rule.model_whitelist || []"
+                        :add-label="t('admin.settings.openaiFastPolicy.addModelPattern')"
+                        add-placement="footer"
+                        :animated="false"
+                        :test-id="`openai-fast-models-${ruleIndex}`"
+                        @add="addOpenAIFastPolicyModelPattern(rule)"
+                        @remove="removeOpenAIFastPolicyModelPattern(rule, $event)"
+                      >
+                        <template #row="{ index: patternIdx }">
+                          <input
+                            v-model="rule.model_whitelist![patternIdx]"
+                            type="text"
+                            class="input"
+                            :placeholder="t('admin.settings.openaiFastPolicy.modelPatternPlaceholder')"
+                          />
+                        </template>
+                      </RuleListEditor>
+                    </div>
+                    <div v-if="hasOpenAIFastPolicyTargetModels(rule)">
+                      <label :for="`openai-fast-policy-fallback-${ruleIndex}`" class="input-label">
+                        {{ t("admin.settings.openaiFastPolicy.fallbackAction") }}
                       </label>
                       <Select
-                        :modelValue="rule.action"
+                        :id="`openai-fast-policy-fallback-${ruleIndex}`"
+                        :modelValue="rule.fallback_action || 'pass'"
                         @update:modelValue="
-                          rule.action = $event as
+                          rule.fallback_action = $event as
                             | 'pass'
                             | 'filter'
                             | 'block'
@@ -1160,148 +974,25 @@
                         "
                         :options="openaiFastPolicyActionOptions"
                       />
-                    </div>
-                    <!-- Scope -->
-                    <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{ t("admin.settings.openaiFastPolicy.scope") }}
-                      </label>
-                      <Select
-                        :modelValue="rule.scope"
-                        @update:modelValue="
-                          rule.scope = $event as
-                            | 'all'
-                            | 'oauth'
-                            | 'apikey'
-                            | 'bedrock'
-                        "
-                        :options="openaiFastPolicyScopeOptions"
-                      />
-                    </div>
-                  </div>
-                  <div class="mt-3">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.openaiFastPolicy.userIds") }}
-                    </label>
-                    <p class="mb-2 text-xs text-gray-400 dark:text-gray-500">
-                      {{ t("admin.settings.openaiFastPolicy.userIdsHint") }}
-                    </p>
-                    <OpenAIFastPolicyUserSelector
-                      :model-value="rule.user_ids || []"
-                      @update:model-value="rule.user_ids = $event"
-                    />
-                  </div>
-                  <div v-if="rule.action === 'block'" class="mt-3">
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.openaiFastPolicy.errorMessage") }}
-                    </label>
-                    <input
-                      v-model="rule.error_message"
-                      type="text"
-                      class="input"
-                      :placeholder="
-                        t(
-                          'admin.settings.openaiFastPolicy.errorMessagePlaceholder',
-                        )
-                      "
-                    />
-                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                      {{ t("admin.settings.openaiFastPolicy.errorMessageHint") }}
-                    </p>
-                  </div>
-                  <div
-                    class="mt-3"
-                    role="group"
-                    :aria-labelledby="`openai-fast-policy-models-label-${ruleIndex}`"
-                    :aria-describedby="`openai-fast-policy-models-hint-${ruleIndex}`"
-                  >
-                    <label
-                      :id="`openai-fast-policy-models-label-${ruleIndex}`"
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.openaiFastPolicy.modelWhitelist") }}
-                    </label>
-                    <p
-                      :id="`openai-fast-policy-models-hint-${ruleIndex}`"
-                      class="mb-2 text-xs text-gray-400 dark:text-gray-500"
-                    >
-                      {{
-                        t("admin.settings.openaiFastPolicy.modelWhitelistHint")
-                      }}
-                    </p>
-                    <RuleListEditor
-                      :items="rule.model_whitelist || []"
-                      :add-label="t('admin.settings.openaiFastPolicy.addModelPattern')"
-                      add-placement="footer"
-                      :animated="false"
-                      :test-id="`openai-fast-models-${ruleIndex}`"
-                      @add="addOpenAIFastPolicyModelPattern(rule)"
-                      @remove="removeOpenAIFastPolicyModelPattern(rule, $event)"
-                    >
-                      <template #row="{ index: patternIdx }">
+                      <p class="input-hint">
+                        {{ t("admin.settings.openaiFastPolicy.fallbackActionHint") }}
+                      </p>
+                      <div v-if="rule.fallback_action === 'block'" class="mt-2">
                         <input
-                          v-model="rule.model_whitelist![patternIdx]"
+                          v-model="rule.fallback_error_message"
                           type="text"
                           class="input"
-                          :placeholder="
-                            t(
-                              'admin.settings.openaiFastPolicy.modelPatternPlaceholder',
-                            )
-                          "
+                          :aria-label="t('admin.settings.openaiFastPolicy.errorMessage')"
+                          :placeholder="t('admin.settings.openaiFastPolicy.fallbackErrorMessagePlaceholder')"
                         />
-                      </template>
-                    </RuleListEditor>
-                  </div>
-                  <div
-                    v-if="hasOpenAIFastPolicyTargetModels(rule)"
-                    class="mt-3"
-                  >
-                    <label
-                      class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                    >
-                      {{ t("admin.settings.openaiFastPolicy.fallbackAction") }}
-                    </label>
-                    <Select
-                      :modelValue="rule.fallback_action || 'pass'"
-                      @update:modelValue="
-                        rule.fallback_action = $event as
-                          | 'pass'
-                          | 'filter'
-                          | 'block'
-                          | 'force_priority'
-                            | 'force_ultrafast'
-                      "
-                      :options="openaiFastPolicyActionOptions"
-                    />
-                    <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                      {{
-                        t("admin.settings.openaiFastPolicy.fallbackActionHint")
-                      }}
-                    </p>
-                    <div v-if="rule.fallback_action === 'block'" class="mt-2">
-                      <input
-                        v-model="rule.fallback_error_message"
-                        type="text"
-                        class="input"
-                        :placeholder="
-                          t(
-                            'admin.settings.openaiFastPolicy.fallbackErrorMessagePlaceholder',
-                          )
-                        "
-                      />
+                      </div>
                     </div>
                   </div>
                 </template>
               </RuleListEditor>
-              <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('admin.settings.openaiFastPolicy.saveHint') }}</p>
-            </div>
-          </div>
+              <p class="input-hint">{{ t('admin.settings.openaiFastPolicy.saveHint') }}</p>
+            </SettingsSection>
+          </SettingsCard>
         </div>
         <!-- /Tab: Gateway -->
 
@@ -3993,322 +3684,225 @@
 
         <!-- Tab: Gateway — Claude Code, Scheduling -->
         <div v-show="activeTab === 'gateway'" v-content-reveal="activeTab === 'gateway'" class="space-y-4">
-          <!-- Claude Code Settings -->
-          <div
+          <!-- Claude Code 版本限制 -->
+          <SettingsCard
             v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
-            class="card"
             data-testid="gateway-card-claude-code"
+            :title="t('admin.settings.claudeCode.title')"
+            :description="t('admin.settings.claudeCode.description')"
           >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.claudeCode.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.claudeCode.description") }}
-              </p>
-            </div>
-            <div class="p-6">
-              <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.claudeCode.minVersion") }}
-                </label>
+            <SettingsSection>
+              <SettingRow
+                id="claude-code-min-version"
+                field
+                label-for="claude-code-min-version"
+                :label="t('admin.settings.claudeCode.minVersion')"
+                :hint="t('admin.settings.claudeCode.minVersionHint')"
+              >
                 <input
+                  id="claude-code-min-version"
                   v-model="form.min_claude_code_version"
                   type="text"
-                  class="input max-w-xs font-mono text-sm"
-                  :placeholder="
-                    t('admin.settings.claudeCode.minVersionPlaceholder')
-                  "
+                  class="input font-mono text-sm"
+                  :placeholder="t('admin.settings.claudeCode.minVersionPlaceholder')"
                 />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.claudeCode.minVersionHint") }}
-                </p>
-              </div>
-              <div class="mt-4">
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.claudeCode.maxVersion") }}
-                </label>
+              </SettingRow>
+              <SettingRow
+                id="claude-code-max-version"
+                field
+                label-for="claude-code-max-version"
+                :label="t('admin.settings.claudeCode.maxVersion')"
+                :hint="t('admin.settings.claudeCode.maxVersionHint')"
+              >
                 <input
+                  id="claude-code-max-version"
                   v-model="form.max_claude_code_version"
                   type="text"
-                  class="input max-w-xs font-mono text-sm"
-                  :placeholder="
-                    t('admin.settings.claudeCode.maxVersionPlaceholder')
-                  "
+                  class="input font-mono text-sm"
+                  :placeholder="t('admin.settings.claudeCode.maxVersionPlaceholder')"
                 />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.claudeCode.maxVersionHint") }}
-                </p>
-              </div>
-            </div>
-          </div>
+              </SettingRow>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- Ollama Cloud 用量设置 -->
-          <div
+          <!-- Ollama Cloud 用量 -->
+          <SettingsCard
             v-show="activeGatewaySection === 'ollamaCloud'" v-content-reveal="activeGatewaySection === 'ollamaCloud'"
-            class="card"
             data-testid="ollama-cloud-usage-global-settings"
+            :title="t('admin.settings.ollamaCloudUsage.title')"
+            :description="t('admin.settings.ollamaCloudUsage.description')"
           >
-            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.ollamaCloudUsage.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.ollamaCloudUsage.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <ContentSkeleton v-if="ollamaCloudUsageLoading" variant="form" :rows="3" />
-              <template v-else>
-                <div class="flex items-center justify-between gap-4">
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">
-                      {{ t("admin.settings.ollamaCloudUsage.enabled") }}
-                    </label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.ollamaCloudUsage.enabledHint") }}
-                    </p>
-                  </div>
-                  <Toggle
-                    v-model="ollamaCloudUsageForm.enabled"
-                    :aria-label="t('admin.settings.ollamaCloudUsage.enabled')"
-                    data-testid="ollama-cloud-usage-global-enabled"
-                  />
-                </div>
-                <Collapse :open="ollamaCloudUsageForm.enabled" unmount-on-hide>
-                  <div class="space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700">
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300" for="ollama-cloud-usage-debounce">
-                        {{ t("admin.settings.ollamaCloudUsage.debounceMinutes") }}
-                      </label>
-                      <input
-                        id="ollama-cloud-usage-debounce"
-                        v-model.number="ollamaCloudUsageForm.debounce_minutes"
-                        type="number"
-                        min="1"
-                        max="60"
-                        class="input w-32"
-                        data-testid="ollama-cloud-usage-global-debounce"
-                        @keydown.enter.prevent="saveOllamaCloudUsageSettings"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.ollamaCloudUsage.debounceHint") }}
-                      </p>
-                    </div>
-                    <div>
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300" for="ollama-cloud-usage-interval">
-                        {{ t("admin.settings.ollamaCloudUsage.intervalMinutes") }}
-                      </label>
-                      <input
-                        id="ollama-cloud-usage-interval"
-                        v-model.number="ollamaCloudUsageForm.interval_minutes"
-                        type="number"
-                        min="15"
-                        max="1440"
-                        class="input w-32"
-                        data-testid="ollama-cloud-usage-global-interval"
-                        @keydown.enter.prevent="saveOllamaCloudUsageSettings"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.ollamaCloudUsage.intervalHint") }}
-                      </p>
-                    </div>
-                  </div>
-                </Collapse>
-                <div class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700">
-                  <button
-                    type="button"
-                    class="btn btn-primary btn-sm h-9"
-                    :disabled="ollamaCloudUsageSaving"
-                    data-testid="ollama-cloud-usage-global-save"
-                    @click="saveOllamaCloudUsageSettings"
+            <ContentSkeleton v-if="ollamaCloudUsageLoading" variant="form" :rows="3" />
+            <SettingsSection v-else>
+              <SettingToggleRow
+                id="ollama-cloud-usage-enabled"
+                v-model="ollamaCloudUsageForm.enabled"
+                :label="t('admin.settings.ollamaCloudUsage.enabled')"
+                :hint="t('admin.settings.ollamaCloudUsage.enabledHint')"
+                testid="ollama-cloud-usage-global-enabled"
+              />
+              <Collapse :open="ollamaCloudUsageForm.enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingRow
+                    id="ollama-cloud-usage-debounce"
+                    field
+                    label-for="ollama-cloud-usage-debounce"
+                    :label="t('admin.settings.ollamaCloudUsage.debounceMinutes')"
+                    :hint="t('admin.settings.ollamaCloudUsage.debounceHint')"
                   >
-                    {{ ollamaCloudUsageSaving ? t("common.saving") : t("common.save") }}
-                  </button>
-                </div>
-              </template>
-            </div>
-          </div>
-
-          <!-- Gateway Scheduling Settings -->
-          <div
-            v-show="
-              activeGatewaySection === 'general' ||
-              activeGatewaySection === 'openai'
-            " v-content-reveal="activeGatewaySection === 'general' ||
-              activeGatewaySection === 'openai'"
-            class="card"
-            data-testid="gateway-card-scheduling"
-          >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{
-                  t(
-                    activeGatewaySection === "general"
-                      ? "admin.settings.scheduling.title"
-                      : "admin.settings.openaiScheduling.title",
-                  )
-                }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{
-                  t(
-                    activeGatewaySection === "general"
-                      ? "admin.settings.scheduling.description"
-                      : "admin.settings.openaiScheduling.description",
-                  )
-                }}
-              </p>
-            </div>
-            <div class="p-6">
-              <div
-                v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
-                data-testid="gateway-scheduling-general"
+                    <input
+                      id="ollama-cloud-usage-debounce"
+                      v-model.number="ollamaCloudUsageForm.debounce_minutes"
+                      type="number"
+                      min="1"
+                      max="60"
+                      class="input"
+                      data-testid="ollama-cloud-usage-global-debounce"
+                      @keydown.enter.prevent="saveOllamaCloudUsageSettings"
+                    />
+                  </SettingRow>
+                  <SettingRow
+                    id="ollama-cloud-usage-interval"
+                    field
+                    label-for="ollama-cloud-usage-interval"
+                    :label="t('admin.settings.ollamaCloudUsage.intervalMinutes')"
+                    :hint="t('admin.settings.ollamaCloudUsage.intervalHint')"
+                  >
+                    <input
+                      id="ollama-cloud-usage-interval"
+                      v-model.number="ollamaCloudUsageForm.interval_minutes"
+                      type="number"
+                      min="15"
+                      max="1440"
+                      class="input"
+                      data-testid="ollama-cloud-usage-global-interval"
+                      @keydown.enter.prevent="saveOllamaCloudUsageSettings"
+                    />
+                  </SettingRow>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+            <template v-if="!ollamaCloudUsageLoading" #footer>
+              <button
+                type="button"
+                class="btn btn-primary btn-sm h-9"
+                :disabled="ollamaCloudUsageSaving"
+                data-testid="ollama-cloud-usage-global-save"
+                @click="saveOllamaCloudUsageSettings"
               >
+                <Icon
+                  v-if="ollamaCloudUsageSaving"
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
+                  class="mr-1 h-4 w-4 animate-spin"
+                />
+                {{ ollamaCloudUsageSaving ? t("common.saving") : t("common.save") }}
+              </button>
+            </template>
+          </SettingsCard>
 
-                <div class="mt-5 border-t border-gray-100 pt-5 dark:border-dark-700">
-                  <div class="mb-3">
-                    <label class="font-medium text-gray-900 dark:text-white">
-                      {{
-                        t(
-                          "admin.settings.scheduling.providerSchedulingThresholdsTitle",
-                        )
-                      }}
-                    </label>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {{
-                        t(
-                          "admin.settings.scheduling.providerSchedulingThresholdsDescription",
-                        )
-                      }}
-                    </p>
-                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{
-                        t(
-                          "admin.settings.scheduling.providerSchedulingThresholdsGlobalHint",
-                        )
-                      }}
-                    </p>
-                    <p class="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-                      {{
-                        t(
-                          "admin.settings.scheduling.providerSchedulingThresholdsDisabledHint",
-                        )
-                      }}
-                    </p>
-                  </div>
-                  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    <div
-                      v-for="platform in schedulingThresholdPlatforms"
-                      :key="platform"
-                      class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
+          <!-- 通用调度 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
+            data-testid="gateway-card-scheduling"
+            :title="t('admin.settings.scheduling.title')"
+            :description="t('admin.settings.scheduling.description')"
+          >
+            <div class="settings-section space-y-6" data-testid="gateway-scheduling-general">
+              <SettingsSection
+                :title="t('admin.settings.scheduling.providerSchedulingThresholdsTitle')"
+                :hint="t('admin.settings.scheduling.providerSchedulingThresholdsDescription')"
+              >
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div v-for="platform in schedulingThresholdPlatforms" :key="platform">
+                    <label
+                      :for="`provider-scheduling-threshold-${platform}`"
+                      class="input-label font-mono"
                     >
-                      <div class="flex items-start justify-between gap-3">
-                        <div>
-                          <label
-                            class="font-mono text-sm font-medium text-gray-900 dark:text-white"
-                          >
-                            {{ platform }}
-                          </label>
-                          <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                            {{
-                              t(
-                                "admin.settings.scheduling.providerSchedulingThresholdsRangeHint",
-                              )
-                            }}
-                          </p>
-                        </div>
-                        <span
-                          class="rounded-compact bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-dark-700 dark:text-gray-300"
-                        >
-                          %
-                        </span>
-                      </div>
+                      {{ platform }}
+                    </label>
+                    <div class="input-icon-wrap">
                       <input
+                        :id="`provider-scheduling-threshold-${platform}`"
                         v-model.number="form.provider_scheduling_thresholds[platform]"
                         type="number"
                         min="1"
                         max="100"
                         step="1"
-                        class="input mt-3"
+                        class="input input-has-icon-right"
                         :data-testid="`provider-scheduling-threshold-${platform}`"
                         placeholder="100"
                       />
+                      <span class="input-icon-right text-sm text-gray-400 dark:text-dark-400" aria-hidden="true">%</span>
                     </div>
                   </div>
                 </div>
-
-                <div class="mt-5 border-t border-gray-100 pt-5 dark:border-dark-700">
-                  <div>
-                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {{ t("admin.settings.scheduling.stickyEscapeTitle") }}
-                    </label>
-                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.scheduling.stickyEscapeDescription") }}
-                    </p>
-                  </div>
-                  <div class="mt-4 flex flex-col gap-4">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <span class="text-sm text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.scheduling.stickyEscapeEnabled") }}
-                      </span>
-                      <Toggle
-                        v-model="form.advanced_scheduler_sticky_escape_enabled"
-                        class="self-end sm:self-auto"
-                      />
-                    </div>
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <label class="block">
-                        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {{ t("admin.settings.scheduling.stickyEscapeTTFT") }}
-                        </span>
-                        <input
-                          v-model="form.advanced_scheduler_sticky_escape_ttft_ms"
-                          class="input mt-1"
-                          inputmode="numeric"
-                          type="text"
-                          :placeholder="advancedSchedulerPlaceholder('advanced_scheduler_effective_sticky_escape_ttft_ms', '15000')"
-                        />
-                      </label>
-                      <label class="block">
-                        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {{ t("admin.settings.scheduling.stickyEscapeErrorRate") }}
-                        </span>
-                        <input
-                          v-model="form.advanced_scheduler_sticky_escape_error_rate"
-                          class="input mt-1"
-                          inputmode="decimal"
-                          type="text"
-                          :placeholder="advancedSchedulerPlaceholder('advanced_scheduler_effective_sticky_escape_error_rate', '0.5')"
-                        />
-                      </label>
-                    </div>
-                  </div>
+                <div class="space-y-1">
+                  <p class="input-hint">
+                    {{ t("admin.settings.scheduling.providerSchedulingThresholdsRangeHint") }}
+                  </p>
+                  <p class="input-hint">
+                    {{ t("admin.settings.scheduling.providerSchedulingThresholdsDisabledHint") }}
+                  </p>
+                  <p class="input-hint">
+                    {{ t("admin.settings.scheduling.providerSchedulingThresholdsGlobalHint") }}
+                  </p>
                 </div>
-              </div>
+              </SettingsSection>
 
-              <section
-                v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
-                class="mt-6 border-t border-gray-100 pt-6 dark:border-dark-700"
-                data-testid="gateway-scheduling-general-advanced"
+              <SettingsSection
+                :title="t('admin.settings.scheduling.stickyEscapeTitle')"
+                :hint="t('admin.settings.scheduling.stickyEscapeDescription')"
               >
-                <div class="flex items-end justify-between gap-4">
-                  <div class="max-w-4xl">
-                    <h3 class="text-base font-semibold text-gray-900 dark:text-white">
-                      {{ t("admin.settings.scheduling.advancedTitle") }}
-                    </h3>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.scheduling.advancedDescription") }}
-                    </p>
-                  </div>
+                <SettingToggleRow
+                  id="advanced-scheduler-sticky-escape-enabled"
+                  v-model="form.advanced_scheduler_sticky_escape_enabled"
+                  :label="t('admin.settings.scheduling.stickyEscapeEnabled')"
+                />
+                <Collapse :open="form.advanced_scheduler_sticky_escape_enabled">
+                  <SettingsSubpanel>
+                    <SettingRow
+                      id="advanced-scheduler-sticky-escape-ttft"
+                      field
+                      label-for="advanced-scheduler-sticky-escape-ttft"
+                      :label="t('admin.settings.scheduling.stickyEscapeTTFT')"
+                    >
+                      <input
+                        id="advanced-scheduler-sticky-escape-ttft"
+                        v-model="form.advanced_scheduler_sticky_escape_ttft_ms"
+                        class="input"
+                        inputmode="numeric"
+                        type="text"
+                        :placeholder="advancedSchedulerPlaceholder('advanced_scheduler_effective_sticky_escape_ttft_ms', '15000')"
+                      />
+                    </SettingRow>
+                    <SettingRow
+                      id="advanced-scheduler-sticky-escape-error-rate"
+                      field
+                      label-for="advanced-scheduler-sticky-escape-error-rate"
+                      :label="t('admin.settings.scheduling.stickyEscapeErrorRate')"
+                    >
+                      <input
+                        id="advanced-scheduler-sticky-escape-error-rate"
+                        v-model="form.advanced_scheduler_sticky_escape_error_rate"
+                        class="input"
+                        inputmode="decimal"
+                        type="text"
+                        :placeholder="advancedSchedulerPlaceholder('advanced_scheduler_effective_sticky_escape_error_rate', '0.5')"
+                      />
+                    </SettingRow>
+                  </SettingsSubpanel>
+                </Collapse>
+              </SettingsSection>
+            </div>
+
+            <div class="settings-section space-y-6" data-testid="gateway-scheduling-general-advanced">
+              <SettingsSection
+                :title="t('admin.settings.scheduling.advancedTitle')"
+                :hint="t('admin.settings.scheduling.advancedDescription')"
+              >
+                <template #actions>
                   <HelpTooltip
                     trigger="both"
                     placement="bottom"
@@ -4367,587 +3961,346 @@
                       </p>
                     </div>
                   </HelpTooltip>
-                </div>
-
-                <div class="mt-6 space-y-5">
-                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="min-w-0">
-                      <label
-                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.scheduling.stickyWeightedTitle") }}
-                      </label>
-                      <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          t("admin.settings.scheduling.stickyWeightedDescription")
-                        }}
-                      </p>
-                    </div>
-                    <Toggle
-                      v-model="form.advanced_scheduler_sticky_weighted_enabled"
-                      class="self-end sm:self-auto"
-                    />
-                  </div>
-
-                  <div
-                    class="flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between dark:border-dark-700"
-                  >
-                    <div class="min-w-0">
-                      <label
-                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.scheduling.subscriptionPriorityTitle") }}
-                      </label>
-                      <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          t("admin.settings.scheduling.subscriptionPriorityDescription")
-                        }}
-                      </p>
-                    </div>
-                    <Toggle
-                      v-model="form.advanced_scheduler_subscription_priority_enabled"
-                      class="self-end sm:self-auto"
-                    />
-                  </div>
-
-                  <div class="border-t border-gray-100 pt-5 dark:border-dark-700">
-                    <div>
-                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.scheduling.ewmaTitle") }}
-                      </label>
-                      <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.scheduling.ewmaDescription") }}
-                      </p>
-                    </div>
-                    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <label class="block">
-                        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {{ t("admin.settings.scheduling.ewmaErrorRateAlpha") }}
-                        </span>
-                        <input
-                          v-model="form.advanced_scheduler_ewma_error_rate_alpha"
-                          class="input mt-1"
-                          inputmode="decimal"
-                          type="text"
-                          :placeholder="advancedSchedulerPlaceholder('advanced_scheduler_effective_ewma_error_rate_alpha', '0.2')"
-                        />
-                      </label>
-                      <label class="block">
-                        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {{ t("admin.settings.scheduling.ewmaTTFTAlpha") }}
-                        </span>
-                        <input
-                          v-model="form.advanced_scheduler_ewma_ttft_alpha"
-                          class="input mt-1"
-                          inputmode="decimal"
-                          type="text"
-                          :placeholder="advancedSchedulerPlaceholder('advanced_scheduler_effective_ewma_ttft_alpha', '0.2')"
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div
-                    class="border-t border-gray-100 pt-5 dark:border-dark-700"
-                  >
-                    <div>
-                      <label
-                        class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.scheduling.weightsTitle") }}
-                      </label>
-                      <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          t("admin.settings.scheduling.weightsDescription")
-                        }}
-                      </p>
-                    </div>
-
-                    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-                      <label
-                        v-for="field in advancedSchedulerWeightFields"
-                        :key="field.key"
-                        class="block"
-                      >
-                        <span class="text-xs font-medium text-gray-600 dark:text-gray-400">
-                          {{ field.label }}
-                        </span>
-                        <input
-                          v-model="form[field.key]"
-                          class="input mt-1"
-                          inputmode="decimal"
-                          :placeholder="field.placeholder"
-                          type="text"
-                        />
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <div
-                v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
-                class="border-t border-gray-100 pt-5 dark:border-dark-700"
-              >
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                  {{ t("admin.settings.openaiQuotaAutoPause.title") }}
-                </h3>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.openaiQuotaAutoPause.description") }}
-                </p>
-                <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <label class="input-label">
-                      {{ t("admin.settings.openaiQuotaAutoPause.default5h") }}
-                    </label>
-                    <input
-                      v-model.number="openAIQuotaAutoPause5hPercent"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      class="input"
-                      data-testid="settings-openai-quota-auto-pause-5h"
-                    />
-                  </div>
-                  <div>
-                    <label class="input-label">
-                      {{ t("admin.settings.openaiQuotaAutoPause.default7d") }}
-                    </label>
-                    <input
-                      v-model.number="openAIQuotaAutoPause7dPercent"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      class="input"
-                      data-testid="settings-openai-quota-auto-pause-7d"
-                    />
-                  </div>
-                </div>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.openaiQuotaAutoPause.thresholdHint") }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Gateway Forwarding Behavior -->
-          <div
-            v-show="
-              activeGatewaySection === 'anthropic' ||
-              activeGatewaySection === 'openai' ||
-              activeGatewaySection === 'grok' ||
-              activeGatewaySection === 'antigravity'
-            " v-content-reveal="activeGatewaySection === 'anthropic' ||
-              activeGatewaySection === 'openai' ||
-              activeGatewaySection === 'grok' ||
-              activeGatewaySection === 'antigravity'"
-            class="card"
-            data-testid="gateway-card-forwarding"
-          >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{
-                  t(gatewayForwardingTitleKey)
-                }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{
-                  t(gatewayForwardingDescriptionKey)
-                }}
-              </p>
-            </div>
-            <div class="p-6">
-              <div
-                v-show="activeGatewaySection === 'grok'" v-content-reveal="activeGatewaySection === 'grok'"
-                class="space-y-5"
-                data-testid="gateway-forwarding-grok"
-              >
-                <div class="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(18rem,auto)] md:items-end">
-                  <div>
-                    <label
-                      for="grok-default-text-model"
-                      class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.gatewayForwarding.grokDefaultTextModel") }}
-                    </label>
-                    <input
-                      id="grok-default-text-model"
-                      v-model.trim="form.grok_default_text_model"
-                      type="text"
-                      class="input mt-2 w-full"
-                      list="grok-default-text-model-options"
-                      data-testid="grok-default-text-model"
-                      placeholder="grok-4.5"
-                    />
-                    <datalist id="grok-default-text-model-options">
-                      <option value="grok-4.5" />
-                      <option value="grok-4.3" />
-                      <option value="grok-build-0.1" />
-                    </datalist>
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.gatewayForwarding.grokDefaultTextModelHint") }}
-                    </p>
-                  </div>
-
-                </div>
-
-                <div>
-                  <label
-                    for="grok-default-base-url-mode"
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.gatewayForwarding.grokDefaultBaseURLMode") }}
-                  </label>
-                  <Select
-                    id="grok-default-base-url-mode"
-                    v-model="form.grok_default_base_url_mode"
-                    :options="grokDefaultBaseURLOptions"
-                    class="mt-2 w-full"
-                    data-testid="grok-default-base-url-mode"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.gatewayForwarding.grokDefaultBaseURLModeHint") }}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
-                class="space-y-5"
-                data-testid="gateway-forwarding-anthropic"
-              >
-              <!-- Fingerprint Unification -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.fingerprintUnification",
-                      )
-                    }}
-                  </label>
-                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.fingerprintUnificationHint",
-                      )
-                    }}
-                  </p>
-                </div>
-                <Toggle v-model="form.enable_fingerprint_unification" />
-              </div>
-
-              <!-- Metadata Passthrough -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{
-                      t("admin.settings.gatewayForwarding.metadataPassthrough")
-                    }}
-                  </label>
-                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.metadataPassthroughHint",
-                      )
-                    }}
-                  </p>
-                </div>
-                <Toggle v-model="form.enable_metadata_passthrough" />
-              </div>
-
-              <!-- Claude OAuth System 注入 -->
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <label
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.claudeOAuthSystemPromptInjection",
-                      )
-                    }}
-                  </label>
-                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.claudeOAuthSystemPromptInjectionHint",
-                      )
-                    }}
-                  </p>
-                </div>
-                <Toggle
-                  v-model="form.enable_claude_oauth_system_prompt_injection"
+                </template>
+                <SettingToggleRow
+                  id="advanced-scheduler-sticky-weighted"
+                  v-model="form.advanced_scheduler_sticky_weighted_enabled"
+                  :label="t('admin.settings.scheduling.stickyWeightedTitle')"
+                  :hint="t('admin.settings.scheduling.stickyWeightedDescription')"
                 />
-              </div>
+                <SettingToggleRow
+                  id="advanced-scheduler-subscription-priority"
+                  v-model="form.advanced_scheduler_subscription_priority_enabled"
+                  :label="t('admin.settings.scheduling.subscriptionPriorityTitle')"
+                  :hint="t('admin.settings.scheduling.subscriptionPriorityDescription')"
+                />
+              </SettingsSection>
 
-              <div class="grid gap-5 md:grid-cols-2">
+              <SettingsSection
+                :title="t('admin.settings.scheduling.ewmaTitle')"
+                :hint="t('admin.settings.scheduling.ewmaDescription')"
+              >
+                <SettingRow
+                  id="advanced-scheduler-ewma-error-rate"
+                  field
+                  label-for="advanced-scheduler-ewma-error-rate"
+                  :label="t('admin.settings.scheduling.ewmaErrorRateAlpha')"
+                >
+                  <input
+                    id="advanced-scheduler-ewma-error-rate"
+                    v-model="form.advanced_scheduler_ewma_error_rate_alpha"
+                    class="input"
+                    inputmode="decimal"
+                    type="text"
+                    :placeholder="advancedSchedulerPlaceholder('advanced_scheduler_effective_ewma_error_rate_alpha', '0.2')"
+                  />
+                </SettingRow>
+                <SettingRow
+                  id="advanced-scheduler-ewma-ttft"
+                  field
+                  label-for="advanced-scheduler-ewma-ttft"
+                  :label="t('admin.settings.scheduling.ewmaTTFTAlpha')"
+                >
+                  <input
+                    id="advanced-scheduler-ewma-ttft"
+                    v-model="form.advanced_scheduler_ewma_ttft_alpha"
+                    class="input"
+                    inputmode="decimal"
+                    type="text"
+                    :placeholder="advancedSchedulerPlaceholder('advanced_scheduler_effective_ewma_ttft_alpha', '0.2')"
+                  />
+                </SettingRow>
+              </SettingsSection>
+
+              <SettingsSection
+                :title="t('admin.settings.scheduling.weightsTitle')"
+                :hint="t('admin.settings.scheduling.weightsDescription')"
+              >
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                  <div v-for="field in advancedSchedulerWeightFields" :key="field.key">
+                    <label :for="`advanced-scheduler-weight-${field.key}`" class="input-label">
+                      {{ field.label }}
+                    </label>
+                    <input
+                      :id="`advanced-scheduler-weight-${field.key}`"
+                      v-model="form[field.key]"
+                      class="input"
+                      inputmode="decimal"
+                      :placeholder="field.placeholder"
+                      type="text"
+                    />
+                  </div>
+                </div>
+              </SettingsSection>
+            </div>
+          </SettingsCard>
+
+          <!-- OpenAI 调度：配额自动暂停 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
+            data-testid="gateway-card-openai-scheduling"
+            :title="t('admin.settings.openaiScheduling.title')"
+            :description="t('admin.settings.openaiScheduling.description')"
+          >
+            <SettingsSection
+              :title="t('admin.settings.openaiQuotaAutoPause.title')"
+              :hint="t('admin.settings.openaiQuotaAutoPause.description')"
+            >
+              <SettingRow
+                id="openai-quota-auto-pause-5h"
+                field
+                label-for="openai-quota-auto-pause-5h"
+                :label="t('admin.settings.openaiQuotaAutoPause.default5h')"
+              >
+                <input
+                  id="openai-quota-auto-pause-5h"
+                  v-model.number="openAIQuotaAutoPause5hPercent"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  class="input"
+                  data-testid="settings-openai-quota-auto-pause-5h"
+                />
+              </SettingRow>
+              <SettingRow
+                id="openai-quota-auto-pause-7d"
+                field
+                label-for="openai-quota-auto-pause-7d"
+                :label="t('admin.settings.openaiQuotaAutoPause.default7d')"
+                :hint="t('admin.settings.openaiQuotaAutoPause.thresholdHint')"
+              >
+                <input
+                  id="openai-quota-auto-pause-7d"
+                  v-model.number="openAIQuotaAutoPause7dPercent"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  class="input"
+                  data-testid="settings-openai-quota-auto-pause-7d"
+                />
+              </SettingRow>
+            </SettingsSection>
+          </SettingsCard>
+
+          <!-- Grok 请求转发 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'grok'" v-content-reveal="activeGatewaySection === 'grok'"
+            data-testid="gateway-forwarding-grok"
+            :title="t('admin.settings.gatewayForwarding.grokTitle')"
+            :description="t('admin.settings.gatewayForwarding.grokDescription')"
+          >
+            <SettingsSection>
+              <SettingRow
+                id="grok-default-text-model"
+                field
+                label-for="grok-default-text-model"
+                :label="t('admin.settings.gatewayForwarding.grokDefaultTextModel')"
+                :hint="t('admin.settings.gatewayForwarding.grokDefaultTextModelHint')"
+              >
+                <input
+                  id="grok-default-text-model"
+                  v-model.trim="form.grok_default_text_model"
+                  type="text"
+                  class="input"
+                  list="grok-default-text-model-options"
+                  data-testid="grok-default-text-model"
+                  placeholder="grok-4.5"
+                />
+                <datalist id="grok-default-text-model-options">
+                  <option value="grok-4.5" />
+                  <option value="grok-4.3" />
+                  <option value="grok-build-0.1" />
+                </datalist>
+              </SettingRow>
+              <SettingRow
+                id="grok-default-base-url-mode"
+                field
+                :label="t('admin.settings.gatewayForwarding.grokDefaultBaseURLMode')"
+                :hint="t('admin.settings.gatewayForwarding.grokDefaultBaseURLModeHint')"
+              >
+                <Select
+                  id="grok-default-base-url-mode"
+                  v-model="form.grok_default_base_url_mode"
+                  :options="grokDefaultBaseURLOptions"
+                  :aria-label="t('admin.settings.gatewayForwarding.grokDefaultBaseURLMode')"
+                  data-testid="grok-default-base-url-mode"
+                />
+              </SettingRow>
+            </SettingsSection>
+          </SettingsCard>
+
+          <!-- Anthropic 请求转发 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
+            data-testid="gateway-forwarding-anthropic"
+            :title="t('admin.settings.gatewayForwarding.anthropicTitle')"
+            :description="t('admin.settings.gatewayForwarding.anthropicDescription')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="enable-fingerprint-unification"
+                v-model="form.enable_fingerprint_unification"
+                :label="t('admin.settings.gatewayForwarding.fingerprintUnification')"
+                :hint="t('admin.settings.gatewayForwarding.fingerprintUnificationHint')"
+              />
+              <SettingToggleRow
+                id="enable-metadata-passthrough"
+                v-model="form.enable_metadata_passthrough"
+                :label="t('admin.settings.gatewayForwarding.metadataPassthrough')"
+                :hint="t('admin.settings.gatewayForwarding.metadataPassthroughHint')"
+              />
+              <SettingToggleRow
+                id="enable-anthropic-cache-ttl-1h-injection"
+                v-model="form.enable_anthropic_cache_ttl_1h_injection"
+                :label="t('admin.settings.gatewayForwarding.anthropicCacheTTL1hInjection')"
+                :hint="t('admin.settings.gatewayForwarding.anthropicCacheTTL1hInjectionHint')"
+              />
+              <SettingToggleRow
+                id="rewrite-message-cache-control"
+                v-model="form.rewrite_message_cache_control"
+                :label="t('admin.settings.gatewayForwarding.rewriteMessageCacheControl')"
+                :hint="t('admin.settings.gatewayForwarding.rewriteMessageCacheControlHint')"
+              />
+              <!-- 只对 Anthropic OAuth 和 Setup Token 请求生效。 -->
+              <SettingToggleRow
+                id="enable-client-dateline-normalization"
+                v-model="form.enable_client_dateline_normalization"
+                :label="t('admin.settings.gatewayForwarding.clientDatelineNormalization')"
+                :hint="t('admin.settings.gatewayForwarding.clientDatelineNormalizationHint')"
+              />
+            </SettingsSection>
+            <SettingsSection>
+              <SettingToggleRow
+                id="enable-claude-oauth-system-prompt-injection"
+                v-model="form.enable_claude_oauth_system_prompt_injection"
+                :label="t('admin.settings.gatewayForwarding.claudeOAuthSystemPromptInjection')"
+                :hint="t('admin.settings.gatewayForwarding.claudeOAuthSystemPromptInjectionHint')"
+              />
+              <div class="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    for="claude-oauth-system-prompt"
-                  >
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.claudeOAuthSystemPrompt",
-                      )
-                    }}
+                  <label for="claude-oauth-system-prompt" class="input-label">
+                    {{ t("admin.settings.gatewayForwarding.claudeOAuthSystemPrompt") }}
                   </label>
                   <textarea
                     id="claude-oauth-system-prompt"
                     v-model="form.claude_oauth_system_prompt"
                     rows="6"
                     class="input min-h-32 font-mono text-sm"
-                    :placeholder="
-                      t(
-                        'admin.settings.gatewayForwarding.claudeOAuthSystemPromptPlaceholder',
-                      )
-                    "
+                    :placeholder="t('admin.settings.gatewayForwarding.claudeOAuthSystemPromptPlaceholder')"
                   />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.claudeOAuthSystemPromptHint",
-                      )
-                    }}
+                  <p class="input-hint">
+                    {{ t("admin.settings.gatewayForwarding.claudeOAuthSystemPromptHint") }}
                   </p>
                 </div>
-
                 <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    for="claude-oauth-system-prompt-blocks"
-                  >
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.claudeOAuthSystemPromptBlocks",
-                      )
-                    }}
+                  <label for="claude-oauth-system-prompt-blocks" class="input-label">
+                    {{ t("admin.settings.gatewayForwarding.claudeOAuthSystemPromptBlocks") }}
                   </label>
                   <textarea
                     id="claude-oauth-system-prompt-blocks"
                     v-model="form.claude_oauth_system_prompt_blocks"
                     rows="6"
                     class="input min-h-32 font-mono text-sm"
-                    :placeholder="
-                      t(
-                        'admin.settings.gatewayForwarding.claudeOAuthSystemPromptBlocksPlaceholder',
-                      )
-                    "
+                    :placeholder="t('admin.settings.gatewayForwarding.claudeOAuthSystemPromptBlocksPlaceholder')"
                   />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.claudeOAuthSystemPromptBlocksHint",
-                      )
-                    }}
+                  <p class="input-hint">
+                    {{ t("admin.settings.gatewayForwarding.claudeOAuthSystemPromptBlocksHint") }}
                   </p>
                 </div>
               </div>
+            </SettingsSection>
+          </SettingsCard>
 
-              <!-- Anthropic Cache TTL 1h Injection -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.anthropicCacheTTL1hInjection",
-                      )
-                    }}
-                  </label>
-                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.anthropicCacheTTL1hInjectionHint",
-                      )
-                    }}
-                  </p>
-                </div>
-                <Toggle
-                  v-model="form.enable_anthropic_cache_ttl_1h_injection"
-                />
-              </div>
-
-              <!-- messages cache_control 改写 -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.rewriteMessageCacheControl",
-                      )
-                    }}
-                  </label>
-                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.rewriteMessageCacheControlHint",
-                      )
-                    }}
-                  </p>
-                </div>
-                <Toggle v-model="form.rewrite_message_cache_control" />
-              </div>
-
-              <!-- 客户端 dateline 归一化（仅 Anthropic OAuth/SetupToken） -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.clientDatelineNormalization",
-                      )
-                    }}
-                  </label>
-                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t(
-                        "admin.settings.gatewayForwarding.clientDatelineNormalizationHint",
-                      )
-                    }}
-                  </p>
-                </div>
-                <Toggle
-                  v-model="form.enable_client_dateline_normalization"
-                />
-              </div>
-              </div>
-
-              <!-- Antigravity UA 版本 -->
-              <div
-                v-show="activeGatewaySection === 'antigravity'" v-content-reveal="activeGatewaySection === 'antigravity'"
-                data-testid="gateway-forwarding-antigravity"
+          <!-- Antigravity 请求转发 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'antigravity'" v-content-reveal="activeGatewaySection === 'antigravity'"
+            data-testid="gateway-forwarding-antigravity"
+            :title="t('admin.settings.gatewayForwarding.antigravityTitle')"
+            :description="t('admin.settings.gatewayForwarding.antigravityDescription')"
+          >
+            <SettingsSection>
+              <SettingRow
+                id="antigravity-user-agent-version"
+                field
+                label-for="antigravity-user-agent-version"
+                :label="t('admin.settings.gatewayForwarding.antigravityUserAgentVersion')"
+                :hint="t('admin.settings.gatewayForwarding.antigravityUserAgentVersionHint')"
               >
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{
-                    t(
-                      "admin.settings.gatewayForwarding.antigravityUserAgentVersion",
-                    )
-                  }}
-                </label>
                 <input
+                  id="antigravity-user-agent-version"
                   v-model="form.antigravity_user_agent_version"
                   type="text"
-                  class="input max-w-xs font-mono text-sm"
-                  :placeholder="
-                    t(
-                      'admin.settings.gatewayForwarding.antigravityUserAgentVersionPlaceholder',
-                    )
-                  "
+                  class="input font-mono text-sm"
+                  :placeholder="t('admin.settings.gatewayForwarding.antigravityUserAgentVersionPlaceholder')"
                 />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{
-                    t(
-                      "admin.settings.gatewayForwarding.antigravityUserAgentVersionHint",
-                    )
-                  }}
-                </p>
-              </div>
+              </SettingRow>
+            </SettingsSection>
+          </SettingsCard>
 
-              <div
-                v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
-                class="space-y-5"
-                data-testid="gateway-forwarding-openai"
+          <!-- OpenAI / Codex 请求转发 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
+            data-testid="gateway-forwarding-openai"
+            :title="t('admin.settings.gatewayForwarding.openaiTitle')"
+            :description="t('admin.settings.gatewayForwarding.openaiDescription')"
+          >
+            <SettingsSection>
+              <!-- OpenAI Responses 首 token 的计时方式。 -->
+              <SettingRow
+                id="openai-ttft-mode"
+                field
+                :label="t('admin.settings.gatewayForwarding.openaiTTFTMode')"
+                :hint="t('admin.settings.gatewayForwarding.openaiTTFTModeHint')"
               >
-                <!-- OpenAI Responses 首 token 计时方式 -->
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.settings.gatewayForwarding.openaiTTFTMode") }}
-                  </label>
-                  <Select
-                    v-model="form.openai_ttft_mode"
-                    :options="openAITTFTModeOptions"
-                    class="w-full"
-                    data-testid="openai-ttft-mode"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.gatewayForwarding.openaiTTFTModeHint") }}
-                  </p>
-                </div>
-
-                <!-- OpenAI Codex UA 设置 -->
-                <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{
-                    t(
-                      "admin.settings.gatewayForwarding.openaiCodexUserAgent",
-                    )
-                  }}
+                <Select
+                  v-model="form.openai_ttft_mode"
+                  :options="openAITTFTModeOptions"
+                  :aria-label="t('admin.settings.gatewayForwarding.openaiTTFTMode')"
+                  data-testid="openai-ttft-mode"
+                />
+              </SettingRow>
+              <!-- 全局开关：是否允许在 Claude Code 中使用 Codex 插件。 -->
+              <SettingToggleRow
+                id="openai-allow-claude-code-codex-plugin"
+                v-model="form.openai_allow_claude_code_codex_plugin"
+                :label="t('admin.settings.gatewayForwarding.openaiAllowClaudeCodeCodexPlugin')"
+                :hint="t('admin.settings.gatewayForwarding.openaiAllowClaudeCodeCodexPluginDesc')"
+              />
+              <div>
+                <label for="openai-codex-user-agent" class="input-label">
+                  {{ t("admin.settings.gatewayForwarding.openaiCodexUserAgent") }}
                 </label>
                 <input
+                  id="openai-codex-user-agent"
                   v-model="form.openai_codex_user_agent"
                   type="text"
-                  class="input w-full font-mono text-sm"
-                  :placeholder="
-                    t(
-                      'admin.settings.gatewayForwarding.openaiCodexUserAgentPlaceholder',
-                    )
-                  "
+                  class="input font-mono text-sm"
+                  :placeholder="t('admin.settings.gatewayForwarding.openaiCodexUserAgentPlaceholder')"
                 />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{
-                    t(
-                      "admin.settings.gatewayForwarding.openaiCodexUserAgentHint",
-                    )
-                  }}
+                <p class="input-hint">
+                  {{ t("admin.settings.gatewayForwarding.openaiCodexUserAgentHint") }}
                 </p>
               </div>
+            </SettingsSection>
+          </SettingsCard>
 
-              <!-- 是否允许在 Claude Code 中使用 Codex 插件（全局开关） -->
-              <div class="flex items-center justify-between">
-                <div class="pr-4">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.settings.gatewayForwarding.openaiAllowClaudeCodeCodexPlugin") }}
-                  </label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.gatewayForwarding.openaiAllowClaudeCodeCodexPluginDesc") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.openai_allow_claude_code_codex_plugin" />
-              </div>
-              </div>
-            </div>
-          </div>
           <!-- 跨平台用户提示词替换 -->
-          <div
+          <SettingsCard
             v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
-            class="card"
             data-testid="gateway-card-user-prompt-replacement"
+            :title="t('admin.settings.userPromptReplacement.title')"
+            :description="t('admin.settings.userPromptReplacement.description')"
           >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    {{ t("admin.settings.userPromptReplacement.title") }}
-                  </h2>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.userPromptReplacement.description") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.user_prompt_replacement_config.enabled" />
-              </div>
-            </div>
-            <div class="p-6">
+            <template #actions>
+              <Toggle
+                v-model="form.user_prompt_replacement_config.enabled"
+                size="md"
+                :aria-label="t('admin.settings.userPromptReplacement.title')"
+              />
+            </template>
+            <SettingsSection>
               <RuleListEditor
                 :items="form.user_prompt_replacement_config.rules"
                 variant="card"
@@ -4967,135 +4320,118 @@
                     {{ t("admin.settings.userPromptReplacement.resetDefault") }}
                   </button>
                 </template>
-                <template #row="{ item: rule }">
-                  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex min-w-0 flex-1 items-center gap-3">
-                      <Toggle v-model="rule.enabled" />
+                <template #row="{ item: rule, index: ruleIndex }">
+                  <div class="space-y-4">
+                    <div class="flex min-w-0 items-center gap-3">
+                      <Toggle
+                        v-model="rule.enabled"
+                        size="md"
+                        :aria-label="rule.name || t('common.ruleIndex', { index: ruleIndex + 1 })"
+                      />
                       <input
                         v-model="rule.name"
                         type="text"
-                        class="input min-w-0 flex-1 text-sm"
-                        :placeholder="
-                          t('admin.settings.userPromptReplacement.namePlaceholder')
-                        "
+                        class="input min-w-0 flex-1"
+                        :aria-label="t('admin.settings.userPromptReplacement.namePlaceholder')"
+                        :placeholder="t('admin.settings.userPromptReplacement.namePlaceholder')"
                       />
                     </div>
-                  </div>
-                  <div class="grid gap-4 lg:grid-cols-6">
-                    <div class="lg:col-span-4">
-                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.userPromptReplacement.pattern") }}
-                      </label>
-                      <textarea
-                        v-model="rule.pattern"
-                        rows="3"
-                        class="input font-mono text-xs"
-                        :placeholder="
-                          t('admin.settings.userPromptReplacement.patternPlaceholder')
-                        "
-                      />
+                    <div class="grid gap-4 lg:grid-cols-6">
+                      <div class="lg:col-span-4">
+                        <label :for="`prompt-replacement-pattern-${ruleIndex}`" class="input-label">
+                          {{ t("admin.settings.userPromptReplacement.pattern") }}
+                        </label>
+                        <textarea
+                          :id="`prompt-replacement-pattern-${ruleIndex}`"
+                          v-model="rule.pattern"
+                          rows="3"
+                          class="input font-mono text-xs"
+                          :placeholder="t('admin.settings.userPromptReplacement.patternPlaceholder')"
+                        />
+                      </div>
+                      <div>
+                        <label :for="`prompt-replacement-group-${ruleIndex}`" class="input-label">
+                          {{ t("admin.settings.userPromptReplacement.targetGroup") }}
+                        </label>
+                        <input
+                          :id="`prompt-replacement-group-${ruleIndex}`"
+                          v-model.number="rule.target_group"
+                          type="number"
+                          min="0"
+                          step="1"
+                          class="input"
+                        />
+                      </div>
+                      <div>
+                        <label :for="`prompt-replacement-type-${ruleIndex}`" class="input-label">
+                          {{ t("admin.settings.userPromptReplacement.replacementType") }}
+                        </label>
+                        <Select
+                          :id="`prompt-replacement-type-${ruleIndex}`"
+                          v-model="rule.replacement_type"
+                          :options="userPromptReplacementTypeOptions"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.userPromptReplacement.targetGroup") }}
-                      </label>
-                      <input
-                        v-model.number="rule.target_group"
-                        type="number"
-                        min="0"
-                        step="1"
-                        class="input text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.userPromptReplacement.replacementType") }}
-                      </label>
-                      <Select
-                        v-model="rule.replacement_type"
-                        :options="userPromptReplacementTypeOptions"
-                        class="text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div class="mt-4 grid gap-4 md:grid-cols-3">
-                    <div v-if="rule.replacement_type === 'static'">
-                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.userPromptReplacement.staticText") }}
-                      </label>
-                      <input
-                        v-model="rule.static_text"
-                        type="text"
-                        class="input text-sm"
-                        :placeholder="
-                          t('admin.settings.userPromptReplacement.staticTextPlaceholder')
-                        "
-                      />
-                    </div>
-                    <div v-if="rule.replacement_type !== 'static'">
-                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.userPromptReplacement.timezone") }}
-                      </label>
-                      <Select
-                        v-model="rule.timezone"
-                        :options="userPromptReplacementTimezoneOptions"
-                        searchable
-                        creatable
-                        :creatable-prefix="
-                          t('admin.settings.userPromptReplacement.useTimezone')
-                        "
-                        class="text-sm"
-                      />
-                    </div>
-                    <div v-if="rule.replacement_type === 'current_time'">
-                      <label class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.userPromptReplacement.timeFormat") }}
-                      </label>
-                      <input
-                        v-model="rule.time_format"
-                        type="text"
-                        class="input font-mono text-sm"
-                        placeholder="2006-01-02"
-                      />
+                    <div class="grid gap-4 md:grid-cols-3">
+                      <div v-if="rule.replacement_type === 'static'">
+                        <label :for="`prompt-replacement-static-${ruleIndex}`" class="input-label">
+                          {{ t("admin.settings.userPromptReplacement.staticText") }}
+                        </label>
+                        <input
+                          :id="`prompt-replacement-static-${ruleIndex}`"
+                          v-model="rule.static_text"
+                          type="text"
+                          class="input"
+                          :placeholder="t('admin.settings.userPromptReplacement.staticTextPlaceholder')"
+                        />
+                      </div>
+                      <div v-if="rule.replacement_type !== 'static'">
+                        <label :for="`prompt-replacement-timezone-${ruleIndex}`" class="input-label">
+                          {{ t("admin.settings.userPromptReplacement.timezone") }}
+                        </label>
+                        <Select
+                          :id="`prompt-replacement-timezone-${ruleIndex}`"
+                          v-model="rule.timezone"
+                          :options="userPromptReplacementTimezoneOptions"
+                          searchable
+                          creatable
+                          :creatable-prefix="t('admin.settings.userPromptReplacement.useTimezone')"
+                        />
+                      </div>
+                      <div v-if="rule.replacement_type === 'current_time'">
+                        <label :for="`prompt-replacement-format-${ruleIndex}`" class="input-label">
+                          {{ t("admin.settings.userPromptReplacement.timeFormat") }}
+                        </label>
+                        <input
+                          :id="`prompt-replacement-format-${ruleIndex}`"
+                          v-model="rule.time_format"
+                          type="text"
+                          class="input font-mono text-sm"
+                          placeholder="2006-01-02"
+                        />
+                      </div>
                     </div>
                   </div>
                 </template>
               </RuleListEditor>
-            </div>
-          </div>
-          <!-- Web Search Emulation -->
-          <div
-            v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
-            class="card"
-            data-testid="gateway-card-web-search-emulation"
-          >
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.webSearchEmulation.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.webSearchEmulation.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <!-- Global Toggle -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label
-                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
-                    {{ t("admin.settings.webSearchEmulation.enabled") }}
-                  </label>
-                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.webSearchEmulation.enabledHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="webSearchConfig.enabled" />
-              </div>
+            </SettingsSection>
+          </SettingsCard>
 
-              <!-- Providers -->
+          <!-- 联网搜索模拟，配置随全局保存提交。 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'anthropic'" v-content-reveal="activeGatewaySection === 'anthropic'"
+            data-testid="gateway-card-web-search-emulation"
+            :title="t('admin.settings.webSearchEmulation.title')"
+            :description="t('admin.settings.webSearchEmulation.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="web-search-emulation-enabled"
+                v-model="webSearchConfig.enabled"
+                :label="t('admin.settings.webSearchEmulation.enabled')"
+                :hint="t('admin.settings.webSearchEmulation.enabledHint')"
+              />
               <Collapse :open="webSearchConfig.enabled" unmount-on-hide>
                 <RuleListEditor
                   :items="webSearchConfig.providers"
@@ -5109,79 +4445,61 @@
                   @remove="removeWebSearchProvider"
                 >
                   <template #row="{ item: provider, index: pIdx }">
-                    <!-- Collapsible header -->
-                    <div data-icon-trigger
+                    <!-- 点击标题行展开或收起服务商详情。 -->
+                    <div
+                      data-icon-trigger
                       class="flex cursor-pointer flex-wrap items-center gap-3"
                       @click="toggleProviderExpand(pIdx)"
                     >
-                      <div class="flex min-w-0 flex-wrap items-center gap-3">
-                        <Icon
-                          name="chevronRight"
-                          size="sm"
-                          :animate-on-hover="false"
-                          class="h-4 w-4 text-gray-400 transition-transform"
-                          :class="{ 'rotate-90': expandedProviders[pIdx] }"
-                        />
-                        <Select
-                          v-model="provider.type"
-                          :options="[
-                            { value: 'brave', label: 'Brave Search' },
-                            { value: 'tavily', label: 'Tavily' },
-                          ]"
-                          class="w-36"
-                          @click.stop
-                        />
-                        <!-- Quota summary (always visible) -->
-                        <span class="text-xs text-gray-400">
-                          {{ provider.quota_used ?? 0 }} /
-                          {{
-                            provider.quota_limit != null &&
-                            provider.quota_limit > 0
-                              ? provider.quota_limit
-                              : "∞"
-                          }}
-                        </span>
-                        <span
-                          v-if="
-                            !expandedProviders[pIdx] &&
-                            provider.api_key_configured
-                          "
-                          class="text-xs text-green-500"
-                        >
-                          {{
-                            t(
-                              "admin.settings.webSearchEmulation.apiKeyConfigured",
-                            )
-                          }}
-                        </span>
-                      </div>
-                    </div>
-                    <!-- Expanded content -->
-                    <Collapse :open="expandedProviders[pIdx]" unmount-on-hide>
-                      <div
-                        class="mt-3 space-y-3 border-t border-gray-100 pt-3 dark:border-dark-700"
+                      <Icon
+                        name="chevronRight"
+                        size="sm"
+                        :animate-on-hover="false"
+                        class="h-4 w-4 text-gray-400 transition-transform"
+                        :class="{ 'rotate-90': expandedProviders[pIdx] }"
+                      />
+                      <Select
+                        v-model="provider.type"
+                        :options="[
+                          { value: 'brave', label: 'Brave Search' },
+                          { value: 'tavily', label: 'Tavily' },
+                        ]"
+                        :aria-label="t('admin.settings.webSearchEmulation.providers')"
+                        class="w-36"
+                        @click.stop
+                      />
+                      <span class="text-xs text-gray-500 dark:text-dark-400">
+                        {{ provider.quota_used ?? 0 }} /
+                        {{
+                          provider.quota_limit != null && provider.quota_limit > 0
+                            ? provider.quota_limit
+                            : "∞"
+                        }}
+                      </span>
+                      <span
+                        v-if="!expandedProviders[pIdx] && provider.api_key_configured"
+                        class="text-xs text-green-600 dark:text-green-400"
                       >
-                        <!-- API Key with inline show/copy -->
+                        {{ t("admin.settings.webSearchEmulation.apiKeyConfigured") }}
+                      </span>
+                    </div>
+                    <Collapse :open="expandedProviders[pIdx]" unmount-on-hide>
+                      <div class="mt-4 space-y-4 border-t border-gray-200 pt-4 dark:border-dark-600">
                         <div>
-                          <label class="text-xs text-gray-500">{{
-                            t("admin.settings.webSearchEmulation.apiKey")
-                          }}</label>
+                          <label :for="`web-search-api-key-${pIdx}`" class="input-label">
+                            {{ t("admin.settings.webSearchEmulation.apiKey") }}
+                          </label>
                           <div class="relative">
                             <input
+                              :id="`web-search-api-key-${pIdx}`"
                               v-model="provider.api_key"
                               :type="apiKeyVisible[pIdx] ? 'text' : 'password'"
-                              class="input w-full text-sm"
-                              :class="
-                                provider.api_key || provider.api_key_configured
-                                  ? 'pr-16'
-                                  : ''
-                              "
+                              class="input"
+                              :class="provider.api_key || provider.api_key_configured ? 'pr-16' : ''"
                               :placeholder="
                                 provider.api_key_configured
                                   ? '••••••••'
-                                  : t(
-                                      'admin.settings.webSearchEmulation.apiKeyPlaceholder',
-                                    )
+                                  : t('admin.settings.webSearchEmulation.apiKeyPlaceholder')
                               "
                             />
                             <div
@@ -5193,28 +4511,19 @@
                                 class="rounded-compact p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                                 :title="
                                   apiKeyVisible[pIdx]
-                                    ? t(
-                                        'admin.settings.webSearchEmulation.hideApiKey',
-                                      )
-                                    : t(
-                                        'admin.settings.webSearchEmulation.showApiKey',
-                                      )
+                                    ? t('admin.settings.webSearchEmulation.hideApiKey')
+                                    : t('admin.settings.webSearchEmulation.showApiKey')
                                 "
                                 @click="apiKeyVisible[pIdx] = !apiKeyVisible[pIdx]"
                               >
-                                <Icon name="eye" size="sm" v-if="!apiKeyVisible[pIdx]" class="h-4 w-4" />
-                                <Icon name="eyeOff" size="sm" v-else class="h-4 w-4" />
+                                <Icon v-if="!apiKeyVisible[pIdx]" name="eye" size="sm" class="h-4 w-4" />
+                                <Icon v-else name="eyeOff" size="sm" class="h-4 w-4" />
                               </button>
                               <button
                                 type="button"
                                 class="rounded-compact p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                :class="{
-                                  'opacity-30 cursor-not-allowed':
-                                    !provider.api_key,
-                                }"
-                                :title="
-                                  t('admin.settings.webSearchEmulation.copyApiKey')
-                                "
+                                :class="{ 'cursor-not-allowed opacity-30': !provider.api_key }"
+                                :title="t('admin.settings.webSearchEmulation.copyApiKey')"
                                 :disabled="!provider.api_key"
                                 @click="copyApiKey(pIdx)"
                               >
@@ -5223,64 +4532,50 @@
                             </div>
                           </div>
                         </div>
-                        <!-- Quota + Subscription in compact row -->
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div>
-                            <label class="text-xs text-gray-500">{{
-                              t("admin.settings.webSearchEmulation.quotaLimit")
-                            }}</label>
+                            <label :for="`web-search-quota-${pIdx}`" class="input-label">
+                              {{ t("admin.settings.webSearchEmulation.quotaLimit") }}
+                            </label>
                             <input
+                              :id="`web-search-quota-${pIdx}`"
                               v-model="provider.quota_limit"
                               type="number"
                               min="1"
-                              class="input text-sm"
+                              class="input"
                               :placeholder="'∞'"
                             />
-                            <p class="mt-0.5 text-xs text-gray-400">
-                              {{
-                                t(
-                                  "admin.settings.webSearchEmulation.quotaLimitHint",
-                                )
-                              }}
+                            <p class="input-hint">
+                              {{ t("admin.settings.webSearchEmulation.quotaLimitHint") }}
                             </p>
                           </div>
                           <div>
-                            <label class="text-xs text-gray-500">{{
-                              t("admin.settings.webSearchEmulation.subscribedAt")
-                            }}</label>
+                            <label :for="`web-search-subscribed-${pIdx}`" class="input-label">
+                              {{ t("admin.settings.webSearchEmulation.subscribedAt") }}
+                            </label>
                             <input
+                              :id="`web-search-subscribed-${pIdx}`"
                               :value="formatSubscribedAt(provider.subscribed_at)"
                               type="date"
-                              class="input text-sm"
+                              class="input"
                               @input="
                                 provider.subscribed_at = parseSubscribedAt(
                                   ($event.target as HTMLInputElement).value,
                                 )
                               "
                             />
-                            <p class="mt-0.5 text-xs text-gray-400">
-                              {{
-                                t(
-                                  "admin.settings.webSearchEmulation.subscribedAtHint",
-                                )
-                              }}
+                            <p class="input-hint">
+                              {{ t("admin.settings.webSearchEmulation.subscribedAtHint") }}
                             </p>
                           </div>
                         </div>
-                        <!-- Usage display -->
                         <div class="flex items-center gap-2">
-                          <span class="text-xs text-gray-500"
-                            >{{
-                              t("admin.settings.webSearchEmulation.quotaUsage")
-                            }}:</span
+                          <span class="text-xs text-gray-500 dark:text-dark-400"
+                            >{{ t("admin.settings.webSearchEmulation.quotaUsage") }}:</span
                           >
                           <div
-                            v-if="
-                              provider.quota_limit != null &&
-                              provider.quota_limit > 0
-                            "
-                            class="flex-1 rounded-full bg-gray-200 dark:bg-dark-600"
-                            style="height: 6px"
+                            v-if="provider.quota_limit != null && provider.quota_limit > 0"
+                            class="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-dark-600"
                           >
                             <div
                               class="h-full rounded-full transition-[width,background-color]"
@@ -5291,18 +4586,14 @@
                                     ? 'bg-yellow-500'
                                     : 'bg-green-500'
                               "
-                              :style="{
-                                width:
-                                  Math.min(quotaPercentage(provider), 100) + '%',
-                              }"
+                              :style="{ width: Math.min(quotaPercentage(provider), 100) + '%' }"
                             />
                           </div>
                           <div v-else class="flex-1" />
-                          <span class="text-xs text-gray-500"
+                          <span class="text-xs text-gray-500 dark:text-dark-400"
                             >{{ provider.quota_used ?? 0 }} /
                             {{
-                              provider.quota_limit != null &&
-                              provider.quota_limit > 0
+                              provider.quota_limit != null && provider.quota_limit > 0
                                 ? provider.quota_limit
                                 : "∞"
                             }}</span
@@ -5310,18 +4601,17 @@
                           <button
                             v-if="(provider.quota_used ?? 0) > 0"
                             type="button"
-                            class="text-xs text-primary-600 hover:text-primary-700"
+                            class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-500"
                             @click="resetWebSearchUsage(pIdx)"
                           >
                             {{ t("admin.settings.webSearchEmulation.resetUsage") }}
                           </button>
                         </div>
-                        <!-- Proxy + Test on same row -->
                         <div class="flex items-end gap-3">
-                          <div class="flex-1">
-                            <label class="text-xs text-gray-500">{{
-                              t("admin.settings.webSearchEmulation.proxy")
-                            }}</label>
+                          <div class="min-w-0 flex-1">
+                            <p class="input-label">
+                              {{ t("admin.settings.webSearchEmulation.proxy") }}
+                            </p>
                             <ProxySelector
                               v-model="provider.proxy_id"
                               :proxies="webSearchProxies"
@@ -5340,10 +4630,10 @@
                   </template>
                 </RuleListEditor>
               </Collapse>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- Web Search Test Dialog -->
+          <!-- 联网搜索测试弹窗 -->
           <BaseDialog
             :show="wsTestDialogOpen"
             :title="t('admin.settings.webSearchEmulation.testResultTitle')"
@@ -5351,103 +4641,83 @@
             close-on-click-outside
             @close="wsTestDialogOpen = false"
           >
-        <div class="flex items-center gap-2">
-          <input
-            v-model="wsTestQuery"
-            type="text"
-            class="input flex-1 text-sm"
-            :placeholder="
-              t('admin.settings.webSearchEmulation.testDefaultQuery')
-            "
-            @keyup.enter="testWebSearchProvider()"
-          />
-          <button
-            type="button"
-            class="btn btn-primary btn-sm h-9"
-            :disabled="wsTestLoading"
-            @click="testWebSearchProvider()"
-          >
-            {{
-              wsTestLoading
-                ? t("admin.settings.webSearchEmulation.testing")
-                : t("admin.settings.webSearchEmulation.test")
-            }}
-          </button>
-        </div>
-        <!-- Test results -->
-        <div
-          v-if="wsTestResult"
-          class="mt-4 max-h-80 overflow-y-auto rounded-control bg-gray-50 p-4 dark:bg-dark-700"
-        >
-          <p
-            class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            {{
-              t("admin.settings.webSearchEmulation.testResultProvider")
-            }}: {{ wsTestResult.provider }}
-          </p>
-          <div
-            v-if="wsTestResult.results.length === 0"
-            class="text-sm text-gray-400"
-          >
-            {{ t("admin.settings.webSearchEmulation.testNoResults") }}
-          </div>
-          <div
-            v-for="(r, rIdx) in wsTestResult.results"
-            :key="rIdx"
-            class="mt-2 border-t border-gray-200 pt-2 first:mt-0 first:border-0 first:pt-0 dark:border-dark-600"
-          >
-            <a
-              :href="r.url"
-              target="_blank"
-              class="text-sm font-medium text-primary-600 hover:underline dark:text-primary-500"
-              >{{ r.title }}</a
+            <div class="flex items-center gap-2">
+              <input
+                v-model="wsTestQuery"
+                type="text"
+                class="input flex-1 text-sm"
+                :placeholder="t('admin.settings.webSearchEmulation.testDefaultQuery')"
+                @keyup.enter="testWebSearchProvider()"
+              />
+              <button
+                type="button"
+                class="btn btn-primary btn-sm h-9"
+                :disabled="wsTestLoading"
+                @click="testWebSearchProvider()"
+              >
+                {{
+                  wsTestLoading
+                    ? t("admin.settings.webSearchEmulation.testing")
+                    : t("admin.settings.webSearchEmulation.test")
+                }}
+              </button>
+            </div>
+            <div
+              v-if="wsTestResult"
+              class="mt-4 max-h-80 overflow-y-auto rounded-control bg-gray-50 p-4 dark:bg-dark-700"
             >
-            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              {{ r.snippet }}
-            </p>
-          </div>
-        </div>
-        <div class="mt-4 flex justify-end">
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm h-9"
-            @click="wsTestDialogOpen = false"
-          >
-            {{ t("common.close") }}
-          </button>
-        </div>
-          </BaseDialog>
-
-        <!-- 用量记录设置 -->
-        <div
-          v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
-          class="card"
-          data-testid="gateway-card-usage-records"
-        >
-          <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('admin.settings.usageRecords.title') }}
-            </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {{ t('admin.settings.usageRecords.description') }}
-            </p>
-          </div>
-          <div class="space-y-4 p-6">
-            <!-- 用户错误请求可见性 -->
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t('admin.settings.user_error_view.label') }}
-                </label>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ t('admin.settings.user_error_view.description') }}
+              <p class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ t("admin.settings.webSearchEmulation.testResultProvider") }}: {{ wsTestResult.provider }}
+              </p>
+              <div
+                v-if="wsTestResult.results.length === 0"
+                class="text-sm text-gray-400"
+              >
+                {{ t("admin.settings.webSearchEmulation.testNoResults") }}
+              </div>
+              <div
+                v-for="(r, rIdx) in wsTestResult.results"
+                :key="rIdx"
+                class="mt-2 border-t border-gray-200 pt-2 first:mt-0 first:border-0 first:pt-0 dark:border-dark-600"
+              >
+                <a
+                  :href="r.url"
+                  target="_blank"
+                  class="text-sm font-medium text-primary-600 hover:underline dark:text-primary-500"
+                  >{{ r.title }}</a
+                >
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {{ r.snippet }}
                 </p>
               </div>
-              <Toggle v-model="form.allow_user_view_error_requests" />
             </div>
-          </div>
-        </div>
+            <div class="mt-4 flex justify-end">
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm h-9"
+                @click="wsTestDialogOpen = false"
+              >
+                {{ t("common.close") }}
+              </button>
+            </div>
+          </BaseDialog>
+
+          <!-- 用量记录 -->
+          <SettingsCard
+            v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
+            data-testid="gateway-card-usage-records"
+            :title="t('admin.settings.usageRecords.title')"
+            :description="t('admin.settings.usageRecords.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="allow-user-view-error-requests"
+                v-model="form.allow_user_view_error_requests"
+                :label="t('admin.settings.user_error_view.label')"
+                :hint="t('admin.settings.user_error_view.description')"
+              />
+            </SettingsSection>
+          </SettingsCard>
         </div>
         <!-- /Tab: Gateway — Claude Code, Scheduling -->
 
@@ -7895,7 +7165,12 @@ import Collapse from '@/components/common/Collapse.vue'
 
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import SettingsSkeleton from "@/components/admin/SettingsSkeleton.vue";
+import SettingRow from "@/components/common/settings/SettingRow.vue";
+import SettingToggleRow from "@/components/common/settings/SettingToggleRow.vue";
+import SettingsCard from "@/components/common/settings/SettingsCard.vue";
 import SettingsSaveBar from "@/components/common/settings/SettingsSaveBar.vue";
+import SettingsSection from "@/components/common/settings/SettingsSection.vue";
+import SettingsSubpanel from "@/components/common/settings/SettingsSubpanel.vue";
 import { useDirtyTracker } from "@/composables/useDirtyTracker";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
@@ -8043,26 +7318,6 @@ const gatewaySections = [
 const activeGatewaySection = ref<GatewaySection>("general");
 const gatewaySectionsScrollRef = ref<HTMLElement | null>(null);
 const gatewayContentStartRef = ref<HTMLElement | null>(null);
-const gatewayForwardingPlatform = computed(() => {
-  if (
-    activeGatewaySection.value === "openai" ||
-    activeGatewaySection.value === "grok" ||
-    activeGatewaySection.value === "antigravity"
-  ) {
-    return activeGatewaySection.value;
-  }
-
-  return "anthropic";
-});
-const gatewayForwardingTitleKey = computed(
-  () =>
-    `admin.settings.gatewayForwarding.${gatewayForwardingPlatform.value}Title`,
-);
-const gatewayForwardingDescriptionKey = computed(
-  () =>
-    `admin.settings.gatewayForwarding.${gatewayForwardingPlatform.value}Description`,
-);
-
 const openAITTFTModeOptions = computed(() => [
   {
     value: "semantic",
