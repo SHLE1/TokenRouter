@@ -4,12 +4,11 @@ description: TokenRouter 仓库的写作规则。写或改代码注释、docs �
 license: MIT
 metadata:
   version: "1.0.0"
-  upstream: "blader/humanizer 3.0.0"
 ---
 
 # Humanizer：TokenRouter 写作规则
 
-本技能约束在本仓库写下的每一段文字。它基于 blader/humanizer 3.0.0，按本仓库的中文代码注释和文档重新整理，补上了中文句式和代码注释里的常见毛病。上游版本里"技术文本保持中性即可""对比的两半都有信息可以保留""保留范围说明""单独出现一次不算"这几类放行条件，在本版本中已全部删除。
+本技能约束在本仓库写下的每一段文字。
 
 ## 模型文字为什么有股味
 
@@ -321,7 +320,3 @@ var notificationAssemblyProviders = wire.NewSet(
 形态：标题下第一句只是把标题换个说法再说一遍。
 
 改法：删掉这句，从实际内容写起。
-
-## 来源
-
-基于 [blader/humanizer](https://github.com/blader/humanizer) 3.0.0（MIT 许可，见同目录 `LICENSE`）。上游规则整理自 Wikipedia 的 "Signs of AI writing"。本版本按 TokenRouter 的中文代码注释、文档和提交信息重写，并删除了上游的放行条件。
