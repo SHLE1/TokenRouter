@@ -1258,8 +1258,6 @@ export default {
         documentSlugDuplicate: 'Login agreement document routes cannot be duplicated: /legal/{id}',
         title: 'Login agreement',
         description: 'Control whether the login page requires users to accept Markdown policy documents first.',
-        enabled: 'Enabled',
-        disabled: 'Disabled',
         mode: 'Display mode',
         modeModal: 'Modal',
         modeCheckbox: 'Checkbox',

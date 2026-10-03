@@ -4434,88 +4434,54 @@
 
         <!-- 分页：登录条款 -->
         <div v-show="activeTab === 'agreement'" v-content-reveal="activeTab === 'agreement'" class="space-y-4">
-          <div class="card">
-            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                    {{ t("admin.settings.loginAgreement.title") }}
-                  </h2>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{
-                      t("admin.settings.loginAgreement.description")
-                    }}
-                  </p>
-                </div>
-                <div class="flex items-center gap-3">
-                  <span class="text-sm text-gray-600 dark:text-gray-300">
-                    {{ form.login_agreement_enabled ? t("admin.settings.loginAgreement.enabled") : t("admin.settings.loginAgreement.disabled") }}
-                  </span>
-                  <Toggle v-model="form.login_agreement_enabled" />
-                </div>
+          <!-- 登录条款确认 -->
+          <SettingsCard
+            :title="t('admin.settings.loginAgreement.title')"
+            :description="t('admin.settings.loginAgreement.description')"
+          >
+            <template #actions>
+              <Toggle
+                v-model="form.login_agreement_enabled"
+                size="md"
+                :aria-label="t('admin.settings.loginAgreement.title')"
+              />
+            </template>
+            <SettingsSection>
+              <div>
+                <p class="input-label">{{ t("admin.settings.loginAgreement.mode") }}</p>
+                <SettingsSegmented
+                  v-model="form.login_agreement_mode"
+                  :options="loginAgreementModeOptions"
+                  :aria-label="t('admin.settings.loginAgreement.mode')"
+                />
+                <p class="input-hint">
+                  {{
+                    form.login_agreement_mode === "checkbox"
+                      ? t("admin.settings.loginAgreement.modeCheckboxHint")
+                      : t("admin.settings.loginAgreement.modeModalHint")
+                  }}
+                </p>
               </div>
-            </div>
+              <SettingRow
+                id="login-agreement-updated-at"
+                field
+                label-for="login-agreement-updated-at"
+                :label="t('admin.settings.loginAgreement.updatedAt')"
+                :hint="t('admin.settings.loginAgreement.updatedAtHint')"
+              >
+                <input
+                  id="login-agreement-updated-at"
+                  v-model="form.login_agreement_updated_at"
+                  type="date"
+                  class="input"
+                />
+              </SettingRow>
+            </SettingsSection>
 
-            <div class="space-y-6 p-6">
-              <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.settings.loginAgreement.mode") }}
-                  </label>
-                  <div class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700">
-                    <button
-                      type="button"
-                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
-                      :class="
-                        form.login_agreement_mode === 'modal'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                          : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                      "
-                      @click="form.login_agreement_mode = 'modal'"
-                    >
-                      <Icon name="shield" size="sm" />
-                      {{ t("admin.settings.loginAgreement.modeModal") }}
-                    </button>
-                    <button
-                      type="button"
-                      class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
-                      :class="
-                        form.login_agreement_mode === 'checkbox'
-                          ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                          : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                      "
-                      @click="form.login_agreement_mode = 'checkbox'"
-                    >
-                      <Icon name="checkCircle" size="sm" :animate-on-hover="false" />
-                      {{ t("admin.settings.loginAgreement.modeCheckbox") }}
-                    </button>
-                  </div>
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      form.login_agreement_mode === "checkbox"
-                        ? t("admin.settings.loginAgreement.modeCheckboxHint")
-                        : t("admin.settings.loginAgreement.modeModalHint")
-                    }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.settings.loginAgreement.updatedAt") }}
-                  </label>
-                  <input
-                    v-model="form.login_agreement_updated_at"
-                    type="date"
-                    class="input"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.loginAgreement.updatedAtHint") }}
-                  </p>
-                </div>
-              </div>
-
+            <SettingsSection>
               <RuleListEditor
                 :items="form.login_agreement_documents"
+                title-style="section"
                 :title="t('admin.settings.loginAgreement.documents')"
                 :hint="t('admin.settings.loginAgreement.documentsHint')"
                 :add-label="t('admin.settings.loginAgreement.addDocument')"
@@ -4527,7 +4493,7 @@
                 @remove="removeLoginAgreementDocument"
               >
                 <template #row="{ item: doc, index }">
-                  <div class="mb-3 flex items-center justify-between gap-3">
+                  <div class="space-y-4">
                     <div class="flex min-w-0 items-center gap-3">
                       <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200">
                         <Icon
@@ -4544,119 +4510,102 @@
                         />
                       </span>
                       <div class="min-w-0">
-                        <p class="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                        <p class="truncate text-sm font-semibold text-primary-900 dark:text-dark-50">
                           {{ doc.title || t("admin.settings.loginAgreement.untitledDocument") }}
                         </p>
-                        <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+                        <p class="truncate text-xs text-gray-500 dark:text-dark-400">
                           {{ loginAgreementRoutePath(doc, index) }}
                         </p>
                       </div>
                     </div>
-                  </div>
-                  <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                    <div>
-                      <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                        {{ t("admin.settings.loginAgreement.documentTitle") }}
-                      </label>
-                      <input
-                        v-model="doc.title"
-                        type="text"
-                        class="input text-sm"
-                        :placeholder="t('admin.settings.loginAgreement.documentTitlePlaceholder')"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                        {{ t("admin.settings.loginAgreement.documentSlug") }}
-                      </label>
-                      <div class="flex overflow-hidden rounded-control border border-primary-900/10 bg-white focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:border-dark-600 dark:bg-dark-900 dark:focus-within:border-primary-500 dark:focus-within:ring-primary-500">
-                        <span class="inline-flex flex-shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-400">
-                          /legal/
-                        </span>
+                    <div class="grid gap-4 lg:grid-cols-2">
+                      <div>
+                        <label :for="`login-agreement-${index}-title`" class="input-label">
+                          {{ t("admin.settings.loginAgreement.documentTitle") }}
+                        </label>
                         <input
-                          v-model="doc.id"
+                          :id="`login-agreement-${index}-title`"
+                          v-model="doc.title"
                           type="text"
-                          class="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-0 dark:text-white dark:placeholder:text-dark-500"
-                          placeholder="usage-policy"
+                          class="input"
+                          :placeholder="t('admin.settings.loginAgreement.documentTitlePlaceholder')"
                         />
                       </div>
+                      <div>
+                        <label :for="`login-agreement-${index}-slug`" class="input-label">
+                          {{ t("admin.settings.loginAgreement.documentSlug") }}
+                        </label>
+                        <!-- 路由前缀固定为 /legal/，输入框只填写后半段。 -->
+                        <div class="flex min-h-9 overflow-hidden rounded-control border border-primary-900/10 bg-white transition duration-fast focus-within:ring-2 focus-within:ring-black/10 dark:border-dark-600 dark:bg-dark-950 dark:focus-within:border-dark-400 dark:focus-within:ring-white/6">
+                          <span class="inline-flex flex-shrink-0 items-center border-r border-primary-900/10 bg-gray-50 px-3 text-sm text-gray-500 dark:border-dark-600 dark:bg-dark-800 dark:text-dark-400">
+                            /legal/
+                          </span>
+                          <input
+                            :id="`login-agreement-${index}-slug`"
+                            v-model="doc.id"
+                            type="text"
+                            class="min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-gray-900 outline-none placeholder:text-primary-900/45 focus:ring-0 dark:text-dark-50 dark:placeholder:text-dark-400"
+                            placeholder="usage-policy"
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div class="mt-3">
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                      {{ t("admin.settings.loginAgreement.documentContent") }}
-                    </label>
+                    <div>
+                      <label :for="`login-agreement-${index}-content`" class="input-label">
+                        {{ t("admin.settings.loginAgreement.documentContent") }}
+                      </label>
                       <textarea
+                        :id="`login-agreement-${index}-content`"
                         v-model="doc.content_md"
                         rows="8"
                         class="input font-mono text-sm"
                         :placeholder="t('admin.settings.loginAgreement.documentContentPlaceholder')"
                       ></textarea>
+                    </div>
                   </div>
                 </template>
               </RuleListEditor>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
         </div>
         <!-- /分页：登录条款 -->
 
         <!-- 分页：功能特性 -->
         <div v-show="activeTab === 'features'" v-content-reveal="activeTab === 'features'" class="space-y-4">
-          <div class="card">
-            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.features.team.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.features.team.description") }}
-              </p>
-            </div>
-            <div class="p-6">
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.features.team.enabled") }}
-                  </label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.team.enabledHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.team_enabled" />
-              </div>
-            </div>
-          </div>
+          <!-- 团队 -->
+          <SettingsCard
+            :title="t('admin.settings.features.team.title')"
+            :description="t('admin.settings.features.team.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="team-enabled"
+                v-model="form.team_enabled"
+                :label="t('admin.settings.features.team.enabled')"
+                :hint="t('admin.settings.features.team.enabledHint')"
+              />
+            </SettingsSection>
+          </SettingsCard>
 
-          <div class="card">
-            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.features.creative.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.features.creative.description") }}
-              </p>
-            </div>
-            <div class="p-6">
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.features.creative.enabled") }}
-                  </label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.creative.enabledHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.creative_enabled" />
-              </div>
-
-              <div class="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-gray-100 pt-5 dark:border-dark-700">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white" for="creative-worker-count">
-                    {{ t("admin.settings.features.creative.workerCount") }}
-                  </label>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.creative.workerCountHint") }}
-                  </p>
-                </div>
+          <!-- 创作台 -->
+          <SettingsCard
+            :title="t('admin.settings.features.creative.title')"
+            :description="t('admin.settings.features.creative.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="creative-enabled"
+                v-model="form.creative_enabled"
+                :label="t('admin.settings.features.creative.enabled')"
+                :hint="t('admin.settings.features.creative.enabledHint')"
+              />
+              <SettingRow
+                id="creative-worker-count"
+                field
+                label-for="creative-worker-count"
+                :label="t('admin.settings.features.creative.workerCount')"
+                :hint="t('admin.settings.features.creative.workerCountHint')"
+              >
                 <input
                   id="creative-worker-count"
                   v-model.number="form.creative_worker_count"
@@ -4664,15 +4613,12 @@
                   min="1"
                   step="1"
                   required
-                  class="input w-32"
+                  class="input"
                 />
-              </div>
-
-              <!-- 当前 worker 使用情况：进度条 + 忙碌/总数，数据来自运行时状态轮询。 -->
-              <div class="mt-4">
-                <p class="mb-1.5 text-sm text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.features.creative.workerUsage") }}
-                </p>
+              </SettingRow>
+              <!-- 当前 worker 的忙碌数和总数，数据来自运行时状态轮询。 -->
+              <div>
+                <p class="input-label">{{ t("admin.settings.features.creative.workerUsage") }}</p>
                 <div class="flex items-center gap-3">
                   <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-700">
                     <div
@@ -4680,15 +4626,17 @@
                       :style="{ width: `${creativeWorkerUsagePercent}%` }"
                     ></div>
                   </div>
-                  <span class="shrink-0 text-sm tabular-nums text-gray-900 dark:text-white">
+                  <span class="shrink-0 text-sm tabular-nums text-gray-900 dark:text-dark-50">
                     {{ creativeWorkerUsageText }}
                   </span>
                 </div>
               </div>
+            </SettingsSection>
 
+            <SettingsSection>
               <RuleListEditor
-                class="mt-6 border-t border-gray-100 pt-5 dark:border-dark-700"
                 :items="form.creative_model_settings"
+                title-style="section"
                 :title="t('admin.settings.features.creative.modelSettings.title')"
                 :hint="t('admin.settings.features.creative.modelSettings.description')"
                 :add-label="t('admin.settings.features.creative.modelSettings.add')"
@@ -4700,12 +4648,12 @@
                 @remove="removeCreativeModelSetting"
               >
                 <template #header-extra>
-                  <p v-if="creativeModelCandidatesLoading" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                  <p v-if="creativeModelCandidatesLoading" class="input-hint">
                     {{ t("admin.settings.features.creative.modelSettings.loading") }}
                   </p>
-                  <p v-else-if="creativeModelCandidatesError" class="mt-4 text-sm text-amber-600 dark:text-amber-400">
+                  <SettingsNotice v-else-if="creativeModelCandidatesError" tone="warning">
                     {{ t("admin.settings.features.creative.modelSettings.loadError") }}
-                  </p>
+                  </SettingsNotice>
                   <div
                     class="hidden grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-xs font-medium text-gray-500 sm:grid dark:text-dark-300"
                   >
@@ -4723,15 +4671,16 @@
                         :model-value="creativeModelSettingKey(item)"
                         :options="creativeModelOptionsForRow(index)"
                         :placeholder="t('admin.settings.features.creative.modelSettings.selectModel')"
+                        :aria-label="t('admin.settings.features.creative.modelSettings.modelColumn')"
                         :searchable="'auto'"
                         class="w-full sm:max-w-xs"
                         @change="onCreativeModelSelected(index, $event)"
                       />
-                      <p v-if="!creativeCandidateForSetting(item)" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                      <p v-if="!creativeCandidateForSetting(item)" class="input-hint text-amber-600 dark:text-amber-400">
                         {{ t("admin.settings.features.creative.modelSettings.unavailableHint") }}
                       </p>
                     </div>
-                    <!-- 能力开关：胶囊按钮替代原生复选框，选中态带对勾，禁用态沿用“至少保留一项能力”等约束。 -->
+                    <!-- 能力用胶囊按钮切换，至少保留一项能力时对应按钮禁用。 -->
                     <div class="flex flex-wrap items-center gap-2">
                       <button
                         v-for="operation in creativeOperationChoices"
@@ -4760,191 +4709,147 @@
                   </div>
                 </template>
               </RuleListEditor>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <div class="card">
-            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.features.affiliate.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.features.affiliate.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.features.affiliate.enabled") }}
-                  </label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.affiliate.enabledHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.affiliate_enabled" />
-              </div>
-
-              <!-- 管理员充值返利仅在邀请返利总开关开启时可配置。 -->
-              <Collapse :open="form.affiliate_enabled" unmount-on-hide>
-                <div
-
-                  class="flex items-center justify-between gap-4 border-t border-gray-100 pt-5 dark:border-dark-700"
-                >
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">
-                      {{ t("admin.settings.features.affiliate.adminRechargeRebate") }}
-                    </label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.features.affiliate.adminRechargeRebateHint") }}
-                    </p>
+          <!-- 邀请返利 -->
+          <SettingsCard
+            :title="t('admin.settings.features.affiliate.title')"
+            :description="t('admin.settings.features.affiliate.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="affiliate-enabled"
+                v-model="form.affiliate_enabled"
+                :label="t('admin.settings.features.affiliate.enabled')"
+                :hint="t('admin.settings.features.affiliate.enabledHint')"
+              />
+              <Collapse :open="form.affiliate_enabled">
+                <SettingsSubpanel>
+                  <SettingToggleRow
+                    id="affiliate-admin-recharge-enabled"
+                    v-model="form.affiliate_admin_recharge_enabled"
+                    :label="t('admin.settings.features.affiliate.adminRechargeRebate')"
+                    :hint="t('admin.settings.features.affiliate.adminRechargeRebateHint')"
+                  />
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label for="affiliate-rebate-rate" class="input-label">
+                        {{ t("admin.settings.features.affiliate.rebateRate") }}
+                      </label>
+                      <div class="input-icon-wrap">
+                        <input
+                          id="affiliate-rebate-rate"
+                          v-model.number="form.affiliate_rebate_rate"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          class="input input-has-icon-right"
+                          placeholder="20"
+                        />
+                        <span class="input-icon-right text-sm text-gray-400 dark:text-dark-400" aria-hidden="true">%</span>
+                      </div>
+                      <p class="input-hint">{{ t("admin.settings.features.affiliate.rebateRateHint") }}</p>
+                    </div>
+                    <div>
+                      <label for="affiliate-rebate-freeze-hours" class="input-label">
+                        {{ t("admin.settings.features.affiliate.freezeHours") }}
+                      </label>
+                      <input
+                        id="affiliate-rebate-freeze-hours"
+                        v-model.number="form.affiliate_rebate_freeze_hours"
+                        type="number"
+                        min="0"
+                        max="720"
+                        step="1"
+                        class="input"
+                      />
+                      <p class="input-hint">{{ t("admin.settings.features.affiliate.freezeHoursDesc") }}</p>
+                    </div>
+                    <div>
+                      <label for="affiliate-rebate-duration-days" class="input-label">
+                        {{ t("admin.settings.features.affiliate.durationDays") }}
+                      </label>
+                      <input
+                        id="affiliate-rebate-duration-days"
+                        v-model.number="form.affiliate_rebate_duration_days"
+                        type="number"
+                        min="0"
+                        max="3650"
+                        step="1"
+                        class="input"
+                      />
+                      <p class="input-hint">{{ t("admin.settings.features.affiliate.durationDaysDesc") }}</p>
+                    </div>
+                    <div>
+                      <label for="affiliate-rebate-per-invitee-cap" class="input-label">
+                        {{ t("admin.settings.features.affiliate.perInviteeCap", { unitName: previewBalanceUnitName }) }}
+                      </label>
+                      <input
+                        id="affiliate-rebate-per-invitee-cap"
+                        v-model.number="form.affiliate_rebate_per_invitee_cap"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="input"
+                      />
+                      <p class="input-hint">{{ t("admin.settings.features.affiliate.perInviteeCapDesc") }}</p>
+                    </div>
                   </div>
-                  <Toggle v-model="form.affiliate_admin_recharge_enabled" />
-                </div>
+                </SettingsSubpanel>
               </Collapse>
+            </SettingsSection>
+          </SettingsCard>
 
-              <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <label class="input-label">
-                    {{ t("admin.settings.features.affiliate.rebateRate") }}
-                  </label>
-                  <div class="relative">
-                    <input
-                      v-model.number="form.affiliate_rebate_rate"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      class="input pr-8"
-                      placeholder="20"
-                    />
-                    <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
-                  </div>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.affiliate.rebateRateHint") }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="input-label">
-                    {{ t("admin.settings.features.affiliate.freezeHours") }}
-                  </label>
-                  <input
-                    v-model.number="form.affiliate_rebate_freeze_hours"
-                    type="number"
-                    min="0"
-                    max="720"
-                    step="1"
-                    class="input"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.affiliate.freezeHoursDesc") }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="input-label">
-                    {{ t("admin.settings.features.affiliate.durationDays") }}
-                  </label>
-                  <input
-                    v-model.number="form.affiliate_rebate_duration_days"
-                    type="number"
-                    min="0"
-                    max="3650"
-                    step="1"
-                    class="input"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.affiliate.durationDaysDesc") }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="input-label">
-                    {{ t("admin.settings.features.affiliate.perInviteeCap", { unitName: previewBalanceUnitName }) }}
-                  </label>
-                  <input
-                    v-model.number="form.affiliate_rebate_per_invitee_cap"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    class="input"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.affiliate.perInviteeCapDesc") }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.features.riskControl.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.features.riskControl.description") }}
-              </p>
-              <p class="mt-1.5 text-xs">
-                <router-link
-                  to="/admin/risk-control"
-                  class="inline-flex items-center gap-1 text-primary-600 hover:underline dark:text-primary-400"
-                >
-                  {{ t("admin.settings.features.riskControl.configureLink") }}
-                  <span aria-hidden="true">-&gt;</span>
-                </router-link>
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.features.riskControl.enabled") }}
-                  </label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.features.riskControl.enabledHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.risk_control_enabled" />
-              </div>
-
-              <div class="border-t border-gray-100 pt-5 dark:border-dark-700">
-                <div class="flex items-center justify-between gap-4">
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">
-                      {{ t("admin.settings.features.riskControl.cyberSessionBlockEnabled") }}
-                    </label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.features.riskControl.cyberSessionBlockEnabledHint") }}
-                    </p>
-                  </div>
-                  <Toggle v-model="form.cyber_session_block_enabled" />
-                </div>
-
-                <Collapse :open="form.cyber_session_block_enabled" unmount-on-hide>
-                  <div
-
-                    class="mt-4 max-w-xs"
+          <!-- 风控 -->
+          <SettingsCard
+            :title="t('admin.settings.features.riskControl.title')"
+            :description="t('admin.settings.features.riskControl.description')"
+          >
+            <template #actions>
+              <router-link
+                to="/admin/risk-control"
+                class="btn btn-secondary btn-sm h-9 shrink-0"
+              >
+                {{ t("admin.settings.features.riskControl.configureLink") }}
+              </router-link>
+            </template>
+            <SettingsSection>
+              <SettingToggleRow
+                id="risk-control-enabled"
+                v-model="form.risk_control_enabled"
+                :label="t('admin.settings.features.riskControl.enabled')"
+                :hint="t('admin.settings.features.riskControl.enabledHint')"
+              />
+              <SettingToggleRow
+                id="cyber-session-block-enabled"
+                v-model="form.cyber_session_block_enabled"
+                :label="t('admin.settings.features.riskControl.cyberSessionBlockEnabled')"
+                :hint="t('admin.settings.features.riskControl.cyberSessionBlockEnabledHint')"
+              />
+              <Collapse :open="form.cyber_session_block_enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingRow
+                    id="cyber-session-block-ttl"
+                    field
+                    label-for="cyber-session-block-ttl"
+                    :label="t('admin.settings.features.riskControl.cyberSessionBlockTTLSeconds')"
+                    :hint="t('admin.settings.features.riskControl.cyberSessionBlockTTLSecondsHint')"
                   >
-                    <label class="input-label">
-                      {{ t("admin.settings.features.riskControl.cyberSessionBlockTTLSeconds") }}
-                    </label>
                     <input
+                      id="cyber-session-block-ttl"
                       v-model.number="form.cyber_session_block_ttl_seconds"
                       type="number"
                       min="1"
                       step="1"
                       class="input"
                     />
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.features.riskControl.cyberSessionBlockTTLSecondsHint") }}
-                    </p>
-                  </div>
-                </Collapse>
-              </div>
-            </div>
-          </div>
+                  </SettingRow>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+          </SettingsCard>
         </div>
         <!-- /分页：功能特性 -->
 
@@ -7356,6 +7261,10 @@ const captchaMasterEnabled = computed({
     applyCaptchaSelection(enabled ? captchaProviderSelection.value : null),
 });
 
+const loginAgreementModeOptions = computed<SettingsSegmentedOption<string>[]>(() => [
+  { value: "modal", label: t("admin.settings.loginAgreement.modeModal"), icon: "shield" },
+  { value: "checkbox", label: t("admin.settings.loginAgreement.modeCheckbox"), icon: "checkCircle" },
+]);
 const captchaProviderOptions = computed<SettingsSegmentedOption<CaptchaProviderSelection>[]>(() => [
   { value: "turnstile", label: t("admin.settings.captcha.providerTurnstile"), testid: "captcha-provider-turnstile" },
   { value: "tencent", label: t("admin.settings.captcha.providerTencent"), testid: "captcha-provider-tencent" },

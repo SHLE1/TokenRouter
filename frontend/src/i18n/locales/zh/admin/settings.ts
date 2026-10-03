@@ -1250,8 +1250,6 @@ export default {
         documentSlugDuplicate: '登录条款文档路由不能重复：/legal/{id}',
         title: '登录条款确认',
         description: '控制登录页是否要求用户先阅读并同意服务条款、隐私政策或其他 Markdown 文档。',
-        enabled: '已启用',
-        disabled: '未启用',
         mode: '展示形式',
         modeModal: '弹窗',
         modeCheckbox: '复选框',
