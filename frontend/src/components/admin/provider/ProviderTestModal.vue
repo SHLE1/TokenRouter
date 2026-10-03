@@ -310,8 +310,7 @@ const prioritizedGeminiModels = ['gemini-3.1-flash-image', 'gemini-2.5-flash-ima
 // 图片或文字请求类型由管理员选择。
 const imageTestAvailable = computed(() => {
   const platform = props.provider?.platform
-  return platform === 'openai' || platform === 'gemini' || platform === 'grok' ||
-    (platform === 'antigravity' && props.provider?.type === 'apikey')
+  return platform === 'openai' || platform === 'gemini' || platform === 'grok'
 })
 
 const testTypeOptions = computed(() => [

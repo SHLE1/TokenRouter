@@ -8,6 +8,7 @@
 
 | 迁移 | 专题 | 升级方式 | 当前状态 |
 | --- | --- | --- | --- |
+| 286 | [Antigravity 静态提供商停用](#antigravity_static_retirement) | 停机 | 有效 |
 | 284 | [模型属性档案与统一目录](#模型属性档案与统一目录) | 可滚动 | 有效 |
 | 无 | [文件价格覆盖退役](#文件价格覆盖退役) | 可滚动，需手工迁移价格 | 有效 |
 | 283 | [产品名称兼容](deployment_and_migrations.md#product_name_compatibility) | 可滚动 | 有效 |
@@ -40,6 +41,15 @@
 | 234 | [自研异步图片任务下线](#自研异步图片任务下线) | 停机 | 有效 |
 
 "停机"表示需要先停止全部旧实例、备份并验证数据库，再由一个新实例执行迁移，验证后才扩容其他新实例，新旧二进制不能同时运行。这类迁移的回退方式都是：停止全部新实例，恢复升级前的数据库备份（需要时还有 Redis 和配置），再启动旧版本；只回退二进制、手工补数据或删除迁移记录都不能代替数据库恢复。下面各节不再重复这段说明，只写各自不同的地方。
+
+<a id="antigravity_static_retirement"></a>
+## Antigravity 静态提供商停用
+
+迁移 286 将未删除的 Antigravity `apikey` 和 `upstream` 提供商设为 `status=inactive`、`schedulable=false`，更新提供商时间并写入调度 outbox。提供商 ID、类型、凭据、协议配置和分组关联保持原值。迁移访问 `providers` 和 `scheduler_outbox`，usage 表及其索引保持原状，历史用量继续通过原 ID 查询。
+
+停止旧实例并备份数据库后，由一个新实例执行迁移，再启动其他新实例。调度事件和启动重建刷新提供商快照。升级后检查 OAuth 的流式及非流式请求，并确认旧静态提供商已停用。重复执行迁移时，已经停用的记录不会再产生事件。
+
+需要继续连接中转网关时，按它提供的协议创建 Anthropic 或 Gemini API Key 提供商，Base URL 填写完整前缀（例如 `https://gateway.example/antigravity`），重新配置分组、模型和额度。Google 签发的 Gemini API Key 使用 Gemini 提供商。旧静态提供商可供历史查询或按常规流程删除。
 
 ## 模型属性档案与统一目录
 

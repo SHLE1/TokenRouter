@@ -53,14 +53,6 @@ func (p *AntigravityTokenState) GetAccessToken(ctx context.Context, provider *Re
 		return "", errors.New("not an antigravity provider")
 	}
 
-	// upstream providers use static api_key and never refresh oauth token.
-	if provider.Type == ProviderTypeUpstream {
-		apiKey := provider.GetCredential("api_key")
-		if apiKey == "" {
-			return "", errors.New("upstream provider missing api_key in credentials")
-		}
-		return apiKey, nil
-	}
 	if provider.Type != ProviderTypeOAuth {
 		return "", errors.New("not an antigravity oauth provider")
 	}

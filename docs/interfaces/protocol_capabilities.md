@@ -76,7 +76,7 @@ Antigravity 对 Google 内部接口的封装，算作 `gemini_generate_content` 
 - OpenAI OAuth：Responses、WebSocket、Compact、Alpha Search、Live。PAT 没有 Alpha Search 和 Live，Agent Identity 没有 Live。OpenAI 没有 Messages 原生项。
 - Grok：HTTP Responses、Chat、Images、视频和 Voice 是原生项；WebSocket、搜索和 Compact 是转换入口。
 - CN API Key：Messages 和 Chat；DeepSeek 和 Kimi 另外有 Responses。
-- Gemini 和 Antigravity OAuth：GenerateContent（历史上的 upstream 类型保留 Messages 直连）。
+- Gemini 和 Antigravity OAuth：GenerateContent。Antigravity 的 API Key 和历史 `upstream` 类型没有可用协议。
 - Qoder：专用的 Chat。
 - Gemini API Key 和 Vertex SA：各自的 Batch 协议。
 

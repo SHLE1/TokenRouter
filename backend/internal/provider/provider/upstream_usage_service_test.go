@@ -261,15 +261,6 @@ func TestZivvUsageQueryUsesVersionedBalanceEndpoint(t *testing.T) {
 	require.True(t, upstreamcore.HTTPUpstreamRedirectsDisabled(upstream.requests[0].Context()))
 }
 
-func TestUpstreamUsageProviderBaseURLUsesPlatformNormalization(t *testing.T) {
-	provider := &providercore.Record{
-		Platform:    capability.PlatformAntigravity,
-		Type:        capability.ProviderTypeAPIKey,
-		Credentials: map[string]any{"base_url": "https://gateway.example/"},
-	}
-	require.Equal(t, "https://gateway.example/antigravity", UpstreamUsageBaseURL(provider))
-}
-
 func TestNewAPIUsageQueryUsesTokenQuotaEndpoint(t *testing.T) {
 	provider := &providercore.Record{
 		ID: 11, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Status: providercore.StatusActive, Concurrency: 1,

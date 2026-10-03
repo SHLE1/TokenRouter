@@ -434,29 +434,6 @@
               </div>
             </div>
 
-            <!-- 账号类型（Antigravity） -->
-            <div v-if="form.platform === 'antigravity'" v-content-reveal class="space-y-2">
-              <span class="input-label">{{ t('admin.providers.providerType') }}</span>
-              <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup">
-                <ProviderChoiceCard
-                  :accent="form.platform"
-                  :selected="antigravityProviderType === 'oauth'"
-                  icon="key"
-                  title="OAuth"
-                  :description="t('admin.providers.types.antigravityOauth')"
-                  @click="antigravityProviderType = 'oauth'"
-                />
-                <ProviderChoiceCard
-                  :accent="form.platform"
-                  :selected="antigravityProviderType === 'upstream'"
-                  icon="cloud"
-                  title="API Key"
-                  :description="t('admin.providers.types.antigravityApikey')"
-                  @click="antigravityProviderType = 'upstream'"
-                />
-              </div>
-            </div>
-
             <!-- Qoder 站点必须在登录方式之前冻结。 -->
             <template v-if="form.platform === 'qoder'">
               <div v-content-reveal class="space-y-2">
@@ -505,7 +482,7 @@
 
           <SettingsSection v-if="showCredentialsSection" :title="t('admin.providers.sections.credentials')">
             <!-- Antigravity OAuth 项目 ID -->
-            <div v-if="form.platform === 'antigravity' && antigravityProviderType === 'oauth'" v-content-reveal>
+            <div v-if="form.platform === 'antigravity'" v-content-reveal>
               <label for="create-antigravity-project-id" class="input-label">{{ t('admin.providers.antigravityProjectIdLabel') }}</label>
               <input
                 id="create-antigravity-project-id"
@@ -516,38 +493,6 @@
                 :placeholder="t('admin.providers.antigravityProjectIdPlaceholder')"
               />
               <p class="input-hint">{{ t('admin.providers.antigravityProjectIdHint') }}</p>
-            </div>
-
-            <!-- Antigravity 上游中转 -->
-            <div
-              v-if="form.platform === 'antigravity' && antigravityProviderType === 'upstream'"
-              v-content-reveal
-              class="grid gap-4 md:grid-cols-2"
-            >
-              <div data-provider-field="upstream-base-url">
-                <label for="create-upstream-base-url" class="input-label">{{ t('admin.providers.upstream.baseUrl') }}</label>
-                <input
-                  id="create-upstream-base-url"
-                  v-model="upstreamBaseUrl"
-                  type="text"
-                  required
-                  class="input"
-                  placeholder="https://cloudcode-pa.googleapis.com"
-                />
-                <p class="input-hint">{{ t('admin.providers.upstream.baseUrlHint') }}</p>
-              </div>
-              <div data-provider-field="upstream-api-key">
-                <label for="create-upstream-api-key" class="input-label">{{ t('admin.providers.upstream.apiKey') }}</label>
-                <input
-                  id="create-upstream-api-key"
-                  v-model="upstreamApiKey"
-                  type="password"
-                  required
-                  class="input font-mono"
-                  placeholder="sk-..."
-                />
-                <p class="input-hint">{{ t('admin.providers.upstream.apiKeyHint') }}</p>
-              </div>
             </div>
 
             <!-- Qoder 手动凭据 -->
@@ -2159,7 +2104,6 @@ adminAPI.settings.getWebSearchEmulationConfig().then(cfg => {
 
 loadQuotaNotifyGlobal()
 const allowOverages = ref(false) // For antigravity providers: enable AI Credits overages
-const antigravityProviderType = ref<'oauth' | 'upstream'>('oauth') // For antigravity: oauth or upstream
 const qoderProviderType = ref<'oauth' | 'manual'>('oauth')
 const qoderSite = ref<QoderSite>('global')
 const qoderPAT = ref('')
@@ -2169,8 +2113,6 @@ const qoderUidAid = ref('')
 const qoderRefreshToken = ref('')
 const qoderUserType = ref('personal_standard')
 const antigravityProjectId = ref('')
-const upstreamBaseUrl = ref('') // For upstream type: base URL
-const upstreamApiKey = ref('') // For upstream type: API key
 const antigravityModelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const antigravityWhitelistModels = ref<string[]>([])
 const antigravityModelMappings = ref<ModelMappingRow[]>([])
@@ -2526,10 +2468,6 @@ const form = reactive({
 
 // Helper to check if current type needs OAuth flow
 const isOAuthFlow = computed(() => {
-  // Antigravity upstream 类型不需要 OAuth 流程
-  if (form.platform === 'antigravity' && antigravityProviderType.value === 'upstream') {
-    return false
-  }
   if (form.platform === 'qoder' && qoderProviderType.value === 'manual') {
     return false
   }
@@ -2589,8 +2527,8 @@ const isServiceAccountCategory = computed(() =>
 )
 const isAnthropicOAuthCategory = computed(() => form.platform === 'anthropic' && providerCategory.value === 'oauth-based')
 const isOpenAIOAuthCategory = computed(() => form.platform === 'openai' && providerCategory.value === 'oauth-based')
-// Antigravity 的 API Key 使用独立的上游字段，不进入通用 API Key 凭证区。
-const isApiKeyCredentials = computed(() => form.type === 'apikey' && form.platform !== 'antigravity')
+// API Key 提供商使用通用凭据表单。
+const isApiKeyCredentials = computed(() => form.type === 'apikey')
 const showGeminiApiKeyTier = computed(() => form.platform === 'gemini' && geminiProviderType.value === 'official')
 const showCredentialsSection = computed(() =>
   form.platform === 'antigravity' ||
@@ -2719,17 +2657,16 @@ watch(
   }
 )
 
-// Sync form.type based on providerCategory, addMethod, and platform-specific type
+// 提供商类型由平台和授权方式确定。
 watch(
-  [providerCategory, addMethod, antigravityProviderType, qoderProviderType, () => form.platform],
-  ([category, method, agType]) => {
+  [providerCategory, addMethod, qoderProviderType, () => form.platform],
+  ([category, method]) => {
     if (form.platform === 'qoder') {
       form.type = 'cosy'
       return
     }
-    // Antigravity upstream 类型（实际创建为 apikey）
-    if (form.platform === 'antigravity' && agType === 'upstream') {
-      form.type = 'apikey'
+    if (form.platform === 'antigravity') {
+      form.type = 'oauth'
       return
     }
     // Bedrock 类型
@@ -2789,7 +2726,6 @@ watch(
       })
       antigravityWhitelistModels.value = []
       providerCategory.value = 'oauth-based'
-      antigravityProviderType.value = 'oauth'
     } else {
       allowOverages.value = false
       antigravityWhitelistModels.value = []
@@ -3204,7 +3140,6 @@ const resetForm = () => {
   customBaseUrlEnabled.value = false
   customBaseUrl.value = ''
   allowOverages.value = false
-  antigravityProviderType.value = 'oauth'
   qoderProviderType.value = 'oauth'
   qoderSite.value = 'global'
   qoderPAT.value = ''
@@ -3214,8 +3149,6 @@ const resetForm = () => {
   qoderRefreshToken.value = ''
   qoderUserType.value = 'personal_standard'
   antigravityProjectId.value = ''
-  upstreamBaseUrl.value = ''
-  upstreamApiKey.value = ''
   vertexServiceAccountJson.value = ''
   vertexProjectId.value = ''
   vertexClientEmail.value = ''
@@ -3533,45 +3466,6 @@ const handleSubmit = async () => {
     applyInterceptWarmup(credentials, interceptWarmupRequests.value, 'create')
 
     await createProviderAndFinish('anthropic', 'bedrock' as ProviderType, credentials)
-    return
-  }
-
-  // For Antigravity upstream type, create directly
-  if (form.platform === 'antigravity' && antigravityProviderType.value === 'upstream') {
-    if (!form.name.trim()) {
-      failAt(t('admin.providers.pleaseEnterProviderName'), 'name')
-      return
-    }
-    if (!upstreamBaseUrl.value.trim()) {
-      failAt(t('admin.providers.upstream.pleaseEnterBaseUrl'), 'upstream-base-url')
-      return
-    }
-    if (!upstreamApiKey.value.trim()) {
-      failAt(t('admin.providers.upstream.pleaseEnterApiKey'), 'upstream-api-key')
-      return
-    }
-
-    // Build upstream credentials (and optional model restriction)
-    const credentials: Record<string, unknown> = {
-      base_url: upstreamBaseUrl.value.trim(),
-      api_key: upstreamApiKey.value.trim()
-    }
-
-    // Antigravity 只使用映射模式
-    const antigravityModelMapping = buildModelMappingObject(
-      'mapping',
-      [],
-      antigravityModelMappings.value
-    )
-    if (antigravityModelMapping) {
-      credentials.model_mapping = antigravityModelMapping
-    }
-    credentials.model_whitelist = [...antigravityWhitelistModels.value]
-
-    applyInterceptWarmup(credentials, interceptWarmupRequests.value, 'create')
-
-    const extra = buildAntigravityExtra()
-    await createProviderAndFinish(form.platform, 'apikey', credentials, extra)
     return
   }
 

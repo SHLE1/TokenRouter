@@ -96,10 +96,6 @@ export function providerTestProtocolPlan(provider: Provider | null): ProviderTes
     case 'qoder':
       return { options: [option('native', 'Chat Completions', '/v1/chat/completions')], selectable: false }
     case 'antigravity':
-      // 静态上游按模型分流：Gemini 模型走 GenerateContent，其余走 Messages。
-      if (type === 'apikey' || type === 'upstream') {
-        return { options: [option('native', 'Messages / GenerateContent', '/v1/messages')], selectable: false }
-      }
       return { options: [option('native', 'GenerateContent', ':streamGenerateContent')], selectable: false }
     case 'gemini':
       return { options: [option('native', 'GenerateContent', ':streamGenerateContent')], selectable: false }

@@ -10,60 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAntigravityTokenProvider_GetAccessToken_Upstream(t *testing.T) {
-	tokenSource := &AntigravityTokenSource{}
-
-	t.Run("upstream provider with valid api_key", func(t *testing.T) {
-		provider := &Record{
-			Platform: capability.PlatformAntigravity,
-			Type:     capability.ProviderTypeUpstream,
-			Credentials: map[string]any{
-				"api_key": "sk-test-key-12345",
-			},
-		}
-		token, err := tokenSource.GetAccessToken(context.Background(), provider)
-		require.NoError(t, err)
-		require.Equal(t, "sk-test-key-12345", token)
-	})
-
-	t.Run("upstream provider missing api_key", func(t *testing.T) {
-		provider := &Record{
-			Platform:    capability.PlatformAntigravity,
-			Type:        capability.ProviderTypeUpstream,
-			Credentials: map[string]any{},
-		}
-		token, err := tokenSource.GetAccessToken(context.Background(), provider)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "upstream provider missing api_key")
-		require.Empty(t, token)
-	})
-
-	t.Run("upstream provider with empty api_key", func(t *testing.T) {
-		provider := &Record{
-			Platform: capability.PlatformAntigravity,
-			Type:     capability.ProviderTypeUpstream,
-			Credentials: map[string]any{
-				"api_key": "",
-			},
-		}
-		token, err := tokenSource.GetAccessToken(context.Background(), provider)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "upstream provider missing api_key")
-		require.Empty(t, token)
-	})
-
-	t.Run("upstream provider with nil credentials", func(t *testing.T) {
-		provider := &Record{
-			Platform: capability.PlatformAntigravity,
-			Type:     capability.ProviderTypeUpstream,
-		}
-		token, err := tokenSource.GetAccessToken(context.Background(), provider)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "upstream provider missing api_key")
-		require.Empty(t, token)
-	})
-}
-
 func TestAntigravityTokenProvider_GetAccessToken_Guards(t *testing.T) {
 	tokenSource := &AntigravityTokenSource{}
 
@@ -85,14 +31,18 @@ func TestAntigravityTokenProvider_GetAccessToken_Guards(t *testing.T) {
 		require.Empty(t, token)
 	})
 
-	t.Run("unsupported provider type", func(t *testing.T) {
-		provider := &Record{
-			Platform: capability.PlatformAntigravity,
-			Type:     capability.ProviderTypeAPIKey,
-		}
-		token, err := tokenSource.GetAccessToken(context.Background(), provider)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "not an antigravity oauth provider")
-		require.Empty(t, token)
-	})
+	// 静态密钥即使存在，也不能作为 OAuth token 使用。
+	for _, kind := range []string{capability.ProviderTypeAPIKey, capability.ProviderTypeUpstream} {
+		t.Run(kind, func(t *testing.T) {
+			provider := &Record{
+				Platform:    capability.PlatformAntigravity,
+				Type:        kind,
+				Credentials: map[string]any{"api_key": "fixture-key"},
+			}
+			token, err := tokenSource.GetAccessToken(context.Background(), provider)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "not an antigravity oauth provider")
+			require.Empty(t, token)
+		})
+	}
 }

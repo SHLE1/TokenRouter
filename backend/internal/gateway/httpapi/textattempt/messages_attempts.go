@@ -295,7 +295,7 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 	}
 	// 记录 Forward 前已写入字节数，Forward 后若增加则说明 SSE 内容已发，禁止 failover
 	b.writerSizeBeforeForward = b.c.Writer.Size()
-	if b.provider.Record.Platform == capability.PlatformAntigravity && b.provider.Record.Type != capability.ProviderTypeAPIKey {
+	if b.provider.Record.Platform == capability.PlatformAntigravity {
 		b.result, err = b.binding().forwardAntigravity(requestCtx, b.c, b.provider, attemptBody, b.hasBoundSession)
 	} else {
 		b.result, err = b.binding().forwardMessages(requestCtx, b.c, b.provider, b.attemptParsedReq)

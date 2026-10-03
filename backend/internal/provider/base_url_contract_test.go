@@ -48,24 +48,6 @@ func TestGetBaseURL(t *testing.T) {
 			expected: "https://custom.example.com",
 		},
 		{
-			name: "antigravity apikey auto-appends /antigravity",
-			provider: providercore.Record{
-				Type:        capability.ProviderTypeAPIKey,
-				Platform:    capability.PlatformAntigravity,
-				Credentials: map[string]any{"base_url": "https://upstream.example.com"},
-			},
-			expected: "https://upstream.example.com/antigravity",
-		},
-		{
-			name: "antigravity apikey trims trailing slash before appending",
-			provider: providercore.Record{
-				Type:        capability.ProviderTypeAPIKey,
-				Platform:    capability.PlatformAntigravity,
-				Credentials: map[string]any{"base_url": "https://upstream.example.com/"},
-			},
-			expected: "https://upstream.example.com/antigravity",
-		},
-		{
 			name: "antigravity non-apikey returns empty",
 			provider: providercore.Record{
 				Type:        capability.ProviderTypeOAuth,
@@ -111,24 +93,6 @@ func TestGetGeminiBaseURL(t *testing.T) {
 				Credentials: map[string]any{"base_url": "https://custom-gemini.example.com"},
 			},
 			expected: "https://custom-gemini.example.com",
-		},
-		{
-			name: "antigravity apikey auto-appends /antigravity",
-			provider: providercore.Record{
-				Type:        capability.ProviderTypeAPIKey,
-				Platform:    capability.PlatformAntigravity,
-				Credentials: map[string]any{"base_url": "https://upstream.example.com"},
-			},
-			expected: "https://upstream.example.com/antigravity",
-		},
-		{
-			name: "antigravity apikey trims trailing slash",
-			provider: providercore.Record{
-				Type:        capability.ProviderTypeAPIKey,
-				Platform:    capability.PlatformAntigravity,
-				Credentials: map[string]any{"base_url": "https://upstream.example.com/"},
-			},
-			expected: "https://upstream.example.com/antigravity",
 		},
 		{
 			name: "antigravity oauth does NOT append /antigravity",

@@ -203,9 +203,7 @@ export default {
         responsesApi: 'Responses API',
         googleOauth: 'Google OAuth',
         codeAssist: 'Code Assist',
-        antigravityOauth: 'Antigravity OAuth',
         grokOauth: 'Grok OAuth',
-        antigravityApikey: 'Connect via Base URL + API Key',
         qoderCosy: 'Qoder COSY',
         upstream: 'Upstream',
         upstreamDesc: 'Connect via Base URL + API Key'
@@ -1173,15 +1171,6 @@ export default {
       bedrockApiKeyLeaveEmpty: 'Leave empty to keep current key',
       apiKeyIsRequired: 'API Key is required',
       leaveEmptyToKeep: 'Leave empty to keep current key',
-      // Upstream type
-      upstream: {
-        baseUrl: 'Upstream Base URL',
-        baseUrlHint: 'The address of the upstream Antigravity service, e.g., https://cloudcode-pa.googleapis.com',
-        apiKey: 'Upstream API Key',
-        apiKeyHint: 'API Key for the upstream service',
-        pleaseEnterBaseUrl: 'Please enter upstream Base URL',
-        pleaseEnterApiKey: 'Please enter upstream API Key'
-      },
       // OAuth flow
       oauth: {
         title: 'Claude Provider Authorization',

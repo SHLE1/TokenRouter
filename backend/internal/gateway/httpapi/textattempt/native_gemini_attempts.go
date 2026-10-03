@@ -143,7 +143,7 @@ func (b *nativeGeminiAttemptBridge) Forward(state textflow.AttemptState) textflo
 		requestCtx = requeststate.WithProviderSwitchCount(requestCtx, state.SwitchCount)
 	}
 	sessionGroupID := derefGroupID(b.apiKey.GroupID)
-	if b.provider.Record.Platform == capability.PlatformAntigravity && b.provider.Record.Type != capability.ProviderTypeAPIKey {
+	if b.provider.Record.Platform == capability.PlatformAntigravity {
 		b.result, err = b.binding().forwardAntigravityGemini(
 			requestCtx,
 			b.c,

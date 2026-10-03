@@ -84,9 +84,6 @@ func NativeProtocolOptions(platform, providerType, authMode string) []ProtocolID
 			selected = []ProtocolID{ProtocolGeminiGenerateContent, ProtocolVertexBatch}
 		}
 	case PlatformAntigravity:
-		if providerType == ProviderTypeUpstream {
-			selected = []ProtocolID{ProtocolAnthropicMessages}
-		}
 		if providerType == ProviderTypeOAuth {
 			selected = []ProtocolID{ProtocolGeminiGenerateContent}
 		}

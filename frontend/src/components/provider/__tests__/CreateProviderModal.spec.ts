@@ -218,6 +218,24 @@ describe('CreateProviderModal OpenAI provider options', () => {
       .mockResolvedValue({ credentials: { model_whitelist: [] }, extra: {} })
   })
 
+  // 切换到 Antigravity 后，API Key 控件和静态地址输入应消失。
+  it('shows only OAuth credentials for Antigravity after switching from API Key', async () => {
+    const wrapper = mountModal()
+    await selectButtonByText(wrapper, 'OpenAI')
+    await selectButtonByText(wrapper, 'API Key')
+    await selectButtonByText(wrapper, 'Antigravity')
+    await flushPromises()
+    expect(wrapper.find('#create-antigravity-project-id').exists()).toBe(true)
+    expect(wrapper.find('#create-upstream-base-url').exists()).toBe(false)
+    expect(wrapper.find('#create-upstream-api-key').exists()).toBe(false)
+    expect(wrapper.findAll('button').some(button => button.text().trim() === 'API Key')).toBe(false)
+    await wrapper.get('form#create-provider-form input[type="text"]').setValue('Antigravity OAuth')
+    await wrapper.get('form#create-provider-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(createProviderMock).not.toHaveBeenCalled()
+    expect(wrapper.findComponent(OAuthAuthorizationFlowStub).exists()).toBe(true)
+  })
+
   it('submits the explicit OpenAI text protocol defaults with the new configuration shape', async () => {
     await submitApiKeyProvider('openai')
 

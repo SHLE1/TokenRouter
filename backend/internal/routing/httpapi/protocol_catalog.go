@@ -39,6 +39,9 @@ func AdminProtocolCatalog(endpoints map[protocol.ProtocolID]string) ProtocolCata
 	groups := []ProtocolGroupProfile{}
 	for _, platform := range []string{capability.PlatformAnthropic, capability.PlatformOpenAI, capability.PlatformGemini, capability.PlatformAntigravity, capability.PlatformGrok, capability.PlatformQoder, capability.PlatformKimi, capability.PlatformZhipu, capability.PlatformDeepseek} {
 		for _, providerType := range []string{capability.ProviderTypeOAuth, capability.ProviderTypeSetupToken, capability.ProviderTypeAPIKey, capability.ProviderTypeUpstream, capability.ProviderTypeBedrock, capability.ProviderTypeServiceAccount, capability.ProviderTypeCosy} {
+			if platform == capability.PlatformAntigravity && providerType != capability.ProviderTypeOAuth {
+				continue
+			}
 			modes := []string{""}
 			if platform == capability.PlatformOpenAI && providerType == capability.ProviderTypeOAuth {
 				modes = append(modes, capability.OpenAIAuthModePersonalAccessToken, capability.OpenAIAuthModeAgentIdentity)

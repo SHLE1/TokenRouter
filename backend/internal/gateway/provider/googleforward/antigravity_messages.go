@@ -18,7 +18,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	googlewire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
@@ -39,11 +38,6 @@ import (
 // @project-doc docs/interfaces/antigravity_upstream.md#antigravity_native_execution
 func (s *Antigravity) Forward(ctx context.Context, output Output, provider *gatewayprovider.ExecutionProvider, body []byte, isStickySession bool) (*forwardcore.MessagesResult, error) {
 	c := &attempt{Output: output}
-
-	// 上游透传提供商直接转发，不走 OAuth token 刷新
-	if provider.Record.Type == capability.ProviderTypeUpstream {
-		return s.ForwardUpstream(ctx, c, provider, body)
-	}
 
 	startTime := time.Now()
 

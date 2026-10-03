@@ -129,7 +129,7 @@ Qoder、Gemini、Grok、Anthropic、Bedrock、OpenAI 和国产平台的测试目
 - OpenAI 有 Responses、Chat、两种 Compact 和图片分支。
 - 国产平台按固定协议和自适应的探测顺序测试。
 
-HTTP 使用同一个 EventSink，后台消费同一组事件。一次 `TestRun` 明确持有输出错误、取消、TLS 自动路由、task 恢复和终态的抑制；自动探针的 UA 只属于这一次执行，不修改共享的适配器。Antigravity 指定提供商的探测，由 AntigravityProbe 取得凭据、构造请求，并复用 AntigravityRetry；转发入口另外处理 Ops、粘性和请求状态。模型同步由 ModelCatalogue 执行。
+HTTP 使用 EventSink 输出事件，后台消费同一组事件。`TestRun` 处理输出错误、取消、TLS 自动路由、task 恢复和终态抑制。每次自动探测请求携带自己的 UA。Antigravity 指定提供商的探测，由 AntigravityProbe 取得 OAuth 凭据、构造请求，并复用 AntigravityRetry。转发入口另外处理 Ops、粘性和请求状态。模型同步由 ModelCatalogue 使用 OAuth 查询可用模型，API Key 和历史 `upstream` 的测试及模型查询实现已移除。
 
 OpenAI 客户端许可，由 provider 按提供商策略判断，字符串识别复用平台的实现；自动探针和网关共用 `provider/provider.OpenAIProbePolicy` 的 UA 优先级和浏览器回退，动态设置在每次判断时读取。429 报文的解析由 `upstream/openai` 执行，窗口恢复时间和观测到的套餐由 provider 写入；影子不持有套餐凭据，窗口缺少重置信号时，不写入状态。
 

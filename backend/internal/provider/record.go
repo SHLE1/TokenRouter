@@ -803,21 +803,14 @@ func (a *Record) GetBaseURL() string {
 	if baseURL == "" {
 		return "https://api.anthropic.com"
 	}
-	if a.Platform == PlatformAntigravity {
-		return strings.TrimRight(baseURL, "/") + "/antigravity"
-	}
 	return baseURL
 }
 
 // GetGeminiBaseURL 返回 Gemini 兼容端点的 base URL。
-// Antigravity 平台的 APIKey 提供商自动拼接 /antigravity。
 func (a *Record) GetGeminiBaseURL(defaultBaseURL string) string {
 	baseURL := strings.TrimSpace(a.GetCredential("base_url"))
 	if baseURL == "" {
 		return defaultBaseURL
-	}
-	if a.Platform == PlatformAntigravity && a.Type == ProviderTypeAPIKey {
-		return strings.TrimRight(baseURL, "/") + "/antigravity"
 	}
 	return baseURL
 }

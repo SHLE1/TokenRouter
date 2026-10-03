@@ -436,44 +436,6 @@
       ]
     },
     {
-      "platform": "antigravity",
-      "type": "setup-token",
-      "auth_mode": "",
-      "protocols": []
-    },
-    {
-      "platform": "antigravity",
-      "type": "apikey",
-      "auth_mode": "",
-      "protocols": []
-    },
-    {
-      "platform": "antigravity",
-      "type": "upstream",
-      "auth_mode": "",
-      "protocols": [
-        "anthropic_messages"
-      ]
-    },
-    {
-      "platform": "antigravity",
-      "type": "bedrock",
-      "auth_mode": "",
-      "protocols": []
-    },
-    {
-      "platform": "antigravity",
-      "type": "service_account",
-      "auth_mode": "",
-      "protocols": []
-    },
-    {
-      "platform": "antigravity",
-      "type": "cosy",
-      "auth_mode": "",
-      "protocols": []
-    },
-    {
       "platform": "grok",
       "type": "oauth",
       "auth_mode": "",

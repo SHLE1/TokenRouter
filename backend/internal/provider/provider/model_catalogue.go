@@ -49,7 +49,7 @@ func (s *ModelCatalogue) FetchUpstreamSupportedModels(ctx context.Context, value
 		return nil, newUpstreamModelSyncConfigError("Provider is required", nil)
 	}
 
-	if value.Platform == capability.PlatformAntigravity && value.Type != capability.ProviderTypeAPIKey {
+	if value.Platform == capability.PlatformAntigravity {
 		return s.fetchAntigravityOAuthUpstreamModels(ctx, value)
 	}
 
@@ -102,8 +102,6 @@ func (s *ModelCatalogue) FetchUpstreamSupportedModels(ctx context.Context, value
 
 func (s *ModelCatalogue) buildUpstreamModelsRequest(ctx context.Context, value *providercore.Record) (*http.Request, error) {
 	switch {
-	case value.Platform == capability.PlatformAntigravity:
-		return s.buildAntigravityAPIKeyModelsRequest(ctx, value)
 	case value.IsGrok():
 		return s.buildGrokUpstreamModelsRequest(ctx, value)
 	case value.IsOpenAI() || value.IsCNProvider():
@@ -265,46 +263,6 @@ func (s *ModelCatalogue) buildAnthropicUpstreamModelsRequest(ctx context.Context
 	}
 	// 模型列表查询与转发按相同顺序应用提供商请求头覆盖。
 	applyGrokQuotaHeaders(value, req.Header)
-	return req, nil
-}
-
-func (s *ModelCatalogue) buildAntigravityAPIKeyModelsRequest(ctx context.Context, value *providercore.Record) (*http.Request, error) {
-	if value.Type != capability.ProviderTypeAPIKey {
-		return nil, newUpstreamModelSyncUnsupportedError(
-			fmt.Sprintf("Unsupported Antigravity provider type for upstream model sync: %s", value.Type), nil,
-		)
-	}
-	apiKey := strings.TrimSpace(value.GetCredential("api_key"))
-	if apiKey == "" {
-		return nil, newUpstreamModelSyncConfigError("No Antigravity API key is available", nil)
-	}
-
-	baseURL := strings.TrimRight(strings.TrimSpace(value.GetCredential("base_url")), "/")
-	if baseURL == "" {
-		return nil, newUpstreamModelSyncConfigError("Antigravity API-key base URL is required for upstream model sync", nil)
-	}
-	if !strings.HasSuffix(strings.ToLower(baseURL), "/antigravity") {
-		return nil, newUpstreamModelSyncUnsupportedError(
-			"Antigravity API-key upstream model sync requires a compatible gateway base URL ending in /antigravity; use Antigravity OAuth for official Cloud Code upstreams",
-			nil,
-		)
-	}
-	normalizedBaseURL, err := s.Options.ValidateURL(baseURL)
-	if err != nil {
-		return nil, newUpstreamModelSyncConfigError("Invalid Antigravity base URL", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildV1ModelsURL(normalizedBaseURL), nil)
-	if err != nil {
-		return nil, newUpstreamModelSyncConfigError("Invalid Antigravity model list URL", err)
-	}
-	for key, value := range claude.DefaultHeaders {
-		req.Header.Set(key, value)
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("anthropic-version", "2023-06-01")
-	req.Header.Set("anthropic-beta", claude.APIKeyBetaHeader)
-	req.Header.Set("x-api-key", apiKey)
 	return req, nil
 }
 

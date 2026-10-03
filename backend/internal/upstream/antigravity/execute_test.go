@@ -124,53 +124,7 @@ func TestExecuteFailedBeforeResponseReleasesOwnedBody(t *testing.T) {
 	require.EqualValues(t, 1, releases.Load())
 }
 
-// TestExecuteStaticUpstreamWire 验证静态上游保留双凭据 Header、未知请求字段和原透传输出。
-func TestExecuteStaticUpstreamWire(t *testing.T) {
-	for _, stream := range []bool{false, true} {
-		t.Run(fmt.Sprintf("stream=%v", stream), func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				require.Equal(t, "/v1/messages", r.URL.Path)
-				require.Equal(t, "Bearer fixture-key", r.Header.Get("Authorization"))
-				require.Equal(t, "fixture-key", r.Header.Get("x-api-key"))
-				require.Equal(t, "2023-06-01", r.Header.Get("anthropic-version"))
-				body, err := io.ReadAll(r.Body)
-				require.NoError(t, err)
-				require.Contains(t, string(body), `"custom_field":"kept"`)
-				if stream {
-					w.Header().Set("Content-Type", "text/event-stream")
-					_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":3}}}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"hello\"}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":1}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
-				} else {
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = io.WriteString(w, `{"type":"message","content":[{"type":"text","text":"hello"}],"usage":{"input_tokens":3,"output_tokens":1}}`)
-				}
-			}))
-			defer server.Close()
-			body := []byte(fmt.Sprintf(`{"model":"fixture","stream":%v,"max_tokens":32,"messages":[],"custom_field":"kept"}`, stream))
-			req, model, actualStream, err := BuildStaticRequest(context.Background(), body, StaticRequestInput{BaseURL: server.URL, APIKey: "fixture-key", Version: "2023-06-01", Sanitize: func(b []byte, _ string) ([]byte, bool) { return b, false }})
-			require.NoError(t, err)
-			require.Equal(t, stream, actualStream)
-			var closes atomic.Int32
-			target := &Target{Mode: ModeStaticClaudeResponse, Response: executionResponseOptions(), Exchange: func(context.Context) (*http.Response, error) {
-				resp, err := server.Client().Do(req)
-				if resp != nil {
-					resp.Body = &executionBody{ReadCloser: resp.Body, closes: &closes}
-				}
-				return resp, err
-			}}
-			sink := &executionSink{}
-			result, err := (Executor{}).Execute(context.Background(), upstream.AttemptInput{Protocol: protocol.ProtocolAnthropicMessages, ResponseModel: model, Stream: stream, Target: target}, sink)
-			require.NoError(t, err)
-			require.Contains(t, sink.body.String(), "hello")
-			require.True(t, result.HasUsage)
-			require.True(t, result.Served)
-			require.Equal(t, 3, result.Usage.InputTokens)
-			require.Equal(t, 1, result.Usage.OutputTokens)
-			require.EqualValues(t, 1, closes.Load())
-		})
-	}
-}
-
-// 新执行结果在读取失败时保留分批观测，不改变旧入站的失败结算规则。
+// failedAfterPayload 在读完载荷后模拟连接中断。
 type failedAfterPayload struct{ io.Reader }
 
 func (r failedAfterPayload) Read(p []byte) (int, error) {

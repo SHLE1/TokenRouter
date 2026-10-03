@@ -3,17 +3,14 @@ package provider
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// AntigravityProviderTest 按静态凭据类型分派，其余测试通过探测接口执行重试和额度检查。
+// AntigravityProviderTest 通过 OAuth 探测接口执行重试和额度检查。
 type AntigravityProviderTest struct {
-	Gemini    *GeminiProviderTest
-	Anthropic *AnthropicProviderTest
-	Probe     func(context.Context, *provider.Record, provider.PreparedTestRequest) (*antigravity.TestConnectionResult, error)
+	Probe func(context.Context, *provider.Record, provider.PreparedTestRequest) (*antigravity.TestConnectionResult, error)
 }
 
 func (s *AntigravityProviderTest) Target(value *provider.Record) provider.TestTarget {
@@ -31,12 +28,6 @@ func (t antigravityTestTarget) Information() provider.TestTargetInfo {
 
 func (t antigravityTestTarget) Execute(ctx context.Context, request provider.PreparedTestRequest, sink provider.TestEventSink) error {
 	image, explicit := provider.ProviderTestTypeFromArgs(request.TestType)
-	if t.record.Type == provider.ProviderTypeAPIKey {
-		if (explicit && image == provider.ProviderTestTypeImage) || strings.HasPrefix(strings.ToLower(request.Model), "gemini-") {
-			return t.executor.Gemini.Target(t.record).Execute(ctx, request, sink)
-		}
-		return t.executor.Anthropic.Target(t.record).Execute(ctx, request, sink)
-	}
 	run := NewTestRun(ctx, make(http.Header), sink)
 	defer run.Cancel()
 	if explicit && image == provider.ProviderTestTypeImage {

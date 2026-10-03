@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -25,7 +24,6 @@ const (
 	ModeGeminiResponse
 	ModeChatResponse
 	ModeResponsesResponse
-	ModeStaticClaudeResponse
 )
 
 // Target 配置单次请求的模型、输出格式、交换和响应处理回调。
@@ -116,30 +114,20 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 			data = strings.TrimSpace(strings.TrimPrefix(data, "data:"))
 		}
 		body, _ := (&ResponseAdapter{}).UnwrapV1InternalResponse([]byte(data))
-		var hasUsage, served bool
-		if target.Mode == ModeStaticClaudeResponse {
-			modelObserver.ObserveAnthropic(body)
-			observed := anthropicwire.ObserveEvent(string(body))
-			hasUsage, served = observed.HasUsage, observed.Semantic
-			if hasUsage {
-				(&ResponseAdapter{}).ExtractSSEUsage("data: "+string(body), &result.Usage)
+		modelObserver.ObserveGemini(body)
+		observed := geminiwire.ObservePayload(body)
+		hasUsage, served := observed.HasUsage, observed.Semantic
+		if hasUsage {
+			for _, field := range []string{"promptTokenCount", "candidatesTokenCount", "cachedContentTokenCount", "thoughtsTokenCount", "totalTokenCount", "candidatesTokensDetails"} {
+				value := gjson.GetBytes(body, "usageMetadata."+field)
+				if value.Exists() && value.Type != gjson.Null {
+					observedUsage[field] = json.RawMessage(value.Raw)
+				}
 			}
-		} else {
-			modelObserver.ObserveGemini(body)
-			observed := geminiwire.ObservePayload(body)
-			hasUsage, served = observed.HasUsage, observed.Semantic
-			if hasUsage {
-				for _, field := range []string{"promptTokenCount", "candidatesTokenCount", "cachedContentTokenCount", "thoughtsTokenCount", "totalTokenCount", "candidatesTokensDetails"} {
-					value := gjson.GetBytes(body, "usageMetadata."+field)
-					if value.Exists() && value.Type != gjson.Null {
-						observedUsage[field] = json.RawMessage(value.Raw)
-					}
-				}
-				// 使用原归一化实现解释观测快照，不估算未出现的 token。
-				payload, _ := json.Marshal(map[string]any{"usageMetadata": observedUsage})
-				if usage := bridge.NativeUsageProjection(bridge.NativeExtractGeminiUsage(payload)); usage != nil {
-					result.Usage = *usage
-				}
+			// 将已观测的 Gemini token 字段换算成统一用量。
+			payload, _ := json.Marshal(map[string]any{"usageMetadata": observedUsage})
+			if usage := bridge.NativeUsageProjection(bridge.NativeExtractGeminiUsage(payload)); usage != nil {
+				result.Usage = *usage
 			}
 		}
 		result.HasUsage = result.HasUsage || hasUsage
@@ -150,7 +138,7 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 		}
 	}
 	output := upstream.NewOutputContext(&observedSink{OutputSink: sink, nonStream: !input.Stream})
-	if result.RequestID != "" && target.Mode != ModeStaticClaudeResponse {
+	if result.RequestID != "" {
 		output.Header("x-request-id", result.RequestID)
 	}
 	adapter := &ResponseAdapter{Options: options}
@@ -179,34 +167,6 @@ func (Executor) Execute(ctx context.Context, input upstream.AttemptInput, sink u
 			stream, err = adapter.HandleResponsesStreamingFromAntigravity(output, resp, started, input.ResponseModel, target.ClientTools)
 		} else {
 			stream, err = adapter.HandleResponsesNonStreamingFromAntigravity(output, resp, started, input.ResponseModel, target.ClientTools)
-		}
-	case ModeStaticClaudeResponse:
-		if input.Stream {
-			output.Header("Content-Type", "text/event-stream")
-			output.Header("Cache-Control", "no-cache")
-			output.Header("Connection", "keep-alive")
-			output.Header("X-Accel-Buffering", "no")
-			output.Status(http.StatusOK)
-			stream = adapter.StreamUpstreamResponse(output, resp, started)
-		} else {
-			body, readErr := io.ReadAll(resp.Body)
-			if readErr != nil {
-				return result, fmt.Errorf("read upstream response: %w", readErr)
-			}
-			modelObserver.ObserveAnthropic(body)
-			observed := anthropicwire.ObserveMessage(string(body))
-			result.HasUsage, result.Served = observed.HasUsage, observed.Semantic
-			if observed.Semantic {
-				elapsed := time.Since(started)
-				result.FirstSemanticOutput = &elapsed
-			}
-			usage := adapter.ExtractClaudeUsage(body)
-			if usage != nil {
-				result.Usage = *usage
-			}
-			output.Header("Content-Type", resp.Header.Get("Content-Type"))
-			output.Status(http.StatusOK)
-			_, _ = output.Writer.Write(body)
 		}
 	default:
 		return result, errors.New("unsupported antigravity response mode")

@@ -17,11 +17,11 @@
 
 Antigravity 提供商的 `platform` 是 `antigravity`。管理端通过 `/api/v1/admin/antigravity/oauth/*` 生成授权 URL、交换 code，或者验证和刷新 refresh token，再通过通用的提供商创建和更新路径保存凭据。OAuth 的 access token 由 token provider 在使用前刷新；project ID、订阅和 tier、privacy mode、额度和上游的 user agent，属于提供商和运行时的元数据。
 
-Antigravity 原生 OAuth 的原生协议只有 GenerateContent 的平台适配变体，Messages、Responses 和 Chat 是分组通过转换开放的入口；历史上的 upstream 类型保留 Messages 原生直连。统一的配置字段和入口门禁见[统一协议能力](protocol_capabilities.md)。
+Antigravity 只支持 OAuth，协议目录声明 GenerateContent 的平台适配形式，Messages、Responses 和 Chat 通过分组转换开放。请求发往 `v1internal` 端点，内容使用 Gemini 格式，并带有 project、model 和 request 外壳。统一的配置字段和入口门禁见[统一协议能力](protocol_capabilities.md)。
 
-管理端还有一个"静态上游"表单，但它目前保存为 `type=apikey`，而 Antigravity 的 Claude 直连和 token provider 的历史静态分支只认 `type=upstream`。两者目前并不等价，新建的静态提供商不算完整的正式支持。历史上的 `upstream` 提供商只用于兼容 Claude 直连。
+API Key 和历史 `upstream` 接入已移除。迁移 286 将存量静态提供商停用，记录 ID、凭据、分组关联和历史用量引用保留。需要连接中转网关时，按网关提供的协议创建 Anthropic 或 Gemini API Key 提供商，Base URL 填写完整网关前缀。Google 签发的 Gemini API Key 使用 Gemini 提供商。
 
-原生的兼容转发需要 `type=oauth` 的 Antigravity 提供商。setup token、upstream 或 API Key 类型不能当作原生 OAuth 的兼容提供商；遇到这种情况，服务返回一个可以操作的错误，不匹配的凭据不会被发往上游。standard-tier 的提供商缺少必要的 project ID 时，同样直接拒绝。平台和提供商的完整分类、已知的冲突，见[上游提供商能力矩阵](upstream_provider_matrix.md)。
+standard-tier 的 OAuth 提供商缺少必要的 project ID 时直接拒绝。平台和提供商的完整分类见[上游提供商能力矩阵](upstream_provider_matrix.md)。
 
 导入提供商、刷新凭据和批量导入之后，会检查并设置适用的隐私状态。凭据、refresh token、project ID 和上游响应里的内部标识，不会出现在客户端的错误或模型列表里。
 
@@ -94,7 +94,7 @@ Antigravity 的默认目录只列出原生的型号，以及同一型号必要�
 <a id="antigravity_native_execution"></a>
 ## 平台执行与提供商职责
 
-`upstream/antigravity.Executor` 接入 Claude、Gemini、Chat、Responses 和历史静态 upstream 五条生产链路，完成一次平台交换、恢复、输出，并关闭最终的响应体。提供商内的普通重试、智能重试、credits 请求和共享模型容量的去重，只有一份实现；全局的提供商切换、付款主体和资金完成由网关编排负责；`gateway/provider/googleforward.Antigravity` 只组合本次的凭据、转换选项和同步输出。`Probe` 复用同一套平台重试，只测试指定的提供商，不占用用户或提供商的请求槽。
+`upstream/antigravity.Executor` 处理 Claude、Gemini、Chat 和 Responses 请求，完成一次平台交换、恢复和输出，并关闭最终的响应体。它负责提供商内的普通重试、智能重试、credits 请求和共享模型容量去重。网关编排负责提供商切换、付款主体和资金完成。`gateway/provider/googleforward.Antigravity` 传入本次凭据、转换选项和同步输出。`Probe` 复用平台重试并测试指定的提供商，探测请求无需获取用户或提供商的请求槽。
 
 流通过同步的 `OutputSink` 输出，每种协议的前导缓冲、非流式收集、心跳、首 token 和断开后的尾部读取规则各自保持。结果区分已观测的 usage、是否已经服务和错误；HTTP 提交和重试窗口的关闭，与语义输出分开判断，失败时的结算按 Antigravity 入口的完成资格判断。使用记录在请求期间固定实际提供商的平台，后台完成器只使用这份固定下来的结果。
 

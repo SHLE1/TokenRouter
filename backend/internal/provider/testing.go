@@ -183,7 +183,7 @@ func (s *TestService) execute(ctx context.Context, request TestRequest, sink Tes
 		return s.fail(ctx, sink, "Provider not found")
 	}
 	info := target.Information()
-	if explicit && kind == ProviderTestTypeImage && info.Platform != PlatformOpenAI && info.Platform != PlatformGemini && info.Platform != PlatformGrok && (info.Platform != PlatformAntigravity || info.Type != ProviderTypeAPIKey) {
+	if explicit && kind == ProviderTestTypeImage && info.Platform != PlatformOpenAI && info.Platform != PlatformGemini && info.Platform != PlatformGrok {
 		return s.fail(ctx, sink, fmt.Sprintf("Image tests are not supported for platform %s", info.Platform))
 	}
 	if request.Protocol != "" && kind != ProviderTestTypeImage && !testProtocolAllowed(info, request.Protocol) {

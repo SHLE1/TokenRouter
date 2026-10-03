@@ -205,32 +205,6 @@
               </div>
             </template>
 
-            <!-- 上游中转账号 -->
-            <div v-if="provider.type === 'upstream'" class="grid gap-4 md:grid-cols-2">
-              <div>
-                <label for="edit-upstream-base-url" class="input-label">{{ t('admin.providers.upstream.baseUrl') }}</label>
-                <input
-                  id="edit-upstream-base-url"
-                  v-model="editBaseUrl"
-                  type="text"
-                  class="input"
-                  placeholder="https://cloudcode-pa.googleapis.com"
-                />
-                <p class="input-hint">{{ t('admin.providers.upstream.baseUrlHint') }}</p>
-              </div>
-              <div>
-                <label for="edit-upstream-api-key" class="input-label">{{ t('admin.providers.upstream.apiKey') }}</label>
-                <input
-                  id="edit-upstream-api-key"
-                  v-model="editApiKey"
-                  type="password"
-                  class="input font-mono"
-                  placeholder="sk-..."
-                />
-                <p class="input-hint">{{ t('admin.providers.leaveEmptyToKeep') }}</p>
-              </div>
-            </div>
-
             <!-- Vertex Service Account -->
             <div v-if="isServiceAccountProvider" class="grid gap-4 md:grid-cols-2">
               <div data-provider-field="vertex-project-id">
@@ -1351,7 +1325,7 @@ const showModelRestriction = computed(() => {
 const showCredentialsSection = computed(() => {
   const provider = props.provider
   if (!provider) return false
-  return ['apikey', 'upstream', 'bedrock'].includes(provider.type) ||
+  return ['apikey', 'bedrock'].includes(provider.type) ||
     isServiceAccountProvider.value ||
     (provider.platform === 'antigravity' && provider.type === 'oauth')
 })
@@ -2000,9 +1974,6 @@ const syncFormFromProvider = (newProvider: Provider | null) => {
     // Load model mappings for bedrock
     const existingMappings = bedrockCreds.model_mapping as Record<string, string> | undefined
     hydrateModelRestrictionFromMapping(existingMappings, bedrockCreds.model_whitelist)
-  } else if (newProvider.type === 'upstream' && newProvider.credentials) {
-    const credentials = newProvider.credentials as Record<string, unknown>
-    editBaseUrl.value = (credentials.base_url as string) || ''
   } else if ((newProvider.platform === 'gemini' || newProvider.platform === 'anthropic') && newProvider.type === 'service_account' && newProvider.credentials) {
     const credentials = newProvider.credentials as Record<string, unknown>
     editVertexProjectId.value = (credentials.project_id as string) || ''
@@ -2640,25 +2611,6 @@ const handleSubmit = async () => {
 
       // Add intercept warmup requests setting
       applyInterceptWarmup(newCredentials, interceptWarmupRequests.value, 'edit')
-      applyProviderSchedulingThresholdOverridePatch(newCredentials, currentCredentials)
-      if (!applyTempUnschedConfig(newCredentials)) {
-        return
-      }
-
-      updatePayload.credentials = newCredentials
-    } else if (props.provider.type === 'upstream') {
-      const currentCredentials = (props.provider.credentials as Record<string, unknown>) || {}
-      const newCredentials: Record<string, unknown> = { ...currentCredentials }
-
-      newCredentials.base_url = editBaseUrl.value.trim()
-
-      if (editApiKey.value.trim()) {
-        newCredentials.api_key = editApiKey.value.trim()
-      }
-
-      // Add intercept warmup requests setting
-      applyInterceptWarmup(newCredentials, interceptWarmupRequests.value, 'edit')
-
       applyProviderSchedulingThresholdOverridePatch(newCredentials, currentCredentials)
       if (!applyTempUnschedConfig(newCredentials)) {
         return
