@@ -38,6 +38,7 @@ type ModelAttributeRepository interface {
 	List(context.Context) ([]ModelAttributeConfig, error)
 	Get(context.Context, int64) (*ModelAttributeConfig, error)
 	ForGroup(context.Context, int64) (*ModelAttributeConfig, error)
+	ForGroups(context.Context, []int64) (map[int64]*ModelAttributeConfig, error)
 	Save(context.Context, *ModelAttributeConfig) error
 	Delete(context.Context, int64) error
 }
@@ -150,6 +151,33 @@ func (s *ModelAttributeService) ResolveModels(ctx context.Context, groupID int64
 	if err != nil {
 		return nil, err
 	}
+	return s.resolveModels(config, models), nil
+}
+
+// ResolveGroups 批量读取本次展示所需的属性档案，分组之间共享同一次数据库查询。
+func (s *ModelAttributeService) ResolveGroups(ctx context.Context, groups map[int64][]RequestableModel) (map[int64]map[string]EffectiveModelAttributes, error) {
+	result := make(map[int64]map[string]EffectiveModelAttributes, len(groups))
+	ids := make([]int64, 0, len(groups))
+	for id, models := range groups {
+		if len(models) > 0 {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return result, nil
+	}
+	configs, err := s.Repo.ForGroups(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		result[id] = s.resolveModels(configs[id], groups[id])
+	}
+	return result, nil
+}
+
+// resolveModels 将档案规则叠加到最终上游模型的目录属性上。
+func (s *ModelAttributeService) resolveModels(config *ModelAttributeConfig, models []RequestableModel) map[string]EffectiveModelAttributes {
 	var candidates func(string) []string
 	if s.Catalog.Candidates != nil {
 		candidates = s.Catalog.Candidates()
@@ -171,7 +199,7 @@ func (s *ModelAttributeService) ResolveModels(ctx context.Context, groupID int64
 		attrs, different := modelcatalog.Common(values)
 		result[model.ID] = EffectiveModelAttributes{Attributes: attrs, RouteDifferences: different}
 	}
-	return result, nil
+	return result
 }
 
 func (c *ModelAttributeConfig) match(model string, expand func(string) []string) modelcatalog.Attributes {

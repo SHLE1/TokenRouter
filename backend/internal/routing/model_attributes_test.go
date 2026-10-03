@@ -2,13 +2,22 @@ package routing
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/stretchr/testify/require"
 )
 
-type attributeRepoFixture struct{ config *ModelAttributeConfig }
+// attributeRepoFixture 记录属性查询次数，并提供按分组区分的档案。
+type attributeRepoFixture struct {
+	config      *ModelAttributeConfig
+	groups      map[int64]*ModelAttributeConfig
+	batchCalls  int
+	singleCalls int
+	requested   []int64
+	err         error
+}
 
 func (r *attributeRepoFixture) List(context.Context) ([]ModelAttributeConfig, error) {
 	return []ModelAttributeConfig{*r.config}, nil
@@ -19,7 +28,14 @@ func (r *attributeRepoFixture) Get(context.Context, int64) (*ModelAttributeConfi
 }
 
 func (r *attributeRepoFixture) ForGroup(context.Context, int64) (*ModelAttributeConfig, error) {
+	r.singleCalls++
 	return r.config, nil
+}
+
+func (r *attributeRepoFixture) ForGroups(_ context.Context, ids []int64) (map[int64]*ModelAttributeConfig, error) {
+	r.batchCalls++
+	r.requested = ids
+	return r.groups, r.err
 }
 
 func (r *attributeRepoFixture) Save(_ context.Context, value *ModelAttributeConfig) error {
@@ -35,7 +51,7 @@ func TestModelAttributesUseFinalModelsWithoutChangingRoutes(t *testing.T) {
 		{Models: []string{"upstream-*"}, Attributes: modelcatalog.Attributes{ToolCall: &no}},
 		{Models: []string{"upstream-a"}, Attributes: modelcatalog.Attributes{OutputLimit: &small}},
 	}}
-	service := ModelAttributeService{Repo: &attributeRepoFixture{config}, Catalog: ModelAttributeCatalog{Lookup: func(string) modelcatalog.Attributes {
+	service := ModelAttributeService{Repo: &attributeRepoFixture{config: config}, Catalog: ModelAttributeCatalog{Lookup: func(string) modelcatalog.Attributes {
 		return modelcatalog.Attributes{OutputLimit: &large, ToolCall: &yes}
 	}}}
 	models := []RequestableModel{{ID: "public-alias", PricingModel: "unrelated-price", UpstreamModels: []string{"upstream-a", "upstream-b"}}}
@@ -55,6 +71,54 @@ func TestModelAttributesUseFinalModelsWithoutChangingRoutes(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 100, *result["public-alias"].OutputLimit)
 	require.True(t, *result["public-alias"].ToolCall)
+}
+
+// TestModelAttributesBatchReads 验证分组覆盖隔离、单次批量读取和下一次请求的配置更新。
+func TestModelAttributesBatchReads(t *testing.T) {
+	no := false
+	limit := 100
+	config := &ModelAttributeConfig{Status: StatusActive, Rules: []ModelAttributeRule{
+		{Models: []string{"upstream"}, Attributes: modelcatalog.Attributes{ToolCall: &no}},
+	}}
+	repo := &attributeRepoFixture{groups: map[int64]*ModelAttributeConfig{1: config, 2: config}}
+	service := ModelAttributeService{Repo: repo, Catalog: ModelAttributeCatalog{Lookup: func(string) modelcatalog.Attributes {
+		return modelcatalog.Attributes{OutputLimit: &limit}
+	}}}
+	groups := map[int64][]RequestableModel{
+		1: {{ID: "alias-a", UpstreamModels: []string{"upstream"}}},
+		2: {{ID: "alias-b", UpstreamModels: []string{"upstream"}}},
+		3: {{ID: "upstream"}},
+		4: {},
+	}
+	result, err := service.ResolveGroups(context.Background(), groups)
+	require.NoError(t, err)
+	require.Equal(t, 1, repo.batchCalls)
+	require.Zero(t, repo.singleCalls)
+	require.ElementsMatch(t, []int64{1, 2, 3}, repo.requested)
+	require.Len(t, result, 3)
+	require.False(t, *result[1]["alias-a"].ToolCall)
+	require.False(t, *result[2]["alias-b"].ToolCall)
+	require.Nil(t, result[3]["upstream"].ToolCall)
+	require.Equal(t, 100, *result[3]["upstream"].OutputLimit)
+	config.Status = StatusDisabled
+	result, err = service.ResolveGroups(context.Background(), groups)
+	require.NoError(t, err)
+	require.Equal(t, 2, repo.batchCalls)
+	require.Nil(t, result[1]["alias-a"].ToolCall)
+}
+
+// TestModelAttributesBatchEmptyAndFailure 覆盖空目录和数据库失败。
+func TestModelAttributesBatchEmptyAndFailure(t *testing.T) {
+	repo := &attributeRepoFixture{err: errors.New("database unavailable")}
+	service := ModelAttributeService{Repo: repo}
+	result, err := service.ResolveGroups(context.Background(), map[int64][]RequestableModel{1: {}})
+	require.NoError(t, err)
+	require.Empty(t, result)
+	require.Zero(t, repo.batchCalls)
+	result, err = service.ResolveGroups(context.Background(), map[int64][]RequestableModel{1: {{ID: "model"}}})
+	require.ErrorIs(t, err, repo.err)
+	require.Nil(t, result)
+	require.Equal(t, 1, repo.batchCalls)
 }
 
 func TestAttributeConfigValidation(t *testing.T) {

@@ -4,6 +4,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -13,6 +14,34 @@ import (
 	"github.com/TokenFlux/TokenRouter/migrations"
 	"github.com/stretchr/testify/require"
 )
+
+// TestModelAttributeBatchLookup 验证真实数据库中的共享、停用和未关联分组。
+func TestModelAttributeBatchLookup(t *testing.T) {
+	db := postgrescontainer.New(t)
+	ctx := context.Background()
+	ids := make([]int64, 4)
+	for i := range ids {
+		require.NoError(t, db.QueryRowContext(ctx, `INSERT INTO groups(name) VALUES ($1) RETURNING id`, fmt.Sprintf("attribute-batch-%d", i)).Scan(&ids[i]))
+	}
+	store := NewModelAttributeStore(db)
+	active := &routing.ModelAttributeConfig{Name: "shared", Status: "active", GroupIDs: ids[:2], Rules: []routing.ModelAttributeRule{}}
+	inactive := &routing.ModelAttributeConfig{Name: "disabled", Status: "disabled", GroupIDs: ids[2:3], Rules: []routing.ModelAttributeRule{}}
+	require.NoError(t, store.Save(ctx, active))
+	require.NoError(t, store.Save(ctx, inactive))
+	result, err := store.ForGroups(ctx, ids)
+	require.NoError(t, err)
+	require.Len(t, result, 2)
+	require.Equal(t, active.ID, result[ids[0]].ID)
+	require.Same(t, result[ids[0]], result[ids[1]])
+	subset, err := store.ForGroups(ctx, ids[:1])
+	require.NoError(t, err)
+	require.Len(t, subset, 1)
+	active.Status = "disabled"
+	require.NoError(t, store.Save(ctx, active))
+	result, err = store.ForGroups(ctx, ids)
+	require.NoError(t, err)
+	require.Empty(t, result)
+}
 
 func TestModelAttributeMigrationAndConcurrentAssociation(t *testing.T) {
 	db := postgrescontainer.New(t)

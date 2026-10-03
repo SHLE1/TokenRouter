@@ -563,7 +563,7 @@ func TestModelMarketplaceDoesNotInventModelsWithoutCandidates(t *testing.T) {
 		settingRepo, newMarketplaceCalculator(nil, nil), nil,
 	)
 
-	groups, err := svc.ListPublic(context.Background())
+	groups, err := svc.ListPublic(context.Background(), routing.MarketplaceListOptions{IncludeCapacity: true})
 	if err != nil {
 		t.Fatalf("ListPublic returned error: %v", err)
 	}

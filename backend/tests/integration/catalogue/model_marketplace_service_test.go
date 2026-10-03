@@ -98,7 +98,7 @@ func TestModelMarketplaceListPublicPrefetchesProvidersOnce(t *testing.T) {
 	gatewayService := newCatalogueFixture(providerRepo, nil, nil)
 	service := newCatalogueMarketplace(&marketplaceGroupRepoStub{groups: groups}, gatewayService, billingtestkit.Calculator(0, nil, nil))
 
-	result, err := service.ListPublic(context.Background())
+	result, err := service.ListPublic(context.Background(), routing.MarketplaceListOptions{IncludeCapacity: true})
 	if err != nil {
 		t.Fatalf("ListPublic returned error: %v", err)
 	}

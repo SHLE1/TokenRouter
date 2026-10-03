@@ -39,33 +39,55 @@ type ModelMarketplaceModel struct {
 	OutputModalities []string
 }
 
+// MarketplaceListOptions 指定市场查询需要附带的观测数据。
+type MarketplaceListOptions struct {
+	IncludeCapacity bool
+}
+
+// ListPublic 批量读取可见分组的属性，并按需附带容量。
 // @project-doc docs/interfaces/model_catalog_and_marketplace.md#model_catalog_resolution
-func (s *Marketplace) ListPublic(ctx context.Context) ([]ModelMarketplaceGroup, error) {
+func (s *Marketplace) ListPublic(ctx context.Context, options MarketplaceListOptions) ([]ModelMarketplaceGroup, error) {
 	groups, err := s.groups.ListActive(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list active groups: %w", err)
 	}
 
-	discountConfig, showDiscount := s.getOfficialPriceRatioConfig(ctx)
-	capacityMap := s.getPublicCapacityMap(ctx, groups)
-	availabilityMap := s.getPublicAvailabilityMap(ctx, groups)
 	providersByGroup, providersPrefetched := s.PrefetchProviders(ctx)
-	out := make([]ModelMarketplaceGroup, 0, len(groups))
+	visibleGroups := make([]Group, 0, len(groups))
+	definitions := make(map[int64][]MarketplaceModelDef, len(groups))
 	for i := range groups {
 		group := &groups[i]
 		if group.IsExclusive || group.ActiveProviderCount <= 0 {
 			continue
 		}
 
-		var models []ModelMarketplaceModel
+		var models []MarketplaceModelDef
 		if providersPrefetched {
-			models = s.listPublicModelsForGroupWithProviders(ctx, group, providersByGroup[group.ID])
+			models = s.resolveGroupModelsWithProviders(ctx, group, providersByGroup[group.ID])
 		} else {
-			models = s.ModelsForGroup(ctx, group)
+			models = s.resolveGroupModels(ctx, group)
 		}
 		if len(models) == 0 {
 			continue
 		}
+		visibleGroups = append(visibleGroups, *group)
+		definitions[group.ID] = models
+	}
+	if len(visibleGroups) == 0 {
+		return []ModelMarketplaceGroup{}, nil
+	}
+
+	attributes := s.readAttributes(ctx, definitions)
+	discountConfig, showDiscount := s.getOfficialPriceRatioConfig(ctx)
+	var capacityMap map[int64]GroupCapacitySummary
+	if options.IncludeCapacity {
+		capacityMap = s.getPublicCapacityMap(ctx, visibleGroups)
+	}
+	availabilityMap := s.getPublicAvailabilityMap(ctx, visibleGroups)
+	out := make([]ModelMarketplaceGroup, 0, len(visibleGroups))
+	for i := range visibleGroups {
+		group := &visibleGroups[i]
+		models := s.buildPublicModels(ctx, group, definitions[group.ID], attributes[group.ID])
 
 		var officialPriceRatio *float64
 		var officialPriceRMBEquivalent *float64
@@ -310,38 +332,48 @@ func (s *Marketplace) ModelsForGroup(ctx context.Context, group *Group) []ModelM
 	return s.BuildPublicModels(ctx, group, s.resolveGroupModels(ctx, group))
 }
 
-// listPublicModelsForGroupWithProviders 使用本次模型广场请求预取的分组提供商。
-func (s *Marketplace) listPublicModelsForGroupWithProviders(ctx context.Context, group *Group, providers []CatalogueProvider) []ModelMarketplaceModel {
-	return s.BuildPublicModels(ctx, group, s.resolveGroupModelsWithProviders(ctx, group, providers))
-}
-
+// BuildPublicModels 为单个分组解析展示属性和报价。
 func (s *Marketplace) BuildPublicModels(ctx context.Context, group *Group, modelDefs []MarketplaceModelDef) []ModelMarketplaceModel {
 	if len(modelDefs) == 0 {
 		return nil
 	}
 
-	var attributes map[string]EffectiveModelAttributes
-	if s.options.Attributes != nil {
+	attributes := s.readAttributes(ctx, map[int64][]MarketplaceModelDef{group.ID: modelDefs})
+	return s.buildPublicModels(ctx, group, modelDefs, attributes[group.ID])
+}
+
+// readAttributes 将本次可见模型交给批量属性读取器，读取失败时返回空属性。
+func (s *Marketplace) readAttributes(ctx context.Context, definitions map[int64][]MarketplaceModelDef) map[int64]map[string]EffectiveModelAttributes {
+	if s.options.Attributes == nil || len(definitions) == 0 {
+		return nil
+	}
+	groups := make(map[int64][]RequestableModel, len(definitions))
+	for id, modelDefs := range definitions {
 		inputs := make([]RequestableModel, 0, len(modelDefs))
 		for _, value := range modelDefs {
 			inputs = append(inputs, RequestableModel{ID: value.ID, UpstreamModels: value.UpstreamModels})
 		}
-		var err error
-		attributes, err = s.options.Attributes(ctx, group.ID, inputs)
-		if err != nil {
-			s.options.Warn("failed to read model attributes", "error", err)
-		}
+		groups[id] = inputs
 	}
+	attributes, err := s.options.Attributes(ctx, groups)
+	if err != nil {
+		s.options.Warn("failed to read model attributes", "error", err)
+		return nil
+	}
+	return attributes
+}
+
+// buildPublicModels 使用已读取的属性生成模型卡片，价格通过共享报价接口解析。
+func (s *Marketplace) buildPublicModels(ctx context.Context, group *Group, modelDefs []MarketplaceModelDef, attributes map[string]EffectiveModelAttributes) []ModelMarketplaceModel {
 	models := make([]ModelMarketplaceModel, 0, len(modelDefs))
 	for _, modelDef := range modelDefs {
 		pricing := pricing.UnknownDisplayPricing()
 		if s.prices != nil && !modelDef.PricingAmbiguous {
 			pricing = s.RequestableModelPricing(ctx, group, modelDef)
 		}
-		inputModalities, outputModalities := s.ModelModalities(modelDef)
+		var inputModalities, outputModalities []string
 		var presentation *EffectiveModelAttributes
 		if s.options.Attributes != nil {
-			inputModalities, outputModalities = nil, nil
 			if value, ok := attributes[modelDef.ID]; ok {
 				presentation = &value
 				if value.DisplayName != nil {
@@ -354,6 +386,8 @@ func (s *Marketplace) BuildPublicModels(ctx context.Context, group *Group, model
 					outputModalities = *value.OutputModalities
 				}
 			}
+		} else {
+			inputModalities, outputModalities = s.ModelModalities(modelDef)
 		}
 
 		models = append(models, ModelMarketplaceModel{
@@ -534,7 +568,7 @@ type MarketplacePrices interface {
 	GetModelModalities(string) ([]string, []string)
 }
 type MarketplaceOptions struct {
-	Attributes    func(context.Context, int64, []RequestableModel) (map[string]EffectiveModelAttributes, error)
+	Attributes    func(context.Context, map[int64][]RequestableModel) (map[int64]map[string]EffectiveModelAttributes, error)
 	Timezone      string
 	Now           func() time.Time
 	Warn          func(string, ...any)

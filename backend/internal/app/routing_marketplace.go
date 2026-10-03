@@ -22,7 +22,7 @@ import (
 
 // provideMarketplace 绑定分组、设置和报价查询，平台模型信息在查询时读取。
 func provideMarketplace(groups *routingpostgres.GroupStore, store *settings.Store, catalogue *routing.RequestableCatalogue, prices *billing.PriceResolver, calculator *billing.Calculator, capacity *routing.CapacityService, availability routing.GroupAvailabilityProbeRepository, cfg *config.Config, attributes *routing.ModelAttributeService) *routing.Marketplace {
-	options := routing.MarketplaceOptions{Attributes: attributes.ResolveModels, Timezone: cfg.Timezone, Now: time.Now, Warn: slog.Warn, DefaultModels: routingprovider.MarketplaceModelDefs, DisplayNames: routingprovider.MarketplaceDisplayNames}
+	options := routing.MarketplaceOptions{Attributes: attributes.ResolveGroups, Timezone: cfg.Timezone, Now: time.Now, Warn: slog.Warn, DefaultModels: routingprovider.MarketplaceModelDefs, DisplayNames: routingprovider.MarketplaceDisplayNames}
 	return routing.NewMarketplace(groups, store, catalogue, catalogue.Resolver, marketplacePrices{prices, calculator}, capacity, availability, options)
 }
 

@@ -2,7 +2,9 @@ package httpapi
 
 import (
 	"context"
+	"strconv"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
@@ -22,9 +24,14 @@ func NewMarketplaceHandler(marketplace *routing.Marketplace, stats MarketplaceSt
 	return &MarketplaceHandler{marketplace: marketplace, stats: stats}
 }
 
-// ListPublic 保留公开模型市场的 URL、错误 envelope 和模型数组顺序。
+// ListPublic 默认附带容量，页面可通过 include_capacity=false 跳过容量查询。
 func (h *MarketplaceHandler) ListPublic(c *gin.Context) {
-	groups, err := h.marketplace.ListPublic(c.Request.Context())
+	includeCapacity, err := strconv.ParseBool(c.DefaultQuery("include_capacity", "true"))
+	if err != nil {
+		httpx.ErrorFrom(c, apperror.BadRequest("INVALID_INCLUDE_CAPACITY", "include_capacity must be a boolean"))
+		return
+	}
+	groups, err := h.marketplace.ListPublic(c.Request.Context(), routing.MarketplaceListOptions{IncludeCapacity: includeCapacity})
 	if err != nil {
 		httpx.ErrorFrom(c, err)
 		return

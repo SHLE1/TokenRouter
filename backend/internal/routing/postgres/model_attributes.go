@@ -67,6 +67,38 @@ func (s *ModelAttributeStore) ForGroup(ctx context.Context, id int64) (*routing.
 	return value, err
 }
 
+// ForGroups 一次读取指定分组关联的启用档案，同一档案的规则解码一次。
+func (s *ModelAttributeStore) ForGroups(ctx context.Context, ids []int64) (map[int64]*routing.ModelAttributeConfig, error) {
+	result := make(map[int64]*routing.ModelAttributeConfig, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+	requested := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		requested[id] = true
+	}
+	rows, err := s.db.QueryContext(ctx, attributeSelect+"WHERE c.status='active' AND EXISTS (SELECT 1 FROM model_attribute_config_groups g WHERE g.config_id=c.id AND g.group_id=ANY($1))", pq.Array(ids))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		config, err := scanAttributeConfig(rows)
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range config.GroupIDs {
+			if requested[id] {
+				result[id] = config
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func attributeStoreError(err error) error {
 	var pg *pq.Error
 	if errors.As(err, &pg) {
