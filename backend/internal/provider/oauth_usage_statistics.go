@@ -17,6 +17,41 @@ type LocalUsageStats interface {
 type LocalUsageStatsBatch interface {
 	GetProviderWindowStatsBatch(context.Context, []int64, time.Time) (map[int64]*WindowStats, error)
 }
+
+// LocalUsageStatsPair 在一次扫描中读取同一提供商的两个窗口。
+type LocalUsageStatsPair interface {
+	GetProviderWindowStatsPair(context.Context, int64, time.Time, time.Time) (*WindowStats, *WindowStats, error)
+}
+
+// GetWindowPair 优先合并窗口，读取器不支持或查询失败时分别读取以保留部分结果。
+func (s *LocalUsageStatistics) GetWindowPair(ctx context.Context, id int64, first, second time.Time) (*WindowStats, *WindowStats) {
+	if reader, ok := s.usageLogRepo.(LocalUsageStatsPair); ok {
+		a, b, err := reader.GetProviderWindowStatsPair(ctx, id, first, second)
+		if err == nil {
+			return normalizedLocalWindowStats(a), normalizedLocalWindowStats(b)
+		}
+		if ctx.Err() != nil {
+			return nil, nil
+		}
+	}
+	a, err := s.usageLogRepo.GetProviderWindowStats(ctx, id, first)
+	if err != nil {
+		a = nil
+	} else {
+		a = normalizedLocalWindowStats(a)
+	}
+	if ctx.Err() != nil {
+		return a, nil
+	}
+	b, err := s.usageLogRepo.GetProviderWindowStats(ctx, id, second)
+	if err != nil {
+		b = nil
+	} else {
+		b = normalizedLocalWindowStats(b)
+	}
+	return a, b
+}
+
 type LocalUsageStatisticsOptions struct {
 	Now   func() time.Time
 	Today func() time.Time

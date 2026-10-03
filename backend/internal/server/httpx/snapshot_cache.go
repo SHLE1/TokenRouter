@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -65,6 +66,22 @@ func BuildETagFromAny(payload any) string {
 	}
 	sum := sha256.Sum256(raw)
 	return "\"" + hex.EncodeToString(sum[:]) + "\""
+}
+
+// GetOrLoadContext 在等待者独立取消的共享查询结果上生成快照和 ETag。
+func (c *SnapshotCache) GetOrLoadContext(ctx context.Context, key string, load func(context.Context) (any, error)) (SnapshotCacheEntry, bool, error) {
+	if load == nil {
+		return SnapshotCacheEntry{}, false, nil
+	}
+	if c == nil {
+		_, err := load(ctx)
+		return SnapshotCacheEntry{}, false, err
+	}
+	entry, hit, err := c.cache.GetOrLoadContext(ctx, key, load)
+	if err != nil {
+		return SnapshotCacheEntry{}, hit, err
+	}
+	return snapshotEntry(entry), hit, nil
 }
 
 func ParseBoolQueryWithDefault(raw string, def bool) bool {

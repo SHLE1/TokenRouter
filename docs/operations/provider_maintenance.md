@@ -173,7 +173,9 @@ OAuth 用量入口、Anthropic 的主动和被动窗口、并发 6 的批量查�
 
 Antigravity 和 Qoder 的共享抓取、降级缓存和倒计时，Gemini 的本地模型统计和固定 24 小时的展示窗口，Grok 计费快照的新鲜度和统计组合，OpenAI 主提供商和影子的查询选择和节流，都由核心编排。Codex 和 Anthropic 查询的技术参数和错误转换在 `provider/provider`，报文和 Header 的解析只在 upstream 实现。Grok 的管理探测直接绑定 `provider.GrokQuotaService` 和同一个 `ProbeRuntime`，账单、额度和模型目录的请求由 `provider/provider.GrokQuotaTransport` 执行，停止 hook 直接等待这些持有者。Gemini、Antigravity、Grok 的额度展示，直接使用 provider 的策略实例。
 
-本地的展示统计由 `LocalUsageStatistics`，通过 `app/provider_usage_statistics.go` 提供的五个字段的只读数据取得：缓存未命中才查询，优先批量查询，失败时以并发 8 逐个回退。实际的用量 SQL 和详细报告由 usage 提供。查询成功后的错误恢复，只清理观察到的同一凭据、代理、状态和原错误，PostgreSQL 单条条件更新之后，才尽力发布 outbox；迟到的恢复不会撤销管理员新设置的禁用或错误。批量查询里缺失的提供商和查询失败，共用同一把结果写入锁。
+本地展示统计通过 `app/provider_usage_statistics.go` 交给 `LocalUsageStatistics`。今日统计优先批量读取，失败时以并发 8 逐个回退。窗口统计按各平台的规则使用缓存或读取原始记录，用量 SQL 和详细报告由 usage 提供。查询成功后的错误恢复，只清理观察到的同一凭据、代理、状态和原错误，PostgreSQL 单条条件更新之后，才尽力发布 outbox；迟到的恢复不会撤销管理员新设置的禁用或错误。批量查询里缺失的提供商和查询失败，共用同一把结果写入锁。
+
+OpenAI OAuth 的本地 5 小时和 7 天统计由一条 SQL 同时计算，扫描范围从两个窗口起点中的较早者开始，再分别过滤和求和。起点使用供应商的有效重置时间，缺失或过期时使用当前时间减去窗口长度；未来时间记录继续参与统计。结果读取当前原始用量，两个窗口各自持有结果副本。读取器不支持合并或合并查询失败时，分别读取窗口并保留成功的结果；请求取消后停止回退。
 
 用量核心的停止登记，覆盖外层的请求、Antigravity 和 Qoder 的独立查询，以及 OpenAI 异步的快照写回。共享的抓取有自己独立于调用方的取消策略；应用停止时取消并等待它完成，超时报告未完成，重复调用 Stop 返回第一次的结果。Grok 的管理探测和每六小时一次的模型目录同步，共用 `provider.ProbeRuntime`，app 在关闭数据库之前等待它；同 key 的请求会合并，预算分别是 25 秒和 15 秒，按需执行。模型任务复制提供商记录，探测返回复制过的嵌套额度和 Header。调度的免费额度统计，由提供商准入能力和 usage 的统计接口协作完成，异步执行纳入后台的完成屏障，使用独立的查询 context。
 

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/provider"
@@ -10,6 +11,21 @@ import (
 )
 
 type providerLocalStats struct{ source usage.UsageLogRepository }
+
+// providerLocalStatsPairSource 描述用量仓储的双窗口查询能力。
+type providerLocalStatsPairSource interface {
+	GetProviderWindowStatsPair(context.Context, int64, time.Time, time.Time) (*usage.ProviderStats, *usage.ProviderStats, error)
+}
+
+// GetProviderWindowStatsPair 绑定合并查询；不可用时由提供商用例选择逐窗口回退。
+func (r providerLocalStats) GetProviderWindowStatsPair(ctx context.Context, id int64, first, second time.Time) (*provider.WindowStats, *provider.WindowStats, error) {
+	reader, ok := r.source.(providerLocalStatsPairSource)
+	if !ok {
+		return nil, nil, errors.New("用量读取器不支持双窗口查询")
+	}
+	a, b, err := reader.GetProviderWindowStatsPair(ctx, id, first, second)
+	return localWindowStats(a), localWindowStats(b), err
+}
 
 func localWindowStats(v *usage.ProviderStats) *provider.WindowStats {
 	if v == nil {

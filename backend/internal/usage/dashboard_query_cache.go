@@ -90,8 +90,8 @@ func (h *DashboardService) GetUsageTrendCached(
 		BillingType:        billingType,
 		NativeCompactionV2: nativeCompactionV2,
 	})
-	entry, hit, err := h.queryCaches.dashboardTrendCache.GetOrLoad(key, func() (any, error) {
-		return h.GetUsageTrendWithUsageFilters(ctx, startTime, endTime, granularity, UsageLogFilters{
+	entry, hit, err := h.queryCaches.dashboardTrendCache.GetOrLoadContext(ctx, key, func(shared context.Context) (any, error) {
+		return h.GetUsageTrendWithUsageFilters(shared, startTime, endTime, granularity, UsageLogFilters{
 			UserID: userID, APIKeyID: apiKeyID, ProviderID: providerID, GroupID: groupID, TeamID: teamID,
 			Model: model, RequestType: requestType, Stream: stream, BillingType: billingType,
 			NativeCompactionV2: nativeCompactionV2,
@@ -128,8 +128,8 @@ func (h *DashboardService) GetModelStatsCached(
 		BillingType:        billingType,
 		NativeCompactionV2: nativeCompactionV2,
 	})
-	entry, hit, err := h.queryCaches.dashboardModelStatsCache.GetOrLoad(key, func() (any, error) {
-		return h.GetModelStatsWithUsageFiltersBySource(ctx, startTime, endTime, UsageLogFilters{
+	entry, hit, err := h.queryCaches.dashboardModelStatsCache.GetOrLoadContext(ctx, key, func(shared context.Context) (any, error) {
+		return h.GetModelStatsWithUsageFiltersBySource(shared, startTime, endTime, UsageLogFilters{
 			UserID: userID, APIKeyID: apiKeyID, ProviderID: providerID, GroupID: groupID, TeamID: teamID,
 			RequestType: requestType, Stream: stream, BillingType: billingType,
 			NativeCompactionV2: nativeCompactionV2,
@@ -164,8 +164,8 @@ func (h *DashboardService) GetGroupStatsCached(
 		BillingType:        billingType,
 		NativeCompactionV2: nativeCompactionV2,
 	})
-	entry, hit, err := h.queryCaches.dashboardGroupStatsCache.GetOrLoad(key, func() (any, error) {
-		return h.GetGroupStatsWithUsageFilters(ctx, startTime, endTime, UsageLogFilters{
+	entry, hit, err := h.queryCaches.dashboardGroupStatsCache.GetOrLoadContext(ctx, key, func(shared context.Context) (any, error) {
+		return h.GetGroupStatsWithUsageFilters(shared, startTime, endTime, UsageLogFilters{
 			UserID: userID, APIKeyID: apiKeyID, ProviderID: providerID, GroupID: groupID, TeamID: teamID,
 			RequestType: requestType, Stream: stream, BillingType: billingType,
 			NativeCompactionV2: nativeCompactionV2,
@@ -185,8 +185,8 @@ func (h *DashboardService) GetAPIKeyUsageTrendCached(ctx context.Context, startT
 		Granularity: granularity,
 		Limit:       limit,
 	})
-	entry, hit, err := h.queryCaches.dashboardAPIKeysTrendCache.GetOrLoad(key, func() (any, error) {
-		return h.GetAPIKeyUsageTrend(ctx, startTime, endTime, granularity, limit)
+	entry, hit, err := h.queryCaches.dashboardAPIKeysTrendCache.GetOrLoadContext(ctx, key, func(shared context.Context) (any, error) {
+		return h.GetAPIKeyUsageTrend(shared, startTime, endTime, granularity, limit)
 	})
 	if err != nil {
 		return nil, hit, err
@@ -202,8 +202,8 @@ func (h *DashboardService) GetUserUsageTrendCached(ctx context.Context, startTim
 		Granularity: granularity,
 		Limit:       limit,
 	})
-	entry, hit, err := h.queryCaches.dashboardUsersTrendCache.GetOrLoad(key, func() (any, error) {
-		return h.GetUserUsageTrend(ctx, startTime, endTime, granularity, limit)
+	entry, hit, err := h.queryCaches.dashboardUsersTrendCache.GetOrLoadContext(ctx, key, func(shared context.Context) (any, error) {
+		return h.GetUserUsageTrend(shared, startTime, endTime, granularity, limit)
 	})
 	if err != nil {
 		return nil, hit, err

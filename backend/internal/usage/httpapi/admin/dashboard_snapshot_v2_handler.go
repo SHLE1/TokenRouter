@@ -118,9 +118,9 @@ func (h *DashboardHandler) GetSnapshotV2(c *gin.Context) {
 	})
 	cacheKey := string(keyRaw)
 
-	cached, hit, err := dashboardSnapshotV2Cache.GetOrLoad(cacheKey, func() (any, error) {
+	cached, hit, err := dashboardSnapshotV2Cache.GetOrLoadContext(c.Request.Context(), cacheKey, func(shared context.Context) (any, error) {
 		return h.buildSnapshotV2Response(
-			c.Request.Context(),
+			shared,
 			startTime,
 			endTime,
 			granularity,

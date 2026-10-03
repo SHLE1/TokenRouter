@@ -12,10 +12,12 @@ type Entry struct {
 	ExpiresAt time.Time
 }
 type Cache struct {
-	mu    sync.RWMutex
-	ttl   time.Duration
-	items map[string]Entry
-	sf    singleflight.Group
+	mu     sync.RWMutex
+	ttl    time.Duration
+	items  map[string]Entry
+	sf     singleflight.Group
+	loadMu sync.Mutex
+	loads  map[string]*contextLoad
 }
 type LoadResult struct {
 	Entry Entry
@@ -46,7 +48,10 @@ func (c *Cache) Get(key string) (Entry, bool) {
 	}
 	if now.After(entry.ExpiresAt) {
 		c.mu.Lock()
-		delete(c.items, key)
+		// 等待写锁期间可能已有查询刷新了缓存。
+		if current, exists := c.items[key]; exists && now.After(current.ExpiresAt) {
+			delete(c.items, key)
+		}
 		c.mu.Unlock()
 		return Entry{}, false
 	}

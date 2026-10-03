@@ -51,11 +51,12 @@ func usageStatsCacheKey(filters UsageLogFilters) string {
 	})
 }
 
-// GetStatsCached 命中则返回缓存,未命中则回源 usageService 并写缓存。
+// GetStatsCached 合并相同筛选的查询，各等待者独立取消。
+// @project-doc docs/operations/observability_and_data_lifecycle.md#usage_query_contracts
 func (h *UsageService) GetStatsCached(ctx context.Context, filters UsageLogFilters) (*UsageStats, bool, error) {
 	key := usageStatsCacheKey(filters)
-	entry, hit, err := h.statsQueryCache.GetOrLoad(key, func() (any, error) {
-		return h.GetStatsWithFilters(ctx, filters)
+	entry, hit, err := h.statsQueryCache.GetOrLoadContext(ctx, key, func(shared context.Context) (any, error) {
+		return h.GetStatsWithFilters(shared, filters)
 	})
 	if err != nil {
 		return nil, hit, err

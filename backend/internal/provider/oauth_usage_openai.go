@@ -58,18 +58,21 @@ func (s *OAuthUsageService) GetOpenAIUsage(ctx context.Context, provider *Record
 		return usage, nil
 	}
 
-	if stats, err := s.stats.usageLogRepo.GetProviderWindowStats(ctx, provider.ID, CodexWindowStatsStart(usage.FiveHour, 5*time.Hour, now)); err == nil {
+	fiveHour, sevenDay := s.stats.GetWindowPair(ctx, provider.ID,
+		CodexWindowStatsStart(usage.FiveHour, 5*time.Hour, now),
+		CodexWindowStatsStart(usage.SevenDay, 7*24*time.Hour, now))
+	if fiveHour != nil {
 		if usage.FiveHour == nil {
 			usage.FiveHour = &UsageProgress{Utilization: 0}
 		}
-		usage.FiveHour.WindowStats = normalizedLocalWindowStats(stats)
+		usage.FiveHour.WindowStats = fiveHour
 	}
 
-	if stats, err := s.stats.usageLogRepo.GetProviderWindowStats(ctx, provider.ID, CodexWindowStatsStart(usage.SevenDay, 7*24*time.Hour, now)); err == nil {
+	if sevenDay != nil {
 		if usage.SevenDay == nil {
 			usage.SevenDay = &UsageProgress{Utilization: 0}
 		}
-		usage.SevenDay.WindowStats = normalizedLocalWindowStats(stats)
+		usage.SevenDay.WindowStats = sevenDay
 	}
 
 	return usage, nil
