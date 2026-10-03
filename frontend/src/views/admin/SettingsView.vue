@@ -90,57 +90,36 @@
 
         <!-- Tab: Security — Admin API Key -->
         <div v-show="activeTab === 'security'" v-content-reveal="activeTab === 'security'" class="space-y-4">
-          <!-- Admin API Key Settings -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.adminApiKey.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.adminApiKey.description") }}
-              </p>
-            </div>
-            <div class="space-y-4 p-6">
-              <!-- Security Warning -->
-              <div
-                class="rounded-control border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20"
-              >
-                <div class="flex items-start">
-                  <Icon
-                    name="exclamationTriangle"
-                    size="md"
-                    class="mt-0.5 flex-shrink-0 text-amber-500"
-                  />
-                  <p class="ml-3 text-sm text-amber-700 dark:text-amber-300">
-                    {{ t("admin.settings.adminApiKey.securityWarning") }}
-                  </p>
-                </div>
-              </div>
+          <!-- 管理员 API Key -->
+          <SettingsCard
+            :title="t('admin.settings.adminApiKey.title')"
+            :description="t('admin.settings.adminApiKey.description')"
+          >
+            <SettingsSection>
+              <SettingsNotice tone="warning">
+                {{ t("admin.settings.adminApiKey.securityWarning") }}
+              </SettingsNotice>
 
-              <!-- Loading State -->
               <ContentSkeleton v-if="adminApiKeyLoading" variant="form" :rows="1" />
 
-              <!-- No Key Configured -->
               <div
                 v-else-if="!adminApiKeyExists"
-                class="flex items-center justify-between"
+                class="flex items-center justify-between gap-4"
               >
-                <span class="text-gray-500 dark:text-gray-400">
+                <span class="text-sm text-primary-900/80 dark:text-dark-300">
                   {{ t("admin.settings.adminApiKey.notConfigured") }}
                 </span>
                 <button
                   type="button"
-                  @click="createAdminApiKey"
                   :disabled="adminApiKeyOperating"
                   class="btn btn-primary btn-sm h-9"
+                  @click="createAdminApiKey"
                 >
                   <Icon
+                    v-if="adminApiKeyOperating"
                     name="loader"
                     size="sm"
                     :animate-on-hover="false"
-                    v-if="adminApiKeyOperating"
                     class="mr-1 h-4 w-4 animate-spin"
                   />
                   {{
@@ -151,17 +130,14 @@
                 </button>
               </div>
 
-              <!-- Key Exists -->
-              <div v-else class="space-y-4">
-                <div class="flex items-center justify-between">
+              <template v-else>
+                <div class="flex flex-wrap items-end justify-between gap-4">
                   <div>
-                    <label
-                      class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
+                    <p class="input-label">
                       {{ t("admin.settings.adminApiKey.currentKey") }}
-                    </label>
+                    </p>
                     <code
-                      class="rounded-compact bg-gray-100 px-2 py-1 font-mono text-sm text-gray-900 dark:bg-dark-700 dark:text-gray-100"
+                      class="rounded-compact bg-gray-100 px-2 py-1 font-mono text-sm text-gray-900 dark:bg-dark-700 dark:text-dark-50"
                     >
                       {{ adminApiKeyMasked }}
                     </code>
@@ -169,9 +145,9 @@
                   <div class="flex gap-2">
                     <button
                       type="button"
-                      @click="regenerateAdminApiKey"
                       :disabled="adminApiKeyOperating"
                       class="btn btn-secondary btn-sm h-9"
+                      @click="regenerateAdminApiKey"
                     >
                       {{
                         adminApiKeyOperating
@@ -181,23 +157,21 @@
                     </button>
                     <button
                       type="button"
-                      @click="deleteAdminApiKey"
                       :disabled="adminApiKeyOperating"
                       class="btn btn-secondary btn-sm h-9 text-red-600 hover:text-red-700 dark:text-red-400"
+                      @click="deleteAdminApiKey"
                     >
                       {{ t("admin.settings.adminApiKey.delete") }}
                     </button>
                   </div>
                 </div>
 
-                <!-- Newly Generated Key Display -->
+                <!-- 新生成的密钥只显示这一次。 -->
                 <div
                   v-if="newAdminApiKey"
-                  class="space-y-3 rounded-control border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20"
+                  class="space-y-3 rounded-control border border-green-200 bg-green-50 p-4 dark:border-green-800/60 dark:bg-green-900/20"
                 >
-                  <p
-                    class="text-sm font-medium text-green-700 dark:text-green-300"
-                  >
+                  <p class="text-sm font-medium text-green-700 dark:text-green-300">
                     {{ t("admin.settings.adminApiKey.keyWarning") }}
                   </p>
                   <div class="flex items-center gap-2">
@@ -208,8 +182,8 @@
                     </code>
                     <button
                       type="button"
-                      @click="copyNewKey"
                       class="btn btn-primary btn-sm h-9 flex-shrink-0"
+                      @click="copyNewKey"
                     >
                       {{ t("admin.settings.adminApiKey.copyKey") }}
                     </button>
@@ -218,9 +192,9 @@
                     {{ t("admin.settings.adminApiKey.usage") }}
                   </p>
                 </div>
-              </div>
-            </div>
-          </div>
+              </template>
+            </SettingsSection>
+          </SettingsCard>
         </div>
         <!-- /Tab: Security — Admin API Key -->
 
@@ -998,2023 +972,1333 @@
 
         <!-- Tab: Security — Registration, Turnstile, LinuxDo -->
         <div v-show="activeTab === 'security'" v-content-reveal="activeTab === 'security'" class="space-y-4">
-          <!-- Registration Settings -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.registration.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.registration.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <!-- Enable Registration -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.registration.enableRegistration")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{
-                      t("admin.settings.registration.enableRegistrationHint")
-                    }}
-                  </p>
-                </div>
-                <Toggle v-model="form.registration_enabled" />
-              </div>
-
-              <!-- Email Verification -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.registration.emailVerification")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.registration.emailVerificationHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.email_verify_enabled" />
-              </div>
-
-              <!-- Email Suffix Whitelist -->
-              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                <label class="font-medium text-gray-900 dark:text-white">{{
-                  t("admin.settings.registration.emailSuffixWhitelist")
-                }}</label>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    t("admin.settings.registration.emailSuffixWhitelistHint")
-                  }}
-                </p>
-                <div
-                  class="mt-3 rounded-control border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
-                >
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span
-                      v-for="suffix in registrationEmailSuffixWhitelistTags"
-                      :key="suffix"
-                      class="inline-flex items-center gap-1 rounded-compact bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 dark:bg-dark-600 dark:text-gray-200"
-                    >
-                      <span>{{ suffix }}</span>
-                      <button
-                        type="button"
-                        class="rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-dark-500 dark:hover:text-white"
-                        @click="
-                          removeRegistrationEmailSuffixWhitelistTag(suffix)
-                        "
-                      >
-                        <Icon
-                          name="x"
-                          size="xs"
-                          class="h-3.5 w-3.5"
-                          :stroke-width="2"
-                        />
-                      </button>
-                    </span>
-
-                    <div
-                      class="flex min-w-[220px] flex-1 items-center gap-1 rounded-compact border border-transparent px-2 py-1 focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:focus-within:border-primary-700 dark:focus-within:ring-0"
-                    >
-                      <input
-                        v-model="registrationEmailSuffixWhitelistDraft"
-                        type="text"
-                        class="w-full bg-transparent text-sm font-mono text-gray-900 outline-none placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500"
-                        :placeholder="
-                          t(
-                            'admin.settings.registration.emailSuffixWhitelistPlaceholder',
-                          )
-                        "
-                        @input="
-                          handleRegistrationEmailSuffixWhitelistDraftInput
-                        "
-                        @keydown="
-                          handleRegistrationEmailSuffixWhitelistDraftKeydown
-                        "
-                        @blur="commitRegistrationEmailSuffixWhitelistDraft"
-                        @paste="handleRegistrationEmailSuffixWhitelistPaste"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  {{
-                    t(
-                      "admin.settings.registration.emailSuffixWhitelistInputHint",
-                    )
-                  }}
-                </p>
-              </div>
-
-              <!-- 非白名单邮箱域名额度 -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.registration.emailDomainQuota")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.registration.emailDomainQuotaHint") }}
-                  </p>
-                </div>
-                <Toggle
-                  v-model="form.registration_email_domain_quota_enabled"
-                />
-              </div>
-
-              <!-- 邮箱地址归一化 -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.registration.emailNormalization")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{
-                      t("admin.settings.registration.emailNormalizationHint")
-                    }}
-                  </p>
-                </div>
-                <Toggle v-model="form.registration_email_normalization" />
-              </div>
-
-              <!-- 用户换绑主邮箱 -->
-              <div
-                data-testid="user-email-change-setting"
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.registration.userEmailChange")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.registration.userEmailChangeHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.user_email_change_enabled" />
-              </div>
-
-              <!-- Promo Code -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.registration.promoCode")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.registration.promoCodeHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.promo_code_enabled" />
-              </div>
-
-              <!-- Invitation Code -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.registration.invitationCode")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.registration.invitationCodeHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.invitation_code_enabled" />
-              </div>
-              <!-- Password Reset - Only show when email verification is enabled -->
+          <!-- 注册与账号安全 -->
+          <SettingsCard
+            :title="t('admin.settings.registration.title')"
+            :description="t('admin.settings.registration.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="registration-enabled"
+                v-model="form.registration_enabled"
+                :label="t('admin.settings.registration.enableRegistration')"
+                :hint="t('admin.settings.registration.enableRegistrationHint')"
+              />
+              <SettingToggleRow
+                id="email-verify-enabled"
+                v-model="form.email_verify_enabled"
+                :label="t('admin.settings.registration.emailVerification')"
+                :hint="t('admin.settings.registration.emailVerificationHint')"
+              />
+              <!-- 找回密码依赖邮箱验证。 -->
               <Collapse :open="form.email_verify_enabled" unmount-on-hide>
-                <div
-
-                  class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div>
-                    <label class="font-medium text-gray-900 dark:text-white">{{
-                      t("admin.settings.registration.passwordReset")
-                    }}</label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.registration.passwordResetHint") }}
-                    </p>
-                  </div>
-                  <Toggle v-model="form.password_reset_enabled" />
-                </div>
+                <SettingsSubpanel>
+                  <SettingToggleRow
+                    id="password-reset-enabled"
+                    v-model="form.password_reset_enabled"
+                    :label="t('admin.settings.registration.passwordReset')"
+                    :hint="t('admin.settings.registration.passwordResetHint')"
+                  />
+                </SettingsSubpanel>
               </Collapse>
-              <!-- 前端地址同时用于密码重置、团队邀请等外部邮件链接，必须始终可配置。 -->
-              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
+              <SettingToggleRow
+                id="promo-code-enabled"
+                v-model="form.promo_code_enabled"
+                :label="t('admin.settings.registration.promoCode')"
+                :hint="t('admin.settings.registration.promoCodeHint')"
+              />
+              <SettingToggleRow
+                id="invitation-code-enabled"
+                v-model="form.invitation_code_enabled"
+                :label="t('admin.settings.registration.invitationCode')"
+                :hint="t('admin.settings.registration.invitationCodeHint')"
+              />
+            </SettingsSection>
+
+            <SettingsSection>
+              <div>
+                <label for="registration-email-suffix-whitelist" class="input-label">
+                  {{ t("admin.settings.registration.emailSuffixWhitelist") }}
+                </label>
+                <p class="input-hint mb-2">
+                  {{ t("admin.settings.registration.emailSuffixWhitelistHint") }}
+                </p>
+                <SettingsTagInput
+                  id="registration-email-suffix-whitelist"
+                  v-model:draft="registrationEmailSuffixWhitelistDraft"
+                  :tags="registrationEmailSuffixWhitelistTags"
+                  :placeholder="t('admin.settings.registration.emailSuffixWhitelistPlaceholder')"
+                  @remove="removeRegistrationEmailSuffixWhitelistTag"
+                  @input="handleRegistrationEmailSuffixWhitelistDraftInput"
+                  @keydown="handleRegistrationEmailSuffixWhitelistDraftKeydown"
+                  @blur="commitRegistrationEmailSuffixWhitelistDraft"
+                  @paste="handleRegistrationEmailSuffixWhitelistPaste"
+                />
+                <p class="input-hint">
+                  {{ t("admin.settings.registration.emailSuffixWhitelistInputHint") }}
+                </p>
+              </div>
+              <SettingToggleRow
+                id="registration-email-domain-quota"
+                v-model="form.registration_email_domain_quota_enabled"
+                :label="t('admin.settings.registration.emailDomainQuota')"
+                :hint="t('admin.settings.registration.emailDomainQuotaHint')"
+              />
+              <SettingToggleRow
+                id="registration-email-normalization"
+                v-model="form.registration_email_normalization"
+                :label="t('admin.settings.registration.emailNormalization')"
+                :hint="t('admin.settings.registration.emailNormalizationHint')"
+              />
+              <SettingToggleRow
+                id="user-email-change-enabled"
+                v-model="form.user_email_change_enabled"
+                data-testid="user-email-change-setting"
+                :label="t('admin.settings.registration.userEmailChange')"
+                :hint="t('admin.settings.registration.userEmailChangeHint')"
+              />
+            </SettingsSection>
+
+            <!-- 前端地址用于密码重置、团队邀请等邮件里的外部链接，始终可以配置。 -->
+            <SettingsSection>
+              <div>
+                <label for="frontend-url" class="input-label">
                   {{ t("admin.settings.registration.frontendUrl") }}
                 </label>
                 <input
+                  id="frontend-url"
                   v-model="form.frontend_url"
                   data-testid="frontend-url-input"
                   type="url"
                   class="input"
-                  :placeholder="
-                    t('admin.settings.registration.frontendUrlPlaceholder')
-                  "
+                  :placeholder="t('admin.settings.registration.frontendUrlPlaceholder')"
                 />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                <p class="input-hint">
                   {{ t("admin.settings.registration.frontendUrlHint") }}
                 </p>
               </div>
+            </SettingsSection>
 
-              <!-- TOTP 2FA -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
+            <SettingsSection>
+              <!-- 未配置加密密钥时只禁止开启，已开启的开关仍可关闭。 -->
+              <SettingToggleRow
+                id="totp-enabled"
+                v-model="form.totp_enabled"
+                :label="t('admin.settings.registration.totp')"
+                :hint="t('admin.settings.registration.totpHint')"
+                :disabled="!form.totp_encryption_key_configured && !form.totp_enabled"
               >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.registration.totp")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.registration.totpHint") }}
-                  </p>
-                  <!-- 未配置密钥时只阻止启用，保留关闭已有开关的能力 -->
-                  <p
-                    v-if="!form.totp_encryption_key_configured"
-                    class="mt-2 text-sm text-amber-600 dark:text-amber-400"
-                  >
+                <template v-if="!form.totp_encryption_key_configured" #hint>
+                  <SettingsNotice tone="warning" class="mt-2">
                     {{ t("admin.settings.registration.totpKeyNotConfigured") }}
-                  </p>
-                </div>
-                <Toggle
-                  v-model="form.totp_enabled"
-                  :disabled="
-                    !form.totp_encryption_key_configured && !form.totp_enabled
-                  "
-                />
-              </div>
-
-              <!-- 敏感操作 step-up 2FA -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
+                  </SettingsNotice>
+                </template>
+              </SettingToggleRow>
+              <SettingToggleRow
+                id="step-up-enabled"
+                v-model="form.step_up_enabled"
+                :label="t('admin.settings.security.stepUp')"
+                :hint="t('admin.settings.security.stepUpHint')"
+              />
+              <SettingToggleRow
+                id="session-binding-enabled"
+                v-model="form.session_binding_enabled"
+                :label="t('admin.settings.security.sessionBinding')"
+                :hint="t('admin.settings.security.sessionBindingHint')"
+              />
+              <SettingRow
+                id="audit-log-retention-days"
+                field
+                label-for="audit-log-retention-days"
+                :label="t('admin.settings.security.auditRetention')"
+                :hint="t('admin.settings.security.auditRetentionHint')"
               >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.security.stepUp")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.security.stepUpHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.step_up_enabled" />
-              </div>
-
-              <!-- 会话 IP/UA 绑定 -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.security.sessionBinding")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.security.sessionBindingHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.session_binding_enabled" />
-              </div>
-
-              <!-- 审计日志保留天数 -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.security.auditRetention")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.security.auditRetentionHint") }}
-                  </p>
-                </div>
                 <input
+                  id="audit-log-retention-days"
                   v-model.number="form.audit_log_retention_days"
                   type="number"
                   min="0"
-                  class="input w-28 text-right"
+                  class="input"
                 />
-              </div>
-            </div>
-          </div>
+              </SettingRow>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- API Key IP ACL Settings -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.apiKeyAcl.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.apiKeyAcl.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.apiKeyAcl.trustForwardedIp") }}
-                  </label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.apiKeyAcl.trustForwardedIpHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.api_key_acl_trust_forwarded_ip" />
-              </div>
-
+          <!-- API Key IP 访问控制 -->
+          <SettingsCard
+            :title="t('admin.settings.apiKeyAcl.title')"
+            :description="t('admin.settings.apiKeyAcl.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="api-key-acl-trust-forwarded-ip"
+                v-model="form.api_key_acl_trust_forwarded_ip"
+                :label="t('admin.settings.apiKeyAcl.trustForwardedIp')"
+                :hint="t('admin.settings.apiKeyAcl.trustForwardedIpHint')"
+              />
               <Collapse :open="form.api_key_acl_trust_forwarded_ip" unmount-on-hide>
-                <div
-
-                  class="border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <label
-                    for="forwarded-client-ip-headers"
-                    class="font-medium text-gray-900 dark:text-white"
-                  >
-                    {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeaders") }}
-                  </label>
-                  <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersHint") }}
-                  </p>
-                  <div
-                    class="mt-3 rounded-control border border-gray-300 bg-white p-2 dark:border-dark-500 dark:bg-dark-700"
-                  >
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span
-                        v-for="header in form.forwarded_client_ip_headers"
-                        :key="header"
-                        data-testid="forwarded-client-ip-header-tag"
-                        class="inline-flex items-center gap-1 rounded-compact bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700 dark:bg-dark-600 dark:text-gray-200"
-                      >
-                        <span>{{ header }}</span>
-                        <button
-                          type="button"
-                          class="rounded-full text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-dark-500 dark:hover:text-white"
-                          :aria-label="t('admin.settings.apiKeyAcl.removeForwardedClientIpHeader', { header })"
-                          @click="removeForwardedClientIpHeader(header)"
-                        >
-                          <Icon
-                            name="x"
-                            size="xs"
-                            class="h-3.5 w-3.5"
-                            :stroke-width="2"
-                          />
-                        </button>
-                      </span>
-                      <div
-                        class="flex min-w-[220px] flex-1 items-center gap-1 rounded-compact border border-transparent px-2 py-1 focus-within:border-primary-900/10 focus-within:ring-2 focus-within:ring-black/10 dark:focus-within:border-primary-700 dark:focus-within:ring-0"
-                      >
-                        <input
-                          id="forwarded-client-ip-headers"
-                          v-model="forwardedClientIpHeaderDraft"
-                          data-testid="forwarded-client-ip-headers-input"
-                          type="text"
-                          class="w-full bg-transparent text-sm font-mono text-gray-900 outline-none placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500"
-                          :placeholder="t('admin.settings.apiKeyAcl.forwardedClientIpHeadersPlaceholder')"
-                          @keydown="handleForwardedClientIpHeaderKeydown"
-                          @blur="commitForwardedClientIpHeaderDraft"
-                          @paste="handleForwardedClientIpHeaderPaste"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersRiskHint") }}
-                  </p>
-                </div>
-              </Collapse>
-            </div>
-          </div>
-
-          <!-- 面板 API 限流设置 -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <div class="flex items-center gap-2">
-                <Icon
-                  name="shield"
-                  size="md"
-                  class="text-primary-500"
-                />
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  {{ t("admin.settings.panelRateLimit.title") }}
-                </h2>
-              </div>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.panelRateLimit.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <ContentSkeleton v-if="panelRateLimitLoading" variant="form" :rows="4" />
-
-              <template v-else>
-                <!-- 计数维度说明：按用户 ID 计数，反代部署无误伤 -->
-                <div
-                  class="rounded-control border border-sky-200 bg-sky-50 p-4 dark:border-sky-800 dark:bg-sky-900/20"
-                >
-                  <div class="flex items-start">
-                    <Icon
-                      name="infoCircle"
-                      size="md"
-                      class="mt-0.5 flex-shrink-0 text-sky-500"
-                    />
-                    <p class="ml-3 text-sm text-sky-700 dark:text-sky-300">
-                      {{ t("admin.settings.panelRateLimit.proxySafeNote") }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="flex items-center justify-between">
+                <SettingsSubpanel>
                   <div>
-                    <label class="font-medium text-gray-900 dark:text-white">{{
-                      t("admin.settings.panelRateLimit.enabled")
-                    }}</label>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.panelRateLimit.enabledHint") }}
-                    </p>
-                  </div>
-                  <Toggle v-model="panelRateLimitForm.enabled" />
-                </div>
-
-                <Collapse :open="panelRateLimitForm.enabled" unmount-on-hide>
-                  <div
-
-                    class="space-y-5 border-t border-gray-100 pt-4 dark:border-dark-700"
-                  >
-                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{ t("admin.settings.panelRateLimit.userRpm") }}
-                        </label>
-                        <div class="flex items-center gap-2">
-                          <input
-                            v-model.number="panelRateLimitForm.user_rpm"
-                            data-testid="panel-rate-limit-user-rpm"
-                            type="number"
-                            min="0"
-                            max="100000"
-                            class="input w-32"
-                          />
-                          <span class="text-sm text-gray-500 dark:text-gray-400">
-                            {{ t("admin.settings.panelRateLimit.perMinute") }}
-                          </span>
-                        </div>
-                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.panelRateLimit.userRpmHint") }}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{ t("admin.settings.panelRateLimit.heavyRpm") }}
-                        </label>
-                        <div class="flex items-center gap-2">
-                          <input
-                            v-model.number="panelRateLimitForm.heavy_rpm"
-                            type="number"
-                            min="0"
-                            max="100000"
-                            class="input w-32"
-                          />
-                          <span class="text-sm text-gray-500 dark:text-gray-400">
-                            {{ t("admin.settings.panelRateLimit.perMinute") }}
-                          </span>
-                        </div>
-                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.panelRateLimit.heavyRpmHint") }}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{ t("admin.settings.panelRateLimit.publicIpRpm") }}
-                        </label>
-                        <div class="flex items-center gap-2">
-                          <input
-                            v-model.number="panelRateLimitForm.public_ip_rpm"
-                            type="number"
-                            min="0"
-                            max="100000"
-                            class="input w-32"
-                          />
-                          <span class="text-sm text-gray-500 dark:text-gray-400">
-                            {{ t("admin.settings.panelRateLimit.perMinute") }}
-                          </span>
-                        </div>
-                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.panelRateLimit.publicIpRpmHint") }}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div
-                      class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-                    >
-                      <div>
-                        <label class="font-medium text-gray-900 dark:text-white">{{
-                          t("admin.settings.panelRateLimit.exemptAdmin")
-                        }}</label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.panelRateLimit.exemptAdminHint") }}
-                        </p>
-                      </div>
-                      <Toggle v-model="panelRateLimitForm.exempt_admin" />
-                    </div>
-                  </div>
-                </Collapse>
-
-                <div
-                  class="flex justify-end border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <button
-                    type="button"
-                    data-testid="panel-rate-limit-save"
-                    @click="savePanelRateLimitSettings"
-                    :disabled="panelRateLimitSaving"
-                    class="btn btn-primary btn-sm h-9"
-                  >
-                    <Icon
-                      name="loader"
-                      size="sm"
-                      :animate-on-hover="false"
-                      v-if="panelRateLimitSaving"
-                      class="mr-1 h-4 w-4 animate-spin"
-                    />
-                    {{
-                      panelRateLimitSaving
-                        ? t("common.saving")
-                        : t("common.save")
-                    }}
-                  </button>
-                </div>
-              </template>
-            </div>
-          </div>
-
-          <!-- 人机验证设置 -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.captcha.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.captcha.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <!-- 人机验证总开关 -->
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.captcha.enable")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.captcha.enableHint") }}
-                  </p>
-                </div>
-                <Toggle
-                  v-model="captchaMasterEnabled"
-                  data-testid="captcha-enabled-toggle"
-                />
-              </div>
-
-              <!-- 启用后显示服务商配置 -->
-              <Collapse :open="captchaMasterEnabled" unmount-on-hide>
-                <div
-
-                  class="border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <!-- 服务商选择 -->
-                  <div class="mb-6">
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.captcha.provider") }}
+                    <label for="forwarded-client-ip-headers" class="input-label">
+                      {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeaders") }}
                     </label>
-                    <div
-                      class="grid grid-cols-3 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700"
-                    >
-                      <button
-                        type="button"
-                        data-testid="captcha-provider-turnstile"
-                        class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
-                        :class="
-                          captchaProviderSelection === 'turnstile'
-                            ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                            : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                        "
-                        @click="selectCaptchaProvider('turnstile')"
-                      >
-                        {{ t("admin.settings.captcha.providerTurnstile") }}
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="captcha-provider-tencent"
-                        class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
-                        :class="
-                          captchaProviderSelection === 'tencent'
-                            ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                            : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                        "
-                        @click="selectCaptchaProvider('tencent')"
-                      >
-                        {{ t("admin.settings.captcha.providerTencent") }}
-                      </button>
-                      <button
-                        type="button"
-                        data-testid="captcha-provider-aliyun"
-                        class="inline-flex items-center justify-center gap-2 rounded-control px-3 py-2 text-sm font-medium transition"
-                        :class="
-                          captchaProviderSelection === 'aliyun'
-                            ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                            : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                        "
-                        @click="selectCaptchaProvider('aliyun')"
-                      >
-                        {{ t("admin.settings.captcha.providerAliyun") }}
-                      </button>
+                    <p class="input-hint mb-2">
+                      {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersHint") }}
+                    </p>
+                    <SettingsTagInput
+                      id="forwarded-client-ip-headers"
+                      v-model:draft="forwardedClientIpHeaderDraft"
+                      :tags="form.forwarded_client_ip_headers"
+                      :placeholder="t('admin.settings.apiKeyAcl.forwardedClientIpHeadersPlaceholder')"
+                      :remove-label="(header) => t('admin.settings.apiKeyAcl.removeForwardedClientIpHeader', { header })"
+                      tag-testid="forwarded-client-ip-header-tag"
+                      input-testid="forwarded-client-ip-headers-input"
+                      @remove="removeForwardedClientIpHeader"
+                      @keydown="handleForwardedClientIpHeaderKeydown"
+                      @blur="commitForwardedClientIpHeaderDraft"
+                      @paste="handleForwardedClientIpHeaderPaste"
+                    />
+                  </div>
+                  <SettingsNotice tone="warning">
+                    {{ t("admin.settings.apiKeyAcl.forwardedClientIpHeadersRiskHint") }}
+                  </SettingsNotice>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+          </SettingsCard>
+
+          <!-- 面板 API 限流 -->
+          <SettingsCard
+            :title="t('admin.settings.panelRateLimit.title')"
+            :description="t('admin.settings.panelRateLimit.description')"
+          >
+            <ContentSkeleton v-if="panelRateLimitLoading" variant="form" :rows="4" />
+            <SettingsSection v-else>
+              <!-- 按用户 ID 计数，反向代理部署下不会误伤同一出口 IP 的用户。 -->
+              <SettingsNotice>
+                {{ t("admin.settings.panelRateLimit.proxySafeNote") }}
+              </SettingsNotice>
+              <SettingToggleRow
+                id="panel-rate-limit-enabled"
+                v-model="panelRateLimitForm.enabled"
+                :label="t('admin.settings.panelRateLimit.enabled')"
+                :hint="t('admin.settings.panelRateLimit.enabledHint')"
+              />
+              <Collapse :open="panelRateLimitForm.enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingRow
+                    id="panel-rate-limit-user-rpm"
+                    field
+                    label-for="panel-rate-limit-user-rpm"
+                    :label="t('admin.settings.panelRateLimit.userRpm')"
+                    :hint="t('admin.settings.panelRateLimit.userRpmHint')"
+                  >
+                    <div class="flex items-center gap-2">
+                      <input
+                        id="panel-rate-limit-user-rpm"
+                        v-model.number="panelRateLimitForm.user_rpm"
+                        data-testid="panel-rate-limit-user-rpm"
+                        type="number"
+                        min="0"
+                        max="100000"
+                        class="input"
+                      />
+                      <span class="shrink-0 text-sm text-gray-500 dark:text-dark-400">
+                        {{ t("admin.settings.panelRateLimit.perMinute") }}
+                      </span>
                     </div>
+                  </SettingRow>
+                  <SettingRow
+                    id="panel-rate-limit-heavy-rpm"
+                    field
+                    label-for="panel-rate-limit-heavy-rpm"
+                    :label="t('admin.settings.panelRateLimit.heavyRpm')"
+                    :hint="t('admin.settings.panelRateLimit.heavyRpmHint')"
+                  >
+                    <div class="flex items-center gap-2">
+                      <input
+                        id="panel-rate-limit-heavy-rpm"
+                        v-model.number="panelRateLimitForm.heavy_rpm"
+                        type="number"
+                        min="0"
+                        max="100000"
+                        class="input"
+                      />
+                      <span class="shrink-0 text-sm text-gray-500 dark:text-dark-400">
+                        {{ t("admin.settings.panelRateLimit.perMinute") }}
+                      </span>
+                    </div>
+                  </SettingRow>
+                  <SettingRow
+                    id="panel-rate-limit-public-ip-rpm"
+                    field
+                    label-for="panel-rate-limit-public-ip-rpm"
+                    :label="t('admin.settings.panelRateLimit.publicIpRpm')"
+                    :hint="t('admin.settings.panelRateLimit.publicIpRpmHint')"
+                  >
+                    <div class="flex items-center gap-2">
+                      <input
+                        id="panel-rate-limit-public-ip-rpm"
+                        v-model.number="panelRateLimitForm.public_ip_rpm"
+                        type="number"
+                        min="0"
+                        max="100000"
+                        class="input"
+                      />
+                      <span class="shrink-0 text-sm text-gray-500 dark:text-dark-400">
+                        {{ t("admin.settings.panelRateLimit.perMinute") }}
+                      </span>
+                    </div>
+                  </SettingRow>
+                  <SettingToggleRow
+                    id="panel-rate-limit-exempt-admin"
+                    v-model="panelRateLimitForm.exempt_admin"
+                    :label="t('admin.settings.panelRateLimit.exemptAdmin')"
+                    :hint="t('admin.settings.panelRateLimit.exemptAdminHint')"
+                  />
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+            <template v-if="!panelRateLimitLoading" #footer>
+              <button
+                type="button"
+                data-testid="panel-rate-limit-save"
+                :disabled="panelRateLimitSaving"
+                class="btn btn-primary btn-sm h-9"
+                @click="savePanelRateLimitSettings"
+              >
+                <Icon
+                  v-if="panelRateLimitSaving"
+                  name="loader"
+                  size="sm"
+                  :animate-on-hover="false"
+                  class="mr-1 h-4 w-4 animate-spin"
+                />
+                {{ panelRateLimitSaving ? t("common.saving") : t("common.save") }}
+              </button>
+            </template>
+          </SettingsCard>
+
+          <!-- 人机验证 -->
+          <SettingsCard
+            :title="t('admin.settings.captcha.title')"
+            :description="t('admin.settings.captcha.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="captcha-enabled"
+                v-model="captchaMasterEnabled"
+                :label="t('admin.settings.captcha.enable')"
+                :hint="t('admin.settings.captcha.enableHint')"
+                testid="captcha-enabled-toggle"
+              />
+              <Collapse :open="captchaMasterEnabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <div>
+                    <p class="input-label">{{ t("admin.settings.captcha.provider") }}</p>
+                    <SettingsSegmented
+                      :model-value="captchaProviderSelection"
+                      :options="captchaProviderOptions"
+                      :aria-label="t('admin.settings.captcha.provider')"
+                      block
+                      @update:model-value="selectCaptchaProvider($event as CaptchaProviderSelection)"
+                    />
                   </div>
 
-                  <!-- Cloudflare Turnstile 配置 -->
-                  <div
-                    v-if="captchaProviderSelection === 'turnstile'" v-content-reveal
-                    class="grid grid-cols-1 gap-6"
-                  >
+                  <!-- Cloudflare Turnstile -->
+                  <template v-if="captchaProviderSelection === 'turnstile'">
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="turnstile-site-key" class="input-label">
                         {{ t("admin.settings.turnstile.siteKey") }}
                       </label>
                       <input
+                        id="turnstile-site-key"
                         v-model="form.turnstile_site_key"
                         type="text"
                         class="input font-mono text-sm"
                         placeholder="0x4AAAAAAA..."
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      <p class="input-hint">
                         {{ t("admin.settings.turnstile.siteKeyHint") }}
                         <a
                           href="https://dash.cloudflare.com/"
                           target="_blank"
-                          class="text-primary-600 hover:text-primary-500"
-                          >{{
-                            t("admin.settings.turnstile.cloudflareDashboard")
-                          }}</a
-                        >
+                          class="text-primary-600 hover:text-primary-500 dark:text-primary-500"
+                        >{{ t("admin.settings.turnstile.cloudflareDashboard") }}</a>
                       </p>
                     </div>
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="turnstile-secret-key" class="input-label">
                         {{ t("admin.settings.turnstile.secretKey") }}
                       </label>
                       <input
+                        id="turnstile-secret-key"
                         v-model="form.turnstile_secret_key"
                         type="password"
                         class="input font-mono text-sm"
                         placeholder="0x4AAAAAAA..."
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      <p class="input-hint">
                         {{
                           form.turnstile_secret_key_configured
-                            ? t(
-                                "admin.settings.turnstile.secretKeyConfiguredHint",
-                              )
+                            ? t("admin.settings.turnstile.secretKeyConfiguredHint")
                             : t("admin.settings.turnstile.secretKeyHint")
                         }}
                       </p>
                     </div>
-                  </div>
+                  </template>
 
-                  <!-- 腾讯天御验证码配置 -->
-                  <div v-else-if="captchaProviderSelection === 'tencent'">
-                    <div class="mb-6 max-w-sm">
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.tencentCaptcha.region") }}
-                      </label>
-                      <div class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700">
-                        <button
-                          type="button"
-                          data-testid="tencent-captcha-region-cn"
-                          class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
-                          :class="
-                            form.tencent_captcha_region !== 'intl'
-                              ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                              : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                          "
-                          @click="form.tencent_captcha_region = 'cn'"
-                        >
-                          {{ t("admin.settings.tencentCaptcha.regionCn") }}
-                        </button>
-                        <button
-                          type="button"
-                          data-testid="tencent-captcha-region-intl"
-                          class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
-                          :class="
-                            form.tencent_captcha_region === 'intl'
-                              ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                              : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                          "
-                          @click="form.tencent_captcha_region = 'intl'"
-                        >
-                          {{ t("admin.settings.tencentCaptcha.regionIntl") }}
-                        </button>
-                      </div>
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.tencentCaptcha.regionHint") }}
-                      </p>
+                  <!-- 腾讯天御 -->
+                  <template v-else-if="captchaProviderSelection === 'tencent'">
+                    <div>
+                      <p class="input-label">{{ t("admin.settings.tencentCaptcha.region") }}</p>
+                      <SettingsSegmented
+                        :model-value="form.tencent_captcha_region === 'intl' ? 'intl' : 'cn'"
+                        :options="tencentCaptchaRegionOptions"
+                        :aria-label="t('admin.settings.tencentCaptcha.region')"
+                        @update:model-value="form.tencent_captcha_region = $event as string"
+                      />
+                      <p class="input-hint">{{ t("admin.settings.tencentCaptcha.regionHint") }}</p>
                     </div>
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                      <div class="md:col-span-2">
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                          {{ t("admin.settings.tencentCaptcha.appCredentialsTitle") }}
-                        </h3>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.tencentCaptcha.appCredentialsHint") }}
-                        </p>
-                      </div>
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.tencentCaptcha.appId") }}
-                        </label>
-                        <input
-                          v-model="form.tencent_captcha_app_id"
-                          type="text"
-                          inputmode="numeric"
-                          class="input font-mono text-sm"
-                          placeholder="123456789"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.tencentCaptcha.appSecretKey") }}
-                        </label>
-                        <input
-                          v-model="form.tencent_captcha_app_secret_key"
-                          type="password"
-                          autocomplete="new-password"
-                          class="input font-mono text-sm"
-                          :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
-                        />
-                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          {{ form.tencent_captcha_app_secret_key_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
-                        </p>
-                      </div>
-                      <div class="border-t border-gray-100 pt-5 md:col-span-2 dark:border-dark-700">
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                          {{ t("admin.settings.tencentCaptcha.cloudCredentialsTitle") }}
-                        </h3>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.tencentCaptcha.cloudCredentialsHint") }}
-                        </p>
-                      </div>
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.tencentCaptcha.cloudSecretId") }}
-                        </label>
-                        <input
-                          v-model="form.tencent_captcha_cloud_secret_id"
-                          type="password"
-                          autocomplete="new-password"
-                          class="input font-mono text-sm"
-                          :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
-                        />
-                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          {{ form.tencent_captcha_cloud_secret_id_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
-                        </p>
-                      </div>
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.tencentCaptcha.cloudSecretKey") }}
-                        </label>
-                        <input
-                          v-model="form.tencent_captcha_cloud_secret_key"
-                          type="password"
-                          autocomplete="new-password"
-                          class="input font-mono text-sm"
-                          :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
-                        />
-                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          {{ form.tencent_captcha_cloud_secret_key_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
-                        </p>
-                      </div>
-                    </div>
-                    <p class="mt-5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.tencentCaptcha.camPermissionHint") }}
-                    </p>
-                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.tencentCaptcha.aidEncryptedHint") }}
-                    </p>
-                    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-                      <a
-                        :href="tencentCaptchaLinks.console"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-primary-600 hover:text-primary-500"
-                      >
-                        {{ t("admin.settings.tencentCaptcha.openCaptchaConsole") }}
-                      </a>
-                      <a
-                        :href="tencentCaptchaLinks.cloudKeys"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-primary-600 hover:text-primary-500"
-                      >
-                        {{ t("admin.settings.tencentCaptcha.createCloudKeys") }}
-                      </a>
-                      <a
-                        :href="tencentCaptchaLinks.webDocs"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-primary-600 hover:text-primary-500"
-                      >
-                        {{ t("admin.settings.tencentCaptcha.openWebDocs") }}
-                      </a>
-                    </div>
-                  </div>
-
-                  <!-- 阿里云验证码 2.0 配置 -->
-                  <div v-else class="grid grid-cols-1 gap-6">
-                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          {{ t("admin.settings.aliyunCaptcha.region") }}
-                        </label>
-                        <div
-                          class="grid grid-cols-2 gap-2 rounded-control bg-gray-100 p-1 dark:bg-dark-700"
-                        >
-                          <button
-                            type="button"
-                            class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
-                            :class="
-                              form.aliyun_captcha_region !== 'sgp'
-                                ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                                : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                            "
-                            @click="form.aliyun_captcha_region = 'cn'"
-                          >
-                            {{ t("admin.settings.aliyunCaptcha.regionCn") }}
-                          </button>
-                          <button
-                            type="button"
-                            class="inline-flex items-center justify-center rounded-control px-3 py-1.5 text-sm font-medium transition"
-                            :class="
-                              form.aliyun_captcha_region === 'sgp'
-                                ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-800 dark:text-primary-300'
-                                : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                            "
-                            @click="form.aliyun_captcha_region = 'sgp'"
-                          >
-                            {{ t("admin.settings.aliyunCaptcha.regionSgp") }}
-                          </button>
+                    <SettingsSection
+                      :title="t('admin.settings.tencentCaptcha.appCredentialsTitle')"
+                      :hint="t('admin.settings.tencentCaptcha.appCredentialsHint')"
+                    >
+                      <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label for="tencent-captcha-app-id" class="input-label">
+                            {{ t("admin.settings.tencentCaptcha.appId") }}
+                          </label>
+                          <input
+                            id="tencent-captcha-app-id"
+                            v-model="form.tencent_captcha_app_id"
+                            type="text"
+                            inputmode="numeric"
+                            class="input font-mono text-sm"
+                            placeholder="123456789"
+                          />
                         </div>
-                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.aliyunCaptcha.regionHint") }}
-                        </p>
+                        <div>
+                          <label for="tencent-captcha-app-secret" class="input-label">
+                            {{ t("admin.settings.tencentCaptcha.appSecretKey") }}
+                          </label>
+                          <input
+                            id="tencent-captcha-app-secret"
+                            v-model="form.tencent_captcha_app_secret_key"
+                            type="password"
+                            autocomplete="new-password"
+                            class="input font-mono text-sm"
+                            :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
+                          />
+                          <p class="input-hint">
+                            {{ form.tencent_captcha_app_secret_key_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    </SettingsSection>
+                    <SettingsSection
+                      :title="t('admin.settings.tencentCaptcha.cloudCredentialsTitle')"
+                      :hint="t('admin.settings.tencentCaptcha.cloudCredentialsHint')"
+                    >
+                      <div class="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label for="tencent-captcha-cloud-secret-id" class="input-label">
+                            {{ t("admin.settings.tencentCaptcha.cloudSecretId") }}
+                          </label>
+                          <input
+                            id="tencent-captcha-cloud-secret-id"
+                            v-model="form.tencent_captcha_cloud_secret_id"
+                            type="password"
+                            autocomplete="new-password"
+                            class="input font-mono text-sm"
+                            :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
+                          />
+                          <p class="input-hint">
+                            {{ form.tencent_captcha_cloud_secret_id_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
+                          </p>
+                        </div>
+                        <div>
+                          <label for="tencent-captcha-cloud-secret-key" class="input-label">
+                            {{ t("admin.settings.tencentCaptcha.cloudSecretKey") }}
+                          </label>
+                          <input
+                            id="tencent-captcha-cloud-secret-key"
+                            v-model="form.tencent_captcha_cloud_secret_key"
+                            type="password"
+                            autocomplete="new-password"
+                            class="input font-mono text-sm"
+                            :placeholder="t('admin.settings.tencentCaptcha.keepExisting')"
+                          />
+                          <p class="input-hint">
+                            {{ form.tencent_captcha_cloud_secret_key_configured ? t("admin.settings.tencentCaptcha.configured") : t("admin.settings.tencentCaptcha.required") }}
+                          </p>
+                        </div>
+                      </div>
+                      <div class="space-y-1">
+                        <p class="input-hint">{{ t("admin.settings.tencentCaptcha.camPermissionHint") }}</p>
+                        <p class="input-hint">{{ t("admin.settings.tencentCaptcha.aidEncryptedHint") }}</p>
+                      </div>
+                      <div class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                        <a
+                          :href="tencentCaptchaLinks.console"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-primary-600 hover:text-primary-500 dark:text-primary-500"
                         >
+                          {{ t("admin.settings.tencentCaptcha.openCaptchaConsole") }}
+                        </a>
+                        <a
+                          :href="tencentCaptchaLinks.cloudKeys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-primary-600 hover:text-primary-500 dark:text-primary-500"
+                        >
+                          {{ t("admin.settings.tencentCaptcha.createCloudKeys") }}
+                        </a>
+                        <a
+                          :href="tencentCaptchaLinks.webDocs"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-primary-600 hover:text-primary-500 dark:text-primary-500"
+                        >
+                          {{ t("admin.settings.tencentCaptcha.openWebDocs") }}
+                        </a>
+                      </div>
+                    </SettingsSection>
+                  </template>
+
+                  <!-- 阿里云验证码 2.0 -->
+                  <template v-else>
+                    <div>
+                      <p class="input-label">{{ t("admin.settings.aliyunCaptcha.region") }}</p>
+                      <SettingsSegmented
+                        :model-value="form.aliyun_captcha_region === 'sgp' ? 'sgp' : 'cn'"
+                        :options="aliyunCaptchaRegionOptions"
+                        :aria-label="t('admin.settings.aliyunCaptcha.region')"
+                        @update:model-value="form.aliyun_captcha_region = $event as string"
+                      />
+                      <p class="input-hint">{{ t("admin.settings.aliyunCaptcha.regionHint") }}</p>
+                    </div>
+                    <div class="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label for="aliyun-captcha-prefix" class="input-label">
                           {{ t("admin.settings.aliyunCaptcha.prefix") }}
                         </label>
                         <input
+                          id="aliyun-captcha-prefix"
                           v-model="form.aliyun_captcha_prefix"
                           type="text"
                           class="input font-mono text-sm"
                           placeholder="14xxxxx"
                         />
-                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.aliyunCaptcha.prefixHint") }}
+                        <p class="input-hint">{{ t("admin.settings.aliyunCaptcha.prefixHint") }}</p>
+                      </div>
+                      <div>
+                        <label for="aliyun-captcha-scene-id" class="input-label">
+                          {{ t("admin.settings.aliyunCaptcha.sceneId") }}
+                        </label>
+                        <input
+                          id="aliyun-captcha-scene-id"
+                          v-model="form.aliyun_captcha_scene_id"
+                          type="text"
+                          class="input font-mono text-sm"
+                          placeholder="1cxxxxxx"
+                        />
+                        <p class="input-hint">{{ t("admin.settings.aliyunCaptcha.sceneIdHint") }}</p>
+                      </div>
+                      <div>
+                        <label for="aliyun-captcha-access-key-id" class="input-label">
+                          {{ t("admin.settings.aliyunCaptcha.accessKeyId") }}
+                        </label>
+                        <input
+                          id="aliyun-captcha-access-key-id"
+                          v-model="form.aliyun_captcha_access_key_id"
+                          type="text"
+                          class="input font-mono text-sm"
+                          placeholder="LTAI..."
+                        />
+                        <p class="input-hint">{{ t("admin.settings.aliyunCaptcha.accessKeyIdHint") }}</p>
+                      </div>
+                      <div>
+                        <label for="aliyun-captcha-access-key-secret" class="input-label">
+                          {{ t("admin.settings.aliyunCaptcha.accessKeySecret") }}
+                        </label>
+                        <input
+                          id="aliyun-captcha-access-key-secret"
+                          v-model="form.aliyun_captcha_access_key_secret"
+                          type="password"
+                          autocomplete="new-password"
+                          class="input font-mono text-sm"
+                          placeholder="••••••••"
+                        />
+                        <p class="input-hint">
+                          {{
+                            form.aliyun_captcha_access_key_secret_configured
+                              ? t("admin.settings.aliyunCaptcha.accessKeySecretConfiguredHint")
+                              : t("admin.settings.aliyunCaptcha.accessKeySecretHint")
+                          }}
                         </p>
                       </div>
                     </div>
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.aliyunCaptcha.sceneId") }}
-                      </label>
-                      <input
-                        v-model="form.aliyun_captcha_scene_id"
-                        type="text"
-                        class="input font-mono text-sm"
-                        placeholder="1cxxxxxx"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.aliyunCaptcha.sceneIdHint") }}
-                      </p>
-                    </div>
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.aliyunCaptcha.accessKeyId") }}
-                      </label>
-                      <input
-                        v-model="form.aliyun_captcha_access_key_id"
-                        type="text"
-                        class="input font-mono text-sm"
-                        placeholder="LTAI..."
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.aliyunCaptcha.accessKeyIdHint") }}
-                      </p>
-                    </div>
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.aliyunCaptcha.accessKeySecret") }}
-                      </label>
-                      <input
-                        v-model="form.aliyun_captcha_access_key_secret"
-                        type="password"
-                        autocomplete="new-password"
-                        class="input font-mono text-sm"
-                        placeholder="••••••••"
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          form.aliyun_captcha_access_key_secret_configured
-                            ? t(
-                                "admin.settings.aliyunCaptcha.accessKeySecretConfiguredHint",
-                              )
-                            : t("admin.settings.aliyunCaptcha.accessKeySecretHint")
-                        }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  </template>
+                </SettingsSubpanel>
               </Collapse>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- LinuxDo Connect OAuth 登录 -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.linuxdo.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.linuxdo.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.linuxdo.enable")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.linuxdo.enableHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.linuxdo_connect_enabled" />
-              </div>
-
+          <!-- LinuxDo Connect 登录 -->
+          <SettingsCard
+            :title="t('admin.settings.linuxdo.title')"
+            :description="t('admin.settings.linuxdo.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="linuxdo-connect-enabled"
+                v-model="form.linuxdo_connect_enabled"
+                :label="t('admin.settings.linuxdo.enable')"
+                :hint="t('admin.settings.linuxdo.enableHint')"
+              />
               <Collapse :open="form.linuxdo_connect_enabled" unmount-on-hide>
-                <div
-
-                  class="border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div class="grid grid-cols-1 gap-6">
+                <SettingsSubpanel>
+                  <div class="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="linuxdo-client-id" class="input-label">
                         {{ t("admin.settings.linuxdo.clientId") }}
                       </label>
                       <input
+                        id="linuxdo-client-id"
                         v-model="form.linuxdo_connect_client_id"
                         type="text"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.linuxdo.clientIdPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.linuxdo.clientIdPlaceholder')"
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.linuxdo.clientIdHint") }}
-                      </p>
+                      <p class="input-hint">{{ t("admin.settings.linuxdo.clientIdHint") }}</p>
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="linuxdo-client-secret" class="input-label">
                         {{ t("admin.settings.linuxdo.clientSecret") }}
                       </label>
                       <input
+                        id="linuxdo-client-secret"
                         v-model="form.linuxdo_connect_client_secret"
                         type="password"
                         class="input font-mono text-sm"
                         :placeholder="
                           form.linuxdo_connect_client_secret_configured
-                            ? t(
-                                'admin.settings.linuxdo.clientSecretConfiguredPlaceholder',
-                              )
+                            ? t('admin.settings.linuxdo.clientSecretConfiguredPlaceholder')
                             : t('admin.settings.linuxdo.clientSecretPlaceholder')
                         "
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      <p class="input-hint">
                         {{
                           form.linuxdo_connect_client_secret_configured
-                            ? t(
-                                "admin.settings.linuxdo.clientSecretConfiguredHint",
-                              )
+                            ? t("admin.settings.linuxdo.clientSecretConfiguredHint")
                             : t("admin.settings.linuxdo.clientSecretHint")
                         }}
                       </p>
                     </div>
-
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.linuxdo.redirectUrl") }}
-                      </label>
+                  </div>
+                  <div>
+                    <label for="linuxdo-redirect-url" class="input-label">
+                      {{ t("admin.settings.linuxdo.redirectUrl") }}
+                    </label>
+                    <div class="flex gap-2">
                       <input
+                        id="linuxdo-redirect-url"
                         v-model="form.linuxdo_connect_redirect_url"
                         type="url"
                         class="input font-mono text-sm"
+                        :placeholder="t('admin.settings.linuxdo.redirectUrlPlaceholder')"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-sm h-9 shrink-0"
+                        @click="setAndCopyLinuxdoRedirectUrl"
+                      >
+                        {{ t("admin.settings.linuxdo.quickSetCopy") }}
+                      </button>
+                    </div>
+                    <p class="input-hint">
+                      {{ t("admin.settings.linuxdo.redirectUrlHint") }}
+                      <code v-if="linuxdoRedirectUrlSuggestion" class="select-all break-all font-mono">{{ linuxdoRedirectUrlSuggestion }}</code>
+                    </p>
+                  </div>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+          </SettingsCard>
+
+          <!-- GitHub 和 Google 邮箱快捷登录 -->
+          <SettingsCard
+            :title="t('admin.settings.emailOAuth.title')"
+            :description="t('admin.settings.emailOAuth.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="github-oauth-enabled"
+                v-model="form.github_oauth_enabled"
+                label="GitHub"
+                :hint="t('admin.settings.emailOAuth.githubHint')"
+              />
+              <Collapse :open="form.github_oauth_enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingsNotice>
+                    {{ t("admin.settings.emailOAuth.githubGuideBeforeLink") }}
+                    <a
+                      data-testid="github-oauth-apps-guide-link"
+                      href="https://github.com/settings/developers"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="font-medium underline"
+                    >OAuth Apps</a>
+                    {{ t("admin.settings.emailOAuth.githubGuideAfterLink") }}
+                  </SettingsNotice>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label for="github-oauth-client-id" class="input-label">Client ID</label>
+                      <input
+                        id="github-oauth-client-id"
+                        v-model="form.github_oauth_client_id"
+                        type="text"
+                        class="input font-mono text-sm"
+                        placeholder="GitHub OAuth Client ID"
+                      />
+                    </div>
+                    <div>
+                      <label for="github-oauth-client-secret" class="input-label">Client Secret</label>
+                      <input
+                        id="github-oauth-client-secret"
+                        v-model="form.github_oauth_client_secret"
+                        type="password"
+                        class="input font-mono text-sm"
                         :placeholder="
-                          t('admin.settings.linuxdo.redirectUrlPlaceholder')
+                          form.github_oauth_client_secret_configured
+                            ? t('admin.settings.emailOAuth.secretConfiguredPlaceholder')
+                            : 'GitHub OAuth Client Secret'
                         "
                       />
-                      <div
-                        class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                    </div>
+                  </div>
+                  <div>
+                    <label for="github-oauth-redirect-url" class="input-label">
+                      {{ t("admin.settings.emailOAuth.backendCallbackUrl") }}
+                    </label>
+                    <div class="flex gap-2">
+                      <input
+                        id="github-oauth-redirect-url"
+                        v-model="form.github_oauth_redirect_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        placeholder="https://your-domain.com/api/v1/auth/oauth/github/callback"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-sm h-9 shrink-0"
+                        @click="setAndCopyEmailOAuthRedirectUrl('github')"
                       >
+                        {{ t("admin.settings.emailOAuth.generateAndCopy") }}
+                      </button>
+                    </div>
+                    <p v-if="githubOAuthRedirectUrlSuggestion" class="input-hint">
+                      <code class="select-all break-all font-mono">{{ githubOAuthRedirectUrlSuggestion }}</code>
+                    </p>
+                  </div>
+                  <div>
+                    <label for="github-oauth-frontend-redirect-url" class="input-label">
+                      {{ t("admin.settings.emailOAuth.frontendCallbackUrl") }}
+                    </label>
+                    <input
+                      id="github-oauth-frontend-redirect-url"
+                      v-model="form.github_oauth_frontend_redirect_url"
+                      type="text"
+                      class="input font-mono text-sm"
+                      placeholder="/auth/oauth/callback"
+                    />
+                  </div>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+
+            <SettingsSection>
+              <SettingToggleRow
+                id="google-oauth-enabled"
+                v-model="form.google_oauth_enabled"
+                label="Google"
+                :hint="t('admin.settings.emailOAuth.googleHint')"
+              />
+              <Collapse :open="form.google_oauth_enabled" unmount-on-hide>
+                <SettingsSubpanel>
+                  <SettingsNotice>
+                    {{ t("admin.settings.emailOAuth.googleGuide") }}
+                  </SettingsNotice>
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label for="google-oauth-client-id" class="input-label">Client ID</label>
+                      <input
+                        id="google-oauth-client-id"
+                        v-model="form.google_oauth_client_id"
+                        type="text"
+                        class="input font-mono text-sm"
+                        placeholder="Google OAuth Client ID"
+                      />
+                    </div>
+                    <div>
+                      <label for="google-oauth-client-secret" class="input-label">Client Secret</label>
+                      <input
+                        id="google-oauth-client-secret"
+                        v-model="form.google_oauth_client_secret"
+                        type="password"
+                        class="input font-mono text-sm"
+                        :placeholder="
+                          form.google_oauth_client_secret_configured
+                            ? t('admin.settings.emailOAuth.secretConfiguredPlaceholder')
+                            : 'Google OAuth Client Secret'
+                        "
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label for="google-oauth-redirect-url" class="input-label">
+                      {{ t("admin.settings.emailOAuth.backendCallbackUrl") }}
+                    </label>
+                    <div class="flex gap-2">
+                      <input
+                        id="google-oauth-redirect-url"
+                        v-model="form.google_oauth_redirect_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        placeholder="https://your-domain.com/api/v1/auth/oauth/google/callback"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-sm h-9 shrink-0"
+                        @click="setAndCopyEmailOAuthRedirectUrl('google')"
+                      >
+                        {{ t("admin.settings.emailOAuth.generateAndCopy") }}
+                      </button>
+                    </div>
+                    <p v-if="googleOAuthRedirectUrlSuggestion" class="input-hint">
+                      <code class="select-all break-all font-mono">{{ googleOAuthRedirectUrlSuggestion }}</code>
+                    </p>
+                  </div>
+                  <div>
+                    <label for="google-oauth-frontend-redirect-url" class="input-label">
+                      {{ t("admin.settings.emailOAuth.frontendCallbackUrl") }}
+                    </label>
+                    <input
+                      id="google-oauth-frontend-redirect-url"
+                      v-model="form.google_oauth_frontend_redirect_url"
+                      type="text"
+                      class="input font-mono text-sm"
+                      placeholder="/auth/oauth/callback"
+                    />
+                  </div>
+                  <SettingToggleRow
+                    id="google-one-tap-enabled"
+                    v-model="form.google_one_tap_enabled"
+                    label="Google One Tap"
+                    :hint="t('admin.settings.emailOAuth.googleOneTapHint')"
+                  />
+                  <!-- One Tap 需要在 Google Cloud 登记当前站点的 JavaScript Origin。 -->
+                  <Collapse :open="form.google_one_tap_enabled" unmount-on-hide>
+                    <div>
+                      <p class="input-label">Authorized JavaScript origin</p>
+                      <div class="flex gap-2">
+                        <code class="input flex items-center select-all break-all font-mono text-sm">
+                          {{ googleOneTapOriginSuggestion }}
+                        </code>
                         <button
                           type="button"
-                          class="btn btn-secondary btn-sm h-9 w-fit"
-                          @click="setAndCopyLinuxdoRedirectUrl"
+                          class="btn btn-secondary btn-sm h-9 shrink-0"
+                          :disabled="!googleOneTapOriginSuggestion"
+                          @click="copyGoogleOneTapOrigin"
                         >
-                          {{ t("admin.settings.linuxdo.quickSetCopy") }}
+                          <Icon name="copy" size="sm" class="mr-1.5" />
+                          {{ t("admin.settings.emailOAuth.copy") }}
                         </button>
-                        <code
-                          v-if="linuxdoRedirectUrlSuggestion"
-                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
-                        >
-                          {{ linuxdoRedirectUrlSuggestion }}
-                        </code>
                       </div>
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.linuxdo.redirectUrlHint") }}
+                      <p class="input-hint">
+                        {{ t("admin.settings.emailOAuth.googleOneTapOriginHint") }}
                       </p>
                     </div>
-                  </div>
-                </div>
+                  </Collapse>
+                </SettingsSubpanel>
               </Collapse>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- GitHub / Google 邮箱快捷登录 -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.emailOAuth.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{
-                  t("admin.settings.emailOAuth.description")
-                }}
-              </p>
-            </div>
-            <div class="space-y-6 p-6">
-              <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                <div class="rounded-control border border-gray-200 p-4 dark:border-dark-700">
-                  <div class="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 class="font-medium text-gray-900 dark:text-white">
-                        GitHub
-                      </h3>
-                      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {{
-                          t("admin.settings.emailOAuth.githubHint")
-                        }}
-                      </p>
-                    </div>
-                    <Toggle v-model="form.github_oauth_enabled" />
-                  </div>
-
-                  <Collapse :open="form.github_oauth_enabled" unmount-on-hide>
-                    <div class="mt-4 space-y-4">
-                      <div class="rounded-control bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
-                        {{ t("admin.settings.emailOAuth.githubGuideBeforeLink") }}
-                        <a
-                          data-testid="github-oauth-apps-guide-link"
-                          href="https://github.com/settings/developers"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="font-medium text-primary-600 hover:underline dark:text-primary-400"
-                        >OAuth Apps</a>
-                        {{ t("admin.settings.emailOAuth.githubGuideAfterLink") }}
-                      </div>
-
-                      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        <div>
-                          <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client ID</label>
-                          <input
-                            v-model="form.github_oauth_client_id"
-                            type="text"
-                            class="input font-mono text-sm"
-                            placeholder="GitHub OAuth Client ID"
-                          />
-                        </div>
-                        <div>
-                          <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client Secret</label>
-                          <input
-                            v-model="form.github_oauth_client_secret"
-                            type="password"
-                            class="input font-mono text-sm"
-                            :placeholder="
-                              form.github_oauth_client_secret_configured
-                                ? t('admin.settings.emailOAuth.secretConfiguredPlaceholder')
-                                : 'GitHub OAuth Client Secret'
-                            "
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.emailOAuth.backendCallbackUrl") }}
-                        </label>
-                        <input
-                          v-model="form.github_oauth_redirect_url"
-                          type="url"
-                          class="input font-mono text-sm"
-                          placeholder="https://your-domain.com/api/v1/auth/oauth/github/callback"
-                        />
-                        <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                          <button
-                            type="button"
-                            class="btn btn-secondary btn-sm h-9 w-fit"
-                            @click="setAndCopyEmailOAuthRedirectUrl('github')"
-                          >
-                            {{ t("admin.settings.emailOAuth.generateAndCopy") }}
-                          </button>
-                          <code
-                            v-if="githubOAuthRedirectUrlSuggestion"
-                            class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
-                          >
-                            {{ githubOAuthRedirectUrlSuggestion }}
-                          </code>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.emailOAuth.frontendCallbackUrl") }}
-                        </label>
-                        <input
-                          v-model="form.github_oauth_frontend_redirect_url"
-                          type="text"
-                          class="input font-mono text-sm"
-                          placeholder="/auth/oauth/callback"
-                        />
-                      </div>
-                    </div>
-                  </Collapse>
-                </div>
-
-                <div class="rounded-control border border-gray-200 p-4 dark:border-dark-700">
-                  <div class="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 class="font-medium text-gray-900 dark:text-white">
-                        Google
-                      </h3>
-                      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {{
-                          t("admin.settings.emailOAuth.googleHint")
-                        }}
-                      </p>
-                    </div>
-                    <Toggle v-model="form.google_oauth_enabled" />
-                  </div>
-
-                  <Collapse :open="form.google_oauth_enabled" unmount-on-hide>
-                    <div class="mt-4 space-y-4">
-                      <div class="rounded-control bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
-                        {{
-                          t("admin.settings.emailOAuth.googleGuide")
-                        }}
-                      </div>
-
-                      <div class="border-t border-gray-200 pt-4 dark:border-dark-700">
-                        <div class="flex items-start justify-between gap-4">
-                          <div>
-                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">
-                              Google One Tap
-                            </h4>
-                            <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                              {{
-                                t("admin.settings.emailOAuth.googleOneTapHint")
-                              }}
-                            </p>
-                          </div>
-                          <Toggle v-model="form.google_one_tap_enabled" />
-                        </div>
-
-                        <Collapse :open="form.google_one_tap_enabled" unmount-on-hide>
-                          <div class="mt-3">
-                            <label class="mb-2 block text-xs font-medium text-gray-700 dark:text-gray-300">
-                              Authorized JavaScript origin
-                            </label>
-                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                              <code class="min-w-0 flex-1 select-all break-all rounded-compact bg-gray-50 px-2 py-1.5 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300">
-                                {{ googleOneTapOriginSuggestion }}
-                              </code>
-                              <button
-                                type="button"
-                                class="btn btn-secondary btn-sm h-9 w-fit"
-                                :disabled="!googleOneTapOriginSuggestion"
-                                @click="copyGoogleOneTapOrigin"
-                              >
-                                <Icon name="copy" size="sm" class="mr-1.5" />
-                                {{ t("admin.settings.emailOAuth.copy") }}
-                              </button>
-                            </div>
-                            <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                              {{
-                                t("admin.settings.emailOAuth.googleOneTapOriginHint")
-                              }}
-                            </p>
-                          </div>
-                        </Collapse>
-                      </div>
-
-                      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        <div>
-                          <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client ID</label>
-                          <input
-                            v-model="form.google_oauth_client_id"
-                            type="text"
-                            class="input font-mono text-sm"
-                            placeholder="Google OAuth Client ID"
-                          />
-                        </div>
-                        <div>
-                          <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">Client Secret</label>
-                          <input
-                            v-model="form.google_oauth_client_secret"
-                            type="password"
-                            class="input font-mono text-sm"
-                            :placeholder="
-                              form.google_oauth_client_secret_configured
-                                ? t('admin.settings.emailOAuth.secretConfiguredPlaceholder')
-                                : 'Google OAuth Client Secret'
-                            "
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.emailOAuth.backendCallbackUrl") }}
-                        </label>
-                        <input
-                          v-model="form.google_oauth_redirect_url"
-                          type="url"
-                          class="input font-mono text-sm"
-                          placeholder="https://your-domain.com/api/v1/auth/oauth/google/callback"
-                        />
-                        <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                          <button
-                            type="button"
-                            class="btn btn-secondary btn-sm h-9 w-fit"
-                            @click="setAndCopyEmailOAuthRedirectUrl('google')"
-                          >
-                            {{ t("admin.settings.emailOAuth.generateAndCopy") }}
-                          </button>
-                          <code
-                            v-if="googleOAuthRedirectUrlSuggestion"
-                            class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
-                          >
-                            {{ googleOAuthRedirectUrlSuggestion }}
-                          </code>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {{ t("admin.settings.emailOAuth.frontendCallbackUrl") }}
-                        </label>
-                        <input
-                          v-model="form.google_oauth_frontend_redirect_url"
-                          type="text"
-                          class="input font-mono text-sm"
-                          placeholder="/auth/oauth/callback"
-                        />
-                      </div>
-                    </div>
-                  </Collapse>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- WeChat Connect OAuth 登录 -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.wechatConnect.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.wechatConnect.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.wechatConnect.enabledLabel")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.wechatConnect.enabledHint") }}
-                  </p>
-                </div>
-                <Toggle
-                  v-model="form.wechat_connect_enabled"
-                  data-testid="wechat-connect-enabled"
-                />
-              </div>
-
+          <!-- 微信登录 -->
+          <SettingsCard
+            :title="t('admin.settings.wechatConnect.title')"
+            :description="t('admin.settings.wechatConnect.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="wechat-connect-enabled"
+                v-model="form.wechat_connect_enabled"
+                :label="t('admin.settings.wechatConnect.enabledLabel')"
+                :hint="t('admin.settings.wechatConnect.enabledHint')"
+                testid="wechat-connect-enabled"
+              />
               <Collapse :open="form.wechat_connect_enabled" unmount-on-hide>
-                <div
-
-                  class="space-y-6 border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div class="space-y-4">
-                    <div
-                      class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
-                    >
-                      <div class="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 class="font-medium text-gray-900 dark:text-white">
-                            {{ t("admin.settings.wechatConnect.pcApp") }}
-                          </h3>
-                          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            {{
-                              t("admin.settings.wechatConnect.pcAppHint")
-                            }}
-                          </p>
-                        </div>
-                        <Toggle
-                          :model-value="form.wechat_connect_open_enabled"
-                          data-testid="wechat-connect-open-enabled"
-                          @update:model-value="handleWeChatOpenEnabledChange"
+                <SettingsSubpanel>
+                  <SettingToggleRow
+                    id="wechat-connect-open-enabled"
+                    :model-value="form.wechat_connect_open_enabled"
+                    :label="t('admin.settings.wechatConnect.pcApp')"
+                    :hint="t('admin.settings.wechatConnect.pcAppHint')"
+                    testid="wechat-connect-open-enabled"
+                    @update:model-value="handleWeChatOpenEnabledChange"
+                  />
+                  <Collapse :open="form.wechat_connect_open_enabled" unmount-on-hide>
+                    <div class="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label for="wechat-connect-open-app-id" class="input-label">
+                          {{ t("admin.settings.wechatConnect.pcAppId") }}
+                        </label>
+                        <input
+                          id="wechat-connect-open-app-id"
+                          v-model="form.wechat_connect_open_app_id"
+                          data-testid="wechat-connect-open-app-id"
+                          type="text"
+                          class="input font-mono text-sm"
+                          :placeholder="t('admin.settings.wechatConnect.pcAppIdPlaceholder')"
                         />
                       </div>
-                      <Collapse :open="form.wechat_connect_open_enabled" unmount-on-hide>
-                        <div
-
-                          class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
-                        >
-                          <div>
-                            <label
-                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                            >
-                              {{ t("admin.settings.wechatConnect.pcAppId") }}
-                            </label>
-                            <input
-                              v-model="form.wechat_connect_open_app_id"
-                              data-testid="wechat-connect-open-app-id"
-                              type="text"
-                              class="input font-mono text-sm"
-                              :placeholder="
-                                t('admin.settings.wechatConnect.pcAppIdPlaceholder')
-                              "
-                            />
-                          </div>
-                          <div>
-                            <label
-                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                            >
-                              {{ t("admin.settings.wechatConnect.pcAppSecret") }}
-                            </label>
-                            <input
-                              v-model="form.wechat_connect_open_app_secret"
-                              data-testid="wechat-connect-open-app-secret"
-                              type="password"
-                              class="input font-mono text-sm"
-                              :placeholder="
-                                form.wechat_connect_open_app_secret_configured
-                                  ? t('admin.settings.wechatConnect.appSecretConfiguredPlaceholder')
-                                  : t('admin.settings.wechatConnect.pcAppSecretPlaceholder')
-                              "
-                            />
-                          </div>
-                        </div>
-                      </Collapse>
-                    </div>
-
-                    <div
-                      class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
-                    >
-                      <div class="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 class="font-medium text-gray-900 dark:text-white">
-                            {{ t("admin.settings.wechatConnect.mp") }}
-                          </h3>
-                          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            {{
-                              t("admin.settings.wechatConnect.mpHint")
-                            }}
-                          </p>
-                        </div>
-                        <Toggle
-                          :model-value="form.wechat_connect_mp_enabled"
-                          data-testid="wechat-connect-mp-enabled"
-                          @update:model-value="handleWeChatMPEnabledChange"
+                      <div>
+                        <label for="wechat-connect-open-app-secret" class="input-label">
+                          {{ t("admin.settings.wechatConnect.pcAppSecret") }}
+                        </label>
+                        <input
+                          id="wechat-connect-open-app-secret"
+                          v-model="form.wechat_connect_open_app_secret"
+                          data-testid="wechat-connect-open-app-secret"
+                          type="password"
+                          class="input font-mono text-sm"
+                          :placeholder="
+                            form.wechat_connect_open_app_secret_configured
+                              ? t('admin.settings.wechatConnect.appSecretConfiguredPlaceholder')
+                              : t('admin.settings.wechatConnect.pcAppSecretPlaceholder')
+                          "
                         />
                       </div>
-                      <Collapse :open="form.wechat_connect_mp_enabled" unmount-on-hide>
-                        <div
-
-                          class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
-                        >
-                          <div>
-                            <label
-                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                            >
-                              {{ t("admin.settings.wechatConnect.mpAppId") }}
-                            </label>
-                            <input
-                              v-model="form.wechat_connect_mp_app_id"
-                              data-testid="wechat-connect-mp-app-id"
-                              type="text"
-                              class="input font-mono text-sm"
-                              :placeholder="
-                                t('admin.settings.wechatConnect.mpAppId')
-                              "
-                            />
-                          </div>
-                          <div>
-                            <label
-                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                            >
-                              {{
-                                t("admin.settings.wechatConnect.mpAppSecret")
-                              }}
-                            </label>
-                            <input
-                              v-model="form.wechat_connect_mp_app_secret"
-                              data-testid="wechat-connect-mp-app-secret"
-                              type="password"
-                              class="input font-mono text-sm"
-                              :placeholder="
-                                form.wechat_connect_mp_app_secret_configured
-                                  ? t('admin.settings.wechatConnect.appSecretConfiguredPlaceholder')
-                                  : t('admin.settings.wechatConnect.mpAppSecret')
-                              "
-                            />
-                          </div>
-                        </div>
-                      </Collapse>
-                    </div>
-
-                    <div
-                      class="rounded-control border border-gray-200 p-4 dark:border-dark-700"
-                    >
-                      <div class="flex items-start justify-between gap-4">
-                        <div>
-                          <h3 class="font-medium text-gray-900 dark:text-white">
-                            {{ t("admin.settings.wechatConnect.mobile") }}
-                          </h3>
-                          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            {{
-                              t("admin.settings.wechatConnect.mobileHint")
-                            }}
-                          </p>
-                        </div>
-                        <Toggle
-                          :model-value="form.wechat_connect_mobile_enabled"
-                          data-testid="wechat-connect-mobile-enabled"
-                          @update:model-value="handleWeChatMobileEnabledChange"
-                        />
-                      </div>
-                      <Collapse :open="form.wechat_connect_mobile_enabled" unmount-on-hide>
-                        <div
-
-                          class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"
-                        >
-                          <div>
-                            <label
-                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                            >
-                              {{ t("admin.settings.wechatConnect.mobileAppId") }}
-                            </label>
-                            <input
-                              v-model="form.wechat_connect_mobile_app_id"
-                              data-testid="wechat-connect-mobile-app-id"
-                              type="text"
-                              class="input font-mono text-sm"
-                              :placeholder="
-                                t('admin.settings.wechatConnect.mobileAppId')
-                              "
-                            />
-                          </div>
-                          <div>
-                            <label
-                              class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                            >
-                              {{ t("admin.settings.wechatConnect.mobileAppSecret") }}
-                            </label>
-                            <input
-                              v-model="form.wechat_connect_mobile_app_secret"
-                              data-testid="wechat-connect-mobile-app-secret"
-                              type="password"
-                              class="input font-mono text-sm"
-                              :placeholder="
-                                form.wechat_connect_mobile_app_secret_configured
-                                  ? t('admin.settings.wechatConnect.appSecretConfiguredPlaceholder')
-                                  : t('admin.settings.wechatConnect.mobileAppSecret')
-                              "
-                            />
-                          </div>
-                        </div>
-                      </Collapse>
-                    </div>
-                  </div>
-
-                  <Collapse :open="form.wechat_connect_open_enabled &&
-                      (form.wechat_connect_mp_enabled ||
-                        form.wechat_connect_mobile_enabled)" unmount-on-hide>
-                    <div
-
-                      class="rounded-control border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-300"
-                    >
-                      {{
-                        t("admin.settings.wechatConnect.unionIdHint")
-                      }}
                     </div>
                   </Collapse>
 
-                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{
-                          t("admin.settings.wechatConnect.browserRedirectUrl")
-                        }}
-                      </label>
+                  <SettingToggleRow
+                    id="wechat-connect-mp-enabled"
+                    :model-value="form.wechat_connect_mp_enabled"
+                    :label="t('admin.settings.wechatConnect.mp')"
+                    :hint="t('admin.settings.wechatConnect.mpHint')"
+                    testid="wechat-connect-mp-enabled"
+                    @update:model-value="handleWeChatMPEnabledChange"
+                  />
+                  <Collapse :open="form.wechat_connect_mp_enabled" unmount-on-hide>
+                    <div class="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label for="wechat-connect-mp-app-id" class="input-label">
+                          {{ t("admin.settings.wechatConnect.mpAppId") }}
+                        </label>
+                        <input
+                          id="wechat-connect-mp-app-id"
+                          v-model="form.wechat_connect_mp_app_id"
+                          data-testid="wechat-connect-mp-app-id"
+                          type="text"
+                          class="input font-mono text-sm"
+                          :placeholder="t('admin.settings.wechatConnect.mpAppId')"
+                        />
+                      </div>
+                      <div>
+                        <label for="wechat-connect-mp-app-secret" class="input-label">
+                          {{ t("admin.settings.wechatConnect.mpAppSecret") }}
+                        </label>
+                        <input
+                          id="wechat-connect-mp-app-secret"
+                          v-model="form.wechat_connect_mp_app_secret"
+                          data-testid="wechat-connect-mp-app-secret"
+                          type="password"
+                          class="input font-mono text-sm"
+                          :placeholder="
+                            form.wechat_connect_mp_app_secret_configured
+                              ? t('admin.settings.wechatConnect.appSecretConfiguredPlaceholder')
+                              : t('admin.settings.wechatConnect.mpAppSecret')
+                          "
+                        />
+                      </div>
+                    </div>
+                  </Collapse>
+
+                  <SettingToggleRow
+                    id="wechat-connect-mobile-enabled"
+                    :model-value="form.wechat_connect_mobile_enabled"
+                    :label="t('admin.settings.wechatConnect.mobile')"
+                    :hint="t('admin.settings.wechatConnect.mobileHint')"
+                    testid="wechat-connect-mobile-enabled"
+                    @update:model-value="handleWeChatMobileEnabledChange"
+                  />
+                  <Collapse :open="form.wechat_connect_mobile_enabled" unmount-on-hide>
+                    <div class="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label for="wechat-connect-mobile-app-id" class="input-label">
+                          {{ t("admin.settings.wechatConnect.mobileAppId") }}
+                        </label>
+                        <input
+                          id="wechat-connect-mobile-app-id"
+                          v-model="form.wechat_connect_mobile_app_id"
+                          data-testid="wechat-connect-mobile-app-id"
+                          type="text"
+                          class="input font-mono text-sm"
+                          :placeholder="t('admin.settings.wechatConnect.mobileAppId')"
+                        />
+                      </div>
+                      <div>
+                        <label for="wechat-connect-mobile-app-secret" class="input-label">
+                          {{ t("admin.settings.wechatConnect.mobileAppSecret") }}
+                        </label>
+                        <input
+                          id="wechat-connect-mobile-app-secret"
+                          v-model="form.wechat_connect_mobile_app_secret"
+                          data-testid="wechat-connect-mobile-app-secret"
+                          type="password"
+                          class="input font-mono text-sm"
+                          :placeholder="
+                            form.wechat_connect_mobile_app_secret_configured
+                              ? t('admin.settings.wechatConnect.appSecretConfiguredPlaceholder')
+                              : t('admin.settings.wechatConnect.mobileAppSecret')
+                          "
+                        />
+                      </div>
+                    </div>
+                  </Collapse>
+
+                  <!-- PC 应用和公众号或移动应用同时启用时，需要挂在同一个开放平台主体下。 -->
+                  <Collapse
+                    :open="form.wechat_connect_open_enabled && (form.wechat_connect_mp_enabled || form.wechat_connect_mobile_enabled)"
+                    unmount-on-hide
+                  >
+                    <SettingsNotice tone="warning">
+                      {{ t("admin.settings.wechatConnect.unionIdHint") }}
+                    </SettingsNotice>
+                  </Collapse>
+
+                  <div>
+                    <label for="wechat-connect-redirect-url" class="input-label">
+                      {{ t("admin.settings.wechatConnect.browserRedirectUrl") }}
+                    </label>
+                    <div class="flex gap-2">
                       <input
-                        data-testid="wechat-connect-redirect-url"
+                        id="wechat-connect-redirect-url"
                         v-model="form.wechat_connect_redirect_url"
+                        data-testid="wechat-connect-redirect-url"
                         type="url"
                         class="input font-mono text-sm"
                         :placeholder="t('admin.settings.wechatConnect.redirectUrlPlaceholder')"
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{
-                          t("admin.settings.wechatConnect.browserRedirectUrlHint")
-                        }}
-                      </p>
-                      <div
-                        class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-sm h-9 shrink-0"
+                        @click="setAndCopyWeChatRedirectUrl"
                       >
-                        <button
-                          type="button"
-                          class="btn btn-secondary btn-sm h-9 w-fit"
-                          @click="setAndCopyWeChatRedirectUrl"
-                        >
-                          {{ t("admin.settings.wechatConnect.generateAndCopy") }}
-                        </button>
-                        <code
-                          v-if="wechatRedirectUrlSuggestion"
-                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
-                        >
-                          {{ wechatRedirectUrlSuggestion }}
-                        </code>
-                      </div>
+                        {{ t("admin.settings.wechatConnect.generateAndCopy") }}
+                      </button>
                     </div>
+                    <p class="input-hint">
+                      {{ t("admin.settings.wechatConnect.browserRedirectUrlHint") }}
+                      <code v-if="wechatRedirectUrlSuggestion" class="select-all break-all font-mono">{{ wechatRedirectUrlSuggestion }}</code>
+                    </p>
                   </div>
-
                   <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
+                    <label for="wechat-connect-frontend-redirect-url" class="input-label">
                       {{ t("admin.settings.wechatConnect.frontendRedirectUrlLabel") }}
                     </label>
                     <input
-                      data-testid="wechat-connect-frontend-redirect-url"
+                      id="wechat-connect-frontend-redirect-url"
                       v-model="form.wechat_connect_frontend_redirect_url"
+                      data-testid="wechat-connect-frontend-redirect-url"
                       type="text"
                       class="input font-mono text-sm"
                       :placeholder="t('admin.settings.wechatConnect.frontendRedirectUrlPlaceholder')"
                     />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    <p class="input-hint">
                       {{ t("admin.settings.wechatConnect.frontendRedirectUrlHint") }}
                     </p>
                   </div>
-                </div>
+                </SettingsSubpanel>
               </Collapse>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- 钉钉 Connect OAuth 登录 -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.dingtalk.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.dingtalk.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.dingtalk.enable")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.dingtalk.enableHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.dingtalk_connect_enabled" />
-              </div>
-
+          <!-- 钉钉登录 -->
+          <SettingsCard
+            :title="t('admin.settings.dingtalk.title')"
+            :description="t('admin.settings.dingtalk.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="dingtalk-connect-enabled"
+                v-model="form.dingtalk_connect_enabled"
+                :label="t('admin.settings.dingtalk.enable')"
+                :hint="t('admin.settings.dingtalk.enableHint')"
+              />
               <Collapse :open="form.dingtalk_connect_enabled" unmount-on-hide>
-                <div
-
-                  class="border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div class="grid grid-cols-1 gap-6">
+                <SettingsSubpanel>
+                  <div class="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="dingtalk-client-id" class="input-label">
                         {{ t("admin.settings.dingtalk.clientId") }}
                       </label>
                       <input
+                        id="dingtalk-client-id"
                         v-model="form.dingtalk_connect_client_id"
                         type="text"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.dingtalk.clientIdPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.dingtalk.clientIdPlaceholder')"
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.dingtalk.clientIdHint") }}
-                      </p>
+                      <p class="input-hint">{{ t("admin.settings.dingtalk.clientIdHint") }}</p>
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="dingtalk-client-secret" class="input-label">
                         {{ t("admin.settings.dingtalk.clientSecret") }}
                       </label>
                       <input
+                        id="dingtalk-client-secret"
                         v-model="form.dingtalk_connect_client_secret"
                         type="password"
                         class="input font-mono text-sm"
                         :placeholder="
                           form.dingtalk_connect_client_secret_configured
-                            ? t(
-                                'admin.settings.dingtalk.clientSecretConfiguredPlaceholder',
-                              )
+                            ? t('admin.settings.dingtalk.clientSecretConfiguredPlaceholder')
                             : t('admin.settings.dingtalk.clientSecretPlaceholder')
                         "
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      <p class="input-hint">
                         {{
                           form.dingtalk_connect_client_secret_configured
-                            ? t(
-                                "admin.settings.dingtalk.clientSecretConfiguredHint",
-                              )
+                            ? t("admin.settings.dingtalk.clientSecretConfiguredHint")
                             : t("admin.settings.dingtalk.clientSecretHint")
                         }}
                       </p>
                     </div>
-
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.dingtalk.redirectUrl") }}
-                      </label>
-                      <input
-                        v-model="form.dingtalk_connect_redirect_url"
-                        type="url"
-                        class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.dingtalk.redirectUrlPlaceholder')
-                        "
-                      />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.dingtalk.redirectUrlHint") }}
-                      </p>
-                    </div>
-
-                    <!-- 企业限制策略 -->
-                    <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ t("admin.settings.dingtalk.corpPolicy.label") }}
-                      </label>
-                      <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.dingtalk.corpPolicy.hint") }}
-                      </p>
-                      <div class="space-y-2">
-                        <label class="flex cursor-pointer items-center gap-3">
-                          <input
-                            v-model="form.dingtalk_connect_corp_restriction_policy"
-                            type="radio"
-                            value="none"
-                            class="h-4 w-4 text-primary-600"
-                          />
-                          <span class="text-sm text-gray-700 dark:text-gray-300">
-                            {{ t("admin.settings.dingtalk.corpPolicy.none") }}
-                          </span>
-                        </label>
-                        <label class="flex cursor-pointer items-center gap-3">
-                          <input
-                            v-model="form.dingtalk_connect_corp_restriction_policy"
-                            type="radio"
-                            value="internal_only"
-                            class="h-4 w-4 text-primary-600"
-                          />
-                          <span class="text-sm text-gray-700 dark:text-gray-300">
-                            {{ t("admin.settings.dingtalk.corpPolicy.internalOnly") }}
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <!-- bypass_registration 开关（仅 internal_only 模式下可见可用） -->
-                    <div
-                      v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
-                      class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-dark-700"
-                    >
-                      <div>
-                        <label class="font-medium text-gray-900 dark:text-white">{{
-                          t("admin.settings.dingtalk.bypassRegistration")
-                        }}</label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                          {{ t("admin.settings.dingtalk.bypassRegistrationHint") }}
-                        </p>
-                      </div>
-                      <Toggle v-model="form.dingtalk_connect_bypass_registration" />
-                    </div>
-
-                    <!-- 身份同步开关（仅 internal_only 模式下可见） -->
-                    <div
-                      v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
-                      class="pt-4 border-t border-gray-100 dark:border-dark-700 space-y-2"
-                    >
-                      <div class="flex items-center justify-between">
-                        <div>
-                          <label class="font-medium text-gray-900 dark:text-white">{{
-                            t("admin.settings.dingtalk.syncDisplayName")
-                          }}</label>
-                          <p class="text-sm text-gray-500 dark:text-gray-400">
-                            {{ t("admin.settings.dingtalk.syncDisplayNameHint") }}
-                          </p>
-                        </div>
-                        <Toggle v-model="form.dingtalk_connect_sync_display_name" />
-                      </div>
-                      <div v-if="form.dingtalk_connect_sync_display_name" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                            {{ t("admin.settings.dingtalk.syncDisplayNameTarget") }}
-                          </label>
-                          <input
-                            v-model="form.dingtalk_connect_sync_display_name_attr_key"
-                            type="text"
-                            placeholder="dingtalk_name"
-                            class="input text-sm flex-1 max-w-xs"
-                          />
-                        </div>
-                        <div class="flex items-center gap-2">
-                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                            {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
-                          </label>
-                          <input
-                            v-model="form.dingtalk_connect_sync_display_name_attr_name"
-                            type="text"
-                            placeholder="钉钉姓名"
-                            class="input text-sm flex-1 max-w-xs"
-                          />
-                        </div>
-                      </div>
-                      <p v-if="form.dingtalk_connect_sync_display_name" class="text-xs text-gray-400 dark:text-gray-500">
-                        {{ t("admin.settings.dingtalk.syncDisplayNameTargetHint") }}
-                      </p>
-                    </div>
-                    <div
-                      v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
-                      class="pt-4 border-t border-gray-100 dark:border-dark-700 space-y-2"
-                    >
-                      <div class="flex items-center justify-between">
-                        <div>
-                          <label class="font-medium text-gray-900 dark:text-white">{{
-                            t("admin.settings.dingtalk.syncCorpEmail")
-                          }}</label>
-                          <p class="text-sm text-gray-500 dark:text-gray-400">
-                            {{ t("admin.settings.dingtalk.syncCorpEmailHint") }}
-                          </p>
-                          <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                            {{ t("admin.settings.dingtalk.syncCorpEmailPermissionHint") }}
-                          </p>
-                        </div>
-                        <Toggle v-model="form.dingtalk_connect_sync_corp_email" />
-                      </div>
-                      <div v-if="form.dingtalk_connect_sync_corp_email" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                            {{ t("admin.settings.dingtalk.syncCorpEmailTarget") }}
-                          </label>
-                          <input
-                            v-model="form.dingtalk_connect_sync_corp_email_attr_key"
-                            type="text"
-                            placeholder="dingtalk_email"
-                            class="input text-sm flex-1 max-w-xs"
-                          />
-                        </div>
-                        <div class="flex items-center gap-2">
-                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                            {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
-                          </label>
-                          <input
-                            v-model="form.dingtalk_connect_sync_corp_email_attr_name"
-                            type="text"
-                            placeholder="钉钉企业邮箱"
-                            class="input text-sm flex-1 max-w-xs"
-                          />
-                        </div>
-                      </div>
-                      <p v-if="form.dingtalk_connect_sync_corp_email" class="text-xs text-gray-400 dark:text-gray-500">
-                        {{ t("admin.settings.dingtalk.syncCorpEmailTargetHint") }}
-                      </p>
-                    </div>
-                    <div
-                      v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'"
-                      class="pt-4 border-t border-gray-100 dark:border-dark-700 space-y-2"
-                    >
-                      <div class="flex items-center justify-between">
-                        <div>
-                          <label class="font-medium text-gray-900 dark:text-white">{{
-                            t("admin.settings.dingtalk.syncDept")
-                          }}</label>
-                          <p class="text-sm text-gray-500 dark:text-gray-400">
-                            {{ t("admin.settings.dingtalk.syncDeptHint") }}
-                          </p>
-                          <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                            {{ t("admin.settings.dingtalk.syncDeptPermissionHint") }}
-                          </p>
-                        </div>
-                        <Toggle v-model="form.dingtalk_connect_sync_dept" />
-                      </div>
-                      <div v-if="form.dingtalk_connect_sync_dept" class="space-y-2">
-                        <div class="flex items-center gap-2">
-                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                            {{ t("admin.settings.dingtalk.syncDeptTarget") }}
-                          </label>
-                          <input
-                            v-model="form.dingtalk_connect_sync_dept_attr_key"
-                            type="text"
-                            placeholder="dingtalk_department"
-                            class="input text-sm flex-1 max-w-xs"
-                          />
-                        </div>
-                        <div class="flex items-center gap-2">
-                          <label class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap min-w-[5rem]">
-                            {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
-                          </label>
-                          <input
-                            v-model="form.dingtalk_connect_sync_dept_attr_name"
-                            type="text"
-                            placeholder="钉钉部门"
-                            class="input text-sm flex-1 max-w-xs"
-                          />
-                        </div>
-                      </div>
-                      <p v-if="form.dingtalk_connect_sync_dept" class="text-xs text-gray-400 dark:text-gray-500">
-                        {{ t("admin.settings.dingtalk.syncDeptTargetHint") }}
-                      </p>
-                    </div>
                   </div>
-                </div>
+                  <div>
+                    <label for="dingtalk-redirect-url" class="input-label">
+                      {{ t("admin.settings.dingtalk.redirectUrl") }}
+                    </label>
+                    <input
+                      id="dingtalk-redirect-url"
+                      v-model="form.dingtalk_connect_redirect_url"
+                      type="url"
+                      class="input font-mono text-sm"
+                      :placeholder="t('admin.settings.dingtalk.redirectUrlPlaceholder')"
+                    />
+                    <p class="input-hint">{{ t("admin.settings.dingtalk.redirectUrlHint") }}</p>
+                  </div>
+                  <div>
+                    <p class="input-label">{{ t("admin.settings.dingtalk.corpPolicy.label") }}</p>
+                    <SettingsSegmented
+                      v-model="form.dingtalk_connect_corp_restriction_policy"
+                      :options="dingtalkCorpPolicyOptions"
+                      :aria-label="t('admin.settings.dingtalk.corpPolicy.label')"
+                      block
+                    />
+                    <p class="input-hint">{{ t("admin.settings.dingtalk.corpPolicy.hint") }}</p>
+                  </div>
+
+                  <!-- 免注册和身份同步只在“仅本企业”策略下生效。 -->
+                  <template v-if="form.dingtalk_connect_corp_restriction_policy === 'internal_only'">
+                    <SettingToggleRow
+                      id="dingtalk-bypass-registration"
+                      v-model="form.dingtalk_connect_bypass_registration"
+                      :label="t('admin.settings.dingtalk.bypassRegistration')"
+                      :hint="t('admin.settings.dingtalk.bypassRegistrationHint')"
+                    />
+
+                    <SettingToggleRow
+                      id="dingtalk-sync-display-name"
+                      v-model="form.dingtalk_connect_sync_display_name"
+                      :label="t('admin.settings.dingtalk.syncDisplayName')"
+                      :hint="t('admin.settings.dingtalk.syncDisplayNameHint')"
+                    />
+                    <Collapse :open="form.dingtalk_connect_sync_display_name" unmount-on-hide>
+                      <div class="space-y-1">
+                        <div class="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <label for="dingtalk-sync-display-name-key" class="input-label">
+                              {{ t("admin.settings.dingtalk.syncDisplayNameTarget") }}
+                            </label>
+                            <input
+                              id="dingtalk-sync-display-name-key"
+                              v-model="form.dingtalk_connect_sync_display_name_attr_key"
+                              type="text"
+                              placeholder="dingtalk_name"
+                              class="input font-mono text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label for="dingtalk-sync-display-name-name" class="input-label">
+                              {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
+                            </label>
+                            <input
+                              id="dingtalk-sync-display-name-name"
+                              v-model="form.dingtalk_connect_sync_display_name_attr_name"
+                              type="text"
+                              placeholder="钉钉姓名"
+                              class="input"
+                            />
+                          </div>
+                        </div>
+                        <p class="input-hint">{{ t("admin.settings.dingtalk.syncDisplayNameTargetHint") }}</p>
+                      </div>
+                    </Collapse>
+
+                    <SettingToggleRow
+                      id="dingtalk-sync-corp-email"
+                      v-model="form.dingtalk_connect_sync_corp_email"
+                      :label="t('admin.settings.dingtalk.syncCorpEmail')"
+                      :hint="t('admin.settings.dingtalk.syncCorpEmailHint')"
+                    >
+                      <template #hint>
+                        <SettingsNotice tone="warning" class="mt-2">
+                          {{ t("admin.settings.dingtalk.syncCorpEmailPermissionHint") }}
+                        </SettingsNotice>
+                      </template>
+                    </SettingToggleRow>
+                    <Collapse :open="form.dingtalk_connect_sync_corp_email" unmount-on-hide>
+                      <div class="space-y-1">
+                        <div class="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <label for="dingtalk-sync-corp-email-key" class="input-label">
+                              {{ t("admin.settings.dingtalk.syncCorpEmailTarget") }}
+                            </label>
+                            <input
+                              id="dingtalk-sync-corp-email-key"
+                              v-model="form.dingtalk_connect_sync_corp_email_attr_key"
+                              type="text"
+                              placeholder="dingtalk_email"
+                              class="input font-mono text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label for="dingtalk-sync-corp-email-name" class="input-label">
+                              {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
+                            </label>
+                            <input
+                              id="dingtalk-sync-corp-email-name"
+                              v-model="form.dingtalk_connect_sync_corp_email_attr_name"
+                              type="text"
+                              placeholder="钉钉企业邮箱"
+                              class="input"
+                            />
+                          </div>
+                        </div>
+                        <p class="input-hint">{{ t("admin.settings.dingtalk.syncCorpEmailTargetHint") }}</p>
+                      </div>
+                    </Collapse>
+
+                    <SettingToggleRow
+                      id="dingtalk-sync-dept"
+                      v-model="form.dingtalk_connect_sync_dept"
+                      :label="t('admin.settings.dingtalk.syncDept')"
+                      :hint="t('admin.settings.dingtalk.syncDeptHint')"
+                    >
+                      <template #hint>
+                        <SettingsNotice tone="warning" class="mt-2">
+                          {{ t("admin.settings.dingtalk.syncDeptPermissionHint") }}
+                        </SettingsNotice>
+                      </template>
+                    </SettingToggleRow>
+                    <Collapse :open="form.dingtalk_connect_sync_dept" unmount-on-hide>
+                      <div class="space-y-1">
+                        <div class="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <label for="dingtalk-sync-dept-key" class="input-label">
+                              {{ t("admin.settings.dingtalk.syncDeptTarget") }}
+                            </label>
+                            <input
+                              id="dingtalk-sync-dept-key"
+                              v-model="form.dingtalk_connect_sync_dept_attr_key"
+                              type="text"
+                              placeholder="dingtalk_department"
+                              class="input font-mono text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label for="dingtalk-sync-dept-name" class="input-label">
+                              {{ t("admin.settings.dingtalk.syncAttrDisplayName") }}
+                            </label>
+                            <input
+                              id="dingtalk-sync-dept-name"
+                              v-model="form.dingtalk_connect_sync_dept_attr_name"
+                              type="text"
+                              placeholder="钉钉部门"
+                              class="input"
+                            />
+                          </div>
+                        </div>
+                        <p class="input-hint">{{ t("admin.settings.dingtalk.syncDeptTargetHint") }}</p>
+                      </div>
+                    </Collapse>
+                  </template>
+                </SettingsSubpanel>
               </Collapse>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- Generic OIDC OAuth 登录 -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.oidc.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.oidc.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.oidc.enable")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.oidc.enableHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.oidc_connect_enabled" />
-              </div>
-
+          <!-- 通用 OIDC 登录 -->
+          <SettingsCard
+            :title="t('admin.settings.oidc.title')"
+            :description="t('admin.settings.oidc.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="oidc-connect-enabled"
+                v-model="form.oidc_connect_enabled"
+                :label="t('admin.settings.oidc.enable')"
+                :hint="t('admin.settings.oidc.enableHint')"
+              />
               <Collapse :open="form.oidc_connect_enabled" unmount-on-hide>
-                <div
-
-                  class="space-y-6 border-t border-gray-100 pt-4 dark:border-dark-700"
-                >
-                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <SettingsSubpanel>
+                  <div class="grid gap-4 md:grid-cols-3">
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="oidc-provider-name" class="input-label">
                         {{ t("admin.settings.oidc.providerName") }}
                       </label>
                       <input
+                        id="oidc-provider-name"
                         v-model="form.oidc_connect_provider_name"
                         type="text"
                         class="input"
-                        :placeholder="
-                          t('admin.settings.oidc.providerNamePlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.providerNamePlaceholder')"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="oidc-client-id" class="input-label">
                         {{ t("admin.settings.oidc.clientId") }}
                       </label>
                       <input
+                        id="oidc-client-id"
                         v-model="form.oidc_connect_client_id"
                         type="text"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.clientIdPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.clientIdPlaceholder')"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="oidc-client-secret" class="input-label">
                         {{ t("admin.settings.oidc.clientSecret") }}
                       </label>
                       <input
+                        id="oidc-client-secret"
                         v-model="form.oidc_connect_client_secret"
                         type="password"
                         class="input font-mono text-sm"
                         :placeholder="
                           form.oidc_connect_client_secret_configured
-                            ? t(
-                                'admin.settings.oidc.clientSecretConfiguredPlaceholder',
-                              )
+                            ? t('admin.settings.oidc.clientSecretConfiguredPlaceholder')
                             : t('admin.settings.oidc.clientSecretPlaceholder')
                         "
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      <p class="input-hint">
                         {{
                           form.oidc_connect_client_secret_configured
                             ? t("admin.settings.oidc.clientSecretConfiguredHint")
@@ -3024,197 +2308,135 @@
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div class="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.oidc.issuerUrl") }}
-                      </label>
+                      <label for="oidc-issuer-url" class="input-label">{{ t("admin.settings.oidc.issuerUrl") }}</label>
                       <input
+                        id="oidc-issuer-url"
                         v-model="form.oidc_connect_issuer_url"
                         type="url"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.issuerUrlPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.issuerUrlPlaceholder')"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.oidc.discoveryUrl") }}
-                      </label>
+                      <label for="oidc-discovery-url" class="input-label">{{ t("admin.settings.oidc.discoveryUrl") }}</label>
                       <input
+                        id="oidc-discovery-url"
                         v-model="form.oidc_connect_discovery_url"
                         type="url"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.discoveryUrlPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.discoveryUrlPlaceholder')"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.oidc.authorizeUrl") }}
-                      </label>
+                      <label for="oidc-authorize-url" class="input-label">{{ t("admin.settings.oidc.authorizeUrl") }}</label>
                       <input
+                        id="oidc-authorize-url"
                         v-model="form.oidc_connect_authorize_url"
                         type="url"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.authorizeUrlPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.authorizeUrlPlaceholder')"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.oidc.tokenUrl") }}
-                      </label>
+                      <label for="oidc-token-url" class="input-label">{{ t("admin.settings.oidc.tokenUrl") }}</label>
                       <input
+                        id="oidc-token-url"
                         v-model="form.oidc_connect_token_url"
                         type="url"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.tokenUrlPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.tokenUrlPlaceholder')"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.oidc.userinfoUrl") }}
-                      </label>
+                      <label for="oidc-userinfo-url" class="input-label">{{ t("admin.settings.oidc.userinfoUrl") }}</label>
                       <input
+                        id="oidc-userinfo-url"
                         v-model="form.oidc_connect_userinfo_url"
                         type="url"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.userinfoUrlPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.userinfoUrlPlaceholder')"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.oidc.jwksUrl") }}
-                      </label>
+                      <label for="oidc-jwks-url" class="input-label">{{ t("admin.settings.oidc.jwksUrl") }}</label>
                       <input
+                        id="oidc-jwks-url"
                         v-model="form.oidc_connect_jwks_url"
                         type="url"
                         class="input font-mono text-sm"
                         :placeholder="t('admin.settings.oidc.jwksUrlPlaceholder')"
                       />
                     </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.oidc.scopes") }}
-                      </label>
+                      <label for="oidc-scopes" class="input-label">{{ t("admin.settings.oidc.scopes") }}</label>
                       <input
+                        id="oidc-scopes"
                         v-model="form.oidc_connect_scopes"
                         type="text"
                         class="input font-mono text-sm"
                         :placeholder="t('admin.settings.oidc.scopesPlaceholder')"
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.oidc.scopesHint") }}
-                      </p>
+                      <p class="input-hint">{{ t("admin.settings.oidc.scopesHint") }}</p>
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.oidc.redirectUrl") }}
-                      </label>
-                      <input
-                        v-model="form.oidc_connect_redirect_url"
-                        type="url"
-                        class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.redirectUrlPlaceholder')
-                        "
-                      />
-                      <div
-                        class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
-                      >
-                        <button
-                          type="button"
-                          class="btn btn-secondary btn-sm h-9 w-fit"
-                          @click="setAndCopyOIDCRedirectUrl"
-                        >
-                          {{ t("admin.settings.oidc.quickSetCopy") }}
-                        </button>
-                        <code
-                          v-if="oidcRedirectUrlSuggestion"
-                          class="select-all break-all rounded-compact bg-gray-50 px-2 py-1 font-mono text-xs text-gray-600 dark:bg-dark-800 dark:text-gray-300"
-                        >
-                          {{ oidcRedirectUrlSuggestion }}
-                        </code>
-                      </div>
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.oidc.redirectUrlHint") }}
-                      </p>
-                    </div>
-
-                    <div class="lg:col-span-2">
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="oidc-frontend-redirect-url" class="input-label">
                         {{ t("admin.settings.oidc.frontendRedirectUrl") }}
                       </label>
                       <input
+                        id="oidc-frontend-redirect-url"
                         v-model="form.oidc_connect_frontend_redirect_url"
                         type="text"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.frontendRedirectUrlPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.frontendRedirectUrlPlaceholder')"
                       />
-                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ t("admin.settings.oidc.frontendRedirectUrlHint") }}
-                      </p>
+                      <p class="input-hint">{{ t("admin.settings.oidc.frontendRedirectUrlHint") }}</p>
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  <div>
+                    <label for="oidc-redirect-url" class="input-label">{{ t("admin.settings.oidc.redirectUrl") }}</label>
+                    <div class="flex gap-2">
+                      <input
+                        id="oidc-redirect-url"
+                        v-model="form.oidc_connect_redirect_url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="t('admin.settings.oidc.redirectUrlPlaceholder')"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-sm h-9 shrink-0"
+                        @click="setAndCopyOIDCRedirectUrl"
                       >
+                        {{ t("admin.settings.oidc.quickSetCopy") }}
+                      </button>
+                    </div>
+                    <p class="input-hint">
+                      {{ t("admin.settings.oidc.redirectUrlHint") }}
+                      <code v-if="oidcRedirectUrlSuggestion" class="select-all break-all font-mono">{{ oidcRedirectUrlSuggestion }}</code>
+                    </p>
+                  </div>
+
+                  <div class="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <label for="oidc-token-auth-method" class="input-label">
                         {{ t("admin.settings.oidc.tokenAuthMethod") }}
                       </label>
                       <Select
+                        id="oidc-token-auth-method"
                         v-model="form.oidc_connect_token_auth_method"
                         :options="oidcTokenAuthMethodOptions"
                         class="font-mono text-sm"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="oidc-clock-skew" class="input-label">
                         {{ t("admin.settings.oidc.clockSkewSeconds") }}
                       </label>
                       <input
+                        id="oidc-clock-skew"
                         v-model.number="form.oidc_connect_clock_skew_seconds"
                         type="number"
                         min="0"
@@ -3222,120 +2444,77 @@
                         class="input"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="oidc-allowed-signing-algs" class="input-label">
                         {{ t("admin.settings.oidc.allowedSigningAlgs") }}
                       </label>
                       <input
+                        id="oidc-allowed-signing-algs"
                         v-model="form.oidc_connect_allowed_signing_algs"
                         type="text"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.allowedSigningAlgsPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.allowedSigningAlgsPlaceholder')"
                       />
                     </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    <div
-                      class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
-                    >
-                      <div>
-                        <label class="font-medium text-gray-900 dark:text-white">
-                          {{ t("admin.settings.oidc.usePkce") }}
-                        </label>
-                      </div>
-                      <Toggle
-                        v-model="form.oidc_connect_use_pkce"
-                        data-testid="oidc-connect-use-pkce"
-                      />
-                    </div>
-
-                    <div
-                      class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
-                    >
-                      <div>
-                        <label class="font-medium text-gray-900 dark:text-white">
-                          {{ t("admin.settings.oidc.validateIdToken") }}
-                        </label>
-                      </div>
-                      <Toggle
-                        v-model="form.oidc_connect_validate_id_token"
-                        data-testid="oidc-connect-validate-id-token"
-                      />
-                    </div>
-
-                    <div
-                      class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
-                    >
-                      <div>
-                        <label class="font-medium text-gray-900 dark:text-white">
-                          {{ t("admin.settings.oidc.requireEmailVerified") }}
-                        </label>
-                      </div>
-                      <Toggle
-                        v-model="form.oidc_connect_require_email_verified"
-                      />
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="oidc-userinfo-email-path" class="input-label">
                         {{ t("admin.settings.oidc.userinfoEmailPath") }}
                       </label>
                       <input
+                        id="oidc-userinfo-email-path"
                         v-model="form.oidc_connect_userinfo_email_path"
                         type="text"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.userinfoEmailPathPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.userinfoEmailPathPlaceholder')"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="oidc-userinfo-id-path" class="input-label">
                         {{ t("admin.settings.oidc.userinfoIdPath") }}
                       </label>
                       <input
+                        id="oidc-userinfo-id-path"
                         v-model="form.oidc_connect_userinfo_id_path"
                         type="text"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.userinfoIdPathPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.userinfoIdPathPlaceholder')"
                       />
                     </div>
-
                     <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
+                      <label for="oidc-userinfo-username-path" class="input-label">
                         {{ t("admin.settings.oidc.userinfoUsernamePath") }}
                       </label>
                       <input
+                        id="oidc-userinfo-username-path"
                         v-model="form.oidc_connect_userinfo_username_path"
                         type="text"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.oidc.userinfoUsernamePathPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.oidc.userinfoUsernamePathPlaceholder')"
                       />
                     </div>
                   </div>
-                </div>
+
+                  <SettingToggleRow
+                    id="oidc-use-pkce"
+                    v-model="form.oidc_connect_use_pkce"
+                    :label="t('admin.settings.oidc.usePkce')"
+                    testid="oidc-connect-use-pkce"
+                  />
+                  <SettingToggleRow
+                    id="oidc-validate-id-token"
+                    v-model="form.oidc_connect_validate_id_token"
+                    :label="t('admin.settings.oidc.validateIdToken')"
+                    testid="oidc-connect-validate-id-token"
+                  />
+                  <SettingToggleRow
+                    id="oidc-require-email-verified"
+                    v-model="form.oidc_connect_require_email_verified"
+                    :label="t('admin.settings.oidc.requireEmailVerified')"
+                  />
+                </SettingsSubpanel>
               </Collapse>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
         </div>
         <!-- /Tab: Security — Registration, Turnstile, LinuxDo, OIDC -->
 
@@ -7080,9 +6259,12 @@ import SettingsSkeleton from "@/components/admin/SettingsSkeleton.vue";
 import SettingRow from "@/components/common/settings/SettingRow.vue";
 import SettingToggleRow from "@/components/common/settings/SettingToggleRow.vue";
 import SettingsCard from "@/components/common/settings/SettingsCard.vue";
+import SettingsNotice from "@/components/common/settings/SettingsNotice.vue";
 import SettingsSaveBar from "@/components/common/settings/SettingsSaveBar.vue";
 import SettingsSection from "@/components/common/settings/SettingsSection.vue";
+import SettingsSegmented, { type SettingsSegmentedOption } from "@/components/common/settings/SettingsSegmented.vue";
 import SettingsSubpanel from "@/components/common/settings/SettingsSubpanel.vue";
+import SettingsTagInput from "@/components/common/settings/SettingsTagInput.vue";
 import { useDirtyTracker } from "@/composables/useDirtyTracker";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
@@ -8453,6 +7635,24 @@ const captchaMasterEnabled = computed({
   set: (enabled: boolean) =>
     applyCaptchaSelection(enabled ? captchaProviderSelection.value : null),
 });
+
+const captchaProviderOptions = computed<SettingsSegmentedOption<CaptchaProviderSelection>[]>(() => [
+  { value: "turnstile", label: t("admin.settings.captcha.providerTurnstile"), testid: "captcha-provider-turnstile" },
+  { value: "tencent", label: t("admin.settings.captcha.providerTencent"), testid: "captcha-provider-tencent" },
+  { value: "aliyun", label: t("admin.settings.captcha.providerAliyun"), testid: "captcha-provider-aliyun" },
+]);
+const tencentCaptchaRegionOptions = computed<SettingsSegmentedOption<"cn" | "intl">[]>(() => [
+  { value: "cn", label: t("admin.settings.tencentCaptcha.regionCn"), testid: "tencent-captcha-region-cn" },
+  { value: "intl", label: t("admin.settings.tencentCaptcha.regionIntl"), testid: "tencent-captcha-region-intl" },
+]);
+const aliyunCaptchaRegionOptions = computed<SettingsSegmentedOption<"cn" | "sgp">[]>(() => [
+  { value: "cn", label: t("admin.settings.aliyunCaptcha.regionCn") },
+  { value: "sgp", label: t("admin.settings.aliyunCaptcha.regionSgp") },
+]);
+const dingtalkCorpPolicyOptions = computed<SettingsSegmentedOption<string>[]>(() => [
+  { value: "none", label: t("admin.settings.dingtalk.corpPolicy.none") },
+  { value: "internal_only", label: t("admin.settings.dingtalk.corpPolicy.internalOnly") },
+]);
 
 function selectCaptchaProvider(provider: CaptchaProviderSelection): void {
   captchaProviderSelection.value = provider;
