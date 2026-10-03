@@ -20,7 +20,7 @@ const (
 	CnZhipuWindowWeekly
 )
 
-// ClassifyZhipuWindowUnit 按 unit 字段判定窗口类型（3=5h，6=weekly）。
+// ClassifyZhipuWindowUnit 按 unit 字段判定窗口类型（3=5h，6=7d）。
 // unit 缺失或未识别时返回 Unknown，由调用方走 reset 时间启发式兜底。
 func ClassifyZhipuWindowUnit(unit int64) CnZhipuWindow {
 	switch unit {
@@ -142,7 +142,7 @@ func ParseZhipuTokenTiers(data gjson.Result) []usageview.CNQuotaTier {
 		tiers = append(tiers, usageview.CNQuotaTier{Window: "5h", UsedPercent: fiveHour.percentage, ResetAt: fiveHour.resetISO})
 	}
 	if weeklySet {
-		tiers = append(tiers, usageview.CNQuotaTier{Window: "weekly", UsedPercent: weekly.percentage, ResetAt: weekly.resetISO})
+		tiers = append(tiers, usageview.CNQuotaTier{Window: "7d", UsedPercent: weekly.percentage, ResetAt: weekly.resetISO})
 	}
 	return tiers
 }

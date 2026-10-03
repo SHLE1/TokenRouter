@@ -55,7 +55,7 @@ func ParseKimiUsageTiers(body []byte) []usageview.CNQuotaTier {
 			util = used / limit * 100
 		}
 		tiers = append(tiers, usageview.CNQuotaTier{
-			Window:      "weekly",
+			Window:      "7d",
 			UsedPercent: util,
 			ResetAt:     usageclient.CnNormalizeResetTime(usage.Get("resetTime").Value()),
 		})

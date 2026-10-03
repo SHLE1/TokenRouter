@@ -24,7 +24,7 @@ func TestParseZhipuTokenTiers_UnitClassification(t *testing.T) {
 	require.Len(t, tiers, 2)
 	require.Equal(t, "5h", tiers[0].Window)
 	require.InDelta(t, 20.0, tiers[0].UsedPercent, 1e-9)
-	require.Equal(t, "weekly", tiers[1].Window)
+	require.Equal(t, "7d", tiers[1].Window)
 	require.InDelta(t, 70.0, tiers[1].UsedPercent, 1e-9)
 }
 
@@ -52,7 +52,7 @@ func TestParseZhipuTokenTiers_FallbackHeuristic(t *testing.T) {
 	require.Len(t, tiers, 2)
 	require.Equal(t, "5h", tiers[0].Window)
 	require.InDelta(t, 10.0, tiers[0].UsedPercent, 1e-9) // 无 reset 优先 5h
-	require.Equal(t, "weekly", tiers[1].Window)
+	require.Equal(t, "7d", tiers[1].Window)
 	require.InDelta(t, 50.0, tiers[1].UsedPercent, 1e-9)
 }
 

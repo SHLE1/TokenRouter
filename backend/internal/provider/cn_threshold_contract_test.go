@@ -58,7 +58,7 @@ func TestCNProviderThresholdCandidates(t *testing.T) {
 	provider := cnCodingTestProvider(capability.PlatformKimi)
 	attachCNMonitorLimits(provider, observed, []UpstreamUsageLimit{
 		{Name: "5h", Used: &used5h, ResetAt: &reset5h},
-		{Name: "weekly", Used: &usedWeekly, ResetAt: &resetWeekly},
+		{Name: "7d", Used: &usedWeekly, ResetAt: &resetWeekly},
 	})
 	cands := CNProviderThresholdCandidates(provider, capability.PlatformKimi)
 	require.Len(t, cands, 2)
@@ -94,7 +94,7 @@ func TestEvaluateProviderSchedulingThreshold_KimiCodingPlan(t *testing.T) {
 	provider := cnCodingTestProvider(capability.PlatformKimi)
 	attachCNMonitorLimits(provider, now, []UpstreamUsageLimit{
 		{Name: "5h", Used: &used5h, ResetAt: &reset},
-		{Name: "weekly", Used: &usedWeekly, ResetAt: &weeklyReset},
+		{Name: "7d", Used: &usedWeekly, ResetAt: &weeklyReset},
 	})
 	decision := EvaluateProviderSchedulingThreshold(provider, map[string]int{capability.PlatformKimi: 80}, now)
 	require.True(t, decision.ShouldPause)
@@ -138,7 +138,7 @@ func TestCNProviderQuotaSnapshotReset(t *testing.T) {
 	provider := cnCodingTestProvider(capability.PlatformKimi)
 	attachCNMonitorLimits(provider, now, []UpstreamUsageLimit{
 		{Name: "5h", Used: &used, ResetAt: &future5h},
-		{Name: "weekly", Used: &used, ResetAt: &pastWeekly},
+		{Name: "7d", Used: &used, ResetAt: &pastWeekly},
 	})
 	got := CNProviderQuotaSnapshotReset(provider, now)
 	require.NotNil(t, got)
@@ -148,7 +148,7 @@ func TestCNProviderQuotaSnapshotReset(t *testing.T) {
 	both := cnCodingTestProvider(capability.PlatformKimi)
 	attachCNMonitorLimits(both, now, []UpstreamUsageLimit{
 		{Name: "5h", Used: &used, ResetAt: &future5h},
-		{Name: "weekly", Used: &used, ResetAt: &futureWeekly},
+		{Name: "7d", Used: &used, ResetAt: &futureWeekly},
 	})
 	gotBoth := CNProviderQuotaSnapshotReset(both, now)
 	require.NotNil(t, gotBoth)
@@ -158,7 +158,7 @@ func TestCNProviderQuotaSnapshotReset(t *testing.T) {
 	expired := cnCodingTestProvider(capability.PlatformKimi)
 	attachCNMonitorLimits(expired, now, []UpstreamUsageLimit{
 		{Name: "5h", Used: &used, ResetAt: &pastWeekly},
-		{Name: "weekly", Used: &used, ResetAt: &pastWeekly},
+		{Name: "7d", Used: &used, ResetAt: &pastWeekly},
 	})
 	require.Nil(t, CNProviderQuotaSnapshotReset(expired, now))
 

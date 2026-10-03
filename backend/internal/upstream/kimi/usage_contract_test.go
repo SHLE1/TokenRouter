@@ -26,7 +26,7 @@ func TestParseKimiUsageTiers(t *testing.T) {
 	require.Equal(t, "5h", tiers[0].Window)
 	require.InDelta(t, 40.0, tiers[0].UsedPercent, 1e-9) // 已用比例：(1000-600)/1000*100
 	require.Equal(t, "2026-08-14T15:00:00Z", tiers[0].ResetAt)
-	require.Equal(t, "weekly", tiers[1].Window)
+	require.Equal(t, "7d", tiers[1].Window)
 	require.InDelta(t, 60.0, tiers[1].UsedPercent, 1e-9) // 已用比例：(10000-4000)/10000*100
 	require.Equal(t, "2026-08-18T00:00:00Z", tiers[1].ResetAt)
 }
