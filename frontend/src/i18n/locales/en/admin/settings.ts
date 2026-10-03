@@ -1290,6 +1290,7 @@ export default {
         description: 'When enabled, users can see a redacted view of their failed requests on the usage page (no internal/upstream details). Requires ops monitoring enabled to have data.',
       },
       saveSettings: 'Save Settings',
+      unsavedChanges: 'You have unsaved changes',
       saving: 'Saving...',
       settingsSaved: 'Settings saved successfully',
       smtpConnectionSuccess: 'SMTP connection successful',

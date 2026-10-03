@@ -8,7 +8,7 @@
 
 - [圆角层级](#圆角层级)、[间距约定](#间距约定)、[控件尺寸](#控件尺寸)、[开关](#开关)：调整基础组件时读取。
 - [菜单与浮层](#菜单与浮层)、[层级 z-index](#层级-z-index)、[弹窗](#弹窗)：调整浮层和遮罩时读取。
-- [设置表单](#settings_form)：新增或调整分页设置弹窗、设置项行和批量编辑项时读取。
+- [设置表单](#settings_form)：新增或调整分页设置弹窗、整页设置、设置项行和批量编辑项时读取。
 - [通用图标](#通用图标)：选择图标、调整悬停动画、迁移内联 SVG 时读取。
 - [断点](#断点)、[加载反馈](#loading_feedback)、[动画与时长](#动画与时长)、[表格密度](#表格密度)：调整响应式布局和交互时读取。
 - [行列表编辑器](#rule_list_editor)：新增或修改逐条添加的映射、规则列表时读取。
@@ -129,13 +129,16 @@
 <a id="settings_form"></a>
 ## 设置表单
 
-设置项较多的弹窗，用 `components/common/settings/` 下的组件搭建分区和开关行。
+设置项较多的弹窗和整页设置，用 `components/common/settings/` 下的组件搭建分区和开关行。
 
 - 分页：`SettingsTabs` 接收 `tabs`（`key`、`label`、`hidden`），并按 `key` 提供同名插槽。所有面板一直挂载，切页时编辑器内部的草稿不会丢失；`hidden` 只隐藏页签按钮，当前页签被隐藏时回到第一个可见页签。切页后滚动到顶部，支持方向键和 Home、End。表单加 `novalidate`，提交时先调用 `validate()`，组件会切到无效字段所在的页签，再显示浏览器的原生校验提示。业务校验用 toast 提示，同时调用 `revealField()` 定位字段（提供商弹窗用 `data-provider-field` 标记）。新手引导的 `onboarding-reveal` 也走这个定位流程。
 - 分区：`SettingsSection` 提供 `text-sm font-semibold` 的标题、`.input-hint` 说明和 `actions` 插槽。相邻分区之间自动加 `border-t pt-6`，页内分区间距 24px，分区内 16px。分区标题用这个组件的标题，`.input-label` 留给字段标签；分隔线由组件自动添加。
 - 设置行：布尔项用 `SettingToggleRow`（左侧是标题、说明和可选的 `HelpTooltip`，右侧是 `Toggle size="md"` 默认的 inset 变体）。右侧是选择框或输入框时用 `SettingRow` 并传 `field`，控件宽度固定 `sm:w-56`，窄屏改成上下排列。
 - 依赖字段：开关打开后才需要的字段，放进用 `Collapse` 包裹的 `SettingsSubpanel`（`rounded-surface`、淡边框、浅底、`p-4`），展开时有过渡动画。
 - 选择与提示：两到五个互斥选项用 `SettingsSegmented`（基于 `.segmented` 和 `v-segmented`）；带图标和说明的类型选择用卡片，选中时显示品牌色描边和浅底。说明、风险提示和错误用 `SettingsNotice` 的 `info`、`warning`、`error` 三种语气，颜色由组件决定。字段说明用 `.input-hint`。
+- 整页设置：系统设置页这类整页表单，每组设置放在 `SettingsCard` 里。卡片头部是 `text-lg` 标题和说明，内容区 `p-6`，`SettingsSection` 之间相隔 24px。调用独立接口保存的卡片，保存按钮放在 `footer` 插槽，显示在卡片底部右侧。
+- 字段布局：开关、选择框和短数字用 `SettingRow`，标题在左，控件在右。URL、密钥、长文本和多行文本用上下布局：`.input-label` 在上，输入框占满宽度，`.input-hint` 在输入框下方。两个以上这样的字段可以放进 `md:grid-cols-2` 网格。
+- 整页保存：整页一起提交的设置用 `useDirtyTracker` 记录每个数据源加载或保存后的快照，有未保存的修改时显示 `SettingsSaveBar`，保存按钮吸附在视口底部。数据源各自加载完成后调用 `markClean(key)`。快照里去掉只读的展示数据，例如联网搜索的已用额度。
 - 批量编辑：每个可以修改的项用 `BulkApplyField` 包裹，左侧的复选框（`${id}-enabled`）决定是否提交。未勾选时内容区加 `inert` 并置灰，键盘也进不去。布尔值放在 `control` 插槽的开关里，界面上只有这一个开关，左侧复选框负责是否提交。
 
 <a id="dark_colors"></a>

@@ -2617,6 +2617,28 @@ describe("admin SettingsView security tab controls", () => {
     );
   });
 
+  it("shows the save bar only while settings have unsaved changes", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await openSecurityTab(wrapper);
+
+    expect(wrapper.find('[data-testid="settings-save-bar"]').exists()).toBe(false);
+
+    await wrapper
+      .get('[data-testid="user-email-change-setting"] input.toggle-stub')
+      .setValue(true);
+    expect(wrapper.find('[data-testid="settings-save-bar"]').exists()).toBe(true);
+
+    await wrapper.find("form").trigger("submit.prevent");
+    await flushPromises();
+
+    expect(updateSettings).toHaveBeenCalled();
+    // jsdom 不会结束离场动画，这里检查保存条已经进入退出状态。
+    expect(
+      wrapper.get('[data-testid="settings-save-bar"]').attributes("inert"),
+    ).toBeDefined();
+  });
+
   it("loads and echoes WeChat Connect fields from the backend payload", async () => {
     const wrapper = mountView();
 

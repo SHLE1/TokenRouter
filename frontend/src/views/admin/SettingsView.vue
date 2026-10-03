@@ -7832,11 +7832,14 @@
           <BackupSettings />
         </div>
 
-        <!-- Save Button -->
-        <div v-show="activeTab !== 'backup'" class="flex justify-end">
+        <!-- 有未保存的修改时，保存按钮吸附在视口底部。 -->
+        <SettingsSaveBar
+          :visible="settingsDirty && !loadFailed"
+          :message="t('admin.settings.unsavedChanges')"
+        >
           <button
             type="submit"
-            :disabled="saving || loadFailed"
+            :disabled="saving"
             class="btn btn-primary"
           >
             <Icon
@@ -7852,7 +7855,7 @@
                 : t("admin.settings.saveSettings")
             }}
           </button>
-        </div>
+        </SettingsSaveBar>
       </form>
 
       <!-- Provider dialogs placed outside the settings form to prevent form submission bubbling -->
@@ -7892,6 +7895,8 @@ import Collapse from '@/components/common/Collapse.vue'
 
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import SettingsSkeleton from "@/components/admin/SettingsSkeleton.vue";
+import SettingsSaveBar from "@/components/common/settings/SettingsSaveBar.vue";
+import { useDirtyTracker } from "@/composables/useDirtyTracker";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { adminAPI } from "@/api";
@@ -10433,6 +10438,11 @@ async function loadSettings() {
     scrollActiveSettingsTabIntoView();
     scrollActiveGatewaySectionIntoView();
   }
+  if (!loadFailed.value) {
+    // 表单控件挂载时可能规整初始值，等渲染完成后再记录快照。
+    await nextTick();
+    markSettingsClean();
+  }
 }
 
 async function loadSubscriptionPlans() {
@@ -10497,6 +10507,26 @@ function findDuplicateDefaultSubscription(
     return false;
   });
 }
+
+// 全局保存提交的数据分两组记录快照，联网搜索配置调用独立接口保存。
+// 快照里去掉联网搜索的已用额度，它由“重置用量”按钮直接写回服务端。
+const { dirty: settingsDirty, markClean: markSettingsClean } = useDirtyTracker({
+  settings: () => ({
+    form,
+    authSourceDefaults,
+    registrationEmailSuffixWhitelist: registrationEmailSuffixWhitelistTags.value,
+    tablePageSizeOptions: tablePageSizeOptionsInput.value,
+    openaiFastPolicyRules: openaiFastPolicyLoaded.value
+      ? openaiFastPolicyForm.rules
+      : null,
+  }),
+  webSearch: () => ({
+    enabled: webSearchConfig.enabled,
+    providers: webSearchConfig.providers.map(
+      ({ quota_used: _quotaUsed, ...provider }) => provider,
+    ),
+  }),
+});
 
 async function saveSettings() {
   saving.value = true;
@@ -11185,6 +11215,13 @@ async function saveSettings() {
     // Refresh cached settings so sidebar/header update immediately
     await appStore.fetchPublicSettings(true);
     await adminSettingsStore.fetch(true);
+    await nextTick();
+    // 联网搜索配置保存失败时保留它的未保存状态，用户可以修正后再次提交。
+    if (wsOk) {
+      markSettingsClean();
+    } else {
+      markSettingsClean("settings");
+    }
     if (wsOk) {
       appStore.showSuccess(t("admin.settings.settingsSaved"));
     }
