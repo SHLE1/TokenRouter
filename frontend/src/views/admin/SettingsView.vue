@@ -3749,603 +3749,321 @@
         <div v-show="activeTab === 'general'" v-content-reveal="activeTab === 'general'" class="space-y-4">
           <PreAggregationSettings />
 
-          <div class="card">
-            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.usageRanking.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.usageRanking.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <div class="flex items-center justify-between gap-4">
-                <div>
-                  <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.settings.usageRanking.enabled") }}
-                  </label>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.usageRanking.enabledHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.usage_ranking_enabled" />
-              </div>
-
-              <div
-                class="grid grid-cols-1 gap-6 border-t border-gray-100 pt-5 dark:border-dark-700 md:grid-cols-2"
-                :class="!form.usage_ranking_enabled && 'opacity-60'"
-              >
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.settings.usageRanking.sortBy") }}
-                  </label>
-                  <Select
-                    v-model="form.usage_ranking_sort_by"
-                    :options="usageRankingSortOptions"
-                    :disabled="!form.usage_ranking_enabled"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.usageRanking.sortByHint") }}
-                  </p>
-                </div>
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.settings.usageRanking.limit") }}
-                  </label>
-                  <input
-                    v-model.number="form.usage_ranking_limit"
-                    type="number"
-                    min="1"
-                    max="100"
-                    step="1"
-                    class="input w-40"
-                    :disabled="!form.usage_ranking_enabled"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.usageRanking.limitHint") }}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                class="space-y-3 border-t border-gray-100 pt-5 dark:border-dark-700"
-                :class="!form.usage_ranking_enabled && 'opacity-60'"
-              >
-                <div>
-                  <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t("admin.settings.usageRanking.fields") }}
-                  </h3>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.usageRanking.fieldsHint") }}
-                  </p>
-                </div>
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div class="flex items-center justify-between rounded-control border border-gray-200 px-4 py-3 dark:border-dark-600">
-                    <span class="text-sm text-gray-700 dark:text-gray-300">
-                      {{ t("admin.settings.usageRanking.totalTokens") }}
-                    </span>
-                    <Toggle
+          <!-- 用量排行 -->
+          <SettingsCard
+            :title="t('admin.settings.usageRanking.title')"
+            :description="t('admin.settings.usageRanking.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="usage-ranking-enabled"
+                v-model="form.usage_ranking_enabled"
+                :label="t('admin.settings.usageRanking.enabled')"
+                :hint="t('admin.settings.usageRanking.enabledHint')"
+              />
+              <Collapse :open="form.usage_ranking_enabled">
+                <SettingsSubpanel>
+                  <SettingRow
+                    id="usage-ranking-sort-by"
+                    field
+                    :label="t('admin.settings.usageRanking.sortBy')"
+                    :hint="t('admin.settings.usageRanking.sortByHint')"
+                  >
+                    <Select
+                      v-model="form.usage_ranking_sort_by"
+                      :options="usageRankingSortOptions"
+                      :aria-label="t('admin.settings.usageRanking.sortBy')"
+                    />
+                  </SettingRow>
+                  <SettingRow
+                    id="usage-ranking-limit"
+                    field
+                    label-for="usage-ranking-limit"
+                    :label="t('admin.settings.usageRanking.limit')"
+                    :hint="t('admin.settings.usageRanking.limitHint')"
+                  >
+                    <input
+                      id="usage-ranking-limit"
+                      v-model.number="form.usage_ranking_limit"
+                      type="number"
+                      min="1"
+                      max="100"
+                      step="1"
+                      class="input"
+                    />
+                  </SettingRow>
+                  <!-- 当前排序依据的指标总是显示，对应开关不可关闭。 -->
+                  <SettingsSection
+                    :title="t('admin.settings.usageRanking.fields')"
+                    :hint="t('admin.settings.usageRanking.fieldsHint')"
+                  >
+                    <SettingToggleRow
+                      id="usage-ranking-show-total-tokens"
                       v-model="form.usage_ranking_show_total_tokens"
-                      size="sm"
-                      :disabled="!form.usage_ranking_enabled || form.usage_ranking_sort_by === 'total_tokens'"
+                      :label="t('admin.settings.usageRanking.totalTokens')"
+                      :disabled="form.usage_ranking_sort_by === 'total_tokens'"
                     />
-                  </div>
-                  <div class="flex items-center justify-between rounded-control border border-gray-200 px-4 py-3 dark:border-dark-600">
-                    <span class="text-sm text-gray-700 dark:text-gray-300">
-                      {{ t("admin.settings.usageRanking.requests") }}
-                    </span>
-                    <Toggle
+                    <SettingToggleRow
+                      id="usage-ranking-show-requests"
                       v-model="form.usage_ranking_show_requests"
-                      size="sm"
-                      :disabled="!form.usage_ranking_enabled || form.usage_ranking_sort_by === 'requests'"
+                      :label="t('admin.settings.usageRanking.requests')"
+                      :disabled="form.usage_ranking_sort_by === 'requests'"
                     />
-                  </div>
-                  <div class="flex items-center justify-between rounded-control border border-gray-200 px-4 py-3 dark:border-dark-600">
-                    <span class="text-sm text-gray-700 dark:text-gray-300">
-                      {{ t("admin.settings.usageRanking.actualCost") }}
-                    </span>
-                    <Toggle
+                    <SettingToggleRow
+                      id="usage-ranking-show-actual-cost"
                       v-model="form.usage_ranking_show_actual_cost"
-                      size="sm"
-                      :disabled="!form.usage_ranking_enabled || form.usage_ranking_sort_by === 'actual_cost'"
+                      :label="t('admin.settings.usageRanking.actualCost')"
+                      :disabled="form.usage_ranking_sort_by === 'actual_cost'"
+                    />
+                  </SettingsSection>
+                </SettingsSubpanel>
+              </Collapse>
+            </SettingsSection>
+          </SettingsCard>
+
+          <!-- 余额显示 -->
+          <SettingsCard
+            :title="t('admin.settings.balanceDisplay.title')"
+            :description="t('admin.settings.balanceDisplay.description')"
+          >
+            <SettingsSection>
+              <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+                <div class="grid content-start gap-4 md:grid-cols-2">
+                  <div>
+                    <label for="balance-unit-name" class="input-label">
+                      {{ t("admin.settings.balanceDisplay.unitName") }}
+                    </label>
+                    <input
+                      id="balance-unit-name"
+                      v-model="form.balance_unit_name"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.settings.balanceDisplay.unitNamePlaceholder')"
+                    />
+                    <p class="input-hint">{{ t("admin.settings.balanceDisplay.unitNameHint") }}</p>
+                  </div>
+                  <div>
+                    <label for="balance-unit-symbol" class="input-label">
+                      {{ t("admin.settings.balanceDisplay.unitSymbol") }}
+                    </label>
+                    <input
+                      id="balance-unit-symbol"
+                      v-model="form.balance_unit_symbol"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.settings.balanceDisplay.unitSymbolPlaceholder')"
+                    />
+                    <p class="input-hint">{{ t("admin.settings.balanceDisplay.unitSymbolHint") }}</p>
+                  </div>
+                  <div>
+                    <label for="reasoning-point-rmb-unit-price" class="input-label">
+                      {{ t("admin.settings.balanceDisplay.reasoningPointRmbUnitPrice") }}
+                    </label>
+                    <input
+                      id="reasoning-point-rmb-unit-price"
+                      v-model.number="form.reasoning_point_rmb_unit_price"
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      class="input"
+                      :placeholder="t('admin.settings.balanceDisplay.reasoningPointRmbUnitPricePlaceholder')"
+                    />
+                    <p class="input-hint">{{ t("admin.settings.balanceDisplay.reasoningPointRmbUnitPriceHint") }}</p>
+                  </div>
+                  <div>
+                    <label for="usd-exchange-rate" class="input-label">
+                      {{ t("admin.settings.balanceDisplay.usdExchangeRate") }}
+                    </label>
+                    <input
+                      id="usd-exchange-rate"
+                      v-model.number="form.usd_exchange_rate"
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      class="input"
+                      :placeholder="t('admin.settings.balanceDisplay.usdExchangeRatePlaceholder')"
+                    />
+                    <p class="input-hint">{{ t("admin.settings.balanceDisplay.usdExchangeRateHint") }}</p>
+                  </div>
+                  <div class="md:col-span-2">
+                    <p class="input-label">{{ t("admin.settings.balanceDisplay.iconSvg") }}</p>
+                    <ImageUpload
+                      v-model="form.balance_icon_svg"
+                      mode="svg"
+                      :upload-label="t('admin.settings.balanceDisplay.uploadSvg')"
+                      :remove-label="t('admin.settings.balanceDisplay.removeSvg')"
+                      :hint="t('admin.settings.balanceDisplay.iconHint')"
                     />
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Balance Display Settings -->
-          <div class="card">
-            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t('admin.settings.balanceDisplay.title') }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t('admin.settings.balanceDisplay.description') }}
-              </p>
-            </div>
-            <div class="grid grid-cols-1 gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-              <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t('admin.settings.balanceDisplay.unitName') }}
-                  </label>
-                  <input
-                    v-model="form.balance_unit_name"
-                    type="text"
-                    class="input"
-                    :placeholder="t('admin.settings.balanceDisplay.unitNamePlaceholder')"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t('admin.settings.balanceDisplay.unitNameHint') }}
-                  </p>
-                </div>
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t('admin.settings.balanceDisplay.unitSymbol') }}
-                  </label>
-                  <input
-                    v-model="form.balance_unit_symbol"
-                    type="text"
-                    class="input"
-                    :placeholder="t('admin.settings.balanceDisplay.unitSymbolPlaceholder')"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t('admin.settings.balanceDisplay.unitSymbolHint') }}
-                  </p>
-                </div>
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t('admin.settings.balanceDisplay.reasoningPointRmbUnitPrice') }}
-                  </label>
-                  <input
-                    v-model.number="form.reasoning_point_rmb_unit_price"
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    class="input"
-                    :placeholder="t('admin.settings.balanceDisplay.reasoningPointRmbUnitPricePlaceholder')"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t('admin.settings.balanceDisplay.reasoningPointRmbUnitPriceHint') }}
-                  </p>
-                </div>
-                <div>
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t('admin.settings.balanceDisplay.usdExchangeRate') }}
-                  </label>
-                  <input
-                    v-model.number="form.usd_exchange_rate"
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    class="input"
-                    :placeholder="t('admin.settings.balanceDisplay.usdExchangeRatePlaceholder')"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t('admin.settings.balanceDisplay.usdExchangeRateHint') }}
-                  </p>
-                </div>
-                <div class="md:col-span-2">
-                  <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {{ t('admin.settings.balanceDisplay.iconSvg') }}
-                  </label>
-                  <ImageUpload
-                    v-model="form.balance_icon_svg"
-                    mode="svg"
-                    :upload-label="t('admin.settings.balanceDisplay.uploadSvg')"
-                    :remove-label="t('admin.settings.balanceDisplay.removeSvg')"
-                    :hint="t('admin.settings.balanceDisplay.iconHint')"
-                  />
-                </div>
-              </div>
-
-              <div class="rounded-surface border border-primary-100 bg-primary-50/60 p-5 dark:border-primary-900/40 dark:bg-primary-900/10">
-                <p class="text-xs font-medium uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">
-                  {{ t('admin.settings.balanceDisplay.previewLabel') }}
-                </p>
-                <div class="mt-4 rounded-surface bg-white p-4 shadow-sm dark:bg-dark-800">
-                  <div class="flex items-center gap-3">
-                    <div class="flex h-11 w-11 items-center justify-center rounded-surface bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
-                      <BalanceIcon
-                        :svg="form.balance_icon_svg"
-                        :use-global-fallback="false"
-                        class="h-5 w-5"
-                      />
-                    </div>
-                    <div>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ t('admin.settings.balanceDisplay.previewUnit', { unitName: previewBalanceUnitName }) }}
-                      </p>
-                      <p class="text-xl font-semibold text-gray-900 dark:text-white">
-                        {{ previewBalanceAmount }}
-                      </p>
+                <!-- 按当前填写的单位实时预览用户看到的余额。 -->
+                <SettingsSubpanel class="self-start">
+                  <p class="input-label mb-0">{{ t("admin.settings.balanceDisplay.previewLabel") }}</p>
+                  <div class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-600 dark:bg-dark-900">
+                    <div class="flex items-center gap-3">
+                      <div class="flex h-11 w-11 items-center justify-center rounded-surface bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
+                        <BalanceIcon
+                          :svg="form.balance_icon_svg"
+                          :use-global-fallback="false"
+                          class="h-5 w-5"
+                        />
+                      </div>
+                      <div>
+                        <p class="text-xs text-gray-500 dark:text-dark-400">
+                          {{ t("admin.settings.balanceDisplay.previewUnit", { unitName: previewBalanceUnitName }) }}
+                        </p>
+                        <p class="text-xl font-semibold text-gray-900 dark:text-dark-50">
+                          {{ previewBalanceAmount }}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t('admin.settings.balanceDisplay.previewHint') }}
-                  </p>
-                </div>
+                  <p class="input-hint">{{ t("admin.settings.balanceDisplay.previewHint") }}</p>
+                </SettingsSubpanel>
               </div>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <div class="card">
-            <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.marketplaceAvailability.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.marketplaceAvailability.description") }}
-              </p>
-            </div>
-            <div class="space-y-5 p-6">
-              <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <label class="input-label">
-                    {{ t("admin.settings.marketplaceAvailability.windowDays") }}
-                  </label>
-                  <input
-                    v-model.number="form.marketplace_availability_window_days"
-                    type="number"
-                    :min="marketplaceAvailabilityWindowDaysMin"
-                    :max="marketplaceAvailabilityWindowDaysMax"
-                    step="1"
-                    class="input"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t("admin.settings.marketplaceAvailability.windowDaysHint", {
-                        min: marketplaceAvailabilityWindowDaysMin,
-                        max: marketplaceAvailabilityWindowDaysMax,
-                      })
-                    }}
-                  </p>
-                </div>
-
-                <div>
-                  <label class="input-label">
-                    {{ t("admin.settings.marketplaceAvailability.bucketMinutes") }}
-                  </label>
-                  <input
-                    v-model.number="form.marketplace_availability_bucket_minutes"
-                    type="number"
-                    :min="marketplaceAvailabilityBucketMinutesMin"
-                    :max="marketplaceAvailabilityBucketMinutesMax"
-                    step="1"
-                    class="input"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{
-                      t("admin.settings.marketplaceAvailability.bucketMinutesHint", {
-                        min: marketplaceAvailabilityBucketMinutesMin,
-                        max: marketplaceAvailabilityBucketMinutesMax,
-                      })
-                    }}
-                  </p>
-                </div>
-              </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400">
+          <!-- 模型广场可用率统计 -->
+          <SettingsCard
+            :title="t('admin.settings.marketplaceAvailability.title')"
+            :description="t('admin.settings.marketplaceAvailability.description')"
+          >
+            <SettingsSection>
+              <SettingRow
+                id="marketplace-availability-window-days"
+                field
+                label-for="marketplace-availability-window-days"
+                :label="t('admin.settings.marketplaceAvailability.windowDays')"
+                :hint="t('admin.settings.marketplaceAvailability.windowDaysHint', {
+                  min: marketplaceAvailabilityWindowDaysMin,
+                  max: marketplaceAvailabilityWindowDaysMax,
+                })"
+              >
+                <input
+                  id="marketplace-availability-window-days"
+                  v-model.number="form.marketplace_availability_window_days"
+                  type="number"
+                  :min="marketplaceAvailabilityWindowDaysMin"
+                  :max="marketplaceAvailabilityWindowDaysMax"
+                  step="1"
+                  class="input"
+                />
+              </SettingRow>
+              <SettingRow
+                id="marketplace-availability-bucket-minutes"
+                field
+                label-for="marketplace-availability-bucket-minutes"
+                :label="t('admin.settings.marketplaceAvailability.bucketMinutes')"
+                :hint="t('admin.settings.marketplaceAvailability.bucketMinutesHint', {
+                  min: marketplaceAvailabilityBucketMinutesMin,
+                  max: marketplaceAvailabilityBucketMinutesMax,
+                })"
+              >
+                <input
+                  id="marketplace-availability-bucket-minutes"
+                  v-model.number="form.marketplace_availability_bucket_minutes"
+                  type="number"
+                  :min="marketplaceAvailabilityBucketMinutesMin"
+                  :max="marketplaceAvailabilityBucketMinutesMax"
+                  step="1"
+                  class="input"
+                />
+              </SettingRow>
+              <p class="input-hint">
                 {{ t("admin.settings.marketplaceAvailability.bucketLimitHint") }}
               </p>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- Site Settings -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+          <!-- 站点设置 -->
+          <SettingsCard
+            :title="t('admin.settings.site.title')"
+            :description="t('admin.settings.site.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="backend-mode-enabled"
+                v-model="form.backend_mode_enabled"
+                :label="t('admin.settings.site.backendMode')"
+                :hint="t('admin.settings.site.backendModeDescription')"
+              />
+            </SettingsSection>
+
+            <SettingsSection
+              :title="t('admin.settings.site.siteCopyTitle')"
+              :hint="t('admin.settings.site.siteCopyDescription')"
             >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.site.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.site.description") }}
-              </p>
-            </div>
-            <div class="space-y-6 p-6">
-              <!-- Backend Mode -->
-              <div
-                class="flex items-center justify-between rounded-control border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20"
-              >
-                <div>
-                  <h3 class="text-sm font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.site.backendMode") }}
-                  </h3>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.site.backendModeDescription") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.backend_mode_enabled" />
-              </div>
-
-              <!-- 站点文案 -->
-              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                <h3 class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ t("admin.settings.site.siteCopyTitle") }}
-                </h3>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.site.siteCopyDescription") }}
-                </p>
-                <div class="mt-4 space-y-6">
-                  <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.site.siteNameZh") }}
-                      </label>
-                      <input
-                        v-model="form.site_name_zh"
-                        type="text"
-                        class="input"
-                        :placeholder="t('admin.settings.site.siteNameZhPlaceholder')"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.site.siteNameEn") }}
-                      </label>
-                      <input
-                        v-model="form.site_name_en"
-                        type="text"
-                        class="input"
-                        :placeholder="t('admin.settings.site.siteNameEnPlaceholder')"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.site.siteNameHint") }}
-                    </p>
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.site.siteTitleZh") }}
-                      </label>
-                      <input
-                        v-model="form.site_title_zh"
-                        type="text"
-                        class="input"
-                        :placeholder="t('admin.settings.site.siteTitleZhPlaceholder')"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.site.siteTitleEn") }}
-                      </label>
-                      <input
-                        v-model="form.site_title_en"
-                        type="text"
-                        class="input"
-                        :placeholder="t('admin.settings.site.siteTitleEnPlaceholder')"
-                      />
-                    </div>
-                  </div>
-                  <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.site.siteSubtitleZh") }}
-                      </label>
-                      <textarea
-                        v-model="form.site_subtitle_zh"
-                        rows="2"
-                        class="input min-h-[72px] resize-y"
-                        :placeholder="t('admin.settings.site.siteSubtitleZhPlaceholder')"
-                      ></textarea>
-                    </div>
-                    <div>
-                      <label
-                        class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        {{ t("admin.settings.site.siteSubtitleEn") }}
-                      </label>
-                      <textarea
-                        v-model="form.site_subtitle_en"
-                        rows="2"
-                        class="input min-h-[72px] resize-y"
-                        :placeholder="t('admin.settings.site.siteSubtitleEnPlaceholder')"
-                      ></textarea>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- API Base URL -->
               <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.site.apiBaseUrl") }}
-                </label>
-                <input
-                  v-model="form.api_base_url"
-                  type="text"
-                  class="input font-mono text-sm"
-                  :placeholder="t('admin.settings.site.apiBaseUrlPlaceholder')"
-                />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.site.apiBaseUrlHint") }}
-                </p>
-              </div>
-
-              <!-- Global Table Preferences -->
-              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                <h3 class="text-sm font-medium text-gray-900 dark:text-white">
-                  {{ t("admin.settings.site.tablePreferencesTitle") }}
-                </h3>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.site.tablePreferencesDescription") }}
-                </p>
-                <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div class="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.site.tableDefaultPageSize") }}
-                    </label>
+                    <label for="site-name-zh" class="input-label">{{ t("admin.settings.site.siteNameZh") }}</label>
                     <input
-                      v-model.number="form.table_default_page_size"
-                      type="number"
-                      min="5"
-                      max="1000"
-                      step="1"
-                      class="input w-40"
-                    />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.site.tableDefaultPageSizeHint") }}
-                    </p>
-                  </div>
-                  <div>
-                    <label
-                      class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      {{ t("admin.settings.site.tablePageSizeOptions") }}
-                    </label>
-                    <input
-                      v-model="tablePageSizeOptionsInput"
+                      id="site-name-zh"
+                      v-model="form.site_name_zh"
                       type="text"
-                      class="input font-mono text-sm"
-                      :placeholder="
-                        t('admin.settings.site.tablePageSizeOptionsPlaceholder')
-                      "
+                      class="input"
+                      :placeholder="t('admin.settings.site.siteNameZhPlaceholder')"
                     />
-                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                      {{ t("admin.settings.site.tablePageSizeOptionsHint") }}
-                    </p>
+                  </div>
+                  <div>
+                    <label for="site-name-en" class="input-label">{{ t("admin.settings.site.siteNameEn") }}</label>
+                    <input
+                      id="site-name-en"
+                      v-model="form.site_name_en"
+                      type="text"
+                      class="input"
+                      :placeholder="t('admin.settings.site.siteNameEnPlaceholder')"
+                    />
                   </div>
                 </div>
+                <p class="input-hint">{{ t("admin.settings.site.siteNameHint") }}</p>
               </div>
-
-              <!-- Custom Endpoints -->
-              <RuleListEditor
-                :items="form.custom_endpoints"
-                variant="card"
-                :title="t('admin.settings.site.customEndpoints.title')"
-                :hint="t('admin.settings.site.customEndpoints.description')"
-                :item-label="(index) => t('admin.settings.site.customEndpoints.itemLabel', { n: index + 1 })"
-                :add-label="t('admin.settings.site.customEndpoints.add')"
-                test-id="custom-endpoints"
-                @add="addEndpoint"
-                @remove="removeEndpoint"
-              >
-                <template #row="{ item: ep }">
-                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{ t("admin.settings.site.customEndpoints.name") }}
-                      </label>
-                      <input
-                        v-model="ep.name"
-                        type="text"
-                        class="input text-sm"
-                        :placeholder="
-                          t(
-                            'admin.settings.site.customEndpoints.namePlaceholder',
-                          )
-                        "
-                      />
-                    </div>
-                    <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{
-                          t("admin.settings.site.customEndpoints.endpointUrl")
-                        }}
-                      </label>
-                      <input
-                        v-model="ep.endpoint"
-                        type="url"
-                        class="input font-mono text-sm"
-                        :placeholder="
-                          t(
-                            'admin.settings.site.customEndpoints.endpointUrlPlaceholder',
-                          )
-                        "
-                      />
-                    </div>
-                    <div class="sm:col-span-2">
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{
-                          t(
-                            "admin.settings.site.customEndpoints.descriptionLabel",
-                          )
-                        }}
-                      </label>
-                      <input
-                        v-model="ep.description"
-                        type="text"
-                        class="input text-sm"
-                        :placeholder="
-                          t(
-                            'admin.settings.site.customEndpoints.descriptionPlaceholder',
-                          )
-                        "
-                      />
-                    </div>
-                  </div>
-                </template>
-              </RuleListEditor>
-
-              <!-- Contact Info -->
-              <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.site.contactInfo") }}
-                </label>
-                <input
-                  v-model="form.contact_info"
-                  type="text"
-                  class="input"
-                  :placeholder="t('admin.settings.site.contactInfoPlaceholder')"
-                />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.site.contactInfoHint") }}
-                </p>
+              <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label for="site-title-zh" class="input-label">{{ t("admin.settings.site.siteTitleZh") }}</label>
+                  <input
+                    id="site-title-zh"
+                    v-model="form.site_title_zh"
+                    type="text"
+                    class="input"
+                    :placeholder="t('admin.settings.site.siteTitleZhPlaceholder')"
+                  />
+                </div>
+                <div>
+                  <label for="site-title-en" class="input-label">{{ t("admin.settings.site.siteTitleEn") }}</label>
+                  <input
+                    id="site-title-en"
+                    v-model="form.site_title_en"
+                    type="text"
+                    class="input"
+                    :placeholder="t('admin.settings.site.siteTitleEnPlaceholder')"
+                  />
+                </div>
+                <div>
+                  <label for="site-subtitle-zh" class="input-label">{{ t("admin.settings.site.siteSubtitleZh") }}</label>
+                  <textarea
+                    id="site-subtitle-zh"
+                    v-model="form.site_subtitle_zh"
+                    rows="2"
+                    class="input resize-y"
+                    :placeholder="t('admin.settings.site.siteSubtitleZhPlaceholder')"
+                  ></textarea>
+                </div>
+                <div>
+                  <label for="site-subtitle-en" class="input-label">{{ t("admin.settings.site.siteSubtitleEn") }}</label>
+                  <textarea
+                    id="site-subtitle-en"
+                    v-model="form.site_subtitle_en"
+                    rows="2"
+                    class="input resize-y"
+                    :placeholder="t('admin.settings.site.siteSubtitleEnPlaceholder')"
+                  ></textarea>
+                </div>
               </div>
-
-              <!-- Doc URL -->
               <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.site.docUrl") }}
-                </label>
-                <input
-                  v-model="form.doc_url"
-                  type="url"
-                  class="input font-mono text-sm"
-                  :placeholder="t('admin.settings.site.docUrlPlaceholder')"
-                />
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.site.docUrlHint") }}
-                </p>
-              </div>
-
-              <!-- Site Logo Upload -->
-              <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.site.siteLogo") }}
-                </label>
+                <p class="input-label">{{ t("admin.settings.site.siteLogo") }}</p>
                 <ImageUpload
                   v-model="form.site_logo"
                   mode="image"
@@ -4355,59 +4073,169 @@
                   :max-size="300 * 1024"
                 />
               </div>
+            </SettingsSection>
 
-              <!-- Home Content -->
+            <SettingsSection>
               <div>
-                <label
-                  class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >
-                  {{ t("admin.settings.site.homeContent") }}
+                <label for="api-base-url" class="input-label">{{ t("admin.settings.site.apiBaseUrl") }}</label>
+                <input
+                  id="api-base-url"
+                  v-model="form.api_base_url"
+                  type="text"
+                  class="input font-mono text-sm"
+                  :placeholder="t('admin.settings.site.apiBaseUrlPlaceholder')"
+                />
+                <p class="input-hint">{{ t("admin.settings.site.apiBaseUrlHint") }}</p>
+              </div>
+              <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label for="contact-info" class="input-label">{{ t("admin.settings.site.contactInfo") }}</label>
+                  <input
+                    id="contact-info"
+                    v-model="form.contact_info"
+                    type="text"
+                    class="input"
+                    :placeholder="t('admin.settings.site.contactInfoPlaceholder')"
+                  />
+                  <p class="input-hint">{{ t("admin.settings.site.contactInfoHint") }}</p>
+                </div>
+                <div>
+                  <label for="doc-url" class="input-label">{{ t("admin.settings.site.docUrl") }}</label>
+                  <input
+                    id="doc-url"
+                    v-model="form.doc_url"
+                    type="url"
+                    class="input font-mono text-sm"
+                    :placeholder="t('admin.settings.site.docUrlPlaceholder')"
+                  />
+                  <p class="input-hint">{{ t("admin.settings.site.docUrlHint") }}</p>
+                </div>
+              </div>
+            </SettingsSection>
+
+            <SettingsSection>
+              <RuleListEditor
+                :items="form.custom_endpoints"
+                variant="card"
+                title-style="section"
+                :title="t('admin.settings.site.customEndpoints.title')"
+                :hint="t('admin.settings.site.customEndpoints.description')"
+                :item-label="(index) => t('admin.settings.site.customEndpoints.itemLabel', { n: index + 1 })"
+                :add-label="t('admin.settings.site.customEndpoints.add')"
+                test-id="custom-endpoints"
+                @add="addEndpoint"
+                @remove="removeEndpoint"
+              >
+                <template #row="{ item: ep, index: epIndex }">
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label :for="`custom-endpoint-${epIndex}-name`" class="input-label">
+                        {{ t("admin.settings.site.customEndpoints.name") }}
+                      </label>
+                      <input
+                        :id="`custom-endpoint-${epIndex}-name`"
+                        v-model="ep.name"
+                        type="text"
+                        class="input"
+                        :placeholder="t('admin.settings.site.customEndpoints.namePlaceholder')"
+                      />
+                    </div>
+                    <div>
+                      <label :for="`custom-endpoint-${epIndex}-url`" class="input-label">
+                        {{ t("admin.settings.site.customEndpoints.endpointUrl") }}
+                      </label>
+                      <input
+                        :id="`custom-endpoint-${epIndex}-url`"
+                        v-model="ep.endpoint"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="t('admin.settings.site.customEndpoints.endpointUrlPlaceholder')"
+                      />
+                    </div>
+                    <div class="sm:col-span-2">
+                      <label :for="`custom-endpoint-${epIndex}-description`" class="input-label">
+                        {{ t("admin.settings.site.customEndpoints.descriptionLabel") }}
+                      </label>
+                      <input
+                        :id="`custom-endpoint-${epIndex}-description`"
+                        v-model="ep.description"
+                        type="text"
+                        class="input"
+                        :placeholder="t('admin.settings.site.customEndpoints.descriptionPlaceholder')"
+                      />
+                    </div>
+                  </div>
+                </template>
+              </RuleListEditor>
+            </SettingsSection>
+
+            <SettingsSection
+              :title="t('admin.settings.site.tablePreferencesTitle')"
+              :hint="t('admin.settings.site.tablePreferencesDescription')"
+            >
+              <SettingRow
+                id="table-default-page-size"
+                field
+                label-for="table-default-page-size"
+                :label="t('admin.settings.site.tableDefaultPageSize')"
+                :hint="t('admin.settings.site.tableDefaultPageSizeHint')"
+              >
+                <input
+                  id="table-default-page-size"
+                  v-model.number="form.table_default_page_size"
+                  type="number"
+                  min="5"
+                  max="1000"
+                  step="1"
+                  class="input"
+                />
+              </SettingRow>
+              <div>
+                <label for="table-page-size-options" class="input-label">
+                  {{ t("admin.settings.site.tablePageSizeOptions") }}
                 </label>
+                <input
+                  id="table-page-size-options"
+                  v-model="tablePageSizeOptionsInput"
+                  type="text"
+                  class="input font-mono text-sm"
+                  :placeholder="t('admin.settings.site.tablePageSizeOptionsPlaceholder')"
+                />
+                <p class="input-hint">{{ t("admin.settings.site.tablePageSizeOptionsHint") }}</p>
+              </div>
+            </SettingsSection>
+
+            <SettingsSection>
+              <div>
+                <label for="home-content" class="input-label">{{ t("admin.settings.site.homeContent") }}</label>
                 <textarea
+                  id="home-content"
                   v-model="form.home_content"
                   rows="6"
                   class="input font-mono text-sm"
                   :placeholder="t('admin.settings.site.homeContentPlaceholder')"
                 ></textarea>
-                <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  {{ t("admin.settings.site.homeContentHint") }}
-                </p>
-                <!-- iframe CSP Warning -->
-                <p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                  {{ t("admin.settings.site.homeContentIframeWarning") }}
-                </p>
+                <p class="input-hint">{{ t("admin.settings.site.homeContentHint") }}</p>
               </div>
+              <!-- 自定义首页用 iframe 嵌入外部页面时，对方的 CSP 可能禁止嵌入。 -->
+              <SettingsNotice tone="warning">
+                {{ t("admin.settings.site.homeContentIframeWarning") }}
+              </SettingsNotice>
+              <SettingToggleRow
+                id="hide-ccs-import-button"
+                v-model="form.hide_ccs_import_button"
+                :label="t('admin.settings.site.hideCcsImportButton')"
+                :hint="t('admin.settings.site.hideCcsImportButtonHint')"
+              />
+            </SettingsSection>
+          </SettingsCard>
 
-              <!-- Hide CCS Import Button -->
-              <div
-                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">{{
-                    t("admin.settings.site.hideCcsImportButton")
-                  }}</label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.site.hideCcsImportButtonHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.hide_ccs_import_button" />
-              </div>
-            </div>
-          </div>
-
-          <!-- Custom Menu Items -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.customMenu.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.customMenu.description") }}
-              </p>
-            </div>
-            <div class="p-6">
+          <!-- 自定义菜单 -->
+          <SettingsCard
+            :title="t('admin.settings.customMenu.title')"
+            :description="t('admin.settings.customMenu.description')"
+          >
+            <SettingsSection>
               <RuleListEditor
                 :items="form.custom_menu_items"
                 variant="card"
@@ -4421,56 +4249,44 @@
                 @remove="removeMenuItem"
                 @move="(from, to) => moveMenuItem(from, to > from ? 1 : -1)"
               >
-                <template #row="{ item }">
-                  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <!-- Label -->
+                <template #row="{ item, index: menuIndex }">
+                  <div class="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
+                      <label :for="`custom-menu-${menuIndex}-label`" class="input-label">
                         {{ t("admin.settings.customMenu.name") }}
                       </label>
                       <input
+                        :id="`custom-menu-${menuIndex}-label`"
                         v-model="item.label"
                         type="text"
-                        class="input text-sm"
-                        :placeholder="
-                          t('admin.settings.customMenu.namePlaceholder')
-                        "
+                        class="input"
+                        :placeholder="t('admin.settings.customMenu.namePlaceholder')"
                       />
                     </div>
-                    <!-- Visibility -->
                     <div>
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
+                      <label :for="`custom-menu-${menuIndex}-visibility`" class="input-label">
                         {{ t("admin.settings.customMenu.visibility") }}
                       </label>
-                      <Select v-model="item.visibility" :options="customMenuVisibilityOptions" class="text-sm" />
+                      <Select
+                        :id="`custom-menu-${menuIndex}-visibility`"
+                        v-model="item.visibility"
+                        :options="customMenuVisibilityOptions"
+                      />
                     </div>
-                    <!-- URL (full width) -->
                     <div class="sm:col-span-2">
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
+                      <label :for="`custom-menu-${menuIndex}-url`" class="input-label">
                         {{ t("admin.settings.customMenu.url") }}
                       </label>
                       <input
+                        :id="`custom-menu-${menuIndex}-url`"
                         v-model="item.url"
                         type="url"
                         class="input font-mono text-sm"
-                        :placeholder="
-                          t('admin.settings.customMenu.urlPlaceholder')
-                        "
+                        :placeholder="t('admin.settings.customMenu.urlPlaceholder')"
                       />
                     </div>
-                    <!-- SVG Icon (full width) -->
                     <div class="sm:col-span-2">
-                      <label
-                        class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
-                      >
-                        {{ t("admin.settings.customMenu.iconSvg") }}
-                      </label>
+                      <p class="input-label">{{ t("admin.settings.customMenu.iconSvg") }}</p>
                       <ImageUpload
                         :model-value="item.icon_svg"
                         mode="svg"
@@ -4483,34 +4299,24 @@
                   </div>
                 </template>
               </RuleListEditor>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- Home Featured Models -->
-          <div class="card">
-            <div
-              class="flex items-end justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <div>
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  {{ t("admin.settings.homeFeaturedModels.title") }}
-                </h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    t("admin.settings.homeFeaturedModels.description")
-                  }}
-                </p>
-              </div>
+          <!-- 首页模型展示 -->
+          <SettingsCard
+            :title="t('admin.settings.homeFeaturedModels.title')"
+            :description="t('admin.settings.homeFeaturedModels.description')"
+          >
+            <template v-if="form.home_featured_models.length > 0" #actions>
               <button
-                v-if="form.home_featured_models.length > 0"
                 type="button"
                 class="btn btn-secondary btn-sm h-9 shrink-0"
                 @click="form.home_featured_models = []"
               >
                 {{ t("admin.settings.homeFeaturedModels.clear") }}
               </button>
-            </div>
-            <div class="space-y-4 p-6">
+            </template>
+            <SettingsSection>
               <RuleListEditor
                 :items="form.home_featured_models"
                 :add-label="t('admin.settings.homeFeaturedModels.add')"
@@ -4530,34 +4336,23 @@
                     :options="homeFeaturedModelOptions"
                     searchable
                     class="min-w-0"
+                    :aria-label="t('admin.settings.homeFeaturedModels.select')"
                     :placeholder="t('admin.settings.homeFeaturedModels.select')"
                   />
                 </template>
               </RuleListEditor>
-              <p
-                v-if="homeFeaturedModelOptions.length === 0"
-                class="text-xs text-gray-400 dark:text-gray-500"
-              >
+              <p v-if="homeFeaturedModelOptions.length === 0" class="input-hint">
                 {{ t("admin.settings.homeFeaturedModels.empty") }}
               </p>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <!-- Footer Settings -->
-          <div class="card">
-            <div
-              class="flex items-end justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <div>
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  {{ t("admin.settings.homeFooter.title") }}
-                </h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    t("admin.settings.homeFooter.description")
-                  }}
-                </p>
-              </div>
+          <!-- 首页底栏 -->
+          <SettingsCard
+            :title="t('admin.settings.homeFooter.title')"
+            :description="t('admin.settings.homeFooter.description')"
+          >
+            <template #actions>
               <button
                 type="button"
                 class="btn btn-secondary btn-sm h-9 shrink-0"
@@ -4565,9 +4360,8 @@
               >
                 {{ t("admin.settings.homeFooter.useDefault") }}
               </button>
-            </div>
-            <div class="space-y-4 p-6">
-              <!-- Link groups -->
+            </template>
+            <SettingsSection>
               <RuleListEditor
                 :items="form.footer_links"
                 variant="card"
@@ -4582,11 +4376,12 @@
                 @move="(from, to) => moveFooterGroup(from, to > from ? 1 : -1)"
               >
                 <template #row="{ item: group, index: gIndex }">
-                  <div class="space-y-3">
+                  <div class="space-y-4">
                     <input
                       v-model="group.title"
                       type="text"
-                      class="input max-w-xs text-sm font-medium"
+                      class="input sm:max-w-xs"
+                      :aria-label="t('admin.settings.homeFooter.groupTitlePlaceholder')"
                       :placeholder="t('admin.settings.homeFooter.groupTitlePlaceholder')"
                     />
                     <RuleListEditor
@@ -4603,13 +4398,15 @@
                           <input
                             v-model="link.label"
                             type="text"
-                            class="input text-sm"
+                            class="input"
+                            :aria-label="t('admin.settings.homeFooter.linkLabel')"
                             :placeholder="t('admin.settings.homeFooter.linkLabel')"
                           />
                           <input
                             v-model="link.url"
                             type="text"
                             class="input min-w-0 font-mono text-sm"
+                            :aria-label="t('admin.settings.homeFooter.linkUrlPlaceholder')"
                             :placeholder="t('admin.settings.homeFooter.linkUrlPlaceholder')"
                           />
                         </div>
@@ -4618,21 +4415,20 @@
                   </div>
                 </template>
               </RuleListEditor>
-
-              <!-- Footer text -->
-              <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
-                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {{ t("admin.settings.homeFooter.extraText") }}
-                </label>
+            </SettingsSection>
+            <SettingsSection>
+              <div>
+                <label for="footer-text" class="input-label">{{ t("admin.settings.homeFooter.extraText") }}</label>
                 <textarea
+                  id="footer-text"
                   v-model="form.footer_text"
                   rows="2"
-                  class="input min-h-[64px] resize-y text-sm"
+                  class="input resize-y"
                   :placeholder="t('admin.settings.homeFooter.extraTextPlaceholder')"
                 ></textarea>
               </div>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
         </div>
         <!-- /分页：通用设置 -->
 

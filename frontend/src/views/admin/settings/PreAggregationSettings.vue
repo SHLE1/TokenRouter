@@ -1,63 +1,54 @@
 <template>
-  <section class="card">
-    <div class="flex items-end justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-      <div class="flex min-w-0 items-start gap-3">
-        <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
-          <Icon name="database" size="md" />
-        </span>
-        <div class="min-w-0">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{ t("admin.settings.preAggregation.title") }}
-          </h2>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {{ t("admin.settings.preAggregation.description") }}
-          </p>
-        </div>
-      </div>
+  <SettingsCard
+    :title="t('admin.settings.preAggregation.title')"
+    :description="t('admin.settings.preAggregation.description')"
+  >
+    <template #actions>
       <button
         type="button"
-        class="btn btn-secondary shrink-0 btn-icon"
+        class="btn btn-secondary btn-icon shrink-0"
         :disabled="loading"
         :title="t('common.refresh')"
+        :aria-label="t('common.refresh')"
         @click="loadSettings"
       >
         <Icon name="refresh" size="sm" :class="loading ? 'animate-spin' : ''" />
       </button>
-    </div>
+    </template>
 
-    <ContentSkeleton v-if="loading && !state" variant="form" :rows="4" class="py-4" />
+    <ContentSkeleton v-if="loading && !state" variant="form" :rows="4" />
 
-    <div v-else-if="state" class="divide-y divide-gray-100 dark:divide-dark-700">
-      <div class="grid gap-6 p-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
-        <div class="space-y-5">
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.preAggregation.usage") }}
-              </h3>
-              <p v-if="!state.availability.usage_available" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                {{ t("admin.settings.preAggregation.unavailable") }}
-              </p>
-            </div>
-            <Toggle
-              v-model="form.usage.enabled"
-              :disabled="!state.availability.usage_available || saving"
-            />
-          </div>
-          <div>
-            <label class="input-label">{{ t("admin.settings.preAggregation.interval") }}</label>
-            <input
-              v-model.number="form.usage.interval_seconds"
-              type="number"
-              min="30"
-              max="3600"
-              step="30"
-              class="input"
-              :disabled="saving"
-            />
-          </div>
-        </div>
-
+    <template v-else-if="state">
+      <SettingsSection>
+        <SettingToggleRow
+          :id="`${uid}-usage-enabled`"
+          v-model="form.usage.enabled"
+          :label="t('admin.settings.preAggregation.usage')"
+          :disabled="!state.availability.usage_available || saving"
+        >
+          <template v-if="!state.availability.usage_available" #hint>
+            <SettingsNotice tone="warning" class="mt-2">
+              {{ t("admin.settings.preAggregation.unavailable") }}
+            </SettingsNotice>
+          </template>
+        </SettingToggleRow>
+        <SettingRow
+          :id="`${uid}-usage-interval`"
+          field
+          :label-for="`${uid}-usage-interval`"
+          :label="t('admin.settings.preAggregation.interval')"
+        >
+          <input
+            :id="`${uid}-usage-interval`"
+            v-model.number="form.usage.interval_seconds"
+            type="number"
+            min="30"
+            max="3600"
+            step="30"
+            class="input"
+            :disabled="saving"
+          />
+        </SettingRow>
         <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm xl:grid-cols-4">
           <StatusItem :label="t('admin.settings.preAggregation.phase')">
             <span :class="phaseClass(state.usage_status.phase)">{{ phaseLabel(state.usage_status.phase) }}</span>
@@ -82,24 +73,21 @@
             {{ state.usage_status.last_error }}
           </StatusItem>
         </dl>
-      </div>
+      </SettingsSection>
 
-      <div class="grid gap-6 p-6 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-              {{ t("admin.settings.preAggregation.ops") }}
-            </h3>
-            <p v-if="!state.availability.ops_available" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+      <SettingsSection>
+        <SettingToggleRow
+          :id="`${uid}-ops-enabled`"
+          v-model="form.ops.enabled"
+          :label="t('admin.settings.preAggregation.ops')"
+          :disabled="!state.availability.ops_available || saving"
+        >
+          <template v-if="!state.availability.ops_available" #hint>
+            <SettingsNotice tone="warning" class="mt-2">
               {{ t("admin.settings.preAggregation.unavailable") }}
-            </p>
-          </div>
-          <Toggle
-            v-model="form.ops.enabled"
-            :disabled="!state.availability.ops_available || saving"
-          />
-        </div>
-
+            </SettingsNotice>
+          </template>
+        </SettingToggleRow>
         <dl class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm xl:grid-cols-4">
           <StatusItem :label="t('admin.settings.preAggregation.phase')">
             <span :class="phaseClass(state.ops_status.phase)">{{ phaseLabel(state.ops_status.phase) }}</span>
@@ -118,52 +106,69 @@
             {{ state.ops_status.last_error }}
           </StatusItem>
         </dl>
-      </div>
+      </SettingsSection>
 
-      <div class="flex flex-col gap-4 p-6 sm:flex-row sm:items-end sm:justify-between">
-        <div class="flex flex-wrap items-end gap-3">
-          <div>
-            <label class="input-label">{{ t("admin.settings.preAggregation.backfillDays") }}</label>
+      <SettingsSection>
+        <SettingRow
+          :id="`${uid}-backfill-days`"
+          field
+          :label-for="`${uid}-backfill-days`"
+          :label="t('admin.settings.preAggregation.backfillDays')"
+        >
+          <div class="flex gap-2">
             <input
+              :id="`${uid}-backfill-days`"
               v-model.number="backfillDays"
               type="number"
               min="1"
               :max="state.availability.manual_backfill_max_days"
-              class="input w-28"
+              class="input"
               :disabled="backfilling || !canBackfill"
             />
+            <button
+              type="button"
+              class="btn btn-secondary shrink-0"
+              :disabled="backfilling || !canBackfill"
+              @click="startBackfill"
+            >
+              <Icon
+                :name="backfilling ? 'refresh' : 'play'"
+                size="sm"
+                :class="backfilling ? 'animate-spin' : ''"
+              />
+              {{ t("admin.settings.preAggregation.startBackfill") }}
+            </button>
           </div>
-          <button
-            type="button"
-            class="btn btn-secondary"
-            :disabled="backfilling || !canBackfill"
-            @click="startBackfill"
-          >
-            <Icon
-              :name="backfilling ? 'refresh' : 'play'"
-              size="sm"
-              :class="backfilling ? 'animate-spin' : ''"
-            />
-            {{ t("admin.settings.preAggregation.startBackfill") }}
-          </button>
-        </div>
+        </SettingRow>
+      </SettingsSection>
+    </template>
 
-        <button type="button" class="btn btn-primary" :disabled="saving" @click="saveSettings">
-          <Icon :name="saving ? 'refresh' : 'check'" size="sm" :class="saving ? 'animate-spin' : ''" />
-          {{ t("admin.settings.preAggregation.save") }}
-        </button>
-      </div>
-    </div>
-  </section>
+    <template v-if="state" #footer>
+      <button type="button" class="btn btn-primary btn-sm h-9" :disabled="saving" @click="saveSettings">
+        <Icon
+          v-if="saving"
+          name="loader"
+          size="sm"
+          :animate-on-hover="false"
+          class="mr-1 h-4 w-4 animate-spin"
+        />
+        {{ t("admin.settings.preAggregation.save") }}
+      </button>
+    </template>
+  </SettingsCard>
 </template>
 
 <script setup lang="ts">
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
-import { computed, defineComponent, h, onMounted, reactive, ref } from "vue";
+import { computed, defineComponent, h, onMounted, reactive, ref, useId } from "vue";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";
 import type { PreAggregationSettingsResponse } from "@/api/admin/settings";
-import Toggle from "@/components/common/Toggle.vue";
+import SettingRow from "@/components/common/settings/SettingRow.vue";
+import SettingToggleRow from "@/components/common/settings/SettingToggleRow.vue";
+import SettingsCard from "@/components/common/settings/SettingsCard.vue";
+import SettingsNotice from "@/components/common/settings/SettingsNotice.vue";
+import SettingsSection from "@/components/common/settings/SettingsSection.vue";
 import Icon from "@/components/icons/Icon.vue";
 import { useAppStore } from "@/stores";
 import { extractApiErrorMessage } from "@/utils/apiError";
@@ -173,13 +178,14 @@ const StatusItem = defineComponent({
   props: { label: { type: String, required: true } },
   setup(props, { slots, attrs }) {
     return () => h("div", attrs, [
-      h("dt", { class: "text-xs text-gray-500 dark:text-gray-400" }, props.label),
-      h("dd", { class: "mt-1 break-words font-medium text-gray-800 dark:text-gray-200" }, slots.default?.()),
+      h("dt", { class: "text-xs text-gray-500 dark:text-dark-400" }, props.label),
+      h("dd", { class: "mt-1 break-words font-medium text-gray-800 dark:text-dark-100" }, slots.default?.()),
     ]);
   },
 });
 
 const { t, locale } = useI18n();
+const uid = useId();
 const appStore = useAppStore();
 const loading = ref(false);
 const saving = ref(false);
