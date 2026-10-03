@@ -98,7 +98,7 @@ describe('36px control sizing', () => {
     expect(riskControlSource).toContain(":class=\"apiKeyRowsExpanded ? 'overflow-visible' : ''\"")
     expect(settingsSource).toContain('class="btn btn-primary btn-sm h-9"')
     expect(settingsSource).toContain('class="btn btn-secondary btn-sm h-9 shrink-0"')
-    expect(emailTemplateSource).toContain('class="btn btn-primary btn-sm h-9"')
+    expect(emailTemplateSource).toContain('class="btn btn-secondary btn-sm h-9"')
     expect(backupSource).toContain('class="btn btn-primary btn-sm h-9"')
     expect(providerListSource).toContain('class="btn btn-secondary btn-icon"')
     expect(adminOrdersSource).toContain('<TablePageLayout>')

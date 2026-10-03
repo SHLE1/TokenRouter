@@ -95,12 +95,10 @@ backup: {
         testConnection: '测试存储',
         testSuccess: '存储连接测试成功',
         testFailed: '存储连接测试失败',
-        saved: '备份存储配置已保存'
       },
       content: {
         title: '备份内容',
         description: '核心业务数据始终会备份，可按需额外包含容易变大的历史数据。未勾选的表只备份结构，不导出数据。',
-        saved: '备份内容配置已保存',
         excludedCount: '当前将跳过 {count} 个表/分区模式的数据。',
         usageRecords: {
           title: '用量与计费流水',
@@ -152,7 +150,6 @@ backup: {
         retainDaysHint: '备份文件超过此天数后自动删除，0 = 永不过期',
         retainCount: '最大保留份数',
         retainCountHint: '最多保留的备份数量，0 = 不限制',
-        saved: '定时备份配置已保存'
       },
       operations: {
         title: '备份记录',

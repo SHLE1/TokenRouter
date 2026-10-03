@@ -38,8 +38,6 @@ export default {
         lastError: '最近错误',
         unavailable: '部署配置未开放此能力',
         noData: '暂无数据',
-        save: '保存预聚合设置',
-        saved: '预聚合设置已保存',
         loadFailed: '加载预聚合设置失败',
         saveFailed: '保存预聚合设置失败',
         backfill: '手动回填',
@@ -211,7 +209,6 @@ export default {
         perMinute: '次/分钟',
         exemptAdmin: '管理员豁免',
         exemptAdminHint: '开启后管理员账号不受面板限流约束，避免批量运维操作被误拦。',
-        saved: '面板接口限流配置已保存',
         saveFailed: '保存面板接口限流配置失败'
       },
       turnstile: {
@@ -520,7 +517,6 @@ export default {
         intervalHint: '范围 15–1440 分钟。请求持续不断导致 debounce 一直后移时，最晚在此时间强制刷新。',
         debounceMinutes: '请求安静等待（分钟）',
         debounceHint: '范围 1–60 分钟。最后一次模型请求安静满此时长后再抓取用量。',
-        saved: 'Ollama Cloud 用量刷新设置已保存',
         saveFailed: '保存 Ollama Cloud 用量刷新设置失败'
       },
       gatewayForwarding: {
@@ -998,13 +994,10 @@ export default {
         previewSecurityHint: '预览 HTML 由后端预览接口生成，并在禁用脚本的沙盒 iframe 中展示。',
         preview: '预览 / 刷新',
         previewing: '预览中...',
-        save: '保存模板',
-        saving: '保存中...',
         restoreOfficial: '恢复官方模板',
         restoring: '恢复中...',
         restoreConfirm: '确定恢复此事件和语言的官方模板吗？当前自定义版本将被替换。',
         restoreSuccess: '已恢复官方模板',
-        saveSuccess: '邮件模板已保存',
         placeholderCopied: '占位符已复制',
         validationRequired: '主题和 HTML 模板不能为空',
         empty: '暂无可用的邮件模板事件或语言。',
@@ -1051,7 +1044,6 @@ export default {
         enabledHint: '收到 529 错误时暂停该提供商的调度，冷却后自动恢复',
         cooldownMinutes: '冷却时长（分钟）',
         cooldownMinutesHint: '提供商暂停调度的持续时间（1-120 分钟）',
-        saved: '过载冷却设置保存成功',
         saveFailed: '保存过载冷却设置失败'
       },
       openAI403Cooldown: {
@@ -1067,7 +1059,6 @@ export default {
         thresholdCountHint: '统计窗口内达到该次数后标记错误（1-20 次）',
         thresholdWindowMinutes: '统计窗口（分钟）',
         thresholdWindowMinutesHint: '累计 403 次数的时间范围（1-1440 分钟）',
-        saved: 'ChatGPT 403 冷却设置保存成功',
         saveFailed: '保存 ChatGPT 403 冷却设置失败'
       },
       rateLimit429Cooldown: {
@@ -1077,7 +1068,6 @@ export default {
         enabledHint: '收到无重置时间的 429 时暂停该提供商调度，冷却后自动恢复',
         cooldownSeconds: '回避时长（秒）',
         cooldownSecondsHint: '默认回避持续时间（1-7200 秒）；上游返回明确 reset 时仍优先使用上游时间',
-        saved: '429 默认回避设置保存成功',
         saveFailed: '保存 429 默认回避设置失败'
       },
       streamTimeout: {
@@ -1098,7 +1088,6 @@ export default {
         thresholdCountHint: '累计超时多少次后触发处理（1-10次）',
         thresholdWindowMinutes: '阈值窗口（分钟）',
         thresholdWindowMinutesHint: '超时计数的时间窗口（1-60分钟）',
-        saved: '流超时设置保存成功',
         saveFailed: '保存流超时设置失败'
       },
       rectifier: {
@@ -1118,7 +1107,6 @@ export default {
           '额外的关键词，匹配响应体中的内容（不区分大小写）。内置规则始终生效，此处用于补充额外匹配。',
         apikeyPatternPlaceholder: '例如：thinking_error 或 签名无效',
         addPattern: '添加关键词',
-        saved: '整流器设置保存成功',
         saveFailed: '保存整流器设置失败'
       },
       betaPolicy: {
@@ -1136,7 +1124,6 @@ export default {
         errorMessage: '错误消息',
         errorMessagePlaceholder: '拦截时返回的自定义错误消息',
         errorMessageHint: '留空则使用默认错误消息',
-        saved: 'Beta 策略设置保存成功',
         saveFailed: '保存 Beta 策略设置失败',
         modelWhitelist: '模型白名单',
         modelWhitelistHint: '留空则对所有模型生效。支持精确匹配和通配符前缀（如 claude-opus-*）',

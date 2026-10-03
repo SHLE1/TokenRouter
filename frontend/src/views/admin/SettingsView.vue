@@ -6,7 +6,7 @@
       <SettingsSkeleton v-if="loading" />
 
       <!-- Settings Form -->
-      <form v-else @submit.prevent="saveSettings" class="space-y-4" novalidate>
+      <form v-else @submit.prevent="saveAllSettings" class="space-y-4" novalidate>
         <!-- Tab Navigation -->
         <div
           :class="[
@@ -240,23 +240,6 @@
                 </SettingsSubpanel>
               </Collapse>
             </SettingsSection>
-            <template v-if="!overloadCooldownLoading" #footer>
-              <button
-                type="button"
-                :disabled="overloadCooldownSaving"
-                class="btn btn-primary btn-sm h-9"
-                @click="saveOverloadCooldownSettings"
-              >
-                <Icon
-                  v-if="overloadCooldownSaving"
-                  name="loader"
-                  size="sm"
-                  :animate-on-hover="false"
-                  class="mr-1 h-4 w-4 animate-spin"
-                />
-                {{ overloadCooldownSaving ? t("common.saving") : t("common.save") }}
-              </button>
-            </template>
           </SettingsCard>
 
           <!-- OpenAI OAuth 403 冷却 -->
@@ -335,23 +318,6 @@
                 </SettingsSubpanel>
               </Collapse>
             </SettingsSection>
-            <template v-if="!openAI403CooldownLoading" #footer>
-              <button
-                type="button"
-                :disabled="openAI403CooldownSaving"
-                class="btn btn-primary btn-sm h-9"
-                @click="saveOpenAI403CooldownSettings"
-              >
-                <Icon
-                  v-if="openAI403CooldownSaving"
-                  name="loader"
-                  size="sm"
-                  :animate-on-hover="false"
-                  class="mr-1 h-4 w-4 animate-spin"
-                />
-                {{ openAI403CooldownSaving ? t("common.saving") : t("common.save") }}
-              </button>
-            </template>
           </SettingsCard>
 
           <div
@@ -397,23 +363,6 @@
                 </SettingsSubpanel>
               </Collapse>
             </SettingsSection>
-            <template v-if="!rateLimit429CooldownLoading" #footer>
-              <button
-                type="button"
-                :disabled="rateLimit429CooldownSaving"
-                class="btn btn-primary btn-sm h-9"
-                @click="saveRateLimit429CooldownSettings"
-              >
-                <Icon
-                  v-if="rateLimit429CooldownSaving"
-                  name="loader"
-                  size="sm"
-                  :animate-on-hover="false"
-                  class="mr-1 h-4 w-4 animate-spin"
-                />
-                {{ rateLimit429CooldownSaving ? t("common.saving") : t("common.save") }}
-              </button>
-            </template>
           </SettingsCard>
 
           <!-- 流超时 -->
@@ -498,23 +447,6 @@
                 </SettingsSubpanel>
               </Collapse>
             </SettingsSection>
-            <template v-if="!streamTimeoutLoading" #footer>
-              <button
-                type="button"
-                :disabled="streamTimeoutSaving"
-                class="btn btn-primary btn-sm h-9"
-                @click="saveStreamTimeoutSettings"
-              >
-                <Icon
-                  v-if="streamTimeoutSaving"
-                  name="loader"
-                  size="sm"
-                  :animate-on-hover="false"
-                  class="mr-1 h-4 w-4 animate-spin"
-                />
-                {{ streamTimeoutSaving ? t("common.saving") : t("common.save") }}
-              </button>
-            </template>
           </SettingsCard>
 
           <!-- 跨平台请求整流器 -->
@@ -576,23 +508,6 @@
                 </SettingsSubpanel>
               </Collapse>
             </SettingsSection>
-            <template v-if="!rectifierLoading" #footer>
-              <button
-                type="button"
-                :disabled="rectifierSaving"
-                class="btn btn-primary btn-sm h-9"
-                @click="saveRectifierSettings"
-              >
-                <Icon
-                  v-if="rectifierSaving"
-                  name="loader"
-                  size="sm"
-                  :animate-on-hover="false"
-                  class="mr-1 h-4 w-4 animate-spin"
-                />
-                {{ rectifierSaving ? t("common.saving") : t("common.save") }}
-              </button>
-            </template>
           </SettingsCard>
 
           <!-- Anthropic Beta 策略 -->
@@ -742,23 +657,6 @@
                 </div>
               </SettingsSubpanel>
             </SettingsSection>
-            <template v-if="!betaPolicyLoading" #footer>
-              <button
-                type="button"
-                :disabled="betaPolicySaving"
-                class="btn btn-primary btn-sm h-9"
-                @click="saveBetaPolicySettings"
-              >
-                <Icon
-                  v-if="betaPolicySaving"
-                  name="loader"
-                  size="sm"
-                  :animate-on-hover="false"
-                  class="mr-1 h-4 w-4 animate-spin"
-                />
-                {{ betaPolicySaving ? t("common.saving") : t("common.save") }}
-              </button>
-            </template>
           </SettingsCard>
 
           <!-- OpenAI Fast/Flex 策略，随全局保存提交。 -->
@@ -1259,24 +1157,6 @@
                 </SettingsSubpanel>
               </Collapse>
             </SettingsSection>
-            <template v-if="!panelRateLimitLoading" #footer>
-              <button
-                type="button"
-                data-testid="panel-rate-limit-save"
-                :disabled="panelRateLimitSaving"
-                class="btn btn-primary btn-sm h-9"
-                @click="savePanelRateLimitSettings"
-              >
-                <Icon
-                  v-if="panelRateLimitSaving"
-                  name="loader"
-                  size="sm"
-                  :animate-on-hover="false"
-                  class="mr-1 h-4 w-4 animate-spin"
-                />
-                {{ panelRateLimitSaving ? t("common.saving") : t("common.save") }}
-              </button>
-            </template>
           </SettingsCard>
 
           <!-- 人机验证 -->
@@ -2806,24 +2686,6 @@
                 </SettingsSubpanel>
               </Collapse>
             </SettingsSection>
-            <template v-if="!ollamaCloudUsageLoading" #footer>
-              <button
-                type="button"
-                class="btn btn-primary btn-sm h-9"
-                :disabled="ollamaCloudUsageSaving"
-                data-testid="ollama-cloud-usage-global-save"
-                @click="saveOllamaCloudUsageSettings"
-              >
-                <Icon
-                  v-if="ollamaCloudUsageSaving"
-                  name="loader"
-                  size="sm"
-                  :animate-on-hover="false"
-                  class="mr-1 h-4 w-4 animate-spin"
-                />
-                {{ ollamaCloudUsageSaving ? t("common.saving") : t("common.save") }}
-              </button>
-            </template>
           </SettingsCard>
 
           <!-- 通用调度 -->
@@ -5598,7 +5460,7 @@
 
         <!-- 有未保存的修改时，保存按钮吸附在视口底部。 -->
         <SettingsSaveBar
-          :visible="settingsDirty && !loadFailed"
+          :visible="settingsSaveRegistry.dirty.value && !loadFailed"
           :message="t('admin.settings.unsavedChanges')"
         >
           <button
@@ -5669,6 +5531,7 @@ import SettingsSegmented, { type SettingsSegmentedOption } from "@/components/co
 import SettingsSubpanel from "@/components/common/settings/SettingsSubpanel.vue";
 import SettingsTagInput from "@/components/common/settings/SettingsTagInput.vue";
 import { useDirtyTracker } from "@/composables/useDirtyTracker";
+import { provideSettingsSaveRegistry, type SettingsSaveTarget } from "@/composables/useSettingsSaveRegistry";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { adminAPI } from "@/api";
@@ -6012,7 +5875,6 @@ const newAdminApiKey = ref("");
 const subscriptionPlans = ref<SubscriptionPlan[]>([]);
 
 const ollamaCloudUsageLoading = ref(true);
-const ollamaCloudUsageSaving = ref(false);
 const ollamaCloudUsageForm = reactive({
   enabled: false,
   interval_minutes: 60,
@@ -6021,7 +5883,6 @@ const ollamaCloudUsageForm = reactive({
 
 // Overload Cooldown (529) 状态
 const overloadCooldownLoading = ref(true);
-const overloadCooldownSaving = ref(false);
 const overloadCooldownForm = reactive({
   enabled: true,
   cooldown_minutes: 10,
@@ -6029,7 +5890,6 @@ const overloadCooldownForm = reactive({
 
 // OpenAI OAuth 403 Cooldown 状态
 const openAI403CooldownLoading = ref(true);
-const openAI403CooldownSaving = ref(false);
 const openAI403CooldownForm = reactive({
   enabled: true,
   cooldown_minutes: 10,
@@ -6040,7 +5900,6 @@ const openAI403CooldownForm = reactive({
 
 // Rate Limit Cooldown (429) 状态
 const rateLimit429CooldownLoading = ref(true);
-const rateLimit429CooldownSaving = ref(false);
 const rateLimit429CooldownForm = reactive({
   enabled: true,
   cooldown_seconds: 5,
@@ -6048,7 +5907,6 @@ const rateLimit429CooldownForm = reactive({
 
 // 面板 API 限流状态
 const panelRateLimitLoading = ref(true);
-const panelRateLimitSaving = ref(false);
 const panelRateLimitForm = reactive({
   enabled: true,
   user_rpm: 240,
@@ -6059,7 +5917,6 @@ const panelRateLimitForm = reactive({
 
 // Stream Timeout 状态
 const streamTimeoutLoading = ref(true);
-const streamTimeoutSaving = ref(false);
 const streamTimeoutForm = reactive({
   enabled: true,
   action: "temp_unsched" as "temp_unsched" | "error" | "none",
@@ -6079,7 +5936,6 @@ const streamTimeoutActionOptions = computed(() => [
 
 // Rectifier 状态
 const rectifierLoading = ref(true);
-const rectifierSaving = ref(false);
 const rectifierForm = reactive({
   enabled: true,
   thinking_signature_enabled: true,
@@ -6090,7 +5946,6 @@ const rectifierForm = reactive({
 
 // Beta Policy 状态
 const betaPolicyLoading = ref(true);
-const betaPolicySaving = ref(false);
 const betaPolicyForm = reactive({
   rules: [] as Array<{
     beta_token: string;
@@ -8206,7 +8061,7 @@ async function loadSettings() {
   if (!loadFailed.value) {
     // 表单控件挂载时可能规整初始值，等渲染完成后再记录快照。
     await nextTick();
-    markSettingsClean();
+    markSettingsClean("settings", "webSearch");
   }
 }
 
@@ -8275,7 +8130,7 @@ function findDuplicateDefaultSubscription(
 
 // 全局保存提交的数据分两组记录快照，联网搜索配置调用独立接口保存。
 // 快照里去掉联网搜索的已用额度，它由“重置用量”按钮直接写回服务端。
-const { dirty: settingsDirty, markClean: markSettingsClean } = useDirtyTracker({
+const { isDirty: isSettingsDirty, markClean: markSettingsClean } = useDirtyTracker({
   settings: () => ({
     form,
     authSourceDefaults,
@@ -8291,15 +8146,61 @@ const { dirty: settingsDirty, markClean: markSettingsClean } = useDirtyTracker({
       ({ quota_used: _quotaUsed, ...provider }) => provider,
     ),
   }),
+  overloadCooldown: () => overloadCooldownForm,
+  openAI403Cooldown: () => openAI403CooldownForm,
+  rateLimit429Cooldown: () => rateLimit429CooldownForm,
+  streamTimeout: () => streamTimeoutForm,
+  rectifier: () => rectifierForm,
+  betaPolicy: () => betaPolicyForm,
+  ollamaCloudUsage: () => ollamaCloudUsageForm,
+  panelRateLimit: () => panelRateLimitForm,
 });
 
-async function saveSettings() {
+// 吸底保存条汇总本页和子组件登记的各块设置。全局设置最先登记，保存时最先提交。
+const settingsSaveRegistry = provideSettingsSaveRegistry();
+const settingsSaveTargets: Array<[string, SettingsSaveTarget]> = [
+  [
+    "settings",
+    {
+      dirty: computed(() => isSettingsDirty("settings") || isSettingsDirty("webSearch")),
+      save: saveSettings,
+    },
+  ],
+  ["overloadCooldown", { dirty: computed(() => isSettingsDirty("overloadCooldown")), save: saveOverloadCooldownSettings }],
+  ["openAI403Cooldown", { dirty: computed(() => isSettingsDirty("openAI403Cooldown")), save: saveOpenAI403CooldownSettings }],
+  ["rateLimit429Cooldown", { dirty: computed(() => isSettingsDirty("rateLimit429Cooldown")), save: saveRateLimit429CooldownSettings }],
+  ["streamTimeout", { dirty: computed(() => isSettingsDirty("streamTimeout")), save: saveStreamTimeoutSettings }],
+  ["rectifier", { dirty: computed(() => isSettingsDirty("rectifier")), save: saveRectifierSettings }],
+  ["betaPolicy", { dirty: computed(() => isSettingsDirty("betaPolicy")), save: saveBetaPolicySettings }],
+  ["ollamaCloudUsage", { dirty: computed(() => isSettingsDirty("ollamaCloudUsage")), save: saveOllamaCloudUsageSettings }],
+  ["panelRateLimit", { dirty: computed(() => isSettingsDirty("panelRateLimit")), save: savePanelRateLimitSettings }],
+];
+for (const [key, target] of settingsSaveTargets) {
+  settingsSaveRegistry.registry.register(key, target);
+}
+
+// 吸底保存条的保存按钮提交表单时调用。没有任何修改时（例如在输入框里按回车）仍提交全局设置。
+async function saveAllSettings() {
   saving.value = true;
+  try {
+    const ok = settingsSaveRegistry.dirty.value
+      ? await settingsSaveRegistry.saveDirty()
+      : await saveSettings();
+    if (ok) {
+      appStore.showSuccess(t("admin.settings.settingsSaved"));
+    }
+  } finally {
+    saving.value = false;
+  }
+}
+
+// saveSettings 校验并提交全局设置和联网搜索配置，返回是否全部保存成功。
+async function saveSettings(): Promise<boolean> {
   try {
     const normalizedCreativeWorkerCount = Math.floor(Number(form.creative_worker_count));
     if (!Number.isSafeInteger(normalizedCreativeWorkerCount) || normalizedCreativeWorkerCount <= 0) {
       appStore.showError(t("admin.settings.features.creative.workerCountInvalid"));
-      return;
+      return false;
     }
     form.creative_worker_count = normalizedCreativeWorkerCount;
 
@@ -8316,7 +8217,7 @@ async function saveSettings() {
       appStore.showError(
         t("admin.settings.defaults.defaultUserApiKeyLimitInvalid"),
       );
-      return;
+      return false;
     }
     form.default_user_api_key_limit = normalizedDefaultUserAPIKeyLimit;
 
@@ -8334,7 +8235,7 @@ async function saveSettings() {
           max: tablePageSizeMax,
         }),
       );
-      return;
+      return false;
     }
 
     const normalizedTablePageSizeOptions = parseTablePageSizeOptionsInput(
@@ -8347,7 +8248,7 @@ async function saveSettings() {
           max: tablePageSizeMax,
         }),
       );
-      return;
+      return false;
     }
 
     const normalizedUsageRankingLimit = Math.floor(
@@ -8364,7 +8265,7 @@ async function saveSettings() {
           max: usageRankingLimitMax,
         }),
       );
-      return;
+      return false;
     }
 
     form.table_default_page_size = normalizedTableDefaultPageSize;
@@ -8404,7 +8305,7 @@ async function saveSettings() {
       appStore.showError(
         t("admin.settings.features.creative.modelSettings.validationError"),
       );
-      return;
+      return false;
     }
     if (
       form.openai_provider_quota_auto_pause.default_threshold_5h < 0 ||
@@ -8413,7 +8314,7 @@ async function saveSettings() {
       form.openai_provider_quota_auto_pause.default_threshold_7d > 1
     ) {
       appStore.showError(t("admin.settings.openaiQuotaAutoPause.rangeError"));
-      return;
+      return false;
     }
 
     const normalizedLoginAgreementDocuments =
@@ -8422,7 +8323,7 @@ async function saveSettings() {
       appStore.showError(
         t("admin.settings.loginAgreement.documentsRequired"),
       );
-      return;
+      return false;
     }
     const emptyTitleDocument = normalizedLoginAgreementDocuments.find(
       (doc) => !doc.title,
@@ -8431,7 +8332,7 @@ async function saveSettings() {
       appStore.showError(
         t("admin.settings.loginAgreement.documentTitleRequired"),
       );
-      return;
+      return false;
     }
     const duplicateLoginAgreementDocumentId =
       findDuplicateLoginAgreementDocumentId(normalizedLoginAgreementDocuments);
@@ -8441,7 +8342,7 @@ async function saveSettings() {
           id: duplicateLoginAgreementDocumentId,
         }),
       );
-      return;
+      return false;
     }
     form.login_agreement_mode =
       form.login_agreement_mode === "checkbox" ? "checkbox" : "modal";
@@ -8462,7 +8363,7 @@ async function saveSettings() {
           planId: duplicateDefaultSubscription.plan_id,
         }),
       );
-      return;
+      return false;
     }
 
     for (const authSource of authSourceDefaultsMeta.value) {
@@ -8482,7 +8383,7 @@ async function saveSettings() {
             },
           )}`,
         );
-        return;
+        return false;
       }
     }
 
@@ -8490,7 +8391,7 @@ async function saveSettings() {
       appStore.showError(
         t("admin.settings.wechatConnect.mpMobileConflict"),
       );
-      return;
+      return false;
     }
     // 表单设置了 novalidate，URL 字段由此处校验。
     const isValidHttpUrl = (url: string): boolean => {
@@ -8973,17 +8874,15 @@ async function saveSettings() {
     await nextTick();
     // 联网搜索配置保存失败时保留它的未保存状态，用户可以修正后再次提交。
     if (wsOk) {
-      markSettingsClean();
+      markSettingsClean("settings", "webSearch");
     } else {
       markSettingsClean("settings");
     }
-    if (wsOk) {
-      appStore.showSuccess(t("admin.settings.settingsSaved"));
-    }
+    return wsOk;
   } catch (error: unknown) {
     // 用户取消 step-up 验证：静默返回，不弹错误
     if (isStepUpCancelled(error)) {
-      return;
+      return false;
     }
     if (isStepUpBlocked(error)) {
       appStore.showError(
@@ -8991,20 +8890,19 @@ async function saveSettings() {
           ? t("stepUp.adminApiKeyForbidden")
           : t("stepUp.notEnabled"),
       );
-      return;
+      return false;
     }
     // 开启 step-up 开关但本人未启用 2FA：给出可操作的专用提示
     if (
       (error as { reason?: string })?.reason === "STEP_UP_ENABLE_REQUIRES_TOTP"
     ) {
       appStore.showError(t("admin.settings.security.stepUpEnableRequiresTotp"));
-      return;
+      return false;
     }
     appStore.showError(
       extractApiErrorMessage(error, t("admin.settings.failedToSave")),
     );
-  } finally {
-    saving.value = false;
+    return false;
   }
 }
 
@@ -9140,22 +9038,25 @@ async function loadOllamaCloudUsageSettings() {
   } finally {
     ollamaCloudUsageLoading.value = false;
   }
+  // 等表单控件规整完初始值再记录快照。
+  await nextTick();
+  markSettingsClean("ollamaCloudUsage");
 }
 
-async function saveOllamaCloudUsageSettings() {
-  ollamaCloudUsageSaving.value = true;
+async function saveOllamaCloudUsageSettings(): Promise<boolean> {
   try {
     const updated = await adminAPI.providers.updateOllamaCloudUsageSettings({
       ...ollamaCloudUsageForm,
     });
     Object.assign(ollamaCloudUsageForm, updated);
-    appStore.showSuccess(t("admin.settings.ollamaCloudUsage.saved"));
+    await nextTick();
+    markSettingsClean("ollamaCloudUsage");
+    return true;
   } catch (error: unknown) {
     appStore.showError(
       extractApiErrorMessage(error, t("admin.settings.ollamaCloudUsage.saveFailed")),
     );
-  } finally {
-    ollamaCloudUsageSaving.value = false;
+    return false;
   }
 }
 
@@ -9170,17 +9071,21 @@ async function loadOverloadCooldownSettings() {
   } finally {
     overloadCooldownLoading.value = false;
   }
+  // 等表单控件规整完初始值再记录快照。
+  await nextTick();
+  markSettingsClean("overloadCooldown");
 }
 
-async function saveOverloadCooldownSettings() {
-  overloadCooldownSaving.value = true;
+async function saveOverloadCooldownSettings(): Promise<boolean> {
   try {
     const updated = await adminAPI.settings.updateOverloadCooldownSettings({
       enabled: overloadCooldownForm.enabled,
       cooldown_minutes: overloadCooldownForm.cooldown_minutes,
     });
     Object.assign(overloadCooldownForm, updated);
-    appStore.showSuccess(t("admin.settings.overloadCooldown.saved"));
+    await nextTick();
+    markSettingsClean("overloadCooldown");
+    return true;
   } catch (error: unknown) {
     appStore.showError(
       extractApiErrorMessage(
@@ -9188,8 +9093,7 @@ async function saveOverloadCooldownSettings() {
         t("admin.settings.overloadCooldown.saveFailed"),
       ),
     );
-  } finally {
-    overloadCooldownSaving.value = false;
+    return false;
   }
 }
 
@@ -9203,10 +9107,12 @@ async function loadOpenAI403CooldownSettings() {
   } finally {
     openAI403CooldownLoading.value = false;
   }
+  // 等表单控件规整完初始值再记录快照。
+  await nextTick();
+  markSettingsClean("openAI403Cooldown");
 }
 
-async function saveOpenAI403CooldownSettings() {
-  openAI403CooldownSaving.value = true;
+async function saveOpenAI403CooldownSettings(): Promise<boolean> {
   try {
     const updated = await adminAPI.settings.updateOpenAI403CooldownSettings({
       enabled: openAI403CooldownForm.enabled,
@@ -9216,7 +9122,9 @@ async function saveOpenAI403CooldownSettings() {
       threshold_window_minutes: openAI403CooldownForm.threshold_window_minutes,
     });
     Object.assign(openAI403CooldownForm, updated);
-    appStore.showSuccess(t("admin.settings.openAI403Cooldown.saved"));
+    await nextTick();
+    markSettingsClean("openAI403Cooldown");
+    return true;
   } catch (error: unknown) {
     appStore.showError(
       extractApiErrorMessage(
@@ -9224,8 +9132,7 @@ async function saveOpenAI403CooldownSettings() {
         t("admin.settings.openAI403Cooldown.saveFailed"),
       ),
     );
-  } finally {
-    openAI403CooldownSaving.value = false;
+    return false;
   }
 }
 
@@ -9240,10 +9147,12 @@ async function loadPanelRateLimitSettings() {
   } finally {
     panelRateLimitLoading.value = false;
   }
+  // 等表单控件规整完初始值再记录快照。
+  await nextTick();
+  markSettingsClean("panelRateLimit");
 }
 
-async function savePanelRateLimitSettings() {
-  panelRateLimitSaving.value = true;
+async function savePanelRateLimitSettings(): Promise<boolean> {
   try {
     const updated = await adminAPI.settings.updatePanelRateLimitSettings({
       enabled: panelRateLimitForm.enabled,
@@ -9253,7 +9162,9 @@ async function savePanelRateLimitSettings() {
       public_ip_rpm: panelRateLimitForm.public_ip_rpm,
     });
     Object.assign(panelRateLimitForm, updated);
-    appStore.showSuccess(t("admin.settings.panelRateLimit.saved"));
+    await nextTick();
+    markSettingsClean("panelRateLimit");
+    return true;
   } catch (error: unknown) {
     appStore.showError(
       extractApiErrorMessage(
@@ -9261,8 +9172,7 @@ async function savePanelRateLimitSettings() {
         t("admin.settings.panelRateLimit.saveFailed"),
       ),
     );
-  } finally {
-    panelRateLimitSaving.value = false;
+    return false;
   }
 }
 
@@ -9277,17 +9187,21 @@ async function loadRateLimit429CooldownSettings() {
   } finally {
     rateLimit429CooldownLoading.value = false;
   }
+  // 等表单控件规整完初始值再记录快照。
+  await nextTick();
+  markSettingsClean("rateLimit429Cooldown");
 }
 
-async function saveRateLimit429CooldownSettings() {
-  rateLimit429CooldownSaving.value = true;
+async function saveRateLimit429CooldownSettings(): Promise<boolean> {
   try {
     const updated = await adminAPI.settings.updateRateLimit429CooldownSettings({
       enabled: rateLimit429CooldownForm.enabled,
       cooldown_seconds: rateLimit429CooldownForm.cooldown_seconds,
     });
     Object.assign(rateLimit429CooldownForm, updated);
-    appStore.showSuccess(t("admin.settings.rateLimit429Cooldown.saved"));
+    await nextTick();
+    markSettingsClean("rateLimit429Cooldown");
+    return true;
   } catch (error: unknown) {
     appStore.showError(
       extractApiErrorMessage(
@@ -9295,8 +9209,7 @@ async function saveRateLimit429CooldownSettings() {
         t("admin.settings.rateLimit429Cooldown.saveFailed"),
       ),
     );
-  } finally {
-    rateLimit429CooldownSaving.value = false;
+    return false;
   }
 }
 
@@ -9311,10 +9224,12 @@ async function loadStreamTimeoutSettings() {
   } finally {
     streamTimeoutLoading.value = false;
   }
+  // 等表单控件规整完初始值再记录快照。
+  await nextTick();
+  markSettingsClean("streamTimeout");
 }
 
-async function saveStreamTimeoutSettings() {
-  streamTimeoutSaving.value = true;
+async function saveStreamTimeoutSettings(): Promise<boolean> {
   try {
     const updated = await adminAPI.settings.updateStreamTimeoutSettings({
       enabled: streamTimeoutForm.enabled,
@@ -9324,7 +9239,9 @@ async function saveStreamTimeoutSettings() {
       threshold_window_minutes: streamTimeoutForm.threshold_window_minutes,
     });
     Object.assign(streamTimeoutForm, updated);
-    appStore.showSuccess(t("admin.settings.streamTimeout.saved"));
+    await nextTick();
+    markSettingsClean("streamTimeout");
+    return true;
   } catch (error: unknown) {
     appStore.showError(
       extractApiErrorMessage(
@@ -9332,8 +9249,7 @@ async function saveStreamTimeoutSettings() {
         t("admin.settings.streamTimeout.saveFailed"),
       ),
     );
-  } finally {
-    streamTimeoutSaving.value = false;
+    return false;
   }
 }
 
@@ -9352,10 +9268,12 @@ async function loadRectifierSettings() {
   } finally {
     rectifierLoading.value = false;
   }
+  // 等表单控件规整完初始值再记录快照。
+  await nextTick();
+  markSettingsClean("rectifier");
 }
 
-async function saveRectifierSettings() {
-  rectifierSaving.value = true;
+async function saveRectifierSettings(): Promise<boolean> {
   try {
     const updated = await adminAPI.settings.updateRectifierSettings({
       enabled: rectifierForm.enabled,
@@ -9370,13 +9288,14 @@ async function saveRectifierSettings() {
     if (!Array.isArray(rectifierForm.apikey_signature_patterns)) {
       rectifierForm.apikey_signature_patterns = [];
     }
-    appStore.showSuccess(t("admin.settings.rectifier.saved"));
+    await nextTick();
+    markSettingsClean("rectifier");
+    return true;
   } catch (error: unknown) {
     appStore.showError(
       extractApiErrorMessage(error, t("admin.settings.rectifier.saveFailed")),
     );
-  } finally {
-    rectifierSaving.value = false;
+    return false;
   }
 }
 
@@ -9466,6 +9385,9 @@ async function loadBetaPolicySettings() {
   } finally {
     betaPolicyLoading.value = false;
   }
+  // 等表单控件规整完初始值再记录快照。
+  await nextTick();
+  markSettingsClean("betaPolicy");
 }
 
 // ==================== OpenAI Fast/Flex Policy ====================
@@ -9543,8 +9465,7 @@ function removeOpenAIFastPolicyModelPattern(
   rule.model_whitelist?.splice(idx, 1);
 }
 
-async function saveBetaPolicySettings() {
-  betaPolicySaving.value = true;
+async function saveBetaPolicySettings(): Promise<boolean> {
   try {
     // Clean up empty patterns before saving
     const cleanedRules = betaPolicyForm.rules.map((rule) => {
@@ -9569,13 +9490,14 @@ async function saveBetaPolicySettings() {
       rules: cleanedRules,
     });
     betaPolicyForm.rules = updated.rules;
-    appStore.showSuccess(t("admin.settings.betaPolicy.saved"));
+    await nextTick();
+    markSettingsClean("betaPolicy");
+    return true;
   } catch (error: unknown) {
     appStore.showError(
       extractApiErrorMessage(error, t("admin.settings.betaPolicy.saveFailed")),
     );
-  } finally {
-    betaPolicySaving.value = false;
+    return false;
   }
 }
 

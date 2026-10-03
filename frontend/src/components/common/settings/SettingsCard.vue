@@ -18,18 +18,12 @@
     <div class="space-y-6 p-6">
       <slot />
     </div>
-    <footer
-      v-if="$slots.footer"
-      class="flex flex-wrap items-center justify-end gap-2 border-t border-primary-900/10 px-6 py-4 dark:border-dark-600"
-    >
-      <slot name="footer" />
-    </footer>
   </section>
 </template>
 
 <script setup lang="ts">
-// 整页设置的一组设置项放在一张卡片里：头部是标题和说明，内容区按 SettingsSection 分区，
-// 单独调用接口保存的卡片把保存按钮放进 footer 插槽，显示在卡片底部右侧。
+// 整页设置的一组设置项放在一张卡片里：头部是标题、说明和 actions 插槽，内容区按 SettingsSection 分区。
+// 保存统一由页面底部的吸底保存条完成，卡片里只放刷新、测试这类操作按钮。
 defineProps<{
   title: string
   description?: string

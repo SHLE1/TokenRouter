@@ -205,19 +205,6 @@
         </div>
       </SettingsSection>
     </template>
-
-    <template v-if="!loading" #footer>
-      <button type="button" class="btn btn-primary btn-sm h-9" :disabled="saving" @click="save">
-        <Icon
-          v-if="saving"
-          name="loader"
-          size="sm"
-          :animate-on-hover="false"
-          class="mr-1 h-4 w-4 animate-spin"
-        />
-        {{ saving ? t('common.saving') : t('common.save') }}
-      </button>
-    </template>
   </SettingsCard>
 </template>
 
@@ -227,7 +214,7 @@ import ProviderModelMappingEditor from '@/components/provider/ProviderModelMappi
 import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import { normalizeLegacyOpenAIExtra, normalizeOpenAICompactMode } from '@/utils/openaiLegacyConfiguration'
 import OpenAICompactionToggle from '@/components/provider/OpenAICompactionToggle.vue'
-import { computed, onMounted, reactive, ref, useId } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api'
 import type { OpenAIOAuthImportDefaults } from '@/api/admin/settings'
@@ -246,7 +233,8 @@ import SettingsCard from '@/components/common/settings/SettingsCard.vue'
 import SettingsSection from '@/components/common/settings/SettingsSection.vue'
 import SettingsSubpanel from '@/components/common/settings/SettingsSubpanel.vue'
 import TLSFingerprintFields from '@/components/provider/form/TLSFingerprintFields.vue'
-import Icon from '@/components/icons/Icon.vue'
+import { useDirtyTracker } from '@/composables/useDirtyTracker'
+import { useSettingsSaveTarget } from '@/composables/useSettingsSaveRegistry'
 import { useAppStore } from '@/stores'
 import {
   applyCodexImageToolMode,
@@ -271,7 +259,6 @@ const appStore = useAppStore()
 const uid = useId()
 
 const loading = ref(true)
-const saving = ref(false)
 const defaultAllowedModels = ref<string[]>([])
 const defaultModelMappings = ref<ModelMappingRow[]>([])
 const credentialsJson = ref('{}')
@@ -544,6 +531,9 @@ const load = async () => {
   } finally {
     loading.value = false
   }
+  // 等子组件规整完初始值再记录快照。
+  await nextTick()
+  markClean()
 }
 
 const loadTLSFingerprintProfiles = async () => {
@@ -591,8 +581,8 @@ const buildProviderDefaults = (): OpenAIOAuthImportDefaults['provider'] => {
   return Object.keys(provider).length > 0 ? provider : undefined
 }
 
-const save = async () => {
-  saving.value = true
+// save 提交默认值，返回是否保存成功；由吸底保存条统一调用。
+const save = async (): Promise<boolean> => {
   try {
     const credentials = parseJsonObject(
       credentialsJson.value,
@@ -607,8 +597,8 @@ const save = async () => {
     }
     applyCodexImageToolMode(extra, codexImageToolMode.value)
 
-    if (!rejectForbiddenFields(credentials, 'credentials', forbiddenCredentialFields)) return
-    if (!rejectForbiddenFields(extra, 'extra', forbiddenExtraFields)) return
+    if (!rejectForbiddenFields(credentials, 'credentials', forbiddenCredentialFields)) return false
+    if (!rejectForbiddenFields(extra, 'extra', forbiddenExtraFields)) return false
 
     if (openaiPassthrough.value) {
       extra.openai_passthrough = true
@@ -670,13 +660,40 @@ const save = async () => {
       extra: Object.keys(extra).length > 0 ? extra : undefined
     })
     hydrate(updated)
-    appStore.showSuccess(t('admin.providers.openAIOAuthImportDefaultsSaved'))
+    await nextTick()
+    markClean()
+    return true
   } catch (error: any) {
     appStore.showError(error?.message || t('admin.providers.openAIOAuthImportDefaultsSaveFailed'))
-  } finally {
-    saving.value = false
+    return false
   }
 }
+
+// 吸底保存条比较这些可编辑状态和上次加载或保存时的快照。
+const { dirty, markClean } = useDirtyTracker({
+  defaults: () => ({
+    form,
+    defaultAllowedModels: defaultAllowedModels.value,
+    defaultModelMappings: defaultModelMappings.value,
+    credentialsJson: credentialsJson.value,
+    extraJson: extraJson.value,
+    openaiPassthrough: openaiPassthrough.value,
+    codexImageToolMode: codexImageToolMode.value,
+    openAIOAuthClientPolicy: openAIOAuthClientPolicy.value,
+    codexCLIOnlyAllowClaudeCode: codexCLIOnlyAllowClaudeCode.value,
+    wsMode: wsMode.value,
+    compactMode: compactMode.value,
+    nativeCompactV2Mode: nativeCompactV2Mode.value,
+    tlsFingerprintEnabled: tlsFingerprintEnabled.value,
+    tlsFingerprintProfileId: tlsFingerprintProfileId.value,
+    tlsFingerprintRouterId: tlsFingerprintRouterId.value,
+    autoPause5hThreshold: autoPause5hThreshold.value,
+    autoPause7dThreshold: autoPause7dThreshold.value,
+    autoPause5hDisabled: autoPause5hDisabled.value,
+    autoPause7dDisabled: autoPause7dDisabled.value,
+  }),
+})
+useSettingsSaveTarget('openaiOAuthImportDefaults', { dirty, save })
 
 onMounted(() => {
   void load()

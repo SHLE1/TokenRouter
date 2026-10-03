@@ -20,9 +20,12 @@ export function useDirtyTracker<K extends string>(sources: Record<K, () => unkno
     }
   }
 
-  const dirty = computed(() =>
-    keys.some((key) => baselines[key] !== undefined && baselines[key] !== serialize(key)),
-  )
+  // 某个数据源是否有未保存的修改，还没记录快照时返回 false。
+  function isDirty(key: K) {
+    return baselines[key] !== undefined && baselines[key] !== serialize(key)
+  }
 
-  return { dirty, markClean }
+  const dirty = computed(() => keys.some(isDirty))
+
+  return { dirty, isDirty, markClean }
 }

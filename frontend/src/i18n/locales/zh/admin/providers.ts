@@ -81,7 +81,6 @@ export default {
       openAIOAuthImportDefaultsExtraJson: 'Extra 附加 JSON',
       openAIOAuthImportDefaultsLoadFailed: '加载导入默认值失败',
       openAIOAuthImportDefaultsSaveFailed: '保存导入默认值失败',
-      openAIOAuthImportDefaultsSaved: '导入默认值已保存',
       openAIOAuthImportDefaultsJsonObjectRequired: '{label} 必须是 JSON 对象',
       openAIOAuthImportDefaultsInvalidNumber: '{label} 必须是非负数字',
       openAIOAuthImportDefaultsInvalidPercent: '{label} 必须在 0 到 100 之间',

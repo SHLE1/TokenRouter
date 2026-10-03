@@ -142,25 +142,12 @@
         </SettingRow>
       </SettingsSection>
     </template>
-
-    <template v-if="state" #footer>
-      <button type="button" class="btn btn-primary btn-sm h-9" :disabled="saving" @click="saveSettings">
-        <Icon
-          v-if="saving"
-          name="loader"
-          size="sm"
-          :animate-on-hover="false"
-          class="mr-1 h-4 w-4 animate-spin"
-        />
-        {{ t("admin.settings.preAggregation.save") }}
-      </button>
-    </template>
   </SettingsCard>
 </template>
 
 <script setup lang="ts">
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
-import { computed, defineComponent, h, onMounted, reactive, ref, useId } from "vue";
+import { computed, defineComponent, h, nextTick, onMounted, reactive, ref, useId } from "vue";
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";
 import type { PreAggregationSettingsResponse } from "@/api/admin/settings";
@@ -170,6 +157,8 @@ import SettingsCard from "@/components/common/settings/SettingsCard.vue";
 import SettingsNotice from "@/components/common/settings/SettingsNotice.vue";
 import SettingsSection from "@/components/common/settings/SettingsSection.vue";
 import Icon from "@/components/icons/Icon.vue";
+import { useDirtyTracker } from "@/composables/useDirtyTracker";
+import { useSettingsSaveTarget } from "@/composables/useSettingsSaveRegistry";
 import { useAppStore } from "@/stores";
 import { extractApiErrorMessage } from "@/utils/apiError";
 
@@ -197,6 +186,10 @@ const form = reactive({
   ops: { enabled: false },
 });
 
+// 吸底保存条比较开关和间隔与上次加载或保存时的快照。
+const { dirty, markClean } = useDirtyTracker({ form: () => form });
+useSettingsSaveTarget("preAggregation", { dirty, save: saveSettings });
+
 const canBackfill = computed(() => Boolean(
   state.value?.availability.manual_backfill_available && form.usage.enabled,
 ));
@@ -209,16 +202,19 @@ const usageCoverage = computed(() => {
   return `${formatDate(status.coverage_start)} - ${formatDate(status.live_watermark)}`;
 });
 
+// 刷新运行状态时，表单里还没保存的修改保持不变；表单与服务端一致时才同步开关和间隔。
 function applyResponse(response: PreAggregationSettingsResponse) {
   state.value = response;
+  backfillDays.value = Math.min(Math.max(backfillDays.value, 1), response.availability.manual_backfill_max_days);
+  if (dirty.value) return;
   form.usage.enabled = response.settings.usage.enabled;
   form.usage.interval_seconds = response.settings.usage.interval_seconds;
   form.ops.enabled = response.settings.ops.enabled;
-  backfillDays.value = Math.min(Math.max(backfillDays.value, 1), response.availability.manual_backfill_max_days);
 }
 
 async function loadSettings() {
   loading.value = true;
+  const wasDirty = dirty.value;
   try {
     applyResponse(await adminAPI.settings.getPreAggregationSettings());
   } catch (error) {
@@ -226,9 +222,14 @@ async function loadSettings() {
   } finally {
     loading.value = false;
   }
+  if (!wasDirty) {
+    await nextTick();
+    markClean();
+  }
 }
 
-async function saveSettings() {
+// saveSettings 提交开关和间隔，返回是否保存成功；由吸底保存条统一调用。
+async function saveSettings(): Promise<boolean> {
   saving.value = true;
   try {
     const response = await adminAPI.settings.updatePreAggregationSettings({
@@ -238,10 +239,15 @@ async function saveSettings() {
       },
       ops: { enabled: form.ops.enabled },
     });
+    // 先清掉修改状态，applyResponse 才会用服务端返回的值同步表单。
+    markClean();
     applyResponse(response);
-    appStore.showSuccess(t("admin.settings.preAggregation.saved"));
+    await nextTick();
+    markClean();
+    return true;
   } catch (error) {
     appStore.showError(extractApiErrorMessage(error, t("admin.settings.preAggregation.saveFailed")));
+    return false;
   } finally {
     saving.value = false;
   }

@@ -187,17 +187,6 @@
         </div>
       </template>
     </div>
-
-    <template #footer>
-      <button
-        type="button"
-        class="btn btn-primary btn-sm h-9"
-        :disabled="loadingTemplate || saving || !canSave"
-        @click="saveTemplate"
-      >
-        {{ saving ? t("admin.settings.emailTemplates.saving") : t("admin.settings.emailTemplates.save") }}
-      </button>
-    </template>
   </SettingsCard>
 </template>
 
@@ -212,6 +201,8 @@ import type {
 } from "@/api/admin/settings";
 import Select from "@/components/common/Select.vue";
 import SettingsCard from "@/components/common/settings/SettingsCard.vue";
+import { useDirtyTracker } from "@/composables/useDirtyTracker";
+import { useSettingsSaveTarget } from "@/composables/useSettingsSaveRegistry";
 import { useAppStore } from "@/stores";
 import { extractApiErrorMessage } from "@/utils/apiError";
 
@@ -292,7 +283,6 @@ const fallbackPlaceholders = [
 
 const loadingList = ref(true);
 const loadingTemplate = ref(false);
-const saving = ref(false);
 const previewing = ref(false);
 const restoring = ref(false);
 const eventOptions = ref<EmailTemplateOption[]>([]);
@@ -598,6 +588,8 @@ function applyTemplate(template: {
   html.value = template.html;
   isCustomTemplate.value = template.is_custom === true;
   placeholders.value = template.placeholders || [];
+  // 模板内容和服务端一致，记录为未修改。
+  markClean();
 }
 
 async function loadTemplate() {
@@ -637,12 +629,12 @@ async function loadTemplateList() {
   }
 }
 
-async function saveTemplate() {
+// saveTemplate 保存当前事件和语言的模板，返回是否保存成功；由吸底保存条统一调用。
+async function saveTemplate(): Promise<boolean> {
   if (!canSave.value) {
     appStore.showError(t("admin.settings.emailTemplates.validationRequired"));
-    return;
+    return false;
   }
-  saving.value = true;
   try {
     const template = await adminAPI.settings.updateEmailTemplate(
       selectedEvent.value,
@@ -654,11 +646,10 @@ async function saveTemplate() {
     );
     applyTemplate(template);
     await refreshPreview();
-    appStore.showSuccess(t("admin.settings.emailTemplates.saveSuccess"));
+    return true;
   } catch (err: unknown) {
     appStore.showError(extractApiErrorMessage(err, t("common.error")));
-  } finally {
-    saving.value = false;
+    return false;
   }
 }
 
@@ -713,6 +704,12 @@ async function copyPlaceholder(placeholder: string) {
     appStore.showError(t("common.error"));
   }
 }
+
+// 吸底保存条比较当前模板的主题和 HTML 与上次载入或保存时的快照。
+const { dirty, markClean } = useDirtyTracker({
+  template: () => ({ subject: subject.value, html: html.value }),
+});
+useSettingsSaveTarget("emailTemplate", { dirty, save: saveTemplate });
 
 watch([selectedEvent, selectedLocale], ([eventValue, localeValue], [oldEvent, oldLocale]) => {
   if (initializingSelection.value) return;

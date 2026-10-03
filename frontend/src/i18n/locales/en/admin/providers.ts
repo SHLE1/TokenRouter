@@ -81,7 +81,6 @@ export default {
       openAIOAuthImportDefaultsExtraJson: 'Extra JSON',
       openAIOAuthImportDefaultsLoadFailed: 'Failed to load import defaults',
       openAIOAuthImportDefaultsSaveFailed: 'Failed to save import defaults',
-      openAIOAuthImportDefaultsSaved: 'Import defaults saved',
       openAIOAuthImportDefaultsJsonObjectRequired: '{label} must be a JSON object',
       openAIOAuthImportDefaultsInvalidNumber: '{label} must be a non-negative number',
       openAIOAuthImportDefaultsInvalidPercent: '{label} must be between 0 and 100',

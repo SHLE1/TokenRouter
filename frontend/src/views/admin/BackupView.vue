@@ -5,6 +5,11 @@
         :title="t('admin.backup.storage.title')"
         :description="t('admin.backup.storage.description')"
       >
+        <template #actions>
+          <button type="button" class="btn btn-secondary btn-sm h-9" :disabled="testingStorage" @click="testStorage">
+            {{ testingStorage ? t('common.loading') : t('admin.backup.storage.testConnection') }}
+          </button>
+        </template>
         <SettingsSection>
           <SettingsSegmented
             v-model="storageForm.type"
@@ -86,14 +91,6 @@
             </div>
           </template>
         </SettingsSection>
-        <template #footer>
-          <button type="button" class="btn btn-secondary btn-sm h-9" :disabled="testingStorage" @click="testStorage">
-            {{ testingStorage ? t('common.loading') : t('admin.backup.storage.testConnection') }}
-          </button>
-          <button type="button" class="btn btn-primary btn-sm h-9" :disabled="savingStorage" @click="saveStorageConfig">
-            {{ savingStorage ? t('common.loading') : t('common.save') }}
-          </button>
-        </template>
       </SettingsCard>
 
       <!-- 备份内容配置 -->
@@ -114,11 +111,6 @@
             {{ t('admin.backup.content.excludedCount', { count: contentExcludedCount }) }}
           </p>
         </SettingsSection>
-        <template #footer>
-          <button type="button" class="btn btn-primary btn-sm h-9" :disabled="savingContent" @click="saveContentConfig">
-            {{ savingContent ? t('common.loading') : t('common.save') }}
-          </button>
-        </template>
       </SettingsCard>
 
       <!-- 定时备份配置 -->
@@ -181,11 +173,6 @@
             </SettingsSubpanel>
           </Collapse>
         </SettingsSection>
-        <template #footer>
-          <button type="button" class="btn btn-primary btn-sm h-9" :disabled="savingSchedule" @click="saveSchedule">
-            {{ savingSchedule ? t('common.loading') : t('common.save') }}
-          </button>
-        </template>
       </SettingsCard>
 
       <!-- 备份记录 -->
@@ -425,7 +412,7 @@
 
 <script setup lang="ts">
 import MotionTransition from '@/components/common/MotionTransition.vue'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI } from '@/api'
 import { useAppStore } from '@/stores'
@@ -440,6 +427,8 @@ import type {
 import { useStepUp, isStepUpBlocked, isStepUpCancelled, stepUpBlockReason } from '@/composables/useStepUp'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { useDirtyTracker } from '@/composables/useDirtyTracker'
+import { useSettingsSaveTarget } from '@/composables/useSettingsSaveRegistry'
 import Collapse from '@/components/common/Collapse.vue'
 import SettingRow from '@/components/common/settings/SettingRow.vue'
 import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
@@ -498,7 +487,6 @@ const s3Form = ref<BackupS3Config>({
   upload_mode: 'spooled_put',
 })
 const s3SecretConfigured = ref(false)
-const savingStorage = ref(false)
 const testingStorage = ref(false)
 
 // 备份内容配置
@@ -509,7 +497,6 @@ const contentForm = ref<BackupContentConfig>({
 	include_runtime_data: false,
 	excluded_table_data: [],
 })
-const savingContent = ref(false)
 type BackupContentOptionKey = keyof Pick<BackupContentConfig, 'include_usage_records' | 'include_ops_logs' | 'include_audit_logs' | 'include_runtime_data'>
 const contentTablePatternCounts: Record<BackupContentOptionKey, number> = {
   include_usage_records: 10,
@@ -552,7 +539,6 @@ const scheduleForm = ref<BackupScheduleConfig>({
   retain_days: 14,
   retain_count: 10,
 })
-const savingSchedule = ref(false)
 
 // 备份记录
 const backups = ref<BackupRecord[]>([])
@@ -717,20 +703,21 @@ async function loadStorageConfig() {
   } catch (error) {
     appStore.showError((error as { message?: string })?.message || t('errors.networkError'))
   }
+  await nextTick()
+  markClean('storage')
 }
 
-async function saveStorageConfig() {
-  savingStorage.value = true
+// 保存函数返回是否保存成功，由系统设置页的吸底保存条统一调用。
+async function saveStorageConfig(): Promise<boolean> {
   try {
     await backupStepUp.run(() => adminAPI.backup.updateStorageConfig(buildStoragePayload()))
-    appStore.showSuccess(t('admin.backup.storage.saved'))
     await loadStorageConfig()
+    return true
   } catch (error) {
-    if (isStepUpCancelled(error)) return
-    if (reportStepUpBlocked(error)) return
+    if (isStepUpCancelled(error)) return false
+    if (reportStepUpBlocked(error)) return false
     appStore.showError((error as { message?: string })?.message || t('errors.networkError'))
-  } finally {
-    savingStorage.value = false
+    return false
   }
 }
 
@@ -767,18 +754,20 @@ async function loadContentConfig() {
   } catch (error) {
     appStore.showError((error as { message?: string })?.message || t('errors.networkError'))
   }
+  await nextTick()
+  markClean('content')
 }
 
-async function saveContentConfig() {
-  savingContent.value = true
+async function saveContentConfig(): Promise<boolean> {
   try {
     const cfg = await adminAPI.backup.updateContentConfig(normalizeContentConfig(contentForm.value))
     contentForm.value = normalizeContentConfig(cfg)
-    appStore.showSuccess(t('admin.backup.content.saved'))
+    await nextTick()
+    markClean('content')
+    return true
   } catch (error) {
     appStore.showError((error as { message?: string })?.message || t('errors.networkError'))
-  } finally {
-    savingContent.value = false
+    return false
   }
 }
 
@@ -794,17 +783,18 @@ async function loadSchedule() {
   } catch (error) {
     appStore.showError((error as { message?: string })?.message || t('errors.networkError'))
   }
+  await nextTick()
+  markClean('schedule')
 }
 
-async function saveSchedule() {
-  savingSchedule.value = true
+async function saveSchedule(): Promise<boolean> {
   try {
     await adminAPI.backup.updateSchedule(scheduleForm.value)
-    appStore.showSuccess(t('admin.backup.schedule.saved'))
+    markClean('schedule')
+    return true
   } catch (error) {
     appStore.showError((error as { message?: string })?.message || t('errors.networkError'))
-  } finally {
-    savingSchedule.value = false
+    return false
   }
 }
 
@@ -959,6 +949,16 @@ function formatDate(value?: string): string {
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleString()
 }
+
+// 三块配置各自调用接口保存，分别登记到系统设置页的吸底保存条。
+const { isDirty, markClean } = useDirtyTracker({
+  storage: () => ({ type: storageForm.value.type, s3: s3Form.value }),
+  content: () => contentForm.value,
+  schedule: () => scheduleForm.value,
+})
+useSettingsSaveTarget('backupStorage', { dirty: computed(() => isDirty('storage')), save: saveStorageConfig })
+useSettingsSaveTarget('backupContent', { dirty: computed(() => isDirty('content')), save: saveContentConfig })
+useSettingsSaveTarget('backupSchedule', { dirty: computed(() => isDirty('schedule')), save: saveSchedule })
 
 onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)

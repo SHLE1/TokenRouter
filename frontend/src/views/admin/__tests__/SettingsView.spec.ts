@@ -346,7 +346,6 @@ vi.mock("vue-i18n", async () => {
     "admin.providers.openAIOAuthImportDefaultsUnset": "不设置",
     "admin.providers.openAIOAuthImportDefaultsCredentialsJson": "Credentials 附加 JSON",
     "admin.providers.openAIOAuthImportDefaultsExtraJson": "Extra 附加 JSON",
-    "admin.providers.openAIOAuthImportDefaultsSaved": "导入默认值已保存",
     "admin.providers.openai.oauthPassthrough": "自动透传（仅替换认证）",
     "admin.providers.openai.oauthPassthroughDesc": "开启后，该 OpenAI 提供商将自动透传请求与响应，仅替换认证并保留计费/并发/审计及必要安全过滤；如遇兼容性问题可随时关闭回滚。",
     "admin.providers.openai.wsMode": "WS mode",
@@ -742,6 +741,13 @@ async function openSecurityTab(wrapper: ReturnType<typeof mountView>) {
   await flushPromises();
 }
 
+// 通过吸底保存条保存：先确认保存条已出现，再提交表单。
+async function saveFromSaveBar(wrapper: ReturnType<typeof mountView>) {
+  expect(wrapper.find('[data-testid="settings-save-bar"]').exists()).toBe(true);
+  await wrapper.find("form").trigger("submit.prevent");
+  await flushPromises();
+}
+
 async function openGatewayTab(wrapper: ReturnType<typeof mountView>) {
   const gatewayTabButton = wrapper
     .findAll("button")
@@ -985,10 +991,7 @@ describe("admin SettingsView payment visible method controls", () => {
     expect(userRpmInput.exists()).toBe(true);
     await userRpmInput.setValue("120");
 
-    const saveButton = wrapper.find('[data-testid="panel-rate-limit-save"]');
-    expect(saveButton.exists()).toBe(true);
-    await saveButton.trigger("click");
-    await flushPromises();
+    await saveFromSaveBar(wrapper);
 
     expect(updatePanelRateLimitSettings).toHaveBeenCalledWith({
       enabled: true,
@@ -997,6 +1000,8 @@ describe("admin SettingsView payment visible method controls", () => {
       exempt_admin: true,
       public_ip_rpm: 300,
     });
+    // 只修改了面板限流时，全局设置不重复提交。
+    expect(updateSettings).not.toHaveBeenCalled();
     expect(showSuccess).toHaveBeenCalled();
   });
 
@@ -2106,8 +2111,7 @@ describe("admin SettingsView payment visible method controls", () => {
     await card.get('[data-testid="ollama-cloud-usage-global-enabled"]').setValue(true);
     await card.get('[data-testid="ollama-cloud-usage-global-debounce"]').setValue(3);
     await card.get('[data-testid="ollama-cloud-usage-global-interval"]').setValue(90);
-    await card.get('[data-testid="ollama-cloud-usage-global-save"]').trigger("click");
-    await flushPromises();
+    await saveFromSaveBar(wrapper);
 
     expect(updateOllamaCloudUsageSettings).toHaveBeenCalledWith({
       enabled: true,
@@ -2157,13 +2161,7 @@ describe("admin SettingsView payment visible method controls", () => {
     expect((profileSelect.element as HTMLSelectElement).value).toBe("7");
     await profileSelect.setValue("9");
 
-    const defaultsCard = wrapper.get("#openai-oauth-import-defaults");
-    const saveButton = defaultsCard
-      .findAll("button")
-      .find((node) => node.text() === "common.save");
-    expect(saveButton).toBeDefined();
-    await saveButton?.trigger("click");
-    await flushPromises();
+    await saveFromSaveBar(wrapper);
 
     expect(updateOpenAIOAuthImportDefaults).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -2188,13 +2186,7 @@ describe("admin SettingsView payment visible method controls", () => {
     expect((mode.element as HTMLInputElement).checked).toBe(false);
     await mode.setValue(true);
 
-    const defaultsCard = wrapper.get("#openai-oauth-import-defaults");
-    const saveButton = defaultsCard
-      .findAll("button")
-      .find((node) => node.text() === "common.save");
-    expect(saveButton).toBeDefined();
-    await saveButton?.trigger("click");
-    await flushPromises();
+    await saveFromSaveBar(wrapper);
 
     expect(updateOpenAIOAuthImportDefaults).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -2223,13 +2215,7 @@ describe("admin SettingsView payment visible method controls", () => {
 
     await imagePolicy.setValue("enabled");
 
-    const defaultsCard = wrapper.get("#openai-oauth-import-defaults");
-    const saveButton = defaultsCard
-      .findAll("button")
-      .find((node) => node.text() === "common.save");
-    expect(saveButton).toBeDefined();
-    await saveButton?.trigger("click");
-    await flushPromises();
+    await saveFromSaveBar(wrapper);
 
     const extra = updateOpenAIOAuthImportDefaults.mock.calls[0]?.[0]?.extra;
     expect(extra?.codex_image_generation_bridge).toBe(true);
@@ -2280,13 +2266,7 @@ describe("admin SettingsView payment visible method controls", () => {
     );
     await sevenDayDisabledToggle.setValue(true);
 
-    const defaultsCard = wrapper.get("#openai-oauth-import-defaults");
-    const saveButton = defaultsCard
-      .findAll("button")
-      .find((node) => node.text() === "common.save");
-    expect(saveButton).toBeDefined();
-    await saveButton?.trigger("click");
-    await flushPromises();
+    await saveFromSaveBar(wrapper);
 
     expect(updateOpenAIOAuthImportDefaults).toHaveBeenCalledWith(
       expect.objectContaining({

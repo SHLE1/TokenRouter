@@ -95,12 +95,10 @@ backup: {
         testConnection: 'Test Storage',
         testSuccess: 'Storage test successful',
         testFailed: 'Storage test failed',
-        saved: 'Backup storage configuration saved'
       },
       content: {
         title: 'Backup Content',
         description: 'Core business data is always backed up. Optionally include historical data that can grow quickly. Unchecked tables keep schema only and skip row data.',
-        saved: 'Backup content configuration saved',
         excludedCount: 'Data from {count} table or partition patterns will be skipped.',
         usageRecords: {
           title: 'Usage and Billing Records',
@@ -152,7 +150,6 @@ backup: {
         retainDaysHint: 'Backup files auto-delete after this many days, 0 = never expire',
         retainCount: 'Max Retain Count',
         retainCountHint: 'Maximum number of backups to keep, 0 = unlimited',
-        saved: 'Schedule configuration saved'
       },
       operations: {
         title: 'Backup Records',
