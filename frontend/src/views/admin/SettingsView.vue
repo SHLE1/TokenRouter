@@ -2520,27 +2520,19 @@
 
         <!-- Tab: Users -->
         <div v-show="activeTab === 'users'" v-content-reveal="activeTab === 'users'" class="space-y-4">
-          <!-- Default Settings -->
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.defaults.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.defaults.description") }}
-              </p>
-            </div>
-            <div class="space-y-6 p-6">
-              <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <!-- 新用户默认值 -->
+          <SettingsCard
+            :title="t('admin.settings.defaults.title')"
+            :description="t('admin.settings.defaults.description')"
+          >
+            <SettingsSection>
+              <div class="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
+                  <label for="default-balance" class="input-label">
                     {{ t("admin.settings.defaults.defaultBalance") }}
                   </label>
                   <input
+                    id="default-balance"
                     v-model.number="form.default_balance"
                     type="number"
                     step="0.01"
@@ -2548,34 +2540,28 @@
                     class="input"
                     placeholder="0.00"
                   />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.defaults.defaultBalanceHint") }}
-                  </p>
+                  <p class="input-hint">{{ t("admin.settings.defaults.defaultBalanceHint") }}</p>
                 </div>
                 <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
+                  <label for="default-concurrency" class="input-label">
                     {{ t("admin.settings.defaults.defaultConcurrency") }}
                   </label>
                   <input
+                    id="default-concurrency"
                     v-model.number="form.default_concurrency"
                     type="number"
                     min="1"
                     class="input"
                     placeholder="1"
                   />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.defaults.defaultConcurrencyHint") }}
-                  </p>
+                  <p class="input-hint">{{ t("admin.settings.defaults.defaultConcurrencyHint") }}</p>
                 </div>
                 <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
+                  <label for="default-user-rpm-limit" class="input-label">
                     {{ t("admin.settings.defaults.defaultUserRpmLimit") }}
                   </label>
                   <input
+                    id="default-user-rpm-limit"
                     v-model.number="form.default_user_rpm_limit"
                     type="number"
                     min="0"
@@ -2584,17 +2570,14 @@
                     class="input"
                     placeholder="0"
                   />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.defaults.defaultUserRpmLimitHint") }}
-                  </p>
+                  <p class="input-hint">{{ t("admin.settings.defaults.defaultUserRpmLimitHint") }}</p>
                 </div>
                 <div>
-                  <label
-                    class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >
+                  <label for="default-user-api-key-limit" class="input-label">
                     {{ t("admin.settings.defaults.defaultUserApiKeyLimit") }}
                   </label>
                   <input
+                    id="default-user-api-key-limit"
                     v-model.number="form.default_user_api_key_limit"
                     type="number"
                     min="0"
@@ -2603,14 +2586,13 @@
                     data-test="default-user-api-key-limit"
                     placeholder="100"
                   />
-                  <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.defaults.defaultUserApiKeyLimitHint") }}
-                  </p>
+                  <p class="input-hint">{{ t("admin.settings.defaults.defaultUserApiKeyLimitHint") }}</p>
                 </div>
               </div>
+            </SettingsSection>
 
+            <SettingsSection>
               <RuleListEditor
-                class="border-t border-gray-100 pt-4 dark:border-dark-700"
                 :items="form.default_subscriptions"
                 :title="t('admin.settings.defaults.defaultSubscriptions')"
                 :hint="t('admin.settings.defaults.defaultSubscriptionsHint')"
@@ -2625,85 +2607,50 @@
                   <Select
                     v-model="item.plan_id"
                     :aria-label="t('admin.settings.defaults.subscriptionGroup')"
-                  :options="defaultSubscriptionPlanOptions"
-                    :placeholder="
-                      t('admin.settings.defaults.subscriptionGroup')
-                    "
+                    :options="defaultSubscriptionPlanOptions"
+                    :placeholder="t('admin.settings.defaults.subscriptionGroup')"
                   />
                 </template>
               </RuleListEditor>
-            </div>
-          </div>
+            </SettingsSection>
+          </SettingsCard>
 
-          <div class="card">
-            <div
-              class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
-            >
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t("admin.settings.authSourceDefaults.title") }}
-              </h2>
-              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ t("admin.settings.authSourceDefaults.description") }}
-              </p>
-            </div>
-            <div class="space-y-6 p-6">
-              <div
-                class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
-              >
-                <div>
-                  <label class="font-medium text-gray-900 dark:text-white">
-                    {{ t("admin.settings.authSourceDefaults.requireEmailLabel") }}
-                  </label>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    {{ t("admin.settings.authSourceDefaults.requireEmailHint") }}
-                  </p>
-                </div>
-                <Toggle v-model="form.force_email_on_third_party_signup" />
-              </div>
+          <!-- 按认证来源发放的默认值 -->
+          <SettingsCard
+            :title="t('admin.settings.authSourceDefaults.title')"
+            :description="t('admin.settings.authSourceDefaults.description')"
+          >
+            <SettingsSection>
+              <SettingToggleRow
+                id="force-email-on-third-party-signup"
+                v-model="form.force_email_on_third_party_signup"
+                :label="t('admin.settings.authSourceDefaults.requireEmailLabel')"
+                :hint="t('admin.settings.authSourceDefaults.requireEmailHint')"
+              />
+            </SettingsSection>
 
-              <div class="space-y-4">
-                <div
-                  v-for="authSource in authSourceDefaultsMeta"
-                  :key="authSource.source"
-                  class="rounded-surface border border-gray-200 p-4 dark:border-dark-700"
-                >
-                  <div class="flex items-center justify-between gap-4">
-                    <div>
-                      <div class="font-medium text-gray-900 dark:text-white">
-                        {{ authSource.title }}
-                      </div>
-                      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {{ authSource.description }}
-                      </p>
-                    </div>
-                    <Toggle
-                      v-model="
-                        authSourceDefaults[authSource.source].grant_on_signup
-                      "
-                      :data-testid="`auth-source-${authSource.source}-enabled`"
-                    />
-                  </div>
-
-                  <div
-                    v-if="authSourceDefaults[authSource.source].grant_on_signup"
-                    :data-testid="`auth-source-${authSource.source}-panel`"
-                    class="mt-4 space-y-4 border-t border-gray-100 pt-4 dark:border-dark-700"
-                  >
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
+            <SettingsSection>
+              <template v-for="authSource in authSourceDefaultsMeta" :key="authSource.source">
+                <SettingToggleRow
+                  :id="`auth-source-${authSource.source}-grant-on-signup`"
+                  v-model="authSourceDefaults[authSource.source].grant_on_signup"
+                  :label="authSource.title"
+                  :hint="authSource.description"
+                  :testid="`auth-source-${authSource.source}-enabled`"
+                />
+                <Collapse :open="authSourceDefaults[authSource.source].grant_on_signup" unmount-on-hide>
+                  <SettingsSubpanel :data-testid="`auth-source-${authSource.source}-panel`">
+                    <p class="input-hint mt-0">
                       {{ t("admin.settings.authSourceDefaults.enabledHint") }}
                     </p>
-
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div class="grid gap-4 md:grid-cols-2">
                       <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
+                        <label :for="`auth-source-${authSource.source}-balance`" class="input-label">
                           {{ t("admin.settings.defaults.defaultBalance") }}
                         </label>
                         <input
-                          v-model.number="
-                            authSourceDefaults[authSource.source].balance
-                          "
+                          :id="`auth-source-${authSource.source}-balance`"
+                          v-model.number="authSourceDefaults[authSource.source].balance"
                           type="number"
                           step="0.01"
                           min="0"
@@ -2712,15 +2659,12 @@
                         />
                       </div>
                       <div>
-                        <label
-                          class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >
+                        <label :for="`auth-source-${authSource.source}-concurrency`" class="input-label">
                           {{ t("admin.settings.defaults.defaultConcurrency") }}
                         </label>
                         <input
-                          v-model.number="
-                            authSourceDefaults[authSource.source].concurrency
-                          "
+                          :id="`auth-source-${authSource.source}-concurrency`"
+                          v-model.number="authSourceDefaults[authSource.source].concurrency"
                           type="number"
                           min="1"
                           class="input"
@@ -2728,30 +2672,12 @@
                         />
                       </div>
                     </div>
-
-                    <div
-                      class="flex items-center justify-between rounded-compact border border-gray-200 px-4 py-3 dark:border-dark-700"
-                    >
-                      <div>
-                        <label
-                          class="font-medium text-gray-900 dark:text-white"
-                        >
-                          {{ t("admin.settings.authSourceDefaults.grantOnFirstBindLabel") }}
-                        </label>
-                        <p
-                          class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
-                        >
-                          {{ t("admin.settings.authSourceDefaults.grantOnFirstBindHint") }}
-                        </p>
-                      </div>
-                      <Toggle
-                        v-model="
-                          authSourceDefaults[authSource.source]
-                            .grant_on_first_bind
-                        "
-                      />
-                    </div>
-
+                    <SettingToggleRow
+                      :id="`auth-source-${authSource.source}-grant-on-first-bind`"
+                      v-model="authSourceDefaults[authSource.source].grant_on_first_bind"
+                      :label="t('admin.settings.authSourceDefaults.grantOnFirstBindLabel')"
+                      :hint="t('admin.settings.authSourceDefaults.grantOnFirstBindHint')"
+                    />
                     <RuleListEditor
                       :items="authSourceDefaults[authSource.source].subscriptions"
                       :title="t('admin.settings.authSourceDefaults.defaultSubscriptionsLabel')"
@@ -2767,18 +2693,16 @@
                         <Select
                           v-model="item.plan_id"
                           :aria-label="t('admin.settings.defaults.subscriptionGroup')"
-                        :options="defaultSubscriptionPlanOptions"
-                          :placeholder="
-                            t('admin.settings.defaults.subscriptionGroup')
-                          "
+                          :options="defaultSubscriptionPlanOptions"
+                          :placeholder="t('admin.settings.defaults.subscriptionGroup')"
                         />
                       </template>
                     </RuleListEditor>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+                  </SettingsSubpanel>
+                </Collapse>
+              </template>
+            </SettingsSection>
+          </SettingsCard>
         </div>
         <!-- /Tab: Users -->
 
