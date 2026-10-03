@@ -15,6 +15,7 @@ describe('createSettingsSaveRegistry', () => {
         calls.push('first')
         return false
       }),
+      discard: vi.fn(async () => {}),
     })
     registry.register('second', {
       dirty: secondDirty,
@@ -22,6 +23,7 @@ describe('createSettingsSaveRegistry', () => {
         calls.push('second')
         return true
       }),
+      discard: vi.fn(async () => {}),
     })
     registry.register('third', {
       dirty: thirdDirty,
@@ -29,6 +31,7 @@ describe('createSettingsSaveRegistry', () => {
         calls.push('third')
         return true
       }),
+      discard: vi.fn(async () => {}),
     })
 
     expect(dirty.value).toBe(true)
@@ -38,10 +41,23 @@ describe('createSettingsSaveRegistry', () => {
 
   it('stops tracking a target after it is unregistered', () => {
     const { dirty, registry } = createSettingsSaveRegistry()
-    registry.register('only', { dirty: ref(true), save: async () => true })
+    registry.register('only', { dirty: ref(true), save: async () => true, discard: async () => {} })
     expect(dirty.value).toBe(true)
 
     registry.unregister('only')
     expect(dirty.value).toBe(false)
+  })
+
+  it('discards only dirty targets', async () => {
+    const { discardDirty, registry } = createSettingsSaveRegistry()
+    const dirtyDiscard = vi.fn(async () => {})
+    const cleanDiscard = vi.fn(async () => {})
+    registry.register('dirty', { dirty: ref(true), save: async () => true, discard: dirtyDiscard })
+    registry.register('clean', { dirty: ref(false), save: async () => true, discard: cleanDiscard })
+
+    await discardDirty()
+
+    expect(dirtyDiscard).toHaveBeenCalledTimes(1)
+    expect(cleanDiscard).not.toHaveBeenCalled()
   })
 })

@@ -1366,6 +1366,7 @@ export default {
       },
       saveSettings: '保存设置',
       unsavedChanges: '有未保存的修改',
+      discardChanges: '放弃',
       saving: '保存中...',
       settingsSaved: '设置保存成功',
       smtpConnectionSuccess: 'SMTP 连接成功',

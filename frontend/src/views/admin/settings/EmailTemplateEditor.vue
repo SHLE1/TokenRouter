@@ -709,7 +709,7 @@ async function copyPlaceholder(placeholder: string) {
 const { dirty, markClean } = useDirtyTracker({
   template: () => ({ subject: subject.value, html: html.value }),
 });
-useSettingsSaveTarget("emailTemplate", { dirty, save: saveTemplate });
+useSettingsSaveTarget("emailTemplate", { dirty, save: saveTemplate, discard: loadTemplate });
 
 watch([selectedEvent, selectedLocale], ([eventValue, localeValue], [oldEvent, oldLocale]) => {
   if (initializingSelection.value) return;

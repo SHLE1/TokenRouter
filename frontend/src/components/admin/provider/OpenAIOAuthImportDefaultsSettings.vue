@@ -693,7 +693,7 @@ const { dirty, markClean } = useDirtyTracker({
     autoPause7dDisabled: autoPause7dDisabled.value,
   }),
 })
-useSettingsSaveTarget('openaiOAuthImportDefaults', { dirty, save })
+useSettingsSaveTarget('openaiOAuthImportDefaults', { dirty, save, discard: load })
 
 onMounted(() => {
   void load()

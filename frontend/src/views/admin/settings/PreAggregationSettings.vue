@@ -188,7 +188,15 @@ const form = reactive({
 
 // 吸底保存条比较开关和间隔与上次加载或保存时的快照。
 const { dirty, markClean } = useDirtyTracker({ form: () => form });
-useSettingsSaveTarget("preAggregation", { dirty, save: saveSettings });
+useSettingsSaveTarget("preAggregation", {
+  dirty,
+  save: saveSettings,
+  // 先清掉修改状态，重新加载时才会用服务端的值覆盖表单。
+  discard: async () => {
+    markClean();
+    await loadSettings();
+  },
+});
 
 const canBackfill = computed(() => Boolean(
   state.value?.availability.manual_backfill_available && form.usage.enabled,

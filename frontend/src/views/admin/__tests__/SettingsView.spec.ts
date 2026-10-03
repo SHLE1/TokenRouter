@@ -2618,6 +2618,26 @@ describe("admin SettingsView security tab controls", () => {
     ).toBeDefined();
   });
 
+  it("reloads changed settings from the server when discarding", async () => {
+    const wrapper = mountView();
+    await flushPromises();
+    await openSecurityTab(wrapper);
+    const loadsBefore = getSettings.mock.calls.length;
+
+    await wrapper
+      .get('[data-testid="user-email-change-setting"] input.toggle-stub')
+      .setValue(true);
+    await wrapper.get('[data-testid="settings-save-bar-discard"]').trigger("click");
+    await flushPromises();
+
+    expect(getSettings.mock.calls.length).toBe(loadsBefore + 1);
+    expect(updateSettings).not.toHaveBeenCalled();
+    expect(
+      (wrapper.get('[data-testid="user-email-change-setting"] input.toggle-stub')
+        .element as HTMLInputElement).checked,
+    ).toBe(false);
+  });
+
   it("loads and echoes WeChat Connect fields from the backend payload", async () => {
     const wrapper = mountView();
 

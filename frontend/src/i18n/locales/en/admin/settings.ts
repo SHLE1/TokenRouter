@@ -1374,6 +1374,7 @@ export default {
       },
       saveSettings: 'Save Settings',
       unsavedChanges: 'You have unsaved changes',
+      discardChanges: 'Discard',
       saving: 'Saving...',
       settingsSaved: 'Settings saved successfully',
       smtpConnectionSuccess: 'SMTP connection successful',

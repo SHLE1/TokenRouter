@@ -1,9 +1,13 @@
 import { computed, inject, onBeforeUnmount, provide, shallowReactive, unref, type InjectionKey, type Ref } from 'vue'
 
-/** 一块可以单独保存的设置：dirty 表示有未保存的修改，save 返回是否保存成功。 */
+/**
+ * 一块可以单独保存的设置：dirty 表示有未保存的修改，save 返回是否保存成功，
+ * discard 从服务器重新加载这块设置，放弃未保存的修改。
+ */
 export interface SettingsSaveTarget {
   dirty: Ref<boolean> | boolean
   save: () => Promise<boolean>
+  discard: () => Promise<void>
 }
 
 interface SettingsSaveRegistry {
@@ -32,12 +36,19 @@ export function createSettingsSaveRegistry() {
     return ok
   }
 
+  // 有修改的几块同时从服务器重新加载。
+  async function discardDirty() {
+    await Promise.all(
+      [...targets.values()].filter((target) => unref(target.dirty)).map((target) => target.discard()),
+    )
+  }
+
   const registry: SettingsSaveRegistry = {
     register: (key, target) => targets.set(key, target),
     unregister: (key) => targets.delete(key),
   }
 
-  return { dirty, saveDirty, registry }
+  return { dirty, saveDirty, discardDirty, registry }
 }
 
 /** provideSettingsSaveRegistry 创建登记表并提供给子组件。 */

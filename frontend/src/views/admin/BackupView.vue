@@ -956,9 +956,9 @@ const { isDirty, markClean } = useDirtyTracker({
   content: () => contentForm.value,
   schedule: () => scheduleForm.value,
 })
-useSettingsSaveTarget('backupStorage', { dirty: computed(() => isDirty('storage')), save: saveStorageConfig })
-useSettingsSaveTarget('backupContent', { dirty: computed(() => isDirty('content')), save: saveContentConfig })
-useSettingsSaveTarget('backupSchedule', { dirty: computed(() => isDirty('schedule')), save: saveSchedule })
+useSettingsSaveTarget('backupStorage', { dirty: computed(() => isDirty('storage')), save: saveStorageConfig, discard: loadStorageConfig })
+useSettingsSaveTarget('backupContent', { dirty: computed(() => isDirty('content')), save: saveContentConfig, discard: loadContentConfig })
+useSettingsSaveTarget('backupSchedule', { dirty: computed(() => isDirty('schedule')), save: saveSchedule, discard: loadSchedule })
 
 onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)

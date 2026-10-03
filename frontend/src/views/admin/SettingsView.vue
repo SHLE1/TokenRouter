@@ -7,85 +7,87 @@
 
       <!-- Settings Form -->
       <form v-else @submit.prevent="saveAllSettings" class="space-y-4" novalidate>
-        <!-- Tab Navigation -->
-        <div
-          :class="[
-            'settings-tabs-shell',
-            activeTab === 'gateway' && 'settings-tabs-shell-stacked',
-          ]"
-        >
-          <nav
-            ref="settingsTabsScrollRef"
-            class="settings-tabs-scroll"
-            role="tablist"
-            :aria-label="t('admin.settings.title')"
+        <!-- 吸顶页签：外层用页面底色遮住滚动到页签后面和上方缝隙里的内容。 -->
+        <div class="settings-tabs-sticky">
+          <div
+            :class="[
+              'settings-tabs-shell',
+              activeTab === 'gateway' && 'settings-tabs-shell-stacked',
+            ]"
           >
-            <div class="settings-tabs">
-              <button
-                v-for="tab in settingsTabs"
-                :key="tab.key"
-                :id="`settings-tab-${tab.key}`"
-                type="button"
-                role="tab"
-                :aria-selected="activeTab === tab.key"
-                :tabindex="activeTab === tab.key ? 0 : -1"
-                :class="[
-                  'settings-tab',
-                  activeTab === tab.key && 'settings-tab-active',
-                ]"
-                @click="selectSettingsTab(tab.key)"
-                @keydown="handleSettingsTabKeydown($event, tab.key)"
-              >
-                <span class="settings-tab-icon">
-                  <Icon :name="tab.icon" size="sm" />
-                </span>
-                <span class="settings-tab-label">
-                  {{ t(`admin.settings.tabs.${tab.key}`) }}
-                </span>
-              </button>
-            </div>
-          </nav>
+            <nav
+              ref="settingsTabsScrollRef"
+              class="settings-tabs-scroll"
+              role="tablist"
+              :aria-label="t('admin.settings.title')"
+            >
+              <div class="settings-tabs">
+                <button
+                  v-for="tab in settingsTabs"
+                  :key="tab.key"
+                  :id="`settings-tab-${tab.key}`"
+                  type="button"
+                  role="tab"
+                  :aria-selected="activeTab === tab.key"
+                  :tabindex="activeTab === tab.key ? 0 : -1"
+                  :class="[
+                    'settings-tab',
+                    activeTab === tab.key && 'settings-tab-active',
+                  ]"
+                  @click="selectSettingsTab(tab.key)"
+                  @keydown="handleSettingsTabKeydown($event, tab.key)"
+                >
+                  <span class="settings-tab-icon">
+                    <Icon :name="tab.icon" size="sm" />
+                  </span>
+                  <span class="settings-tab-label">
+                    {{ t(`admin.settings.tabs.${tab.key}`) }}
+                  </span>
+                </button>
+              </div>
+            </nav>
 
-          <nav
-            v-if="activeTab === 'gateway'"
-            ref="gatewaySectionsScrollRef"
-            class="gateway-section-tabs-scroll"
-            role="tablist"
-            :aria-label="t('admin.settings.gatewaySections.label')"
-          >
-            <div class="gateway-section-tabs">
-              <button
-                v-for="section in gatewaySections"
-                :id="`gateway-section-tab-${section.key}`"
-                :key="section.key"
-                type="button"
-                role="tab"
-                :aria-selected="activeGatewaySection === section.key"
-                :tabindex="activeGatewaySection === section.key ? 0 : -1"
-                :data-testid="`gateway-section-tab-${section.key}`"
-                :class="[
-                  'gateway-section-tab',
-                  activeGatewaySection === section.key &&
-                    'gateway-section-tab-active',
-                ]"
-                @click="selectGatewaySection(section.key)"
-                @keydown="handleGatewaySectionKeydown($event, section.key)"
-              >
-                <span class="gateway-section-tab-icon">
-                  <ProviderIcon
-                    v-if="section.providerBrand"
-                    :brand="section.providerBrand"
-                    size="18px"
-                    color="currentColor"
-                  />
-                  <Icon v-else name="cog" size="sm" />
-                </span>
-                <span class="gateway-section-tab-label">
-                  {{ t(`admin.settings.gatewaySections.${section.key}`) }}
-                </span>
-              </button>
-            </div>
-          </nav>
+            <nav
+              v-if="activeTab === 'gateway'"
+              ref="gatewaySectionsScrollRef"
+              class="gateway-section-tabs-scroll"
+              role="tablist"
+              :aria-label="t('admin.settings.gatewaySections.label')"
+            >
+              <div class="gateway-section-tabs">
+                <button
+                  v-for="section in gatewaySections"
+                  :id="`gateway-section-tab-${section.key}`"
+                  :key="section.key"
+                  type="button"
+                  role="tab"
+                  :aria-selected="activeGatewaySection === section.key"
+                  :tabindex="activeGatewaySection === section.key ? 0 : -1"
+                  :data-testid="`gateway-section-tab-${section.key}`"
+                  :class="[
+                    'gateway-section-tab',
+                    activeGatewaySection === section.key &&
+                      'gateway-section-tab-active',
+                  ]"
+                  @click="selectGatewaySection(section.key)"
+                  @keydown="handleGatewaySectionKeydown($event, section.key)"
+                >
+                  <span class="gateway-section-tab-icon">
+                    <ProviderIcon
+                      v-if="section.providerBrand"
+                      :brand="section.providerBrand"
+                      size="18px"
+                      color="currentColor"
+                    />
+                    <Icon v-else name="cog" size="sm" />
+                  </span>
+                  <span class="gateway-section-tab-label">
+                    {{ t(`admin.settings.gatewaySections.${section.key}`) }}
+                  </span>
+                </button>
+              </div>
+            </nav>
+          </div>
         </div>
 
         <!-- Tab: Security — Admin API Key -->
@@ -5464,9 +5466,18 @@
           :message="t('admin.settings.unsavedChanges')"
         >
           <button
+            type="button"
+            :disabled="saving || discarding"
+            class="btn btn-sm h-9 bg-transparent text-white/75 hover:bg-white/10 hover:text-white focus:ring-offset-gray-900 dark:text-dark-200 dark:focus:ring-offset-dark-700"
+            data-testid="settings-save-bar-discard"
+            @click="discardAllSettings"
+          >
+            {{ t("admin.settings.discardChanges") }}
+          </button>
+          <button
             type="submit"
-            :disabled="saving"
-            class="btn btn-primary"
+            :disabled="saving || discarding"
+            class="btn btn-primary btn-sm h-9 focus:ring-offset-gray-900 dark:focus:ring-offset-dark-700"
           >
             <Icon
               name="loader"
@@ -5852,6 +5863,7 @@ watch(
 const loading = ref(true);
 const loadFailed = ref(false);
 const saving = ref(false);
+const discarding = ref(false);
 const testingSmtp = ref(false);
 const sendingTestEmail = ref(false);
 const smtpPasswordManuallyEdited = ref(false);
@@ -7897,8 +7909,9 @@ function parseTablePageSizeOptionsInput(raw: string): number[] | null {
   return deduped;
 }
 
-async function loadSettings() {
-  loading.value = true;
+// silent 为 true 时不切换到骨架屏，放弃修改后原地重新加载时使用。
+async function loadSettings({ silent = false } = {}) {
+  if (!silent) loading.value = true;
   loadFailed.value = false;
   try {
     const settings = await adminAPI.settings.getSettings();
@@ -8164,19 +8177,30 @@ const settingsSaveTargets: Array<[string, SettingsSaveTarget]> = [
     {
       dirty: computed(() => isSettingsDirty("settings") || isSettingsDirty("webSearch")),
       save: saveSettings,
+      discard: () => loadSettings({ silent: true }),
     },
   ],
-  ["overloadCooldown", { dirty: computed(() => isSettingsDirty("overloadCooldown")), save: saveOverloadCooldownSettings }],
-  ["openAI403Cooldown", { dirty: computed(() => isSettingsDirty("openAI403Cooldown")), save: saveOpenAI403CooldownSettings }],
-  ["rateLimit429Cooldown", { dirty: computed(() => isSettingsDirty("rateLimit429Cooldown")), save: saveRateLimit429CooldownSettings }],
-  ["streamTimeout", { dirty: computed(() => isSettingsDirty("streamTimeout")), save: saveStreamTimeoutSettings }],
-  ["rectifier", { dirty: computed(() => isSettingsDirty("rectifier")), save: saveRectifierSettings }],
-  ["betaPolicy", { dirty: computed(() => isSettingsDirty("betaPolicy")), save: saveBetaPolicySettings }],
-  ["ollamaCloudUsage", { dirty: computed(() => isSettingsDirty("ollamaCloudUsage")), save: saveOllamaCloudUsageSettings }],
-  ["panelRateLimit", { dirty: computed(() => isSettingsDirty("panelRateLimit")), save: savePanelRateLimitSettings }],
+  ["overloadCooldown", { dirty: computed(() => isSettingsDirty("overloadCooldown")), save: saveOverloadCooldownSettings, discard: loadOverloadCooldownSettings }],
+  ["openAI403Cooldown", { dirty: computed(() => isSettingsDirty("openAI403Cooldown")), save: saveOpenAI403CooldownSettings, discard: loadOpenAI403CooldownSettings }],
+  ["rateLimit429Cooldown", { dirty: computed(() => isSettingsDirty("rateLimit429Cooldown")), save: saveRateLimit429CooldownSettings, discard: loadRateLimit429CooldownSettings }],
+  ["streamTimeout", { dirty: computed(() => isSettingsDirty("streamTimeout")), save: saveStreamTimeoutSettings, discard: loadStreamTimeoutSettings }],
+  ["rectifier", { dirty: computed(() => isSettingsDirty("rectifier")), save: saveRectifierSettings, discard: loadRectifierSettings }],
+  ["betaPolicy", { dirty: computed(() => isSettingsDirty("betaPolicy")), save: saveBetaPolicySettings, discard: loadBetaPolicySettings }],
+  ["ollamaCloudUsage", { dirty: computed(() => isSettingsDirty("ollamaCloudUsage")), save: saveOllamaCloudUsageSettings, discard: loadOllamaCloudUsageSettings }],
+  ["panelRateLimit", { dirty: computed(() => isSettingsDirty("panelRateLimit")), save: savePanelRateLimitSettings, discard: loadPanelRateLimitSettings }],
 ];
 for (const [key, target] of settingsSaveTargets) {
   settingsSaveRegistry.registry.register(key, target);
+}
+
+// 吸底保存条的“放弃”按钮：有修改的几块从服务器重新加载。
+async function discardAllSettings() {
+  discarding.value = true;
+  try {
+    await settingsSaveRegistry.discardDirty();
+  } finally {
+    discarding.value = false;
+  }
 }
 
 // 吸底保存条的保存按钮提交表单时调用。没有任何修改时（例如在输入框里按回车）仍提交全局设置。
@@ -9965,11 +9989,19 @@ watch(
 
 <style scoped>
 /* ============ 系统设置 Tab 导航 ============ */
+/* 吸顶容器距顶栏 1rem。box-shadow 向上铺一条同高的页面底色，盖住顶栏和页签之间的缝隙；
+   左右各多出 0.5rem，盖住页签圆角两侧露出的卡片边缘。 */
+.settings-tabs-sticky {
+  @apply sticky z-20 -mx-2 px-2;
+  top: calc(var(--header-h) + 1rem);
+  background: var(--page-bg);
+  box-shadow: 0 -1rem 0 var(--page-bg);
+}
+
 .settings-tabs-shell {
-  @apply sticky z-20 -mx-1 rounded-full border border-gray-200 bg-white/90 p-1.5 backdrop-blur-xl dark:border-dark-600/70 dark:bg-dark-900/90;
-  /* 顶栏高度 + 1.25rem 间距,合成原 4.75rem;顶栏调高时吸顶位置自动跟随。 */
-  top: calc(var(--header-h) + 1.25rem);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset;
+  @apply -mx-1 rounded-full border border-gray-200 bg-white p-1.5 dark:border-dark-600/70 dark:bg-dark-900;
+  /* 投影把页签和下方卡片分开。 */
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 10px 24px -16px rgb(15 23 42 / 0.28);
 }
 
 /* 网关页有两行标签，外壳使用弹窗圆角。 */
@@ -10112,9 +10144,10 @@ watch(
 <style>
 /* 暗色 Tab 样式放在非 scoped 块中，供生产构建保留。 */
 .dark .settings-tabs-shell {
-  border-color: theme('borderColor.dark.600');
-  background: rgb(15 15 16 / 0.86);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset;
+  /* 深色下比卡片边框亮一档，靠边线把吸顶页签和卡片分开。 */
+  border-color: theme('borderColor.dark.500');
+  background: theme('colors.dark.900');
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 12px 28px -14px rgb(0 0 0 / 0.8);
 }
 
 .dark .settings-tab::before {
