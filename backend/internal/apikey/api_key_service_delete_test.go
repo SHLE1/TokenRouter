@@ -20,26 +20,21 @@ import (
 //   - deleteErr: 模拟 Delete 返回的错误
 //   - deletedIDs: 记录被调用删除的 API Key ID，用于断言验证
 type apiKeyRepoStub struct {
-	apiKey                 *APIKey // 轻量查询返回的记录
-	getByIDErr             error   // 轻量查询的错误返回值
-	deleteErr              error   // 删除操作的错误返回值
-	updateErr              error   // 更新操作的错误返回值
-	deletedIDs             []int64 // 记录已删除的密钥编号列表
-	updatedKeys            []APIKey
-	allowListByUserID      bool
-	listByUserIDKeys       []APIKey
-	listByUserIDErr        error
-	listByUserIDCalls      []int64
-	listByUserIDParams     []pagination.PaginationParams
-	listByUserIDFilters    []APIKeyListFilters
-	allowListAllByUserID   bool
-	listAllByUserIDKeys    []APIKey
-	listAllByUserIDErr     error
-	listAllByUserIDCalls   []int64
-	listAllByUserIDFilters []APIKeyListFilters
-	updateLastUsed         func(ctx context.Context, id int64, usedAt time.Time) error
-	touchedIDs             []int64
-	touchedUsedAts         []time.Time
+	apiKey              *APIKey // 轻量查询返回的记录
+	getByIDErr          error   // 轻量查询的错误返回值
+	deleteErr           error   // 删除操作的错误返回值
+	updateErr           error   // 更新操作的错误返回值
+	deletedIDs          []int64 // 记录已删除的密钥编号列表
+	updatedKeys         []APIKey
+	allowListByUserID   bool
+	listByUserIDKeys    []APIKey
+	listByUserIDErr     error
+	listByUserIDCalls   []int64
+	listByUserIDParams  []pagination.PaginationParams
+	listByUserIDFilters []APIKeyListFilters
+	updateLastUsed      func(ctx context.Context, id int64, usedAt time.Time) error
+	touchedIDs          []int64
+	touchedUsedAts      []time.Time
 }
 
 func (s *apiKeyRepoStub) Create(ctx context.Context, key *APIKey) error {
@@ -116,51 +111,6 @@ func (s *apiKeyRepoStub) ListByUserID(ctx context.Context, userID int64, params 
 		PageSize: params.PageSize,
 		Pages:    1,
 	}, nil
-}
-
-func (s *apiKeyRepoStub) ListAllByUserID(ctx context.Context, userID int64, filters APIKeyListFilters) ([]APIKey, error) {
-	if !s.allowListAllByUserID {
-		panic("unexpected ListAllByUserID call")
-	}
-	s.listAllByUserIDCalls = append(s.listAllByUserIDCalls, userID)
-	s.listAllByUserIDFilters = append(s.listAllByUserIDFilters, filters)
-	if s.listAllByUserIDErr != nil {
-		return nil, s.listAllByUserIDErr
-	}
-	source := s.listByUserIDKeys
-	if s.listAllByUserIDKeys != nil {
-		source = s.listAllByUserIDKeys
-	}
-	return filterAPIKeyStubKeys(userID, source, filters), nil
-}
-
-func filterAPIKeyStubKeys(userID int64, keys []APIKey, filters APIKeyListFilters) []APIKey {
-	result := make([]APIKey, 0, len(keys))
-	search := strings.ToLower(filters.Search)
-	for _, key := range keys {
-		if key.UserID != userID {
-			continue
-		}
-		if search != "" &&
-			!strings.Contains(strings.ToLower(key.Name), search) &&
-			!strings.Contains(strings.ToLower(key.Key), search) {
-			continue
-		}
-		if filters.Status != "" && key.Status != filters.Status {
-			continue
-		}
-		if filters.GroupID != nil {
-			if *filters.GroupID == 0 {
-				if key.GroupID != nil {
-					continue
-				}
-			} else if key.GroupID == nil || *key.GroupID != *filters.GroupID {
-				continue
-			}
-		}
-		result = append(result, key)
-	}
-	return result
 }
 
 func (s *apiKeyRepoStub) VerifyOwnership(ctx context.Context, userID int64, apiKeyIDs []int64) ([]int64, error) {

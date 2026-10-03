@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html"
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -80,7 +79,6 @@ const (
 	KeyDefaultNegativeAuthCacheSize = 16384
 	KeyApiKeyMaxErrorsPerHour       = 20
 	KeyApiKeyLastUsedMinTouch       = 30 * time.Second
-	KeyApiKeySortCurrentConcurrency = "current_concurrency"
 	// PostgreSQL DECIMAL(20,8) 的整数部分最多 12 位，输入必须严格小于该上界。
 	KeyApiKeyLimitUpperBound = 1_000_000_000_000
 	// DB 写失败后的短退避，避免请求路径持续同步重试造成写风暴与高延迟。
@@ -166,10 +164,6 @@ type APIKeyRepository interface {
 	IncrementRateLimitUsage(ctx context.Context, id int64, cost float64) error
 	ResetRateLimitWindows(ctx context.Context, id int64) error
 	GetRateLimitData(ctx context.Context, id int64) (*APIKeyRateLimitData, error)
-}
-
-type KeyApiKeyAllByUserIDLister interface {
-	ListAllByUserID(ctx context.Context, userID int64, filters APIKeyListFilters) ([]APIKey, error)
 }
 
 type APIKeyRateLimitData = billing.APIKeyRateLimitData
@@ -898,85 +892,12 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 
 // List 获取用户的API Key列表
 func (s *APIKeyService) List(ctx context.Context, userID int64, params pagination.PaginationParams, filters APIKeyListFilters) ([]APIKey, *pagination.PaginationResult, error) {
-	if KeyNormalizedAPIKeySortBy(params.SortBy) == KeyApiKeySortCurrentConcurrency {
-		return s.KeyListByCurrentConcurrency(ctx, userID, params, filters)
-	}
-
 	keys, pagination, err := s.apiKeyRepo.ListByUserID(ctx, userID, params, filters)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list api keys: %w", err)
 	}
 	s.KeyFillCurrentConcurrency(ctx, keys)
 	return keys, pagination, nil
-}
-
-func (s *APIKeyService) KeyListByCurrentConcurrency(ctx context.Context, userID int64, params pagination.PaginationParams, filters APIKeyListFilters) ([]APIKey, *pagination.PaginationResult, error) {
-	repo, ok := s.apiKeyRepo.(KeyApiKeyAllByUserIDLister)
-	if !ok {
-		return nil, nil, fmt.Errorf("list api keys by current concurrency: repository does not support unpaginated API key listing")
-	}
-
-	keys, err := repo.ListAllByUserID(ctx, userID, filters)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list api keys: %w", err)
-	}
-	s.KeyFillCurrentConcurrency(ctx, keys)
-	KeySortAPIKeysByCurrentConcurrency(keys, params.NormalizedSortOrder(pagination.SortOrderDesc))
-	return KeyPaginateAPIKeys(keys, params), KeyApiKeyPaginationResult(int64(len(keys)), params), nil
-}
-
-func KeyNormalizedAPIKeySortBy(sortBy string) string {
-	return strings.ToLower(strings.TrimSpace(sortBy))
-}
-
-func KeySortAPIKeysByCurrentConcurrency(keys []APIKey, sortOrder string) {
-	desc := sortOrder != pagination.SortOrderAsc
-	sort.SliceStable(keys, func(i, j int) bool {
-		if keys[i].CurrentConcurrency == keys[j].CurrentConcurrency {
-			if desc {
-				return keys[i].ID > keys[j].ID
-			}
-			return keys[i].ID < keys[j].ID
-		}
-		if desc {
-			return keys[i].CurrentConcurrency > keys[j].CurrentConcurrency
-		}
-		return keys[i].CurrentConcurrency < keys[j].CurrentConcurrency
-	})
-}
-
-func KeyPaginateAPIKeys(keys []APIKey, params pagination.PaginationParams) []APIKey {
-	if len(keys) == 0 {
-		return []APIKey{}
-	}
-	limit := params.Limit()
-	page := params.Page
-	if page < 1 {
-		page = 1
-	}
-	offset := (page - 1) * limit
-	if offset >= len(keys) {
-		return []APIKey{}
-	}
-	end := offset + limit
-	if end > len(keys) {
-		end = len(keys)
-	}
-	return keys[offset:end]
-}
-
-func KeyApiKeyPaginationResult(total int64, params pagination.PaginationParams) *pagination.PaginationResult {
-	limit := params.Limit()
-	pages := int(total) / limit
-	if int(total)%limit > 0 {
-		pages++
-	}
-	return &pagination.PaginationResult{
-		Total:    total,
-		Page:     params.Page,
-		PageSize: limit,
-		Pages:    pages,
-	}
 }
 
 func (s *APIKeyService) KeyFillCurrentConcurrency(ctx context.Context, keys []APIKey) {

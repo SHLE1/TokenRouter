@@ -714,25 +714,6 @@ func (r *KeyStore) ListByUserID(ctx context.Context, userID int64, params pagina
 	return outKeys, pagination.ResultFromTotal(int64(total), params), nil
 }
 
-// ListAllByUserID 返回经过筛选的全部 API Key，供依赖运行时数据的排序逻辑使用。
-func (r *KeyStore) ListAllByUserID(ctx context.Context, userID int64, filters keycore.APIKeyListFilters) ([]keycore.APIKey, error) {
-	keys, err := KeyWithAPIKeyCompositeGroups(r.KeyApiKeyListByUserIDQuery(userID, filters).WithGroup()).
-		Order(dbent.Asc(apikey.FieldID)).
-		All(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	outKeys := make([]keycore.APIKey, 0, len(keys))
-	for i := range keys {
-		outKeys = append(outKeys, *KeyApiKeyEntityToService(keys[i]))
-	}
-	if err := r.KeyAttachLastUsedIPs(ctx, outKeys); err != nil {
-		return nil, err
-	}
-	return outKeys, nil
-}
-
 // KeyAttachLastUsedIPs 为当前页 API Key 批量附加最近一条非空使用 IP。
 func (r *KeyStore) KeyAttachLastUsedIPs(ctx context.Context, keys []keycore.APIKey) error {
 	if len(keys) == 0 || r.sql == nil {

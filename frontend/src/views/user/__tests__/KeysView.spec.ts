@@ -91,7 +91,6 @@ const messages: Record<string, string> = {
   'keys.modelRedirect.duplicateSource': 'Duplicate source model',
   'keys.modelRedirect.tooManyRules': 'Too many redirect rules',
   'keys.id': 'ID',
-  'keys.currentConcurrency': 'Concurrency',
   'keys.lastUsedAt': 'Last Used',
   'keys.lastUsedIP': 'Last Used IP',
   'keys.rateLimitColumn': 'Rate Limit',
@@ -240,8 +239,8 @@ const DataTableStub = {
     <div>
       <div data-test="columns">{{ columns.map((col) => col.key).join(',') }}</div>
       <div data-test="columns-meta">{{ JSON.stringify(columns.map((col) => ({ key: col.key, sortable: !!col.sortable }))) }}</div>
-      <button data-test="sort-current-concurrency" @click="$emit('sort', 'current_concurrency', 'asc')">
-        Sort Concurrency
+      <button data-test="sort-expires-at" @click="$emit('sort', 'expires_at', 'asc')">
+        Sort Expires At
       </button>
       <div v-if="loading" data-test="table-loading">Loading</div>
       <div v-for="row in data" :key="row.id">
@@ -253,9 +252,6 @@ const DataTableStub = {
         </div>
         <slot name="cell-name" :value="row.name" :row="row" />
         <div data-test="group"><slot name="cell-group" :value="row.group" :row="row" /></div>
-        <div data-test="current-concurrency">
-          <slot name="cell-current_concurrency" :value="row.current_concurrency" :row="row" />
-        </div>
         <div data-test="usage"><slot name="cell-usage" :row="row" /></div>
         <div data-test="status">
           <slot name="cell-status" :value="row.status" :row="row" />
@@ -456,7 +452,6 @@ describe('user KeysView column settings', () => {
       'name',
       'key',
       'group',
-      'current_concurrency',
       'usage',
       'expires_at',
       'status',
@@ -634,7 +629,6 @@ describe('user KeysView column settings', () => {
     expect(visibleColumnKeys(wrapper)).toEqual([
       'name',
       'key',
-      'current_concurrency',
       'usage',
       'rate_limit',
       'expires_at',
@@ -671,17 +665,10 @@ describe('user KeysView column settings', () => {
     const columnMenuText = wrapper.text()
     expect(columnMenuText).toContain('API Key')
     expect(columnMenuText).toContain('ID')
-    expect(columnMenuText).toContain('Concurrency')
     expect(columnMenuText).toContain('Rate Limit')
     expect(columnMenuText).toContain('Last Used IP')
     expect(columnMenuText).not.toContain('Name')
     expect(columnMenuText).not.toContain('Actions')
-  })
-
-  it('renders the current concurrency value', async () => {
-    const wrapper = await mountView()
-
-    expect(wrapper.get('[data-test="current-concurrency"]').text()).toBe('3')
   })
 
   it('renders a localized disabled status for team keys', async () => {
@@ -756,13 +743,42 @@ describe('user KeysView column settings', () => {
     expect(updateKey).toHaveBeenCalledWith(1, expect.objectContaining({ status: 'inactive' }))
   })
 
-  it('marks current concurrency as sortable', async () => {
+  it('shows in-flight concurrency next to the key name', async () => {
     const wrapper = await mountView()
 
-    const currentConcurrencyColumn = visibleColumnMeta(wrapper).find(
-      (column) => column.key === 'current_concurrency'
-    )
-    expect(currentConcurrencyColumn?.sortable).toBe(true)
+    const indicator = wrapper.get('[data-test="key-concurrency"]')
+    expect(indicator.text()).toBe('3')
+    expect(indicator.attributes('title')).toBe('keys.concurrencyInUseUnlimited')
+    expect(visibleColumnKeys(wrapper)).not.toContain('current_concurrency')
+  })
+
+  it('shows the concurrency limit and warns when the key is nearly full', async () => {
+    listKeys.mockResolvedValueOnce({
+      items: [{ ...createApiKey(), current_concurrency: 4, concurrency_limit: 5 }],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+    const wrapper = await mountView()
+
+    const indicator = wrapper.get('[data-test="key-concurrency"]')
+    expect(indicator.text().replace(/\s+/g, '')).toBe('4/5')
+    expect(indicator.attributes('title')).toBe('keys.concurrencyInUse')
+    expect(indicator.classes()).toContain('text-amber-600')
+  })
+
+  it('hides the concurrency indicator for idle keys', async () => {
+    listKeys.mockResolvedValueOnce({
+      items: [{ ...createApiKey(), current_concurrency: 0, concurrency_limit: 5 }],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-test="key-concurrency"]').exists()).toBe(false)
   })
 
   it('keeps the create key form shrinkable on narrow screens', async () => {
@@ -867,7 +883,7 @@ describe('user KeysView column settings', () => {
     expect(getAvailableGroups).toHaveBeenCalledWith('personal', 71)
   })
 
-  it('keeps filters and selected page size when sorting by current concurrency', async () => {
+  it('keeps filters and selected page size when sorting', async () => {
     getAvailableGroups.mockResolvedValue([{ id: 42, name: 'OpenAI' }])
     const wrapper = await mountView()
 
@@ -886,7 +902,7 @@ describe('user KeysView column settings', () => {
 
     listKeys.mockClear()
 
-    await wrapper.get('[data-test="sort-current-concurrency"]').trigger('click')
+    await wrapper.get('[data-test="sort-expires-at"]').trigger('click')
     await flushPromises()
 
     expect(listKeys).toHaveBeenLastCalledWith(
@@ -897,7 +913,7 @@ describe('user KeysView column settings', () => {
         status: 'active',
         group_id: 42,
         scope: 'personal',
-        sort_by: 'current_concurrency',
+        sort_by: 'expires_at',
         sort_order: 'asc',
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) })

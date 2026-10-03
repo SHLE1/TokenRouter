@@ -128,6 +128,20 @@
                 class="text-blue-500"
                 :title="t('keys.ipRestrictionEnabled')"
               />
+              <!-- 并发大于 0 时，名称后面显示并发数和上限。 -->
+              <span
+                v-if="(row.current_concurrency ?? 0) > 0"
+                data-test="key-concurrency"
+                :class="['ml-1 inline-flex items-center gap-1 text-xs tabular-nums', concurrencyTone(row).text]"
+                :title="concurrencyTitle(row)"
+                :aria-label="concurrencyTitle(row)"
+              >
+                <span :class="['h-1.5 w-1.5 rounded-full', concurrencyTone(row).dot]" aria-hidden="true" />
+                <span>
+                  <span>{{ row.current_concurrency }}</span>
+                  <span v-if="(row.concurrency_limit ?? 0) > 0" class="text-gray-400 dark:text-dark-500">/{{ row.concurrency_limit }}</span>
+                </span>
+              </span>
             </div>
           </template>
 
@@ -185,19 +199,6 @@
                 />
               </button>
             </div>
-          </template>
-
-          <template #cell-current_concurrency="{ value }">
-            <span
-              :class="[
-                'inline-flex min-w-8 items-center justify-center rounded-compact px-2 py-1 text-sm font-semibold tabular-nums',
-                (value ?? 0) > 0
-                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/25 dark:text-emerald-300 dark:ring-emerald-800'
-                  : 'bg-gray-100 text-gray-500 dark:bg-dark-700 dark:text-dark-400'
-              ]"
-            >
-              {{ value ?? 0 }}
-            </span>
           </template>
 
           <template #cell-usage="{ row }">
@@ -1338,6 +1339,28 @@ const compositeGroupChipClass = (displayBrand?: string | null) => {
   return `ring-1 ring-inset ${resolveProviderBrand(brand).badgeClass}`
 }
 
+// concurrencyTone 按 Key 并发上限的占用比例取颜色：用满为红，达到八成为琥珀，其余为绿点灰字。
+const concurrencyTone = (row: ApiKey) => {
+  const current = row.current_concurrency ?? 0
+  const limit = row.concurrency_limit ?? 0
+  if (limit > 0 && current >= limit) {
+    return { dot: 'bg-red-500', text: 'font-medium text-red-600 dark:text-red-400' }
+  }
+  if (limit > 0 && current >= limit * 0.8) {
+    return { dot: 'bg-amber-500', text: 'font-medium text-amber-600 dark:text-amber-400' }
+  }
+  return { dot: 'bg-emerald-500', text: 'text-gray-500 dark:text-dark-300' }
+}
+
+// concurrencyTitle 返回并发标记的悬停说明。
+const concurrencyTitle = (row: ApiKey) => {
+  const current = row.current_concurrency ?? 0
+  const limit = row.concurrency_limit ?? 0
+  return limit > 0
+    ? t('keys.concurrencyInUse', { current, limit })
+    : t('keys.concurrencyInUseUnlimited', { current })
+}
+
 // hiddenCompositeGroupCount 返回被折叠的复合映射数量。
 const hiddenCompositeGroupCount = (row: ApiKey) => {
   return (row.composite_groups?.length ?? 0) - visibleCompositeGroups(row).length
@@ -1348,7 +1371,6 @@ const allColumns = computed<Column[]>(() => [
   { key: 'id', label: t('keys.id'), sortable: true },
   { key: 'key', label: t('keys.apiKey'), sortable: false },
   { key: 'group', label: t('keys.group'), sortable: false },
-  { key: 'current_concurrency', label: t('keys.currentConcurrency'), sortable: true },
   { key: 'usage', label: t('keys.usage'), sortable: true },
   { key: 'rate_limit', label: t('keys.rateLimitColumn'), sortable: false },
   { key: 'expires_at', label: t('keys.expiresAt'), sortable: true },
