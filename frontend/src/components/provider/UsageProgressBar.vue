@@ -7,8 +7,8 @@
       scope="window"
     />
 
-    <!-- 进度条行 -->
-    <div class="flex items-center gap-1">
+    <!-- 进度条行。移动端卡片的值列右对齐，宽屏表格里左对齐。 -->
+    <div class="flex items-center justify-end gap-1 lg:justify-start">
       <!-- 标签保持固定宽度，让同一单元格内的多行进度条对齐。 -->
       <span
         :class="[

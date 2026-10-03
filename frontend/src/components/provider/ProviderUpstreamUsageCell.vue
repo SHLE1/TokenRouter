@@ -56,7 +56,7 @@
         {{ t('admin.providers.upstreamUsage.observedAt') }} {{ formatObservedAt(effectiveResult?.observed_at || '') }}
       </div>
     </div>
-    <div v-if="queryEnabled && showQueryButton" class="mt-0.5 flex items-center gap-1.5">
+    <div v-if="queryEnabled && showQueryButton" class="mt-0.5 flex items-center justify-end gap-1.5 lg:justify-start">
       <button
         type="button"
         class="inline-flex items-center gap-0.5 rounded-compact px-1.5 py-0.5 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-500 dark:hover:bg-primary-500/8"
@@ -247,6 +247,9 @@ const balanceTitle = computed(() => {
   })
 })
 
+// Kimi 和 Zhipu 的 coding 周期只返回用量百分比，后端把上限固定为 100。
+const isPercentUsage = computed(() => normalizedUsage.value?.unit === 'PERCENT')
+
 const allLimits = computed(() => {
   const usage = normalizedUsage.value
   return [...(usage?.limits ?? []), ...(usage?.subscription?.limits ?? [])]
@@ -258,7 +261,8 @@ const visibleLimits = computed(() => allLimits.value.map(limit => ({
   limit: limit.limit,
   remaining: limit.remaining,
   hasAmount: limit.used != null || limit.limit != null || limit.remaining != null,
-  showAmount: !isDuplicateLimit(limit),
+  // PERCENT 周期的用量和上限就是百分比，进度条已经显示了用量百分比。
+  showAmount: !isPercentUsage.value && !isDuplicateLimit(limit),
   wideLabel: limitDisplayName(limit.name).length > 4,
   utilization: limit.limit && limit.limit > 0 && limit.used != null
     ? Math.min(100, Math.max(0, limit.used / limit.limit * 100))

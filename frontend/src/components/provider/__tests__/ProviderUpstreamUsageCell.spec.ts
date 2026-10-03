@@ -256,7 +256,7 @@ describe('ProviderUpstreamUsageCell', () => {
       }
     })
     expect(wrapper.text()).toContain('5h|75|')
-    expect(wrapper.text()).toContain('25 PERCENT / 100 PERCENT')
+    expect(wrapper.text()).not.toContain('PERCENT')
 
     await wrapper.setProps({
       provider: {

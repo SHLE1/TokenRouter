@@ -78,7 +78,7 @@
         />
 
         <!-- Passive sampling label + active query button -->
-        <div class="flex items-center gap-1.5 mt-0.5">
+        <div class="mt-0.5 flex items-center justify-end gap-1.5 lg:justify-start">
           <span
             v-if="usageInfo.source === 'passive'"
             class="text-xs text-gray-400 dark:text-gray-500 italic"
@@ -669,7 +669,7 @@
     </div>
   </div>
   <!-- 查询入口放在本地统计和配额之后，由外层统一展示。 -->
-  <div v-if="isUpstreamUsageQueryEnabled(provider)" class="mt-0.5 flex items-center gap-1.5">
+  <div v-if="isUpstreamUsageQueryEnabled(provider)" class="mt-0.5 flex items-center justify-end gap-1.5 lg:justify-start">
     <ProviderUpstreamUsageQueryButton
       :provider="provider"
       :loading="upstreamUsageLoading"
