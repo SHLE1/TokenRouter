@@ -19,11 +19,12 @@ func (s *Runtime) forwardResponse(resp *http.Response) forwardcore.Response {
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLineSize)
 	return forwardcore.Response{
-		StatusCode: resp.StatusCode,
-		Close:      func() { _ = resp.Body.Close() },
-		Runtime:    bridge.Runtime{Now: time.Now, ReadRandom: rand.Read},
-		RequestID:  resp.Header.Get("x-request-id"),
-		Headers:    resp.Header,
-		Lines:      scanner,
+		StatusCode:       resp.StatusCode,
+		Close:            func() { _ = resp.Body.Close() },
+		Runtime:          bridge.Runtime{Now: time.Now, ReadRandom: rand.Read},
+		RequestID:        resp.Header.Get("x-request-id"),
+		Headers:          resp.Header,
+		Lines:            scanner,
+		MaxSSEFrameBytes: maxLineSize,
 	}
 }

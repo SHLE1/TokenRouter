@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 )
 
 // ForwardConversionOutput 保存当前 HTTP 输出和协议转换回调。
@@ -42,22 +44,52 @@ func (o ForwardConversionOutput) BeginStream() {
 }
 func (o ForwardConversionOutput) ReverseTools(body []byte) []byte { return o.Reverse(body) }
 func (o ForwardConversionOutput) JSONBytes(body []byte) {
-	o.Context.Data(http.StatusOK, "application/json; charset=utf-8", body)
+	o.BeginJSON()
+	o.Context.Writer.WriteHeader(http.StatusOK)
+	if n, err := o.Context.Writer.Write(body); err != nil {
+		_ = o.Context.Error(err)
+	} else if n == len(body) {
+		o.Commit()
+	}
 }
 
 func (o ForwardConversionOutput) ResponsesJSON(value *protocolopenai.ResponsesResponse) {
-	o.Context.JSON(http.StatusOK, value)
+	if body, err := json.Marshal(value); err == nil {
+		o.JSONBytes(body)
+	} else {
+		o.Context.JSON(http.StatusOK, value)
+	}
 }
 
 func (o ForwardConversionOutput) ChatJSON(value *protocolopenai.ChatCompletionsResponse) {
-	o.Context.JSON(http.StatusOK, value)
+	if body, err := json.Marshal(value); err == nil {
+		o.JSONBytes(body)
+	} else {
+		o.Context.JSON(http.StatusOK, value)
+	}
 }
 
 func (o ForwardConversionOutput) Event(kind string, body []byte) (int, error) {
+	var frame string
 	if kind != "" {
-		return fmt.Fprintf(o.Context.Writer, "event: %s\ndata: %s\n\n", kind, body)
+		frame = fmt.Sprintf("event: %s\ndata: %s\n\n", kind, body)
+	} else {
+		frame = fmt.Sprintf("data: %s\n\n", body)
 	}
-	return fmt.Fprintf(o.Context.Writer, "data: %s\n\n", body)
+	n, err := fmt.Fprint(o.Context.Writer, frame)
+	// 完整终态写出后标记响应已交付，外层仍可记录读取错误和用量。
+	if err == nil && n == len(frame) {
+		terminal := false
+		if o.Responses {
+			terminal = protocolopenai.OpenAIStreamEventTypeIsTerminal(protocolopenai.EffectiveOpenAISSEEventType(body, kind))
+		} else {
+			terminal = strings.TrimSpace(string(body)) == "[DONE]" || gjson.GetBytes(body, "error").IsObject()
+		}
+		if terminal {
+			o.Commit()
+		}
+	}
+	return n, err
 }
 func (o ForwardConversionOutput) Flush() { o.Context.Writer.Flush() }
 func (o ForwardConversionOutput) Error(status int, kind, message string) {

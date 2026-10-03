@@ -20,6 +20,8 @@ type Response struct {
 	RequestID  string
 	Headers    map[string][]string
 	Lines      Lines
+	// MaxSSEFrameBytes 限制转换器累计的单帧字节数，零值使用默认上限。
+	MaxSSEFrameBytes int
 }
 
 // Output 同步写入协议事件并返回写入错误，HTTP 状态和缓冲由适配器管理。

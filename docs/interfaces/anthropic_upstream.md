@@ -42,6 +42,10 @@ API Key、OAuth 和 Setup Token 走 Anthropic 的 HTTP 路径；Bedrock 有单�
 
 流式请求只在写出第一个客户端分块之前允许重试或换提供商。每次 attempt 都从原始请求重新构建转换状态，工具名、停止原因、thinking block、usage 和错误事件要和客户端协议一致。
 
+Messages 上游转 Responses 或 Chat Completions 时，流式和非流式客户端共用 SSE 帧解析。转换器按空行划分事件并合并多行 `data:`，支持省略 `event:`、冒号后无空格和帧内注释。事件类型优先读取 JSON 的 `type`，缺失时读取 `event:`。末尾没有空行时，正常 EOF 会交付该帧。连接异常时，完整 JSON 仍用于读取 usage 和停止原因，截断 JSON 则丢弃，读取错误随结果返回。读取失败且尚未收到停止原因时，流式响应发送协议错误事件，非流式响应返回 502。文本、工具调用和 usage 在解析后进入各自的转换流程。
+
+单帧累计大小使用部署配置的 `MaxLineSize`，未配置时为 500 MiB。转换器在缓存每行之前累计字节数，data、event、注释和换行符均计入限制，空行结束帧后重置。超限时释放帧缓冲并返回错误，已读取的用量随错误结果保留。 HTTP 输出层在完整 JSON 或流式终态写出成功后标记交付状态，外层据此跳过补发错误。读取错误继续返回给日志和用量处理，调用方可用 `errors.Is` 检查原始错误。
+
 Responses 请求转换成 Anthropic Messages 时，只发送 Anthropic 入站协议认识的内容块。OpenAI 的 `reasoning`、`reasoning_text`、未知的专有分片、空内容的消息和纯空白的文本块会被过滤；空白文本和合法的图片在一起时，只删掉坏的文本，图片保留。`function_call` 和 `function_call_output` 仍按调用 ID 转成相邻的 `tool_use` 和 `tool_result`，过滤之后，工具调用的配对、角色交替和历史顺序都保持完整。
 
 ## 模型与请求策略

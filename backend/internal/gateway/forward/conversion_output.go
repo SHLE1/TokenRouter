@@ -21,31 +21,37 @@ func ResponsesBuffered(in Response, out Output, originalModel, mappedModel strin
 	// 每次转换单独记录上游模型声明，响应别名改写使用另一份数据。
 	var modelObserver protocol.ResponseModelObserver
 
-	scanner := in.Lines
+	scanner := newConversionSSEScanner(in)
 
 	var finalResp *protocolanthropic.AnthropicResponse
 	var usage upstream.TokenUsage
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		eventType, ok := protocolopenai.ExtractSSEEventLine(line)
-		if !ok {
-			continue
+	resultWithUsage := func() *Result {
+		return &Result{
+			RequestID:             requestID,
+			UpstreamHeaders:       in.Headers,
+			Usage:                 usage,
+			Model:                 originalModel,
+			UpstreamModel:         mappedModel,
+			UpstreamResponseModel: modelObserver.Model(),
+			ReasoningEffort:       reasoningEffort,
+			Stream:                false,
+			Duration:              time.Since(startTime),
 		}
+	}
 
-		if !scanner.Scan() {
-			break
-		}
-		payload, ok := protocolopenai.ExtractSSEDataLine(scanner.Text())
-		if !ok {
-			continue
-		}
+	for scanner.Scan() {
+		payload := scanner.frame.Data
+		eventType := scanner.frame.EventType
 
 		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			out.Observe("warn", "forward_as_responses buffered: failed to parse event", err, requestID, eventType)
 			continue
+		}
+		if event.Type == "" {
+			event.Type = eventType
 		}
 
 		if event.Type == "message_start" && event.Message != nil {
@@ -84,6 +90,10 @@ func ResponsesBuffered(in Response, out Output, originalModel, mappedModel strin
 		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 			out.Observe("warn", "forward_as_responses buffered: read error", err, requestID, "")
 		}
+		if finalResp == nil || finalResp.StopReason == nil || *finalResp.StopReason == "" || errors.Is(err, ErrConversionSSEFrameTooLarge) {
+			out.Error(502, "upstream_stream_error", "Upstream stream could not be read completely")
+			return resultWithUsage(), err
+		}
 	}
 
 	if finalResp == nil {
@@ -118,17 +128,7 @@ func ResponsesBuffered(in Response, out Output, originalModel, mappedModel strin
 		out.ResponsesJSON(responsesResp)
 	}
 
-	return &Result{
-		RequestID:             requestID,
-		UpstreamHeaders:       in.Headers,
-		Usage:                 usage,
-		Model:                 originalModel,
-		UpstreamModel:         mappedModel,
-		UpstreamResponseModel: modelObserver.Model(),
-		ReasoningEffort:       reasoningEffort,
-		Stream:                false,
-		Duration:              time.Since(startTime),
-	}, nil
+	return resultWithUsage(), scanner.Err()
 }
 
 // ResponsesStreaming 保留当前转换链的事件推进、用量与退出顺序。
@@ -147,7 +147,7 @@ func ResponsesStreaming(in Response, out Output, originalModel, mappedModel stri
 	var firstTokenMs *int
 	firstChunk := true
 
-	scanner := in.Lines
+	scanner := newConversionSSEScanner(in)
 
 	resultWithUsage := func() *Result {
 		return &Result{
@@ -226,25 +226,17 @@ func ResponsesStreaming(in Response, out Output, originalModel, mappedModel stri
 	}
 
 	for scanner.Scan() {
-		line := scanner.Text()
-		eventType, ok := protocolopenai.ExtractSSEEventLine(line)
-		if !ok {
-			continue
-		}
-
-		if !scanner.Scan() {
-			break
-		}
-		payload, ok := protocolopenai.ExtractSSEDataLine(scanner.Text())
-		if !ok {
-			continue
-		}
+		payload := scanner.frame.Data
+		eventType := scanner.frame.EventType
 
 		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			out.Observe("warn", "forward_as_responses stream: failed to parse event", err, requestID, eventType)
 			continue
+		}
+		if event.Type == "" {
+			event.Type = eventType
 		}
 
 		if processEvent(&event) {
@@ -256,9 +248,16 @@ func ResponsesStreaming(in Response, out Output, originalModel, mappedModel stri
 		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 			out.Observe("warn", "forward_as_responses stream: read error", err, requestID, "")
 		}
+		if (!state.CompletedSent && state.StopReason == "") || errors.Is(err, ErrConversionSSEFrameTooLarge) {
+			if !state.CompletedSent {
+				writeConversionStreamError(out, true, state)
+			}
+			return resultWithUsage(), err
+		}
 	}
 
-	return finalizeStream()
+	result, err := finalizeStream()
+	return result, errors.Join(err, scanner.Err())
 }
 
 // ChatBuffered 保留当前转换链的事件推进、用量与退出顺序。
@@ -267,30 +266,36 @@ func ChatBuffered(in Response, out Output, originalModel, mappedModel string, re
 	// 每次转换单独记录上游模型声明，响应别名改写使用另一份数据。
 	var modelObserver protocol.ResponseModelObserver
 
-	scanner := in.Lines
+	scanner := newConversionSSEScanner(in)
 
 	var finalResp *protocolanthropic.AnthropicResponse
 	var usage upstream.TokenUsage
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		// SSE 规范允许冒号后不带空格，必须兼容紧凑格式的 Anthropic 上游。
-		if _, ok := protocolopenai.ExtractSSEEventLine(line); !ok {
-			continue
+	resultWithUsage := func() *Result {
+		return &Result{
+			RequestID:             requestID,
+			UpstreamHeaders:       in.Headers,
+			Usage:                 usage,
+			Model:                 originalModel,
+			UpstreamModel:         mappedModel,
+			UpstreamResponseModel: modelObserver.Model(),
+			ReasoningEffort:       reasoningEffort,
+			Stream:                false,
+			Duration:              time.Since(startTime),
 		}
+	}
 
-		if !scanner.Scan() {
-			break
-		}
-		payload, ok := protocolopenai.ExtractSSEDataLine(scanner.Text())
-		if !ok {
-			continue
-		}
+	for scanner.Scan() {
+		payload := scanner.frame.Data
+		eventType := scanner.frame.EventType
 
 		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			continue
+		}
+		if event.Type == "" {
+			event.Type = eventType
 		}
 
 		if event.Type == "message_start" && event.Message != nil {
@@ -328,6 +333,10 @@ func ChatBuffered(in Response, out Output, originalModel, mappedModel string, re
 		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 			out.Observe("warn", "forward_as_cc buffered: read error", err, requestID, "")
 		}
+		if finalResp == nil || finalResp.StopReason == nil || *finalResp.StopReason == "" || errors.Is(err, ErrConversionSSEFrameTooLarge) {
+			out.Error(502, "upstream_stream_error", "Upstream stream could not be read completely")
+			return resultWithUsage(), err
+		}
 	}
 
 	if finalResp == nil {
@@ -358,17 +367,7 @@ func ChatBuffered(in Response, out Output, originalModel, mappedModel string, re
 		out.ChatJSON(ccResp)
 	}
 
-	return &Result{
-		RequestID:             requestID,
-		UpstreamHeaders:       in.Headers,
-		Usage:                 usage,
-		Model:                 originalModel,
-		UpstreamModel:         mappedModel,
-		UpstreamResponseModel: modelObserver.Model(),
-		ReasoningEffort:       reasoningEffort,
-		Stream:                false,
-		Duration:              time.Since(startTime),
-	}, nil
+	return resultWithUsage(), scanner.Err()
 }
 
 // ChatStreaming 保留当前转换链的事件推进、用量与退出顺序。
@@ -390,7 +389,7 @@ func ChatStreaming(in Response, out Output, originalModel, mappedModel string, r
 	var firstTokenMs *int
 	firstChunk := true
 
-	scanner := in.Lines
+	scanner := newConversionSSEScanner(in)
 
 	resultWithUsage := func() *Result {
 		return &Result{
@@ -448,24 +447,16 @@ func ChatStreaming(in Response, out Output, originalModel, mappedModel string, r
 	}
 
 	for scanner.Scan() {
-		line := scanner.Text()
-		// 与缓冲路径一致，接受冒号后无空格的紧凑 SSE 格式。
-		if _, ok := protocolopenai.ExtractSSEEventLine(line); !ok {
-			continue
-		}
-
-		if !scanner.Scan() {
-			break
-		}
-		payload, ok := protocolopenai.ExtractSSEDataLine(scanner.Text())
-		if !ok {
-			continue
-		}
+		payload := scanner.frame.Data
+		eventType := scanner.frame.EventType
 
 		modelObserver.ObserveAnthropic([]byte(payload))
 		var event protocolanthropic.AnthropicStreamEvent
 		if err := json.Unmarshal([]byte(payload), &event); err != nil {
 			continue
+		}
+		if event.Type == "" {
+			event.Type = eventType
 		}
 
 		if processAnthropicEvent(&event) {
@@ -476,6 +467,12 @@ func ChatStreaming(in Response, out Output, originalModel, mappedModel string, r
 	if err := scanner.Err(); err != nil {
 		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 			out.Observe("warn", "forward_as_cc stream: read error", err, requestID, "")
+		}
+		if (!anthState.CompletedSent && anthState.StopReason == "") || errors.Is(err, ErrConversionSSEFrameTooLarge) {
+			if !anthState.CompletedSent {
+				writeConversionStreamError(out, false, anthState)
+			}
+			return resultWithUsage(), err
 		}
 	}
 
@@ -494,7 +491,35 @@ func ChatStreaming(in Response, out Output, originalModel, mappedModel string, r
 	out.Event("", []byte("[DONE]")) //nolint:errcheck
 	out.Flush()
 
-	return resultWithUsage(), nil
+	return resultWithUsage(), scanner.Err()
+}
+
+// writeConversionStreamError 用客户端协议报告读取失败，已写出的流以错误事件结束。
+func writeConversionStreamError(out Output, responses bool, state *bridge.AnthropicEventToResponsesState) {
+	streamError := &protocolopenai.ResponsesError{Code: "upstream_stream_error", Message: "Upstream stream could not be read completely"}
+	var value any = map[string]any{"error": streamError}
+	eventType := ""
+	if responses {
+		eventType = "response.failed"
+		value = protocolopenai.ResponsesStreamEvent{
+			Type:           eventType,
+			SequenceNumber: state.SequenceNumber,
+			Response: &protocolopenai.ResponsesResponse{
+				ID:        state.ResponseID,
+				Object:    "response",
+				CreatedAt: state.Created,
+				Model:     state.Model,
+				Status:    "failed",
+				Error:     streamError,
+				Output:    []protocolopenai.ResponsesOutput{},
+			},
+		}
+	}
+	payload, err := json.Marshal(value)
+	if err == nil {
+		_, _ = out.Event(eventType, payload)
+		out.Flush()
+	}
 }
 
 func AppendRawJSON(existing json.RawMessage, fragment string) json.RawMessage {
