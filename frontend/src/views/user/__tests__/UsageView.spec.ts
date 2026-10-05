@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 
 import UsageView from '../UsageView.vue'
+
+enableAutoUnmount(afterEach)
 
 const {
   query,
@@ -92,6 +94,7 @@ vi.mock('@/api', () => ({
     getStats,
     getDashboardModels,
     getDashboardSnapshotV2,
+    listMyErrorRequests: vi.fn().mockResolvedValue({ items: [], total: 0, pages: 0 }),
   },
   keysAPI: {
     list,
@@ -249,6 +252,20 @@ describe('user UsageView', () => {
     }))
     expect(list).toHaveBeenCalledWith(1, 100, { scope: 'personal' })
     expect(getAvailable).toHaveBeenCalled()
+  })
+
+  it('分组筛选使用展示名称，并在切换语言后刷新', async () => {
+    getAvailable.mockResolvedValue([{ id: 1, name: 'business-group', display_name: 'English group' }, { id: 2, name: 'Legacy group' }])
+    const wrapper = mountUsageView()
+    await flushPromises()
+    const options = () => wrapper.findAllComponents({ name: 'Select' }).flatMap(item => item.props('options') || [])
+    expect(options()).toContainEqual(expect.objectContaining({ value: 1, label: 'English group' }))
+    expect(options()).toContainEqual(expect.objectContaining({ value: 2, label: 'Legacy group' }))
+    getAvailable.mockResolvedValue([{ id: 1, name: 'business-group', display_name: '中文分组' }])
+    window.dispatchEvent(new CustomEvent('locale-changed', { detail: 'zh-Hans' }))
+    await flushPromises()
+    expect(options()).toContainEqual(expect.objectContaining({ value: 1, label: '中文分组' }))
+    wrapper.unmount()
   })
 
   it('主筛选框初始值为 null，显示“全部”选项，请求参数不带未选条件', async () => {

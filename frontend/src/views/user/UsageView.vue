@@ -899,7 +899,7 @@ const loadFilterOptions = async () => {
     for (const key of [...personalKeys.items, ...teamKeys]) uniqueKeys.set(key.id, { id: key.id, name: key.name })
     apiKeys.value = [...uniqueKeys.values()]
     const uniqueGroups = new Map<number, UsageGroupOption>()
-    for (const group of availableGroups) uniqueGroups.set(group.id, { id: group.id, name: group.name })
+    for (const group of availableGroups) uniqueGroups.set(group.id, { id: group.id, name: group.display_name || group.name })
     for (const key of teamKeys) {
       if (key.group_id && key.group_name) uniqueGroups.set(key.group_id, { id: key.group_id, name: key.group_name })
     }

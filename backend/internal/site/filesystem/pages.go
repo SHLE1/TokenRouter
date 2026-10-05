@@ -122,7 +122,7 @@ func (s *Pages) ImagePath(ctx context.Context, slug, filename string) (string, e
 
 func resolvePageImagePath(pagesDir, imagesDir, filename string) (string, bool) {
 	relPath, ok := cleanPageImageRelativePath(filename)
-	if !ok {
+	if !ok || !isPageImage(relPath) {
 		return "", false
 	}
 
@@ -142,10 +142,20 @@ func resolvePageImagePath(pagesDir, imagesDir, filename string) (string, bool) {
 		return "", false
 	}
 	realTarget, err := filepath.EvalSymlinks(cleanedTarget)
-	if err != nil || !isPathWithinBase(realTarget, realImagesDir) {
+	if err != nil || !isPathWithinBase(realTarget, realImagesDir) || !isPageImage(realTarget) {
 		return "", false
 	}
 	return realTarget, true
+}
+
+// isPageImage 限制公开图片路径，符号链接解析后的文件也接受此检查。
+func isPageImage(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".avif", ".ico", ".bmp":
+		return true
+	default:
+		return false
+	}
 }
 
 func cleanPageImageRelativePath(filename string) (string, bool) {

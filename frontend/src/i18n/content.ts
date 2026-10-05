@@ -24,8 +24,8 @@ export function originalContent<T>(source: T, sourceLocale: string | null = null
   return { source_locale: sourceLocale, source, translations: {}, revision: 0, source_revision: 0 }
 }
 
-// 预览与服务端使用相同的语言顺序和译文核对条件。
-export function resolveContent<T>(content: Localized<T>, requested: string): { value: T; locale: string | null; fallback: boolean } {
+// 预览按语言匹配有效译文，草稿里已核对的译文立即参与展示。
+export function resolveContent<T>(content: LocalizedUpdate<T>, requested: string): { value: T; locale: string | null; fallback: boolean } {
   const code = normalizeLocale(requested)
   const definition = availableLocales.find(item => item.code === code)
   for (const candidate of definition ? [definition.code, ...definition.fallbacks] : []) {
@@ -33,7 +33,8 @@ export function resolveContent<T>(content: Localized<T>, requested: string): { v
       return { value: content.source, locale: content.source_locale, fallback: candidate !== code }
     }
     const translation = content.translations[candidate]
-    if (translation && translation.source_revision === content.source_revision) {
+    if (translation && !content.deleted_locales?.includes(candidate) &&
+      (content.reviewed_locales?.includes(candidate) || translation.source_revision === content.source_revision)) {
       return { value: translation.value, locale: candidate, fallback: candidate !== code }
     }
   }
@@ -42,7 +43,8 @@ export function resolveContent<T>(content: Localized<T>, requested: string): { v
 
 let contentSequence = 0
 
-// 内容标识用于译文对应和列表重排，普通 HTTP 环境也能创建条目。
+// 内容标识用于译文对应和列表重排，长度符合菜单接口的 32 字符上限。
 export function newContentID(): string {
-  return globalThis.crypto?.randomUUID?.() || `content-${Date.now().toString(36)}-${++contentSequence}-${Math.random().toString(36).slice(2)}`
+  return globalThis.crypto?.randomUUID?.().replace(/-/g, '') ||
+    `${Date.now().toString(36)}-${(++contentSequence).toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }

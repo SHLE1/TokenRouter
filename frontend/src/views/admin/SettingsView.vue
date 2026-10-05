@@ -4608,9 +4608,9 @@
                     <p class="input-label">{{ t("admin.settings.payment.preview") }}</p>
                     <div class="flex min-h-9 items-center rounded-control border border-primary-900/10 bg-gray-50 px-4 text-sm text-gray-600 dark:border-dark-600 dark:bg-dark-800 dark:text-dark-200">
                       {{
-                        (form.payment_product_name_prefix || "TokenRouter") +
+                        (resolveContent(form.localized_settings.payment_product_name_prefix, locale).value || "TokenRouter") +
                         " 100 " +
-                        (form.payment_product_name_suffix || "CNY")
+                        (resolveContent(form.localized_settings.payment_product_name_suffix, locale).value || "CNY")
                       }}
                     </div>
                   </div>
@@ -5346,7 +5346,7 @@ import { provideSettingsSaveRegistry, type SettingsSaveTarget } from "@/composab
 import type { CustomMenuItem, CustomEndpoint, FooterLinkGroup } from "@/types";
 import LocalizedFieldsEditor from "@/components/common/LocalizedFieldsEditor.vue";
 import LocalizedEditor from "@/components/common/LocalizedEditor.vue";
-import { newContentID, originalContent, type LocalizedUpdate } from "@/i18n/content";
+import { newContentID, originalContent, resolveContent, type LocalizedUpdate } from "@/i18n/content";
 import { availableLocales, getLocale } from "@/i18n";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
@@ -6519,7 +6519,7 @@ const {
   balanceUnitSymbol: previewBalanceUnitSymbol,
   formatBalanceAmount: formatPreviewBalanceAmount,
 } = useBalanceDisplay({
-  unitName: computed(() => form.balance_unit_name),
+  unitName: computed(() => resolveContent(form.localized_settings.balance_unit_name, locale.value).value),
   unitSymbol: computed(() => form.balance_unit_symbol),
   iconSvg: computed(() => form.balance_icon_svg),
 });
