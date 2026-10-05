@@ -2,7 +2,7 @@
   <!-- 聊天式输入框：顶部状态行，中间提示词，左下模型 / 参数 / 操作三个调参入口，右下费用 + 发送 -->
   <div
     ref="rootRef"
-    class="composer-shell canvas-island relative w-[min(600px,calc(100vw-2rem))]"
+    class="composer-shell canvas-island relative w-[min(600px,calc(100vw-2rem))] max-w-full"
   >
     <!-- 状态行：生成进度、错误、失败原因或当前操作的画布引导，同一时间只显示一条 -->
     <Collapse :open="statusLine !== null" unmount-on-hide>

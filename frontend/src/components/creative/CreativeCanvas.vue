@@ -15,7 +15,7 @@
          胶囊形，高度与左上角设置、右上角历史两个按钮相同。窄屏限宽并换行，两侧各留出浮层的位置；
          局部重绘的画笔组在窄屏会折成两行，两行的胶囊端头会切到按钮，这时改用 dialog 圆角。 -->
     <div
-      class="canvas-toolbar canvas-island absolute left-1/2 top-3 z-10 flex max-sm:w-fit max-sm:max-w-[calc(100%-8rem)] max-sm:flex-wrap max-sm:justify-center -translate-x-1/2 items-center gap-1 rounded-full p-1"
+      class="canvas-toolbar canvas-island absolute top-3 z-10 flex max-sm:w-fit max-sm:max-w-[calc(100%-8rem)] max-sm:flex-wrap max-sm:justify-center -translate-x-1/2 items-center gap-1 rounded-full p-1"
       :class="isInpaint && 'max-sm:rounded-dialog'"
     >
       <!-- 上传图片：裁剪确认后直接放上画布当前视角中心 -->
@@ -2020,6 +2020,12 @@ defineExpose({
 }
 
 /* 胶囊工具条里的按钮用圆形，悬停底色和外壳弧线同心 */
+/* 工具条在历史侧栏左侧的区域居中，--creative-history-reserve 由创作台页面在侧栏展开时设置 */
+.canvas-toolbar {
+  left: calc((100% - var(--creative-history-reserve, 0px)) / 2);
+  transition: left var(--motion-layout) var(--motion-ease);
+}
+
 .canvas-toolbar .canvas-tool-btn {
   border-radius: 9999px;
 }
