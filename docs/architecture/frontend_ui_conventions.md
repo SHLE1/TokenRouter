@@ -57,7 +57,7 @@
 - 原生按钮、`role="button"` 和 `.btn` 的文字不可选中，按钮内的图片不可拖拽；正文、表格数据和输入内容可以选中复制。
 - 图标按钮有两档：`.btn-icon`（h-9 w-9）和 `.btn-icon-sm`（h-8 w-8），自带 `rounded-control` 和居中布局，调用处只需补 hover 和颜色类。`.btn-sm` 用在表格行内等紧凑场景。
 - 需要选择框时使用 `frontend/src/components/common/Select.vue`。原生 `<select>` 的面板样式、深色配色和键盘交互与项目组件对不上；`check:ui` 检查不到它，评审时需要人工确认。
-- 下拉触发器（Select、DateRangePicker）在模板里组合 `input input-trigger` 和各自的状态类，基线样式来自这两个类。
+- 下拉触发器（Select、DateRangePicker、DateTimePicker）在模板里组合 `input input-trigger` 和各自的状态类，基线样式来自这两个类。
 - 分段切换（两到五个互斥选项，例如指标、时间范围、数据来源）用 `style.css` 的 `.segmented` 轨道、`.segmented-item` 选项和 `.segmented-item-active` 选中态。轨道加 `v-segmented`（`directives/segmented.ts`），所有选项共用一个选中背景；内边距、字号和高度由调用方用工具类补充；放进 36px 工具栏时，给轨道加 `h-9 items-stretch`。选中项保留 1px 描边，因为浅色模式下只靠阴影和白底看不清选中项的轮廓。选项和选中背景的圆角取 `--segmented-item-radius`（`control` 减去 1px 边框和 2px 内边距），和轨道外缘同心；调整轨道的边框或内边距时，同步修改这个值。页面级的大页签用 `.tabs`。
 - 输入框的图标和字符前后缀使用 `style.css` 里的 `input-icon-*` 机制：容器 `input-icon-wrap`，图标位 `input-icon` 或 `input-icon-right`（可点击的内容再加 `input-icon-action`），输入框按图标所在的一侧加 `input-has-icon` 或 `input-has-icon-right`。文本留白由变量推算：`留白 = inset + slot`。档位：默认（inset 0.75rem，留白 2.5rem）、`input-icon-lg`（登录注册表单，inset 0.875rem，留白 2.75rem）、`input-icon-text`（`$` 等窄字符前缀，留白 2rem）；紧凑搜索框内联 `--input-icon-slot:1.5rem`（留白 2.25rem）。
 - 价格管理和属性管理的页签栏和下方工具栏之间 16px。搜索框使用同样的图标布局，`sm` 及以上固定 `w-64`，更窄时随工具栏剩余宽度伸缩，占位提示写明可以搜索配置名称或模型名称。工具栏相邻控件之间 `gap-2`；配置页的状态筛选框用 `w-32 shrink-0`，默认目录页的两个筛选条件收进 `FilterDropdown`（规则见[菜单与浮层](#菜单与浮层)）。两页的默认目录信息共用 `ModelCatalogInfo`，用辅助字号展示来源、短版本号和更新时间，窄屏自动换行。
@@ -85,6 +85,7 @@
   - 面板默认左边缘对齐触发按钮，右侧放不下时向左平移，水平方向的夹取复用 `getFloatingPanelPosition`。有生效条件时，按钮换成品牌色描边并显示数量角标。
   - 面板里有输入框状态，或者测试需要直接访问字段时，传 `keep-mounted`；运维看板这类自定义按钮样式用 `trigger-class` 覆盖。
 - 日期范围用 `DateRangePicker`：左侧是分组的快捷范围，右侧是自绘的单月日历，原生 `type="date"` 输入不再使用。在日历上点两次确定起止日期，反向点选时自动对调。起止日期和主按钮同色，中间的日期用淡品牌青色带连起来，今天用小圆点标出。最晚可以选到明天，用来兼容时区差异。没点应用就取消、点外部或按 Esc 关闭时，改动全部丢弃，触发器只显示已经生效的范围。弹层由 `getFloatingPanelPosition` 定位：触发器在视口右半边时右对齐，在左半边时左对齐。
+- 单个日期时间（例如公告的开始和结束时间）用 `DateTimePicker`。值的格式和 `datetime-local` 相同（`YYYY-MM-DDTHH:mm`），空字符串表示未设置。原生 `type="datetime-local"` 的面板跟随浏览器和系统主题，深色模式下和项目控件的配色对不上。弹层左侧是和 `DateRangePicker` 同款的单月日历，可以选未来的日期。右侧是时、分两列滚动列表，列高等于日历网格。`placeholder` 写空值的含义，例如“立即生效”。有值时，触发器右侧显示 ×，点一下清空。传入 `min` 后，早于这个日期的日子置灰。点确定才写回，点取消、点外部或按 Esc 会丢弃草稿。弹层打开时按 Esc 只关闭弹层，外层弹窗保持打开。点“此刻”直接写入当前时间。传入 `presets` 后，弹层左侧多出一列快捷选项，点击后直接写回。公告结束时间的快捷选项是 1、3、7、30 天，从开始时间起算，没填开始时间时从现在起算。定位规则和 `DateRangePicker` 相同。
 - 表格行内的操作菜单（4 个 `*ActionMenu`）的浮层容器用 `.action-menu` 类（fixed 定位、层级和面板样式），宽度类（w-48/w-52）和 `action-menu-content` 钩子类写在调用处。
 - 创作台画布上的浮层（顶部工具条、设置、历史、输入框、空画布引导的胶囊）用 `.canvas-island`：85% 不透明的白底或 `dark-900` 底、淡描边、背景模糊和一档柔和阴影，深色模式减弱阴影。浮层里的 32px 图标按钮用 `.canvas-tool-btn`，选中态加 `.canvas-tool-btn-active`，按钮组之间用 `.canvas-tool-divider`。展开的菜单和弹层用实底的 `.dropdown` 或同等样式。
 - 遮罩透明度有两档，都来自 CSS 变量：浅色模式在 `:root` 定义常规遮罩 `--overlay-bg`（black/50）和媒体灯箱等使用的强遮罩 `--overlay-bg-strong`（black/70）；深色模式在 `html.dark` 中整体加深为 black/70 和 black/85。模板写 `bg-[var(--overlay-bg)]`，`bg-black/50` 这类字面值会被门禁拦截。
