@@ -129,7 +129,7 @@
           <!-- 两侧使用记录共用 API Key 的分组徽章，倍率由费用列展示。 -->
           <GroupBadge
             v-if="row.group"
-            :name="row.group.name"
+            :name="row.group.display_name || row.group.name"
             :display-brand="row.group.display_brand"
             :show-rate="false"
           />

@@ -36,7 +36,7 @@
 | 协议标题及正文 | `login_agreement_documents`；综合设置 | 公开协议页、登录和协议确认弹窗 |
 | Markdown 页面及图片 | `pages/` 目录；文件维护 | 用户自定义页面 |
 | 公告标题及正文 | `announcements.localization`；公告管理 | 公告列表、弹窗 |
-| 分组展示名称和描述 | `groups.localization`；分组管理 | 分组选择器、市场、Key、用量、创作台 |
+| 分组展示名称和描述 | `groups.localization`；分组管理 | 分组选择器、市场、Key、用量、订阅适用分组、创作台 |
 | 模型自定义显示名 | 属性规则的 `display_name_localization`；模型属性管理 | 模型目录、市场、用户配置导出 |
 | 套餐名称、介绍、权益、商品名 | `subscription_plans.localization`；套餐编辑 | 购买、订阅、Key 计费选择、订单快照 |
 | 余额单位、充值链接、OIDC 名称、支付帮助及图片、商品名前后缀、发件人名称 | `localized_settings` 管理对象，各原文键对应的 `_localized` JSON | 登录、余额、支付、用户邮件 |
@@ -60,6 +60,6 @@ Markdown 原文为 `pages/<slug>.md`，译文为 `pages/<slug>/<locale>.md`。�
 
 原始内容缓存可由各语言共用，HTML 缓存按规范语言存储。ETag 绑定语言和渲染内容，`Vary` 包含 `Accept-Language` 与 Cookie。失效代次阻止迟到的渲染结果覆盖更新后的缓存。用户用量统计的语言展示缓存也包含语言和用户展示范围。
 
-前端语言切换发布 `locale-changed`，页面刷新语言相关数据。Axios 对语言已经改变的 GET 响应重新请求，Markdown 和协议页面还核对当前页面及请求代次。组件保持挂载，未提交表单由页面继续持有。账户偏好的写入按顺序执行。
+前端语言切换发布 `locale-changed`，页面刷新语言相关数据。公共设置缓存和首屏注入按返回的 `locale` 判断能否复用，账户语言在组件挂载前恢复时，后续读取也会刷新不匹配的配置。Axios 对语言已经改变的 GET 响应重新请求，Markdown 和协议页面还核对当前页面及请求代次。组件保持挂载，未提交表单由页面继续持有。账户偏好的写入按顺序执行。
 
 验证入口包括 `locale/content_test.go`、站点本地化和文件测试、`migrations/user_localization_integration_test.go`、settings 并发写入集成测试、前端翻译编辑器测试、`i18n/__tests__/contentEdit.spec.ts` 及 `i18n/__tests__/userTranslationKeys.spec.ts`。新增语言时登记目录、添加资源和用户邮件模板，并检查长文案、文字方向、占位符与第三方控件回退。

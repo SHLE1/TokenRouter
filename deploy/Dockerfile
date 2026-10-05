@@ -27,11 +27,10 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# 复制前端源码并构建。
-# LegalDocumentView.vue 构建时会通过 ../../../../docs/legal/*.md?raw
-# 读取法律文档，因此 docs/legal/ 需要与 frontend/ 同级放在 /app/docs/legal/。
+# 复制前端源码、法律文档和共享语言资源后构建。
 COPY frontend/ ./
 COPY docs/legal/ /app/docs/legal/
+COPY backend/internal/pkg/locale/*.json /app/backend/internal/pkg/locale/
 RUN pnpm run build
 
 # -----------------------------------------------------------------------------

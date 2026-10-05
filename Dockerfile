@@ -33,11 +33,10 @@ RUN --mount=type=cache,id=tokenrouter-pnpm-store,target=/root/.local/share/pnpm/
     if [ -n "${NPM_CONFIG_REGISTRY}" ]; then pnpm config set registry "${NPM_CONFIG_REGISTRY}"; fi && \
     pnpm install --frozen-lockfile --prefer-offline
 
-# 复制前端源码并构建。
-# LegalDocumentView.vue 构建时会通过 ../../../../docs/legal/*.md?raw
-# 读取法律文档，因此 docs/legal/ 需要与 frontend/ 同级放在 /app/docs/legal/。
+# 复制前端源码、法律文档和共享语言资源后构建。
 COPY frontend/ ./
 COPY docs/legal/ /app/docs/legal/
+COPY backend/internal/pkg/locale/*.json /app/backend/internal/pkg/locale/
 RUN pnpm run build
 
 # -----------------------------------------------------------------------------
