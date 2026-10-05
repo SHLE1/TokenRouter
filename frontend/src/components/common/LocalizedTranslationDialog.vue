@@ -44,7 +44,6 @@
             <span class="shrink-0 text-xs" :class="STATUS_CLASSES[item.status]">{{ t(`localization.status.${item.status}`) }}</span>
           </button>
         </div>
-        <p class="px-3 text-xs text-gray-500 dark:text-dark-400 md:mt-auto">{{ t('localization.languagesHint') }}</p>
       </aside>
 
       <section class="flex min-w-0 flex-col gap-4 px-4 py-5 sm:px-6 md:min-h-0 md:flex-1 md:overflow-y-auto">

@@ -71,7 +71,6 @@ export default {
     "reference": "Original · {language}",
     "missingHint": "This language has no translation yet. Users see the original for now.",
     "startTranslation": "Start translating",
-    "languagesHint": "These are the interface languages the site supports. A new language must be added to the language catalog first.",
     "emptyValue": "Empty",
     "keepOriginal": "Keep the current original and delete that translation",
     "useTranslationAsOriginal": "Use the {language} translation as the original",

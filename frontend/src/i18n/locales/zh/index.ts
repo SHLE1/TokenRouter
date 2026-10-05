@@ -71,7 +71,6 @@ export default {
     "reference": "原文参照 · {language}",
     "missingHint": "这个语言还没有译文，用户现在看到原文。",
     "startTranslation": "开始翻译",
-    "languagesHint": "这里列出站点支持的界面语言。新增语言需要先在语言目录里登记。",
     "emptyValue": "未填写",
     "keepOriginal": "保留当前原文，删除那条译文",
     "useTranslationAsOriginal": "改用 {language} 译文作为原文",
