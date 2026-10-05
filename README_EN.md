@@ -13,6 +13,7 @@
   </p>
 
   <p><a href="README.md">简体中文</a> | <strong>English</strong></p>
+  <p><a href="https://discord.gg/4tPj7uk4">Join our Discord community</a></p>
 </div>
 
 ## Overview
