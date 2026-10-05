@@ -36,7 +36,7 @@ func planRecord(plan *billing.SubscriptionPlan) *PlanRecordResponse {
 		return nil
 	}
 	return &PlanRecordResponse{
-		Localization:         plan.Localization,
+		Localization:         billing.PlanLocalization(billing.PlanContent(plan)),
 		ID:                   plan.ID,
 		Name:                 plan.Name,
 		Description:          plan.Description,

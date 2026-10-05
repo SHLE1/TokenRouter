@@ -156,7 +156,7 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	language := locale.FromContext(c.Request.Context())
 	c.Writer.Header().Add("Vary", "Accept-Language, Cookie")
 	c.Header("Content-Language", language)
-	cached, version := s.cache.SnapshotForLocale(language)
+	cached, version := s.cache.Snapshot(language)
 	if cached != nil {
 		// Check If-None-Match for 304 response
 		if match := c.GetHeader("If-None-Match"); match == cached.ETag {
@@ -197,7 +197,7 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 
 	rendered := s.injectSettings(settingsJSON)
 	rendered = htmlLanguagePattern.ReplaceAll(rendered, []byte(`<html lang="`+language+`" dir="`+locale.Direction(language)+`"`))
-	snapshot := s.cache.PublishForLocale(language, version, rendered, settingsJSON)
+	snapshot := s.cache.Publish(language, version, rendered, settingsJSON)
 
 	// Replace nonce placeholder with actual nonce before serving
 	content := replaceNoncePlaceholder(rendered, nonce)

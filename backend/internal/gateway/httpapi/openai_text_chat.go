@@ -140,7 +140,7 @@ func (h *OpenAITextHandler) ChatCompletions(c *gin.Context) {
 
 	if err := h.backend.Eligibility(c.Request.Context(), apiKey, subscription); err != nil {
 		reqLog.Info("openai_chat_completions.billing_eligibility_check_failed", zap.Error(err))
-		status, code, message, retryAfter := BillingErrorDetails(err, gatewayLocale(c))
+		status, code, message, retryAfter := BillingErrorDetails(err)
 		if retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}

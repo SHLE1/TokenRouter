@@ -99,7 +99,10 @@ export function promoteToOriginal<T>(content: LocalizedUpdate<T>, code: string):
   const translation = content.translations[code]
   if (!translation) return content
   const next = copy(content)
-  if (next.source_locale) next.translations[next.source_locale] = { value: next.source, source_revision: -1 }
+  if (next.source_locale) {
+    next.translations[next.source_locale] = { value: next.source, source_revision: -1 }
+    next.deleted_locales = withoutLocale(next.deleted_locales, next.source_locale)
+  }
   next.source = copy(content).translations[code].value
   next.source_locale = code
   delete next.translations[code]

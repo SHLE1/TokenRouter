@@ -59,7 +59,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/ent/usersubscription"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
@@ -19288,34 +19287,33 @@ func (m *CreativeRunOutputMutation) ResetEdge(name string) error {
 // ErrorPassthroughRuleMutation represents an operation that mutates the ErrorPassthroughRule nodes in the graph.
 type ErrorPassthroughRuleMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *int64
-	created_at           *time.Time
-	updated_at           *time.Time
-	message_localization *locale.TextContent
-	name                 *string
-	enabled              *bool
-	priority             *int
-	addpriority          *int
-	error_codes          *[]int
-	appenderror_codes    []int
-	keywords             *[]string
-	appendkeywords       []string
-	match_mode           *string
-	platforms            *[]string
-	appendplatforms      []string
-	passthrough_code     *bool
-	response_code        *int
-	addresponse_code     *int
-	passthrough_body     *bool
-	custom_message       *string
-	skip_monitoring      *bool
-	description          *string
-	clearedFields        map[string]struct{}
-	done                 bool
-	oldValue             func(context.Context) (*ErrorPassthroughRule, error)
-	predicates           []predicate.ErrorPassthroughRule
+	op                Op
+	typ               string
+	id                *int64
+	created_at        *time.Time
+	updated_at        *time.Time
+	name              *string
+	enabled           *bool
+	priority          *int
+	addpriority       *int
+	error_codes       *[]int
+	appenderror_codes []int
+	keywords          *[]string
+	appendkeywords    []string
+	match_mode        *string
+	platforms         *[]string
+	appendplatforms   []string
+	passthrough_code  *bool
+	response_code     *int
+	addresponse_code  *int
+	passthrough_body  *bool
+	custom_message    *string
+	skip_monitoring   *bool
+	description       *string
+	clearedFields     map[string]struct{}
+	done              bool
+	oldValue          func(context.Context) (*ErrorPassthroughRule, error)
+	predicates        []predicate.ErrorPassthroughRule
 }
 
 var _ ent.Mutation = (*ErrorPassthroughRuleMutation)(nil)
@@ -19486,55 +19484,6 @@ func (m *ErrorPassthroughRuleMutation) OldUpdatedAt(ctx context.Context) (v time
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *ErrorPassthroughRuleMutation) ResetUpdatedAt() {
 	m.updated_at = nil
-}
-
-// SetMessageLocalization sets the "message_localization" field.
-func (m *ErrorPassthroughRuleMutation) SetMessageLocalization(lc locale.TextContent) {
-	m.message_localization = &lc
-}
-
-// MessageLocalization returns the value of the "message_localization" field in the mutation.
-func (m *ErrorPassthroughRuleMutation) MessageLocalization() (r locale.TextContent, exists bool) {
-	v := m.message_localization
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldMessageLocalization returns the old "message_localization" field's value of the ErrorPassthroughRule entity.
-// If the ErrorPassthroughRule object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ErrorPassthroughRuleMutation) OldMessageLocalization(ctx context.Context) (v locale.TextContent, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldMessageLocalization is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldMessageLocalization requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldMessageLocalization: %w", err)
-	}
-	return oldValue.MessageLocalization, nil
-}
-
-// ClearMessageLocalization clears the value of the "message_localization" field.
-func (m *ErrorPassthroughRuleMutation) ClearMessageLocalization() {
-	m.message_localization = nil
-	m.clearedFields[errorpassthroughrule.FieldMessageLocalization] = struct{}{}
-}
-
-// MessageLocalizationCleared returns if the "message_localization" field was cleared in this mutation.
-func (m *ErrorPassthroughRuleMutation) MessageLocalizationCleared() bool {
-	_, ok := m.clearedFields[errorpassthroughrule.FieldMessageLocalization]
-	return ok
-}
-
-// ResetMessageLocalization resets all changes to the "message_localization" field.
-func (m *ErrorPassthroughRuleMutation) ResetMessageLocalization() {
-	m.message_localization = nil
-	delete(m.clearedFields, errorpassthroughrule.FieldMessageLocalization)
 }
 
 // SetName sets the "name" field.
@@ -20206,15 +20155,12 @@ func (m *ErrorPassthroughRuleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ErrorPassthroughRuleMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 15)
 	if m.created_at != nil {
 		fields = append(fields, errorpassthroughrule.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, errorpassthroughrule.FieldUpdatedAt)
-	}
-	if m.message_localization != nil {
-		fields = append(fields, errorpassthroughrule.FieldMessageLocalization)
 	}
 	if m.name != nil {
 		fields = append(fields, errorpassthroughrule.FieldName)
@@ -20267,8 +20213,6 @@ func (m *ErrorPassthroughRuleMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case errorpassthroughrule.FieldUpdatedAt:
 		return m.UpdatedAt()
-	case errorpassthroughrule.FieldMessageLocalization:
-		return m.MessageLocalization()
 	case errorpassthroughrule.FieldName:
 		return m.Name()
 	case errorpassthroughrule.FieldEnabled:
@@ -20308,8 +20252,6 @@ func (m *ErrorPassthroughRuleMutation) OldField(ctx context.Context, name string
 		return m.OldCreatedAt(ctx)
 	case errorpassthroughrule.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
-	case errorpassthroughrule.FieldMessageLocalization:
-		return m.OldMessageLocalization(ctx)
 	case errorpassthroughrule.FieldName:
 		return m.OldName(ctx)
 	case errorpassthroughrule.FieldEnabled:
@@ -20358,13 +20300,6 @@ func (m *ErrorPassthroughRuleMutation) SetField(name string, value ent.Value) er
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
-		return nil
-	case errorpassthroughrule.FieldMessageLocalization:
-		v, ok := value.(locale.TextContent)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetMessageLocalization(v)
 		return nil
 	case errorpassthroughrule.FieldName:
 		v, ok := value.(string)
@@ -20514,9 +20449,6 @@ func (m *ErrorPassthroughRuleMutation) AddField(name string, value ent.Value) er
 // mutation.
 func (m *ErrorPassthroughRuleMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(errorpassthroughrule.FieldMessageLocalization) {
-		fields = append(fields, errorpassthroughrule.FieldMessageLocalization)
-	}
 	if m.FieldCleared(errorpassthroughrule.FieldErrorCodes) {
 		fields = append(fields, errorpassthroughrule.FieldErrorCodes)
 	}
@@ -20549,9 +20481,6 @@ func (m *ErrorPassthroughRuleMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ErrorPassthroughRuleMutation) ClearField(name string) error {
 	switch name {
-	case errorpassthroughrule.FieldMessageLocalization:
-		m.ClearMessageLocalization()
-		return nil
 	case errorpassthroughrule.FieldErrorCodes:
 		m.ClearErrorCodes()
 		return nil
@@ -20583,9 +20512,6 @@ func (m *ErrorPassthroughRuleMutation) ResetField(name string) error {
 		return nil
 	case errorpassthroughrule.FieldUpdatedAt:
 		m.ResetUpdatedAt()
-		return nil
-	case errorpassthroughrule.FieldMessageLocalization:
-		m.ResetMessageLocalization()
 		return nil
 	case errorpassthroughrule.FieldName:
 		m.ResetName()

@@ -950,8 +950,8 @@ func TestClient_ExchangeCode_ServerError_RealCall(t *testing.T) {
 	if err == nil {
 		t.Fatal("服务器返回 400 时应返回错误")
 	}
-	if !strings.Contains(err.Error(), "token 交换失败") {
-		t.Errorf("错误信息应包含 'token 交换失败': got %s", err.Error())
+	if !strings.Contains(err.Error(), "token exchange failed") {
+		t.Errorf("错误信息应包含 'token exchange failed': got %s", err.Error())
 	}
 	if !strings.Contains(err.Error(), "400") {
 		t.Errorf("错误信息应包含状态码 400: got %s", err.Error())
@@ -1355,8 +1355,8 @@ func TestClient_LoadCodeAssist_HTTPError_RealCall(t *testing.T) {
 	if err == nil {
 		t.Fatal("服务器返回 403 时应返回错误")
 	}
-	if !strings.Contains(err.Error(), "loadCodeAssist 失败") {
-		t.Errorf("错误信息应包含 'loadCodeAssist 失败': got %s", err.Error())
+	if !strings.Contains(err.Error(), "loadCodeAssist failed") {
+		t.Errorf("错误信息应包含 'loadCodeAssist failed': got %s", err.Error())
 	}
 	if !strings.Contains(err.Error(), "403") {
 		t.Errorf("错误信息应包含状态码 403: got %s", err.Error())

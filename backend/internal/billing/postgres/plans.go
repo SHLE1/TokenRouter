@@ -144,10 +144,7 @@ func (s *PlanStore) UpdatePlan(ctx context.Context, id int64, req billing.Update
 		if err != nil {
 			return nil, err
 		}
-		content := locale.Content[billing.PlanCopy](current.Localization)
-		if content.Revision == 0 {
-			content = locale.Original(billing.PlanCopy{Name: current.Name, Description: current.Description, Features: current.Features, ProductName: current.ProductName})
-		}
+		content := billing.PlanContent(PlanFromEntity(current))
 		next, err := locale.Prepare(content, *req.Localization, billing.ValidatePlanCopy)
 		if err != nil {
 			return nil, err

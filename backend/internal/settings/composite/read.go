@@ -1,6 +1,8 @@
 package composite
 
 import (
+	"maps"
+
 	settingvalues "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/team"
 
@@ -44,6 +46,7 @@ func Parse(settings map[string]string, options ReadOptions) *Snapshot {
 	prior := options.Forwarded()
 	forwarded := runtimeconfig.ReadForwardedSettings(settings, prior)
 	result := &Snapshot{
+		StoredValues:              maps.Clone(settings),
 		LocalizedSettings:         settingvalues.ReadLocalizedTexts(settings),
 		APIKeyACLTrustForwardedIP: forwarded.APIKeyACLTrustForwardedIP,
 		ForwardedClientIPHeaders:  forwarded.ForwardedClientIPHeaders,

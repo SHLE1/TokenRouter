@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
@@ -42,7 +40,7 @@ func (b *messageAttemptBridge) Fallback(cause error, fallbackUsed bool) bool {
 	resolved, subscription, err := d.resolveFallback(b.Context(), key, *target, source)
 	if err != nil {
 		b.reqLog.Warn("gateway.resolve_fallback_group_failed", zap.Int64("fallback_group_id", *target), zap.Error(err))
-		status, code, message, retryAfter := gatewayhttp.BillingErrorDetails(err, locale.FromContext(b.Context()))
+		status, code, message, retryAfter := gatewayhttp.BillingErrorDetails(err)
 		if retryAfter > 0 {
 			b.c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}

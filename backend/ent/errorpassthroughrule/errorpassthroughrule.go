@@ -17,8 +17,6 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
-	// FieldMessageLocalization holds the string denoting the message_localization field in the database.
-	FieldMessageLocalization = "message_localization"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldEnabled holds the string denoting the enabled field in the database.
@@ -54,7 +52,6 @@ var Columns = []string{
 	FieldID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
-	FieldMessageLocalization,
 	FieldName,
 	FieldEnabled,
 	FieldPriority,

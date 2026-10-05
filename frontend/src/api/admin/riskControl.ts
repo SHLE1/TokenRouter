@@ -1,4 +1,3 @@
-import type { LocalizedUpdate } from '@/i18n/content'
 import { apiClient } from '../client'
 
 export type ModerationMode = 'off' | 'observe' | 'pre_block'
@@ -30,7 +29,6 @@ export interface ContentModerationConfig {
   worker_count: number
   queue_size: number
   block_status: number
-  block_message_localization?: LocalizedUpdate<string>
   block_message: string
   email_on_hit: boolean
   auto_ban_enabled: boolean
@@ -134,7 +132,6 @@ export interface UpdateContentModerationConfig {
   worker_count?: number
   queue_size?: number
   block_status?: number
-  block_message_localization?: LocalizedUpdate<string>
   block_message?: string
   email_on_hit?: boolean
   auto_ban_enabled?: boolean

@@ -562,7 +562,8 @@
 
                 <!-- 动作为拦截时填写返回给客户端的错误信息。 -->
                 <div v-if="rule.action === 'block'">
-                  <LocalizedEditor :label="t('admin.settings.betaPolicy.errorMessage')" :placeholder="t('admin.settings.betaPolicy.errorMessagePlaceholder')" :model-value="rule.error_message_localization || originalContent(rule.error_message || '')" @update:model-value="rule.error_message_localization = $event; rule.error_message = $event.source" />
+                  <label class="input-label">{{ t('admin.settings.betaPolicy.errorMessage') }}</label>
+                  <input v-model="rule.error_message" type="text" class="input" :placeholder="t('admin.settings.betaPolicy.errorMessagePlaceholder')" />
                   <p class="input-hint">
                     {{ t("admin.settings.betaPolicy.errorMessageHint") }}
                   </p>
@@ -636,7 +637,8 @@
                     {{ t("admin.settings.betaPolicy.fallbackActionHint") }}
                   </p>
                   <div v-if="rule.fallback_action === 'block'" class="mt-2">
-                    <LocalizedEditor :label="t('admin.settings.betaPolicy.errorMessage')" :placeholder="t('admin.settings.betaPolicy.fallbackErrorMessagePlaceholder')" :model-value="rule.fallback_error_message_localization || originalContent(rule.fallback_error_message || '')" @update:model-value="rule.fallback_error_message_localization = $event; rule.fallback_error_message = $event.source" />
+                    <label class="input-label">{{ t('admin.settings.betaPolicy.errorMessage') }}</label>
+                    <input v-model="rule.fallback_error_message" type="text" class="input" :placeholder="t('admin.settings.betaPolicy.fallbackErrorMessagePlaceholder')" />
                     <p class="input-hint">
                       {{ t("admin.settings.betaPolicy.errorMessageHint") }}
                     </p>
@@ -766,7 +768,8 @@
                       </p>
                     </div>
                     <div v-if="rule.action === 'block'">
-                      <LocalizedEditor :label="t('admin.settings.openaiFastPolicy.errorMessage')" :placeholder="t('admin.settings.openaiFastPolicy.errorMessagePlaceholder')" :model-value="rule.error_message_localization || originalContent(rule.error_message || '')" @update:model-value="rule.error_message_localization = $event; rule.error_message = $event.source" />
+                      <label class="input-label">{{ t('admin.settings.openaiFastPolicy.errorMessage') }}</label>
+                      <input v-model="rule.error_message" type="text" class="input" :placeholder="t('admin.settings.openaiFastPolicy.errorMessagePlaceholder')" />
                       <p class="input-hint">
                         {{ t("admin.settings.openaiFastPolicy.errorMessageHint") }}
                       </p>
@@ -828,7 +831,8 @@
                         {{ t("admin.settings.openaiFastPolicy.fallbackActionHint") }}
                       </p>
                       <div v-if="rule.fallback_action === 'block'" class="mt-2">
-                        <LocalizedEditor :label="t('admin.settings.openaiFastPolicy.errorMessage')" :placeholder="t('admin.settings.openaiFastPolicy.fallbackErrorMessagePlaceholder')" :model-value="rule.fallback_error_message_localization || originalContent(rule.fallback_error_message || '')" @update:model-value="rule.fallback_error_message_localization = $event; rule.fallback_error_message = $event.source" />
+                        <label class="input-label">{{ t('admin.settings.openaiFastPolicy.errorMessage') }}</label>
+                        <input v-model="rule.fallback_error_message" type="text" class="input" :placeholder="t('admin.settings.openaiFastPolicy.fallbackErrorMessagePlaceholder')" />
                       </div>
                     </div>
                   </div>
@@ -5761,9 +5765,6 @@ const betaPolicyForm = reactive({
     beta_token: string;
     action: "pass" | "filter" | "block";
     scope: "all" | "oauth" | "apikey" | "bedrock";
-    id?: string;
-    error_message_localization?: LocalizedUpdate<string>;
-    fallback_error_message_localization?: LocalizedUpdate<string>;
     error_message?: string;
     model_whitelist?: string[];
     fallback_action?: "pass" | "filter" | "block";
@@ -8557,9 +8558,6 @@ async function saveSettings(): Promise<boolean> {
             .filter((p) => p !== "");
           const hasWhitelist = whitelist.length > 0;
           return {
-        id: rule.id,
-        error_message_localization: rule.error_message_localization,
-        fallback_error_message_localization: rule.fallback_error_message_localization,
             service_tier: rule.service_tier,
             action: rule.action,
             scope: rule.scope,
@@ -9236,7 +9234,6 @@ const openaiFastPolicyScopeOptions = computed(() => [
 
 function addOpenAIFastPolicyRule() {
   openaiFastPolicyForm.rules.push({
-    id: newContentID(),
     service_tier: "priority",
     action: "filter",
     scope: "all",
@@ -9271,9 +9268,6 @@ async function saveBetaPolicySettings(): Promise<boolean> {
       const whitelist = rule.model_whitelist?.filter((p) => p.trim() !== "");
       const hasWhitelist = whitelist && whitelist.length > 0;
       return {
-        id: rule.id,
-        error_message_localization: rule.error_message_localization,
-        fallback_error_message_localization: rule.fallback_error_message_localization,
         beta_token: rule.beta_token,
         action: rule.action,
         scope: rule.scope,

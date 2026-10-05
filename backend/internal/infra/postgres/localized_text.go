@@ -36,5 +36,6 @@ func LocalizedTextExpression(ctx context.Context, column, field, original string
 		expression = "CASE WHEN " + content + "->>'source_locale'=" + language + " THEN " + fallback +
 			" WHEN " + translation + "->>'source_revision'=" + content + "->>'source_revision' THEN COALESCE(" + value + ", " + fallback + ") ELSE " + expression + " END"
 	}
-	return expression
+	// 零版本内容尚未填写展示文案，使用业务字段。
+	return "CASE WHEN COALESCE((" + content + "->>'revision')::bigint, 0) > 0 THEN " + expression + " ELSE " + original + " END"
 }

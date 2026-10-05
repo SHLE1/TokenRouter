@@ -1,7 +1,5 @@
 package dto
 
-import "github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 // RectifierSettings 是请求修正设置的 HTTP 响应数据。
 type RectifierSettings struct {
 	Enabled                  bool     `json:"enabled"`
@@ -13,7 +11,6 @@ type RectifierSettings struct {
 
 // BetaPolicyRule 是beta 策略规则的 HTTP 数据。
 type BetaPolicyRule struct {
-	locale.PolicyMessages
 	BetaToken            string   `json:"beta_token"`
 	Action               string   `json:"action"`
 	Scope                string   `json:"scope"`
@@ -30,7 +27,6 @@ type BetaPolicySettings struct {
 
 // OpenAIFastPolicyRule 是OpenAI Fast 策略规则的 HTTP 数据。
 type OpenAIFastPolicyRule struct {
-	locale.PolicyMessages
 	ServiceTier          string   `json:"service_tier"`
 	Action               string   `json:"action"`
 	Scope                string   `json:"scope"`

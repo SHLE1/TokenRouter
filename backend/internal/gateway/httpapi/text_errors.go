@@ -13,7 +13,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -72,10 +71,7 @@ func WriteAnthropicError(c *gin.Context, status int, errType, code, message stri
 	})
 }
 
-func BillingErrorDetails(err error, language ...string) (status int, code, message string, retryAfter int) {
-	if len(language) > 0 {
-		defer func() { message = locale.ErrorText(language[0], apperror.Reason(err), status, message) }()
-	}
+func BillingErrorDetails(err error) (status int, code, message string, retryAfter int) {
 	if errors.Is(err, billing.ErrBillingServiceUnavailable) {
 		msg := apperror.Message(err)
 		if msg == "" {

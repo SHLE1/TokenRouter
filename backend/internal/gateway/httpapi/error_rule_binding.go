@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/gin-gonic/gin"
 )
@@ -64,7 +63,7 @@ func ApplyErrorPassthroughRule(
 
 	errMsg = upstream.ExtractErrorMessage(responseBody)
 	if !rule.PassthroughBody && rule.CustomMessage != nil {
-		errMsg = rule.DisplayMessage(gatewayLocale(c))
+		errMsg = *rule.CustomMessage
 	}
 
 	// 命中 skip_monitoring 时在 context 中标记，供 ops_error_logger 跳过记录。
@@ -75,12 +74,4 @@ func ApplyErrorPassthroughRule(
 	// 与现有 failover 场景保持一致：命中规则时统一返回 upstream_error。
 	errType = "upstream_error"
 	return status, errType, errMsg, true
-}
-
-// gatewayLocale 为没有 HTTP 请求的诊断夹具使用默认语言。
-func gatewayLocale(c *gin.Context) string {
-	if c == nil || c.Request == nil {
-		return locale.Default()
-	}
-	return locale.FromContext(c.Request.Context())
 }

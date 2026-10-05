@@ -156,7 +156,8 @@
     "GATEWAY_CONCURRENCY_LIMIT": "The concurrency limit was reached. Try again later.",
     "GROUP_DELETED": "The API key group has been deleted.",
     "GROUP_DISABLED": "The API key group is disabled.",
-    "GROUP_REQUIRED": "Select a group for this API key in the console."
+    "GROUP_REQUIRED": "Select a group for this API key in the console.",
+    "LOCALIZATION_REQUIRED": "Use localization to update plan text."
   },
   "zh-Hans": {
     "HTTP_400": "请求参数无效，请检查后重试。",
@@ -315,6 +316,7 @@
     "GATEWAY_CONCURRENCY_LIMIT": "并发请求已达到上限，请稍后重试。",
     "GROUP_DELETED": "API Key 所属分组已删除。",
     "GROUP_DISABLED": "API Key 所属分组已停用。",
-    "GROUP_REQUIRED": "请先在控制台为此 API Key 选择分组。"
+    "GROUP_REQUIRED": "请先在控制台为此 API Key 选择分组。",
+    "LOCALIZATION_REQUIRED": "请通过多语言内容字段更新套餐文案。"
   }
 }

@@ -194,16 +194,6 @@ func UpdatedAtLTE(v time.Time) predicate.ErrorPassthroughRule {
 	return predicate.ErrorPassthroughRule(sql.FieldLTE(FieldUpdatedAt, v))
 }
 
-// MessageLocalizationIsNil applies the IsNil predicate on the "message_localization" field.
-func MessageLocalizationIsNil() predicate.ErrorPassthroughRule {
-	return predicate.ErrorPassthroughRule(sql.FieldIsNull(FieldMessageLocalization))
-}
-
-// MessageLocalizationNotNil applies the NotNil predicate on the "message_localization" field.
-func MessageLocalizationNotNil() predicate.ErrorPassthroughRule {
-	return predicate.ErrorPassthroughRule(sql.FieldNotNull(FieldMessageLocalization))
-}
-
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.ErrorPassthroughRule {
 	return predicate.ErrorPassthroughRule(sql.FieldEQ(FieldName, v))

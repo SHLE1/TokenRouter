@@ -24,12 +24,19 @@ func ValidateGroupCopy(copy GroupCopy) error {
 	return nil
 }
 
+// GroupContent 为尚未保存文案的分组提供可编辑的名称、描述和初始版本。
+func GroupContent(group *Group) locale.Content[GroupCopy] {
+	if group.Localization.Revision > 0 {
+		return locale.Content[GroupCopy](group.Localization)
+	}
+	content := locale.Original(GroupCopy{DisplayName: group.Name, Description: group.Description})
+	content.Revision, content.SourceRevision = 1, 1
+	return content
+}
+
 // GroupDisplay 返回用户文案，原文缺失时使用历史名称和描述。
 func GroupDisplay(group *Group, language string) (GroupCopy, locale.Resolution) {
-	if group.Localization.Revision == 0 {
-		return GroupCopy{DisplayName: group.Name, Description: group.Description}, locale.Resolution{Fallback: true}
-	}
-	return locale.Content[GroupCopy](group.Localization).Resolve(language)
+	return GroupContent(group).Resolve(language)
 }
 
 // GroupSearchTexts 返回用户可见名称和描述的有效语言版本。

@@ -18,6 +18,16 @@ type PlanCopy struct {
 // PlanLocalization 是套餐保存的原文和译文。
 type PlanLocalization locale.Content[PlanCopy]
 
+// PlanContent 为单文本接口创建的套餐提供可编辑的内容和初始版本。
+func PlanContent(plan *SubscriptionPlan) locale.Content[PlanCopy] {
+	if plan.Localization.Revision > 0 {
+		return locale.Content[PlanCopy](plan.Localization)
+	}
+	content := locale.Original(PlanCopy{Name: plan.Name, Description: plan.Description, Features: plan.Features, ProductName: plan.ProductName})
+	content.Revision, content.SourceRevision = 1, 1
+	return content
+}
+
 // ValidatePlanCopy 对所有语言使用同样的名称和内容长度要求。
 func ValidatePlanCopy(copy PlanCopy) error {
 	if strings.TrimSpace(copy.Name) == "" || len([]rune(copy.Name)) > 100 {

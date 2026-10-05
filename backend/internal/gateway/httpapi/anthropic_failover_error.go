@@ -30,7 +30,7 @@ func WriteAnthropicFailover(c *gin.Context, failoverErr *forwardcore.UpstreamFai
 			// 确定响应消息
 			msg := upstream.ExtractErrorMessage(responseBody)
 			if !rule.PassthroughBody && rule.CustomMessage != nil {
-				msg = rule.DisplayMessage(gatewayLocale(c))
+				msg = *rule.CustomMessage
 			}
 
 			if rule.SkipMonitoring {
@@ -47,7 +47,7 @@ func WriteAnthropicFailover(c *gin.Context, failoverErr *forwardcore.UpstreamFai
 	SetOpsUpstreamError(c, statusCode, upstreamMsg, "")
 
 	// 使用默认的错误映射
-	status, errType, errMsg := MapOpenAIUpstreamError(statusCode, gatewayLocale(c))
+	status, errType, errMsg := AnthropicUpstreamError(statusCode)
 	writeAnthropicFailure(c, status, errType, errMsg, streamStarted)
 }
 

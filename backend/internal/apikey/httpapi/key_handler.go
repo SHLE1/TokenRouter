@@ -51,11 +51,11 @@ func (h *APIKeyHandler[G]) SetGroupPresentation(present func(context.Context, *r
 
 func (h *APIKeyHandler[G]) SetGroupCapacityService(c GroupCapacityReader) { h.groupCapacityService = c }
 
-func (h *APIKeyHandler[G]) keyResponse(k *apikey.APIKey, language ...string) *dto.APIKey[G] {
+func (h *APIKeyHandler[G]) keyResponse(k *apikey.APIKey, language string) *dto.APIKey[G] {
 	return dto.APIKeyFromKey(k, func(g *routing.Group) *G {
-		if g != nil && len(language) > 0 {
+		if g != nil {
 			copy := routing.CloneGroup(g)
-			display, _ := routing.GroupDisplay(g, language[0])
+			display, _ := routing.GroupDisplay(g, language)
 			copy.DisplayName, copy.Description = display.DisplayName, display.Description
 			return h.presentGroup(copy, nil)
 		}

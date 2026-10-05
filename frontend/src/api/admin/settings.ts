@@ -1507,9 +1507,6 @@ export interface OpenAIFastPolicyRule {
   action: "pass" | "filter" | "block" | "force_priority" | "force_ultrafast";
   scope: "all" | "oauth" | "apikey" | "bedrock";
   user_ids?: number[];
-  id?: string;
-  error_message_localization?: LocalizedUpdate<string>;
-  fallback_error_message_localization?: LocalizedUpdate<string>;
   error_message?: string;
   model_whitelist?: string[];
   fallback_action?: "pass" | "filter" | "block" | "force_priority" | "force_ultrafast";
@@ -1537,9 +1534,6 @@ export interface BetaPolicyRule {
   beta_token: string;
   action: "pass" | "filter" | "block";
   scope: "all" | "oauth" | "apikey" | "bedrock";
-  id?: string;
-  error_message_localization?: LocalizedUpdate<string>;
-  fallback_error_message_localization?: LocalizedUpdate<string>;
   error_message?: string;
   model_whitelist?: string[];
   fallback_action?: "pass" | "filter" | "block";

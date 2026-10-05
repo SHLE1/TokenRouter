@@ -3,8 +3,6 @@ package forward
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
@@ -43,7 +41,7 @@ type ErrorPorts interface {
 
 // applyAnthropicDisplayRule 调用规则匹配服务，选择当前协议的响应参数。
 // 透传消息继续用原提取器，不扩大原始 body 暴露，也不改变监控/SLA 标记。
-func applyAnthropicDisplayRule(ctx context.Context, p ErrorPorts, platform string, upstreamStatus int, body []byte, defaultStatus int, defaultType, defaultMessage string) (int, string, string, bool) {
+func applyAnthropicDisplayRule(p ErrorPorts, platform string, upstreamStatus int, body []byte, defaultStatus int, defaultType, defaultMessage string) (int, string, string, bool) {
 	rule := p.MatchRule(platform, upstreamStatus, body)
 	if rule == nil {
 		return defaultStatus, defaultType, defaultMessage, false
@@ -54,7 +52,7 @@ func applyAnthropicDisplayRule(ctx context.Context, p ErrorPorts, platform strin
 	}
 	message := upstream.ExtractErrorMessage(body)
 	if !rule.PassthroughBody && rule.CustomMessage != nil {
-		message = rule.DisplayMessage(locale.FromContext(ctx))
+		message = *rule.CustomMessage
 	}
 	if rule.SkipMonitoring {
 		p.SkipMonitoring()

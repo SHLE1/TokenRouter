@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -97,7 +95,7 @@ func (h *Support) HandleAnthropicFailoverExhausted(c *gin.Context, failoverErr *
 		gatewayhttp.DefaultOpenAIErrorOutput().WriteAnthropicStreamingError(c, status, "api_error", failoverErr.ClientMessage, streamStarted)
 		return
 	}
-	status, errType, errMsg := gatewayhttp.MapOpenAIUpstreamError(failoverErr.StatusCode, locale.FromContext(c.Request.Context()))
+	status, errType, errMsg := gatewayhttp.MapOpenAIUpstreamError(failoverErr.StatusCode)
 	gatewayhttp.DefaultOpenAIErrorOutput().WriteAnthropicStreamingError(c, status, errType, errMsg, streamStarted)
 }
 
@@ -187,7 +185,7 @@ func (h *Support) HandleFailoverExhausted(c *gin.Context, failoverErr *forwardco
 
 // HandleFailoverExhaustedSimple 简化版本，用于没有响应体的情况
 func (h *Support) HandleFailoverExhaustedSimple(c *gin.Context, statusCode int, streamStarted bool) {
-	status, errType, errMsg := gatewayhttp.MapOpenAIUpstreamError(statusCode, locale.FromContext(c.Request.Context()))
+	status, errType, errMsg := gatewayhttp.MapOpenAIUpstreamError(statusCode)
 	gatewayhttp.SetOpsUpstreamError(c, statusCode, errMsg, "")
 	gatewayhttp.DefaultOpenAIErrorOutput().StreamError(c, status, errType, errMsg, streamStarted)
 }

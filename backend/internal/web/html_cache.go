@@ -6,8 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"sync"
-
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
 // HTMLCache manages the cached index.html with injected settings
@@ -47,19 +45,8 @@ func (c *HTMLCache) Invalidate() {
 	c.settingsVersion++
 }
 
-// Get 返回当前渲染快照。
-func (c *HTMLCache) Get() *CachedHTML {
-	cached, _ := c.Snapshot()
-	return cached
-}
-
-// Snapshot 同时取得内容和失效代次，使后续回源只能发布到原代次。
-func (c *HTMLCache) Snapshot() (*CachedHTML, uint64) {
-	return c.SnapshotForLocale(locale.Default())
-}
-
-// SnapshotForLocale 在同一次锁保护内读取语言快照和失效版本。
-func (c *HTMLCache) SnapshotForLocale(code string) (*CachedHTML, uint64) {
+// Snapshot 在同一次锁保护内读取语言快照和失效版本。
+func (c *HTMLCache) Snapshot(code string) (*CachedHTML, uint64) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	snapshot, ok := c.entries[code]
@@ -69,13 +56,8 @@ func (c *HTMLCache) SnapshotForLocale(code string) (*CachedHTML, uint64) {
 	return &CachedHTML{Content: append([]byte(nil), snapshot.Content...), ETag: snapshot.ETag}, c.settingsVersion
 }
 
-// Publish 保存默认语言的 HTML，供已有调用方使用。
-func (c *HTMLCache) Publish(version uint64, html, settingsJSON []byte) CachedHTML {
-	return c.PublishForLocale(locale.Default(), version, html, settingsJSON)
-}
-
-// PublishForLocale 将语言加入 ETag，跨过失效点的渲染保持为当前请求私有。
-func (c *HTMLCache) PublishForLocale(code string, version uint64, html, settingsJSON []byte) CachedHTML {
+// Publish 将语言加入 ETag，跨过失效点的渲染保持为当前请求私有。
+func (c *HTMLCache) Publish(code string, version uint64, html, settingsJSON []byte) CachedHTML {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	key := append([]byte(code+"\n"), settingsJSON...)

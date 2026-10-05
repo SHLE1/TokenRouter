@@ -74,7 +74,7 @@ func (p SearchPorts) Billing(c *gin.Context) *SearchHTTPFailure {
 	key, _ := keyhttp.GetAPIKeyFromContext(c)
 	sub, _ := SubscriptionFromContext(c)
 	if err := p.Funding.CheckKey(c.Request.Context(), key, sub, "", false); err != nil {
-		status, code, message, retry := BillingErrorDetails(err, gatewayLocale(c))
+		status, code, message, retry := BillingErrorDetails(err)
 		return &SearchHTTPFailure{Status: status, Code: code, Message: message, RetryAfter: retry}
 	}
 	return nil

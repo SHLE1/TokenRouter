@@ -12,6 +12,9 @@ import (
 
 // Snapshot 保留综合读取、部分写入合并和旧消费者需要的字段形状。
 type Snapshot struct {
+	// StoredValues 保存本次读取的数据库值，供内容版本检查和部分更新使用。
+	StoredValues map[string]string `json:"-"`
+
 	RegistrationEnabled                 bool
 	EmailVerifyEnabled                  bool
 	RegistrationEmailSuffixWhitelist    []string

@@ -265,8 +265,8 @@ func TestOpenAIResponsesWebSocketV2PassthroughCyberMarkIsConsumedAfterTurn(t *te
 	var closeErr coderws.CloseError
 	require.ErrorAs(t, err, &closeErr)
 	require.Equal(t, coderws.StatusPolicyViolation, closeErr.Code)
-	// closeOpenAIClientWS 将关闭原因截取到 120 字节，透传响应使用同样的前缀。
-	require.Equal(t, "该会话已被网络安全策略屏蔽，请开启新会话 / This session is blocked by cyber-security policy, please ", closeErr.Reason)
+	// 会话屏蔽使用固定英文关闭原因。
+	require.Equal(t, "This session is blocked by the security policy. Start a new session.", closeErr.Reason)
 	select {
 	case <-harness.handlerDone:
 	case <-time.After(3 * time.Second):

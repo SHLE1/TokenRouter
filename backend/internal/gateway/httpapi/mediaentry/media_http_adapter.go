@@ -5,8 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -138,7 +136,7 @@ func (p mediaHTTPAdapter) Billing(c *gin.Context) *gatewayhttp.MediaHTTPFailure 
 	if err == nil {
 		return nil
 	}
-	status, code, message, retry := gatewayhttp.BillingErrorDetails(err, locale.FromContext(c.Request.Context()))
+	status, code, message, retry := gatewayhttp.BillingErrorDetails(err)
 	return &gatewayhttp.MediaHTTPFailure{Status: status, Code: code, Message: message, RetryAfter: retry, Err: err}
 }
 

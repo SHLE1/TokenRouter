@@ -212,7 +212,7 @@ func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
 	// 2）等待后复查资金资格
 	if err := h.backend.Eligibility(c.Request.Context(), apiKey, subscription); err != nil {
 		reqLog.Info("gemini.billing_eligibility_check_failed", zap.Error(err))
-		status, _, message, retryAfter := BillingErrorDetails(err, gatewayLocale(c))
+		status, _, message, retryAfter := BillingErrorDetails(err)
 		if retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}

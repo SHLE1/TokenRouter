@@ -363,7 +363,13 @@
                 </span>
               </label>
               <div v-if="!form.passthrough_body" class="mt-2">
-                <LocalizedEditor :label="t('admin.errorPassthrough.form.customMessage')" :model-value="form.message_localization || originalContent(form.custom_message || '', editingRule ? null : getLocale())" @update:model-value="form.message_localization = $event; form.custom_message = $event.source" />
+                <label class="input-label text-xs">{{ t('admin.errorPassthrough.form.customMessage') }}</label>
+                <input
+                  v-model="form.custom_message"
+                  type="text"
+                  class="input text-sm"
+                  :placeholder="t('admin.errorPassthrough.form.customMessagePlaceholder')"
+                />
               </div>
             </div>
           </div>
@@ -429,9 +435,6 @@
 </template>
 
 <script setup lang="ts">
-import LocalizedEditor from '@/components/common/LocalizedEditor.vue'
-import { getLocale } from '@/i18n'
-import { originalContent, type LocalizedUpdate } from '@/i18n/content'
 import TableSkeletonBody from '@/components/common/TableSkeletonBody.vue'
 import { ref, reactive, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -479,7 +482,6 @@ const form = reactive({
   passthrough_code: true,
   response_code: null as number | null,
   passthrough_body: true,
-  message_localization: undefined as LocalizedUpdate<string> | undefined,
   custom_message: null as string | null,
   skip_monitoring: false,
   description: null as string | null
@@ -520,7 +522,6 @@ const resetForm = () => {
   form.passthrough_code = true
   form.response_code = null
   form.passthrough_body = true
-  form.message_localization = undefined
   form.custom_message = null
   form.skip_monitoring = false
   form.description = null
@@ -545,7 +546,6 @@ const handleEdit = (rule: ErrorPassthroughRule) => {
   form.passthrough_code = rule.passthrough_code
   form.response_code = rule.response_code
   form.passthrough_body = rule.passthrough_body
-  form.message_localization = rule.message_localization ? JSON.parse(JSON.stringify(rule.message_localization)) : undefined
   form.custom_message = rule.custom_message
   form.skip_monitoring = rule.skip_monitoring
   form.description = rule.description
@@ -602,7 +602,6 @@ const handleSubmit = async () => {
       passthrough_code: form.passthrough_code,
       response_code: form.passthrough_code ? null : form.response_code,
       passthrough_body: form.passthrough_body,
-      message_localization: form.message_localization,
       custom_message: form.passthrough_body ? null : form.custom_message,
       skip_monitoring: form.skip_monitoring,
       description: form.description?.trim() || null

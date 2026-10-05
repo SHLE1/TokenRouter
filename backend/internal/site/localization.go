@@ -140,12 +140,5 @@ func ConfiguredSiteTexts(values map[string]string) LocalizedTexts {
 	if result == nil {
 		return LocalizedTexts{}
 	}
-	// 未编辑的历史空标题表示使用内置文案，与已选择原文语言的留空设置区分。
-	for _, key := range []string{"site_title", "site_subtitle"} {
-		content, exists := result[key]
-		if exists && content.SourceLocale == nil && content.Revision == 1 && content.SourceRevision == 1 && strings.TrimSpace(content.Source) == "" && len(content.Translations) == 0 {
-			delete(result, key)
-		}
-	}
 	return result
 }

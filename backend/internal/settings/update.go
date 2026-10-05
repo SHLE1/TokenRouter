@@ -99,9 +99,7 @@ func (s *UpdateSession) Commit(changes ...PreparedChange) error {
 		return err
 	}
 	if len(expected) > 0 {
-		writer, ok := s.owner.repo.(interface {
-			CompareAndSetMultiple(context.Context, map[string]string, map[string]*string) error
-		})
+		writer, ok := s.owner.repo.(ConditionalRepository)
 		if !ok {
 			return errors.New("settings repository does not support conditional updates")
 		}

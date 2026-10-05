@@ -9,8 +9,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 	"golang.org/x/sync/singleflight"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
@@ -80,7 +78,6 @@ func DefaultRectifierSettings() *RectifierSettings {
 
 // BetaPolicyRule 描述 beta token 的动作、适用提供商类型和模型范围。
 type BetaPolicyRule struct {
-	locale.PolicyMessages
 	BetaToken            string   `json:"beta_token"`                       // beta token 值
 	Action               string   `json:"action"`                           // "pass" | "filter" | "block"
 	Scope                string   `json:"scope"`                            // "all" | "oauth" | "apikey" | "bedrock"
@@ -161,7 +158,7 @@ func (s *RuntimeSettings) IsBudgetRectifierEnabled(ctx context.Context) bool {
 }
 
 // GetBetaPolicySettings 读取 beta 规则，缺失、空值或 JSON 无效时使用调用方提供的默认规则。
-func (s *RuntimeSettings) readBetaPolicySettings(ctx context.Context) (*BetaPolicySettings, error) {
+func (s *RuntimeSettings) GetBetaPolicySettings(ctx context.Context) (*BetaPolicySettings, error) {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyBetaPolicySettings)
 	if err != nil {
 		if errors.Is(err, s.notFound) {
@@ -218,24 +215,16 @@ func (s *RuntimeSettings) SetBetaPolicySettings(ctx context.Context, settings *B
 		}
 	}
 
-	old, readErr := s.settingRepo.GetValue(ctx, SettingKeyBetaPolicySettings)
-	if readErr != nil && !errors.Is(readErr, s.notFound) {
-		return readErr
-	}
-	if err := prepareBetaMessages(old, settings); err != nil {
-		return err
-	}
-
 	data, err := json.Marshal(settings)
 	if err != nil {
 		return fmt.Errorf("marshal beta policy settings: %w", err)
 	}
 
-	return s.saveLocalizedPolicy(ctx, SettingKeyBetaPolicySettings, string(data), old, readErr == nil)
+	return s.settingRepo.Set(ctx, SettingKeyBetaPolicySettings, string(data))
 }
 
 // GetOpenAIFastPolicySettings 读取 OpenAI 服务档位策略，缺省时使用默认策略。
-func (s *RuntimeSettings) readOpenAIFastPolicySettings(ctx context.Context) (*OpenAIFastPolicySettings, error) {
+func (s *RuntimeSettings) GetOpenAIFastPolicySettings(ctx context.Context) (*OpenAIFastPolicySettings, error) {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyOpenAIFastPolicySettings)
 	if err != nil {
 		if errors.Is(err, s.notFound) {
@@ -263,19 +252,9 @@ func (s *RuntimeSettings) readOpenAIFastPolicySettings(ctx context.Context) (*Op
 
 // SetOpenAIFastPolicySettings 校验并保存 OpenAI 服务档位策略。
 func (s *RuntimeSettings) SetOpenAIFastPolicySettings(ctx context.Context, settings *OpenAIFastPolicySettings) error {
-	if settings == nil {
-		return fmt.Errorf("settings cannot be nil")
-	}
-	old, readErr := s.settingRepo.GetValue(ctx, SettingKeyOpenAIFastPolicySettings)
-	if readErr != nil && !errors.Is(readErr, s.notFound) {
-		return readErr
-	}
-	if err := prepareFastMessages(old, settings); err != nil {
-		return err
-	}
 	value, err := tierpolicy.Prepare(settings)
 	if err != nil {
 		return err
 	}
-	return s.saveLocalizedPolicy(ctx, SettingKeyOpenAIFastPolicySettings, value, old, readErr == nil)
+	return s.settingRepo.Set(ctx, SettingKeyOpenAIFastPolicySettings, value)
 }

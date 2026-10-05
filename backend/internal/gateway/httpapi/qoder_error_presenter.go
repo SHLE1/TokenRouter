@@ -39,7 +39,7 @@ func (p QoderErrorPresenter) Details(c *gin.Context, err error) (int, string, st
 	}
 	errType = "upstream_error"
 	if !rule.PassthroughBody && rule.CustomMessage != nil {
-		message = rule.DisplayMessage(gatewayLocale(c))
+		message = *rule.CustomMessage
 	} else if extracted := upstream.ExtractErrorMessage([]byte(value.Body)); extracted != "" {
 		message = extracted
 	}
@@ -62,7 +62,7 @@ func (p QoderErrorPresenter) Failure(c *gin.Context, err error) *HTTPFailure {
 	}
 	switch failure.Stage {
 	case gateway.FailureBilling:
-		result.Status, result.Type, result.Message, result.RetryAfter = BillingErrorDetails(failure.Cause, gatewayLocale(c))
+		result.Status, result.Type, result.Message, result.RetryAfter = BillingErrorDetails(failure.Cause)
 	case gateway.FailureUserQueue:
 		result.Status = 429
 		result.Type = "rate_limit_error"

@@ -96,4 +96,13 @@ describe('译文编辑', () => {
     expect(content.deleted_locales).toEqual(['en'])
     expect(translationStatus(content, 'zh-Hans')).toBe('stale')
   })
+
+  it('同一草稿切回原文语言后，恢复的译文可以提交', () => {
+    const english = promoteToOriginal(saved(), 'en')
+    const restored = promoteToOriginal(english, 'zh-Hans')
+    expect(restored.source).toBe('原文')
+    expect(restored.translations.en.value).toBe('English')
+    expect(restored.deleted_locales).not.toContain('en')
+    expect(restored.deleted_locales).toEqual(['zh-Hans'])
+  })
 })

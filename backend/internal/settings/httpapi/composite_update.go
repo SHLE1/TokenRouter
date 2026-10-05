@@ -2001,7 +2001,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		}
 		fields[name] = value
 	}
-	prepared, err := h.preparedParticipants(update.Context(), fields, values)
+	prepared, err := h.preparedParticipants(update.Context(), fields, values, previousSettings.StoredValues)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

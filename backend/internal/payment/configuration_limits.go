@@ -154,13 +154,13 @@ type ConfigEasyPayCustomMethodDisplayConfig struct {
 	DisplayName             string                 `json:"displayName"`
 }
 
-func (s *ConfigService) ConfigPcAggregateMethodDisplayName(pt string, instances []*ProviderInstance, language ...string) string {
+func (s *ConfigService) ConfigPcAggregateMethodDisplayName(pt string, instances []*ProviderInstance, language string) string {
 	pt = strings.TrimSpace(pt)
 	if pt == "" {
 		return ""
 	}
 	for _, inst := range instances {
-		displayName := s.ConfigPcInstanceEasyPayCustomMethodDisplayName(inst, pt, language...)
+		displayName := s.ConfigPcInstanceEasyPayCustomMethodDisplayName(inst, pt, language)
 		if displayName != "" {
 			return displayName
 		}
@@ -168,7 +168,7 @@ func (s *ConfigService) ConfigPcAggregateMethodDisplayName(pt string, instances 
 	return ""
 }
 
-func (s *ConfigService) ConfigPcInstanceEasyPayCustomMethodDisplayName(inst *ProviderInstance, pt string, language ...string) string {
+func (s *ConfigService) ConfigPcInstanceEasyPayCustomMethodDisplayName(inst *ProviderInstance, pt string, language string) string {
 	if inst == nil || inst.ProviderKey != TypeEasyPay {
 		return ""
 	}
@@ -191,11 +191,7 @@ func (s *ConfigService) ConfigPcInstanceEasyPayCustomMethodDisplayName(inst *Pro
 	for _, method := range methods {
 		if strings.TrimSpace(method.Type) == pt {
 			if method.DisplayNameLocalization != nil {
-				selected := locale.Default()
-				if len(language) > 0 {
-					selected = language[0]
-				}
-				value, _ := method.DisplayNameLocalization.Resolve(selected)
+				value, _ := method.DisplayNameLocalization.Resolve(language)
 				return value
 			}
 			return strings.TrimSpace(method.DisplayName)

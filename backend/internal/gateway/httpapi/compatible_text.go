@@ -220,7 +220,7 @@ func (h *CompatibleTextHandler) Responses(c *gin.Context) {
 	// 2. 等待后复查资金资格
 	if err := h.backend.Eligibility(requestCtx, apiKey, subscription); err != nil {
 		reqLog.Info("gateway.responses.billing_check_failed", zap.Error(err))
-		status, code, message, retryAfter := BillingErrorDetails(err, gatewayLocale(c))
+		status, code, message, retryAfter := BillingErrorDetails(err)
 		if retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}
@@ -397,7 +397,7 @@ func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
 	// 2. 等待后复查资金资格
 	if err := h.backend.Eligibility(c.Request.Context(), apiKey, subscription); err != nil {
 		reqLog.Info("gateway.cc.billing_check_failed", zap.Error(err))
-		status, code, message, retryAfter := BillingErrorDetails(err, gatewayLocale(c))
+		status, code, message, retryAfter := BillingErrorDetails(err)
 		if retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}

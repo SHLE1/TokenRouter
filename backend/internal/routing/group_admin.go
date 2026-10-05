@@ -241,6 +241,8 @@ func (s *GroupAdmin) CreateGroup(ctx context.Context, input *CreateGroupInput) (
 			return nil, err
 		}
 		group.Localization = GroupLocalization(next)
+	} else {
+		group.Localization = GroupLocalization(GroupContent(group))
 	}
 	var legacy *LegacyGroupProtocolPatch
 	if input.AllowedProtocols == nil || input.LegacyProtocolInput {
@@ -398,10 +400,7 @@ func (s *GroupAdmin) UpdateGroup(ctx context.Context, id int64, input *UpdateGro
 		return nil, err
 	}
 	if input.Localization != nil {
-		current := locale.Content[GroupCopy](group.Localization)
-		if current.Revision == 0 {
-			current = locale.Original(GroupCopy{DisplayName: group.Name, Description: group.Description})
-		}
+		current := GroupContent(group)
 		next, err := locale.Prepare(current, *input.Localization, ValidateGroupCopy)
 		if err != nil {
 			return nil, err

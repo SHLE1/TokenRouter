@@ -231,6 +231,20 @@ describe('API Client', () => {
   // --- 响应拦截器 ---
 
   describe('响应拦截器', () => {
+    it('保留服务端已生成的业务错误详情', async () => {
+      apiClient.defaults.adapter = vi.fn().mockResolvedValue({
+        status: 400,
+        data: { code: 400, reason: 'INVALID_INPUT', message: '邮箱仅支持 example.com 域名。' },
+        headers: {},
+        config: { url: '/user' },
+        statusText: 'Bad Request',
+      })
+      await expect(apiClient.put('/user', {})).rejects.toMatchObject({
+        reason: 'INVALID_INPUT',
+        message: '邮箱仅支持 example.com 域名。',
+      })
+    })
+
     it('code=0 时解包 data 字段', async () => {
       const adapter = vi.fn().mockResolvedValue({
         status: 200,

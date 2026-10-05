@@ -30,6 +30,12 @@ type Repository interface {
 	Delete(context.Context, string) error
 }
 
+// ConditionalRepository 在一次事务中比较旧值并提交整个设置批次。
+type ConditionalRepository interface {
+	Repository
+	CompareAndSetMultiple(context.Context, map[string]string, map[string]*string) error
+}
+
 type subscription struct {
 	active atomic.Bool
 	id     uint64
@@ -142,14 +148,3 @@ func (s *Store) NotifyUpdated() {
 
 // Updates 返回与 Store 共用生命周期的综合更新协调器。
 func (s *Store) Updates() *Updates { return s.updates }
-
-// CompareAndSetMultiple 将版本检查交给数据库事务执行。
-func (s *Store) CompareAndSetMultiple(ctx context.Context, values map[string]string, expected map[string]*string) error {
-	writer, ok := s.repo.(interface {
-		CompareAndSetMultiple(context.Context, map[string]string, map[string]*string) error
-	})
-	if !ok {
-		return apperror.InternalServer("LOCALIZATION_STORAGE_UNAVAILABLE", "Settings storage does not support conditional updates.")
-	}
-	return writer.CompareAndSetMultiple(ctx, values, expected)
-}

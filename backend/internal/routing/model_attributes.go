@@ -203,7 +203,7 @@ func (s *ModelAttributeService) ResolveModels(ctx context.Context, groupID int64
 	if err != nil {
 		return nil, err
 	}
-	return s.resolveModels(config, models), nil
+	return s.resolveModels(config, models, locale.FromContext(ctx)), nil
 }
 
 // ResolveGroups 批量读取本次展示所需的属性档案，分组之间共享同一次数据库查询。
@@ -229,7 +229,7 @@ func (s *ModelAttributeService) ResolveGroups(ctx context.Context, groups map[in
 }
 
 // resolveModels 将档案规则叠加到最终上游模型的目录属性上。
-func (s *ModelAttributeService) resolveModels(config *ModelAttributeConfig, models []RequestableModel, language ...string) map[string]EffectiveModelAttributes {
+func (s *ModelAttributeService) resolveModels(config *ModelAttributeConfig, models []RequestableModel, language string) map[string]EffectiveModelAttributes {
 	var candidates func(string) []string
 	if s.Catalog.Candidates != nil {
 		candidates = s.Catalog.Candidates()
@@ -249,12 +249,8 @@ func (s *ModelAttributeService) resolveModels(config *ModelAttributeConfig, mode
 				base = modelcatalog.Merge(base, config.match(name, candidates))
 			}
 			if base.DisplayNameLocalization != nil {
-				selected := locale.Default()
-				if len(language) > 0 {
-					selected = language[0]
-				}
 				searchTerms = append(searchTerms, locale.SearchTexts(base.DisplayNameLocalization.Content, func(text string) []string { return []string{text} })...)
-				value, actual := base.DisplayNameLocalization.Resolve(selected)
+				value, actual := base.DisplayNameLocalization.Resolve(language)
 				resolution = &actual
 				if value != "" {
 					base.DisplayName = &value

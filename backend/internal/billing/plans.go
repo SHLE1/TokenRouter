@@ -79,6 +79,10 @@ func (s *Plans) CreatePlan(ctx context.Context, req CreatePlanRequest) (*Subscri
 }
 
 func (s *Plans) UpdatePlan(ctx context.Context, id int64, req UpdatePlanRequest) (*SubscriptionPlan, error) {
+	// 文案更新携带内容版本，以便同时更新原文并标记过期译文。
+	if req.Localization == nil && (req.Name != nil || req.Description != nil || req.Features != nil || req.ProductName != nil) {
+		return nil, apperror.BadRequest("LOCALIZATION_REQUIRED", "Use localization to update plan text.")
+	}
 	if req.Localization != nil {
 		copy := req.Localization.Source
 		req.Name, req.Description, req.Features, req.ProductName = &copy.Name, &copy.Description, &copy.Features, &copy.ProductName

@@ -73,7 +73,7 @@ func AnthropicError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Result, 
 	}
 
 	// 非 failover 错误也支持错误透传规则匹配。
-	if status, errType, errMsg, matched := applyAnthropicDisplayRule(ctx,
+	if status, errType, errMsg, matched := applyAnthropicDisplayRule(
 		p,
 		in.Platform,
 		in.Status,
@@ -193,7 +193,7 @@ func AnthropicRetryError(ctx context.Context, p ErrorPorts, in ErrorInput) (*Res
 		))
 	}
 
-	if status, errType, errMsg, matched := applyAnthropicDisplayRule(ctx,
+	if status, errType, errMsg, matched := applyAnthropicDisplayRule(
 		p,
 		in.Platform,
 		in.Status,

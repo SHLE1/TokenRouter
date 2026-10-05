@@ -46,7 +46,7 @@ func AdminGroupFromRouting[A any](g *routing.Group) *AdminGroup[A] {
 		return nil
 	}
 	out := &AdminGroup[A]{
-		Localization:               g.Localization,
+		Localization:               routing.GroupLocalization(routing.GroupContent(g)),
 		Group:                      GroupFromRoutingBase(g),
 		ForceOpenAIFast:            g.ForceOpenAIFast,
 		OpenAIFastPolicy:           g.EffectiveOpenAIFastPolicy(),

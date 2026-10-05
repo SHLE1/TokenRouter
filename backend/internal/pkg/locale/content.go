@@ -76,12 +76,6 @@ func Prepare[T any](current Content[T], input Update[T], validate func(T) error)
 		if changed || current.Revision == 0 {
 			return current, apperror.BadRequest("SOURCE_LOCALE_REQUIRED", "Choose the original language.")
 		}
-	} else {
-		code := Normalize(*next.SourceLocale)
-		if code == "" {
-			return current, apperror.BadRequest("INVALID_LOCALE", "Language is not supported.")
-		}
-		next.SourceLocale = &code
 	}
 	if err := validate(next.Source); err != nil {
 		return current, err

@@ -23,7 +23,11 @@ func NewErrorResponse(code, message string) ErrorResponse {
 func AbortWithError(c *gin.Context, statusCode int, code, message string) {
 	language := locale.Default()
 	if c.Request != nil {
-		language = locale.Negotiate(c.GetHeader("Accept-Language"), locale.FromContext(c.Request.Context()))
+		var selected bool
+		language, selected = locale.Explicit(c.Request.Context())
+		if !selected {
+			language = locale.Negotiate(c.GetHeader("Accept-Language"), locale.Default())
+		}
 	}
 	c.JSON(statusCode, NewErrorResponse(code, locale.ErrorText(language, code, statusCode, message)))
 	c.Abort()

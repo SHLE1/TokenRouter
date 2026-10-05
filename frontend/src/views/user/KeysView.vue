@@ -1712,7 +1712,7 @@ const onStatusFilterChange = (value: string | number | boolean | null) => {
 const buildGroupOptions = (source: Group[]) =>
   source.map((group) => ({
     value: group.id,
-    label: group.name,
+    label: group.display_name || group.name,
     search_terms: group.search_terms,
     description: group.description,
     displayBrand: group.display_brand?.trim() || null,

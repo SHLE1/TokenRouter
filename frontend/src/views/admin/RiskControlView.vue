@@ -1080,7 +1080,8 @@
                 <input v-model.number="configForm.block_status" type="number" min="400" max="599" class="input" />
               </div>
               <div>
-                <LocalizedEditor :label="t('admin.riskControl.blockMessage')" :model-value="configForm.block_message_localization || originalContent(configForm.block_message)" @update:model-value="configForm.block_message_localization = $event; configForm.block_message = $event.source" />
+                <label class="input-label">{{ t('admin.riskControl.blockMessage') }}</label>
+                <input v-model.trim="configForm.block_message" type="text" class="input" />
               </div>
               <div class="flex items-center justify-between rounded-control border border-gray-100 p-4 dark:border-dark-700">
                 <div>
@@ -1478,8 +1479,6 @@
 </template>
 
 <script setup lang="ts">
-import LocalizedEditor from '@/components/common/LocalizedEditor.vue'
-import { originalContent, type LocalizedUpdate } from '@/i18n/content'
 import { vSegmented } from '@/directives/segmented'
 import Skeleton from '@/components/common/Skeleton.vue'
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
@@ -1637,8 +1636,7 @@ const configForm = reactive({
   worker_count: 4,
   queue_size: 32768,
   block_status: 403,
-  block_message_localization: undefined as LocalizedUpdate<string> | undefined,
-  block_message: '内容审计命中风险规则，请调整输入后重试',
+  block_message: "This request was blocked by the site's content policy. Revise your input and try again.",
   email_on_hit: true,
   auto_ban_enabled: true,
   ban_threshold: 10,
@@ -2140,8 +2138,7 @@ function applyConfig(config: ContentModerationConfig) {
   configForm.worker_count = config.worker_count || 4
   configForm.queue_size = config.queue_size || 32768
   configForm.block_status = config.block_status || 403
-  configForm.block_message_localization = config.block_message_localization
-  configForm.block_message = config.block_message || '内容审计命中风险规则，请调整输入后重试'
+  configForm.block_message = config.block_message || "This request was blocked by the site's content policy. Revise your input and try again."
   configForm.email_on_hit = config.email_on_hit ?? true
   configForm.auto_ban_enabled = config.auto_ban_enabled ?? true
   configForm.ban_threshold = config.ban_threshold || 10
@@ -2234,8 +2231,7 @@ async function saveConfig() {
       worker_count: Number(configForm.worker_count) || 4,
       queue_size: Number(configForm.queue_size) || 32768,
       block_status: Number(configForm.block_status) || 403,
-      block_message_localization: configForm.block_message_localization,
-      block_message: configForm.block_message || '内容审计命中风险规则，请调整输入后重试',
+      block_message: configForm.block_message || "This request was blocked by the site's content policy. Revise your input and try again.",
       email_on_hit: configForm.email_on_hit,
       auto_ban_enabled: configForm.auto_ban_enabled,
       ban_threshold: Number(configForm.ban_threshold) || 10,

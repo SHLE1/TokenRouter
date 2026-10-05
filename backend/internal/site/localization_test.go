@@ -59,8 +59,8 @@ func TestOptionalSiteTextDistinguishesEmpty(t *testing.T) {
 	require.Contains(t, ResolveSiteTexts(values, "zh-Hans"), "site_title")
 }
 
-// TestMigratedEmptyHeroTextUsesBuiltins 检查历史空标题不会覆盖首页内置文案。
-func TestMigratedEmptyHeroTextUsesBuiltins(t *testing.T) {
+// TestSiteTextOverrides 检查已保存的空文案与尚未配置的字段。
+func TestSiteTextOverrides(t *testing.T) {
 	en := "en"
 	for _, tc := range []struct {
 		name         string
@@ -70,8 +70,9 @@ func TestMigratedEmptyHeroTextUsesBuiltins(t *testing.T) {
 		translations map[string]locale.Translation[string]
 		configured   bool
 	}{
-		{name: "migrated empty", revision: 1},
-		{name: "migrated whitespace", source: " \t\n", revision: 1},
+		{name: "missing"},
+		{name: "saved empty", revision: 1, configured: true},
+		{name: "saved whitespace", source: " \t\n", revision: 1, configured: true},
 		{name: "custom source", source: "自定义标题", revision: 1, configured: true},
 		{name: "translated source", revision: 1, translations: map[string]locale.Translation[string]{"en": {Value: "Custom title", SourceRevision: 1}}, configured: true},
 		{name: "intentional empty", language: &en, revision: 1, configured: true},
@@ -80,7 +81,11 @@ func TestMigratedEmptyHeroTextUsesBuiltins(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			doc := locale.Content[string]{SourceLocale: tc.language, Source: tc.source, Revision: tc.revision, SourceRevision: 1, Translations: tc.translations}
 			for _, key := range []string{"site_title", "site_subtitle"} {
-				raw, err := json.Marshal(map[string]locale.Content[string]{key: doc})
+				contents := map[string]locale.Content[string]{}
+				if tc.configured {
+					contents[key] = doc
+				}
+				raw, err := json.Marshal(contents)
 				require.NoError(t, err)
 				values := map[string]string{SettingKeySiteTexts: string(raw)}
 				_, configured := ConfiguredSiteTexts(values)[key]

@@ -3,32 +3,28 @@ package errorpolicy
 import (
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 )
 
 // ErrorPassthroughRule 全局错误透传规则
 // 用于控制上游错误如何返回给客户端
 type ErrorPassthroughRule struct {
-	MessageLocalization MessageLocalization    `json:"message_localization"`
-	MessageUpdate       *locale.Update[string] `json:"-"`
-	ID                  int64                  `json:"id"`
-	Name                string                 `json:"name"`             // 规则名称
-	Enabled             bool                   `json:"enabled"`          // 是否启用
-	Priority            int                    `json:"priority"`         // 优先级（数字越小优先级越高）
-	ErrorCodes          []int                  `json:"error_codes"`      // 匹配的错误码列表（OR关系）
-	Keywords            []string               `json:"keywords"`         // 匹配的关键词列表（OR关系）
-	MatchMode           string                 `json:"match_mode"`       // "any"(任一条件) 或 "all"(所有条件)
-	Platforms           []string               `json:"platforms"`        // 适用平台列表
-	PassthroughCode     bool                   `json:"passthrough_code"` // 是否透传原始状态码
-	ResponseCode        *int                   `json:"response_code"`    // 自定义状态码（passthrough_code=false 时使用）
-	PassthroughBody     bool                   `json:"passthrough_body"` // 是否透传原始错误信息
-	CustomMessage       *string                `json:"custom_message"`   // 自定义错误信息（passthrough_body=false 时使用）
-	SkipMonitoring      bool                   `json:"skip_monitoring"`  // 是否跳过运维监控记录
-	Description         *string                `json:"description"`      // 规则描述
-	CreatedAt           time.Time              `json:"created_at"`
-	UpdatedAt           time.Time              `json:"updated_at"`
+	ID              int64     `json:"id"`
+	Name            string    `json:"name"`             // 规则名称
+	Enabled         bool      `json:"enabled"`          // 是否启用
+	Priority        int       `json:"priority"`         // 优先级（数字越小优先级越高）
+	ErrorCodes      []int     `json:"error_codes"`      // 匹配的错误码列表（OR关系）
+	Keywords        []string  `json:"keywords"`         // 匹配的关键词列表（OR关系）
+	MatchMode       string    `json:"match_mode"`       // "any"(任一条件) 或 "all"(所有条件)
+	Platforms       []string  `json:"platforms"`        // 适用平台列表
+	PassthroughCode bool      `json:"passthrough_code"` // 是否透传原始状态码
+	ResponseCode    *int      `json:"response_code"`    // 自定义状态码（passthrough_code=false 时使用）
+	PassthroughBody bool      `json:"passthrough_body"` // 是否透传原始错误信息
+	CustomMessage   *string   `json:"custom_message"`   // 自定义错误信息（passthrough_body=false 时使用）
+	SkipMonitoring  bool      `json:"skip_monitoring"`  // 是否跳过运维监控记录
+	Description     *string   `json:"description"`      // 规则描述
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // MatchModeAny 表示任一条件匹配即可

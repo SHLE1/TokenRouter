@@ -157,18 +157,14 @@ func (r creativeGroups) ListActive(ctx context.Context) ([]creative.GroupView, e
 	return out, nil
 }
 
-func creativeGroupView(g *routing.Group, language ...string) *creative.GroupView {
+func creativeGroupView(g *routing.Group, language string) *creative.GroupView {
 	if g == nil {
 		return nil
 	}
-	name := g.Name
-	if len(language) > 0 {
-		display, _ := routing.GroupDisplay(g, language[0])
-		name = display.DisplayName
-	}
+	display, _ := routing.GroupDisplay(g, language)
 	return &creative.GroupView{
 		ID:                   g.ID,
-		Name:                 name,
+		Name:                 display.DisplayName,
 		ClaudeCodeOnly:       g.ClaudeCodeOnly,
 		IsExclusive:          g.IsExclusive,
 		AllowImageGeneration: g.AllowImageGeneration,

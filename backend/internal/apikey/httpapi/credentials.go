@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	googleapi "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
@@ -36,21 +34,21 @@ func HasCredentialInput(c *gin.Context) bool {
 func AbortTeamError(c *gin.Context, err error) bool {
 	switch {
 	case errors.Is(err, apikey.ErrTeamMemberDailyExceeded):
-		AbortWithError(c, http.StatusTooManyRequests, "TEAM_MEMBER_DAILY_LIMIT_EXCEEDED", "团队成员日限额已用完")
+		AbortWithError(c, http.StatusTooManyRequests, "TEAM_MEMBER_DAILY_LIMIT_EXCEEDED", "The team member daily limit has been reached")
 	case errors.Is(err, apikey.ErrTeamMemberWeeklyExceeded):
-		AbortWithError(c, http.StatusTooManyRequests, "TEAM_MEMBER_WEEKLY_LIMIT_EXCEEDED", "团队成员周限额已用完")
+		AbortWithError(c, http.StatusTooManyRequests, "TEAM_MEMBER_WEEKLY_LIMIT_EXCEEDED", "The team member weekly limit has been reached")
 	case errors.Is(err, apikey.ErrTeamMemberMonthlyExceeded):
-		AbortWithError(c, http.StatusTooManyRequests, "TEAM_MEMBER_MONTHLY_LIMIT_EXCEEDED", "团队成员月限额已用完")
+		AbortWithError(c, http.StatusTooManyRequests, "TEAM_MEMBER_MONTHLY_LIMIT_EXCEEDED", "The team member monthly limit has been reached")
 	case errors.Is(err, apikey.ErrTeamFeatureDisabled):
-		AbortWithError(c, http.StatusForbidden, "TEAM_FEATURE_DISABLED", "团队功能未启用")
+		AbortWithError(c, http.StatusForbidden, "TEAM_FEATURE_DISABLED", "The team feature is disabled")
 	case errors.Is(err, apikey.ErrTeamSuspended):
-		AbortWithError(c, http.StatusForbidden, "TEAM_SUSPENDED", "团队已暂停")
+		AbortWithError(c, http.StatusForbidden, "TEAM_SUSPENDED", "The team is suspended")
 	case errors.Is(err, apikey.ErrTeamMembershipRequired):
-		AbortWithError(c, http.StatusForbidden, "TEAM_MEMBERSHIP_REQUIRED", "团队成员关系已失效")
+		AbortWithError(c, http.StatusForbidden, "TEAM_MEMBERSHIP_REQUIRED", "The team membership is no longer active")
 	case errors.Is(err, apikey.ErrTeamActorInactive):
-		AbortWithError(c, http.StatusForbidden, "TEAM_ACTOR_INACTIVE", "团队密钥所属成员已停用")
+		AbortWithError(c, http.StatusForbidden, "TEAM_ACTOR_INACTIVE", "The member assigned to this team API key is inactive")
 	case errors.Is(err, apikey.ErrTeamBillingOwnerInactive):
-		AbortWithError(c, http.StatusForbidden, "TEAM_BILLING_OWNER_INACTIVE", "团队付款所有者已停用")
+		AbortWithError(c, http.StatusForbidden, "TEAM_BILLING_OWNER_INACTIVE", "The team billing owner is inactive")
 	default:
 		return false
 	}
@@ -96,16 +94,7 @@ func AllowGoogleQueryKey(path string) bool {
 	return strings.HasPrefix(path, "/v1beta") || strings.HasPrefix(path, "/antigravity/v1beta")
 }
 
-func AbortGoogleError(c *gin.Context, status int, message string, reasons ...string) {
-	reason := ""
-	if len(reasons) > 0 {
-		reason = reasons[0]
-	}
-	language := locale.Default()
-	if c.Request != nil {
-		language = locale.Negotiate(c.GetHeader("Accept-Language"), locale.FromContext(c.Request.Context()))
-	}
-	message = locale.ErrorText(language, reason, status, message)
+func AbortGoogleError(c *gin.Context, status int, message string) {
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"code":    status,

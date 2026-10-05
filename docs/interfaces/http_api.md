@@ -81,7 +81,7 @@ RequestLogger
 
 客户端错误由 `gateway/httpapi` 写出，错误规则和它的管理在 `gateway/errorpolicy`。错误规则只改变返回给客户端的内容和是否跳过监控，提供商健康、重试和扣费资格都不受影响。停止时，请求和平台尝试共用 app 的进入屏障；在途请求的尾部完成后，才停止完成队列；超时时报告哪些阶段没完成、由谁持有。
 
-用户展示请求使用 `Accept-Language`，语言和回退规则见[用户侧国际化](user_localization.md)。`GET /api/v1/settings/legal/:id` 按语言返回协议，账户资料的 `preferred_locale` 用于保存用户选择。
+网站展示请求使用 `Accept-Language`，语言和回退规则见[用户侧国际化](user_localization.md)。`GET /api/v1/settings/legal/:id` 按语言返回协议，账户资料的 `preferred_locale` 用于保存用户选择。
 
 <a id="site_pages"></a>
 ### 站点页面
@@ -316,7 +316,7 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器绑定同一个协�
 
 管理员 `GET /api/v1/admin/usage` 的每条记录可以带 `detailed_timing`。它通过同一个内部请求 ID 关联 `http.access` 日志得到，字段是相对于请求进入 TokenRouter 的毫秒时间点，包括：拿到提供商槽位、上游连接和写入、首字节、第一个 SSE、第一个可见输出和第一次下游 Flush。历史记录或观测日志缺失时，省略这个对象。
 
-网关错误使用调用方协议的格式：OpenAI 入口用 `error` 对象，Anthropic 用 `type: error` 加嵌套错误，Google 用 HTTP code、message 和 status。认证失败、未分组、复合 Key 和本地能力拒绝，都使用当前协议的 writer；Google 或 Anthropic 客户端收到面板 envelope 会无法解析。
+网关内置错误固定使用英文。网关错误使用调用方协议的格式：OpenAI 入口用 `error` 对象，Anthropic 用 `type: error` 加嵌套错误，Google 用 HTTP code、message 和 status。认证失败、未分组、复合 Key 和本地能力拒绝，都使用当前协议的 writer；Google 或 Anthropic 客户端收到面板 envelope 会无法解析。
 
 客户端协议被分组禁用时，返回 `403`，并在提供商选择、计费、重试和 fallback 之前记录 `LocalPolicyDenied`。Anthropic 入口返回 `permission_error`，OpenAI 入口返回 `protocol_not_allowed`，Gemini 入口返回 Google 的 `PERMISSION_DENIED`。模型列表的 GET 不经过生成协议的开关。
 

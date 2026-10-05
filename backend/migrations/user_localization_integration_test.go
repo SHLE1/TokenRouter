@@ -30,10 +30,30 @@ func TestUserLocalizationMigrations(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	require.NoError(t, postgres.ApplyMigrations(ctx, db, migrations.FS))
+	// 聚合查询与页面展示共同处理未初始化、空译文和有效译文。
+	t.Run("group display expression", func(t *testing.T) {
+		userContext := locale.WithUserPresentation(locale.WithLanguage(ctx, "en"), true)
+		expression := postgres.LocalizedTextExpression(userContext, "g.localization", "display_name", "g.name")
+		for _, sample := range []struct{ content, want string }{
+			{`null`, "business"},
+			{`{"revision":0,"source":{"display_name":""},"translations":null}`, "business"},
+			{`{"revision":1,"source_revision":1,"source":{"display_name":"Original"},"translations":{"en":{"source_revision":1,"value":{"display_name":"English"}}}}`, "English"},
+			{`{"revision":1,"source_revision":2,"source":{"display_name":"Original"},"translations":{"en":{"source_revision":1,"value":{"display_name":"Stale"}}}}`, "Original"},
+		} {
+			var actual string
+			require.NoError(t, db.QueryRowContext(userContext, "SELECT "+expression+" FROM (SELECT 'business'::text AS name, $1::jsonb AS localization) g", sample.content).Scan(&actual))
+			require.Equal(t, sample.want, actual)
+		}
+	})
+
 	require.NoError(t, postgres.ApplyMigrations(ctx, db, migrations.FS))
 	var count int
 	require.NoError(t, db.QueryRow(`SELECT count(*) FROM information_schema.columns WHERE table_name='users' AND column_name='preferred_locale'`).Scan(&count))
 	require.Equal(t, 1, count)
+	require.NoError(t, db.QueryRow(`SELECT count(*) FROM schema_migrations WHERE filename >= '290'`).Scan(&count))
+	require.Equal(t, 1, count)
+	require.NoError(t, db.QueryRow(`SELECT count(*) FROM information_schema.columns WHERE table_name='error_passthrough_rules' AND column_name='message_localization'`).Scan(&count))
+	require.Zero(t, count)
 	_, err = db.Exec(`DROP SCHEMA public CASCADE; CREATE SCHEMA public`)
 	require.NoError(t, err)
 	prior := fstest.MapFS{}
@@ -60,7 +80,7 @@ func TestUserLocalizationMigrations(t *testing.T) {
 	// 单个迁移失败时同事务中新增的字段与内容都回滚。
 	tx, err := db.BeginTx(ctx, nil)
 	require.NoError(t, err)
-	migration, err := migrations.FS.ReadFile("290_user_locale.sql")
+	migration, err := migrations.FS.ReadFile("290_user_localization.sql")
 	require.NoError(t, err)
 	_, err = tx.Exec(string(migration))
 	require.NoError(t, err)
@@ -96,8 +116,8 @@ func TestUserLocalizationMigrations(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
-// TestRepairEmptyHomeTextMigration 检查已升级站点的空标题修复及管理员保存值的保护。
-func TestRepairEmptyHomeTextMigration(t *testing.T) {
+// TestHomeTextMigration 检查旧字段中的空值、译文和重复执行。
+func TestHomeTextMigration(t *testing.T) {
 	ctx := context.Background()
 	pg, err := tcpostgres.Run(ctx, "postgres:18.1-alpine3.23", tcpostgres.WithDatabase("home_text"), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
 	require.NoError(t, err)
@@ -107,56 +127,53 @@ func TestRepairEmptyHomeTextMigration(t *testing.T) {
 	db, err := sql.Open("postgres", dsn)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	_, err = db.Exec(`CREATE TABLE settings(key text PRIMARY KEY, value text NOT NULL, updated_at timestamptz DEFAULT now()); INSERT INTO settings(key,value) VALUES('unrelated','plain text')`)
+	_, err = db.Exec(`CREATE TABLE settings(key text PRIMARY KEY, value text NOT NULL, updated_at timestamptz DEFAULT now());
+CREATE TABLE users(id bigint);
+CREATE TABLE announcements(title text, content text);
+CREATE TABLE groups(name text, description text);
+CREATE TABLE subscription_plans(name text, description text, features text, product_name text);`)
 	require.NoError(t, err)
-	migration, err := migrations.FS.ReadFile("298_restore_empty_home_text_defaults.sql")
+	migration, err := migrations.FS.ReadFile("290_user_localization.sql")
 	require.NoError(t, err)
-	en := "en"
 	for _, tc := range []struct {
-		name, source string
-		language     *string
-		revision     int64
-		translations map[string]locale.Translation[string]
-		keep         bool
+		name, source, chinese, english, wantSource string
+		missing, configured                        bool
 	}{
-		{name: "empty", revision: 1},
-		{name: "whitespace", source: " \t\n", revision: 1},
-		{name: "custom", source: "Custom title", revision: 1, keep: true},
-		{name: "translated", revision: 1, translations: map[string]locale.Translation[string]{"en": {Value: "English title", SourceRevision: 1}}, keep: true},
-		{name: "intentional blank", language: &en, revision: 1, keep: true},
-		{name: "already edited", revision: 2, keep: true},
+		{name: "missing", missing: true},
+		{name: "empty"},
+		{name: "whitespace", source: " \t\n", chinese: "\n", english: "\t"},
+		{name: "custom", source: "Custom title", wantSource: "Custom title", configured: true},
+		{name: "chinese translation", chinese: "中文标题", wantSource: "中文标题", configured: true},
+		{name: "english translation", english: "English title", wantSource: "English title", configured: true},
+		{name: "blank source with translation", source: " \t", english: "English title", wantSource: "English title", configured: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.translations == nil {
-				tc.translations = map[string]locale.Translation[string]{}
+			_, err := db.Exec(`DELETE FROM settings; INSERT INTO settings(key,value) VALUES('unrelated','plain text')`)
+			require.NoError(t, err)
+			if !tc.missing {
+				for _, field := range []string{"site_title", "site_subtitle"} {
+					_, err = db.Exec(`INSERT INTO settings(key,value) VALUES($1,$2),($3,$4),($5,$6)`, field, tc.source, field+"_zh", tc.chinese, field+"_en", tc.english)
+					require.NoError(t, err)
+				}
 			}
-			document := locale.Content[string]{Source: tc.source, SourceLocale: tc.language, Revision: tc.revision, SourceRevision: 1, Translations: tc.translations}
-			input := map[string]any{"site_title": document, "site_subtitle": document, "contact_info": map[string]string{"source": "Contact us"}, "site_name": map[string]string{"source": "Brand"}}
-			encoded, err := json.Marshal(input)
-			require.NoError(t, err)
-			_, err = db.Exec(`INSERT INTO settings(key,value) VALUES('site_texts',$1) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value`, string(encoded))
-			require.NoError(t, err)
 			for range 2 {
 				_, err = db.Exec(string(migration))
 				require.NoError(t, err)
 			}
-			var actual string
-			require.NoError(t, db.QueryRow(`SELECT value FROM settings WHERE key='site_texts'`).Scan(&actual))
-			if !tc.keep {
-				delete(input, "site_title")
-				delete(input, "site_subtitle")
+			var raw string
+			require.NoError(t, db.QueryRow(`SELECT value FROM settings WHERE key='site_texts'`).Scan(&raw))
+			var texts map[string]locale.Content[string]
+			require.NoError(t, json.Unmarshal([]byte(raw), &texts))
+			for _, field := range []string{"site_title", "site_subtitle"} {
+				content, exists := texts[field]
+				require.Equal(t, tc.configured, exists)
+				if exists {
+					require.Equal(t, tc.wantSource, content.Source)
+					require.EqualValues(t, 1, content.Revision)
+				}
 			}
-			expected, err := json.Marshal(input)
-			require.NoError(t, err)
-			require.JSONEq(t, string(expected), actual)
+			require.NoError(t, db.QueryRow(`SELECT value FROM settings WHERE key='unrelated'`).Scan(&raw))
+			require.Equal(t, "plain text", raw)
 		})
 	}
-	// 元数据不完整时，迁移保持现值供人工处理。
-	_, err = db.Exec(`UPDATE settings SET value='{"site_title":{"source":""},"site_subtitle":{"source":"existing"}}' WHERE key='site_texts'`)
-	require.NoError(t, err)
-	_, err = db.Exec(string(migration))
-	require.NoError(t, err)
-	var actual string
-	require.NoError(t, db.QueryRow(`SELECT value FROM settings WHERE key='site_texts'`).Scan(&actual))
-	require.JSONEq(t, `{"site_title":{"source":""},"site_subtitle":{"source":"existing"}}`, actual)
 }
