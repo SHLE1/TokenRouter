@@ -1080,8 +1080,7 @@
                 <input v-model.number="configForm.block_status" type="number" min="400" max="599" class="input" />
               </div>
               <div>
-                <label class="input-label">{{ t('admin.riskControl.blockMessage') }}</label>
-                <LocalizedEditor :model-value="configForm.block_message_localization || originalContent(configForm.block_message)" @update:model-value="configForm.block_message_localization = $event; configForm.block_message = $event.source" />
+                <LocalizedEditor :label="t('admin.riskControl.blockMessage')" :model-value="configForm.block_message_localization || originalContent(configForm.block_message)" @update:model-value="configForm.block_message_localization = $event; configForm.block_message = $event.source" />
               </div>
               <div class="flex items-center justify-between rounded-control border border-gray-100 p-4 dark:border-dark-700">
                 <div>

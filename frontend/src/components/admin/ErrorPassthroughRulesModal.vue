@@ -363,8 +363,7 @@
                 </span>
               </label>
               <div v-if="!form.passthrough_body" class="mt-2">
-                <label class="input-label text-xs">{{ t('admin.errorPassthrough.form.customMessage') }}</label>
-                <LocalizedEditor :model-value="form.message_localization || originalContent(form.custom_message || '', editingRule ? null : getLocale())" @update:model-value="form.message_localization = $event; form.custom_message = $event.source" />
+                <LocalizedEditor :label="t('admin.errorPassthrough.form.customMessage')" :model-value="form.message_localization || originalContent(form.custom_message || '', editingRule ? null : getLocale())" @update:model-value="form.message_localization = $event; form.custom_message = $event.source" />
               </div>
             </div>
           </div>

@@ -562,10 +562,7 @@
 
                 <!-- 动作为拦截时填写返回给客户端的错误信息。 -->
                 <div v-if="rule.action === 'block'">
-                  <label :for="`beta-policy-${rule.beta_token}-error`" class="input-label">
-                    {{ t("admin.settings.betaPolicy.errorMessage") }}
-                  </label>
-                  <LocalizedEditor :model-value="rule.error_message_localization || originalContent(rule.error_message || '')" @update:model-value="rule.error_message_localization = $event; rule.error_message = $event.source" />
+                  <LocalizedEditor :label="t('admin.settings.betaPolicy.errorMessage')" :placeholder="t('admin.settings.betaPolicy.errorMessagePlaceholder')" :model-value="rule.error_message_localization || originalContent(rule.error_message || '')" @update:model-value="rule.error_message_localization = $event; rule.error_message = $event.source" />
                   <p class="input-hint">
                     {{ t("admin.settings.betaPolicy.errorMessageHint") }}
                   </p>
@@ -639,7 +636,7 @@
                     {{ t("admin.settings.betaPolicy.fallbackActionHint") }}
                   </p>
                   <div v-if="rule.fallback_action === 'block'" class="mt-2">
-                    <LocalizedEditor :model-value="rule.fallback_error_message_localization || originalContent(rule.fallback_error_message || '')" @update:model-value="rule.fallback_error_message_localization = $event; rule.fallback_error_message = $event.source" />
+                    <LocalizedEditor :label="t('admin.settings.betaPolicy.errorMessage')" :placeholder="t('admin.settings.betaPolicy.fallbackErrorMessagePlaceholder')" :model-value="rule.fallback_error_message_localization || originalContent(rule.fallback_error_message || '')" @update:model-value="rule.fallback_error_message_localization = $event; rule.fallback_error_message = $event.source" />
                     <p class="input-hint">
                       {{ t("admin.settings.betaPolicy.errorMessageHint") }}
                     </p>
@@ -769,10 +766,7 @@
                       </p>
                     </div>
                     <div v-if="rule.action === 'block'">
-                      <label :for="`openai-fast-policy-error-${ruleIndex}`" class="input-label">
-                        {{ t("admin.settings.openaiFastPolicy.errorMessage") }}
-                      </label>
-                      <LocalizedEditor :model-value="rule.error_message_localization || originalContent(rule.error_message || '')" @update:model-value="rule.error_message_localization = $event; rule.error_message = $event.source" />
+                      <LocalizedEditor :label="t('admin.settings.openaiFastPolicy.errorMessage')" :placeholder="t('admin.settings.openaiFastPolicy.errorMessagePlaceholder')" :model-value="rule.error_message_localization || originalContent(rule.error_message || '')" @update:model-value="rule.error_message_localization = $event; rule.error_message = $event.source" />
                       <p class="input-hint">
                         {{ t("admin.settings.openaiFastPolicy.errorMessageHint") }}
                       </p>
@@ -834,7 +828,7 @@
                         {{ t("admin.settings.openaiFastPolicy.fallbackActionHint") }}
                       </p>
                       <div v-if="rule.fallback_action === 'block'" class="mt-2">
-                        <LocalizedEditor :model-value="rule.fallback_error_message_localization || originalContent(rule.fallback_error_message || '')" @update:model-value="rule.fallback_error_message_localization = $event; rule.fallback_error_message = $event.source" />
+                        <LocalizedEditor :label="t('admin.settings.openaiFastPolicy.errorMessage')" :placeholder="t('admin.settings.openaiFastPolicy.fallbackErrorMessagePlaceholder')" :model-value="rule.fallback_error_message_localization || originalContent(rule.fallback_error_message || '')" @update:model-value="rule.fallback_error_message_localization = $event; rule.fallback_error_message = $event.source" />
                       </div>
                     </div>
                   </div>
@@ -2118,10 +2112,7 @@
                 <SettingsSubpanel>
                   <div class="grid gap-4 md:grid-cols-3">
                     <div>
-                      <label for="oidc-provider-name" class="input-label">
-                        {{ t("admin.settings.oidc.providerName") }}
-                      </label>
-                      <LocalizedEditor v-model="form.localized_settings.oidc_connect_provider_name" :default-source-locale="getLocale()" />
+                      <LocalizedEditor :label="t('admin.settings.oidc.providerName')" :placeholder="t('admin.settings.oidc.providerNamePlaceholder')" v-model="form.localized_settings.oidc_connect_provider_name" :default-source-locale="getLocale()" />
                     </div>
                     <div>
                       <label for="oidc-client-id" class="input-label">
@@ -3664,10 +3655,7 @@
               <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
                 <div class="grid content-start gap-4 md:grid-cols-2">
                   <div>
-                    <label for="balance-unit-name" class="input-label">
-                      {{ t("admin.settings.balanceDisplay.unitName") }}
-                    </label>
-                    <LocalizedEditor v-model="form.localized_settings.balance_unit_name" :default-source-locale="getLocale()" />
+                    <LocalizedEditor :label="t('admin.settings.balanceDisplay.unitName')" :placeholder="t('admin.settings.balanceDisplay.unitNamePlaceholder')" v-model="form.localized_settings.balance_unit_name" :default-source-locale="getLocale()" />
                     <p class="input-hint">{{ t("admin.settings.balanceDisplay.unitNameHint") }}</p>
                   </div>
                   <div>
@@ -3828,8 +3816,7 @@
                 <Select v-model="form.default_locale" :options="availableLocales.map(item => ({ value: item.code, label: item.name }))" />
               </div>
               <div v-for="key in ['site_name', 'site_title', 'site_subtitle']" :key="key">
-                <label class="input-label">{{ t(`localization.fields.${key}`) }}</label>
-                <LocalizedEditor v-model="form.site_texts[key]" :default-source-locale="getLocale()" />
+                <LocalizedEditor :label="t(`localization.fields.${key}`)" v-model="form.site_texts[key]" :default-source-locale="getLocale()" />
               </div>
               <div>
                 <p class="input-label">{{ t("admin.settings.site.siteLogo") }}</p>
@@ -3858,13 +3845,11 @@
               </div>
               <div class="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label for="contact-info" class="input-label">{{ t("admin.settings.site.contactInfo") }}</label>
-                  <LocalizedEditor v-model="form.site_texts.contact_info" :default-source-locale="getLocale()" />
+                  <LocalizedEditor :label="t('admin.settings.site.contactInfo')" :placeholder="t('admin.settings.site.contactInfoPlaceholder')" v-model="form.site_texts.contact_info" :default-source-locale="getLocale()" />
                   <p class="input-hint">{{ t("admin.settings.site.contactInfoHint") }}</p>
                 </div>
                 <div>
-                  <label for="doc-url" class="input-label">{{ t("admin.settings.site.docUrl") }}</label>
-                  <LocalizedEditor v-model="form.site_texts.doc_url" :default-source-locale="getLocale()" />
+                  <LocalizedEditor :label="t('admin.settings.site.docUrl')" :placeholder="t('admin.settings.site.docUrlPlaceholder')" input-class="font-mono text-sm" v-model="form.site_texts.doc_url" :default-source-locale="getLocale()" />
                   <p class="input-hint">{{ t("admin.settings.site.docUrlHint") }}</p>
                 </div>
               </div>
@@ -3885,14 +3870,17 @@
               >
                 <template #row="{ item: ep, index: epIndex }">
                   <div class="grid gap-4 sm:grid-cols-2">
-                    <div class="sm:col-span-2">
-                      <LocalizedFieldsEditor
-                        :model-value="ep.localization"
-                        :source="{ name: ep.name, description: ep.description }"
-                        :fields="[{ key: 'name', label: t('admin.settings.site.customEndpoints.name') }, { key: 'description', label: t('admin.settings.site.customEndpoints.descriptionLabel'), multiline: true }]"
-                        @update:model-value="ep.localization = $event; ep.name = $event.source.name; ep.description = $event.source.description"
-                      />
-                    </div>
+                    <LocalizedFieldsEditor
+                      class="sm:col-span-2"
+                      layout="grid gap-4 sm:grid-cols-2"
+                      :model-value="ep.localization"
+                      :source="{ name: ep.name, description: ep.description }"
+                      :fields="[
+                        { key: 'name', label: t('admin.settings.site.customEndpoints.name'), placeholder: t('admin.settings.site.customEndpoints.namePlaceholder') },
+                        { key: 'description', label: t('admin.settings.site.customEndpoints.descriptionLabel'), placeholder: t('admin.settings.site.customEndpoints.descriptionPlaceholder') },
+                      ]"
+                      @update:model-value="ep.localization = $event; ep.name = $event.source.name; ep.description = $event.source.description"
+                    />
                     <div>
                       <label :for="`custom-endpoint-${epIndex}-url`" class="input-label">
                         {{ t("admin.settings.site.customEndpoints.endpointUrl") }}
@@ -3905,7 +3893,6 @@
                         :placeholder="t('admin.settings.site.customEndpoints.endpointUrlPlaceholder')"
                       />
                     </div>
-
                   </div>
                 </template>
               </RuleListEditor>
@@ -3949,8 +3936,7 @@
 
             <SettingsSection>
               <div>
-                <label for="home-content" class="input-label">{{ t("admin.settings.site.homeContent") }}</label>
-                <LocalizedEditor v-model="form.site_texts.home_content" :default-source-locale="getLocale()" :rows="5" />
+                <LocalizedEditor :label="t('admin.settings.site.homeContent')" :placeholder="t('admin.settings.site.homeContentPlaceholder')" input-class="font-mono text-sm" v-model="form.site_texts.home_content" :default-source-locale="getLocale()" :rows="6" />
                 <p class="input-hint">{{ t("admin.settings.site.homeContentHint") }}</p>
               </div>
               <!-- 自定义首页用 iframe 嵌入外部页面时，对方的 CSP 可能禁止嵌入。 -->
@@ -3987,21 +3973,45 @@
               >
                 <template #row="{ item, index: menuIndex }">
                   <div class="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label :for="`custom-menu-${menuIndex}-label`" class="input-label">
-                        {{ t("admin.settings.customMenu.name") }}
-                      </label>
-                      <input v-if="item.visibility === 'admin'"
-                        :id="`custom-menu-${menuIndex}-label`"
-                        v-model="item.label"
-                        type="text"
-                        class="input"
-                        :placeholder="t('admin.settings.customMenu.namePlaceholder')"
-                      />
-                      <LocalizedFieldsEditor v-else :model-value="item.localization" :source="{ label: item.label, url: item.url }"
-                        :fields="[{ key: 'label', label: t('admin.settings.customMenu.name') }, { key: 'url', label: t('admin.settings.customMenu.url') }]"
-                        @update:model-value="item.localization = $event; item.label = $event.source.label; item.url = $event.source.url" />
-                    </div>
+                    <!-- 管理员专用菜单按原文保存名称和链接。 -->
+                    <template v-if="item.visibility === 'admin'">
+                      <div>
+                        <label :for="`custom-menu-${menuIndex}-label`" class="input-label">
+                          {{ t("admin.settings.customMenu.name") }}
+                        </label>
+                        <input
+                          :id="`custom-menu-${menuIndex}-label`"
+                          v-model="item.label"
+                          type="text"
+                          class="input"
+                          :placeholder="t('admin.settings.customMenu.namePlaceholder')"
+                        />
+                      </div>
+                      <div>
+                        <label :for="`custom-menu-${menuIndex}-url`" class="input-label">
+                          {{ t("admin.settings.customMenu.url") }}
+                        </label>
+                        <input
+                          :id="`custom-menu-${menuIndex}-url`"
+                          v-model="item.url"
+                          type="url"
+                          class="input font-mono text-sm"
+                          :placeholder="t('admin.settings.customMenu.urlPlaceholder')"
+                        />
+                      </div>
+                    </template>
+                    <LocalizedFieldsEditor
+                      v-else
+                      class="sm:col-span-2"
+                      layout="grid gap-4 sm:grid-cols-2"
+                      :model-value="item.localization"
+                      :source="{ label: item.label, url: item.url }"
+                      :fields="[
+                        { key: 'label', label: t('admin.settings.customMenu.name'), placeholder: t('admin.settings.customMenu.namePlaceholder') },
+                        { key: 'url', label: t('admin.settings.customMenu.url'), placeholder: t('admin.settings.customMenu.urlPlaceholder'), url: true, inputClass: 'font-mono text-sm' },
+                      ]"
+                      @update:model-value="item.localization = $event; item.label = $event.source.label; item.url = $event.source.url"
+                    />
                     <div>
                       <label :for="`custom-menu-${menuIndex}-visibility`" class="input-label">
                         {{ t("admin.settings.customMenu.visibility") }}
@@ -4010,18 +4020,6 @@
                         :id="`custom-menu-${menuIndex}-visibility`"
                         v-model="item.visibility"
                         :options="customMenuVisibilityOptions"
-                      />
-                    </div>
-                    <div v-if="item.visibility === 'admin'" class="sm:col-span-2">
-                      <label :for="`custom-menu-${menuIndex}-url`" class="input-label">
-                        {{ t("admin.settings.customMenu.url") }}
-                      </label>
-                      <input
-                        :id="`custom-menu-${menuIndex}-url`"
-                        v-model="item.url"
-                        type="url"
-                        class="input font-mono text-sm"
-                        :placeholder="t('admin.settings.customMenu.urlPlaceholder')"
                       />
                     </div>
                     <div class="sm:col-span-2">
@@ -4116,7 +4114,13 @@
               >
                 <template #row="{ item: group, index: gIndex }">
                   <div class="space-y-4">
-                    <LocalizedEditor :model-value="group.localization || originalContent(group.title)" @update:model-value="group.localization = $event; group.title = $event.source" />
+                    <LocalizedEditor
+                      class="sm:max-w-xs"
+                      :label="t('admin.settings.homeFooter.groupTitle')"
+                      :placeholder="t('admin.settings.homeFooter.groupTitlePlaceholder')"
+                      :model-value="group.localization || originalContent(group.title)"
+                      @update:model-value="group.localization = $event; group.title = $event.source"
+                    />
                     <RuleListEditor
                       :items="group.links"
                       :add-label="t('admin.settings.homeFooter.addLink')"
@@ -4127,11 +4131,16 @@
                       @remove="group.links.splice($event, 1)"
                     >
                       <template #row="{ item: link }">
-                        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-                          <LocalizedFieldsEditor class="sm:col-span-2" :model-value="link.localization" :source="{ label: link.label, url: link.url }"
-                            :fields="[{ key: 'label', label: t('admin.settings.homeFooter.linkLabel') }, { key: 'url', label: t('admin.settings.homeFooter.linkUrlPlaceholder') }]"
-                            @update:model-value="link.localization = $event; link.label = $event.source.label; link.url = $event.source.url" />
-                        </div>
+                        <LocalizedFieldsEditor
+                          layout="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
+                          :model-value="link.localization"
+                          :source="{ label: link.label, url: link.url }"
+                          :fields="[
+                            { key: 'label', label: t('admin.settings.homeFooter.linkLabel'), placeholder: t('admin.settings.homeFooter.linkLabel') },
+                            { key: 'url', label: t('admin.settings.homeFooter.linkUrl'), placeholder: t('admin.settings.homeFooter.linkUrlPlaceholder'), inputClass: 'min-w-0 font-mono text-sm' },
+                          ]"
+                          @update:model-value="link.localization = $event; link.label = $event.source.label; link.url = $event.source.url"
+                        />
                       </template>
                     </RuleListEditor>
                   </div>
@@ -4140,8 +4149,7 @@
             </SettingsSection>
             <SettingsSection>
               <div>
-                <label for="footer-text" class="input-label">{{ t("admin.settings.homeFooter.extraText") }}</label>
-                <LocalizedEditor v-model="form.site_texts.footer_text" :default-source-locale="getLocale()" :rows="5" />
+                <LocalizedEditor :label="t('admin.settings.homeFooter.extraText')" :placeholder="t('admin.settings.homeFooter.extraTextPlaceholder')" v-model="form.site_texts.footer_text" :default-source-locale="getLocale()" :rows="2" />
               </div>
             </SettingsSection>
           </SettingsCard>
@@ -4254,17 +4262,15 @@
                         </div>
                       </div>
                     </div>
-                    <LocalizedEditor
-                      :model-value="doc.localization || originalContent({ title: doc.title, content_md: doc.content_md })"
+                    <LocalizedFieldsEditor
+                      :model-value="doc.localization"
+                      :source="{ title: doc.title, content_md: doc.content_md }"
+                      :fields="[
+                        { key: 'title', label: t('admin.settings.loginAgreement.documentTitle'), placeholder: t('admin.settings.loginAgreement.documentTitlePlaceholder') },
+                        { key: 'content_md', label: t('admin.settings.loginAgreement.documentContent'), placeholder: t('admin.settings.loginAgreement.documentContentPlaceholder'), multiline: true, rows: 8, inputClass: 'font-mono text-sm' },
+                      ]"
                       @update:model-value="doc.localization = $event; doc.title = $event.source.title; doc.content_md = $event.source.content_md"
-                    >
-                      <template #default="{ value, update }">
-                        <label class="input-label">{{ t('admin.settings.loginAgreement.documentTitle') }}</label>
-                        <input :value="value.title" class="input" @input="update({ ...value, title: ($event.target as HTMLInputElement).value })" />
-                        <label class="input-label">{{ t('admin.settings.loginAgreement.documentContent') }}</label>
-                        <textarea :value="value.content_md" class="input" rows="8" @input="update({ ...value, content_md: ($event.target as HTMLTextAreaElement).value })"></textarea>
-                      </template>
-                    </LocalizedEditor>
+                    />
                   </div>
                 </template>
               </RuleListEditor>
@@ -4589,16 +4595,10 @@
               <SettingsSection>
                 <div class="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label for="payment-product-name-prefix" class="input-label">
-                      {{ t("admin.settings.payment.productNamePrefix") }}
-                    </label>
-                    <LocalizedEditor v-model="form.localized_settings.payment_product_name_prefix" :default-source-locale="getLocale()" />
+                    <LocalizedEditor :label="t('admin.settings.payment.productNamePrefix')" placeholder="TokenRouter" v-model="form.localized_settings.payment_product_name_prefix" :default-source-locale="getLocale()" />
                   </div>
                   <div>
-                    <label for="payment-product-name-suffix" class="input-label">
-                      {{ t("admin.settings.payment.productNameSuffix") }}
-                    </label>
-                    <LocalizedEditor v-model="form.localized_settings.payment_product_name_suffix" :default-source-locale="getLocale()" />
+                    <LocalizedEditor :label="t('admin.settings.payment.productNameSuffix')" placeholder="CNY" v-model="form.localized_settings.payment_product_name_suffix" :default-source-locale="getLocale()" />
                   </div>
                   <div>
                     <p class="input-label">{{ t("admin.settings.payment.preview") }}</p>
@@ -4954,8 +4954,7 @@
               <SettingsSection>
                 <div class="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p class="input-label">{{ t("admin.settings.payment.helpImage") }}</p>
-                    <LocalizedEditor v-model="form.localized_settings.payment_help_image_url" :default-source-locale="getLocale()">
+                    <LocalizedEditor :label="t('admin.settings.payment.helpImage')" v-model="form.localized_settings.payment_help_image_url" :default-source-locale="getLocale()">
 <template #default="{ value, update }">
 <ImageUpload
                       :model-value="value" @update:model-value="update"
@@ -4967,10 +4966,7 @@
 </LocalizedEditor>
                   </div>
                   <div>
-                    <label for="payment-help-text" class="input-label">
-                      {{ t("admin.settings.payment.helpText") }}
-                    </label>
-                    <LocalizedEditor v-model="form.localized_settings.payment_help_text" :default-source-locale="getLocale()" :rows="4" />
+                    <LocalizedEditor :label="t('admin.settings.payment.helpText')" :placeholder="t('admin.settings.payment.helpTextPlaceholder')" v-model="form.localized_settings.payment_help_text" :default-source-locale="getLocale()" :rows="3" />
                     <p class="input-hint">{{ t("admin.settings.payment.helpTextHint") }}</p>
                   </div>
                 </div>
@@ -5098,8 +5094,7 @@
                     />
                   </div>
                   <div>
-                    <label for="smtp-from-name" class="input-label">{{ t("admin.settings.smtp.fromName") }}</label>
-                    <LocalizedEditor v-model="form.localized_settings.smtp_from_name" :default-source-locale="getLocale()" />
+                    <LocalizedEditor :label="t('admin.settings.smtp.fromName')" :placeholder="t('admin.settings.smtp.fromNamePlaceholder')" v-model="form.localized_settings.smtp_from_name" :default-source-locale="getLocale()" />
                   </div>
                 </div>
                 <SettingToggleRow
@@ -5203,10 +5198,7 @@
                 </SettingsSubpanel>
               </Collapse>
               <div>
-                <label for="balance-low-notify-recharge-url" class="input-label">
-                  {{ t("admin.settings.balanceNotify.rechargeUrl") }}
-                </label>
-                <LocalizedEditor v-model="form.localized_settings.balance_low_notify_recharge_url" :default-source-locale="getLocale()" />
+                <LocalizedEditor :label="t('admin.settings.balanceNotify.rechargeUrl')" :placeholder="currentOrigin" v-model="form.localized_settings.balance_low_notify_recharge_url" :default-source-locale="getLocale()" />
                 <p class="input-hint">{{ t("admin.settings.balanceNotify.rechargeUrlHint") }}</p>
               </div>
             </SettingsSection>

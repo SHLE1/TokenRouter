@@ -1,8 +1,7 @@
 <template>
   <div class="grid gap-4 sm:grid-cols-2">
     <div class="sm:col-span-2">
-      <span class="input-label">{{ t('admin.modelAttributes.fields.display_name') }}</span>
-      <LocalizedEditor :model-value="modelValue.display_name_localization || originalContent(modelValue.display_name || '', modelValue.display_name ? null : normalizeLocale(locale) || defaultLocale)"
+      <LocalizedEditor :label="t('admin.modelAttributes.fields.display_name')" :model-value="modelValue.display_name_localization || originalContent(modelValue.display_name || '', modelValue.display_name ? null : normalizeLocale(locale) || defaultLocale)"
         @update:model-value="emit('update:modelValue', { ...modelValue, display_name: $event.source || undefined, display_name_localization: $event })" />
       <button type="button" class="btn btn-secondary btn-sm mt-2" @click="inheritDisplayName">{{ t('admin.modelAttributes.inherit') }}</button>
     </div>

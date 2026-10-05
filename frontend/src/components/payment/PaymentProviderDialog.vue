@@ -93,8 +93,7 @@
               <input v-model="method.upstreamType" type="text" class="input mt-1" placeholder="credit_card" />
             </div>
             <div>
-              <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.customMethodDisplayName') }}</label>
-              <LocalizedEditor data-testid="method-display-name" :model-value="method.displayNameLocalization || originalContent(method.displayName)" @update:model-value="method.displayNameLocalization = $event; method.displayName = $event.source" />
+              <LocalizedEditor data-testid="method-display-name" :label="t('admin.settings.payment.customMethodDisplayName')" label-class="text-xs text-gray-500 dark:text-gray-400" :placeholder="t('admin.settings.payment.customMethodDisplayNamePlaceholder')" :model-value="method.displayNameLocalization || originalContent(method.displayName)" @update:model-value="method.displayNameLocalization = $event; method.displayName = $event.source" />
             </div>
           </div>
         </template>

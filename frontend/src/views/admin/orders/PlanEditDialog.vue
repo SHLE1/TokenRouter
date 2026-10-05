@@ -6,18 +6,16 @@
     @close="emit('close')"
   >
     <form id="plan-form" class="space-y-4" @submit.prevent="handleSavePlan">
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
-          <label class="input-label">{{ t('payment.admin.planName') }} <span class="text-red-500">*</span></label>
-          <LocalizedFieldsEditor v-model="planForm.localization" :source="planForm.localization.source" :fields="planCopyFields" />
-        </div>
-        <div>
-          <label class="input-label">{{ t('payment.admin.sortOrder') }}</label>
-          <input data-testid="plan-sort_order" v-model.number="planForm.sort_order" type="number" min="0" class="input" />
-        </div>
+      <div>
+        <LocalizedFieldsEditor
+          v-model="planForm.localization"
+          layout="grid grid-cols-1 gap-4 md:grid-cols-2"
+          :source="planForm.localization.source"
+          :fields="planCopyFields"
+          :dialog-title="t('payment.admin.planCopy')"
+        />
+        <p class="input-hint">{{ t('payment.admin.featuresHint') }}</p>
       </div>
-
-
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
@@ -61,10 +59,16 @@
         </div>
       </div>
 
-      <div>
-        <label class="input-label">{{ t('payment.admin.currency') }}</label>
-        <input v-model="planForm.currency" type="text" maxlength="3" class="input uppercase" :placeholder="t('payment.admin.currencyPlaceholder')" />
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.currencyHint') }}</p>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label class="input-label">{{ t('payment.admin.currency') }}</label>
+          <input v-model="planForm.currency" type="text" maxlength="3" class="input uppercase" :placeholder="t('payment.admin.currencyPlaceholder')" />
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.currencyHint') }}</p>
+        </div>
+        <div>
+          <label class="input-label">{{ t('payment.admin.sortOrder') }}</label>
+          <input data-testid="plan-sort_order" v-model.number="planForm.sort_order" type="number" min="0" class="input" />
+        </div>
       </div>
 
       <div>
@@ -110,8 +114,6 @@
           </div>
         </div>
       </div>
-
-
 
       <div class="flex items-center gap-3">
         <label class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.admin.forSale') }}</label>
@@ -168,11 +170,12 @@ const appStore = useAppStore()
 const saving = ref(false)
 const groupsLoading = ref(false)
 const groups = ref<AdminGroup[]>([])
+// 套餐名称、介绍、权益和商品名共用一份译文，权益按行填写。
 const planCopyFields = computed(() => [
-  { key: 'name' as const, label: t('payment.admin.planName') },
-  { key: 'description' as const, label: t('payment.admin.planDescription'), multiline: true },
-  { key: 'features' as const, label: t('payment.admin.features'), multiline: true },
+  { key: 'name' as const, label: t('payment.admin.planName'), required: true },
   { key: 'product_name' as const, label: t('localization.productName') },
+  { key: 'description' as const, label: t('payment.admin.planDescription'), multiline: true, rows: 2, required: true, class: 'md:col-span-2' },
+  { key: 'features' as const, label: t('payment.admin.features'), multiline: true, placeholder: t('payment.admin.featuresPlaceholder'), class: 'md:col-span-2' },
 ])
 const planForm = reactive({
   localization: originalContent({ name: '', description: '', features: '', product_name: '' }, getLocale()) as LocalizedUpdate<PlanCopy>,

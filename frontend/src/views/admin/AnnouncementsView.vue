@@ -179,14 +179,14 @@
       @close="closeEdit"
     >
       <form id="announcement-form" @submit.prevent="handleSave" class="space-y-4">
-        <LocalizedEditor v-model="form.localization">
-          <template #default="{ value, update }">
-            <label class="input-label">{{ t('admin.announcements.form.title') }}</label>
-            <input :value="value.title" type="text" class="input" required @input="update({ ...value, title: ($event.target as HTMLInputElement).value })" />
-            <label class="input-label">{{ t('admin.announcements.form.content') }}</label>
-            <textarea :value="value.content" rows="6" class="input" required @input="update({ ...value, content: ($event.target as HTMLTextAreaElement).value })"></textarea>
-          </template>
-        </LocalizedEditor>
+        <LocalizedFieldsEditor
+          v-model="form.localization"
+          :source="form.localization.source"
+          :fields="[
+            { key: 'title', label: t('admin.announcements.form.title'), required: true },
+            { key: 'content', label: t('admin.announcements.form.content'), multiline: true, rows: 6, required: true },
+          ]"
+        />
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
@@ -259,7 +259,7 @@
 </template>
 
 <script setup lang="ts">
-import LocalizedEditor from '@/components/common/LocalizedEditor.vue'
+import LocalizedFieldsEditor from '@/components/common/LocalizedFieldsEditor.vue'
 import { originalContent, type LocalizedUpdate } from '@/i18n/content'
 import { getLocale } from '@/i18n'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'

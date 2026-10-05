@@ -41,14 +41,14 @@
             />
           </div>
           <div class="md:col-span-2">
-            <label :for="`${idPrefix}-description`" class="input-label">{{
-              t('admin.groups.form.description')
-            }}</label>
             <LocalizedFieldsEditor
               :model-value="form.localization"
               :source-locale="mode === 'create' ? (locale || 'en') : null"
               :source="{ display_name: form.name, description: form.description }"
-              :fields="[{ key: 'display_name', label: t('localization.displayName') }, { key: 'description', label: t('admin.groups.form.description'), multiline: true }]"
+              :fields="[
+                { key: 'display_name', label: t('localization.displayName') },
+                { key: 'description', label: t('admin.groups.form.description'), placeholder: t('admin.groups.optionalDescription'), multiline: true },
+              ]"
               @update:model-value="form.localization = $event; form.description = $event.source.description"
             />
           </div>

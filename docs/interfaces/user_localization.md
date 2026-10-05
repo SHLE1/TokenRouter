@@ -24,7 +24,7 @@
 
 持久化层执行原子版本检查，冲突返回 HTTP 409 和 `LOCALIZATION_CONFLICT`。JSONB 内容随业务对象保存；settings 内容的检查与整个保存批次位于同一数据库事务。某项冲突时，同批其他配置也不会写入。列表使用稳定 ID 对应译文，排序位置不能替代 ID。
 
-`LocalizedEditor.vue` 和 `LocalizedFieldsEditor.vue` 通过现有表单保存内容，提供语言标签、添加、删除、核对、改用译文作为原文和回退预览。译文由编辑者提供。
+管理表单里，`LocalizedEditor.vue`（单个字段）和 `LocalizedFieldsEditor.vue`（一组字段共用一份内容）只编辑原文。标签行右侧的入口显示译文状态，点开后在 `LocalizedTranslationDialog.vue` 里编辑各语言译文。弹窗编辑草稿，点“完成”写回表单，再随页面的保存按钮提交。编辑或新增译文时，前端把该语言写进 `reviewed_locales`。原文修改后，旧译文标为过期，管理员可以改写译文，也可以点“仍然适用”确认。原文语言未知时，修改原文会填入当前界面语言；该语言已有译文时，管理员需要选择原文语言，或把那条译文设为原文。草稿操作集中在 `frontend/src/i18n/contentEdit.ts`。译文由编辑者提供。
 
 <a id="content_owners"></a>
 ## 内容归属和展示入口
@@ -61,4 +61,4 @@ Markdown 原文为 `pages/<slug>.md`，译文为 `pages/<slug>/<locale>.md`。�
 
 前端语言切换发布 `locale-changed`，页面刷新语言相关数据。Axios 对语言已经改变的 GET 响应重新请求，Markdown 和协议页面还核对当前页面及请求代次。组件保持挂载，未提交表单由页面继续持有。账户偏好的写入按顺序执行。
 
-验证入口包括 `locale/content_test.go`、站点本地化和文件测试、`migrations/user_localization_integration_test.go`、settings 并发写入集成测试、前端翻译编辑器测试及 `i18n/__tests__/userTranslationKeys.spec.ts`。新增语言时登记目录、添加资源和用户邮件模板，并检查长文案、文字方向、占位符与第三方控件回退。
+验证入口包括 `locale/content_test.go`、站点本地化和文件测试、`migrations/user_localization_integration_test.go`、settings 并发写入集成测试、前端翻译编辑器测试、`i18n/__tests__/contentEdit.spec.ts` 及 `i18n/__tests__/userTranslationKeys.spec.ts`。新增语言时登记目录、添加资源和用户邮件模板，并检查长文案、文字方向、占位符与第三方控件回退。
