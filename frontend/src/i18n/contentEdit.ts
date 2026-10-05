@@ -22,6 +22,14 @@ function invalidateTranslations<T>(content: LocalizedUpdate<T>): void {
   for (const translation of Object.values(content.translations)) translation.source_revision = -1
 }
 
+// labelSourceLocale 给原文补上语言。原文语言原本未知时，原文内容没有变化，之前有效的译文继续有效。
+function labelSourceLocale<T>(previous: LocalizedUpdate<T>, next: LocalizedUpdate<T>, code: string): void {
+  const valid = previous.source_locale ? [] : Object.keys(next.translations).filter(item => translationStatus(previous, item) === 'translated')
+  next.source_locale = code
+  invalidateTranslations(next)
+  next.reviewed_locales = valid
+}
+
 // withDefaultSource 给尚未保存过的新内容填入原文语言。
 export function withDefaultSource<T>(content: LocalizedUpdate<T>, fallbackLocale?: string): LocalizedUpdate<T> {
   if (content.revision !== 0 || content.source_locale || !fallbackLocale || fallbackLocale in content.translations) return content
@@ -75,9 +83,15 @@ export function removeTranslation<T>(content: LocalizedUpdate<T>, code: string):
 export function setSourceLocale<T>(content: LocalizedUpdate<T>, code: string): { content: LocalizedUpdate<T>; conflict: boolean } {
   if (code in content.translations) return { content, conflict: true }
   const next = copy(content)
-  next.source_locale = code
-  invalidateTranslations(next)
+  labelSourceLocale(content, next, code)
   return { content: next, conflict: false }
+}
+
+// adoptSourceLocale 把原文语言定为 code，并删除同语言的旧译文，用于原文语言未知的历史内容。
+export function adoptSourceLocale<T>(content: LocalizedUpdate<T>, code: string): LocalizedUpdate<T> {
+  const next = code in content.translations ? removeTranslation(content, code) : copy(content)
+  labelSourceLocale(content, next, code)
+  return next
 }
 
 // promoteToOriginal 把译文设为原文。原文语言已知时，旧原文转成该语言的译文。

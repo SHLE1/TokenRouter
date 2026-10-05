@@ -6,7 +6,6 @@
         :model-value="modelValue"
         :title="dialogTitle || label"
         :fallback-locale="fallbackLocale"
-        :width="rows > 1 ? 'wide' : 'normal'"
         @update:model-value="emit('update:modelValue', $event)"
       >
         <template #default="scope">

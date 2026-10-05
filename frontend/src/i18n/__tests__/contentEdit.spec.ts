@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LocalizedUpdate } from '../content'
 import {
   addTranslation,
+  adoptSourceLocale,
   markStillValid,
   promoteToOriginal,
   removeTranslation,
@@ -70,6 +71,21 @@ describe('译文编辑', () => {
     const result = setSourceLocale(saved(), 'en')
     expect(result.conflict).toBe(true)
     expect(result.content.source_locale).toBe('zh-Hans')
+  })
+
+  it('历史内容定下原文语言时，删除同语言的旧译文', () => {
+    const legacy: LocalizedUpdate<string> = { source: 'TokenRouter', source_locale: null, revision: 1, source_revision: 1, translations: { en: { value: 'TokenRouter', source_revision: 1 }, 'zh-Hans': { value: '中转站', source_revision: 1 } } }
+    const content = adoptSourceLocale(legacy, 'en')
+    expect(content.source_locale).toBe('en')
+    expect(content.translations.en).toBeUndefined()
+    expect(content.deleted_locales).toEqual(['en'])
+    expect(translationStatus(content, 'zh-Hans')).toBe('translated')
+  })
+
+  it('已知原文语言改成其他语言时，译文需要重新核对', () => {
+    const result = setSourceLocale(saved(), 'ja')
+    expect(result.conflict).toBe(false)
+    expect(translationStatus(result.content, 'en')).toBe('stale')
   })
 
   it('译文设为原文后，旧原文转成译文', () => {

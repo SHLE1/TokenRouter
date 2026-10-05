@@ -11,7 +11,7 @@
           :model-value="content"
           :title="dialogTitle || field.label"
           :fallback-locale="fallbackLocale"
-          width="wide"
+          :reference-fields="fields"
           @update:model-value="emit('update:modelValue', $event)"
         >
           <template #default="{ value, update, id: scopeId }">

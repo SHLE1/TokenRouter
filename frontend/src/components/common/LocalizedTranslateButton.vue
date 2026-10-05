@@ -25,7 +25,7 @@
     :title="title"
     :model-value="modelValue"
     :fallback-locale="fallbackLocale"
-    :width="width"
+    :reference-fields="referenceFields"
     @close="open = false"
     @save="save"
   >
@@ -44,12 +44,13 @@ import { availableLocales } from '@/i18n/catalog'
 import type { LocalizedUpdate } from '@/i18n/content'
 import { translationSummary } from '@/i18n/contentEdit'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   modelValue: LocalizedUpdate<T>
   title: string
   fallbackLocale?: string
-  width?: 'normal' | 'wide'
-}>(), { width: 'normal' })
+  /** 多字段内容在原文参照里逐个显示的字段。 */
+  referenceFields?: { key: string; label: string }[]
+}>()
 const emit = defineEmits<{ 'update:modelValue': [value: LocalizedUpdate<T>] }>()
 defineSlots<{ default(props: { value: T; update: (value: T) => void; locale: string | null; id: string }): unknown }>()
 
