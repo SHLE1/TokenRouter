@@ -244,7 +244,7 @@ class VerificationRunnerTest(GitFixture):
 
     def test_environment_mismatches_fail_before_tests(self):
         def fixture(command, cwd=None):
-            values = {'go': 'go version go1.27.0 darwin/arm64', 'docker': '29.5.2',
+            values = {'go': 'go version go' + (SOURCE / 'backend/go.mod').read_text().split('\ngo ')[1].splitlines()[0] + ' darwin/arm64', 'docker': '29.5.2',
                       'pg_dump': 'pg_dump (PostgreSQL) 18.3', 'psql': 'psql (PostgreSQL) 18.3'}
             return values[command[0]]
         with patch.object(verify, 'output', side_effect=fixture), contextlib.redirect_stdout(io.StringIO()):

@@ -7,8 +7,8 @@
 # Stage 3: Final minimal image
 # =============================================================================
 
-ARG NODE_IMAGE=node:20-alpine
-ARG GOLANG_IMAGE=golang:1.27.0-alpine
+ARG NODE_IMAGE=node:26.10.0-alpine
+ARG GOLANG_IMAGE=golang:1.27.1-alpine
 ARG ALPINE_IMAGE=alpine:3.21
 ARG POSTGRES_IMAGE=postgres:18-alpine
 ARG GOPROXY=https://goproxy.cn,direct
@@ -24,13 +24,13 @@ ARG NPM_CONFIG_REGISTRY
 
 WORKDIR /app/frontend
 
-# 构建工具版本与本地验证共用声明，镜像覆盖值也需要满足 Node 主版本。
+# 构建工具版本与本地验证共用声明，镜像覆盖值也需要满足 Node 版本。
 COPY .node-version .pnpm-version /app/
-RUN test "$(node -p 'process.versions.node.split(".")[0]')" = "$(cat /app/.node-version)" && \
-    corepack enable && corepack prepare "pnpm@$(cat /app/.pnpm-version)" --activate
+RUN test "$(node -p 'process.versions.node')" = "$(cat /app/.node-version)" && \
+    npm install --global "pnpm@$(cat /app/.pnpm-version)"
 
 # Install dependencies first (better caching)
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN --mount=type=cache,id=tokenrouter-pnpm-store,target=/root/.local/share/pnpm/store \
     if [ -n "${NPM_CONFIG_REGISTRY}" ]; then pnpm config set registry "${NPM_CONFIG_REGISTRY}"; fi && \
     pnpm install --frozen-lockfile --prefer-offline

@@ -17,9 +17,9 @@
 
 | 工具 | 版本来源 | 当前要求 |
 | --- | --- | --- |
-| Go | `backend/go.mod`、CI | `1.27.0` |
-| Node.js | `.node-version` | `20` |
-| pnpm | `.pnpm-version` | `9.15.9`；共用入口通过 npx 选择 Node 和 pnpm |
+| Go | `backend/go.mod`、CI | `1.27.1` |
+| Node.js | `.node-version` | `26.10.0` |
+| pnpm | `.pnpm-version` | `12.9.1`；共用入口通过 npx 选择 Node 和 pnpm |
 | golangci-lint | `.golangci-version` | 本地和 CI 使用同一个完整版本，配置在 `backend/.golangci.yml` |
 | gofumpt | golangci-lint 内置 | 使用默认规则，不开启 extra，不单独维护版本 |
 | arch-go | `tools/architecture/go.mod` | `v2.1.2`；通过 Go API 使用，由独立的工具模块运行 |
@@ -33,7 +33,7 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"$(cat .golang
 
 在仓库根目录执行安装命令，并把 Go 安装目录里的二进制加入 PATH。`tools/golangci-lint.sh` 会验证实际的版本，版本不符的本地工具会被拒绝；CI 的 action 从同一个版本文件读取要安装的版本。
 
-Go 版本在 `backend/go.mod` 声明。根 Makefile 据此设置 `GOTOOLCHAIN`，workflow 使用 `go-version-file` 安装；`make verify-go-version` 核对实际运行版本。Node 和 pnpm 分别在 `.node-version`、`.pnpm-version` 声明，验证入口用 npx 选择相应版本并复用下载缓存。
+Go 版本在 `backend/go.mod` 声明。根 Makefile 据此设置 `GOTOOLCHAIN`，workflow 使用 `go-version-file` 安装；`make verify-go-version` 核对实际运行版本。Node 和 pnpm 分别在 `.node-version`、`.pnpm-version` 声明完整版本，验证入口用 npx 选择相应版本并复用下载缓存。前端 ESLint 10 使用 `eslint.config.js`，pnpm 12 的依赖覆盖和构建许可维护在 `frontend/pnpm-workspace.yaml`。TypeScript 使用 typescript-eslint 支持的最新 6.x 系列，升级到 7.x 前核对解析器的 peerDependencies。
 
 个人的数据库路径、固定的密码，或者某台机器的服务配置，不写进工程文档。开发配置使用不提交的环境文件或 `backend/config.yaml`；可以提交的样例在 `deploy/`。前端开发服务器默认通过 `VITE_DEV_PROXY_TARGET` 代理到后端，端口由 `VITE_DEV_PORT` 控制。
 
@@ -111,7 +111,7 @@ HTTP、用例、存储和后台资源，由 app 装配各模块的实现。业�
 - API 的类型和调用放在 `src/api/`，跨页面的状态放进 store 或 composable，view 里不重复写协议。
 - 修改依赖时同步更新 `frontend/pnpm-lock.yaml`，CI 使用 frozen lockfile。
 
-支付页动态导入 Stripe 和 Airwallex SDK，`frontend/vite.config.ts` 将它们分别放进独立的 vendor 包。Airwallex 在模块加载时会预取远程支付脚本，因此它和同命名空间的依赖一起分包。调整分包规则后，检查生产构建的依赖关系，确认支付 SDK 由支付流程触发加载。
+支付页动态导入 Stripe 和 Airwallex SDK，`frontend/vite.config.ts` 通过 Rolldown 的 `codeSplitting` 将它们分别放进独立的 vendor 包。Airwallex 在模块加载时会预取远程支付脚本，因此它和同命名空间的依赖一起分包。调整分包规则后，检查生产构建的依赖关系，确认支付 SDK 由支付流程触发加载。
 
 ## 生成代码与迁移
 
@@ -151,7 +151,7 @@ Ent schema 不是生产环境的迁移器。数据库的变更需要新建 `back
 
 ```bash
 # 受影响的包
-(cd backend && GOTOOLCHAIN=go1.27.0 go test ./internal/provider/... ./internal/routing/... ./internal/egress/...)
+(cd backend && GOTOOLCHAIN=go1.27.1 go test ./internal/provider/... ./internal/routing/... ./internal/egress/...)
 
 # 架构检查覆盖全部标签，不需要按标签重复执行
 make -C backend test-architecture
@@ -206,8 +206,8 @@ make -C backend test
 make test-frontend
 
 # 变更涉及其他组件时，运行它们的测试或完整套件
-npx --yes pnpm@9 --dir frontend run test:run
-npx --yes pnpm@9 --dir frontend run build
+npx --yes pnpm@12.9.1 --dir frontend run test:run
+npx --yes pnpm@12.9.1 --dir frontend run build
 ```
 
 部署文件变更时可以先执行 `make verify-scripts` 和 `make verify-installer`，完整验证会覆盖这两组检查。依赖安全检查使用 `make verify-security`，与 Security Scan workflow 共用目标。govulncheck 版本在 `.govulncheck-version` 固定，漏洞数据在线更新。前端审计保留退出码、stdout 和 stderr；空报告、错误对象或结构不完整都返回失败，高危漏洞按 `.github/audit-exceptions.yml` 核对例外与有效期。网络安全扫描结果独立于代码验证报告。

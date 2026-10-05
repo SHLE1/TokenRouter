@@ -8,7 +8,7 @@
       <SettingsSegmented
         v-model="mode"
         :options="modeOptions"
-        :aria-label="t('admin.announcements.form.targetingMode')"
+        :ariaLabel="t('admin.announcements.form.targetingMode')"
       />
     </SettingRow>
 

@@ -68,6 +68,7 @@ const props = withDefaults(defineProps<{
 }>(), { layout: 'space-y-4' })
 const emit = defineEmits<{ 'update:modelValue': [value: LocalizedUpdate<T>] }>()
 
+// eslint-disable-next-line no-useless-assignment -- 不同字段编辑实例需要不同的输入 ID。
 const id = `localized-fields-${++fieldsSequence}`
 const content = computed(() => props.modelValue || originalContent(props.source, props.sourceLocale))
 const fallbackLocale = computed(() => props.sourceLocale || getLocale())

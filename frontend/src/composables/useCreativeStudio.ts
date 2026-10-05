@@ -688,11 +688,9 @@ export function useCreativeStudio() {
     clearPollingTimer()
     const generation = ++historyRefreshGeneration
     loadingHistory.value = true
-    let requestWorkspaceId = ''
-    let requestWorkspaceGeneration = 0
     try {
-      requestWorkspaceId = readWorkspaceId()
-      requestWorkspaceGeneration = workspaceGeneration
+      const requestWorkspaceId = readWorkspaceId()
+      const requestWorkspaceGeneration = workspaceGeneration
       const page = await getCreativeRuns(requestWorkspaceId, 1, 20)
       // 活动接口返回全部 queued/running/settlement 任务，历史页的最近 20 条记录可能缺少仍在进行的任务。
       // 旧版测试替身或旧后端没有该接口时仍保留历史接口行为。

@@ -181,6 +181,7 @@ const emit = defineEmits<{ close: []; save: [value: LocalizedUpdate<T>] }>()
 defineSlots<{ default(props: { value: T; update: (value: T) => void; locale: string | null; id: string }): unknown }>()
 
 const { t } = useI18n()
+// eslint-disable-next-line no-useless-assignment -- 后续翻译弹窗继续使用模块计数器。
 const uid = `localized-${++dialogSequence}`
 const draft = ref<LocalizedUpdate<T>>()
 const selected = ref('source')

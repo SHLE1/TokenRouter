@@ -1155,7 +1155,7 @@
                     <SettingsSegmented
                       :model-value="captchaProviderSelection"
                       :options="captchaProviderOptions"
-                      :aria-label="t('admin.settings.captcha.provider')"
+                      :ariaLabel="t('admin.settings.captcha.provider')"
                       block
                       @update:model-value="selectCaptchaProvider($event as CaptchaProviderSelection)"
                     />
@@ -1211,7 +1211,7 @@
                       <SettingsSegmented
                         :model-value="form.tencent_captcha_region === 'intl' ? 'intl' : 'cn'"
                         :options="tencentCaptchaRegionOptions"
-                        :aria-label="t('admin.settings.tencentCaptcha.region')"
+                        :ariaLabel="t('admin.settings.tencentCaptcha.region')"
                         @update:model-value="form.tencent_captcha_region = $event as string"
                       />
                       <p class="input-hint">{{ t("admin.settings.tencentCaptcha.regionHint") }}</p>
@@ -1330,7 +1330,7 @@
                       <SettingsSegmented
                         :model-value="form.aliyun_captcha_region === 'sgp' ? 'sgp' : 'cn'"
                         :options="aliyunCaptchaRegionOptions"
-                        :aria-label="t('admin.settings.aliyunCaptcha.region')"
+                        :ariaLabel="t('admin.settings.aliyunCaptcha.region')"
                         @update:model-value="form.aliyun_captcha_region = $event as string"
                       />
                       <p class="input-hint">{{ t("admin.settings.aliyunCaptcha.regionHint") }}</p>
@@ -1954,7 +1954,7 @@
                     <SettingsSegmented
                       v-model="form.dingtalk_connect_corp_restriction_policy"
                       :options="dingtalkCorpPolicyOptions"
-                      :aria-label="t('admin.settings.dingtalk.corpPolicy.label')"
+                      :ariaLabel="t('admin.settings.dingtalk.corpPolicy.label')"
                       block
                     />
                     <p class="input-hint">{{ t("admin.settings.dingtalk.corpPolicy.hint") }}</p>
@@ -4180,7 +4180,7 @@
                 <SettingsSegmented
                   v-model="form.login_agreement_mode"
                   :options="loginAgreementModeOptions"
-                  :aria-label="t('admin.settings.loginAgreement.mode')"
+                  :ariaLabel="t('admin.settings.loginAgreement.mode')"
                 />
                 <p class="input-hint">
                   {{

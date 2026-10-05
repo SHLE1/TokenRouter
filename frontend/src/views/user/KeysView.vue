@@ -2104,7 +2104,7 @@ const toggleKeyStatus = async (key: ApiKey) => {
       newStatus === 'active' ? t('keys.keyEnabledSuccess') : t('keys.keyDisabledSuccess')
     )
     loadApiKeys()
-  } catch (error) {
+  } catch {
     appStore.showError(t('keys.failedToUpdateStatus'))
   }
 }
@@ -2186,7 +2186,7 @@ const changeGroup = async (key: ApiKey, newGroupId: number | null) => {
 
   try {
     await submitGroupChange(key, newGroupId)
-  } catch (error) {
+  } catch {
     appStore.showError(t('keys.failedToChangeGroup'))
   }
 }
@@ -2602,7 +2602,7 @@ const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
         appStore.showError(t('keys.ccSwitchNotInstalled'))
       }
     }, 100)
-  } catch (error) {
+  } catch {
     appStore.showError(t('keys.ccSwitchNotInstalled'))
   }
 }

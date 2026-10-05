@@ -136,7 +136,7 @@
                     v-if="group.options.length <= SEGMENTED_MAX_OPTIONS"
                     :model-value="group.value"
                     :options="group.options"
-                    :aria-label="group.label"
+                    :ariaLabel="group.label"
                     block
                     @update:model-value="(value) => selectParam(group, value)"
                   />
@@ -185,7 +185,7 @@
                     v-if="group.options.length <= SEGMENTED_MAX_OPTIONS"
                     :model-value="group.value"
                     :options="group.options"
-                    :aria-label="group.label"
+                    :ariaLabel="group.label"
                     block
                     @update:model-value="(value) => selectParam(group, value)"
                   />

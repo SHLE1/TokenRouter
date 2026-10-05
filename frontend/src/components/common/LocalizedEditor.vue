@@ -51,6 +51,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [value: LocalizedUpdate<T>] }>()
 defineSlots<{ default(props: { value: T; update: (value: T) => void; locale: string | null; id: string }): unknown }>()
 
+// eslint-disable-next-line no-useless-assignment -- 多个译文编辑器共享字段编号。
 const id = `localized-field-${++editorSequence}`
 // 原文语言未知时，管理员修改原文视为用当前界面语言书写。
 const fallbackLocale = computed(() => props.defaultSourceLocale || getLocale())

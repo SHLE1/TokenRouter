@@ -442,7 +442,7 @@
                   v-model="qoderSite"
                   block
                   :disabled="submitting || isQoderOAuthProviderCreating"
-                  :aria-label="t('admin.providers.qoder.site.label')"
+                  :ariaLabel="t('admin.providers.qoder.site.label')"
                   :options="qoderSiteOptions"
                 />
               </div>
@@ -474,7 +474,7 @@
               <span class="input-label">{{ t('admin.providers.addMethod') }}</span>
               <SettingsSegmented
                 v-model="addMethod"
-                :aria-label="t('admin.providers.addMethod')"
+                :ariaLabel="t('admin.providers.addMethod')"
                 :options="addMethodOptions"
               />
             </div>
@@ -742,7 +742,7 @@
                 <span class="input-label">{{ t('admin.providers.bedrockAuthMode') }}</span>
                 <SettingsSegmented
                   v-model="bedrockAuthMode"
-                  :aria-label="t('admin.providers.bedrockAuthMode')"
+                  :ariaLabel="t('admin.providers.bedrockAuthMode')"
                   :options="bedrockAuthModeOptions"
                 />
               </div>

@@ -42,7 +42,7 @@ def preflight(kind):
     if kind in ('all', 'frontend'):
         actual = output(frontend_command('node', '--version'))
         print('Node ' + actual, flush=True)
-        if actual.split('.')[0] != 'v' + (ROOT / '.node-version').read_text().strip():
+        if actual.lstrip('v') != (ROOT / '.node-version').read_text().strip():
             raise RuntimeError('Node 版本与 .node-version 不符')
         actual = output(frontend_command('pnpm', '--version'))
         print('pnpm ' + actual, flush=True)
