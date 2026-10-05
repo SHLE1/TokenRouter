@@ -67,11 +67,12 @@
               @change="toggleRowSelection(row, index, ($event.target as HTMLInputElement).checked)"
             />
           </div>
+          <!-- 标签和取值的字号不同，两边按首行文字的基线对齐。取值以图标或色条开头时，单元格给文字加 self-baseline。 -->
           <div
             v-for="column in dataColumns"
             :key="column.key"
             :data-field="column.key"
-            class="flex min-w-0 items-start justify-between gap-4"
+            class="flex min-w-0 items-baseline justify-between gap-4"
           >
             <span class="text-xs font-medium tracking-wider text-gray-500 dark:text-dark-300">
               {{ column.label }}
