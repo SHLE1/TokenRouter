@@ -75,6 +75,9 @@ func ensureAuthRouteDockerAvailable(t *testing.T) {
 	if authRouteDockerAvailable() {
 		return
 	}
+	if os.Getenv("CI") != "" || os.Getenv("TOKENROUTER_VERIFY_STRICT") == "1" {
+		t.Fatal("Docker 未启用，无法执行集成测试")
+	}
 	t.Skip("Docker 未启用，跳过认证限流集成测试")
 }
 

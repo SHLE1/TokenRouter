@@ -18,8 +18,8 @@
 | 工具 | 版本来源 | 当前要求 |
 | --- | --- | --- |
 | Go | `backend/go.mod`、CI | `1.27.0` |
-| Node.js | `.github/workflows/backend-ci.yml` | `20` |
-| pnpm | CI 和根 Makefile | `9`；根命令默认使用 `npx --yes pnpm@9` |
+| Node.js | `.node-version` | `20` |
+| pnpm | `.pnpm-version` | `9.15.9`；共用入口通过 npx 选择 Node 和 pnpm |
 | golangci-lint | `.golangci-version` | 本地和 CI 使用同一个完整版本，配置在 `backend/.golangci.yml` |
 | gofumpt | golangci-lint 内置 | 使用默认规则，不开启 extra，不单独维护版本 |
 | arch-go | `tools/architecture/go.mod` | `v2.1.2`；通过 Go API 使用，由独立的工具模块运行 |
@@ -33,7 +33,7 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"$(cat .golang
 
 在仓库根目录执行安装命令，并把 Go 安装目录里的二进制加入 PATH。`tools/golangci-lint.sh` 会验证实际的版本，版本不符的本地工具会被拒绝；CI 的 action 从同一个版本文件读取要安装的版本。
 
-升级 Go 时，同时修改 `backend/go.mod`，以及 `backend-ci.yml`（两处）、`release.yml`（两处）和 `security-scan.yml` 里对 `go version` 的硬断言。workflow 都通过 `go-version-file: backend/go.mod` 安装工具链，漏改任何一处断言，版本校验步骤都会失败。
+Go 版本在 `backend/go.mod` 声明。根 Makefile 据此设置 `GOTOOLCHAIN`，workflow 使用 `go-version-file` 安装；`make verify-go-version` 核对实际运行版本。Node 和 pnpm 分别在 `.node-version`、`.pnpm-version` 声明，验证入口用 npx 选择相应版本并复用下载缓存。
 
 个人的数据库路径、固定的密码，或者某台机器的服务配置，不写进工程文档。开发配置使用不提交的环境文件或 `backend/config.yaml`；可以提交的样例在 `deploy/`。前端开发服务器默认通过 `VITE_DEV_PROXY_TARGET` 代理到后端，端口由 `VITE_DEV_PORT` 控制。
 
@@ -129,7 +129,25 @@ Ent schema 不是生产环境的迁移器。数据库的变更需要新建 `back
 
 ## 验证策略
 
-验证的范围随风险扩大：先运行受影响的包或组件，再运行仓库的门禁。后端常用的命令：
+开发期间先运行受影响的包或组件，交付前执行 `make verify`。普通 `make test` 是开发命令，完整验收使用独立入口。
+
+### 完整验证入口
+
+`make verify` 依次调用环境检查、差异和格式检查、架构和 lint、后端测试、前端测试和构建、embed、工具测试及部署脚本检查。CI 的各 job 调用相同的 Make 目标。普通、unit、integration、embed 分别执行 lint；后端测试使用 `-count=1`，integration 使用 `-p=4`。前端运行完整 Vitest，构建资源生成后再执行 embed 测试和关闭 CGO 的发布形态编译。
+
+环境检查需要可用的 Docker 服务、PostgreSQL 18 的 `pg_dump` 和 `psql`、版本匹配的 Go 和 golangci-lint，以及 Git、Python 3.10+、make 和 npm/npx。缺失环境会中止验证。Linux 安装器测试在 Linux 主机执行，macOS 本地通过 Ubuntu 24.04 容器执行。
+
+每个检出执行一次 `make install-hooks`。安装命令拒绝覆盖已有的自定义 hook 配置。`pre-push` 从 Git 读取待更新引用，对每个不同的目标提交创建临时 detached worktree，并冻结安装前端依赖；删除引用不触发测试。同一提交的多个引用共用测试结果，格式检查保留每个远端旧提交的比较范围。新引用比较远端默认分支共同祖先，没有共同祖先时比较空树。
+
+手动验证同时检查上游共同祖先到 HEAD 的变化、暂存区和工作区；没有上游时比较空树。推送检查接收准确的远端基准。检查过程不自动格式化或更新快照，修复后形成新的提交再推送。
+
+日志位于 `git rev-parse --git-common-dir` 返回目录下的 `verification/`。每组检查有独立日志，`summary.json` 记录提交 SHA、通过、失败和未执行状态。推送额外记录引用和比较基准。验证不自动重试失败测试，临时副本在退出时清理，日志保留。
+
+严格验证为测试设置 `CI=true` 和 `TOKENROUTER_VERIFY_STRICT=1`。依赖容器的测试因环境缺失而不能执行时返回失败。Go JSON 事件保存完整输出并列出跳过项，调用供应商或外部网络的测试被跳过时单独报告。完整验证的子进程清除 OpenAI 实测密钥和 Qoder 实测开关，供应商实测通过局部命令单独执行。
+
+### 局部验证命令
+
+后端开发期间常用的命令：
 
 ```bash
 # 受影响的包
@@ -184,7 +202,7 @@ make -C backend test
 前端的门禁：
 
 ```bash
-# CI 使用 lint、类型检查和关键的 Vitest 集
+# 开发期间运行 lint、类型检查和关键的 Vitest 集
 make test-frontend
 
 # 变更涉及其他组件时，运行它们的测试或完整套件
@@ -192,7 +210,9 @@ npx --yes pnpm@9 --dir frontend run test:run
 npx --yes pnpm@9 --dir frontend run build
 ```
 
-部署文件变更时，运行 `.github/workflows/backend-ci.yml` 里对应的 shell 和 Compose 检查；依赖或安全相关的变更，还要运行 `make secret-scan`、`govulncheck` 或相应的审计。最后至少执行 `git diff --check`，并确认没有意外的生成物、环境文件或秘密。
+部署文件变更时可以先执行 `make verify-scripts` 和 `make verify-installer`，完整验证会覆盖这两组检查。依赖安全检查使用 `make verify-security`，与 Security Scan workflow 共用目标。govulncheck 版本在 `.govulncheck-version` 固定，漏洞数据在线更新。前端审计保留退出码、stdout 和 stderr；空报告、错误对象或结构不完整都返回失败，高危漏洞按 `.github/audit-exceptions.yml` 核对例外与有效期。网络安全扫描结果独立于代码验证报告。
+
+管理员用量导出通过动态导入 `xlsx` 生成工作簿，当前使用 `0.18.5`，调用 `aoa_to_sheet`、`sheet_add_aoa` 和 `write`。两条 SheetJS 漏洞例外有效期为 2026-10-06。[原型污染公告](https://github.com/advisories/GHSA-4r6h-8v6p-xvw6)说明纯导出流程不受该漏洞影响；[ReDoS 公告](https://github.com/advisories/GHSA-5pgg-2g8v-p4x9)仍需按升级后的依赖审计结果核对。后续优先评估 [SheetJS 官方分发](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/)的修复版本并验证导出兼容性，普通 npm 版本范围更新无法取得公告列出的修复版本。替换导出库作为单独变更处理。
 
 CI 的安装器兼容测试在 Linux 上运行，依赖 Bash 4+ 和 `sha256sum`。Apple container 测试和其余的 shell、Compose 检查在 macOS 上运行，覆盖系统自带的 Bash 3.2。
 
@@ -206,11 +226,11 @@ CI 的安装器兼容测试在 Linux 上运行，依赖 Bash 4+ 和 `sha256sum`�
 
 命令处理暂存、未暂存和未跟踪的 Go 文件，按整个文件格式化，覆盖后端和仓库的工具模块；删除的文件、符号链接、vendor 和 node_modules，以及带标准生成标记的文件会被跳过。生成标记是 `package` 声明之前的 `// Code generated ... DO NOT EDIT.`，Ent schema 等手写的源文件照常参与格式化。脚本会预先排除生成文件，格式化配置也使用严格的生成文件识别。
 
-格式化之后检查 diff，把属于这次提交的修改重新暂存。部分暂存的文件需要逐块核对，命令不会修改 Git 的暂存区。检查入口发现格式差异或工具执行失败时，返回非零状态；本地通过 AGENTS.md 要求执行，没有安装 Git hook。
+格式化之后检查 diff，把属于这次提交的修改重新暂存。部分暂存的文件需要逐块核对，命令不会修改 Git 的暂存区。检查入口发现格式差异或工具执行失败时，返回非零状态；提交前按 AGENTS.md 执行格式化；推送 hook 的完整验证会检查整个待推送区间。
 
 检查已经提交的改动，使用 `make check-fmt-go-changed FMT_BASE=<基准提交>`，它按基准和 HEAD 的差异选择文件，工作区干净时也会检查。CI 的 PR 检出源提交，以目标分支和源提交的共同祖先为基准；普通 push 比较推送前后的提交，新分支第一次推送比较默认分支的共同祖先，默认分支第一次推送比较空树。基准无法解析时检查失败，不会悄悄跳过。
 
-现有的全量 lint 保留 gofmt 和其他规则；配置里的 `linters.exclusions.rules` 只排除 gofumpt 的报告，新增代码的检查交给上面按改动文件执行的入口，历史文件不需要全部重新格式化。这条排除不影响 `golangci-lint fmt`。后端的 `make test` 使用同一个版本校验入口。
+格式规则由 `golangci-lint fmt` 的改动文件入口检查。全量 lint 检查错误处理、未使用代码和静态分析，普通、unit、integration、embed 分别选择文件。后端的 `make test` 使用同一个工具版本校验入口。
 
 `PYTHONDONTWRITEBYTECODE=1 python3 tools/test_format_go.py` 在临时的 Git 仓库里，验证文件筛选、生成代码的排除、暂存区的保护、干净工作区下的提交差异，以及两种格式化规则同时生效；CI 安装指定版本后，也会执行这个测试。
 

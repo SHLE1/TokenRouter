@@ -6,7 +6,7 @@
 # Stage 3: Final minimal image
 # =============================================================================
 
-ARG NODE_IMAGE=node:24-alpine
+ARG NODE_IMAGE=node:20-alpine
 ARG GOLANG_IMAGE=golang:1.27.0-alpine
 ARG ALPINE_IMAGE=alpine:3.20
 ARG GOPROXY=https://goproxy.cn,direct
@@ -21,7 +21,9 @@ WORKDIR /app/frontend
 ENV NODE_OPTIONS=--max-old-space-size=1536
 
 # 安装 pnpm，并固定到与 lockfile 兼容的精确版本，避免配置校验规则变化破坏构建。
-RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+COPY .node-version .pnpm-version /app/
+RUN test "$(node -p 'process.versions.node.split(".")[0]')" = "$(cat /app/.node-version)" && \
+    corepack enable && corepack prepare "pnpm@$(cat /app/.pnpm-version)" --activate
 
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./

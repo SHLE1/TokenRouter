@@ -1,0 +1,4 @@
+#!/bin/sh
+# Git 提供待推送引用；检查提交副本后再更新远端。
+set -eu
+exec python3 "$(git rev-parse --show-toplevel)/tools/pre_push.py" "$@"

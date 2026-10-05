@@ -9,7 +9,7 @@ import (
 )
 
 // ErrConversionSSEFrameTooLarge 表示累计的 SSE 帧超过转换器上限。
-var ErrConversionSSEFrameTooLarge = errors.New("The upstream SSE frame exceeds the size limit")
+var ErrConversionSSEFrameTooLarge = errors.New("the upstream SSE frame exceeds the size limit")
 
 const defaultConversionSSEFrameBytes = 500 * 1024 * 1024
 

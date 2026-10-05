@@ -7,7 +7,7 @@
 # Stage 3: Final minimal image
 # =============================================================================
 
-ARG NODE_IMAGE=node:24-alpine
+ARG NODE_IMAGE=node:20-alpine
 ARG GOLANG_IMAGE=golang:1.27.0-alpine
 ARG ALPINE_IMAGE=alpine:3.21
 ARG POSTGRES_IMAGE=postgres:18-alpine
@@ -24,8 +24,10 @@ ARG NPM_CONFIG_REGISTRY
 
 WORKDIR /app/frontend
 
-# 安装 pnpm，并固定到 v9 以匹配 CI、保证镜像构建可复现
-RUN corepack enable && corepack prepare pnpm@9 --activate
+# 构建工具版本与本地验证共用声明，镜像覆盖值也需要满足 Node 主版本。
+COPY .node-version .pnpm-version /app/
+RUN test "$(node -p 'process.versions.node.split(".")[0]')" = "$(cat /app/.node-version)" && \
+    corepack enable && corepack prepare "pnpm@$(cat /app/.pnpm-version)" --activate
 
 # Install dependencies first (better caching)
 COPY frontend/package.json frontend/pnpm-lock.yaml ./

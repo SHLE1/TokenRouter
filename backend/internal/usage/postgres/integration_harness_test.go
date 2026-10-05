@@ -52,7 +52,7 @@ func TestMain(m *testing.M) {
 
 	if !dockerIsAvailable(ctx) {
 		// In CI we expect Docker to be available so integration tests should fail loudly.
-		if os.Getenv("CI") != "" {
+		if os.Getenv("CI") != "" || os.Getenv("TOKENROUTER_VERIFY_STRICT") == "1" {
 			log.Printf("docker is not available (CI=true); failing integration tests")
 			os.Exit(1)
 		}

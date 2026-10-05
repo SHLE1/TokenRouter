@@ -112,7 +112,11 @@ const {
   }),
 }));
 
-const localeRef = vi.hoisted(() => ({ value: "zh-CN" }));
+// 使用 Vue ref，使模板取得语言字符串。
+const localeRef = await vi.hoisted(async () => {
+  const { ref } = await import("vue");
+  return ref("zh-CN");
+});
 
 vi.mock("@/api", () => ({
   adminAPI: {

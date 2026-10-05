@@ -17,7 +17,7 @@ import (
 var AntigravityPassthroughErrorMessages = []string{
 	"prompt is too long",
 }
-var ErrProjectIDRequired = errors.New("This standard-tier Antigravity provider requires project_id")
+var ErrProjectIDRequired = errors.New("this standard-tier Antigravity provider requires project_id")
 
 // PromptTooLongError 表示上游明确返回 prompt too long
 type PromptTooLongError struct {

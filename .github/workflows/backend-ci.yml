@@ -13,17 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Check deployment scripts
-        run: |
-          /bin/bash -n deploy/apple-container.sh deploy/install.sh
-          /bin/bash deploy/tests/apple-container-test.sh
-          /bin/sh deploy/tests/docker-compose-security-test.sh
-          /bin/sh deploy/tests/docker-compose-postgres-test.sh
-          /bin/sh deploy/tests/docker-compose-variants-test.sh
-          /bin/sh deploy/tests/docker-compose-gateway-env-test.sh
-          /bin/sh deploy/tests/docker-runtime-resources-test.sh
-          /bin/sh deploy/test-caddyfile-cache.sh
-          /bin/sh tools/goreleaser_prebuilt_test.sh
-          PYTHONDONTWRITEBYTECODE=1 python3 tools/test_notify_discord_release.py
+        run: make verify-scripts
 
   installer:
     # Linux 安装器依赖 Bash 4+ 和 sha256sum；macOS 系统 Bash 仅支持 3.2。
@@ -31,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Check installer compatibility
-        run: bash deploy/tests/install-brand-test.sh
+        run: make verify-installer
 
   test:
     runs-on: ubuntu-latest
@@ -43,12 +33,6 @@ jobs:
           check-latest: false
           cache: true
           cache-dependency-path: backend/go.sum
-      - name: Verify Go version
-        run: |
-          go version | grep -q 'go1.27.0'
-      - name: Unit tests
-        working-directory: backend
-        run: make test-unit
       - name: Install PostgreSQL 18 client
         run: |
           # 恢复夹具使用 PostgreSQL 18；pg_dump 不能备份高于自身主版本的服务端。
@@ -61,29 +45,59 @@ jobs:
           echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
           /usr/lib/postgresql/18/bin/pg_dump --version
           /usr/lib/postgresql/18/bin/psql --version
-      - name: Integration tests
-        working-directory: backend
-        run: make test-integration
+      - name: Backend tests
+        run: make verify-backend
 
   frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Read pnpm version
+        id: pnpm-version
+        run: echo "version=$(cat .pnpm-version)" >> "$GITHUB_OUTPUT"
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 9
+          version: ${{ steps.pnpm-version.outputs.version }}
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version-file: .node-version
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: pnpm install --frozen-lockfile
-      - name: Frontend typecheck and critical vitest
-        run: make test-frontend
+      - name: Frontend checks and production build
+        run: make verify-frontend
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-frontend
+          path: backend/internal/web/dist
+          retention-days: 1
+
+  embed:
+    needs: frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Download frontend build
+        uses: actions/download-artifact@v8
+        with:
+          name: ci-frontend
+          path: backend/internal/web/dist
+      - name: Read golangci-lint version
+        id: golangci-version
+        run: echo "version=$(cat .golangci-version)" >> "$GITHUB_OUTPUT"
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: ${{ steps.golangci-version.outputs.version }}
+          install-only: true
+      - name: Embedded tests and release build
+        run: make verify-embed
 
   golangci-lint:
     runs-on: ubuntu-latest
@@ -101,22 +115,18 @@ jobs:
           cache-dependency-path: |
             backend/go.sum
             tools/architecture/go.sum
-      - name: Verify Go version
-        run: |
-          go version | grep -q 'go1.27.0'
-      - name: Architecture checks
-        run: make -C backend test-architecture
       - name: Read golangci-lint version
         id: golangci-version
         run: echo "version=$(cat .golangci-version)" >> "$GITHUB_OUTPUT"
-      - name: golangci-lint
+      - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
           version: ${{ steps.golangci-version.outputs.version }}
-          args: --timeout=30m
-          working-directory: backend
-      - name: Test changed-file formatting entry
-        run: PYTHONDONTWRITEBYTECODE=1 python3 tools/test_format_go.py
+          install-only: true
+      - name: Architecture and tagged lint
+        run: make verify-static
+      - name: Verification tooling tests
+        run: make verify-tools
       - name: Check formatting of changed Go files
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -136,5 +146,4 @@ jobs:
             # 首次推送默认分支没有旧提交，以空树为基准。
             FMT_BASE=$(git hash-object -t tree --stdin < /dev/null)
           fi
-          export FMT_BASE
-          make check-fmt-go-changed
+          VERIFY_BASE="$FMT_BASE" make verify-diff

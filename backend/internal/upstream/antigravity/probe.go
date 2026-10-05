@@ -151,7 +151,7 @@ func Probe(ctx context.Context, input RetryInput, options RetryOptions, model st
 	if err != nil {
 		var switchErr *AntigravityProviderSwitchError
 		if errors.As(err, &switchErr) {
-			return nil, fmt.Errorf("Provider model %s is rate limited. Try again later.", switchErr.RateLimitedModel)
+			return nil, fmt.Errorf("provider model %s is rate limited; try again later", switchErr.RateLimitedModel)
 		}
 		return nil, err
 	}

@@ -3,9 +3,7 @@
 package billing_test
 
 import (
-	"bytes"
 	"context"
-	"log"
 	"math"
 	"testing"
 
@@ -17,21 +15,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
-
-// captureStdLog 将标准库 log 临时重定向到 buffer，用于断言 fallback 警告日志数量。
-func captureStdLog(t *testing.T) *bytes.Buffer {
-	t.Helper()
-	var buf bytes.Buffer
-	prevOut := log.Writer()
-	prevFlags := log.Flags()
-	log.SetOutput(&buf)
-	log.SetFlags(0)
-	t.Cleanup(func() {
-		log.SetOutput(prevOut)
-		log.SetFlags(prevFlags)
-	})
-	return &buf
-}
 
 func newTestCalculator() *billing.Calculator {
 	return newCalculator(&config.Config{}, nil)

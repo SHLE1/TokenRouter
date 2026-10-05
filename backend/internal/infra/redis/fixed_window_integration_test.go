@@ -98,6 +98,9 @@ func ensureDockerAvailable(t *testing.T) {
 	if dockerAvailable() {
 		return
 	}
+	if os.Getenv("CI") != "" || os.Getenv("TOKENROUTER_VERIFY_STRICT") == "1" {
+		t.Fatal("Docker 未启用，无法执行集成测试")
+	}
 	t.Skip("Docker 未启用，跳过依赖 testcontainers 的集成测试")
 }
 
