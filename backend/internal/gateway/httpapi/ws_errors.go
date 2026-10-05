@@ -11,6 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 )
@@ -27,7 +28,7 @@ func CloseResponsesWSFailure(c *gin.Context, conn *coderws.Conn, failoverErr *Re
 	intendedStatus := http.StatusBadGateway
 	errorType := "upstream_error"
 	errorCode := "upstream_ws_failover_exhausted"
-	message := "upstream websocket proxy failed"
+	message := locale.ErrorText(gatewayLocale(c), "UPSTREAM_REQUEST_FAILED", 502, "upstream websocket proxy failed")
 	closeStatus := coderws.StatusInternalError
 
 	if failoverErr != nil {
@@ -37,23 +38,23 @@ func CloseResponsesWSFailure(c *gin.Context, conn *coderws.Conn, failoverErr *Re
 		if failoverErr.ProviderAuth {
 			intendedStatus = http.StatusServiceUnavailable
 			errorType = "api_error"
-			message = failoverErr.CredentialMessage
+			message = locale.ErrorText(gatewayLocale(c), "UPSTREAM_AUTH_FAILED", 503, failoverErr.CredentialMessage)
 			closeStatus = coderws.StatusTryAgainLater
 		} else {
 			switch failoverErr.StatusCode {
 			case http.StatusTooManyRequests:
 				intendedStatus = http.StatusTooManyRequests
 				errorType = "rate_limit_error"
-				message = "upstream rate limit exceeded, please retry later"
+				message = locale.ErrorText(gatewayLocale(c), "UPSTREAM_RATE_LIMITED", 429, "upstream rate limit exceeded, please retry later")
 				closeStatus = coderws.StatusTryAgainLater
 			case 529, http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
 				intendedStatus = failoverErr.StatusCode
-				message = "upstream service temporarily unavailable"
+				message = locale.ErrorText(gatewayLocale(c), "UPSTREAM_UNAVAILABLE", 503, "upstream service temporarily unavailable")
 				closeStatus = coderws.StatusTryAgainLater
 			case http.StatusUnauthorized, http.StatusForbidden:
 				intendedStatus = failoverErr.StatusCode
 				errorType = "authentication_error"
-				message = "upstream websocket authentication failed"
+				message = locale.ErrorText(gatewayLocale(c), "UPSTREAM_AUTH_FAILED", 502, "upstream websocket authentication failed")
 				closeStatus = coderws.StatusPolicyViolation
 			}
 		}
@@ -72,7 +73,7 @@ func WriteResponsesWSModeration(ctx context.Context, conn *coderws.Conn, decisio
 	}
 	message := strings.TrimSpace(decision.Message)
 	if message == "" {
-		message = "content moderation blocked this request"
+		message = locale.ErrorText(locale.FromContext(ctx), "CONTENT_POLICY_VIOLATION", 403, "content moderation blocked this request")
 	}
 	payload, err := json.Marshal(gin.H{
 		"event_id": "evt_content_moderation_blocked",
@@ -125,10 +126,10 @@ func WriteResponsesWSIsolation(ctx context.Context, conn *coderws.Conn, err erro
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	message := "Service temporarily unavailable"
+	message := locale.ErrorText(locale.FromContext(ctx), "UPSTREAM_UNAVAILABLE", 503, "Service temporarily unavailable")
 	code := "service_unavailable"
 	if errors.Is(err, session.ErrSessionIsolationConflict) {
-		message = session.SessionIsolationConflictMessage
+		message = locale.ErrorText(locale.FromContext(ctx), "SESSION_ISOLATION_CONFLICT", 403, session.SessionIsolationConflictMessage)
 		code = "permission_error"
 	} else {
 		closeMessage := message
@@ -166,11 +167,15 @@ func WriteResponsesWSIsolation(ctx context.Context, conn *coderws.Conn, err erro
 	return true
 }
 
-func ResponsesWSIsolationCloseReason(err error) string {
-	if errors.Is(err, session.ErrSessionIsolationConflict) {
-		return session.SessionIsolationConflictMessage
+func ResponsesWSIsolationCloseReason(err error, language ...string) string {
+	selected := locale.Default()
+	if len(language) > 0 {
+		selected = language[0]
 	}
-	return "session isolation check failed"
+	if errors.Is(err, session.ErrSessionIsolationConflict) {
+		return locale.ErrorText(selected, "SESSION_ISOLATION_CONFLICT", 403, session.SessionIsolationConflictMessage)
+	}
+	return locale.ErrorText(selected, "UPSTREAM_UNAVAILABLE", 503, "session isolation check failed")
 }
 
 // ResponsesWSEndedByClient 判断连接是否因正常关闭或客户端取消而结束。

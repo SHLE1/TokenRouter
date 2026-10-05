@@ -3,6 +3,8 @@ package httpapi
 import (
 	"strconv"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
@@ -20,36 +22,38 @@ func NewErrorPassthroughHandler(service *errorpolicy.ErrorPassthroughService) *E
 
 // CreateErrorPassthroughRuleRequest 创建规则请求
 type CreateErrorPassthroughRuleRequest struct {
-	Name            string   `json:"name" binding:"required"`
-	Enabled         *bool    `json:"enabled"`
-	Priority        int      `json:"priority"`
-	ErrorCodes      []int    `json:"error_codes"`
-	Keywords        []string `json:"keywords"`
-	MatchMode       string   `json:"match_mode"`
-	Platforms       []string `json:"platforms"`
-	PassthroughCode *bool    `json:"passthrough_code"`
-	ResponseCode    *int     `json:"response_code"`
-	PassthroughBody *bool    `json:"passthrough_body"`
-	CustomMessage   *string  `json:"custom_message"`
-	SkipMonitoring  *bool    `json:"skip_monitoring"`
-	Description     *string  `json:"description"`
+	Name                string                 `json:"name" binding:"required"`
+	Enabled             *bool                  `json:"enabled"`
+	Priority            int                    `json:"priority"`
+	ErrorCodes          []int                  `json:"error_codes"`
+	Keywords            []string               `json:"keywords"`
+	MatchMode           string                 `json:"match_mode"`
+	Platforms           []string               `json:"platforms"`
+	PassthroughCode     *bool                  `json:"passthrough_code"`
+	ResponseCode        *int                   `json:"response_code"`
+	PassthroughBody     *bool                  `json:"passthrough_body"`
+	MessageLocalization *locale.Update[string] `json:"message_localization"`
+	CustomMessage       *string                `json:"custom_message"`
+	SkipMonitoring      *bool                  `json:"skip_monitoring"`
+	Description         *string                `json:"description"`
 }
 
 // UpdateErrorPassthroughRuleRequest 更新规则请求（部分更新，所有字段可选）
 type UpdateErrorPassthroughRuleRequest struct {
-	Name            *string  `json:"name"`
-	Enabled         *bool    `json:"enabled"`
-	Priority        *int     `json:"priority"`
-	ErrorCodes      []int    `json:"error_codes"`
-	Keywords        []string `json:"keywords"`
-	MatchMode       *string  `json:"match_mode"`
-	Platforms       []string `json:"platforms"`
-	PassthroughCode *bool    `json:"passthrough_code"`
-	ResponseCode    *int     `json:"response_code"`
-	PassthroughBody *bool    `json:"passthrough_body"`
-	CustomMessage   *string  `json:"custom_message"`
-	SkipMonitoring  *bool    `json:"skip_monitoring"`
-	Description     *string  `json:"description"`
+	Name                *string                `json:"name"`
+	Enabled             *bool                  `json:"enabled"`
+	Priority            *int                   `json:"priority"`
+	ErrorCodes          []int                  `json:"error_codes"`
+	Keywords            []string               `json:"keywords"`
+	MatchMode           *string                `json:"match_mode"`
+	Platforms           []string               `json:"platforms"`
+	PassthroughCode     *bool                  `json:"passthrough_code"`
+	ResponseCode        *int                   `json:"response_code"`
+	PassthroughBody     *bool                  `json:"passthrough_body"`
+	MessageLocalization *locale.Update[string] `json:"message_localization"`
+	CustomMessage       *string                `json:"custom_message"`
+	SkipMonitoring      *bool                  `json:"skip_monitoring"`
+	Description         *string                `json:"description"`
 }
 
 // List 获取所有规则
@@ -128,6 +132,7 @@ func (h *ErrorPassthroughHandler) Create(c *gin.Context) {
 	}
 	rule.ResponseCode = req.ResponseCode
 	rule.CustomMessage = req.CustomMessage
+	rule.MessageUpdate = req.MessageLocalization
 	rule.Description = req.Description
 
 	// 空列表返回 []。
@@ -182,20 +187,23 @@ func (h *ErrorPassthroughHandler) Update(c *gin.Context) {
 
 	// 部分更新：只更新请求中提供的字段
 	rule := &errorpolicy.ErrorPassthroughRule{
-		ID:              id,
-		Name:            existing.Name,
-		Enabled:         existing.Enabled,
-		Priority:        existing.Priority,
-		ErrorCodes:      existing.ErrorCodes,
-		Keywords:        existing.Keywords,
-		MatchMode:       existing.MatchMode,
-		Platforms:       existing.Platforms,
-		PassthroughCode: existing.PassthroughCode,
-		ResponseCode:    existing.ResponseCode,
-		PassthroughBody: existing.PassthroughBody,
-		CustomMessage:   existing.CustomMessage,
-		SkipMonitoring:  existing.SkipMonitoring,
-		Description:     existing.Description,
+		ID:                  id,
+		UpdatedAt:           existing.UpdatedAt,
+		MessageLocalization: existing.MessageLocalization,
+		MessageUpdate:       req.MessageLocalization,
+		Name:                existing.Name,
+		Enabled:             existing.Enabled,
+		Priority:            existing.Priority,
+		ErrorCodes:          existing.ErrorCodes,
+		Keywords:            existing.Keywords,
+		MatchMode:           existing.MatchMode,
+		Platforms:           existing.Platforms,
+		PassthroughCode:     existing.PassthroughCode,
+		ResponseCode:        existing.ResponseCode,
+		PassthroughBody:     existing.PassthroughBody,
+		CustomMessage:       existing.CustomMessage,
+		SkipMonitoring:      existing.SkipMonitoring,
+		Description:         existing.Description,
 	}
 
 	// 应用请求中提供的更新

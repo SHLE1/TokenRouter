@@ -68,6 +68,9 @@
 </template>
 
 <script setup lang="ts">
+import { getLocale } from '@/i18n'
+import { vendorLocale } from '@/i18n/catalog'
+import { useLocaleRefresh } from '@/composables/useLocaleRefresh'
 import Skeleton from '@/components/common/Skeleton.vue'
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import { ref, onMounted, nextTick, watch } from 'vue'
@@ -133,6 +136,8 @@ function formatGatewayAmount(amount: number): string {
   return formatPaymentAmount(amount, props.currency)
 }
 
+useLocaleRefresh(() => { elementsInstance?.update({ locale: vendorLocale('stripe', getLocale()) }) })
+
 onMounted(async () => {
   try {
     const { loadStripe } = await import('@stripe/stripe-js/pure')
@@ -146,6 +151,7 @@ onMounted(async () => {
 
     const elements = stripe.elements({
       clientSecret: props.clientSecret,
+      locale: vendorLocale('stripe', getLocale()),
       appearance: stripeAppearance(),
     })
     elementsInstance = elements

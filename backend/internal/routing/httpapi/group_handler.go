@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/idempotency"
 	idempotencyhttp "github.com/TokenFlux/TokenRouter/internal/idempotency/httpapi"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
@@ -18,6 +20,7 @@ import (
 
 // CreateGroupRequest represents create group request
 type CreateGroupRequest struct {
+	Localization               *locale.Update[routing.GroupCopy]       `json:"localization"`
 	RoutingPolicy              routing.GroupRoutingPolicy              `json:"routing_policy"`
 	Name                       string                                  `json:"name" binding:"required"`
 	Description                string                                  `json:"description"`
@@ -78,6 +81,7 @@ type CreateGroupRequest struct {
 
 // UpdateGroupRequest represents update group request
 type UpdateGroupRequest struct {
+	Localization               *locale.Update[routing.GroupCopy]        `json:"localization"`
 	RoutingPolicy              *routing.GroupRoutingPolicy              `json:"routing_policy"`
 	Name                       string                                   `json:"name"`
 	Description                *string                                  `json:"description"`
@@ -266,6 +270,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 	}
 
 	group, err := h.adminService.CreateGroup(c.Request.Context(), &routing.CreateGroupInput{
+		Localization:                    req.Localization,
 		Name:                            req.Name,
 		Description:                     req.Description,
 		SchedulerType:                   req.SchedulerType,
@@ -380,6 +385,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 	}
 
 	group, err := h.adminService.UpdateGroup(c.Request.Context(), groupID, &routing.UpdateGroupInput{
+		Localization:                    req.Localization,
 		Name:                            req.Name,
 		Description:                     req.Description,
 		SchedulerType:                   req.SchedulerType,

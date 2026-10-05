@@ -110,6 +110,7 @@ export default {
       missing: 'Missing',
     },
     history: {
+      noOutputs: "No output images",
       title: 'History',
       elapsed: 'Elapsed {time}',
       toggle: 'Toggle run history',

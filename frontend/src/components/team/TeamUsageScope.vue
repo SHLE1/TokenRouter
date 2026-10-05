@@ -78,11 +78,11 @@
             <div class="flex items-center gap-3 text-sm">
               <span class="inline-flex items-center gap-1">
                 <Icon name="arrowDown" size="sm" class="text-emerald-500" />
-                <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.input_tokens || 0).toLocaleString() }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.input_tokens || 0).toLocaleString(getLocale()) }}</span>
               </span>
               <span class="inline-flex items-center gap-1">
                 <Icon name="arrowUp" size="sm" class="text-violet-500" />
-                <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.output_tokens || 0).toLocaleString() }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ Number(row.output_tokens || 0).toLocaleString(getLocale()) }}</span>
               </span>
             </div>
           </template>
@@ -110,6 +110,8 @@
 </template>
 
 <script setup lang="ts">
+import { useLocaleRefresh } from '@/composables/useLocaleRefresh'
+import { getLocale } from '@/i18n'
 import ContentSkeleton from '@/components/common/ContentSkeleton.vue'
 import Skeleton from '@/components/common/Skeleton.vue'
 import { computed, onMounted, ref } from 'vue'
@@ -146,9 +148,9 @@ const memberOptions = computed<SelectOption[]>(() => [{ value: null, label: t('t
 const keyOptions = computed<SelectOption[]>(() => [{ value: null, label: t('team.allKeys') }, ...keys.value.map((key) => ({ value: key.id, label: key.name }))])
 const metrics = computed(() => [
   { label: t('team.totalCost'), amount: Number(summary.value?.actual_cost || 0) },
-  { label: t('team.requests'), value: Number(summary.value?.request_count || 0).toLocaleString() },
-  { label: t('team.inputTokens'), value: Number(summary.value?.input_tokens || 0).toLocaleString() },
-  { label: t('team.outputTokens'), value: Number(summary.value?.output_tokens || 0).toLocaleString() }
+  { label: t('team.requests'), value: Number(summary.value?.request_count || 0).toLocaleString(getLocale()) },
+  { label: t('team.inputTokens'), value: Number(summary.value?.input_tokens || 0).toLocaleString(getLocale()) },
+  { label: t('team.outputTokens'), value: Number(summary.value?.output_tokens || 0).toLocaleString(getLocale()) }
 ])
 const daily = computed(() => summary.value?.daily || [])
 const maxDailyCost = computed(() => Math.max(0.000001, ...daily.value.map((point) => point.actual_cost)))
@@ -172,6 +174,8 @@ const loadUsage = async () => {
   logsLoading.value = true
   try { const [nextSummary, page] = await Promise.all([teamAPI.usage(query()), teamAPI.usageLogs(query())]); summary.value = nextSummary; logs.value = page.items; total.value = page.total } finally { logsLoading.value = false }
 }
+useLocaleRefresh(loadUsage)
+
 const handlePageChange = async (nextPage: number) => { page.value = nextPage; await loadUsage() }
 const handlePageSizeChange = async (nextPageSize: number) => { pageSize.value = nextPageSize; page.value = 1; await loadUsage() }
 

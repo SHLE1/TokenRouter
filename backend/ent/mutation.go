@@ -59,6 +59,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/ent/usersubscription"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
@@ -3966,6 +3967,7 @@ type AnnouncementMutation struct {
 	op            Op
 	typ           string
 	id            *int64
+	localization  *site.AnnouncementLocalization
 	title         *string
 	content       *string
 	status        *string
@@ -4084,6 +4086,55 @@ func (m *AnnouncementMutation) IDs(ctx context.Context) ([]int64, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetLocalization sets the "localization" field.
+func (m *AnnouncementMutation) SetLocalization(sl site.AnnouncementLocalization) {
+	m.localization = &sl
+}
+
+// Localization returns the value of the "localization" field in the mutation.
+func (m *AnnouncementMutation) Localization() (r site.AnnouncementLocalization, exists bool) {
+	v := m.localization
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLocalization returns the old "localization" field's value of the Announcement entity.
+// If the Announcement object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AnnouncementMutation) OldLocalization(ctx context.Context) (v site.AnnouncementLocalization, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLocalization is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLocalization requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLocalization: %w", err)
+	}
+	return oldValue.Localization, nil
+}
+
+// ClearLocalization clears the value of the "localization" field.
+func (m *AnnouncementMutation) ClearLocalization() {
+	m.localization = nil
+	m.clearedFields[announcement.FieldLocalization] = struct{}{}
+}
+
+// LocalizationCleared returns if the "localization" field was cleared in this mutation.
+func (m *AnnouncementMutation) LocalizationCleared() bool {
+	_, ok := m.clearedFields[announcement.FieldLocalization]
+	return ok
+}
+
+// ResetLocalization resets all changes to the "localization" field.
+func (m *AnnouncementMutation) ResetLocalization() {
+	m.localization = nil
+	delete(m.clearedFields, announcement.FieldLocalization)
 }
 
 // SetTitle sets the "title" field.
@@ -4677,7 +4728,10 @@ func (m *AnnouncementMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AnnouncementMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
+	if m.localization != nil {
+		fields = append(fields, announcement.FieldLocalization)
+	}
 	if m.title != nil {
 		fields = append(fields, announcement.FieldTitle)
 	}
@@ -4719,6 +4773,8 @@ func (m *AnnouncementMutation) Fields() []string {
 // schema.
 func (m *AnnouncementMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case announcement.FieldLocalization:
+		return m.Localization()
 	case announcement.FieldTitle:
 		return m.Title()
 	case announcement.FieldContent:
@@ -4750,6 +4806,8 @@ func (m *AnnouncementMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *AnnouncementMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case announcement.FieldLocalization:
+		return m.OldLocalization(ctx)
 	case announcement.FieldTitle:
 		return m.OldTitle(ctx)
 	case announcement.FieldContent:
@@ -4781,6 +4839,13 @@ func (m *AnnouncementMutation) OldField(ctx context.Context, name string) (ent.V
 // type.
 func (m *AnnouncementMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case announcement.FieldLocalization:
+		v, ok := value.(site.AnnouncementLocalization)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLocalization(v)
+		return nil
 	case announcement.FieldTitle:
 		v, ok := value.(string)
 		if !ok {
@@ -4915,6 +4980,9 @@ func (m *AnnouncementMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *AnnouncementMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(announcement.FieldLocalization) {
+		fields = append(fields, announcement.FieldLocalization)
+	}
 	if m.FieldCleared(announcement.FieldTargeting) {
 		fields = append(fields, announcement.FieldTargeting)
 	}
@@ -4944,6 +5012,9 @@ func (m *AnnouncementMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *AnnouncementMutation) ClearField(name string) error {
 	switch name {
+	case announcement.FieldLocalization:
+		m.ClearLocalization()
+		return nil
 	case announcement.FieldTargeting:
 		m.ClearTargeting()
 		return nil
@@ -4967,6 +5038,9 @@ func (m *AnnouncementMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *AnnouncementMutation) ResetField(name string) error {
 	switch name {
+	case announcement.FieldLocalization:
+		m.ResetLocalization()
+		return nil
 	case announcement.FieldTitle:
 		m.ResetTitle()
 		return nil
@@ -19214,33 +19288,34 @@ func (m *CreativeRunOutputMutation) ResetEdge(name string) error {
 // ErrorPassthroughRuleMutation represents an operation that mutates the ErrorPassthroughRule nodes in the graph.
 type ErrorPassthroughRuleMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *int64
-	created_at        *time.Time
-	updated_at        *time.Time
-	name              *string
-	enabled           *bool
-	priority          *int
-	addpriority       *int
-	error_codes       *[]int
-	appenderror_codes []int
-	keywords          *[]string
-	appendkeywords    []string
-	match_mode        *string
-	platforms         *[]string
-	appendplatforms   []string
-	passthrough_code  *bool
-	response_code     *int
-	addresponse_code  *int
-	passthrough_body  *bool
-	custom_message    *string
-	skip_monitoring   *bool
-	description       *string
-	clearedFields     map[string]struct{}
-	done              bool
-	oldValue          func(context.Context) (*ErrorPassthroughRule, error)
-	predicates        []predicate.ErrorPassthroughRule
+	op                   Op
+	typ                  string
+	id                   *int64
+	created_at           *time.Time
+	updated_at           *time.Time
+	message_localization *locale.TextContent
+	name                 *string
+	enabled              *bool
+	priority             *int
+	addpriority          *int
+	error_codes          *[]int
+	appenderror_codes    []int
+	keywords             *[]string
+	appendkeywords       []string
+	match_mode           *string
+	platforms            *[]string
+	appendplatforms      []string
+	passthrough_code     *bool
+	response_code        *int
+	addresponse_code     *int
+	passthrough_body     *bool
+	custom_message       *string
+	skip_monitoring      *bool
+	description          *string
+	clearedFields        map[string]struct{}
+	done                 bool
+	oldValue             func(context.Context) (*ErrorPassthroughRule, error)
+	predicates           []predicate.ErrorPassthroughRule
 }
 
 var _ ent.Mutation = (*ErrorPassthroughRuleMutation)(nil)
@@ -19411,6 +19486,55 @@ func (m *ErrorPassthroughRuleMutation) OldUpdatedAt(ctx context.Context) (v time
 // ResetUpdatedAt resets all changes to the "updated_at" field.
 func (m *ErrorPassthroughRuleMutation) ResetUpdatedAt() {
 	m.updated_at = nil
+}
+
+// SetMessageLocalization sets the "message_localization" field.
+func (m *ErrorPassthroughRuleMutation) SetMessageLocalization(lc locale.TextContent) {
+	m.message_localization = &lc
+}
+
+// MessageLocalization returns the value of the "message_localization" field in the mutation.
+func (m *ErrorPassthroughRuleMutation) MessageLocalization() (r locale.TextContent, exists bool) {
+	v := m.message_localization
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMessageLocalization returns the old "message_localization" field's value of the ErrorPassthroughRule entity.
+// If the ErrorPassthroughRule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ErrorPassthroughRuleMutation) OldMessageLocalization(ctx context.Context) (v locale.TextContent, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMessageLocalization is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMessageLocalization requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMessageLocalization: %w", err)
+	}
+	return oldValue.MessageLocalization, nil
+}
+
+// ClearMessageLocalization clears the value of the "message_localization" field.
+func (m *ErrorPassthroughRuleMutation) ClearMessageLocalization() {
+	m.message_localization = nil
+	m.clearedFields[errorpassthroughrule.FieldMessageLocalization] = struct{}{}
+}
+
+// MessageLocalizationCleared returns if the "message_localization" field was cleared in this mutation.
+func (m *ErrorPassthroughRuleMutation) MessageLocalizationCleared() bool {
+	_, ok := m.clearedFields[errorpassthroughrule.FieldMessageLocalization]
+	return ok
+}
+
+// ResetMessageLocalization resets all changes to the "message_localization" field.
+func (m *ErrorPassthroughRuleMutation) ResetMessageLocalization() {
+	m.message_localization = nil
+	delete(m.clearedFields, errorpassthroughrule.FieldMessageLocalization)
 }
 
 // SetName sets the "name" field.
@@ -20082,12 +20206,15 @@ func (m *ErrorPassthroughRuleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ErrorPassthroughRuleMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, errorpassthroughrule.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
 		fields = append(fields, errorpassthroughrule.FieldUpdatedAt)
+	}
+	if m.message_localization != nil {
+		fields = append(fields, errorpassthroughrule.FieldMessageLocalization)
 	}
 	if m.name != nil {
 		fields = append(fields, errorpassthroughrule.FieldName)
@@ -20140,6 +20267,8 @@ func (m *ErrorPassthroughRuleMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case errorpassthroughrule.FieldUpdatedAt:
 		return m.UpdatedAt()
+	case errorpassthroughrule.FieldMessageLocalization:
+		return m.MessageLocalization()
 	case errorpassthroughrule.FieldName:
 		return m.Name()
 	case errorpassthroughrule.FieldEnabled:
@@ -20179,6 +20308,8 @@ func (m *ErrorPassthroughRuleMutation) OldField(ctx context.Context, name string
 		return m.OldCreatedAt(ctx)
 	case errorpassthroughrule.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
+	case errorpassthroughrule.FieldMessageLocalization:
+		return m.OldMessageLocalization(ctx)
 	case errorpassthroughrule.FieldName:
 		return m.OldName(ctx)
 	case errorpassthroughrule.FieldEnabled:
@@ -20227,6 +20358,13 @@ func (m *ErrorPassthroughRuleMutation) SetField(name string, value ent.Value) er
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
+		return nil
+	case errorpassthroughrule.FieldMessageLocalization:
+		v, ok := value.(locale.TextContent)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMessageLocalization(v)
 		return nil
 	case errorpassthroughrule.FieldName:
 		v, ok := value.(string)
@@ -20376,6 +20514,9 @@ func (m *ErrorPassthroughRuleMutation) AddField(name string, value ent.Value) er
 // mutation.
 func (m *ErrorPassthroughRuleMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(errorpassthroughrule.FieldMessageLocalization) {
+		fields = append(fields, errorpassthroughrule.FieldMessageLocalization)
+	}
 	if m.FieldCleared(errorpassthroughrule.FieldErrorCodes) {
 		fields = append(fields, errorpassthroughrule.FieldErrorCodes)
 	}
@@ -20408,6 +20549,9 @@ func (m *ErrorPassthroughRuleMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ErrorPassthroughRuleMutation) ClearField(name string) error {
 	switch name {
+	case errorpassthroughrule.FieldMessageLocalization:
+		m.ClearMessageLocalization()
+		return nil
 	case errorpassthroughrule.FieldErrorCodes:
 		m.ClearErrorCodes()
 		return nil
@@ -20439,6 +20583,9 @@ func (m *ErrorPassthroughRuleMutation) ResetField(name string) error {
 		return nil
 	case errorpassthroughrule.FieldUpdatedAt:
 		m.ResetUpdatedAt()
+		return nil
+	case errorpassthroughrule.FieldMessageLocalization:
+		m.ResetMessageLocalization()
 		return nil
 	case errorpassthroughrule.FieldName:
 		m.ResetName()
@@ -20540,6 +20687,7 @@ type GroupMutation struct {
 	created_at                              *time.Time
 	updated_at                              *time.Time
 	deleted_at                              *time.Time
+	localization                            *accessview.GroupLocalization
 	name                                    *string
 	description                             *string
 	rate_multiplier                         *float64
@@ -20829,6 +20977,55 @@ func (m *GroupMutation) DeletedAtCleared() bool {
 func (m *GroupMutation) ResetDeletedAt() {
 	m.deleted_at = nil
 	delete(m.clearedFields, group.FieldDeletedAt)
+}
+
+// SetLocalization sets the "localization" field.
+func (m *GroupMutation) SetLocalization(al accessview.GroupLocalization) {
+	m.localization = &al
+}
+
+// Localization returns the value of the "localization" field in the mutation.
+func (m *GroupMutation) Localization() (r accessview.GroupLocalization, exists bool) {
+	v := m.localization
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLocalization returns the old "localization" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldLocalization(ctx context.Context) (v accessview.GroupLocalization, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLocalization is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLocalization requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLocalization: %w", err)
+	}
+	return oldValue.Localization, nil
+}
+
+// ClearLocalization clears the value of the "localization" field.
+func (m *GroupMutation) ClearLocalization() {
+	m.localization = nil
+	m.clearedFields[group.FieldLocalization] = struct{}{}
+}
+
+// LocalizationCleared returns if the "localization" field was cleared in this mutation.
+func (m *GroupMutation) LocalizationCleared() bool {
+	_, ok := m.clearedFields[group.FieldLocalization]
+	return ok
+}
+
+// ResetLocalization resets all changes to the "localization" field.
+func (m *GroupMutation) ResetLocalization() {
+	m.localization = nil
+	delete(m.clearedFields, group.FieldLocalization)
 }
 
 // SetName sets the "name" field.
@@ -22832,7 +23029,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 41)
+	fields := make([]string, 0, 42)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -22841,6 +23038,9 @@ func (m *GroupMutation) Fields() []string {
 	}
 	if m.deleted_at != nil {
 		fields = append(fields, group.FieldDeletedAt)
+	}
+	if m.localization != nil {
+		fields = append(fields, group.FieldLocalization)
 	}
 	if m.name != nil {
 		fields = append(fields, group.FieldName)
@@ -22970,6 +23170,8 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case group.FieldDeletedAt:
 		return m.DeletedAt()
+	case group.FieldLocalization:
+		return m.Localization()
 	case group.FieldName:
 		return m.Name()
 	case group.FieldDescription:
@@ -23061,6 +23263,8 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldUpdatedAt(ctx)
 	case group.FieldDeletedAt:
 		return m.OldDeletedAt(ctx)
+	case group.FieldLocalization:
+		return m.OldLocalization(ctx)
 	case group.FieldName:
 		return m.OldName(ctx)
 	case group.FieldDescription:
@@ -23166,6 +23370,13 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDeletedAt(v)
+		return nil
+	case group.FieldLocalization:
+		v, ok := value.(accessview.GroupLocalization)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLocalization(v)
 		return nil
 	case group.FieldName:
 		v, ok := value.(string)
@@ -23541,6 +23752,9 @@ func (m *GroupMutation) ClearedFields() []string {
 	if m.FieldCleared(group.FieldDeletedAt) {
 		fields = append(fields, group.FieldDeletedAt)
 	}
+	if m.FieldCleared(group.FieldLocalization) {
+		fields = append(fields, group.FieldLocalization)
+	}
 	if m.FieldCleared(group.FieldDescription) {
 		fields = append(fields, group.FieldDescription)
 	}
@@ -23579,6 +23793,9 @@ func (m *GroupMutation) ClearField(name string) error {
 	case group.FieldDeletedAt:
 		m.ClearDeletedAt()
 		return nil
+	case group.FieldLocalization:
+		m.ClearLocalization()
+		return nil
 	case group.FieldDescription:
 		m.ClearDescription()
 		return nil
@@ -23616,6 +23833,9 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldDeletedAt:
 		m.ResetDeletedAt()
+		return nil
+	case group.FieldLocalization:
+		m.ResetLocalization()
 		return nil
 	case group.FieldName:
 		m.ResetName()
@@ -41465,6 +41685,7 @@ type SubscriptionPlanMutation struct {
 	op                     Op
 	typ                    string
 	id                     *int64
+	localization           *billing.PlanLocalization
 	name                   *string
 	description            *string
 	price                  *float64
@@ -41599,6 +41820,55 @@ func (m *SubscriptionPlanMutation) IDs(ctx context.Context) ([]int64, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetLocalization sets the "localization" field.
+func (m *SubscriptionPlanMutation) SetLocalization(bl billing.PlanLocalization) {
+	m.localization = &bl
+}
+
+// Localization returns the value of the "localization" field in the mutation.
+func (m *SubscriptionPlanMutation) Localization() (r billing.PlanLocalization, exists bool) {
+	v := m.localization
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLocalization returns the old "localization" field's value of the SubscriptionPlan entity.
+// If the SubscriptionPlan object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SubscriptionPlanMutation) OldLocalization(ctx context.Context) (v billing.PlanLocalization, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLocalization is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLocalization requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLocalization: %w", err)
+	}
+	return oldValue.Localization, nil
+}
+
+// ClearLocalization clears the value of the "localization" field.
+func (m *SubscriptionPlanMutation) ClearLocalization() {
+	m.localization = nil
+	m.clearedFields[subscriptionplan.FieldLocalization] = struct{}{}
+}
+
+// LocalizationCleared returns if the "localization" field was cleared in this mutation.
+func (m *SubscriptionPlanMutation) LocalizationCleared() bool {
+	_, ok := m.clearedFields[subscriptionplan.FieldLocalization]
+	return ok
+}
+
+// ResetLocalization resets all changes to the "localization" field.
+func (m *SubscriptionPlanMutation) ResetLocalization() {
+	m.localization = nil
+	delete(m.clearedFields, subscriptionplan.FieldLocalization)
 }
 
 // SetName sets the "name" field.
@@ -42602,7 +42872,10 @@ func (m *SubscriptionPlanMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SubscriptionPlanMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 19)
+	if m.localization != nil {
+		fields = append(fields, subscriptionplan.FieldLocalization)
+	}
 	if m.name != nil {
 		fields = append(fields, subscriptionplan.FieldName)
 	}
@@ -42665,6 +42938,8 @@ func (m *SubscriptionPlanMutation) Fields() []string {
 // schema.
 func (m *SubscriptionPlanMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case subscriptionplan.FieldLocalization:
+		return m.Localization()
 	case subscriptionplan.FieldName:
 		return m.Name()
 	case subscriptionplan.FieldDescription:
@@ -42710,6 +42985,8 @@ func (m *SubscriptionPlanMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *SubscriptionPlanMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case subscriptionplan.FieldLocalization:
+		return m.OldLocalization(ctx)
 	case subscriptionplan.FieldName:
 		return m.OldName(ctx)
 	case subscriptionplan.FieldDescription:
@@ -42755,6 +43032,13 @@ func (m *SubscriptionPlanMutation) OldField(ctx context.Context, name string) (e
 // type.
 func (m *SubscriptionPlanMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case subscriptionplan.FieldLocalization:
+		v, ok := value.(billing.PlanLocalization)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLocalization(v)
+		return nil
 	case subscriptionplan.FieldName:
 		v, ok := value.(string)
 		if !ok {
@@ -42998,6 +43282,9 @@ func (m *SubscriptionPlanMutation) AddField(name string, value ent.Value) error 
 // mutation.
 func (m *SubscriptionPlanMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(subscriptionplan.FieldLocalization) {
+		fields = append(fields, subscriptionplan.FieldLocalization)
+	}
 	if m.FieldCleared(subscriptionplan.FieldOriginalPrice) {
 		fields = append(fields, subscriptionplan.FieldOriginalPrice)
 	}
@@ -43024,6 +43311,9 @@ func (m *SubscriptionPlanMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *SubscriptionPlanMutation) ClearField(name string) error {
 	switch name {
+	case subscriptionplan.FieldLocalization:
+		m.ClearLocalization()
+		return nil
 	case subscriptionplan.FieldOriginalPrice:
 		m.ClearOriginalPrice()
 		return nil
@@ -43044,6 +43334,9 @@ func (m *SubscriptionPlanMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *SubscriptionPlanMutation) ResetField(name string) error {
 	switch name {
+	case subscriptionplan.FieldLocalization:
+		m.ResetLocalization()
+		return nil
 	case subscriptionplan.FieldName:
 		m.ResetName()
 		return nil
@@ -56117,6 +56410,7 @@ type UserMutation struct {
 	concurrency                   *int
 	addconcurrency                *int
 	status                        *string
+	preferred_locale              *string
 	username                      *string
 	notes                         *string
 	totp_secret_encrypted         *string
@@ -56716,6 +57010,55 @@ func (m *UserMutation) OldStatus(ctx context.Context) (v string, err error) {
 // ResetStatus resets all changes to the "status" field.
 func (m *UserMutation) ResetStatus() {
 	m.status = nil
+}
+
+// SetPreferredLocale sets the "preferred_locale" field.
+func (m *UserMutation) SetPreferredLocale(s string) {
+	m.preferred_locale = &s
+}
+
+// PreferredLocale returns the value of the "preferred_locale" field in the mutation.
+func (m *UserMutation) PreferredLocale() (r string, exists bool) {
+	v := m.preferred_locale
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPreferredLocale returns the old "preferred_locale" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldPreferredLocale(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPreferredLocale is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPreferredLocale requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPreferredLocale: %w", err)
+	}
+	return oldValue.PreferredLocale, nil
+}
+
+// ClearPreferredLocale clears the value of the "preferred_locale" field.
+func (m *UserMutation) ClearPreferredLocale() {
+	m.preferred_locale = nil
+	m.clearedFields[user.FieldPreferredLocale] = struct{}{}
+}
+
+// PreferredLocaleCleared returns if the "preferred_locale" field was cleared in this mutation.
+func (m *UserMutation) PreferredLocaleCleared() bool {
+	_, ok := m.clearedFields[user.FieldPreferredLocale]
+	return ok
+}
+
+// ResetPreferredLocale resets all changes to the "preferred_locale" field.
+func (m *UserMutation) ResetPreferredLocale() {
+	m.preferred_locale = nil
+	delete(m.clearedFields, user.FieldPreferredLocale)
 }
 
 // SetUsername sets the "username" field.
@@ -58248,7 +58591,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 25)
+	fields := make([]string, 0, 26)
 	if m.created_at != nil {
 		fields = append(fields, user.FieldCreatedAt)
 	}
@@ -58278,6 +58621,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, user.FieldStatus)
+	}
+	if m.preferred_locale != nil {
+		fields = append(fields, user.FieldPreferredLocale)
 	}
 	if m.username != nil {
 		fields = append(fields, user.FieldUsername)
@@ -58352,6 +58698,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.Concurrency()
 	case user.FieldStatus:
 		return m.Status()
+	case user.FieldPreferredLocale:
+		return m.PreferredLocale()
 	case user.FieldUsername:
 		return m.Username()
 	case user.FieldNotes:
@@ -58411,6 +58759,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldConcurrency(ctx)
 	case user.FieldStatus:
 		return m.OldStatus(ctx)
+	case user.FieldPreferredLocale:
+		return m.OldPreferredLocale(ctx)
 	case user.FieldUsername:
 		return m.OldUsername(ctx)
 	case user.FieldNotes:
@@ -58519,6 +58869,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case user.FieldPreferredLocale:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPreferredLocale(v)
 		return nil
 	case user.FieldUsername:
 		v, ok := value.(string)
@@ -58745,6 +59102,9 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldDeletedAt) {
 		fields = append(fields, user.FieldDeletedAt)
 	}
+	if m.FieldCleared(user.FieldPreferredLocale) {
+		fields = append(fields, user.FieldPreferredLocale)
+	}
 	if m.FieldCleared(user.FieldTotpSecretEncrypted) {
 		fields = append(fields, user.FieldTotpSecretEncrypted)
 	}
@@ -58776,6 +59136,9 @@ func (m *UserMutation) ClearField(name string) error {
 	switch name {
 	case user.FieldDeletedAt:
 		m.ClearDeletedAt()
+		return nil
+	case user.FieldPreferredLocale:
+		m.ClearPreferredLocale()
 		return nil
 	case user.FieldTotpSecretEncrypted:
 		m.ClearTotpSecretEncrypted()
@@ -58829,6 +59192,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case user.FieldPreferredLocale:
+		m.ResetPreferredLocale()
 		return nil
 	case user.FieldUsername:
 		m.ResetUsername()

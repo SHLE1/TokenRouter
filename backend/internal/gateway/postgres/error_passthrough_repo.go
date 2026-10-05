@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/errorpassthroughrule"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
@@ -49,6 +51,7 @@ func (r *errorPassthroughRepository) GetByID(ctx context.Context, id int64) (*er
 func (r *errorPassthroughRepository) Create(ctx context.Context, rule *errorpolicy.ErrorPassthroughRule) (*errorpolicy.ErrorPassthroughRule, error) {
 	builder := r.client.ErrorPassthroughRule.Create().
 		SetName(rule.Name).
+		SetMessageLocalization(rule.MessageLocalization).
 		SetEnabled(rule.Enabled).
 		SetPriority(rule.Priority).
 		SetMatchMode(rule.MatchMode).
@@ -85,7 +88,9 @@ func (r *errorPassthroughRepository) Create(ctx context.Context, rule *errorpoli
 // Update 更新规则
 func (r *errorPassthroughRepository) Update(ctx context.Context, rule *errorpolicy.ErrorPassthroughRule) (*errorpolicy.ErrorPassthroughRule, error) {
 	builder := r.client.ErrorPassthroughRule.UpdateOneID(rule.ID).
+		Where(errorpassthroughrule.UpdatedAtEQ(rule.UpdatedAt)).
 		SetName(rule.Name).
+		SetMessageLocalization(rule.MessageLocalization).
 		SetEnabled(rule.Enabled).
 		SetPriority(rule.Priority).
 		SetMatchMode(rule.MatchMode).
@@ -126,6 +131,9 @@ func (r *errorPassthroughRepository) Update(ctx context.Context, rule *errorpoli
 	}
 
 	updated, err := builder.Save(ctx)
+	if ent.IsNotFound(err) {
+		return nil, locale.ErrConflict
+	}
 	if err != nil {
 		return nil, err
 	}

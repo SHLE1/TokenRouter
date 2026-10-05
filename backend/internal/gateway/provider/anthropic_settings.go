@@ -17,7 +17,7 @@ func GatewayBetaPolicy(value *anthropic.BetaPolicySettings) *gateway.BetaPolicyS
 	if value.Rules != nil {
 		result.Rules = make([]gateway.BetaPolicyRule, len(value.Rules))
 		for i, rule := range value.Rules {
-			result.Rules[i] = gateway.BetaPolicyRule(rule)
+			result.Rules[i] = gateway.BetaPolicyRule{BetaToken: rule.BetaToken, Action: rule.Action, Scope: rule.Scope, ErrorMessage: rule.ErrorMessage, ModelWhitelist: slices.Clone(rule.ModelWhitelist), FallbackAction: rule.FallbackAction, FallbackErrorMessage: rule.FallbackErrorMessage}
 			result.Rules[i].ModelWhitelist = slices.Clone(rule.ModelWhitelist)
 		}
 	}
@@ -33,7 +33,7 @@ func AnthropicBetaPolicy(value *gateway.BetaPolicySettings) *anthropic.BetaPolic
 	if value.Rules != nil {
 		result.Rules = make([]anthropic.BetaPolicyRule, len(value.Rules))
 		for i, rule := range value.Rules {
-			result.Rules[i] = anthropic.BetaPolicyRule(rule)
+			result.Rules[i] = anthropic.BetaPolicyRule{BetaToken: rule.BetaToken, Action: rule.Action, Scope: rule.Scope, ErrorMessage: rule.ErrorMessage, ModelWhitelist: slices.Clone(rule.ModelWhitelist), FallbackAction: rule.FallbackAction, FallbackErrorMessage: rule.FallbackErrorMessage}
 			result.Rules[i].ModelWhitelist = slices.Clone(rule.ModelWhitelist)
 		}
 	}

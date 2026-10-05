@@ -1,3 +1,4 @@
+import type { LocalizedUpdate } from '@/i18n/content'
 /**
  * Shared constants and types for payment provider management.
  */
@@ -23,6 +24,8 @@ export interface TypeOption {
 
 /** EasyPay 自定义方法包含用户可见类型、上游类型和展示名称。 */
 export interface EasyPayCustomMethod {
+  id?: string
+  displayNameLocalization?: LocalizedUpdate<string>
   type: string
   upstreamType: string
   displayName: string
@@ -193,6 +196,8 @@ export function parseEasyPayCustomMethods(raw: string | undefined): EasyPayCusto
     if (!Array.isArray(parsed)) return []
     return parsed
       .map(item => ({
+        id: String(item?.id || item?.type || ''),
+        displayNameLocalization: item?.displayNameLocalization,
         type: String(item?.type || '').trim(),
         upstreamType: String(item?.upstreamType || '').trim(),
         displayName: String(item?.displayName || '').trim(),
@@ -207,6 +212,8 @@ export function parseEasyPayCustomMethods(raw: string | undefined): EasyPayCusto
 export function serializeEasyPayCustomMethods(methods: EasyPayCustomMethod[]): string {
   const clean = methods
     .map(method => ({
+      id: method.id,
+      displayNameLocalization: method.displayNameLocalization,
       type: method.type.trim(),
       upstreamType: method.upstreamType.trim(),
       displayName: method.displayName.trim(),

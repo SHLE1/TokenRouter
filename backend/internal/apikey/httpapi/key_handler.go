@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
@@ -49,8 +51,16 @@ func (h *APIKeyHandler[G]) SetGroupPresentation(present func(context.Context, *r
 
 func (h *APIKeyHandler[G]) SetGroupCapacityService(c GroupCapacityReader) { h.groupCapacityService = c }
 
-func (h *APIKeyHandler[G]) keyResponse(k *apikey.APIKey) *dto.APIKey[G] {
-	return dto.APIKeyFromKey(k, func(g *routing.Group) *G { return h.presentGroup(g, nil) })
+func (h *APIKeyHandler[G]) keyResponse(k *apikey.APIKey, language ...string) *dto.APIKey[G] {
+	return dto.APIKeyFromKey(k, func(g *routing.Group) *G {
+		if g != nil && len(language) > 0 {
+			copy := routing.CloneGroup(g)
+			display, _ := routing.GroupDisplay(g, language[0])
+			copy.DisplayName, copy.Description = display.DisplayName, display.Description
+			return h.presentGroup(copy, nil)
+		}
+		return h.presentGroup(g, nil)
+	})
 }
 
 // CreateAPIKeyRequest represents the create API key request payload
@@ -210,7 +220,7 @@ func (h *APIKeyHandler[G]) List(c *gin.Context) {
 
 	out := make([]dto.APIKey[G], 0, len(keys))
 	for i := range keys {
-		out = append(out, *h.keyResponse(&keys[i]))
+		out = append(out, *h.keyResponse(&keys[i], locale.FromContext(c.Request.Context())))
 	}
 	response.Paginated(c, out, result.Total, page, pageSize)
 }
@@ -242,7 +252,7 @@ func (h *APIKeyHandler[G]) GetByID(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, h.keyResponse(key))
+	response.Success(c, h.keyResponse(key, locale.FromContext(c.Request.Context())))
 }
 
 // Create handles creating a new API key
@@ -300,7 +310,7 @@ func (h *APIKeyHandler[G]) Create(c *gin.Context) {
 		if err != nil {
 			return nil, err
 		}
-		return h.keyResponse(key), nil
+		return h.keyResponse(key, locale.FromContext(c.Request.Context())), nil
 	})
 }
 
@@ -377,7 +387,7 @@ func (h *APIKeyHandler[G]) Update(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, h.keyResponse(key))
+	response.Success(c, h.keyResponse(key, locale.FromContext(c.Request.Context())))
 }
 
 // RotateCredential 轮换当前用户的 API Key 凭据并返回原记录的新凭据。
@@ -397,7 +407,7 @@ func (h *APIKeyHandler[G]) RotateCredential(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	response.Success(c, h.keyResponse(key))
+	response.Success(c, h.keyResponse(key, locale.FromContext(c.Request.Context())))
 }
 
 // Delete handles deleting an API key

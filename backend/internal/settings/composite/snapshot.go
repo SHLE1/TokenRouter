@@ -6,6 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
@@ -150,15 +151,12 @@ type Snapshot struct {
 	GoogleOAuthRedirectURL            string
 	GoogleOAuthFrontendRedirectURL    string
 
+	LocalizedSettings           settings.LocalizedTexts `json:"localized_settings"`
+	SiteTexts                   site.LocalizedTexts     `json:"site_texts"`
+	DefaultLocale               string                  `json:"default_locale"`
 	SiteName                    string
 	SiteLogo                    string
 	SiteSubtitle                string
-	SiteNameZh                  string
-	SiteNameEn                  string
-	SiteTitleZh                 string
-	SiteTitleEn                 string
-	SiteSubtitleZh              string
-	SiteSubtitleEn              string
 	APIBaseURL                  string
 	ContactInfo                 string
 	DocURL                      string

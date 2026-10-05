@@ -19,6 +19,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
@@ -144,10 +146,11 @@ func ContentModerationDefaultThresholds() map[string]float64 {
 }
 
 type ContentModerationConfig struct {
-	Enabled bool   `json:"enabled"`
-	Mode    string `json:"mode"`
-	BaseURL string `json:"base_url"`
-	Model   string `json:"model"`
+	BlockMessageLocalization *locale.Update[string] `json:"block_message_localization,omitempty"`
+	Enabled                  bool                   `json:"enabled"`
+	Mode                     string                 `json:"mode"`
+	BaseURL                  string                 `json:"base_url"`
+	Model                    string                 `json:"model"`
 	// ProxyID 指定审计请求使用的代理，nil 表示直连。
 	ProxyID                 *int64                            `json:"proxy_id,omitempty"`
 	APIKey                  string                            `json:"api_key,omitempty"`
@@ -185,45 +188,46 @@ type ContentModerationConfig struct {
 }
 
 type ContentModerationConfigView struct {
-	Enabled                 bool                            `json:"enabled"`
-	Mode                    string                          `json:"mode"`
-	BaseURL                 string                          `json:"base_url"`
-	Model                   string                          `json:"model"`
-	ProxyID                 *int64                          `json:"proxy_id"`
-	APIKeyConfigured        bool                            `json:"api_key_configured"`
-	APIKeyMasked            string                          `json:"api_key_masked"`
-	APIKeyCount             int                             `json:"api_key_count"`
-	APIKeyMasks             []string                        `json:"api_key_masks"`
-	APIKeyStatuses          []ContentModerationAPIKeyStatus `json:"api_key_statuses"`
-	TimeoutMS               int                             `json:"timeout_ms"`
-	SampleRate              int                             `json:"sample_rate"`
-	AllGroups               bool                            `json:"all_groups"`
-	GroupIDs                []int64                         `json:"group_ids"`
-	RecordNonHits           bool                            `json:"record_non_hits"`
-	Thresholds              map[string]float64              `json:"thresholds"`
-	WorkerCount             int                             `json:"worker_count"`
-	QueueSize               int                             `json:"queue_size"`
-	BlockStatus             int                             `json:"block_status"`
-	BlockMessage            string                          `json:"block_message"`
-	EmailOnHit              bool                            `json:"email_on_hit"`
-	AutoBanEnabled          bool                            `json:"auto_ban_enabled"`
-	BanThreshold            int                             `json:"ban_threshold"`
-	ViolationWindowHours    int                             `json:"violation_window_hours"`
-	RetryCount              int                             `json:"retry_count"`
-	HitRetentionDays        int                             `json:"hit_retention_days"`
-	NonHitRetentionDays     int                             `json:"non_hit_retention_days"`
-	PreHashCheckEnabled     bool                            `json:"pre_hash_check_enabled"`
-	CyberWarningEnabled     bool                            `json:"cyber_warning_enabled"`
-	CyberAutoBanEnabled     bool                            `json:"cyber_auto_ban_enabled"`
-	CyberBanThreshold       int                             `json:"cyber_ban_threshold"`
-	CyberWindowHours        int                             `json:"cyber_violation_window_hours"`
-	BlockedKeywords         []string                        `json:"blocked_keywords"`
-	KeywordBlockingMode     string                          `json:"keyword_blocking_mode"`
-	ModelFilter             ContentModerationModelFilter    `json:"model_filter"`
-	AuditUserTextMaxChars   int                             `json:"audit_user_text_max_chars"`
-	AuditImages             bool                            `json:"audit_images"`
-	AuditToolOutputs        bool                            `json:"audit_tool_outputs"`
-	AuditToolOutputMaxChars int                             `json:"audit_tool_output_max_chars"`
+	BlockMessageLocalization *locale.Update[string]          `json:"block_message_localization,omitempty"`
+	Enabled                  bool                            `json:"enabled"`
+	Mode                     string                          `json:"mode"`
+	BaseURL                  string                          `json:"base_url"`
+	Model                    string                          `json:"model"`
+	ProxyID                  *int64                          `json:"proxy_id"`
+	APIKeyConfigured         bool                            `json:"api_key_configured"`
+	APIKeyMasked             string                          `json:"api_key_masked"`
+	APIKeyCount              int                             `json:"api_key_count"`
+	APIKeyMasks              []string                        `json:"api_key_masks"`
+	APIKeyStatuses           []ContentModerationAPIKeyStatus `json:"api_key_statuses"`
+	TimeoutMS                int                             `json:"timeout_ms"`
+	SampleRate               int                             `json:"sample_rate"`
+	AllGroups                bool                            `json:"all_groups"`
+	GroupIDs                 []int64                         `json:"group_ids"`
+	RecordNonHits            bool                            `json:"record_non_hits"`
+	Thresholds               map[string]float64              `json:"thresholds"`
+	WorkerCount              int                             `json:"worker_count"`
+	QueueSize                int                             `json:"queue_size"`
+	BlockStatus              int                             `json:"block_status"`
+	BlockMessage             string                          `json:"block_message"`
+	EmailOnHit               bool                            `json:"email_on_hit"`
+	AutoBanEnabled           bool                            `json:"auto_ban_enabled"`
+	BanThreshold             int                             `json:"ban_threshold"`
+	ViolationWindowHours     int                             `json:"violation_window_hours"`
+	RetryCount               int                             `json:"retry_count"`
+	HitRetentionDays         int                             `json:"hit_retention_days"`
+	NonHitRetentionDays      int                             `json:"non_hit_retention_days"`
+	PreHashCheckEnabled      bool                            `json:"pre_hash_check_enabled"`
+	CyberWarningEnabled      bool                            `json:"cyber_warning_enabled"`
+	CyberAutoBanEnabled      bool                            `json:"cyber_auto_ban_enabled"`
+	CyberBanThreshold        int                             `json:"cyber_ban_threshold"`
+	CyberWindowHours         int                             `json:"cyber_violation_window_hours"`
+	BlockedKeywords          []string                        `json:"blocked_keywords"`
+	KeywordBlockingMode      string                          `json:"keyword_blocking_mode"`
+	ModelFilter              ContentModerationModelFilter    `json:"model_filter"`
+	AuditUserTextMaxChars    int                             `json:"audit_user_text_max_chars"`
+	AuditImages              bool                            `json:"audit_images"`
+	AuditToolOutputs         bool                            `json:"audit_tool_outputs"`
+	AuditToolOutputMaxChars  int                             `json:"audit_tool_output_max_chars"`
 }
 
 // ContentModerationAPIKeyMetadata 保存审核 Key 的调度权重和管理员备注，不重复保存明文 Key。
@@ -301,10 +305,11 @@ type ContentModerationTestAuditResult struct {
 }
 
 type UpdateContentModerationConfigInput struct {
-	Enabled *bool   `json:"enabled"`
-	Mode    *string `json:"mode"`
-	BaseURL *string `json:"base_url"`
-	Model   *string `json:"model"`
+	BlockMessageLocalization *locale.Update[string] `json:"block_message_localization,omitempty"`
+	Enabled                  *bool                  `json:"enabled"`
+	Mode                     *string                `json:"mode"`
+	BaseURL                  *string                `json:"base_url"`
+	Model                    *string                `json:"model"`
 	// ProxyID 为 nil 时不修改，非正数清除代理，正数指定代理。
 	ProxyID                 *int64                               `json:"proxy_id"`
 	APIKey                  *string                              `json:"api_key"`
@@ -871,7 +876,11 @@ func (s *ContentModerationService) GetConfig(ctx context.Context) (*ContentModer
 }
 
 func (s *ContentModerationService) UpdateConfig(ctx context.Context, input UpdateContentModerationConfigInput) (*ContentModerationConfigView, error) {
-	cfg, err := s.loadConfig(ctx)
+	priorRaw, readErr := s.settingRepo.GetValue(ctx, SettingKeyContentModerationConfig)
+	if readErr != nil && !errors.Is(readErr, ErrSettingNotFound) {
+		return nil, readErr
+	}
+	cfg, err := parseContentModerationConfig(priorRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -919,6 +928,7 @@ func (s *ContentModerationService) UpdateConfig(ctx context.Context, input Updat
 	if input.BlockStatus != nil {
 		cfg.BlockStatus = *input.BlockStatus
 	}
+	originalMessage := blockMessageContent(cfg)
 	if input.BlockMessage != nil {
 		cfg.BlockMessage = strings.TrimSpace(*input.BlockMessage)
 	}
@@ -1030,6 +1040,14 @@ func (s *ContentModerationService) UpdateConfig(ctx context.Context, input Updat
 		// 输入区显式填写的属性优先于旧 Key 草稿，便于用同一 Key 更新其权重和备注。
 		applyContentModerationAPIKeyEntryMetadata(cfg, entries)
 	}
+	if input.BlockMessageLocalization != nil {
+		next, err := locale.Prepare(originalMessage, *input.BlockMessageLocalization, validateBlockMessage)
+		if err != nil {
+			return nil, err
+		}
+		cfg.BlockMessageLocalization = &locale.Update[string]{Content: next}
+		cfg.BlockMessage = next.Source
+	}
 	if err := s.validateConfig(ctx, cfg); err != nil {
 		return nil, err
 	}
@@ -1038,8 +1056,23 @@ func (s *ContentModerationService) UpdateConfig(ctx context.Context, input Updat
 	if err != nil {
 		return nil, fmt.Errorf("marshal content moderation config: %w", err)
 	}
-	if err := s.settingRepo.Set(ctx, SettingKeyContentModerationConfig, string(raw)); err != nil {
-		return nil, fmt.Errorf("save content moderation config: %w", err)
+	if writer, ok := s.settingRepo.(interface {
+		CompareAndSetMultiple(context.Context, map[string]string, map[string]*string) error
+	}); ok {
+		var expected *string
+		if readErr == nil {
+			expected = &priorRaw
+		}
+		if err := writer.CompareAndSetMultiple(ctx, map[string]string{SettingKeyContentModerationConfig: string(raw)}, map[string]*string{SettingKeyContentModerationConfig: expected}); err != nil {
+			return nil, err
+		}
+	} else {
+		if input.BlockMessageLocalization != nil {
+			return nil, errors.New("settings repository does not support conditional updates")
+		}
+		if err := s.settingRepo.Set(ctx, SettingKeyContentModerationConfig, string(raw)); err != nil {
+			return nil, fmt.Errorf("save content moderation config: %w", err)
+		}
 	}
 	s.replaceRuntimeConfig(cfg, raw)
 	// 代理选择可能已变化，下次审计调用必须重新解析。
@@ -1266,7 +1299,7 @@ func (s *ContentModerationService) Check(ctx context.Context, input ContentModer
 					Allowed:         false,
 					Blocked:         true,
 					Flagged:         true,
-					Message:         cfg.BlockMessage,
+					Message:         cfg.UserBlockMessage(ctx),
 					StatusCode:      cfg.BlockStatus,
 					HighestCategory: contentModerationKeywordCategory,
 					HighestScore:    1.0,
@@ -1302,7 +1335,7 @@ func (s *ContentModerationService) Check(ctx context.Context, input ContentModer
 				"endpoint", input.Endpoint,
 				"protocol", input.Protocol,
 				"input_hash", hashText)
-			message := cfg.BlockMessage
+			message := cfg.UserBlockMessage(ctx)
 			if message != "" {
 				message = fmt.Sprintf("%s（hash: %s）", message, hashText)
 			}
@@ -1466,7 +1499,7 @@ func (s *ContentModerationService) checkSync(ctx context.Context, input ContentM
 			Allowed:         false,
 			Blocked:         true,
 			Flagged:         true,
-			Message:         cfg.BlockMessage,
+			Message:         cfg.UserBlockMessage(ctx),
 			StatusCode:      cfg.BlockStatus,
 			HighestCategory: highestCategory,
 			HighestScore:    highestScore,
@@ -3421,45 +3454,46 @@ func (s *ContentModerationService) configView(cfg *ContentModerationConfig) *Con
 		apiKeyMasked = masks[0]
 	}
 	return &ContentModerationConfigView{
-		Enabled:                 cfg.Enabled,
-		Mode:                    cfg.Mode,
-		BaseURL:                 cfg.BaseURL,
-		Model:                   cfg.Model,
-		ProxyID:                 cloneInt64Ptr(cfg.ProxyID),
-		APIKeyConfigured:        len(keys) > 0,
-		APIKeyMasked:            apiKeyMasked,
-		APIKeyCount:             len(keys),
-		APIKeyMasks:             masks,
-		APIKeyStatuses:          s.apiKeyStatuses(cfg),
-		TimeoutMS:               cfg.TimeoutMS,
-		SampleRate:              cfg.SampleRate,
-		AllGroups:               cfg.AllGroups,
-		GroupIDs:                append([]int64(nil), cfg.GroupIDs...),
-		RecordNonHits:           cfg.RecordNonHits,
-		Thresholds:              cloneFloatMap(cfg.Thresholds),
-		WorkerCount:             cfg.WorkerCount,
-		QueueSize:               cfg.QueueSize,
-		BlockStatus:             cfg.BlockStatus,
-		BlockMessage:            cfg.BlockMessage,
-		EmailOnHit:              cfg.EmailOnHit,
-		AutoBanEnabled:          cfg.AutoBanEnabled,
-		BanThreshold:            cfg.BanThreshold,
-		ViolationWindowHours:    cfg.ViolationWindowHours,
-		RetryCount:              cfg.RetryCount,
-		HitRetentionDays:        cfg.HitRetentionDays,
-		NonHitRetentionDays:     cfg.NonHitRetentionDays,
-		PreHashCheckEnabled:     cfg.PreHashCheckEnabled,
-		CyberWarningEnabled:     cfg.CyberWarningEnabled,
-		CyberAutoBanEnabled:     cfg.CyberAutoBanEnabled,
-		CyberBanThreshold:       cfg.CyberBanThreshold,
-		CyberWindowHours:        cfg.CyberWindowHours,
-		BlockedKeywords:         append([]string(nil), cfg.BlockedKeywords...),
-		KeywordBlockingMode:     cfg.KeywordBlockingMode,
-		ModelFilter:             cloneContentModerationModelFilter(cfg.ModelFilter),
-		AuditUserTextMaxChars:   cfg.AuditUserTextMaxChars,
-		AuditImages:             cfg.AuditImages,
-		AuditToolOutputs:        cfg.AuditToolOutputs,
-		AuditToolOutputMaxChars: cfg.AuditToolOutputMaxChars,
+		BlockMessageLocalization: &locale.Update[string]{Content: blockMessageContent(cfg)},
+		Enabled:                  cfg.Enabled,
+		Mode:                     cfg.Mode,
+		BaseURL:                  cfg.BaseURL,
+		Model:                    cfg.Model,
+		ProxyID:                  cloneInt64Ptr(cfg.ProxyID),
+		APIKeyConfigured:         len(keys) > 0,
+		APIKeyMasked:             apiKeyMasked,
+		APIKeyCount:              len(keys),
+		APIKeyMasks:              masks,
+		APIKeyStatuses:           s.apiKeyStatuses(cfg),
+		TimeoutMS:                cfg.TimeoutMS,
+		SampleRate:               cfg.SampleRate,
+		AllGroups:                cfg.AllGroups,
+		GroupIDs:                 append([]int64(nil), cfg.GroupIDs...),
+		RecordNonHits:            cfg.RecordNonHits,
+		Thresholds:               cloneFloatMap(cfg.Thresholds),
+		WorkerCount:              cfg.WorkerCount,
+		QueueSize:                cfg.QueueSize,
+		BlockStatus:              cfg.BlockStatus,
+		BlockMessage:             cfg.BlockMessage,
+		EmailOnHit:               cfg.EmailOnHit,
+		AutoBanEnabled:           cfg.AutoBanEnabled,
+		BanThreshold:             cfg.BanThreshold,
+		ViolationWindowHours:     cfg.ViolationWindowHours,
+		RetryCount:               cfg.RetryCount,
+		HitRetentionDays:         cfg.HitRetentionDays,
+		NonHitRetentionDays:      cfg.NonHitRetentionDays,
+		PreHashCheckEnabled:      cfg.PreHashCheckEnabled,
+		CyberWarningEnabled:      cfg.CyberWarningEnabled,
+		CyberAutoBanEnabled:      cfg.CyberAutoBanEnabled,
+		CyberBanThreshold:        cfg.CyberBanThreshold,
+		CyberWindowHours:         cfg.CyberWindowHours,
+		BlockedKeywords:          append([]string(nil), cfg.BlockedKeywords...),
+		KeywordBlockingMode:      cfg.KeywordBlockingMode,
+		ModelFilter:              cloneContentModerationModelFilter(cfg.ModelFilter),
+		AuditUserTextMaxChars:    cfg.AuditUserTextMaxChars,
+		AuditImages:              cfg.AuditImages,
+		AuditToolOutputs:         cfg.AuditToolOutputs,
+		AuditToolOutputMaxChars:  cfg.AuditToolOutputMaxChars,
 	}
 }
 

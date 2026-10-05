@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
+	"errors"
 
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
@@ -77,7 +79,42 @@ func (h *Handler) preparedParticipants(ctx context.Context, input settings.Field
 	if h.participantError != nil {
 		return nil, h.participantError
 	}
-	prepared, err := h.settingsParticipants.Prepare(ctx, input, values)
+	current := values
+	_, writingTextSettings := input["localized_settings"]
+	if _, writing := input["site_texts"]; writing || writingTextSettings || bytes.Contains(input["openai_fast_policy_settings"], []byte("localization")) || len(input["login_agreement_documents"]) > 0 || len(input["custom_menu_items"]) > 0 || len(input["custom_endpoints"]) > 0 || len(input["footer_links"]) > 0 {
+		reader, ok := h.settingService.(interface {
+			ReadLocalizationValues(context.Context) (map[string]string, error)
+		})
+		if !ok {
+			return nil, errors.New("settings reader does not support localization")
+		}
+		persisted, err := reader.ReadLocalizationValues(ctx)
+		if err != nil {
+			return nil, err
+		}
+		current = make(map[string]string, len(values))
+		for key, value := range values {
+			current[key] = value
+		}
+		for _, key := range settings.LocalizedTextFields {
+			delete(current, key)
+			if value, exists := persisted[key]; exists {
+				current[key] = value
+			}
+			stored := key + "_localized"
+			delete(current, stored)
+			if value, exists := persisted[stored]; exists {
+				current[stored] = value
+			}
+		}
+		for _, key := range []string{"openai_fast_policy_settings", "custom_menu_items", "custom_endpoints", "footer_links", "login_agreement_documents", "site_texts", "site_name", "site_title", "site_subtitle", "contact_info", "doc_url", "home_content", "purchase_subscription_url", "footer_text"} {
+			delete(current, key)
+			if value, exists := persisted[key]; exists {
+				current[key] = value
+			}
+		}
+	}
+	prepared, err := h.settingsParticipants.Prepare(ctx, input, current)
 	if err != nil {
 		return nil, err
 	}

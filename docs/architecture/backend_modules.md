@@ -170,6 +170,7 @@ backend/
 │   ├── pkg/                                             无业务归属的通用工具；分类目录
 │   │   ├── apperror/                                    应用错误类别、reason 与安全元数据
 │   │   ├── ipmatch/                                     IP 与 CIDR 匹配
+│   │   ├── locale/                                      共用语言目录、内容版本和用户错误文案
 │   │   ├── logredact/                                   凭据、地址和日志的脱敏与截断
 │   │   ├── oauthpkce/                                   OAuth PKCE 生成
 │   │   ├── pagination/                                  分页值与切片分页计算
@@ -227,6 +228,7 @@ backend/
 │   │   └── testkit/                                     该模块测试所需的替身与夹具
 │   ├── setup/                                           CLI、Web 和自动首次初始化
 │   ├── site/                                            站点展示、公告、菜单和页面权限
+│   │   ├── content/                                     导航与协议的纯内容类型及解析
 │   │   ├── filesystem/                                  站点 Markdown 和图片的路径及读取限制
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
 │   │   │   └── dto/                                     HTTP 展示值、请求值及脱敏映射

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	"github.com/gin-gonic/gin"
 )
@@ -29,13 +31,13 @@ type FailoverErrorHooks struct {
 // WriteOpenAIFailoverExhausted 按原顺序解释已分类错误，再匹配展示规则与默认映射。
 func WriteOpenAIFailoverExhausted(c *gin.Context, failure *OpenAIFailoverError, started bool, rules ErrorRuleMatcher, hooks FailoverErrorHooks, write func(*gin.Context, int, string, string, bool)) {
 	if failure == nil {
-		status, kind, message := MapOpenAIUpstreamError(http.StatusBadGateway)
+		status, kind, message := MapOpenAIUpstreamError(http.StatusBadGateway, gatewayLocale(c))
 		write(c, status, kind, message, started)
 		return
 	}
 	if failure.TooLarge {
 		hooks.Upstream(c, http.StatusRequestEntityTooLarge, failure.TooLargeMessage)
-		write(c, http.StatusRequestEntityTooLarge, "invalid_request_error", failure.TooLargeMessage, started)
+		write(c, http.StatusRequestEntityTooLarge, "invalid_request_error", locale.ErrorText(gatewayLocale(c), "HTTP_413", 413, failure.TooLargeMessage), started)
 		return
 	}
 	if failure.ContinuationUnsupported {
@@ -43,12 +45,12 @@ func WriteOpenAIFailoverExhausted(c *gin.Context, failure *OpenAIFailoverError, 
 		if message == "" {
 			message = "previous_response_id requires an OpenAI API-key provider for HTTP requests"
 		}
-		write(c, http.StatusBadRequest, "invalid_request_error", message, started)
+		write(c, http.StatusBadRequest, "invalid_request_error", locale.ErrorText(gatewayLocale(c), "CONTINUATION_UNSUPPORTED", 400, message), started)
 		return
 	}
 	CopyFailoverRetryAfter(c, failure.Headers)
 	if failure.Credential {
-		write(c, failure.CredentialStatus, "upstream_error", failure.CredentialMessage, started)
+		write(c, failure.CredentialStatus, "upstream_error", locale.ErrorText(gatewayLocale(c), "UPSTREAM_AUTH_FAILED", failure.CredentialStatus, failure.CredentialMessage), started)
 		return
 	}
 	if failure.CapacityShed && strings.TrimSpace(failure.ClientMessage) != "" {
@@ -56,7 +58,7 @@ func WriteOpenAIFailoverExhausted(c *gin.Context, failure *OpenAIFailoverError, 
 		if status <= 0 {
 			status = http.StatusServiceUnavailable
 		}
-		write(c, status, "server_error", failure.ClientMessage, started)
+		write(c, status, "server_error", locale.ErrorText(gatewayLocale(c), "HTTP_503", status, failure.ClientMessage), started)
 		return
 	}
 	if failure.SilentRefusal {
@@ -81,7 +83,7 @@ func WriteOpenAIFailoverExhausted(c *gin.Context, failure *OpenAIFailoverError, 
 			}
 			message := failure.UpstreamMessage
 			if !rule.PassthroughBody && rule.CustomMessage != nil {
-				message = *rule.CustomMessage
+				message = rule.DisplayMessage(gatewayLocale(c))
 			}
 			if rule.SkipMonitoring {
 				hooks.SkipMonitoring(c)
@@ -91,7 +93,7 @@ func WriteOpenAIFailoverExhausted(c *gin.Context, failure *OpenAIFailoverError, 
 		}
 	}
 	hooks.Upstream(c, failure.Status, failure.UpstreamMessage)
-	status, kind, message := MapOpenAIUpstreamError(failure.Status)
+	status, kind, message := MapOpenAIUpstreamError(failure.Status, gatewayLocale(c))
 	write(c, status, kind, message, started)
 }
 
@@ -125,7 +127,29 @@ func IsSafeRetryAfter(value string) bool {
 	return !retryAt.After(time.Now().Add(7 * 24 * time.Hour))
 }
 
-func MapOpenAIUpstreamError(statusCode int) (int, string, string) {
+func MapOpenAIUpstreamError(statusCode int, language ...string) (int, string, string) {
+	status, kind, message := mapOpenAIUpstreamError(statusCode)
+	if len(language) == 0 {
+		return status, kind, message
+	}
+	reason := "UPSTREAM_REQUEST_FAILED"
+	switch statusCode {
+	case 401:
+		reason = "UPSTREAM_AUTH_FAILED"
+	case 403:
+		reason = "UPSTREAM_FORBIDDEN"
+	case 429:
+		reason = "UPSTREAM_RATE_LIMITED"
+	case 529:
+		reason = "UPSTREAM_OVERLOADED"
+	case 500, 502, 503, 504:
+		reason = "UPSTREAM_UNAVAILABLE"
+	}
+	return status, kind, locale.ErrorText(language[0], reason, status, message)
+}
+
+// mapOpenAIUpstreamError 将上游状态映射为平台生成的默认提示。
+func mapOpenAIUpstreamError(statusCode int) (int, string, string) {
 	switch statusCode {
 	case 401:
 		return http.StatusBadGateway, "upstream_error", "Upstream authentication failed, please contact administrator"

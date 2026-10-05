@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
 // ErrorPassthroughRepository 定义错误透传规则的数据访问接口
@@ -231,6 +234,9 @@ func (s *ErrorPassthroughService) Create(ctx context.Context, rule *ErrorPassthr
 	defer s.releaseUpdate()
 	ctx = operation
 
+	if err := prepareMessage(nil, rule); err != nil {
+		return nil, err
+	}
 	if err := rule.Validate(); err != nil {
 		return nil, err
 	}
@@ -262,6 +268,18 @@ func (s *ErrorPassthroughService) Update(ctx context.Context, rule *ErrorPassthr
 	defer s.releaseUpdate()
 	ctx = operation
 
+	if rule.MessageUpdate != nil {
+		current, err := s.repo.GetByID(ctx, rule.ID)
+		if err != nil {
+			return nil, err
+		}
+		if current == nil {
+			return nil, locale.ErrConflict
+		}
+		if err := prepareMessage(current, rule); err != nil {
+			return nil, err
+		}
+	}
 	if err := rule.Validate(); err != nil {
 		return nil, err
 	}
@@ -571,6 +589,18 @@ func cloneRule(rule *ErrorPassthroughRule) *ErrorPassthroughRule {
 		return nil
 	}
 	copy := *rule
+	copy.MessageLocalization.Translations = maps.Clone(rule.MessageLocalization.Translations)
+	if rule.MessageLocalization.SourceLocale != nil {
+		code := *rule.MessageLocalization.SourceLocale
+		copy.MessageLocalization.SourceLocale = &code
+	}
+	if rule.MessageUpdate != nil {
+		update := *rule.MessageUpdate
+		update.Translations = maps.Clone(rule.MessageUpdate.Translations)
+		update.ReviewedLocales = append([]string(nil), rule.MessageUpdate.ReviewedLocales...)
+		update.DeletedLocales = append([]string(nil), rule.MessageUpdate.DeletedLocales...)
+		copy.MessageUpdate = &update
+	}
 	copy.ErrorCodes = append([]int(nil), rule.ErrorCodes...)
 	if rule.ErrorCodes != nil && copy.ErrorCodes == nil {
 		copy.ErrorCodes = []int{}

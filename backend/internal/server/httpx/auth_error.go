@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,6 +21,10 @@ func NewErrorResponse(code, message string) ErrorResponse {
 
 // AbortWithError 中断请求并返回JSON错误
 func AbortWithError(c *gin.Context, statusCode int, code, message string) {
-	c.JSON(statusCode, NewErrorResponse(code, message))
+	language := locale.Default()
+	if c.Request != nil {
+		language = locale.Negotiate(c.GetHeader("Accept-Language"), locale.FromContext(c.Request.Context()))
+	}
+	c.JSON(statusCode, NewErrorResponse(code, locale.ErrorText(language, code, statusCode, message)))
 	c.Abort()
 }

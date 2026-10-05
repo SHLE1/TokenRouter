@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	googleapi "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
@@ -94,7 +96,16 @@ func AllowGoogleQueryKey(path string) bool {
 	return strings.HasPrefix(path, "/v1beta") || strings.HasPrefix(path, "/antigravity/v1beta")
 }
 
-func AbortGoogleError(c *gin.Context, status int, message string) {
+func AbortGoogleError(c *gin.Context, status int, message string, reasons ...string) {
+	reason := ""
+	if len(reasons) > 0 {
+		reason = reasons[0]
+	}
+	language := locale.Default()
+	if c.Request != nil {
+		language = locale.Negotiate(c.GetHeader("Accept-Language"), locale.FromContext(c.Request.Context()))
+	}
+	message = locale.ErrorText(language, reason, status, message)
 	c.JSON(status, gin.H{
 		"error": gin.H{
 			"code":    status,

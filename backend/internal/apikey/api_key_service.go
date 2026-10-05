@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/ipmatch"
@@ -1643,7 +1645,7 @@ func (s *APIKeyService) ListBillingSubscriptionsForScope(ctx context.Context, us
 		options = append(options, APIKeyBillingSubscriptionOption{
 			ID:               subscription.ID,
 			PlanID:           subscription.PlanID,
-			PlanName:         subscription.Plan.Name,
+			PlanName:         billing.LocalizePlan(subscription.Plan, locale.FromContext(ctx)).Name,
 			ExpiresAt:        subscription.ExpiresAt,
 			GroupsRestricted: len(subscription.Plan.GroupIDs) > 0,
 			ApplicableGroups: append([]int64(nil), subscription.Plan.GroupIDs...),

@@ -179,15 +179,14 @@
       @close="closeEdit"
     >
       <form id="announcement-form" @submit.prevent="handleSave" class="space-y-4">
-        <div>
-          <label class="input-label">{{ t('admin.announcements.form.title') }}</label>
-          <input v-model="form.title" type="text" class="input" required />
-        </div>
-
-        <div>
-          <label class="input-label">{{ t('admin.announcements.form.content') }}</label>
-          <textarea v-model="form.content" rows="6" class="input" required></textarea>
-        </div>
+        <LocalizedEditor v-model="form.localization">
+          <template #default="{ value, update }">
+            <label class="input-label">{{ t('admin.announcements.form.title') }}</label>
+            <input :value="value.title" type="text" class="input" required @input="update({ ...value, title: ($event.target as HTMLInputElement).value })" />
+            <label class="input-label">{{ t('admin.announcements.form.content') }}</label>
+            <textarea :value="value.content" rows="6" class="input" required @input="update({ ...value, content: ($event.target as HTMLTextAreaElement).value })"></textarea>
+          </template>
+        </LocalizedEditor>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
@@ -260,6 +259,9 @@
 </template>
 
 <script setup lang="ts">
+import LocalizedEditor from '@/components/common/LocalizedEditor.vue'
+import { originalContent, type LocalizedUpdate } from '@/i18n/content'
+import { getLocale } from '@/i18n'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -432,8 +434,7 @@ const editingAnnouncement = ref<Announcement | null>(null)
 const isEditing = computed(() => !!editingAnnouncement.value)
 
 const form = reactive({
-  title: '',
-  content: '',
+  localization: originalContent({ title: '', content: '' }, getLocale()) as LocalizedUpdate<{ title: string; content: string }>,
   status: 'draft',
   notify_mode: 'silent',
   starts_at_str: '',
@@ -454,8 +455,7 @@ async function loadSubscriptionPlans() {
 }
 
 function resetForm() {
-  form.title = ''
-  form.content = ''
+  form.localization = originalContent({ title: '', content: '' }, getLocale())
   form.status = 'draft'
   form.notify_mode = 'silent'
   form.starts_at_str = ''
@@ -464,8 +464,7 @@ function resetForm() {
 }
 
 function fillFormFromAnnouncement(a: Announcement) {
-  form.title = a.title
-  form.content = a.content
+  form.localization = JSON.parse(JSON.stringify(a.localization || originalContent({ title: a.title, content: a.content })))
   form.status = a.status
   form.notify_mode = a.notify_mode || 'silent'
 
@@ -498,8 +497,9 @@ function buildCreatePayload() {
   const endsAt = parseDateTimeLocalInput(form.ends_at_str)
 
   return {
-    title: form.title,
-    content: form.content,
+    localization: form.localization,
+    title: form.localization.source.title,
+    content: form.localization.source.content,
     status: form.status as any,
     notify_mode: form.notify_mode as any,
     targeting: form.targeting,
@@ -511,8 +511,7 @@ function buildCreatePayload() {
 function buildUpdatePayload(original: Announcement) {
   const payload: any = {}
 
-  if (form.title !== original.title) payload.title = form.title
-  if (form.content !== original.content) payload.content = form.content
+  if (JSON.stringify(form.localization) !== JSON.stringify(original.localization)) payload.localization = form.localization
   if (form.status !== original.status) payload.status = form.status
   if (form.notify_mode !== (original.notify_mode || 'silent')) payload.notify_mode = form.notify_mode
 

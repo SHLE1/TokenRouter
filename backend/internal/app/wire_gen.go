@@ -127,7 +127,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	marketplaceHandler := provideMarketplaceHTTP(marketplace, dashboardService)
 	publicHandler := provideSitePublicHTTP(publicService, info)
 	mailer := provideMailer(store)
-	notificationEmailService := provideNotification(store, mailer)
+	notificationEmailService := provideNotification(store, mailer, userStore)
 	handler := provideNotificationHTTP(mailer, notificationEmailService, displaySettings)
 	passkeyRepository := postgres2.NewPasskeyRepository(db)
 	passkeySessionStore := rediscache4.NewPasskeySessionStore(redisClient)

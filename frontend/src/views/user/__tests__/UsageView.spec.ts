@@ -36,6 +36,20 @@ const {
 }))
 
 const messages: Record<string, string> = {
+  'usage.time': 'Time',
+  'usage.reasoningEffort': 'Reasoning Effort',
+  'usage.inboundEndpoint': 'Inbound Endpoint',
+  'admin.usage.ipAddress': 'IP Address',
+  'admin.usage.inputTokens': 'Input Tokens',
+  'admin.usage.outputTokens': 'Output Tokens',
+  'admin.usage.cacheReadTokens': 'Cache Read Tokens',
+  'admin.usage.cacheCreationTokens': 'Cache Creation Tokens',
+  'usage.rate': 'Rate Multiplier',
+  'usage.userBilled': 'Billed Cost',
+  'usage.original': 'Original Cost',
+  'usage.firstToken': 'First Token (ms)',
+  'usage.duration': 'Duration (ms)',
+
   'admin.dashboard.timeRange': 'Time range',
   'admin.dashboard.granularity': 'Granularity',
   'admin.dashboard.day': 'Day',
@@ -339,7 +353,7 @@ describe('user UsageView', () => {
     expect(showSuccess).toHaveBeenCalled()
     expect(csvContent.startsWith('\uFEFF')).toBe(true)
     expect(csvContent.slice(1)).toBe([
-      'Time,API Key Name,Model,Reasoning Effort,Inbound Endpoint,IP Address,Type,Billing Mode,Input Tokens,Output Tokens,Cache Read Tokens,Cache Creation Tokens,Rate Multiplier,Billed Cost,Original Cost,First Token (ms),Duration (ms)',
+      'Time,API Key,Model,Reasoning Effort,Inbound Endpoint,IP Address,Type,Billing mode,Input Tokens,Output Tokens,Cache Read Tokens,Cache Creation Tokens,Rate Multiplier,Billed Cost,Original Cost,First Token (ms),Duration (ms)',
       '2026-03-08T00:00:00Z,demo-key,gpt-5.4,"\'-",,203.0.113.10,Sync,Token,4057,101,278272,4,1,0.09288300,0.09288300,12,345',
     ].join('\n'))
     expect(csvContent).toContain('IP Address')
@@ -399,7 +413,7 @@ describe('user UsageView', () => {
 
     await (wrapper.vm as any).exportToCSV()
 
-    expect(csvContent).toContain('Billing Mode')
+    expect(csvContent).toContain('Billing mode')
     expect(csvContent).toContain('Image')
     expect(csvContent).not.toContain(',Token,0,0,0,0,')
 

@@ -2,6 +2,7 @@ package schema
 
 import (
 	"github.com/TokenFlux/TokenRouter/ent/schema/mixins"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
@@ -39,6 +40,7 @@ func (ErrorPassthroughRule) Mixin() []ent.Mixin {
 // Fields 定义错误透传规则实体的所有字段。
 func (ErrorPassthroughRule) Fields() []ent.Field {
 	return []ent.Field{
+		field.JSON("message_localization", locale.TextContent{}).Optional().SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
 		// name: 规则名称，用于在界面中标识规则
 		field.String("name").
 			MaxLen(100).

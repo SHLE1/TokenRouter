@@ -98,7 +98,7 @@ func (a LivePorts) CheckBilling(c *gin.Context) bool {
 	key, _ := keyhttp.GetAPIKeyFromContext(c)
 	subscription, _ := SubscriptionFromContext(c)
 	if err := a.Funding.CheckKey(c.Request.Context(), key, subscription, "", false); err != nil {
-		status, code, message, retry := BillingErrorDetails(err)
+		status, code, message, retry := BillingErrorDetails(err, gatewayLocale(c))
 		if retry > 0 {
 			c.Header("Retry-After", strconv.Itoa(retry))
 		}

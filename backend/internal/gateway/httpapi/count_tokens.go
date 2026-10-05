@@ -141,7 +141,7 @@ func (h *CountTokensHandler) CountTokens(c *gin.Context) {
 	// 校验 billing eligibility（订阅/余额）
 	// 【注意】不计算并发，但需要校验订阅/余额
 	if err := h.backend.Eligibility(c.Request.Context(), apiKey, subscription); err != nil {
-		status, code, message, retryAfter := BillingErrorDetails(err)
+		status, code, message, retryAfter := BillingErrorDetails(err, gatewayLocale(c))
 		if retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}

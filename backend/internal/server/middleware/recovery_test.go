@@ -17,7 +17,6 @@ import (
 )
 
 func TestRecovery_PanicLogContainsInfo(t *testing.T) {
-
 	// 临时替换 DefaultErrorWriter 以捕获日志输出
 	var buf bytes.Buffer
 	originalWriter := gin.DefaultErrorWriter
@@ -44,7 +43,6 @@ func TestRecovery_PanicLogContainsInfo(t *testing.T) {
 }
 
 func TestRecovery(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		handler      gin.HandlerFunc
@@ -60,6 +58,7 @@ func TestRecovery(t *testing.T) {
 			wantBody: response.Response{
 				Code:    http.StatusInternalServerError,
 				Message: apperror.UnknownMessage,
+				Reason:  "HTTP_500",
 			},
 		},
 		{

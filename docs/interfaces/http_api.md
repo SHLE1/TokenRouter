@@ -81,10 +81,12 @@ RequestLogger
 
 客户端错误由 `gateway/httpapi` 写出，错误规则和它的管理在 `gateway/errorpolicy`。错误规则只改变返回给客户端的内容和是否跳过监控，提供商健康、重试和扣费资格都不受影响。停止时，请求和平台尝试共用 app 的进入屏障；在途请求的尾部完成后，才停止完成队列；超时时报告哪些阶段没完成、由谁持有。
 
+用户展示请求使用 `Accept-Language`，语言和回退规则见[用户侧国际化](user_localization.md)。`GET /api/v1/settings/legal/:id` 按语言返回协议，账户资料的 `preferred_locale` 用于保存用户选择。
+
 <a id="site_pages"></a>
 ### 站点页面
 
-Markdown 正文需要 JWT，并且菜单可见；管理员页面只对管理员开放；页面列表需要管理员权限。图片不需要 JWT，但只能访问普通可见页面的图片。Markdown 正文和图片的响应格式各自独立。正文里指向页面根目录之外的符号链接返回 404，根目录内的链接可以读取，正文读取上限 1 MiB。文件适配层在同一个打开的句柄上做检查和限量读取。静态 SPA 和 `data/public` 由 web 模块负责。
+Markdown 正文需要 JWT，并且菜单可见；管理员页面只对管理员开放；页面列表需要管理员权限。图片不需要 JWT，但只能访问普通可见页面的图片。Markdown 正文和图片的响应格式各自独立。正文里指向页面根目录之外的符号链接返回 404，根目录内的链接可以读取，正文读取上限 1 MiB。文件适配层在同一个打开的句柄上做检查和限量读取。正文按 `pages/<slug>/<locale>.md` 和 `pages/<slug>.md` 选择，`Content-Language` 报告实际语言。语言专属图片目录缺少文件时使用公共目录。静态 SPA 和 `data/public` 由 web 模块负责。
 
 <a id="subscription_self_revoke_api"></a>
 ### 订阅自助撤销

@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -194,14 +196,14 @@ func NewGoogleAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscript
 			} else {
 				options.reject(c, "group_disabled")
 			}
-			keyhttp.AbortGoogleError(c, 403, message)
+			keyhttp.AbortGoogleError(c, 403, message, code)
 			return
 		}
 		// 专属分组授权校验：用户对该专属分组的授权被撤销后应拒绝（与主中间件一致，防止越权）。
 		if !admission.GroupAllowed(apiKey) {
 			options.business(c)
 			options.reject(c, "group_not_allowed")
-			keyhttp.AbortGoogleError(c, 403, "API Key 所属专属分组不再允许当前用户使用")
+			keyhttp.AbortGoogleError(c, 403, "API Key 所属专属分组不再允许当前用户使用", "GROUP_NOT_ALLOWED")
 			return
 		}
 		ApplyAPIKeyModelRedirect(c, apiKey)
@@ -234,12 +236,15 @@ func NewGoogleAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscript
 			if failure != nil {
 				status := 403
 				message := ""
+				reason := ""
 				switch failure.Kind {
 				case admission.KeyQuotaExceeded:
 					status = 429
 					message = "API key 额度已用完"
+					reason = "API_KEY_QUOTA_EXHAUSTED"
 				case admission.KeyExpired:
 					message = "API key 已过期"
+					reason = "API_KEY_EXPIRED"
 				case admission.MaintenanceFailed:
 					status = 500
 					message = "Failed to maintain subscription usage windows"
@@ -251,7 +256,7 @@ func NewGoogleAPIKeyAuthorization(apiKeyService *apikey.APIKeyService, subscript
 				case admission.InsufficientBalance:
 					message = "Insufficient account balance"
 				}
-				keyhttp.AbortGoogleError(c, status, message)
+				keyhttp.AbortGoogleError(c, status, message, reason)
 				return
 			}
 			subscription = checked
@@ -311,6 +316,7 @@ func IsOpenAICompatibleAPIKeyRequest(c *gin.Context) bool {
 
 // AbortOpenAIQuotaError 输出与 OpenAI 兼容的配额不足响应。
 func AbortOpenAIQuotaError(c *gin.Context, statusCode int, message string) {
+	message = locale.ErrorText(gatewayLocale(c), "API_KEY_QUOTA_EXHAUSTED", statusCode, message)
 	c.JSON(statusCode, gin.H{
 		"error": gin.H{
 			"message": message,

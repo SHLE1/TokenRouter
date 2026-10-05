@@ -303,7 +303,7 @@ import Skeleton from './Skeleton.vue'
 import { TABLE_DESKTOP_MEDIA_QUERY } from '@/constants/layout'
 import { useTableColumnOrder } from '@/composables/useTableColumnOrder'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const isDesktopViewport = ref(
   typeof window === 'undefined' ? true : window.matchMedia(TABLE_DESKTOP_MEDIA_QUERY).matches
@@ -616,10 +616,10 @@ type PersistedSortState = {
   order: 'asc' | 'desc'
 }
 
-const collator = new Intl.Collator(undefined, {
+const collator = computed(() => new Intl.Collator(locale?.value, {
   numeric: true,
   sensitivity: 'base'
-})
+}))
 
 const getSortableKeys = () => {
   const keys = new Set<string>()
@@ -741,7 +741,7 @@ const compareSortValues = (a: any, b: any): number => {
 
   const aStr = toSortableString(a)
   const bStr = toSortableString(b)
-  const res = collator.compare(aStr, bStr)
+  const res = collator.value.compare(aStr, bStr)
   if (res === 0) return 0
   return res < 0 ? -1 : 1
 }

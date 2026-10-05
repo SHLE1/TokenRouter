@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/TokenFlux/TokenRouter/ent/errorpassthroughrule"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
 // ErrorPassthroughRuleCreate is the builder for creating a ErrorPassthroughRule entity.
@@ -46,6 +47,20 @@ func (_c *ErrorPassthroughRuleCreate) SetUpdatedAt(v time.Time) *ErrorPassthroug
 func (_c *ErrorPassthroughRuleCreate) SetNillableUpdatedAt(v *time.Time) *ErrorPassthroughRuleCreate {
 	if v != nil {
 		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
+// SetMessageLocalization sets the "message_localization" field.
+func (_c *ErrorPassthroughRuleCreate) SetMessageLocalization(v locale.TextContent) *ErrorPassthroughRuleCreate {
+	_c.mutation.SetMessageLocalization(v)
+	return _c
+}
+
+// SetNillableMessageLocalization sets the "message_localization" field if the given value is not nil.
+func (_c *ErrorPassthroughRuleCreate) SetNillableMessageLocalization(v *locale.TextContent) *ErrorPassthroughRuleCreate {
+	if v != nil {
+		_c.SetMessageLocalization(*v)
 	}
 	return _c
 }
@@ -343,6 +358,10 @@ func (_c *ErrorPassthroughRuleCreate) createSpec() (*ErrorPassthroughRule, *sqlg
 		_spec.SetField(errorpassthroughrule.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
+	if value, ok := _c.mutation.MessageLocalization(); ok {
+		_spec.SetField(errorpassthroughrule.FieldMessageLocalization, field.TypeJSON, value)
+		_node.MessageLocalization = value
+	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(errorpassthroughrule.FieldName, field.TypeString, value)
 		_node.Name = value
@@ -456,6 +475,24 @@ func (u *ErrorPassthroughRuleUpsert) SetUpdatedAt(v time.Time) *ErrorPassthrough
 // UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
 func (u *ErrorPassthroughRuleUpsert) UpdateUpdatedAt() *ErrorPassthroughRuleUpsert {
 	u.SetExcluded(errorpassthroughrule.FieldUpdatedAt)
+	return u
+}
+
+// SetMessageLocalization sets the "message_localization" field.
+func (u *ErrorPassthroughRuleUpsert) SetMessageLocalization(v locale.TextContent) *ErrorPassthroughRuleUpsert {
+	u.Set(errorpassthroughrule.FieldMessageLocalization, v)
+	return u
+}
+
+// UpdateMessageLocalization sets the "message_localization" field to the value that was provided on create.
+func (u *ErrorPassthroughRuleUpsert) UpdateMessageLocalization() *ErrorPassthroughRuleUpsert {
+	u.SetExcluded(errorpassthroughrule.FieldMessageLocalization)
+	return u
+}
+
+// ClearMessageLocalization clears the value of the "message_localization" field.
+func (u *ErrorPassthroughRuleUpsert) ClearMessageLocalization() *ErrorPassthroughRuleUpsert {
+	u.SetNull(errorpassthroughrule.FieldMessageLocalization)
 	return u
 }
 
@@ -719,6 +756,27 @@ func (u *ErrorPassthroughRuleUpsertOne) SetUpdatedAt(v time.Time) *ErrorPassthro
 func (u *ErrorPassthroughRuleUpsertOne) UpdateUpdatedAt() *ErrorPassthroughRuleUpsertOne {
 	return u.Update(func(s *ErrorPassthroughRuleUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetMessageLocalization sets the "message_localization" field.
+func (u *ErrorPassthroughRuleUpsertOne) SetMessageLocalization(v locale.TextContent) *ErrorPassthroughRuleUpsertOne {
+	return u.Update(func(s *ErrorPassthroughRuleUpsert) {
+		s.SetMessageLocalization(v)
+	})
+}
+
+// UpdateMessageLocalization sets the "message_localization" field to the value that was provided on create.
+func (u *ErrorPassthroughRuleUpsertOne) UpdateMessageLocalization() *ErrorPassthroughRuleUpsertOne {
+	return u.Update(func(s *ErrorPassthroughRuleUpsert) {
+		s.UpdateMessageLocalization()
+	})
+}
+
+// ClearMessageLocalization clears the value of the "message_localization" field.
+func (u *ErrorPassthroughRuleUpsertOne) ClearMessageLocalization() *ErrorPassthroughRuleUpsertOne {
+	return u.Update(func(s *ErrorPassthroughRuleUpsert) {
+		s.ClearMessageLocalization()
 	})
 }
 
@@ -1182,6 +1240,27 @@ func (u *ErrorPassthroughRuleUpsertBulk) SetUpdatedAt(v time.Time) *ErrorPassthr
 func (u *ErrorPassthroughRuleUpsertBulk) UpdateUpdatedAt() *ErrorPassthroughRuleUpsertBulk {
 	return u.Update(func(s *ErrorPassthroughRuleUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetMessageLocalization sets the "message_localization" field.
+func (u *ErrorPassthroughRuleUpsertBulk) SetMessageLocalization(v locale.TextContent) *ErrorPassthroughRuleUpsertBulk {
+	return u.Update(func(s *ErrorPassthroughRuleUpsert) {
+		s.SetMessageLocalization(v)
+	})
+}
+
+// UpdateMessageLocalization sets the "message_localization" field to the value that was provided on create.
+func (u *ErrorPassthroughRuleUpsertBulk) UpdateMessageLocalization() *ErrorPassthroughRuleUpsertBulk {
+	return u.Update(func(s *ErrorPassthroughRuleUpsert) {
+		s.UpdateMessageLocalization()
+	})
+}
+
+// ClearMessageLocalization clears the value of the "message_localization" field.
+func (u *ErrorPassthroughRuleUpsertBulk) ClearMessageLocalization() *ErrorPassthroughRuleUpsertBulk {
+	return u.Update(func(s *ErrorPassthroughRuleUpsert) {
+		s.ClearMessageLocalization()
 	})
 }
 

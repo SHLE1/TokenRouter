@@ -94,7 +94,7 @@
             </div>
             <div>
               <label class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.settings.payment.customMethodDisplayName') }}</label>
-              <input v-model="method.displayName" type="text" class="input mt-1" :placeholder="t('admin.settings.payment.customMethodDisplayNamePlaceholder')" />
+              <LocalizedEditor data-testid="method-display-name" :model-value="method.displayNameLocalization || originalContent(method.displayName)" @update:model-value="method.displayNameLocalization = $event; method.displayName = $event.source" />
             </div>
           </div>
         </template>
@@ -308,6 +308,9 @@
 </template>
 
 <script setup lang="ts">
+import { getLocale } from '@/i18n'
+import LocalizedEditor from '@/components/common/LocalizedEditor.vue'
+import { newContentID, originalContent } from '@/i18n/content'
 import Collapse from '@/components/common/Collapse.vue'
 
 import Icon from '@/components/icons/Icon.vue'
@@ -578,6 +581,8 @@ function toggleType(type: string) {
 function normalizedEasyPayCustomMethods(): EasyPayCustomMethod[] {
   return easyPayCustomMethods
     .map(method => ({
+      id: method.id,
+      displayNameLocalization: method.displayNameLocalization,
       type: normalizeEasyPayCustomMethodCode(method.type),
       upstreamType: normalizeEasyPayCustomMethodCode(method.upstreamType),
       displayName: method.displayName.trim(),
@@ -590,7 +595,7 @@ function normalizeEasyPayCustomMethodCode(value: string): string {
 }
 
 function addEasyPayCustomMethod() {
-  easyPayCustomMethods.push({ type: '', upstreamType: '', displayName: '' })
+  easyPayCustomMethods.push({ id: newContentID(), type: '', upstreamType: '', displayName: '', displayNameLocalization: originalContent('', getLocale()) })
 }
 
 function removeEasyPayCustomMethod(index: number) {

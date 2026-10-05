@@ -58,6 +58,7 @@ func groupEntityToKeyView(g *dbent.Group) *routing.Group {
 	return &routing.Group{
 		ID:                              g.ID,
 		Name:                            g.Name,
+		Localization:                    g.Localization,
 		Description:                     KeyDerefString(g.Description),
 		SchedulerType:                   keycore.GroupSchedulerType(g.SchedulerType),
 		AdvancedSchedulerOverrides:      accessview.CloneGroupAdvancedSchedulerOverrides(g.AdvancedSchedulerOverrides),

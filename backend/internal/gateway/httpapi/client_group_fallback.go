@@ -58,7 +58,7 @@ func resolveClientGroupForRequest(c *gin.Context, backend any, key *apikey.APIKe
 // writeClientGroupFallbackError 在初始回退失败时，按入口协议写出错误响应。
 func writeClientGroupFallbackError(c *gin.Context, err error, write func(*gin.Context, int, string, string)) {
 	MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalPolicyDenied)
-	status, code, message, retryAfter := BillingErrorDetails(err)
+	status, code, message, retryAfter := BillingErrorDetails(err, gatewayLocale(c))
 	if err == routing.ErrClaudeCodeOnly {
 		status, code, message = http.StatusForbidden, "permission_error", err.Error()
 	}

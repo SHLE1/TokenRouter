@@ -112,6 +112,7 @@ export default {
       missing: '素材缺失',
     },
     history: {
+      noOutputs: "没有输出图片",
       title: '历史记录',
       elapsed: '已用时 {time}',
       toggle: '展开 / 收起历史记录',

@@ -196,7 +196,7 @@ func (h MessagesErrorOutput) GeminiExhausted(c *gin.Context, failoverErr *forwar
 			// 确定响应消息
 			msg := upstream.ExtractErrorMessage(responseBody)
 			if !rule.PassthroughBody && rule.CustomMessage != nil {
-				msg = *rule.CustomMessage
+				msg = rule.DisplayMessage(gatewayLocale(c))
 			}
 
 			if rule.SkipMonitoring {

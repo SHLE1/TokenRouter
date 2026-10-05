@@ -1,3 +1,4 @@
+import type { LocalizedUpdate } from '@/i18n/content';
 /**
  * 管理员系统设置接口。
  * 负责后台系统设置的读取与保存。
@@ -487,15 +488,12 @@ export interface SystemSettings {
   force_email_on_third_party_signup?: boolean;
   // ── 平台限额（嵌套 JSON，系统层 + 7 auth-source 层）────────────────────────────────
   // OEM settings
+  localized_settings: Record<string, LocalizedUpdate<string>>;
+  site_texts: Record<string, LocalizedUpdate<string>>;
+  default_locale: string;
   site_name: string;
   site_logo: string;
   site_subtitle: string;
-  site_name_zh: string;
-  site_name_en: string;
-  site_title_zh: string;
-  site_title_en: string;
-  site_subtitle_zh: string;
-  site_subtitle_en: string;
   api_base_url: string;
   contact_info: string;
   doc_url: string;
@@ -822,15 +820,12 @@ export interface UpdateSettingsRequest {
   auth_source_default_google_grant_on_first_bind?: boolean;
   force_email_on_third_party_signup?: boolean;
   // ── 平台限额（嵌套 JSON，系统层 + 7 auth-source 层）────────────────────────────────
+  localized_settings?: Record<string, LocalizedUpdate<string>>;
+  site_texts?: Record<string, LocalizedUpdate<string>>;
+  default_locale?: string;
   site_name?: string;
   site_logo?: string;
   site_subtitle?: string;
-  site_name_zh?: string;
-  site_name_en?: string;
-  site_title_zh?: string;
-  site_title_en?: string;
-  site_subtitle_zh?: string;
-  site_subtitle_en?: string;
   api_base_url?: string;
   contact_info?: string;
   doc_url?: string;
@@ -1512,6 +1507,9 @@ export interface OpenAIFastPolicyRule {
   action: "pass" | "filter" | "block" | "force_priority" | "force_ultrafast";
   scope: "all" | "oauth" | "apikey" | "bedrock";
   user_ids?: number[];
+  id?: string;
+  error_message_localization?: LocalizedUpdate<string>;
+  fallback_error_message_localization?: LocalizedUpdate<string>;
   error_message?: string;
   model_whitelist?: string[];
   fallback_action?: "pass" | "filter" | "block" | "force_priority" | "force_ultrafast";
@@ -1539,6 +1537,9 @@ export interface BetaPolicyRule {
   beta_token: string;
   action: "pass" | "filter" | "block";
   scope: "all" | "oauth" | "apikey" | "bedrock";
+  id?: string;
+  error_message_localization?: LocalizedUpdate<string>;
+  fallback_error_message_localization?: LocalizedUpdate<string>;
   error_message?: string;
   model_whitelist?: string[];
   fallback_action?: "pass" | "filter" | "block";

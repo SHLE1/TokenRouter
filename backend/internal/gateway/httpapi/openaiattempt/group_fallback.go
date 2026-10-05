@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -36,7 +38,7 @@ func (b *responsesAttemptBridge) TryGroupFallback(cause error) (handled, retry b
 	source, _ := requeststate.ClientProtocolFromContext(b.Context())
 	key, subscription, err := ports.Resolve(b.Context(), b.apiKey, *target, source)
 	if err != nil {
-		status, kind, message, _ := gatewayhttp.BillingErrorDetails(err)
+		status, kind, message, _ := gatewayhttp.BillingErrorDetails(err, locale.FromContext(b.Context()))
 		gatewayhttp.MarkOpsClientBusinessLimited(b.c, gatewayhttp.OpsClientBusinessLimitedReasonLocalPolicyDenied)
 		if source == protocol.ProtocolAnthropicMessages {
 			b.binding().anthropicStreamingAwareError(b.c, status, kind, message, *b.streamStarted)

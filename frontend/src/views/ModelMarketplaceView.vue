@@ -286,6 +286,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLocaleRefresh } from '@/composables/useLocaleRefresh'
 import { vContentReveal } from '@/directives/contentReveal'
 import { useRoute as useMotionRoute } from 'vue-router'
 const motionRoute = useMotionRoute()
@@ -400,6 +401,7 @@ const groupSelectOptions = computed(() => [
   ...sortedGroups.value.map((group) => ({
     value: group.id,
     label: group.name,
+    search_terms: group.search_terms,
   })),
 ])
 
@@ -415,7 +417,7 @@ const filteredGroups = computed<VisibleMarketplaceGroup[]>(() => {
       return []
     }
 
-    const groupMatchesKeyword = !keyword || [group.name, group.description, groupBrandSource(group), groupBrandLabel(group)]
+    const groupMatchesKeyword = !keyword || [group.name, group.description, groupBrandSource(group), groupBrandLabel(group), ...(group.search_terms || [])]
       .filter(Boolean)
       .some((value) => value.toLowerCase().includes(keyword))
 
@@ -428,7 +430,7 @@ const filteredGroups = computed<VisibleMarketplaceGroup[]>(() => {
         return true
       }
 
-      return [model.id, model.display_name].some((value) => value.toLowerCase().includes(keyword))
+      return [model.id, model.display_name, ...(model.attributes?.search_terms || [])].some((value) => value.toLowerCase().includes(keyword))
     })
 
     if (models.length === 0) {
@@ -720,4 +722,5 @@ onMounted(async () => {
   await fetchMarketplace()
 })
 
+useLocaleRefresh(fetchMarketplace)
 </script>

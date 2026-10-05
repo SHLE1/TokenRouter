@@ -1,6 +1,7 @@
 package composite
 
 import (
+	settingvalues "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/team"
 
 	"github.com/TokenFlux/TokenRouter/internal/audit"
@@ -43,6 +44,7 @@ func Parse(settings map[string]string, options ReadOptions) *Snapshot {
 	prior := options.Forwarded()
 	forwarded := runtimeconfig.ReadForwardedSettings(settings, prior)
 	result := &Snapshot{
+		LocalizedSettings:         settingvalues.ReadLocalizedTexts(settings),
 		APIKeyACLTrustForwardedIP: forwarded.APIKeyACLTrustForwardedIP,
 		ForwardedClientIPHeaders:  forwarded.ForwardedClientIPHeaders,
 		TeamEnabled:               settings[team.SettingKeyTeamEnabled] != "false",

@@ -11,6 +11,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
 )
@@ -45,7 +46,7 @@ func (o AuthenticationOptions) business(c *gin.Context, reason string) {
 
 func (o AuthenticationOptions) abort(c *gin.Context, status int, code, message string) {
 	if o.Google {
-		AbortGoogleError(c, status, message)
+		AbortGoogleError(c, status, message, code)
 	} else {
 		AbortWithError(c, status, code, message)
 	}
@@ -196,7 +197,7 @@ func (o AuthenticationOptions) abortTeam(c *gin.Context, err error) bool {
 	}
 	status, message, ok := GoogleTeamError(err)
 	if ok {
-		AbortGoogleError(c, status, message)
+		AbortGoogleError(c, status, message, apperror.Reason(err))
 	}
 	return ok
 }

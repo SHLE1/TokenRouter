@@ -36,13 +36,15 @@ billing 负责余额的原子调整、订阅、套餐和兑换规则；SQL 和 E
 订单持久化以下创建时的信息：
 
 - 应发权益金额 `amount`、实际支付金额 `pay_amount`、费率和固定费用，以及币种。
-- `order_type`；订阅订单还有 `plan_id` 和 `plan_snapshot`。
-- `provider_instance_id`、`provider_key` 和 `provider_snapshot`，回调、查单和退款都使用订单当时的实例。
+- `order_type`、订阅订单的 `plan_id` 和 `plan_snapshot`。套餐快照包括下单语言、当时展示的套餐名称和商品名称。
+- `provider_instance_id`、`provider_key` 和 `provider_snapshot`，回调、查单和退款使用订单当时的实例。`display_locale` 与 `display_subject` 固定渠道使用的商品描述。
 - 客户端来源、过期时间、外部 trade number、invoice 和 receipt 信息，以及每次状态变化的时间点。
 
 `payment.Runtime`、`ConfigService`、`ProviderBindings` 和选择器由 app 直接装配，HTTP 和后台使用同一组下单、查询、履约和退款实例。具体渠道的构造、密钥和环境信息留在渠道适配层。第一次读取实例失败时不标记为已加载；刷新时先构造完整的候选表再原子发布，整体读取失败时保留旧表并允许重试，单个配置损坏时跳过它。
 
 提供商实例决定支持的支付类型、模式、限额、排序和退款能力。删除或修改当前实例后，历史订单仍按原来的实例解释；只有解析旧订单时，才按保存的 provider key 或兼容注册表回退。
+
+套餐介绍、权益、支付帮助和自定义方式名称的翻译规则见[用户侧国际化](../interfaces/user_localization.md#content_owners)。
 
 ## 支付状态机
 

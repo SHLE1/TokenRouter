@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
@@ -155,6 +157,9 @@ func (s *ConfigService) CreateProviderInstance(ctx context.Context, req CreatePr
 		return nil, err
 	}
 	if req.ProviderKey == TypeEasyPay {
+		if err := prepareMethodNames(req.Config, nil); err != nil {
+			return nil, err
+		}
 		if err := ConfigValidateEasyPayCustomMethods(req.Config, typesStr); err != nil {
 			return nil, err
 		}
@@ -240,9 +245,11 @@ func ConfigValidateProviderRequest(providerKey, name, supportedTypes string) err
 var ConfigEasyPayCustomMethodCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
 type ConfigEasyPayCustomMethodConfig struct {
-	Type         string `json:"type"`
-	UpstreamType string `json:"upstreamType"`
-	DisplayName  string `json:"displayName"`
+	ID                      string                 `json:"id,omitempty"`
+	DisplayNameLocalization *locale.Update[string] `json:"displayNameLocalization,omitempty"`
+	Type                    string                 `json:"type"`
+	UpstreamType            string                 `json:"upstreamType"`
+	DisplayName             string                 `json:"displayName"`
 }
 
 func ConfigValidateEasyPayCustomMethods(config map[string]string, supportedTypes string) error {
@@ -339,6 +346,11 @@ func (s *ConfigService) UpdateProviderInstance(ctx context.Context, id int64, re
 		if err != nil {
 			return nil, err
 		}
+		if current.ProviderKey == TypeEasyPay {
+			if err := prepareMethodNames(mergedConfig, currentConfig); err != nil {
+				return nil, err
+			}
+		}
 		if ConfigHasPendingOrderProtectedConfigChange(current.ProviderKey, currentConfig, mergedConfig) {
 			count, err := getPendingOrderCount()
 			if err != nil {
@@ -385,6 +397,9 @@ func (s *ConfigService) UpdateProviderInstance(ctx context.Context, id int64, re
 		}
 	}
 	u := InstancePatch{}
+	if req.Config != nil {
+		u.ExpectedConfig = &current.Config
+	}
 	if req.Name != nil {
 		u.Name = configPointer(*req.Name)
 	}

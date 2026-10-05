@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/TokenFlux/TokenRouter/ent/errorpassthroughrule"
 	"github.com/TokenFlux/TokenRouter/ent/predicate"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
 // ErrorPassthroughRuleUpdate is the builder for updating ErrorPassthroughRule entities.
@@ -32,6 +33,26 @@ func (_u *ErrorPassthroughRuleUpdate) Where(ps ...predicate.ErrorPassthroughRule
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ErrorPassthroughRuleUpdate) SetUpdatedAt(v time.Time) *ErrorPassthroughRuleUpdate {
 	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetMessageLocalization sets the "message_localization" field.
+func (_u *ErrorPassthroughRuleUpdate) SetMessageLocalization(v locale.TextContent) *ErrorPassthroughRuleUpdate {
+	_u.mutation.SetMessageLocalization(v)
+	return _u
+}
+
+// SetNillableMessageLocalization sets the "message_localization" field if the given value is not nil.
+func (_u *ErrorPassthroughRuleUpdate) SetNillableMessageLocalization(v *locale.TextContent) *ErrorPassthroughRuleUpdate {
+	if v != nil {
+		_u.SetMessageLocalization(*v)
+	}
+	return _u
+}
+
+// ClearMessageLocalization clears the value of the "message_localization" field.
+func (_u *ErrorPassthroughRuleUpdate) ClearMessageLocalization() *ErrorPassthroughRuleUpdate {
+	_u.mutation.ClearMessageLocalization()
 	return _u
 }
 
@@ -332,6 +353,12 @@ func (_u *ErrorPassthroughRuleUpdate) sqlSave(ctx context.Context) (_node int, e
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(errorpassthroughrule.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if value, ok := _u.mutation.MessageLocalization(); ok {
+		_spec.SetField(errorpassthroughrule.FieldMessageLocalization, field.TypeJSON, value)
+	}
+	if _u.mutation.MessageLocalizationCleared() {
+		_spec.ClearField(errorpassthroughrule.FieldMessageLocalization, field.TypeJSON)
+	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(errorpassthroughrule.FieldName, field.TypeString, value)
 	}
@@ -433,6 +460,26 @@ type ErrorPassthroughRuleUpdateOne struct {
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ErrorPassthroughRuleUpdateOne) SetUpdatedAt(v time.Time) *ErrorPassthroughRuleUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// SetMessageLocalization sets the "message_localization" field.
+func (_u *ErrorPassthroughRuleUpdateOne) SetMessageLocalization(v locale.TextContent) *ErrorPassthroughRuleUpdateOne {
+	_u.mutation.SetMessageLocalization(v)
+	return _u
+}
+
+// SetNillableMessageLocalization sets the "message_localization" field if the given value is not nil.
+func (_u *ErrorPassthroughRuleUpdateOne) SetNillableMessageLocalization(v *locale.TextContent) *ErrorPassthroughRuleUpdateOne {
+	if v != nil {
+		_u.SetMessageLocalization(*v)
+	}
+	return _u
+}
+
+// ClearMessageLocalization clears the value of the "message_localization" field.
+func (_u *ErrorPassthroughRuleUpdateOne) ClearMessageLocalization() *ErrorPassthroughRuleUpdateOne {
+	_u.mutation.ClearMessageLocalization()
 	return _u
 }
 
@@ -762,6 +809,12 @@ func (_u *ErrorPassthroughRuleUpdateOne) sqlSave(ctx context.Context) (_node *Er
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(errorpassthroughrule.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.MessageLocalization(); ok {
+		_spec.SetField(errorpassthroughrule.FieldMessageLocalization, field.TypeJSON, value)
+	}
+	if _u.mutation.MessageLocalizationCleared() {
+		_spec.ClearField(errorpassthroughrule.FieldMessageLocalization, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(errorpassthroughrule.FieldName, field.TypeString, value)

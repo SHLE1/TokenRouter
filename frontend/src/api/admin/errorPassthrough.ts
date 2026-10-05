@@ -1,3 +1,4 @@
+import type { LocalizedUpdate } from '@/i18n/content'
 /**
  * Admin Error Passthrough Rules API endpoints
  * Handles error passthrough rule management for administrators
@@ -20,6 +21,7 @@ export interface ErrorPassthroughRule {
   passthrough_code: boolean
   response_code: number | null
   passthrough_body: boolean
+  message_localization?: LocalizedUpdate<string>
   custom_message: string | null
   skip_monitoring: boolean
   description: string | null
@@ -41,6 +43,7 @@ export interface CreateRuleRequest {
   passthrough_code?: boolean
   response_code?: number | null
   passthrough_body?: boolean
+  message_localization?: LocalizedUpdate<string>
   custom_message?: string | null
   skip_monitoring?: boolean
   description?: string | null
@@ -60,6 +63,7 @@ export interface UpdateRuleRequest {
   passthrough_code?: boolean
   response_code?: number | null
   passthrough_body?: boolean
+  message_localization?: LocalizedUpdate<string>
   custom_message?: string | null
   skip_monitoring?: boolean
   description?: string | null

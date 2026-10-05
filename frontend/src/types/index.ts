@@ -1,3 +1,4 @@
+import type { LocalizedUpdate } from '@/i18n/content'
 import type { ModelAttributes } from './modelAttributes'
 /**
  * Core Type Definitions for TokenRouter Frontend
@@ -67,6 +68,7 @@ export interface UserProfileSourceContext {
 }
 
 export interface User {
+  preferred_locale?: string | null
   id: number
   username: string
   email: string
@@ -188,6 +190,7 @@ export interface SendVerifyCodeResponse {
 }
 
 export interface CustomMenuItem {
+  localization?: LocalizedUpdate<{ label: string; url: string }>
   id: string
   label: string
   icon_svg: string
@@ -198,28 +201,40 @@ export interface CustomMenuItem {
 }
 
 export interface CustomEndpoint {
+  id?: string
+  localization?: LocalizedUpdate<{ name: string; description: string }>
   name: string
   endpoint: string
   description: string
 }
 
 export interface FooterLink {
+  id?: string
+  localization?: LocalizedUpdate<{ label: string; url: string }>
   label: string
   url: string
 }
 
 export interface FooterLinkGroup {
+  id?: string
+  localization?: LocalizedUpdate<string>
   title: string
   links: FooterLink[]
 }
 
 export interface LoginAgreementDocument {
+  localization?: LocalizedUpdate<{ title: string; content_md: string }>
   id: string
   title: string
   content_md: string
 }
 
 export interface PublicSettings {
+  locale?: string
+  site_text_overrides?: string[]
+  text_languages?: Record<string, { locale: string | null; fallback: boolean }>
+  default_locale?: string
+  site_title?: string
   registration_enabled: boolean
   email_verify_enabled: boolean
   force_email_on_third_party_signup: boolean
@@ -248,12 +263,6 @@ export interface PublicSettings {
   site_name: string
   site_logo: string
   site_subtitle: string
-  site_name_zh?: string
-  site_name_en?: string
-  site_title_zh?: string
-  site_title_en?: string
-  site_subtitle_zh?: string
-  site_subtitle_en?: string
   api_base_url: string
   contact_info: string
   doc_url: string
@@ -374,6 +383,7 @@ export interface AnnouncementTargeting {
 }
 
 export interface Announcement {
+  localization: LocalizedUpdate<{ title: string; content: string }>
   id: number
   title: string
   content: string
@@ -401,6 +411,7 @@ export interface UserAnnouncement {
 }
 
 export interface CreateAnnouncementRequest {
+  localization: LocalizedUpdate<{ title: string; content: string }>
   title: string
   content: string
   status?: AnnouncementStatus
@@ -411,6 +422,7 @@ export interface CreateAnnouncementRequest {
 }
 
 export interface UpdateAnnouncementRequest {
+  localization?: LocalizedUpdate<{ title: string; content: string }>
   title?: string
   content?: string
   status?: AnnouncementStatus
@@ -707,6 +719,7 @@ export interface MarketplaceGroupAvailability {
 }
 
 export interface MarketplaceGroup {
+  search_terms?: string[]
   id: number
   name: string
   description: string
@@ -747,6 +760,8 @@ export interface ReasoningEffortMapping {
 }
 
 export interface Group {
+  search_terms?: string[]
+  display_name?: string
   // 后端按组内提供商能力解析的可请求模型。
   models?: string[]
   model_attributes?: Record<string, ModelAttributes>
@@ -805,6 +820,7 @@ export interface GroupRoutingPolicy {
 }
 
 export interface AdminGroup extends Group {
+  localization?: LocalizedUpdate<{ display_name: string; description: string }>
   routing_policy: GroupRoutingPolicy
   // 该策略由管理端配置，在管理员分组接口中返回。
   force_openai_fast?: boolean
@@ -959,6 +975,7 @@ export interface UpdateApiKeyRequest {
 }
 
 export interface CreateGroupRequest {
+  localization?: LocalizedUpdate<{ display_name: string; description: string }>
   name: string
   description?: string | null
   scheduler_type?: GroupSchedulerType
@@ -1004,6 +1021,7 @@ export interface CreateGroupRequest {
 }
 
 export interface UpdateGroupRequest {
+  localization?: LocalizedUpdate<{ display_name: string; description: string }>
   name?: string
   description?: string | null
   scheduler_type?: GroupSchedulerType

@@ -15,9 +15,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 
 	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 	"github.com/gin-gonic/gin"
@@ -150,7 +153,10 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	nonce := middleware.GetNonceFromContext(c)
 
 	// Check cache first
-	cached, version := s.cache.Snapshot()
+	language := locale.FromContext(c.Request.Context())
+	c.Writer.Header().Add("Vary", "Accept-Language, Cookie")
+	c.Header("Content-Language", language)
+	cached, version := s.cache.SnapshotForLocale(language)
 	if cached != nil {
 		// Check If-None-Match for 304 response
 		if match := c.GetHeader("If-None-Match"); match == cached.ETag {
@@ -190,7 +196,8 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	}
 
 	rendered := s.injectSettings(settingsJSON)
-	snapshot := s.cache.Publish(version, rendered, settingsJSON)
+	rendered = htmlLanguagePattern.ReplaceAll(rendered, []byte(`<html lang="`+language+`" dir="`+locale.Direction(language)+`"`))
+	snapshot := s.cache.PublishForLocale(language, version, rendered, settingsJSON)
 
 	// Replace nonce placeholder with actual nonce before serving
 	content := replaceNoncePlaceholder(rendered, nonce)
@@ -478,3 +485,6 @@ func HasEmbeddedFrontend() bool {
 	_, err := frontendFS.ReadFile("dist/index.html")
 	return err == nil
 }
+
+// htmlLanguagePattern 匹配构建入口的语言属性。
+var htmlLanguagePattern = regexp.MustCompile(`<html(?:\s+lang="[^"]*")?`)

@@ -82,3 +82,8 @@ func (s *Runtime) ApplyPersistedSettings(ctx context.Context) error {
 	}
 	return nil
 }
+
+// ReadLocalizationValues 返回事务版本检查所需的已持久化站点文案。
+func (s *Runtime) ReadLocalizationValues(ctx context.Context) (map[string]string, error) {
+	return s.store.GetAll(ctx)
+}

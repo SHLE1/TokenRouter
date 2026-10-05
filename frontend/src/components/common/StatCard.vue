@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+import { getLocale } from '@/i18n'
 import { computed } from 'vue'
 import type { Component } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -50,7 +51,7 @@ const formattedValue = computed(() => {
     return props.formatValue(props.value)
   }
   if (typeof props.value === 'number') {
-    return props.value.toLocaleString()
+    return props.value.toLocaleString(getLocale())
   }
   return props.value
 })

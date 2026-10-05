@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -302,7 +304,7 @@ func (p *openAIWSEntryAdapter) IsolationError(ctx context.Context, err error) {
 }
 
 func (p *openAIWSEntryAdapter) IsolationReason(err error) string {
-	return gatewayhttp.ResponsesWSIsolationCloseReason(err)
+	return gatewayhttp.ResponsesWSIsolationCloseReason(err, locale.FromContext(p.c.Request.Context()))
 }
 
 func (p *openAIWSEntryAdapter) Guardian(ctx context.Context, body []byte, model string) context.Context {

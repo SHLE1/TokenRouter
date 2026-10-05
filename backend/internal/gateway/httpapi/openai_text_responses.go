@@ -256,7 +256,7 @@ func (h *OpenAITextHandler) Responses(c *gin.Context) {
 	// 等待成功后按原时点复查资金权益。
 	if err := h.backend.Eligibility(c.Request.Context(), apiKey, subscription); err != nil {
 		reqLog.Info("openai.billing_eligibility_check_failed", zap.Error(err))
-		status, code, message, retryAfter := BillingErrorDetails(err)
+		status, code, message, retryAfter := BillingErrorDetails(err, gatewayLocale(c))
 		if retryAfter > 0 {
 			c.Header("Retry-After", strconv.Itoa(retryAfter))
 		}

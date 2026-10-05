@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"html"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -13,86 +12,37 @@ import (
 
 type RiskDelivery struct {
 	emailService *Mailer
-	settingRepo  SettingRepository
 }
 
 func NewRiskDelivery(mail *Mailer) *RiskDelivery {
-	return &RiskDelivery{emailService: mail, settingRepo: mail.settingRepo}
+	return &RiskDelivery{emailService: mail}
 }
 
+// SendViolationEmail 发送用户语言的风控通知。
 func (s *RiskDelivery) SendViolationEmail(ctx context.Context, cfg *contract.RiskPolicy, log *contract.RiskLog) error {
-	siteName := s.siteName(ctx)
-	if s.emailService.notificationEmailService != nil {
-		if err := s.emailService.notificationEmailService.Send(ctx, NotificationEmailSendInput{
-			Event:          NotificationEmailEventContentModerationViolation,
-			RecipientEmail: log.UserEmail,
-			RecipientName:  EmailRecipientName(log.UserEmail),
-			UserID:         contentModerationEmailUserID(log),
-			SourceType:     "content_moderation",
-			SourceID:       contentModerationEmailSourceID(log),
-			Variables:      contentModerationEmailVariables(log, cfg),
-		}); err == nil {
-			return nil
-		} else {
-			if !ShouldFallbackNotificationEmail(err) {
-				return err
-			}
-			slog.Warn("template content moderation violation email failed; falling back to built-in body", "log_id", log.ID, "recipient_hash", NotificationEmailHash(log.UserEmail), "err", err.Error())
-		}
-	}
-	subject := fmt.Sprintf("[%s] 账户风控提醒 / Risk Control Notice", SanitizeEmailHeader(siteName))
-	body := BuildContentModerationViolationEmailBody(siteName, log, cfg)
-	return s.emailService.SendEmail(ctx, log.UserEmail, subject, body)
+	return s.emailService.SendUserNotification(ctx, SendRequest{
+		Event: NotificationEmailEventContentModerationViolation, RecipientEmail: log.UserEmail,
+		RecipientName: EmailRecipientName(log.UserEmail), UserID: contentModerationEmailUserID(log),
+		SourceType: "content_moderation", SourceID: contentModerationEmailSourceID(log), Variables: contentModerationEmailVariables(log, cfg),
+	})
 }
 
+// SendAccountDisabledEmail 使用账户偏好选择封禁通知模板。
 func (s *RiskDelivery) SendAccountDisabledEmail(ctx context.Context, cfg *contract.RiskPolicy, log *contract.RiskLog) error {
-	siteName := s.siteName(ctx)
-	if s.emailService.notificationEmailService != nil {
-		if err := s.emailService.notificationEmailService.Send(ctx, NotificationEmailSendInput{
-			Event:          NotificationEmailEventContentModerationDisabled,
-			RecipientEmail: log.UserEmail,
-			RecipientName:  EmailRecipientName(log.UserEmail),
-			UserID:         contentModerationEmailUserID(log),
-			SourceType:     "content_moderation",
-			SourceID:       contentModerationEmailSourceID(log),
-			Variables:      contentModerationEmailVariables(log, cfg),
-		}); err == nil {
-			return nil
-		} else {
-			if !ShouldFallbackNotificationEmail(err) {
-				return err
-			}
-			slog.Warn("template content moderation disabled email failed; falling back to built-in body", "log_id", log.ID, "recipient_hash", NotificationEmailHash(log.UserEmail), "err", err.Error())
-		}
-	}
-	subject := fmt.Sprintf("[%s] 账户已被禁用 / Account Disabled", SanitizeEmailHeader(siteName))
-	body := BuildContentModerationAccountDisabledEmailBody(siteName, log, cfg)
-	return s.emailService.SendEmail(ctx, log.UserEmail, subject, body)
+	return s.emailService.SendUserNotification(ctx, SendRequest{
+		Event: NotificationEmailEventContentModerationDisabled, RecipientEmail: log.UserEmail,
+		RecipientName: EmailRecipientName(log.UserEmail), UserID: contentModerationEmailUserID(log),
+		SourceType: "content_moderation", SourceID: contentModerationEmailSourceID(log), Variables: contentModerationEmailVariables(log, cfg),
+	})
 }
 
+// SendCyberAccountDisabledEmail 将会话风控结果填入同一套用户通知模板。
 func (s *RiskDelivery) SendCyberAccountDisabledEmail(ctx context.Context, cfg *contract.RiskPolicy, warning *contract.RiskWarning) error {
-	siteName := s.siteName(ctx)
-	if s.emailService.notificationEmailService != nil {
-		if err := s.emailService.notificationEmailService.Send(ctx, NotificationEmailSendInput{
-			Event:          NotificationEmailEventContentModerationDisabled,
-			RecipientEmail: warning.UserEmail,
-			RecipientName:  EmailRecipientName(warning.UserEmail),
-			UserID:         contentModerationCyberEmailUserID(warning),
-			SourceType:     "content_moderation_cyber",
-			SourceID:       contentModerationCyberEmailSourceID(warning),
-			Variables:      contentModerationCyberEmailVariables(warning, cfg),
-		}); err == nil {
-			return nil
-		} else {
-			if !ShouldFallbackNotificationEmail(err) {
-				return err
-			}
-			slog.Warn("template cyber content moderation disabled email failed; falling back to built-in body", "warning_id", warning.ID, "recipient_hash", NotificationEmailHash(warning.UserEmail), "err", err.Error())
-		}
-	}
-	subject := fmt.Sprintf("[%s] 账户已被禁用 / Account Disabled", SanitizeEmailHeader(siteName))
-	body := BuildContentModerationCyberAccountDisabledEmailBody(siteName, warning, cfg)
-	return s.emailService.SendEmail(ctx, warning.UserEmail, subject, body)
+	return s.emailService.SendUserNotification(ctx, SendRequest{
+		Event: NotificationEmailEventContentModerationDisabled, RecipientEmail: warning.UserEmail,
+		RecipientName: EmailRecipientName(warning.UserEmail), UserID: contentModerationCyberEmailUserID(warning),
+		SourceType: "content_moderation_cyber", SourceID: contentModerationCyberEmailSourceID(warning), Variables: contentModerationCyberEmailVariables(warning, cfg),
+	})
 }
 
 func contentModerationEmailUserID(log *contract.RiskLog) int64 {
@@ -172,17 +122,6 @@ func contentModerationCyberEmailVariables(warning *contract.RiskWarning, cfg *co
 		variables["ban_threshold"] = fmt.Sprintf("%d", cfg.CyberBanThreshold)
 	}
 	return variables
-}
-
-func (s *RiskDelivery) siteName(ctx context.Context) string {
-	if s == nil || s.settingRepo == nil {
-		return "TokenRouter"
-	}
-	name, err := s.settingRepo.GetValue(ctx, SettingKeySiteName)
-	if err != nil || strings.TrimSpace(name) == "" {
-		return "TokenRouter"
-	}
-	return strings.TrimSpace(name)
 }
 
 func BuildContentModerationViolationEmailBody(siteName string, log *contract.RiskLog, cfg *contract.RiskPolicy) string {
