@@ -9,8 +9,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 )
 
-// TestEasyPayNotificationRejectsCheckoutSignature 回放浏览器取得的下单签名。
-func TestEasyPayNotificationRejectsCheckoutSignature(t *testing.T) {
+// TestEasyPayNotificationRejectsCheckoutParameters 检查下单参数不能被当作通知接收。
+func TestEasyPayNotificationRejectsCheckoutParameters(t *testing.T) {
 	t.Parallel()
 
 	e := &EasyPay{config: map[string]string{
@@ -18,11 +18,10 @@ func TestEasyPayNotificationRejectsCheckoutSignature(t *testing.T) {
 		"apiBase": "https://pay.example.com", "paymentMode": "popup",
 		"notifyUrl": "https://site.example.com/api/v1/payment/webhook/easypay",
 	}}
-	const prefix = "https://site.example.com/payment/result?order_id=99&out_trade_no=ORDER123&status=success"
 	created, err := e.CreatePayment(context.Background(), payment.CreatePaymentRequest{
 		OrderID: "ORDER123", PaymentType: payment.TypeAlipay,
 		Subject: "balance recharge", Amount: "650.00",
-		ReturnURL: prefix + "&trade_status=TRADE_SUCCESS",
+		ReturnURL: "https://site.example.com/payment/result",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -31,31 +30,9 @@ func TestEasyPayNotificationRejectsCheckoutSignature(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	for _, forged := range []bool{false, true} {
-		name := "checkout replay"
-		if forged {
-			name = "status extracted from return URL"
-		}
-		t.Run(name, func(t *testing.T) {
-			callback := payURL.Query()
-			if forged {
-				callback.Set("return_url", prefix)
-				callback.Set("trade_status", tradeStatusSuccess)
-			}
-			// 拆出状态字段后签名仍然匹配，拒绝请求依赖回调字段检查。
-			params := make(map[string]string, len(callback))
-			for key := range callback {
-				params[key] = callback.Get(key)
-			}
-			if !easyPayVerifySign(params, e.config["pkey"], callback.Get("sign")) {
-				t.Fatal("test payload must reuse a valid checkout signature")
-			}
-			notification, err := e.VerifyNotification(context.Background(), callback.Encode(), nil)
-			if err == nil || notification != nil {
-				t.Fatalf("checkout signature accepted: notification=%+v, err=%v", notification, err)
-			}
-		})
+	notification, err := e.VerifyNotification(context.Background(), payURL.RawQuery, nil)
+	if err == nil || notification != nil {
+		t.Fatalf("checkout parameters accepted: notification=%+v, err=%v", notification, err)
 	}
 }
 
@@ -66,12 +43,15 @@ func TestEasyPayNotificationParameters(t *testing.T) {
 	e := &EasyPay{config: map[string]string{"pid": "1000", "pkey": "test-merchant-secret"}}
 	tests := []struct {
 		name      string
+		payType   string
 		extraKey  string
 		extra     string
 		duplicate string
 		wantError bool
 	}{
 		{name: "standard notification"},
+		{name: "wechat notification", payType: "wxpay"},
+		{name: "custom payment type", payType: "usdt_trc20"},
 		{name: "optional param", extraKey: "param", extra: "merchant=value&extra=中文"},
 		{name: "empty optional param", extraKey: "param"},
 		{name: "return URL", extraKey: "return_url", extra: "https://site.example.com/payment/result", wantError: true},
@@ -92,6 +72,9 @@ func TestEasyPayNotificationParameters(t *testing.T) {
 				"pid": "1000", "trade_no": "UPSTREAM123", "out_trade_no": "ORDER123",
 				"type": "alipay", "name": "充值 & 套餐=10%", "money": "650.00",
 				"trade_status": tradeStatusSuccess,
+			}
+			if tt.payType != "" {
+				params["type"] = tt.payType
 			}
 			if tt.extraKey != "" {
 				params[tt.extraKey] = tt.extra
@@ -127,5 +110,63 @@ func TestEasyPayNotificationParameters(t *testing.T) {
 				t.Fatalf("tampered notification: %v", err)
 			}
 		})
+	}
+}
+
+// TestEasyPayNotificationRejectsInvalidFields 检查单个无效字段在验签前被拒绝。
+func TestEasyPayNotificationRejectsInvalidFields(t *testing.T) {
+	t.Parallel()
+
+	e := &EasyPay{config: map[string]string{"pid": "1000", "pkey": "test-merchant-secret"}}
+	for _, key := range []string{"pid", "trade_no", "out_trade_no", "type", "money", "trade_status"} {
+		for _, value := range []string{"", "demo&label", "demo=label", "demo\x00label", "demo\rlabel", "demo\nlabel", " demo", "demo "} {
+			t.Run(key+"/"+value, func(t *testing.T) {
+				t.Parallel()
+				values := easyPayTestNotificationValues()
+				values.Set(key, value)
+				want := "invalid notify param: " + key
+				if value == "" {
+					want = "missing notify param: " + key
+				}
+				notification, err := e.VerifyNotification(context.Background(), values.Encode(), nil)
+				if err == nil || err.Error() != want || notification != nil {
+					t.Fatalf("field validation: notification=%+v, err=%v, want %q", notification, err, want)
+				}
+			})
+		}
+	}
+	for _, tt := range []struct {
+		key   string
+		value string
+		want  string
+	}{
+		{key: "pid", value: "2000", want: "easypay notify pid mismatch"},
+		{key: "type", value: "alipay/demo", want: "invalid notify param: type"},
+		{key: "type", value: "alipay@demo", want: "invalid notify param: type"},
+		{key: "type", value: "alipay%26demo", want: "invalid notify param: type"},
+		{key: "money", value: "NaN", want: "invalid notify param: money"},
+		{key: "money", value: "+Inf", want: "invalid notify param: money"},
+		{key: "money", value: "0", want: "invalid notify param: money"},
+		{key: "money", value: "-1", want: "invalid notify param: money"},
+		{key: "money", value: "invalid", want: "invalid notify param: money"},
+	} {
+		t.Run(tt.key+"/"+tt.value, func(t *testing.T) {
+			t.Parallel()
+			values := easyPayTestNotificationValues()
+			values.Set(tt.key, tt.value)
+			notification, err := e.VerifyNotification(context.Background(), values.Encode(), nil)
+			if err == nil || err.Error() != tt.want || notification != nil {
+				t.Fatalf("field validation: notification=%+v, err=%v, want %q", notification, err, tt.want)
+			}
+		})
+	}
+}
+
+// easyPayTestNotificationValues 提供没有签名的标准通知字段，供输入校验测试使用。
+func easyPayTestNotificationValues() url.Values {
+	return url.Values{
+		"pid": {"1000"}, "trade_no": {"UPSTREAM123"}, "out_trade_no": {"ORDER123"},
+		"type": {"alipay"}, "name": {"充值 & 套餐=10%"}, "money": {"650.00"},
+		"trade_status": {tradeStatusSuccess},
 	}
 }
