@@ -3085,7 +3085,7 @@
             </SettingsSection>
           </SettingsCard>
 
-          <ResponsesWSSettings v-show="activeGatewaySection === 'openai'" />
+          <ResponsesWSSettings v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'" />
           <!-- OpenAI / Codex 请求转发 -->
           <SettingsCard
             v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"

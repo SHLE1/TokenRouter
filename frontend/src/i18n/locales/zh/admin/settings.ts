@@ -3,38 +3,81 @@ export default {
     settings: {
       responsesWS: {
   "title": "长连接与连接池",
-  "description": "在线调整 Responses 长连接参数。客户端能否使用长连接，请到分组协议控制中设置。",
+  "description": "调整 Responses WebSocket 的连接池、超时和会话参数，保存后在线生效。客户端能否使用长连接由分组的协议许可决定。",
   "advanced": "高级参数",
-  "restore": "恢复部署默认值",
-  "inherit": "留空使用部署默认值。当前有效值：{value}",
-  "applies": "连接数量调整会逐步生效；正在使用的连接会等到会话结束后再回收。超时参数从下一轮或下一次等待开始使用。",
-  "zero": "0 表示不限制。",
+  "advancedHint": "动态连接上限、预热和会话续接",
+  "restore": "全部恢复默认",
+  "resetField": "恢复默认值",
+  "applies": "留空的参数使用部署默认值，输入框里的灰色数字是当前有效值。连接数量逐步调整，使用中的连接等会话结束后回收；超时参数从下一轮或下一次等待开始使用。",
   "loadError": "加载长连接设置失败，请重试。",
   "saveError": "长连接设置保存失败。",
-  "applyError": "参数已保存，但运行时应用失败。请检查服务日志及当前生效值。",
+  "applyError": "参数已保存，但运行时应用失败。请检查服务日志及当前有效值。",
   "retry": "重新加载",
-  "restoring": "保存后将使用部署默认值。",
+  "restoring": "保存后全部参数恢复为部署默认值。",
+  "units": {
+    "seconds": "秒",
+    "ms": "毫秒",
+    "mib": "MiB"
+  },
+  "groups": {
+    "pool": {
+      "title": "上游连接池",
+      "hint": "每个提供商有一个独立的连接池，会话从池里取用连向上游的长连接。"
+    },
+    "client": {
+      "title": "客户端连接",
+      "hint": "客户端连到网关的长连接。"
+    },
+    "messageSize": {
+      "title": "消息大小"
+    },
+    "timeout": {
+      "title": "上游超时",
+      "hint": "连接上游和收发消息时的最长等待时间。"
+    },
+    "dynamic": {
+      "title": "动态连接上限"
+    },
+    "prewarm": {
+      "title": "预热"
+    },
+    "session": {
+      "title": "会话续接"
+    }
+  },
   "fields": {
-    "max_conns_per_provider": "每个提供商最多保留多少条连接",
-    "min_idle_per_provider": "至少准备多少条空闲连接",
-    "max_idle_per_provider": "最多保留多少条空闲连接",
-    "dynamic_max_conns_by_provider_concurrency_enabled": "按提供商并发计算连接数量",
-    "oauth_max_conns_factor": "OAuth 连接数量系数",
-    "apikey_max_conns_factor": "API Key 连接数量系数",
-    "queue_limit_per_conn": "每条连接最多等待多少个请求",
-    "pool_target_utilization": "预热目标使用率",
-    "prewarm_cooldown_ms": "两次预热的最短间隔（毫秒）",
-    "client_first_message_timeout_seconds": "等待客户端首条消息（秒）",
-    "ingress_inter_turn_idle_timeout_seconds": "两轮之间允许空闲多久（秒）",
-    "max_ingress_connections_per_api_key": "每个 Key 最多打开多少条长连接",
-    "client_read_limit_bytes": "客户端消息大小上限（MiB）",
-    "http_bridge_threshold_bytes": "多大的请求改用 HTTP（MiB）",
-    "dial_timeout_seconds": "连接上游最多等待多久（秒）",
-    "read_timeout_seconds": "等待上游消息的超时（秒）",
-    "write_timeout_seconds": "发送消息的超时（秒）",
+    "max_conns_per_provider": "每个提供商最多连接数",
+    "queue_limit_per_conn": "每条连接排队上限",
+    "min_idle_per_provider": "最少空闲连接",
+    "max_idle_per_provider": "最多空闲连接",
+    "max_ingress_connections_per_api_key": "每个 Key 最多连接数",
+    "client_first_message_timeout_seconds": "首条消息等待时间",
+    "ingress_inter_turn_idle_timeout_seconds": "两轮之间最长空闲",
+    "client_read_limit_bytes": "单条消息大小上限",
+    "http_bridge_threshold_bytes": "改用 HTTP 的请求大小",
+    "dial_timeout_seconds": "建立连接",
+    "read_timeout_seconds": "等待上游消息",
+    "write_timeout_seconds": "发送消息",
+    "dynamic_max_conns_by_provider_concurrency_enabled": "按提供商并发计算",
+    "oauth_max_conns_factor": "OAuth 提供商系数",
+    "apikey_max_conns_factor": "API Key 提供商系数",
+    "pool_target_utilization": "目标使用率",
+    "prewarm_cooldown_ms": "两次预热最短间隔",
     "ingress_previous_response_recovery_enabled": "上游找不到上一轮时尝试恢复",
-    "sticky_session_ttl_seconds": "提供商会话记录保留多久（秒）",
-    "sticky_response_id_ttl_seconds": "响应续接记录保留多久（秒）"
+    "sticky_session_ttl_seconds": "提供商会话记录保留时长",
+    "sticky_response_id_ttl_seconds": "响应续接记录保留时长"
+  },
+  "hints": {
+    "max_conns_per_provider": "按并发计算出的上限也以这个值封顶。",
+    "queue_limit_per_conn": "连接都在使用时，每条连接上最多排队的请求数。",
+    "min_idle_per_provider": "空闲时预先保持的连接数。",
+    "max_idle_per_provider": "0 表示不保留空闲连接。",
+    "max_ingress_connections_per_api_key": "0 表示不限制。",
+    "ingress_inter_turn_idle_timeout_seconds": "0 表示不限制。",
+    "http_bridge_threshold_bytes": "请求超过这个大小时改走上游 HTTP，需要分组允许这项转换。",
+    "dynamic_max_conns_by_provider_concurrency_enabled": "每个提供商的连接上限等于它的并发数乘以对应系数，最多为“每个提供商最多连接数”。并发不限的提供商直接使用该上限。",
+    "pool_target_utilization": "取值 0 到 1。连接池按“请求数 ÷ 目标使用率”准备连接，数值越小，备用连接越多。",
+    "ingress_previous_response_recovery_enabled": "上游报告找不到上一轮时，去掉续接 ID 重试一次。带工具调用结果的请求直接返回错误。"
   }
 },
 
