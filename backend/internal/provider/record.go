@@ -529,9 +529,9 @@ func (a *Record) GetTempUnschedulableRules() []TempUnschedulableRule {
 		}
 
 		rule := TempUnschedulableRule{
-			ErrorCode:       ParseTempUnschedInt(entry["error_code"]),
+			ErrorCode:       ParseExtraInt(entry["error_code"]),
 			Keywords:        ParseTempUnschedStrings(entry["keywords"]),
-			DurationMinutes: ParseTempUnschedInt(entry["duration_minutes"]),
+			DurationMinutes: ParseExtraInt(entry["duration_minutes"]),
 			Description:     ParseTempUnschedString(entry["description"]),
 		}
 
@@ -594,26 +594,6 @@ func NormalizeProviderNotes(value *string) *string {
 	return &trimmed
 }
 
-func ParseTempUnschedInt(value any) int {
-	switch v := value.(type) {
-	case int:
-		return v
-	case int64:
-		return int(v)
-	case float64:
-		return int(v)
-	case json.Number:
-		if i, err := v.Int64(); err == nil {
-			return int(i)
-		}
-	case string:
-		if i, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
-			return i
-		}
-	}
-	return 0
-}
-
 func StringMappingFromRaw(raw any) map[string]string {
 	switch mapping := raw.(type) {
 	case map[string]any:
@@ -642,16 +622,6 @@ func StringMappingFromRaw(raw any) map[string]string {
 	default:
 		return nil
 	}
-}
-
-// MappingHasWildcardForModel 判断现有映射是否已通过通配符覆盖指定模型。
-func MappingHasWildcardForModel(mapping map[string]string, model string) bool {
-	for pattern := range mapping {
-		if MatchWildcard(pattern, model) {
-			return true
-		}
-	}
-	return false
 }
 
 // ResolveRequestedModelInMapping 按精确名称和末尾通配符查找模型映射。

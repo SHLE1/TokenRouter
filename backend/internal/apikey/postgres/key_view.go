@@ -7,7 +7,6 @@ import (
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	keycore "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
-	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
@@ -105,23 +104,4 @@ func groupEntityToKeyView(g *dbent.Group) *routing.Group {
 type SQLExecutor interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-}
-
-func paginateKeyRows[T any](items []T, params pagination.PaginationParams) []T {
-	if len(items) == 0 {
-		return []T{}
-	}
-
-	offset := params.Offset()
-	if offset >= len(items) {
-		return []T{}
-	}
-
-	limit := params.Limit()
-	end := offset + limit
-	if end > len(items) {
-		end = len(items)
-	}
-
-	return items[offset:end]
 }

@@ -112,21 +112,6 @@ func grokReasoningModelID(model string) string {
 	return model
 }
 
-// IsGrokModelID 判断模型是否为 Grok/xAI 原生 ID 或别名；Claude/OpenAI 模型返回 false。
-func IsGrokModelID(model string) bool {
-	normalized := strings.ToLower(strings.TrimSpace(model))
-	if normalized == "" {
-		return false
-	}
-	if strings.HasPrefix(normalized, "grok") {
-		return true
-	}
-	if strings.HasPrefix(normalized, "imagine") {
-		return true
-	}
-	return false
-}
-
 // IsGrokTextResponsesModelID 判断模型是否为 Responses API 已知的 Grok 文本模型；
 // Imagine 媒体模型和未知自定义 ID 返回 false。
 func IsGrokTextResponsesModelID(model string) bool {

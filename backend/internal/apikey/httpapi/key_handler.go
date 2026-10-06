@@ -6,14 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
-	"github.com/TokenFlux/TokenRouter/internal/protocol"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/apikey/httpapi/dto"
 	idempotencyhttp "github.com/TokenFlux/TokenRouter/internal/idempotency/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
@@ -27,7 +24,6 @@ type APIKeyHandler[G any] struct {
 
 	apiKeyService        *apikey.APIKeyService
 	groupCapacityService GroupCapacityReader
-	groupModels          func(context.Context, int64) ([]string, map[string][]protocol.ProtocolID)
 	groupPresentation    func(context.Context, *routing.Group, *accessview.GroupCapacitySummary) *G
 	presentGroup         func(*routing.Group, *accessview.GroupCapacitySummary) *G
 }
@@ -37,11 +33,6 @@ type GroupCapacityReader interface {
 
 func NewAPIKeyHandler[G any](keys *apikey.APIKeyService, present func(*routing.Group, *accessview.GroupCapacitySummary) *G) *APIKeyHandler[G] {
 	return &APIKeyHandler[G]{apiKeyService: keys, presentGroup: present}
-}
-
-// SetGroupModelsReader 设置已授权控制台分组的模型目录读取函数。
-func (h *APIKeyHandler[G]) SetGroupModelsReader(read func(context.Context, int64) ([]string, map[string][]protocol.ProtocolID)) {
-	h.groupModels = read
 }
 
 // SetGroupPresentation 设置已授权控制台查询的分组展示函数。
@@ -470,9 +461,6 @@ func (h *APIKeyHandler[G]) GetAvailableGroups(c *gin.Context) {
 		var capacity *accessview.GroupCapacitySummary
 		if value, ok := capacityMap[groups[i].ID]; ok {
 			capacity = &value
-		}
-		if h.groupModels != nil {
-			groups[i].Models, groups[i].ModelProtocols = h.groupModels(c.Request.Context(), groups[i].ID)
 		}
 		groupDTO := h.presentGroup(&groups[i], capacity)
 		if h.groupPresentation != nil {
