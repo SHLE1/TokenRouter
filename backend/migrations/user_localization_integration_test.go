@@ -50,7 +50,7 @@ func TestUserLocalizationMigrations(t *testing.T) {
 	var count int
 	require.NoError(t, db.QueryRow(`SELECT count(*) FROM information_schema.columns WHERE table_name='users' AND column_name='preferred_locale'`).Scan(&count))
 	require.Equal(t, 1, count)
-	require.NoError(t, db.QueryRow(`SELECT count(*) FROM schema_migrations WHERE filename >= '290'`).Scan(&count))
+	require.NoError(t, db.QueryRow(`SELECT count(*) FROM schema_migrations WHERE filename = '290_user_localization.sql'`).Scan(&count))
 	require.Equal(t, 1, count)
 	require.NoError(t, db.QueryRow(`SELECT count(*) FROM information_schema.columns WHERE table_name='error_passthrough_rules' AND column_name='message_localization'`).Scan(&count))
 	require.Zero(t, count)

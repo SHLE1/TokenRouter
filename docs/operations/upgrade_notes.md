@@ -8,6 +8,7 @@
 
 | 迁移 | 专题 | 升级方式 | 当前状态 |
 | --- | --- | --- | --- |
+| 291 | [OpenAI OAuth 导入模板下线](#openai_oauth_import_defaults_removal) | 前后端同时升级 | 有效 |
 | 290 | [用户可见内容多语言](#user_localization_migration) | 停机，前后端同时升级 | 有效 |
 | 289 | [用户活动汇总](#user_activity_migration) | 回填期间暂停用量写入 | 有效 |
 | 286 | [Antigravity 静态提供商停用](#antigravity_static_retirement) | 停机 | 有效 |
@@ -43,6 +44,13 @@
 | 234 | [自研异步图片任务下线](#自研异步图片任务下线) | 停机 | 有效 |
 
 "停机"表示需要先停止全部旧实例、备份并验证数据库，再由一个新实例执行迁移，验证后才扩容其他新实例，新旧二进制不能同时运行。这类迁移的回退方式都是：停止全部新实例，恢复升级前的数据库备份（需要时还有 Redis 和配置），再启动旧版本；只回退二进制、手工补数据或删除迁移记录都不能代替数据库恢复。下面各节不再重复这段说明，只写各自不同的地方。
+
+<a id="openai_oauth_import_defaults_removal"></a>
+## OpenAI OAuth 导入模板下线
+
+迁移 `291_remove_openai_oauth_import_defaults.sql` 删除 `settings` 中的 `openai_oauth_import_defaults`。网关设置中的模板编辑入口及其 GET、PUT 接口已下线。创建和导入 OpenAI OAuth 提供商时，配置来自创建表单或导入文件，缺省字段按提供商创建规则处理。已创建提供商的配置保持当前值。
+
+前后端需要同时升级。升级前备份该设置，回退到需要模板的版本时，从备份恢复。历史迁移 271 对模板的清理仍按迁移顺序执行，随后由迁移 291 删除模板。
 
 <a id="user_localization_migration"></a>
 ## 用户可见内容多语言

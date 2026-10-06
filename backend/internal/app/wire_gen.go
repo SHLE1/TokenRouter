@@ -323,7 +323,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	proxyTransfer := provideProxyTransfer(proxyAdmin, tasks)
 	grokImportProbeScheduler := provideProviderImportProbes(manager)
 	grokQuotaService := provideGrokQuota(providerStore, proxyStore, grokTokenSource, transportClient, cfg, postgresStore, gatewayRuntimeSettings)
-	archive := provideProviderArchive(admin, proxyTransfer, privacyService, providerRuntimeSettings, grokImportProbeScheduler, grokQuotaService, tasks)
+	archive := provideProviderArchive(admin, proxyTransfer, privacyService, grokImportProbeScheduler, grokQuotaService, tasks)
 	codexImporter := provideCodexImporter(admin, archive, tokenCacheInvalidator)
 	codexImportHandler := httpapi6.NewCodexImportHandler(codexImporter)
 	oAuthUsageCache := provider3.NewOAuthUsageCache()

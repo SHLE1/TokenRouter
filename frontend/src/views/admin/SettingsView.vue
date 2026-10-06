@@ -322,13 +322,6 @@
             </SettingsSection>
           </SettingsCard>
 
-          <div
-            v-show="activeGatewaySection === 'openai'" v-content-reveal="activeGatewaySection === 'openai'"
-            data-testid="gateway-card-openai-oauth-defaults"
-          >
-            <OpenAIOAuthImportDefaultsSettings />
-          </div>
-
           <!-- 限流冷却（429） -->
           <SettingsCard
             v-show="activeGatewaySection === 'general'" v-content-reveal="activeGatewaySection === 'general'"
@@ -5400,7 +5393,6 @@ import Toggle from "@/components/common/Toggle.vue";
 import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
 import BalanceIcon from "@/components/common/BalanceIcon.vue";
-import OpenAIOAuthImportDefaultsSettings from "@/components/admin/provider/OpenAIOAuthImportDefaultsSettings.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
 import { useBalanceDisplay } from "@/composables/useBalanceDisplay";
 import EmailTemplateEditor from "@/views/admin/settings/EmailTemplateEditor.vue";

@@ -338,6 +338,7 @@ app 为所有需要幂等的用户和管理员 HTTP 处理器绑定同一个协�
 
 | 路径或字段 | 返回 | 替代 |
 | --- | --- | --- |
+| `GET`、`PUT /api/v1/admin/settings/openai-oauth-import-defaults` | `404` | 在提供商创建表单或导入文件中填写配置 |
 | `GET /v1/sub2api/billing` | `404` | 无；这个路径不再享有 API Key 非消费请求的豁免 |
 | `GET`、`PUT /api/v1/admin/providers/upstream-billing-probe/settings`、`POST .../upstream-billing-probe/batch`、`PUT`、`POST /api/v1/admin/providers/:id/upstream-billing-probe` | `404` | 无 |
 | `POST /api/v1/admin/providers/check-mixed-channel` | `404` | 提供商写入时直接校验 |
