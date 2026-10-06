@@ -253,10 +253,6 @@ func (c *schedulerTestGatewayCache) RefreshSessionOwnerTTL(ctx context.Context, 
 
 func newSchedulerTestOpenAIWSV2Config() *config.Config {
 	cfg := &config.Config{}
-	cfg.Gateway.OpenAIWS.Enabled = true
-	cfg.Gateway.OpenAIWS.OAuthEnabled = true
-	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
-	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
 	cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds = 3600
 	return cfg
 }
@@ -532,7 +528,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_DefaultDisabled_Requir
 	providers := []gatewayprovider.ExecutionProvider{
 		{
 			Record: providercore.Record{
-				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 36011,
+				Credentials: map[string]any{"model_whitelist": []string{"*"}, "upstream_protocols": []string{"openai_responses"}}, LoadLocation: time.LoadLocation, ID: 36011,
 				Platform:    capability.PlatformOpenAI,
 				Type:        capability.ProviderTypeAPIKey,
 				Status:      billing.StatusActive,
@@ -587,7 +583,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_DefaultDisabled_Requir
 	providers := []gatewayprovider.ExecutionProvider{
 		{
 			Record: providercore.Record{
-				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 36021,
+				Credentials: map[string]any{"model_whitelist": []string{"*"}, "upstream_protocols": []string{"openai_responses"}}, LoadLocation: time.LoadLocation, ID: 36021,
 				Platform:    capability.PlatformOpenAI,
 				Type:        capability.ProviderTypeAPIKey,
 				Status:      billing.StatusActive,
@@ -1167,10 +1163,6 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_EnabledUsesAdvancedPre
 	}
 	cfg := &config.Config{}
 	cfg.Gateway.Scheduling.LoadBatchEnabled = false
-	cfg.Gateway.OpenAIWS.Enabled = true
-	cfg.Gateway.OpenAIWS.OAuthEnabled = true
-	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
-	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
 	cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds = 3600
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{Providers: schedulerTestOpenAIProviderRepo{providers: providers}},
@@ -2336,10 +2328,6 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_PreviousResponseSticky
 	}
 	cache := &schedulerTestGatewayCache{}
 	cfg := &config.Config{}
-	cfg.Gateway.OpenAIWS.Enabled = true
-	cfg.Gateway.OpenAIWS.OAuthEnabled = true
-	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
-	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
 	cfg.Gateway.OpenAIWS.StickySessionTTLSeconds = 1800
 	cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds = 3600
 
@@ -2467,10 +2455,6 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_SessionStickyBusyKeeps
 	cfg.Gateway.AdvancedScheduler.StickyEscapeEnabled = false
 	cfg.Gateway.AdvancedScheduler.StickyEscapeTTFTMs = 15000
 	cfg.Gateway.AdvancedScheduler.StickyEscapeErrorRate = 0.5
-	cfg.Gateway.OpenAIWS.Enabled = true
-	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
-	cfg.Gateway.OpenAIWS.OAuthEnabled = true
-	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
 
 	concurrencyCache := schedulerTestConcurrencyCache{
 		acquireResults: map[int64]bool{
@@ -3130,7 +3114,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_RequiredWSV2_SkipsStic
 	providers := []gatewayprovider.ExecutionProvider{
 		{
 			Record: providercore.Record{
-				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2201,
+				Credentials: map[string]any{"model_whitelist": []string{"*"}, "upstream_protocols": []string{"openai_responses"}}, LoadLocation: time.LoadLocation, ID: 2201,
 				Platform:    capability.PlatformOpenAI,
 				Type:        capability.ProviderTypeAPIKey,
 				Status:      billing.StatusActive,
@@ -3280,7 +3264,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_RequiredWSV2_NoAvailab
 	providers := []gatewayprovider.ExecutionProvider{
 		{
 			Record: providercore.Record{
-				Credentials: map[string]any{"model_whitelist": []string{"*"}}, LoadLocation: time.LoadLocation, ID: 2301,
+				Credentials: map[string]any{"model_whitelist": []string{"*"}, "upstream_protocols": []string{"openai_responses"}}, LoadLocation: time.LoadLocation, ID: 2301,
 				Platform:    capability.PlatformOpenAI,
 				Type:        capability.ProviderTypeOAuth,
 				Status:      billing.StatusActive,
@@ -3737,14 +3721,13 @@ func TestDefaultOpenAIProviderScheduler_IsProviderTransportCompatible_Branches(t
 	require.True(t, scheduler.isProviderTransportCompatible(provider, egress.OpenAIUpstreamTransportResponsesWebsocketV2))
 	require.True(t, scheduler.isProviderTransportCompatible(provider, egress.OpenAIUpstreamTransportResponsesWebsocketV2Ingress))
 
-	cfg.Gateway.OpenAIWS.ModeRouterV2Enabled = true
-	// Options 按值传入，路由模式测试需要重新构造选择器。
+	// HTTP 转换资格来自提供商协议集合。
 	scheduler.service = newCompatibleSelectionForTest(CompatibleDependencies{}, cfg)
-	provider.Record.Extra["openai_apikey_responses_websockets_v2_mode"] = providercore.OpenAIWSIngressModeHTTPBridge
+	provider.Record.Credentials = map[string]any{"upstream_protocols": []string{"openai_responses"}}
 	require.False(t, scheduler.isProviderTransportCompatible(provider, egress.OpenAIUpstreamTransportResponsesWebsocketV2))
 	require.True(t, scheduler.isProviderTransportCompatible(provider, egress.OpenAIUpstreamTransportResponsesWebsocketV2Ingress))
 
-	provider.Record.Extra["openai_apikey_responses_websockets_v2_mode"] = providercore.OpenAIWSIngressModeOff
+	provider.Record.Credentials["upstream_protocols"] = []string{}
 	require.False(t, scheduler.isProviderTransportCompatible(provider, egress.OpenAIUpstreamTransportResponsesWebsocketV2Ingress))
 }
 

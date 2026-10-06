@@ -224,6 +224,12 @@ SMTP 的测试连接和实际发送共用同一条建连路径和超时：
 
 旧的进程配置 `gateway.openai_ws.lb_top_k`、`gateway.openai_ws.scheduler_score_weights.*` 和 `gateway.openai_scheduler.sticky_escape_*`，在加载时分别映射到 `gateway.advanced_scheduler` 的 `lb_top_k`、`score_weights.*` 和 `sticky_escape_*`，对应的环境变量也兼容，优先级和上面的兼容键相同。管理设置请求里的 `openai_advanced_scheduler_*` 和旧的全局开关，返回已弃用的错误。OpenAI 的配额自动暂停是 OpenAI 专属的设置，不属于通用的高级调度参数。
 
+### Responses 长连接参数
+
+“网关设置 → OpenAI → 长连接与连接池”支持在线调整连接数量、超时、消息大小和会话记录期限。数据库 `responses_ws` 保存覆盖对象，未覆盖字段使用 `gateway.openai_ws` 的部署默认值。配置来源和热更新时机见 [Responses 长连接与在线参数](openai_upstream.md#responses_ws_runtime)。
+
+旧的 WS 总开关、认证类型开关、强制 HTTP、新旧模式选择和协议版本开关已经退役，加载器提示后忽略。客户端是否允许使用 WS，统一由分组协议控制。HTTP 转 WS 执行路径的预热生成、重试退避、批量刷新、存储恢复和日志采样参数也已退役。连接池自身的预热与逐轮恢复继续按在线参数执行。
+
 ### 平台相关设置
 
 Grok 文本转发有两项数据库运行时设置：`grok_default_text_model` 和 `grok_default_base_url_mode`。`grok_default_text_model` 只用于允许省略模型的请求，其他请求里的模型名不会被改成默认型号；需要改写时，配置手动的模型映射。原来的 `grok_cross_client_model_map_enabled` 已经移除，管理设置请求里带这个字段时返回 400。

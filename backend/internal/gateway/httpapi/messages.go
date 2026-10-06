@@ -81,7 +81,7 @@ type MessagesBackend interface {
 // MessagesHandler 的依赖在 app 一次绑定；每次调用只创建本请求数据。
 type MessagesHandler struct {
 	executor execution.Executor
-	requestLifetime
+	RequestLifetime
 
 	options     MessagesHTTPOptions
 	backend     MessagesBackend
@@ -96,7 +96,7 @@ func NewMessagesHandler(options MessagesHTTPOptions, backend MessagesBackend, pr
 // Messages handles Claude API compatible messages endpoint
 // POST /v1/messages
 func (h *MessagesHandler) Messages(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "anthropic")
+	done, accepted := h.BeginRequest(c, "anthropic")
 	if !accepted {
 		return
 	}

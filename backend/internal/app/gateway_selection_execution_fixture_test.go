@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
+
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
@@ -95,7 +97,7 @@ func newOpenAIExecutionAndSelectionFixture(
 	grokHealth := &provideradapter.GrokHealth{Store: providerRepo, Health: healthObserver, Runtime: blocks, ModelTransient: modelTransient, Throttle: providercore.NewWriteThrottle(30 * time.Second), NormalizeModel: func(value *providercore.Record, model string) string {
 		return (gatewayprovider.ModelPolicy{Record: value}).NormalizeOpenAI(model)
 	}}
-	connections := gatewayhttp.NewOpenAIWSConnections(openAIWSPoolOptions(cfg), nil)
+	connections := openaiws.NewOpenAIWSConnections(openAIWSPoolOptions(cfg), nil)
 	identity := gatewayprovider.NewExecutionAgentIdentity(&providercore.OpenAITaskCoordinator{}, providerRepo, nil, connections.InvalidateProvider)
 	output := provideOpenAIResponseOutput(cfg, provideOpenAIResponseHealth(healthObserver, blocks, modelTransient, deferredService), grokHealth, healthObserver, headerFilter, turnHeaders, proxyCircuit, settingService, stateStore, choices, provideReasoningHistory(cache), identity)
 	activity := &gatewayRequestActivity{Operations: lifecycle.NewOperations("GatewayRequestsAndAttempts")}
@@ -107,8 +109,8 @@ func newOpenAIExecutionAndSelectionFixture(
 	text := openAITextExecution(cfg, providerRepo, identity, executionCredentials, httpUpstream, tlsFPProfileService, routers, settingService, grokExecutor, output, provideAnthropicPromptCache(), choices.OpenAIHTTPResponseStickyTTL, provideCompactExecutor(cfg))
 	lineage := provideOpenAIEncryptedLineage(stateStore, choices)
 	imagePolicy := provideOpenAIImageBridgePolicy(cfg)
-	sockets := provideOpenAIWebSockets(cfg, connections, text, prompts, choices, lineage, imagePolicy, cache)
-	responses := provideOpenAIResponses(text, sockets, choices, lineage, imagePolicy)
+	sockets := provideOpenAIWebSockets(nil, cfg, connections, text, prompts, choices, lineage, imagePolicy, cache)
+	responses := provideOpenAIResponses(text, choices, lineage, imagePolicy)
 	var read func(context.Context) (bool, time.Duration)
 	if settingService != nil {
 		read = settingService.Moderation.GetCyberSessionBlockRuntime

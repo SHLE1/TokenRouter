@@ -57,7 +57,7 @@ func (u *blockingOpenAIResponseHeaderUpstream) DoWithTLS(req *http.Request, _ st
 
 func TestOpenAIForwardFirstOutputTimeoutIncludesResponseHeaderWait(t *testing.T) {
 	upstream := &blockingOpenAIResponseHeaderUpstream{canceled: make(chan struct{})}
-	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}, transport: upstream})
+	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}, transport: upstream})
 	body := []byte(`{"model":"gpt-5.5","stream":true,"reasoning":{"effort":"low"},"input":"hello"}`)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -89,7 +89,7 @@ func TestOpenAIForwardFirstOutputTimeoutIncludesResponseHeaderWait(t *testing.T)
 }
 
 func TestOpenAINativeFirstOutputTimeoutDisabledPreservesSynchronousStream(t *testing.T) {
-	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}})
+	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}})
 	resp := &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(strings.Join([]string{
 		`data: {"type":"response.created","response":{"id":"resp_disabled"}}`,
 		"",
@@ -108,7 +108,7 @@ func TestOpenAINativeFirstOutputTimeoutDisabledPreservesSynchronousStream(t *tes
 }
 
 func TestOpenAINativeFirstOutputTimeoutIgnoresPreambleAndCleansReader(t *testing.T) {
-	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}})
+	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}})
 	pr, pw := io.Pipe()
 	writerDone := make(chan struct{})
 	go func() {
@@ -161,7 +161,7 @@ func TestOpenAIFirstOutputTimeoutForReasoningEffort(t *testing.T) {
 }
 
 func TestOpenAINativeFirstOutputTimeoutDisarmsAfterSemanticOutput(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, headers: compileHTTPFixtureHeaders(cfg)})
 	pr, pw := io.Pipe()
 	go func() {
@@ -210,7 +210,7 @@ func TestOpenAINativeFirstOutputTimeoutDoesNotLeakLargePreambleEvent(t *testing.
 
 func assertOpenAINativeLargeOpenEventTimesOutWithoutLeak(t *testing.T, line string) {
 	t.Helper()
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, StreamKeepaliveInterval: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, StreamKeepaliveInterval: 1, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, headers: compileHTTPFixtureHeaders(cfg)})
 	pr, pw := io.Pipe()
 	body := &firstOutputCloseTrackingBody{ReadCloser: pr, closed: make(chan struct{})}
@@ -256,7 +256,7 @@ func assertOpenAINativeLargeOpenEventTimesOutWithoutLeak(t *testing.T, line stri
 }
 
 func TestOpenAINativeFirstOutputEOFDispatchesTerminalEventWithoutBlankLine(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 1, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, headers: compileHTTPFixtureHeaders(cfg)})
 	payload := `data: {"type":"response.completed","response":{"id":"resp_eof","usage":{"input_tokens":3,"output_tokens":2}}}`
 	rec := httptest.NewRecorder()
@@ -320,7 +320,7 @@ func TestOpenAINativeFirstOutputStageOverflowFailsOverWithoutAttemptBytes(t *tes
 }
 
 func TestOpenAINativeFirstOutputScannerRejectsOversizedLineWithoutLeak(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 30, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 30, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, headers: compileHTTPFixtureHeaders(cfg)})
 	oversizedLine := "data: " + strings.Repeat("x", openai.OpenAIFirstOutputStageMaxBytes+openai.OpenAIFirstOutputScannerFramingAllowance+1024)
 	body := "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_private\"}}\n\n" + oversizedLine + "\n"
@@ -349,7 +349,7 @@ func TestOpenAINativeFirstOutputScannerRejectsOversizedLineWithoutLeak(t *testin
 }
 
 func TestOpenAINativeFirstOutputScannerAllowsLargeEventAfterSemanticBoundary(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 30, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 30, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, headers: compileHTTPFixtureHeaders(cfg)})
 	largeDelta := strings.Repeat("i", openai.OpenAIFirstOutputStageMaxBytes+openai.OpenAIFirstOutputScannerFramingAllowance+1024)
 	body := strings.Join([]string{
@@ -384,7 +384,7 @@ func TestOpenAINativeFirstOutputScannerAllowsLargeEventAfterSemanticBoundary(t *
 }
 
 func TestOpenAINativeFirstOutputTimeoutDisabledKeepsPreamblePrivateAcrossKeepalive(t *testing.T) {
-	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamKeepaliveInterval: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}})
+	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamKeepaliveInterval: 1, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}})
 	pr, pw := io.Pipe()
 	go func() {
 		defer func() { _ = pw.Close() }()
@@ -407,7 +407,7 @@ func TestOpenAINativeFirstOutputTimeoutDisabledKeepsPreamblePrivateAcrossKeepali
 }
 
 func TestOpenAINativeFirstOutputFailoverKeepsAttemptHeadersPrivateAfterKeepaliveCommit(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 2, StreamKeepaliveInterval: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{OpenAIFirstOutputTimeoutSeconds: 2, StreamKeepaliveInterval: 1, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg, headers: compileHTTPFixtureHeaders(cfg)})
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -477,5 +477,5 @@ func TestOpenAIFirstOutputStageDefaultLimitIsIndependentFromScannerLimit(t *test
 
 	require.EqualValues(t, 8*1024*1024, stage.Limit())
 	require.Greater(t, stage.Limit(), int64(68106))
-	require.Less(t, stage.Limit(), int64(openAIResponseDefaultMaxLineSize))
+	require.Less(t, stage.Limit(), int64(OpenAIResponseDefaultMaxLineSize))
 }

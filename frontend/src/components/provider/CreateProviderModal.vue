@@ -1112,19 +1112,21 @@
                   testid="create-openai-images-url-to-b64-json"
                 />
               </template>
+              <details v-if="upstreamProtocols?.includes('openai_responses_websocket')" class="group">
+              <summary class="cursor-pointer text-sm font-medium">{{ t('admin.providers.openai.wsAdvancedConnections') }}</summary>
               <SettingRow
-                v-if="isOpenAIOAuthCategory || providerCategory === 'apikey'"
                 id="create-openai-ws-mode"
                 label-for="create-openai-ws-mode-select"
                 :label="t('admin.providers.openai.wsMode')"
                 :hint="t('admin.providers.openai.wsModeDesc')"
                 field
               >
-                <Select id="create-openai-ws-mode-select" v-model="openaiResponsesWebSocketV2Mode" :options="openAIWSModeOptions" />
+                <Select id="create-openai-ws-mode-select" v-model="responsesWSConnectionMode" :options="responsesWSConnectionOptions" />
                 <template #hint>
-                  <p class="input-hint">{{ t(openAIWSModeConcurrencyHintKey) }}</p>
+                  <p class="input-hint">{{ t(responsesWSConnectionHintKey) }}</p>
                 </template>
               </SettingRow>
+              </details>
             </SettingsSection>
 
             <SettingsSection v-if="isOpenAIOAuthCategory" :title="t('admin.providers.sections.openaiClient')">
@@ -1655,7 +1657,7 @@ import {
   useAnthropicAPIKeyAuthSchemeOptions,
   useCodexFingerprintModeOptions,
   useOpenAIOAuthClientPolicyOptions,
-  useOpenAIWSModeOptions,
+  useResponsesWSConnectionModeOptions,
   useWebSearchEmulationOptions,
   type AnthropicAPIKeyAuthScheme,
   type CodexFingerprintMode,
@@ -1684,11 +1686,11 @@ import {
   groupedProviderSelectOptions
 } from '@/constants/provider'
 import {
-  OPENAI_WS_MODE_OFF,
-  isOpenAIWSModeEnabled,
-  resolveOpenAIWSModeConcurrencyHintKey,
-  type OpenAIWSMode
-} from '@/utils/openaiWsMode'
+  clearLegacyResponsesWSSettings,
+  RESPONSES_WS_POOLED,
+  responsesWSConnectionHint,
+  type ResponsesWSConnectionMode
+} from '@/utils/responsesWsConnection'
 import OAuthAuthorizationFlow from './OAuthAuthorizationFlow.vue'
 
 // Type for exposed OAuthAuthorizationFlow component
@@ -2075,8 +2077,7 @@ const openAINativeCompactionV2Mode = ref<OpenAICompactMode>('force_on')
 const openAIResponsesContinuationSupported = ref(false)
 // 图片回填默认关闭，只对 OpenAI API Key 提供商生效。
 const openAIImagesURLToB64JSON = ref(false)
-const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
-const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
+const responsesWSConnectionMode = ref<ResponsesWSConnectionMode>(RESPONSES_WS_POOLED)
 const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
 const openAIOAuthClientPolicy = ref<OpenAIOAuthClientPolicy>('any')
 const codexFingerprintMode = ref<CodexFingerprintMode>('off')
@@ -2206,26 +2207,12 @@ const geminiSelectedTier = computed(() => {
   }
 })
 
-const openAIWSModeOptions = useOpenAIWSModeOptions()
+const responsesWSConnectionOptions = useResponsesWSConnectionModeOptions()
 
-const openaiResponsesWebSocketV2Mode = computed({
-  get: () => {
-    if (form.platform === 'openai' && providerCategory.value === 'apikey') {
-      return openaiAPIKeyResponsesWebSocketV2Mode.value
-    }
-    return openaiOAuthResponsesWebSocketV2Mode.value
-  },
-  set: (mode: OpenAIWSMode) => {
-    if (form.platform === 'openai' && providerCategory.value === 'apikey') {
-      openaiAPIKeyResponsesWebSocketV2Mode.value = mode
-      return
-    }
-    openaiOAuthResponsesWebSocketV2Mode.value = mode
-  }
-})
 
-const openAIWSModeConcurrencyHintKey = computed(() =>
-  resolveOpenAIWSModeConcurrencyHintKey(openaiResponsesWebSocketV2Mode.value)
+
+const responsesWSConnectionHintKey = computed(() =>
+  responsesWSConnectionHint(responsesWSConnectionMode.value)
 )
 
 const geminiQuotaDocs = {
@@ -2563,8 +2550,7 @@ watch(
       openaiFlattenNamespacesEnabled.value = false
       openAIResponsesContinuationSupported.value = false
       openAIImagesURLToB64JSON.value = false
-      openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
-      openaiAPIKeyResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
+      responsesWSConnectionMode.value = RESPONSES_WS_POOLED
       codexCLIOnlyAllowClaudeCodeEnabled.value = false
       openAIOAuthClientPolicy.value = 'any'
     }
@@ -2895,8 +2881,7 @@ const resetForm = () => {
   openAINativeCompactionV2Mode.value = 'force_on'
   openAIResponsesContinuationSupported.value = false
   openAIImagesURLToB64JSON.value = false
-  openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
-  openaiAPIKeyResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
+  responsesWSConnectionMode.value = RESPONSES_WS_POOLED
   codexCLIOnlyAllowClaudeCodeEnabled.value = false
   openAIOAuthClientPolicy.value = 'any'
   codexFingerprintMode.value = 'off'
@@ -2972,15 +2957,9 @@ const buildOpenAIExtra = (base?: Record<string, unknown>): Record<string, unknow
   }
 
   const extra: Record<string, unknown> = { ...base }
-  if (providerCategory.value === 'oauth-based') {
-    extra.openai_oauth_responses_websockets_v2_mode = openaiOAuthResponsesWebSocketV2Mode.value
-    extra.openai_oauth_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(openaiOAuthResponsesWebSocketV2Mode.value)
-  } else if (providerCategory.value === 'apikey') {
-    extra.openai_apikey_responses_websockets_v2_mode = openaiAPIKeyResponsesWebSocketV2Mode.value
-    extra.openai_apikey_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(openaiAPIKeyResponsesWebSocketV2Mode.value)
-  }
-  // 清理兼容旧键，统一改用分类型开关。
-  delete extra.responses_websockets_v2_enabled
+  extra.responses_ws_connection_mode = responsesWSConnectionMode.value
+  // 保存统一的连接方式。
+  clearLegacyResponsesWSSettings(extra)
   delete extra.openai_ws_enabled
   delete extra.openai_long_context_billing_enabled
   if (openaiPassthroughEnabled.value) {

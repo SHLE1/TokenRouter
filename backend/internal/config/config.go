@@ -1032,98 +1032,32 @@ func (c *UserMessageQueueConfig) GetEffectiveMode() string {
 // DefaultOpenAIWSClientFirstMessageTimeoutSeconds 是入站首条消息的等待秒数。
 const DefaultOpenAIWSClientFirstMessageTimeoutSeconds = 30
 
-// GatewayOpenAIWSConfig OpenAI Responses WebSocket 配置。
-// 注意：默认全局开启；如需回滚可使用 force_http 或关闭 enabled。
+// GatewayOpenAIWSConfig 提供 Responses WS 运行参数的部署默认值，管理端可以覆盖。
 type GatewayOpenAIWSConfig struct {
-	// ModeRouterV2Enabled: 新版 WS mode 路由开关（默认 false；关闭时保持 legacy 行为）
-	ModeRouterV2Enabled bool `mapstructure:"mode_router_v2_enabled"`
-	// IngressModeDefault: ingress 默认模式（off/ctx_pool/passthrough/http_bridge）
-	IngressModeDefault string `mapstructure:"ingress_mode_default"`
-	// ClientFirstMessageTimeoutSeconds 限制 WebSocket 升级后读取并解压首条客户端
-	// response.create 消息的总时间。
-	ClientFirstMessageTimeoutSeconds int `mapstructure:"client_first_message_timeout_seconds"`
-	// IngressInterTurnIdleTimeoutSeconds 限制已完成轮次之间允许的客户端空闲时间，0 表示关闭。
-	IngressInterTurnIdleTimeoutSeconds int `mapstructure:"ingress_inter_turn_idle_timeout_seconds"`
-	// MaxIngressConnectionsPerAPIKey 限制所有实例中单个 API Key 的活跃入站会话数，0 表示关闭。
-	MaxIngressConnectionsPerAPIKey int `mapstructure:"max_ingress_connections_per_api_key"`
-	// Enabled: 全局总开关（默认 true）
-	Enabled bool `mapstructure:"enabled"`
-	// OAuthEnabled: 是否允许 OpenAI OAuth 提供商使用 WS
-	OAuthEnabled bool `mapstructure:"oauth_enabled"`
-	// APIKeyEnabled: 是否允许 OpenAI API Key 提供商使用 WS
-	APIKeyEnabled bool `mapstructure:"apikey_enabled"`
-	// ForceHTTP: 全局强制 HTTP（用于紧急回滚）
-	ForceHTTP bool `mapstructure:"force_http"`
-	// AllowStoreRecovery: 允许在 WSv2 下按策略恢复 store=true（默认 false）
-	AllowStoreRecovery bool `mapstructure:"allow_store_recovery"`
-	// IngressPreviousResponseRecoveryEnabled: ingress 模式收到 previous_response_not_found 时，是否允许自动去掉 previous_response_id 重试一次（默认 true）
-	IngressPreviousResponseRecoveryEnabled bool `mapstructure:"ingress_previous_response_recovery_enabled"`
-	// StoreDisabledConnMode: store=false 且无可复用会话连接时的建连策略（strict/adaptive/off）
-	// - strict: 强制新建连接（隔离优先）
-	// - adaptive: 仅在高风险失败后强制新建连接（性能与隔离折中）
-	// - off: 不强制新建连接（复用优先）
-	StoreDisabledConnMode string `mapstructure:"store_disabled_conn_mode"`
-	// StoreDisabledForceNewConn: store=false 且无可复用粘连连接时是否强制新建连接（默认 true，保障会话隔离）
-	// 兼容旧配置；当 StoreDisabledConnMode 为空时才生效。
-	StoreDisabledForceNewConn bool `mapstructure:"store_disabled_force_new_conn"`
-	// PrewarmGenerateEnabled: 是否启用 WSv2 generate=false 预热（默认 false）
-	PrewarmGenerateEnabled bool `mapstructure:"prewarm_generate_enabled"`
-	// ClientReadLimitBytes: 入站客户端 WS 单帧读取上限。
-	ClientReadLimitBytes int64 `mapstructure:"client_read_limit_bytes"`
-	// HTTPBridgeEnabled: 首包过大时，保持客户端 WS，改用 HTTP Responses 上游。
-	HTTPBridgeEnabled bool `mapstructure:"http_bridge_enabled"`
-	// HTTPBridgeThresholdBytes: 触发 HTTP bridge 的入站 WS payload 阈值。
-	HTTPBridgeThresholdBytes int64 `mapstructure:"http_bridge_threshold_bytes"`
-
-	// Feature 开关：v2 优先于 v1
-	ResponsesWebsockets   bool `mapstructure:"responses_websockets"`
-	ResponsesWebsocketsV2 bool `mapstructure:"responses_websockets_v2"`
-
-	// 连接池参数
-	MaxConnsPerProvider int `mapstructure:"max_conns_per_provider"`
-	MinIdlePerProvider  int `mapstructure:"min_idle_per_provider"`
-	MaxIdlePerProvider  int `mapstructure:"max_idle_per_provider"`
-	// DynamicMaxConnsByProviderConcurrencyEnabled: 是否按提供商并发动态计算连接池上限
-	DynamicMaxConnsByProviderConcurrencyEnabled bool `mapstructure:"dynamic_max_conns_by_provider_concurrency_enabled"`
-	// OAuthMaxConnsFactor: OAuth 提供商连接池系数（effective=ceil(concurrency*factor)）
-	OAuthMaxConnsFactor float64 `mapstructure:"oauth_max_conns_factor"`
-	// APIKeyMaxConnsFactor: API Key 提供商连接池系数（effective=ceil(concurrency*factor)）
-	APIKeyMaxConnsFactor  float64 `mapstructure:"apikey_max_conns_factor"`
-	DialTimeoutSeconds    int     `mapstructure:"dial_timeout_seconds"`
-	ReadTimeoutSeconds    int     `mapstructure:"read_timeout_seconds"`
-	WriteTimeoutSeconds   int     `mapstructure:"write_timeout_seconds"`
-	PoolTargetUtilization float64 `mapstructure:"pool_target_utilization"`
-	QueueLimitPerConn     int     `mapstructure:"queue_limit_per_conn"`
-	// EventFlushBatchSize: WS 流式写出批量 flush 阈值（事件条数）
-	EventFlushBatchSize int `mapstructure:"event_flush_batch_size"`
-	// EventFlushIntervalMS: WS 流式写出最大等待时间（毫秒）；0 表示仅按 batch 触发
-	EventFlushIntervalMS int `mapstructure:"event_flush_interval_ms"`
-	// PrewarmCooldownMS: 连接池预热触发冷却时间（毫秒）
-	PrewarmCooldownMS int `mapstructure:"prewarm_cooldown_ms"`
-	// RetryBackoffInitialMS: WS 重试初始退避（毫秒）；<=0 表示关闭退避
-	RetryBackoffInitialMS int `mapstructure:"retry_backoff_initial_ms"`
-	// RetryBackoffMaxMS: WS 重试最大退避（毫秒）
-	RetryBackoffMaxMS int `mapstructure:"retry_backoff_max_ms"`
-	// RetryJitterRatio: WS 重试退避抖动比例（0-1）
-	RetryJitterRatio float64 `mapstructure:"retry_jitter_ratio"`
-	// RetryTotalBudgetMS: WS 单次请求重试总预算（毫秒）；0 表示关闭预算限制
-	RetryTotalBudgetMS int `mapstructure:"retry_total_budget_ms"`
-	// PayloadLogSampleRate: payload_schema 日志采样率（0-1）
-	PayloadLogSampleRate float64 `mapstructure:"payload_log_sample_rate"`
-
-	// 提供商调度与粘连参数
-	// StickySessionTTLSeconds: session_hash -> provider_id 粘连 TTL
-	StickySessionTTLSeconds int `mapstructure:"sticky_session_ttl_seconds"`
-	// SessionHashReadOldFallback: 会话哈希迁移期是否允许“新 key 未命中时回退读旧 SHA-256 key”
-	SessionHashReadOldFallback bool `mapstructure:"session_hash_read_old_fallback"`
-	// SessionHashDualWriteOld: 会话哈希迁移期是否双写旧 SHA-256 key（短 TTL）
-	SessionHashDualWriteOld bool `mapstructure:"session_hash_dual_write_old"`
-	// MetadataBridgeEnabled 保留旧配置的读取兼容；执行参数已统一为原生快照，不再双写旧 key。
-	MetadataBridgeEnabled bool `mapstructure:"metadata_bridge_enabled"`
-	// StickyResponseIDTTLSeconds: response_id -> provider_id 粘连 TTL
-	StickyResponseIDTTLSeconds int `mapstructure:"sticky_response_id_ttl_seconds"`
-	// StickyPreviousResponseTTLSeconds: 兼容旧键（当新键未设置时回退）
-	StickyPreviousResponseTTLSeconds int `mapstructure:"sticky_previous_response_ttl_seconds"`
+	ClientFirstMessageTimeoutSeconds            int     `mapstructure:"client_first_message_timeout_seconds"`
+	IngressInterTurnIdleTimeoutSeconds          int     `mapstructure:"ingress_inter_turn_idle_timeout_seconds"`
+	MaxIngressConnectionsPerAPIKey              int     `mapstructure:"max_ingress_connections_per_api_key"`
+	IngressPreviousResponseRecoveryEnabled      bool    `mapstructure:"ingress_previous_response_recovery_enabled"`
+	ClientReadLimitBytes                        int64   `mapstructure:"client_read_limit_bytes"`
+	HTTPBridgeThresholdBytes                    int64   `mapstructure:"http_bridge_threshold_bytes"`
+	MaxConnsPerProvider                         int     `mapstructure:"max_conns_per_provider"`
+	MinIdlePerProvider                          int     `mapstructure:"min_idle_per_provider"`
+	MaxIdlePerProvider                          int     `mapstructure:"max_idle_per_provider"`
+	DynamicMaxConnsByProviderConcurrencyEnabled bool    `mapstructure:"dynamic_max_conns_by_provider_concurrency_enabled"`
+	OAuthMaxConnsFactor                         float64 `mapstructure:"oauth_max_conns_factor"`
+	APIKeyMaxConnsFactor                        float64 `mapstructure:"apikey_max_conns_factor"`
+	DialTimeoutSeconds                          int     `mapstructure:"dial_timeout_seconds"`
+	ReadTimeoutSeconds                          int     `mapstructure:"read_timeout_seconds"`
+	WriteTimeoutSeconds                         int     `mapstructure:"write_timeout_seconds"`
+	PoolTargetUtilization                       float64 `mapstructure:"pool_target_utilization"`
+	QueueLimitPerConn                           int     `mapstructure:"queue_limit_per_conn"`
+	PrewarmCooldownMS                           int     `mapstructure:"prewarm_cooldown_ms"`
+	StickySessionTTLSeconds                     int     `mapstructure:"sticky_session_ttl_seconds"`
+	SessionHashReadOldFallback                  bool    `mapstructure:"session_hash_read_old_fallback"`
+	SessionHashDualWriteOld                     bool    `mapstructure:"session_hash_dual_write_old"`
+	MetadataBridgeEnabled                       bool    `mapstructure:"metadata_bridge_enabled"`
+	StickyResponseIDTTLSeconds                  int     `mapstructure:"sticky_response_id_ttl_seconds"`
+	StickyPreviousResponseTTLSeconds            int     `mapstructure:"sticky_previous_response_ttl_seconds"`
 }
 
 // GatewayAdvancedSchedulerScoreWeights 高级调度器提供商打分权重。
@@ -1569,6 +1503,7 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 		slog.Warn("pricing.override_file is retired and ignored; configure user prices in Pricing Management before upgrading")
 	}
 	var cfg Config
+	warnLegacyResponsesWSSettings()
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config error: %w", err)
 	}
@@ -2127,25 +2062,12 @@ func setDefaults() {
 	viper.SetDefault("gateway.openai_passthrough_allow_timeout_headers", false)
 	viper.SetDefault("gateway.live.max_session_duration_seconds", 3600)
 	// OpenAI Responses WebSocket（默认开启；可通过 force_http 紧急回滚）
-	viper.SetDefault("gateway.openai_ws.enabled", true)
-	viper.SetDefault("gateway.openai_ws.mode_router_v2_enabled", false)
-	viper.SetDefault("gateway.openai_ws.ingress_mode_default", "ctx_pool")
 	viper.SetDefault("gateway.openai_ws.client_first_message_timeout_seconds", DefaultOpenAIWSClientFirstMessageTimeoutSeconds)
 	viper.SetDefault("gateway.openai_ws.ingress_inter_turn_idle_timeout_seconds", 300)
 	viper.SetDefault("gateway.openai_ws.max_ingress_connections_per_api_key", 64)
-	viper.SetDefault("gateway.openai_ws.oauth_enabled", true)
-	viper.SetDefault("gateway.openai_ws.apikey_enabled", true)
-	viper.SetDefault("gateway.openai_ws.force_http", false)
-	viper.SetDefault("gateway.openai_ws.allow_store_recovery", false)
 	viper.SetDefault("gateway.openai_ws.ingress_previous_response_recovery_enabled", true)
-	viper.SetDefault("gateway.openai_ws.store_disabled_conn_mode", "strict")
-	viper.SetDefault("gateway.openai_ws.store_disabled_force_new_conn", true)
-	viper.SetDefault("gateway.openai_ws.prewarm_generate_enabled", false)
 	viper.SetDefault("gateway.openai_ws.client_read_limit_bytes", 64*1024*1024)
-	viper.SetDefault("gateway.openai_ws.http_bridge_enabled", true)
 	viper.SetDefault("gateway.openai_ws.http_bridge_threshold_bytes", 15*1024*1024)
-	viper.SetDefault("gateway.openai_ws.responses_websockets", false)
-	viper.SetDefault("gateway.openai_ws.responses_websockets_v2", true)
 	viper.SetDefault("gateway.openai_ws.max_conns_per_provider", 128)
 	viper.SetDefault("gateway.openai_ws.min_idle_per_provider", 4)
 	viper.SetDefault("gateway.openai_ws.max_idle_per_provider", 12)
@@ -2157,14 +2079,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.openai_ws.write_timeout_seconds", 120)
 	viper.SetDefault("gateway.openai_ws.pool_target_utilization", 0.7)
 	viper.SetDefault("gateway.openai_ws.queue_limit_per_conn", 64)
-	viper.SetDefault("gateway.openai_ws.event_flush_batch_size", 1)
-	viper.SetDefault("gateway.openai_ws.event_flush_interval_ms", 10)
 	viper.SetDefault("gateway.openai_ws.prewarm_cooldown_ms", 300)
-	viper.SetDefault("gateway.openai_ws.retry_backoff_initial_ms", 120)
-	viper.SetDefault("gateway.openai_ws.retry_backoff_max_ms", 2000)
-	viper.SetDefault("gateway.openai_ws.retry_jitter_ratio", 0.2)
-	viper.SetDefault("gateway.openai_ws.retry_total_budget_ms", 5000)
-	viper.SetDefault("gateway.openai_ws.payload_log_sample_rate", 0.2)
 	viper.SetDefault("gateway.advanced_scheduler.lb_top_k", 7)
 	viper.SetDefault("gateway.advanced_scheduler.ewma_error_rate_alpha", 0.2)
 	viper.SetDefault("gateway.advanced_scheduler.ewma_ttft_alpha", 0.2)
@@ -3211,58 +3126,14 @@ func (c *Config) Validate() error {
 	if c.Gateway.OpenAIWS.QueueLimitPerConn <= 0 {
 		return fmt.Errorf("gateway.openai_ws.queue_limit_per_conn must be positive")
 	}
-	if c.Gateway.OpenAIWS.EventFlushBatchSize <= 0 {
-		return fmt.Errorf("gateway.openai_ws.event_flush_batch_size must be positive")
-	}
-	if c.Gateway.OpenAIWS.EventFlushIntervalMS < 0 {
-		return fmt.Errorf("gateway.openai_ws.event_flush_interval_ms must be non-negative")
-	}
 	if c.Gateway.OpenAIWS.PrewarmCooldownMS < 0 {
 		return fmt.Errorf("gateway.openai_ws.prewarm_cooldown_ms must be non-negative")
 	}
 	if c.Gateway.OpenAIWS.ClientReadLimitBytes <= 0 {
 		return fmt.Errorf("gateway.openai_ws.client_read_limit_bytes must be positive")
 	}
-	if c.Gateway.OpenAIWS.HTTPBridgeThresholdBytes < 0 {
-		return fmt.Errorf("gateway.openai_ws.http_bridge_threshold_bytes must be non-negative")
-	}
-	if c.Gateway.OpenAIWS.HTTPBridgeEnabled && c.Gateway.OpenAIWS.HTTPBridgeThresholdBytes == 0 {
-		return fmt.Errorf("gateway.openai_ws.http_bridge_threshold_bytes must be positive when http_bridge_enabled is true")
-	}
-	if c.Gateway.OpenAIWS.RetryBackoffInitialMS < 0 {
-		return fmt.Errorf("gateway.openai_ws.retry_backoff_initial_ms must be non-negative")
-	}
-	if c.Gateway.OpenAIWS.RetryBackoffMaxMS < 0 {
-		return fmt.Errorf("gateway.openai_ws.retry_backoff_max_ms must be non-negative")
-	}
-	if c.Gateway.OpenAIWS.RetryBackoffInitialMS > 0 && c.Gateway.OpenAIWS.RetryBackoffMaxMS > 0 &&
-		c.Gateway.OpenAIWS.RetryBackoffMaxMS < c.Gateway.OpenAIWS.RetryBackoffInitialMS {
-		return fmt.Errorf("gateway.openai_ws.retry_backoff_max_ms must be >= retry_backoff_initial_ms")
-	}
-	if c.Gateway.OpenAIWS.RetryJitterRatio < 0 || c.Gateway.OpenAIWS.RetryJitterRatio > 1 {
-		return fmt.Errorf("gateway.openai_ws.retry_jitter_ratio must be within [0,1]")
-	}
-	if c.Gateway.OpenAIWS.RetryTotalBudgetMS < 0 {
-		return fmt.Errorf("gateway.openai_ws.retry_total_budget_ms must be non-negative")
-	}
-	if mode := strings.ToLower(strings.TrimSpace(c.Gateway.OpenAIWS.IngressModeDefault)); mode != "" {
-		switch mode {
-		case "off", "ctx_pool", "passthrough", "http_bridge":
-		case "shared", "dedicated":
-			slog.Warn("gateway.openai_ws.ingress_mode_default is deprecated, treating as ctx_pool; please update to off|ctx_pool|passthrough|http_bridge", "value", mode)
-		default:
-			return fmt.Errorf("gateway.openai_ws.ingress_mode_default must be one of off|ctx_pool|passthrough|http_bridge")
-		}
-	}
-	if mode := strings.ToLower(strings.TrimSpace(c.Gateway.OpenAIWS.StoreDisabledConnMode)); mode != "" {
-		switch mode {
-		case "strict", "adaptive", "off":
-		default:
-			return fmt.Errorf("gateway.openai_ws.store_disabled_conn_mode must be one of strict|adaptive|off")
-		}
-	}
-	if c.Gateway.OpenAIWS.PayloadLogSampleRate < 0 || c.Gateway.OpenAIWS.PayloadLogSampleRate > 1 {
-		return fmt.Errorf("gateway.openai_ws.payload_log_sample_rate must be within [0,1]")
+	if c.Gateway.OpenAIWS.HTTPBridgeThresholdBytes <= 0 {
+		return fmt.Errorf("gateway.openai_ws.http_bridge_threshold_bytes must be positive")
 	}
 	if c.Gateway.AdvancedScheduler.LBTopK <= 0 {
 		return fmt.Errorf("gateway.advanced_scheduler.lb_top_k must be positive")

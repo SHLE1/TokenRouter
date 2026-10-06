@@ -238,7 +238,7 @@ func openAIAlphaSearchSchedulingModel(provider *gatewayprovider.ExecutionProvide
 }
 
 func (s *OpenAIAuxiliary) buildOpenAIAlphaSearchResponsesWebSearchRequest(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, alphaBody []byte, body []byte, token string, tlsRouterMatch ...egress.TLSFingerprintRouterMatchResult) (*http.Request, error) {
-	targetURL := chatgptCodexURL
+	targetURL := ChatgptCodexURL
 	options := s.Requests.ResponseOptions(ctx, c, provider, token, targetURL, true, tlsRouterMatch...)
 	options.ApplyUserAgent = func(req *http.Request) { s.Requests.ApplyUserAgent(ctx, c, provider, req, true, tlsRouterMatch...) }
 	return openai.BuildAlphaSearchResponsesRequest(ctx, alphaBody, body, openai.AlphaSearchRequestOptions{

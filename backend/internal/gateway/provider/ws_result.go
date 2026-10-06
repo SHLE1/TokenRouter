@@ -3,7 +3,7 @@ package provider
 import (
 	"net/http"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
@@ -50,7 +50,7 @@ func ProjectWSResult(r *forwardcore.OpenAIResult) *gatewayws.ForwardResult {
 		SearchCount:                 r.SearchCount,
 		AudioUsage:                  r.AudioUsage,
 		WSReplayInput:               replay, WSReplayInputExists: replayExists, WSProviderFailoverReplayInput: r.WSProviderFailoverReplayInput(),
-		ResponseTurnState: http.Header(r.ResponseHeaders).Get(openai.WSTurnStateHeader),
+		ResponseTurnState: http.Header(r.ResponseHeaders).Get(openaiws.WSTurnStateHeader),
 	}
 	if r.UpstreamWarning != nil {
 		out.UpstreamWarning = &forwardcore.UpstreamWarning{StatusCode: r.UpstreamWarning.StatusCode, ResponseBody: r.UpstreamWarning.ResponseBody, Message: r.UpstreamWarning.Message}

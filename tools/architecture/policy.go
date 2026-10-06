@@ -91,7 +91,7 @@ func locate(filename string) location {
 		l.role = "postgres"
 	case len(parts) > 2 && parts[2] == "rediscache", within(dir, "internal/upstream/anthropic/rediscache"):
 		l.role = "redis"
-	case len(parts) > 2 && parts[2] == "httpapi", l.module == "internal/server", l.module == "internal/web":
+	case within(dir, "internal/gateway/ws/httpapi"), len(parts) > 2 && parts[2] == "httpapi", l.module == "internal/server", l.module == "internal/web":
 		l.role = "http"
 	case len(parts) > 2 && parts[2] == "provider", l.module == "internal/config",
 		within(dir, "internal/gateway/media/provider"), within(dir, "internal/notification/smtp"), within(dir, "internal/site/filesystem"):
@@ -140,8 +140,10 @@ func closed(values []string) []string {
 	return values
 }
 
-type dependencyRule = configuration.DependenciesRule
-type dependencies = configuration.Dependencies
+type (
+	dependencyRule = configuration.DependenciesRule
+	dependencies   = configuration.Dependencies
+)
 
 func allowProject(values []string) *dependencyRule {
 	return &dependencyRule{ShouldOnlyDependsOn: &dependencies{Internal: closed(expressions(values, true))}}

@@ -27,7 +27,7 @@ func (p *OpenAIResponseOutput) AnthropicOptions(c *gin.Context, writeError func(
 			if p.Options.Configured && p.Options.MaxLineSize > 0 {
 				return p.Options.MaxLineSize
 			}
-			return openAIResponseDefaultMaxLineSize
+			return OpenAIResponseDefaultMaxLineSize
 		},
 		StreamInterval: p.TextStreamInterval,
 		CopyHeaders: func(dst, src http.Header) {
@@ -62,7 +62,7 @@ func (p *OpenAIResponseOutput) AnthropicDirectOptions(c *gin.Context, provider *
 			if p.Options.Configured && p.Options.MaxLineSize > 0 {
 				return p.Options.MaxLineSize
 			}
-			return openAIResponseDefaultMaxLineSize
+			return OpenAIResponseDefaultMaxLineSize
 		},
 		StreamInterval: p.TextStreamInterval,
 		KeepaliveInterval: func() time.Duration {

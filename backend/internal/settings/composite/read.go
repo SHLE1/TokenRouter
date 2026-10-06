@@ -1,7 +1,10 @@
 package composite
 
 import (
+	"encoding/json"
 	"maps"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 
 	settingvalues "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/team"
@@ -32,6 +35,7 @@ import (
 
 // ReadOptions 包含各模块的设置读取器和当前运行快照。
 type ReadOptions struct {
+	ResponsesWS        *ws.Runtime
 	OAuth              *identity.OAuthSettings
 	Gateway            gateway.AdminSettingsRules
 	Scheduler          scheduler.AdminDefaults
@@ -52,6 +56,26 @@ func Parse(settings map[string]string, options ReadOptions) *Snapshot {
 		ForwardedClientIPHeaders:  forwarded.ForwardedClientIPHeaders,
 		TeamEnabled:               settings[team.SettingKeyTeamEnabled] != "false",
 	}
+	defaults := ws.DefaultParameters()
+	if options.ResponsesWS != nil {
+		defaults = options.ResponsesWS.Defaults()
+	}
+	raw := settings[ws.SettingKey]
+	if raw == "" {
+		raw = "{}"
+	}
+	result.ResponsesWS = json.RawMessage(raw)
+	effective, err := ws.ResolveParameters(defaults, raw)
+	if err != nil {
+		effective = defaults
+		if options.ResponsesWS != nil {
+			effective = options.ResponsesWS.Snapshot()
+		}
+		if !json.Valid([]byte(raw)) {
+			result.ResponsesWS = json.RawMessage("{}")
+		}
+	}
+	result.ResponsesWSEffective = effective
 	result.ApplySearchAdminReadSettings(search.ReadAdminSettings(settings))
 	result.ApplyOpsAdminReadSettings(ops.ReadAdminSettings(settings))
 	result.ApplyPaymentAdminReadSettings(payment.ReadAdminSettings(settings))

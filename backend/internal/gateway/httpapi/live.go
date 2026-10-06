@@ -24,7 +24,7 @@ import (
 
 // Live 创建 ChatGPT Frameless Live 会话并返回 SDP 应答。
 func (h *LiveHandler) Live(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}
@@ -183,7 +183,7 @@ func (h *LiveHandler) WriteLiveCreateError(c *gin.Context, err error) {
 
 // LiveSideband 为已认证调用方代理 Live 控制 WebSocket。
 func (h *LiveHandler) LiveSideband(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}
@@ -278,7 +278,7 @@ type LiveHTTPPorts interface {
 
 // LiveHandler 独占 SDP、JSON、WebSocket 升级及错误响应。
 type LiveHandler struct {
-	requestLifetime
+	RequestLifetime
 	ports LiveHTTPPorts
 }
 

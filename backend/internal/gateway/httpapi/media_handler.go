@@ -80,7 +80,7 @@ type MediaHTTPPorts interface {
 
 // MediaHandler 独占媒体路由的 HTTP 准入、错误响应和同步输出；业务尝试由 media 执行。
 type MediaHandler struct {
-	requestLifetime
+	RequestLifetime
 	ports MediaHTTPPorts
 }
 
@@ -105,7 +105,7 @@ func (h *MediaHandler) readBody(c *gin.Context) ([]byte, bool) {
 }
 
 func (h *MediaHandler) Images(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}
@@ -206,7 +206,7 @@ func (h *MediaHandler) GrokVideoContent(c *gin.Context) {
 }
 
 func (h *MediaHandler) GrokMedia(c *gin.Context, endpoint, requestID string) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}

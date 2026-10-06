@@ -321,7 +321,7 @@ func TestOpenAIGatewayService_BindHTTPResponseProvider(t *testing.T) {
 }
 
 func TestOpenAIStreamingTimeout(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 1, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 1, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -349,7 +349,7 @@ func TestOpenAIStreamingTimeout(t *testing.T) {
 }
 
 func TestOpenAIStreamingContextCanceledReturnsIncompleteErrorWithoutInjectingErrorEvent(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -374,7 +374,7 @@ func TestOpenAIStreamingContextCanceledReturnsIncompleteErrorWithoutInjectingErr
 }
 
 func TestOpenAIStreamingReadErrorBeforeOutputReturnsFailover(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -407,7 +407,7 @@ func TestOpenAIStreamingPostOutputDisconnectQuarantinesSharedProxyWithoutSameStr
 			ProxyID:  &proxyID,
 		},
 	}
-	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
+	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}})
 	// 本用例需要把两次循环视为独立故障，关闭生产环境的并发断流折叠窗口。
 	svc.Output.ProxyCircuit = egress.NewProxyStreamCircuit(egress.ProxyStreamCircuitSettings{
 		FailureThreshold: 2,
@@ -451,7 +451,7 @@ func TestOpenAIStreamingPostOutputDisconnectQuarantinesSharedProxyWithoutSameStr
 func TestOpenAIStreamingTerminalAndClientCancellationDoNotQuarantineProxy(t *testing.T) {
 	proxyID := int64(4699)
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 469901, Name: "oauth", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, ProxyID: &proxyID}}
-	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
+	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}})
 
 	terminalRecorder := httptest.NewRecorder()
 	terminalCtx, _ := gin.CreateTestContext(terminalRecorder)
@@ -495,7 +495,7 @@ func TestOpenAIStreamingTerminalAndClientCancellationDoNotQuarantineProxy(t *tes
 }
 
 func TestOpenAIStreamingResponseFailedBeforeOutputReturnsFailover(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -530,7 +530,7 @@ func TestOpenAIStreamingResponseFailedBeforeOutputReturnsFailover(t *testing.T) 
 }
 
 func TestOpenAIStreamingResponseFailedCapacityBeforeOutputReturnsFailover(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -571,7 +571,7 @@ func TestOpenAIStreamingResponseFailedCapacityBeforeOutputReturnsFailover(t *tes
 }
 
 func TestOpenAIStreamingResponseFailedBeforeOutputServerOverloadedCodeReturnsFailover(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -602,7 +602,7 @@ func TestOpenAIStreamingResponseFailedBeforeOutputServerOverloadedCodeReturnsFai
 }
 
 func TestOpenAIStreamingResponseFailedBeforeOutputRateLimitUsesPoolRetryPolicy(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -661,7 +661,7 @@ func TestOpenAIStreamingResponseFailedBeforeOutputRateLimitUsesPoolRetryPolicy(t
 // TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockProviderScheduling 验证流内 rate limit 进入 OAuth 同提供商重试窗口，但不立即写提供商级限流/封禁状态：
 // HTTP 200 流的 x-codex-* 头不能让窗口内的提供商提前失去调度资格。
 func TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockProviderScheduling(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -696,7 +696,7 @@ func TestOpenAIStreamingResponseFailedRateLimitDoesNotBlockProviderScheduling(t 
 }
 
 func TestOpenAIStreamingResponseFailedAfterOutputSanitizesVerboseResponseForClient(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -743,7 +743,7 @@ func TestOpenAIStreamingResponseFailedAfterOutputSanitizesVerboseResponseForClie
 }
 
 func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputPassesThrough(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -774,7 +774,7 @@ func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputPassesThrough(t *
 }
 
 func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputAppliesPassthroughRule(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -820,7 +820,7 @@ func TestOpenAIStreamingContextWindowResponseFailedBeforeOutputAppliesPassthroug
 }
 
 func TestOpenAIStreamingPreambleOnlyMissingTerminalReturnsFailover(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -849,7 +849,7 @@ func TestOpenAIStreamingPreambleOnlyMissingTerminalReturnsFailover(t *testing.T)
 }
 
 func TestOpenAIStreamingPreambleKeepaliveUsesDownstreamIdle(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 1, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 1, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -882,7 +882,7 @@ func TestOpenAIStreamingPreambleKeepaliveUsesDownstreamIdle(t *testing.T) {
 }
 
 func TestOpenAIStreamingNormalizesTerminalOutputFromDeltas(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -918,7 +918,7 @@ func TestOpenAIStreamingNormalizesTerminalOutputFromDeltas(t *testing.T) {
 }
 
 func TestOpenAIStreamingNormalizesTerminalOutputToEmptyArray(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -947,7 +947,7 @@ func TestOpenAIStreamingNormalizesTerminalOutputToEmptyArray(t *testing.T) {
 }
 
 func TestOpenAIStreamingPolicyResponseFailedBeforeOutputPassesThrough(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -977,7 +977,7 @@ func TestOpenAIStreamingPolicyResponseFailedBeforeOutputPassesThrough(t *testing
 }
 
 func TestOpenAIStreamingPolicyResponseFailedCarriesHTTPStatusWarning(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1008,7 +1008,7 @@ func TestOpenAIStreamingPolicyResponseFailedCarriesHTTPStatusWarning(t *testing.
 }
 
 func TestOpenAIStreamingCybersecurityRiskResponseFailedCarriesHTTPStatusWarning(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1077,7 +1077,7 @@ func TestOpenAIHandleErrorResponse_CyberWarningPassesThroughMessage(t *testing.T
 }
 
 func TestOpenAIStreamingClientDisconnectDrainsUpstreamUsage(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1115,7 +1115,7 @@ func TestOpenAIStreamingClientDisconnectDrainsUpstreamUsage(t *testing.T) {
 }
 
 func TestOpenAIStreamingMissingTerminalEventReturnsIncompleteError(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1142,7 +1142,7 @@ func TestOpenAIStreamingMissingTerminalEventReturnsIncompleteError(t *testing.T)
 }
 
 func TestOpenAIStreamingPassthroughMissingTerminalEventReturnsIncompleteError(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1171,7 +1171,7 @@ func TestOpenAIStreamingPassthroughMissingTerminalEventReturnsIncompleteError(t 
 func TestOpenAIStreamingPassthroughPostOutputDisconnectQuarantinesSharedProxy(t *testing.T) {
 	proxyID := int64(4698)
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 469804, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, ProxyID: &proxyID}}
-	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
+	svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}})
 	// 本用例需要把两次循环视为独立故障，关闭生产环境的并发断流折叠窗口。
 	svc.Output.ProxyCircuit = egress.NewProxyStreamCircuit(egress.ProxyStreamCircuitSettings{
 		FailureThreshold: 2,
@@ -1204,7 +1204,7 @@ func TestOpenAIStreamingPassthroughPostOutputDisconnectQuarantinesSharedProxy(t 
 }
 
 func TestOpenAIStreamingPassthroughResponseFailedBeforeOutputReturnsFailover(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1235,7 +1235,7 @@ func TestOpenAIStreamingPassthroughResponseFailedBeforeOutputReturnsFailover(t *
 }
 
 func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputAppliesPassthroughRule(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1281,7 +1281,7 @@ func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputApplie
 }
 
 func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputWithoutRulePassesThrough(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1312,7 +1312,7 @@ func TestOpenAIStreamingPassthroughContextWindowResponseFailedBeforeOutputWithou
 }
 
 func TestOpenAIStreamingPassthroughResponseFailedAfterOutputSanitizesVerboseResponseForClient(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1357,7 +1357,7 @@ func TestOpenAIStreamingPassthroughResponseFailedAfterOutputSanitizesVerboseResp
 }
 
 func TestOpenAIStreamingPassthroughResponseDoneWithoutDoneMarkerStillSucceeds(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1387,7 +1387,7 @@ func TestOpenAIStreamingPassthroughResponseDoneWithoutDoneMarkerStillSucceeds(t 
 }
 
 func TestOpenAIStreamingPassthroughResponseIncompleteWithoutDoneMarkerStillSucceeds(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1500,7 +1500,7 @@ func TestOpenAINonStreamingContentTypeDefault(t *testing.T) {
 }
 
 func TestOpenAIStreamingHeadersOverride(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}, Headers: egress.ResponseHeaderOptions{Enabled: false}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}, Headers: egress.ResponseHeaderOptions{Enabled: false}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1541,7 +1541,7 @@ func TestOpenAIStreamingHeadersOverride(t *testing.T) {
 }
 
 func TestOpenAIStreamingReuseScannerBufferAndStillWorks(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{StreamDataIntervalTimeout: 0, StreamKeepaliveInterval: 0, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -1711,7 +1711,7 @@ func TestOpenAIBuildUpstreamRequestOpenAIPassthroughPreservesCompactPath(t *test
 
 	req, err := svc.Requests.BuildPassthrough(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token")
 	require.NoError(t, err)
-	require.Equal(t, chatgptCodexURL+"/compact", req.URL.String())
+	require.Equal(t, ChatgptCodexURL+"/compact", req.URL.String())
 	require.Equal(t, "application/json", req.Header.Get("Accept"))
 	require.Equal(t, openai.CodexCLIVersion, req.Header.Get("Version"))
 	require.Empty(t, req.Header.Get("OpenAI-Beta"), "Codex OAuth HTTP must not synthesize the legacy responses beta header")
@@ -1761,7 +1761,7 @@ func TestOpenAIBuildUpstreamRequestCompactForcesJSONAcceptForOAuth(t *testing.T)
 
 	req, err := svc.Requests.Build(c.Request.Context(), c, provider, []byte(`{"model":"gpt-5"}`), "token", false, "", true)
 	require.NoError(t, err)
-	require.Equal(t, chatgptCodexURL+"/compact", req.URL.String())
+	require.Equal(t, ChatgptCodexURL+"/compact", req.URL.String())
 	require.Equal(t, "application/json", req.Header.Get("Accept"))
 	require.Equal(t, openai.CodexCLIVersion, req.Header.Get("Version"))
 	require.Empty(t, req.Header.Get("OpenAI-Beta"), "Codex OAuth HTTP must not synthesize the legacy responses beta header")

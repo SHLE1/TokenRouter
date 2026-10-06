@@ -14,17 +14,17 @@ import (
 )
 
 const (
-	schedulerBucketSetKey           = "sched:v4:buckets"
-	schedulerOutboxWatermarkKey     = "sched:v4:outbox:watermark"
-	schedulerProviderPrefix         = "sched:v4:provider:"
-	schedulerProviderMetaPrefix     = "sched:v4:meta:"
-	schedulerProviderLastUsedPrefix = "sched:v4:provider:last_used:"
-	schedulerActivePrefix           = "sched:v4:active:"
-	schedulerReadyPrefix            = "sched:v4:ready:"
-	schedulerVersionPrefix          = "sched:v4:ver:"
-	schedulerEpochPrefix            = "sched:v4:epoch:"
-	schedulerRetiredPrefix          = "sched:v4:retired:"
-	schedulerSnapshotPrefix         = "sched:v4:"
+	schedulerBucketSetKey           = "sched:v5:buckets"
+	schedulerOutboxWatermarkKey     = "sched:v5:outbox:watermark"
+	schedulerProviderPrefix         = "sched:v5:provider:"
+	schedulerProviderMetaPrefix     = "sched:v5:meta:"
+	schedulerProviderLastUsedPrefix = "sched:v5:provider:last_used:"
+	schedulerActivePrefix           = "sched:v5:active:"
+	schedulerReadyPrefix            = "sched:v5:ready:"
+	schedulerVersionPrefix          = "sched:v5:ver:"
+	schedulerEpochPrefix            = "sched:v5:epoch:"
+	schedulerRetiredPrefix          = "sched:v5:retired:"
+	schedulerSnapshotPrefix         = "sched:v5:"
 
 	defaultSchedulerSnapshotMGetChunkSize  = 128
 	defaultSchedulerSnapshotWriteChunkSize = 256
@@ -36,7 +36,7 @@ const (
 )
 
 const (
-	schedulerGroupLifecycleLockPrefix      = "sched:v4:group:lifecycle-lock:"
+	schedulerGroupLifecycleLockPrefix      = "sched:v5:group:lifecycle-lock:"
 	schedulerGroupLifecycleOwnerTokenBytes = 16
 )
 

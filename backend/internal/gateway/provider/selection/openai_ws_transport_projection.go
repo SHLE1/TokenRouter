@@ -12,12 +12,5 @@ func (s *Compatible) ResolveTransport(value *gatewayprovider.ExecutionProvider) 
 		nil {
 		view.Concurrency = value.Record.Concurrency
 	}
-	var options *egress.OpenAIWSOptions
-
-	mode := ""
-	if s != nil {
-		options = s.options.WS
-		mode = s.options.WSIngressMode
-	}
-	return gatewayprovider.ResolveOpenAIWSTransport(view, options, mode)
+	return gatewayprovider.ResolveOpenAIWSTransport(view)
 }

@@ -11,10 +11,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 )
 
 // provideGrokExecutor 复用凭据、HTTP 池、健康状态和应用活动屏障。
-func provideGrokExecutor(cfg *config.Config, credentials *gatewayadapter.RequestCredentials, transport httpclient.UpstreamTransport, output *gatewayhttp.OpenAIResponseOutput, health *provideradapter.GrokHealth, tls *egressprovider.TLSProfiles, readers *gatewayadapter.RuntimeReaders, blocks *provider.RuntimeBlockState, deferred *provider.DeferredService, store gatewayadapter.ExecutionProviderStore, activity *gatewayRequestActivity, prices *billing.PriceResolver, connections *gatewayhttp.OpenAIWSConnections) *gatewayhttp.GrokExecutor {
+func provideGrokExecutor(cfg *config.Config, credentials *gatewayadapter.RequestCredentials, transport httpclient.UpstreamTransport, output *gatewayhttp.OpenAIResponseOutput, health *provideradapter.GrokHealth, tls *egressprovider.TLSProfiles, readers *gatewayadapter.RuntimeReaders, blocks *provider.RuntimeBlockState, deferred *provider.DeferredService, store gatewayadapter.ExecutionProviderStore, activity *gatewayRequestActivity, prices *billing.PriceResolver, connections *openaiws.OpenAIWSConnections) *gatewayhttp.GrokExecutor {
 	routes := provideGrokRoutes(cfg, readers)
 	return &gatewayhttp.GrokExecutor{FastPolicy: &gatewayadapter.ExecutionFastPolicy{Readers: readers, Prices: prices}, Credentials: credentials, Transport: transport, Output: output, Health: health, Routes: routes, TLS: tls, Dialer: connections.Dialer(), Enter: activity.Enter, Failure: &gatewayhttp.UpstreamTransportFailure{Health: &provideradapter.TransportHealth{Runtime: blocks, Deferred: deferred, Store: store}}}
 }

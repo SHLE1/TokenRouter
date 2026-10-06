@@ -41,13 +41,13 @@ type SearchHTTPPorts interface {
 	ConcurrencyError(*gin.Context, error)
 }
 type SearchHandler struct {
-	requestLifetime
+	RequestLifetime
 	ports SearchHTTPPorts
 }
 
 func NewSearchHandler(ports SearchHTTPPorts) *SearchHandler { return &SearchHandler{ports: ports} }
 func (h *SearchHandler) XSearch(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}
@@ -63,7 +63,7 @@ func searchError(c *gin.Context, status int, code, message string) {
 
 // WebSearch 依次解析请求、鉴权、检查资金、审核并选择提供商。
 func (h *SearchHandler) WebSearch(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}

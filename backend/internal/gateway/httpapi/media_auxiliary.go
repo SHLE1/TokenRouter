@@ -49,7 +49,7 @@ type AuxiliaryHTTPPorts interface {
 
 // AuxiliaryHandler 处理 Embeddings、AlphaSearch、Voice 和 Realtime 的 HTTP 请求。
 type AuxiliaryHandler struct {
-	requestLifetime
+	RequestLifetime
 
 	base  *MediaHandler
 	ports AuxiliaryHTTPPorts
@@ -60,7 +60,7 @@ func NewAuxiliaryHandler(ports AuxiliaryHTTPPorts) *AuxiliaryHandler {
 }
 
 func (h *AuxiliaryHandler) Embeddings(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}
@@ -120,7 +120,7 @@ func (h *AuxiliaryHandler) Embeddings(c *gin.Context) {
 }
 
 func (h *AuxiliaryHandler) AlphaSearch(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}
@@ -186,7 +186,7 @@ func (h *AuxiliaryHandler) AlphaSearch(c *gin.Context) {
 }
 
 func (h *AuxiliaryHandler) GrokVoice(c *gin.Context, endpoint string) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}
@@ -237,7 +237,7 @@ func (h *AuxiliaryHandler) GrokVoice(c *gin.Context, endpoint string) {
 }
 
 func (h *AuxiliaryHandler) GrokRealtime(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}

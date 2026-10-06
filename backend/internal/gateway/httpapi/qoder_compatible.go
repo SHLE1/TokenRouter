@@ -55,7 +55,7 @@ type QoderCompatibleBackend interface {
 	ConcurrencyError(*gin.Context, error, string, bool, QoderEndpoint)
 }
 type QoderCompatibleHandler struct {
-	requestLifetime
+	RequestLifetime
 
 	backend      QoderCompatibleBackend
 	concurrency  *ConcurrencyHelper
@@ -91,7 +91,7 @@ func (h *QoderCompatibleHandler) handle(c *gin.Context, endpoint QoderEndpoint) 
 	if endpoint == QoderMessages {
 		format = "anthropic"
 	}
-	done, accepted := h.beginRequest(c, format)
+	done, accepted := h.BeginRequest(c, format)
 	if !accepted {
 		return
 	}

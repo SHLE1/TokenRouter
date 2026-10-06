@@ -761,9 +761,14 @@ export default {
         responsesWebsocketsV2: 'Responses WebSocket v2',
         responsesWebsocketsV2Desc:
           'Disabled by default. Enable to allow responses_websockets_v2 capability (still gated by global and provider-type switches).',
-        wsMode: 'WS mode',
-        wsModeDesc:
-          'Only applies to the current OpenAI provider type; provider WS modes, including http_bridge, take effect only when the global gateway.openai_ws.mode_router_v2_enabled=true.',
+        wsMode: "Connection handling",
+        wsModeDesc: "Connection handling follows the group protocol permissions.",
+        wsAdvancedConnections: "Advanced connection settings",
+        wsConnectionPooled: "Reuse available connections (default)",
+        wsConnectionPerSession: "Open a connection for each session",
+        wsConnectionPooledHint: "Connections remain available after a session ends, reducing connection setup overhead.",
+        wsConnectionPerSessionHint: "Each client session gets a new upstream connection that closes when the session ends.",
+
         wsModeOff: 'Off (off)',
         wsModeCtxPool: 'Context Pool (ctx_pool)',
         wsModePassthrough: 'Passthrough (passthrough)',

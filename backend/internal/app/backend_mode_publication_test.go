@@ -40,7 +40,7 @@ func TestSettingUpdateLateBackendModeLoad(t *testing.T) {
 	rules := provideGatewayAdminRules()
 	gatewaySettings := provideGatewaySettings(store)
 	shared := &schedulerSharedState{Settings: scheduler.NewSettingsRuntime(scheduler.Diagnostics{})}
-	source := provideCompositeRuntime(store, cfg, provideCompositeReadOptions(cfg, provideOAuthSettings(store, cfg), rules, defaults), grants, gatewaySettings, rules, defaults, nil, backend, provideProviderSettings(store), provideQuotaSettings(store), provideForwardedSettings(store, cfg), shared, nil, nil)
+	source := provideCompositeRuntime(store, cfg, provideCompositeReadOptions(cfg, provideOAuthSettings(store, cfg), rules, defaults, nil), grants, gatewaySettings, rules, defaults, nil, backend, provideProviderSettings(store), provideQuotaSettings(store), provideForwardedSettings(store, cfg), shared, nil, nil)
 	participants := staticSettingsParticipants(&payment.Runtime{}, grants, defaults, rules)
 	participants[len(participants)-1] = payment.SettingsParticipant(nil)
 	registry, err := settings.NewRegistry(participants...)

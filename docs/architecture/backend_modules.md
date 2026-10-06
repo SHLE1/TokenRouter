@@ -88,7 +88,6 @@ backend/
 │   │   │   ├── openaiattempt/                           OpenAI 兼容文本入口的逐次尝试绑定
 │   │   │   ├── testkit/                                 该模块测试所需的替身与夹具
 │   │   │   ├── textattempt/                             Messages、通用文本与 Gemini 入口的尝试绑定
-│   │   │   └── wsentry/                                 WebSocket 入站和每轮执行的接口绑定
 │   │   ├── live/                                        Live 创建、会话身份、模型状态和观察者编排
 │   │   ├── media/                                       媒体生成、视频归属、搜索与 Realtime 用例
 │   │   │   └── provider/                                媒体归属与异步计量的任务适配
@@ -116,7 +115,8 @@ backend/
 │   │   ├── text/                                        文本提供商循环、计数和输入 token 预检
 │   │   ├── tierpolicy/                                  Fast/Flex 服务档位准入、设置与价格规则
 │   │   ├── tokenestimate/                               本地 token 数估算
-│   │   └── ws/                                          入站 WebSocket、turn、帧与恢复编排
+│   │   └── ws/                                          Responses WS 会话、恢复与在线参数
+│   │       └── httpapi/                                 WS 升级、逐轮执行与 HTTP 转换
 │   ├── idempotency/                                     面板命令认领、重放、冲突与租约清理
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配
 │   │   ├── postgres/                                    PostgreSQL 持久化及事务适配
@@ -260,7 +260,8 @@ backend/
 │   │   ├── ollama/                                      Ollama Cloud 会话用量与兼容请求
 │   │   ├── openai/                                      OpenAI/Codex 认证、请求、媒体与连接资源
 │   │   │   ├── liveattestation/                         Darwin 本机认证，其他平台返回不支持
-│   │   │   └── wsrelay/                                 WebSocket 帧转发、透传和 relay 指标
+│   │   │   └── ws/                                      Responses 握手、连接池与参数更新
+│   │   │       └── relay/                                WebSocket 双向帧转发与指标
 │   │   ├── qoder/                                       Qoder 站点、签名、模型、会话与 SSE
 │   │   │   └── localauth/                               Qoder 本机授权文件解析
 │   │   ├── usagecontract/                               供应商用量查询的请求格式

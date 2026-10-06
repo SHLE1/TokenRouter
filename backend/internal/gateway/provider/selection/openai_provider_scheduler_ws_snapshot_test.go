@@ -32,7 +32,7 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_UsesWSPassthroughSnaps
 			Concurrency: 10,
 			GroupIDs:    []int64{groupID},
 			Extra: map[string]any{
-				"openai_oauth_responses_websockets_v2_mode": providercore.OpenAIWSIngressModePassthrough,
+				"responses_ws_connection_mode": "per_session",
 			},
 		},
 	}
@@ -42,12 +42,6 @@ func TestOpenAIGatewayService_SelectProviderWithScheduler_UsesWSPassthroughSnaps
 		providersByID:     map[int64]*gatewayprovider.ExecutionProvider{provider.Record.ID: provider},
 	}
 	cfg := &config.Config{}
-	cfg.Gateway.OpenAIWS.Enabled = true
-	cfg.Gateway.OpenAIWS.OAuthEnabled = true
-	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
-	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
-	cfg.Gateway.OpenAIWS.ModeRouterV2Enabled = true
-	cfg.Gateway.OpenAIWS.IngressModeDefault = providercore.OpenAIWSIngressModeCtxPool
 
 	svc := newCompatibleSelectionForTest(CompatibleDependencies{
 		Reads: Reads{

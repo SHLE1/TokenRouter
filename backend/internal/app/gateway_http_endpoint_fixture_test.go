@@ -12,13 +12,13 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/mediaentry"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/openaiattempt"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/wsentry"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
+	wshttp "github.com/TokenFlux/TokenRouter/internal/gateway/ws/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
@@ -93,7 +93,7 @@ func newGatewayHTTPEndpoints(input gatewayHTTPFixtureInput) *gatewayHTTPEndpoint
 	}
 
 	var responses *gatewayhttp.OpenAIResponsesExecutor
-	var sockets *gatewayhttp.OpenAIWebSocketExecutor
+	var sockets *wshttp.OpenAIWebSocketExecutor
 	planner := gatewayprovider.NewRoutePlanner(nil)
 	var cache session.GatewayCache
 	if input.Source != nil {
@@ -101,7 +101,7 @@ func newGatewayHTTPEndpoints(input gatewayHTTPFixtureInput) *gatewayHTTPEndpoint
 			input.Source.Responses = &gatewayhttp.OpenAIResponsesExecutor{Requests: input.Source.Requests, Text: input.Source.Text, Lineage: &gatewayhttp.OpenAIEncryptedLineage{Store: session.NewOpenAIWSStateStore(input.Source.Cache, gatewayprovider.LogOpenAIWSModeInfo), TTL: func() time.Duration { return time.Hour }}}
 		}
 		if input.Source.WebSockets == nil {
-			input.Source.WebSockets = &gatewayhttp.OpenAIWebSocketExecutor{OpenAIWSDependencies: gatewayhttp.OpenAIWSDependencies{State: input.Source.Responses.Lineage.Store}}
+			input.Source.WebSockets = &wshttp.OpenAIWebSocketExecutor{OpenAIWSDependencies: wshttp.OpenAIWSDependencies{State: input.Source.Responses.Lineage.Store}}
 		}
 		responses, sockets, cache = input.Source.Responses, input.Source.WebSockets, input.Source.Cache
 		if input.Source.Planner != nil {
@@ -149,11 +149,11 @@ func newGatewayHTTPEndpoints(input gatewayHTTPFixtureInput) *gatewayHTTPEndpoint
 		executor := textflow.NewResponsesExecutor(provideOpenAITextAttemptRuntime(common), textflow.ResponseOptions{MaxSwitches: input.MaxSwitches}, textflow.ResponseOptions{MaxSwitches: input.MaxSwitches, FirstOutputBudget: true})
 		return gatewayhttp.NewBoundOpenAITextHandler(options, bindings, input.Prompts, executor)
 	}
-	ws := func() *gatewayhttp.ResponsesWSHandler {
+	ws := func() *wshttp.ResponsesWSHandler {
 		common, _, blocks := base()
 		options := responsesWSOptions(input.Config)
 		options.MaxProviderSwitches = input.MaxSwitches
-		return wsentry.New(options, responsesWSBindings(sockets, input.Credentials, input.Funding, input.Keys, common, input.Prompts, blocks, input.Choices, planner, nil))
+		return wshttp.New(options, responsesWSBindings(sockets, input.Credentials, input.Funding, input.Keys, common, input.Prompts, blocks, input.Choices, planner, nil))
 	}
 	media := func() *mediaentry.Runtime {
 		common, _, _ := base()

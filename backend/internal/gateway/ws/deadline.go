@@ -33,11 +33,12 @@ const (
 )
 
 type Deadline struct {
-	Timeout         time.Duration
-	StartedAt       time.Time
-	RequestModel    string
-	ReasoningEffort string
-	phase           deadlinePhase
+	Timeout           time.Duration
+	ActiveReadTimeout time.Duration
+	StartedAt         time.Time
+	RequestModel      string
+	ReasoningEffort   string
+	phase             deadlinePhase
 }
 
 type FirstOutputTimeoutError struct {
@@ -234,7 +235,11 @@ func (c *DeadlineConn) armActiveReadDeadline() {
 	if c == nil {
 		return
 	}
-	if c.activeReadTimeout <= 0 {
+	activeReadTimeout := c.deadlineState().deadline.ActiveReadTimeout
+	if activeReadTimeout <= 0 {
+		activeReadTimeout = c.activeReadTimeout
+	}
+	if activeReadTimeout <= 0 {
 		c.disarmDeadline(0)
 		return
 	}
@@ -242,9 +247,10 @@ func (c *DeadlineConn) armActiveReadDeadline() {
 	c.state.generation++
 	c.state.armed = true
 	c.state.deadline = Deadline{
-		Timeout:   c.activeReadTimeout,
-		StartedAt: time.Now(),
-		phase:     deadlinePhaseActiveRead,
+		Timeout:           activeReadTimeout,
+		ActiveReadTimeout: activeReadTimeout,
+		StartedAt:         time.Now(),
+		phase:             deadlinePhaseActiveRead,
 	}
 	c.mu.Unlock()
 	c.notifyDeadlineChanged()

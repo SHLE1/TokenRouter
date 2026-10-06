@@ -165,7 +165,7 @@ internal/search internal/search/contract internal/server/clientip internal/serve
 internal/settings internal/upstream internal/upstream/anthropic internal/upstream/antigravity
 internal/upstream/bedrock internal/upstream/gemini internal/upstream/gemini/codeassist
 internal/upstream/grok internal/upstream/ollama internal/upstream/openai
-internal/upstream/openai/liveattestation internal/upstream/openai/wsrelay internal/upstream/qoder
+internal/upstream/openai/liveattestation internal/upstream/openai/ws/... internal/upstream/qoder
 internal/upstream/vertex internal/usage`, Tests: `internal/billing/provider internal/config internal/moderation/provider internal/routing/testkit
 internal/scheduler/rediscache/codec internal/search/provider internal/server/middleware
 internal/settings/testkit internal/team internal/testutil/assertion internal/testutil/rediscontainer
@@ -228,7 +228,7 @@ internal/protocol internal/routing internal/routing/accessview internal/routing/
 internal/routing/httpapi/dto internal/scheduler internal/settings/httpapi internal/settings/testkit
 internal/site internal/team internal/upstream/anthropic internal/upstream/openai internal/usage
 internal/usage/httpapi internal/usage/httpapi/ports`},
-	"internal/settings": {Production: `ent/... internal/provider internal/audit internal/billing internal/billing/httpapi internal/config
+	"internal/settings": {Production: `internal/gateway/ws ent/... internal/provider internal/audit internal/billing internal/billing/httpapi internal/config
 internal/creative internal/gateway internal/gateway/admission internal/gateway/clientmeta
 internal/gateway/httpapi/dto internal/gateway/promptpolicy internal/gateway/testkit
 internal/gateway/tierpolicy internal/identity internal/identity/authconfig internal/identity/contact
@@ -320,7 +320,7 @@ internal/scheduler/policy`, Tests: "internal/billing internal/routing/capability
 	"internal/server/clientip/policy": {Production: "internal/server/clientip/policy", Tests: ""},
 	"internal/server/httpapi/dto":     {Production: "internal/server/httpapi/dto", Tests: ""},
 	"internal/server/httpconfig":      {Production: "internal/server/httpconfig", Tests: ""},
-	"internal/settings/httpapi/dto": {Production: `internal/pkg/locale internal/provider internal/billing/httpapi internal/creative internal/gateway/httpapi/dto
+	"internal/settings/httpapi/dto": {Production: `internal/gateway/ws internal/pkg/locale internal/provider internal/billing/httpapi internal/creative internal/gateway/httpapi/dto
 internal/gateway/promptpolicy internal/identity internal/identity/httpapi/dto internal/ops
 internal/payment internal/settings/httpapi/dto internal/site/httpapi/dto`, Tests: ""},
 	"internal/site/httpapi/dto":       {Production: "internal/pkg/locale internal/site/content internal/site/httpapi/dto", Tests: ""},
@@ -403,7 +403,7 @@ var filePermissions = []filePermission{
 	{Scope: "internal/usage/rediscache", Imports: "internal/testutil/rediscontainer", Files: "dashboard_integration_test.go"},
 	{Scope: "internal/testutil/rediscontainer", Imports: "github.com/testcontainers/testcontainers-go github.com/testcontainers/testcontainers-go/wait", Files: "run.go"},
 	{Scope: "migrations", Imports: "internal/billing/pricing", Files: "pricing_preview_fixture_test.go pricing_merge_fixture_test.go pricing_merge_test.go"},
-	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go provider_names_integration_test.go product_brand_integration_test.go antigravity_retirement_integration_test.go user_localization_integration_test.go"},
+	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go provider_names_integration_test.go product_brand_integration_test.go antigravity_retirement_integration_test.go user_localization_integration_test.go responses_ws_integration_test.go"},
 	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_integration_test.go"},
 	{Scope: "internal/provider", Imports: "internal/provider/provider", Files: `admin_editor_fixture_test.go admin_legacy_extra_test.go
 admin_shadow_test.go`},

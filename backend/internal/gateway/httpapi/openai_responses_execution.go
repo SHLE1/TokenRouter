@@ -8,7 +8,6 @@ import (
 
 	openaiexecution "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 
@@ -39,7 +38,6 @@ func (s *OpenAIResponsesExecutor) Forward(ctx context.Context, c *gin.Context, p
 	startTime := prepared.StartedAt
 	canonicalImageIntentBody := prepared.CanonicalImageIntentBody
 	tlsRouterMatch := prepared.TLS
-	wsDecision := egress.OpenAIWSProtocolDecision{Transport: egress.OpenAIUpstreamTransport(prepared.Transport.Transport), Reason: prepared.Transport.Reason}
 	originalBody := prepared.OriginalBody
 	requestView := prepared.View
 	reqModel, reqStream, promptCacheKey := requestView.Model, requestView.Stream, requestView.PromptCacheKey
@@ -64,7 +62,6 @@ func (s *OpenAIResponsesExecutor) Forward(ctx context.Context, c *gin.Context, p
 	requestView = transformed.View
 	reqModel = transformed.Model
 	promptCacheKey = transformed.PromptCacheKey
-	clientPromptCacheKey := transformed.ClientPromptCacheKey
 	requestedModel, billingModel, upstreamModel := transformed.RequestedModel, transformed.BillingModel, transformed.UpstreamModel
 	imageIntent := transformed.ImageIntent
 	fingerprintIDs := transformed.Fingerprint
@@ -135,21 +132,6 @@ func (s *OpenAIResponsesExecutor) Forward(ctx context.Context, c *gin.Context, p
 		return nil, err
 	}
 	SetOpsUpstreamModel(c, upstreamModel)
-
-	if wsDecision.Transport == egress.OpenAIUpstreamTransportResponsesWebsocketV2 {
-		wsReqBody, err := ensureReqBody()
-		if err != nil {
-			return nil, err
-		}
-		return s.WebSocket(ctx, c, provider, wsReqBody, OpenAIHTTPWSAttempt{
-			ClientPromptCacheKey: clientPromptCacheKey, Token: token, Decision: wsDecision,
-			CodexCLI: isCodexCLI, Stream: reqStream, OriginalModel: originalModel,
-			UpstreamModel: upstreamModel, StartedAt: startTime, TLS: tlsRouterMatch,
-			LineageGroupID: lineageGroupID, LineageSessionHash: lineageSessionHash,
-			BillingModel: billingModel, ImageBillingModel: imageBillingModel,
-			ImageSizeTier: imageSizeTier, ImageInputSize: imageInputSize, LineageEntryBody: lineageEntryBody,
-		})
-	}
 
 	reasoningEffort := requeststate.ExtractOpenAIReasoningEffortFromBody(body)
 	// 国产模型默认 effort 补充：此处 reqModel 已被 mapping 重写为 billingModel。

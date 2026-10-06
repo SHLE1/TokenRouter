@@ -325,12 +325,12 @@ func TestOpenAIGatewayService_SelectProviderByPreviousResponseID_APIKeyForceHTTP
 	}
 }
 
-func TestOpenAIGatewayService_SelectProviderByPreviousResponseID_OAuthForceHTTPIgnored(t *testing.T) {
+func TestOpenAIGatewayService_SelectProviderByPreviousResponseID_OAuthHTTPOnlyCannotResumeWS(t *testing.T) {
 	ctx := context.Background()
 	groupID := int64(23)
 	provider := gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
-			Credentials:  map[string]any{"model_whitelist": []string{"*"}},
+			Credentials:  map[string]any{"model_whitelist": []string{"*"}, "upstream_protocols": []string{"openai_responses"}},
 			LoadLocation: time.LoadLocation, ID: 12,
 			Platform:    capability.PlatformOpenAI,
 			Type:        capability.ProviderTypeOAuth,

@@ -38,7 +38,7 @@ type ModelHTTPResponse struct {
 type (
 	ModelsCatalog = modeldisplay.Catalog
 	ModelsHandler struct {
-		requestLifetime
+		RequestLifetime
 
 		backend ModelsBackend
 		catalog ModelsCatalog
@@ -66,7 +66,7 @@ type (
 )
 
 func (h *ModelsHandler) Models(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}
@@ -111,7 +111,7 @@ func (h *ModelsHandler) Models(c *gin.Context) {
 }
 
 func (h *ModelsHandler) AntigravityModels(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}

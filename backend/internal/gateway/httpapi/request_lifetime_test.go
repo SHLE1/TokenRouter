@@ -29,11 +29,12 @@ func TestRequestLifetimeRejectsBeforeBodyAndDependencies(t *testing.T) {
 	require.Equal(t, 503, rec.Code)
 	require.JSONEq(t, `{"type":"error","error":{"type":"api_error","message":"Service is shutting down"}}`, rec.Body.String())
 }
+
 func TestRequestLifetimeUsesSharedOwnerWithoutNewState(t *testing.T) {
 	active := 0
-	scope := requestLifetime{}
+	scope := RequestLifetime{}
 	scope.BindRequestActivity(func() (func(), error) { active++; return func() { active-- }, nil })
-	done, accepted := scope.beginRequest(nil, "openai")
+	done, accepted := scope.BeginRequest(nil, "openai")
 	require.True(t, accepted)
 	require.Equal(t, 1, active)
 	done()

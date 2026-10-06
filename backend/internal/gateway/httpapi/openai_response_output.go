@@ -57,7 +57,7 @@ func (p *OpenAIResponseOutput) redact(ctx context.Context, target *gatewayadapte
 	return p.Redact(ctx, target, body)
 }
 
-const openAIResponseDefaultMaxLineSize = 500 * 1024 * 1024
+const OpenAIResponseDefaultMaxLineSize = 500 * 1024 * 1024
 
 // ExecutionErrorProvider 返回当前尝试的提供商诊断字段。
 func ExecutionErrorProvider(value *gatewayadapter.ExecutionProvider) *UpstreamErrorProvider {

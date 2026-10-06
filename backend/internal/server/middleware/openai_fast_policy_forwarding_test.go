@@ -87,12 +87,12 @@ func TestAPIKeyAuthForwardsUserScopedOpenAIFastPolicyToUpstream(t *testing.T) {
 	transient := providercore.NewModelTransientState(0)
 	circuit := egress.NewProxyStreamCircuit(egress.DefaultProxyStreamCircuitSettings())
 	blocks := providercore.NewRuntimeBlockState(time.Now)
-	choices := selection.NewCompatible(selection.CompatibleDependencies{Responses: responses, ModelTransient: transient, ProxyCircuit: circuit, RuntimeBlocks: blocks}, selection.Options{WS: &egress.OpenAIWSOptions{}})
+	choices := selection.NewCompatible(selection.CompatibleDependencies{Responses: responses, ModelTransient: transient, ProxyCircuit: circuit, RuntimeBlocks: blocks}, selection.Options{})
 	output := &gatewayhttp.OpenAIResponseOutput{Options: gatewayhttp.OpenAIResponseOptions{Configured: true, ReadLimit: config.DefaultUpstreamResponseReadMaxBytes}, Health: &provideradapter.OpenAIResponseHealth{Runtime: blocks, ModelTransient: transient}, Corrector: openai.NewCodexToolCorrector(), ProxyCircuit: circuit, Responses: responses, ResponseTTL: choices.OpenAIHTTPResponseStickyTTL, Headers: responseHeaderFilterForTest(cfg)}
 	transport := &openAIFastPolicyForwardingHTTPUpstream{client: upstreamServer.Client()}
 	requests := &gatewayhttp.OpenAIRequests{Options: gatewayhttp.OpenAIRequestOptions{URLPolicy: egress.OperatorURLPolicy{AllowInsecureHTTP: true}}, Transport: transport, Readers: settingService, Credentials: &providercore.OpenAIExecutionCredentials{}, Identity: gatewayprovider.NewExecutionAgentIdentity(&providercore.OpenAITaskCoordinator{}, nil, nil, nil), ClientPolicy: &provideradapter.OpenAIProbePolicy{Available: true, DefaultBrowserUserAgent: gateway.DefaultOpenAICodexUserAgent}}
 	text := &gatewayhttp.OpenAITextExecutor{Requests: requests, Output: output, FastPolicy: &gatewayprovider.ExecutionFastPolicy{Readers: settingService}, CodexUsage: &provideradapter.CodexUsageObserver{}, ResponseTTL: choices.OpenAIHTTPResponseStickyTTL, Compact: &gatewayhttp.CompactExecutor{}}
-	executor := &gatewayhttp.OpenAIResponsesExecutor{Requests: requests, Output: output, Text: text, Lineage: &gatewayhttp.OpenAIEncryptedLineage{Store: responses, TTL: choices.SessionStickyTTL}, ImageBridge: &gatewayprovider.ResponseImagePolicy{}, ResolveTransport: choices.ResolveTransport}
+	executor := &gatewayhttp.OpenAIResponsesExecutor{Requests: requests, Output: output, Text: text, Lineage: &gatewayhttp.OpenAIEncryptedLineage{Store: responses, TTL: choices.SessionStickyTTL}, ImageBridge: &gatewayprovider.ResponseImagePolicy{}}
 
 	groupID := int64(101)
 	group := &routing.Group{

@@ -4,8 +4,8 @@ import "github.com/TokenFlux/TokenRouter/internal/gateway/media"
 
 // 普通 Responses、passthrough 与 Raw Chat 保留各自请求头白名单。
 const (
-	chatgptCodexURL      = "https://chatgpt.com/backend-api/codex/responses"
-	openaiPlatformAPIURL = "https://api.openai.com/v1/responses"
+	ChatgptCodexURL      = "https://chatgpt.com/backend-api/codex/responses"
+	OpenaiPlatformAPIURL = "https://api.openai.com/v1/responses"
 )
 
 // OpenAI allowed headers whitelist (for non-passthrough).

@@ -4,14 +4,15 @@ import (
 	"context"
 	"log/slog"
 
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
+
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
 // provideProviderProbeTasks 为探测绑定任务协调器和凭据条件写入函数。
-func provideProviderProbeTasks(store *postgres.ProviderStore, connections *gatewayhttp.OpenAIWSConnections, coordinator *provider.OpenAITaskCoordinator) *provideradapter.ProbeTasks {
+func provideProviderProbeTasks(store *postgres.ProviderStore, connections *openaiws.OpenAIWSConnections, coordinator *provider.OpenAITaskCoordinator) *provideradapter.ProbeTasks {
 	return &provideradapter.ProbeTasks{Coordinator: coordinator, Options: provider.OpenAITaskOptions{
 		Read: store.GetByID,
 		Register: func(ctx context.Context, value *provider.Record) (string, error) {

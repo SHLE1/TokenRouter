@@ -19,7 +19,7 @@ import (
 // CC 和 Responses 转 Anthropic 后，上游既未发送数据也未断开时，读取按 gateway.stream_data_interval_timeout 结束。
 
 func newNativeAnthropicHangTestService(intervalSec int) *nativeAnthropicReaderFixture {
-	return &nativeAnthropicReaderFixture{output: &OpenAIResponseOutput{Options: OpenAIResponseOptions{Configured: true, StreamDataIntervalTimeout: intervalSec, MaxLineSize: openAIResponseDefaultMaxLineSize}}}
+	return &nativeAnthropicReaderFixture{output: &OpenAIResponseOutput{Options: OpenAIResponseOptions{Configured: true, StreamDataIntervalTimeout: intervalSec, MaxLineSize: OpenAIResponseDefaultMaxLineSize}}}
 }
 
 func newHangingUpstreamResponse() (*http.Response, *io.PipeReader, *io.PipeWriter) {

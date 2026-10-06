@@ -52,7 +52,7 @@ type CompatibleTextBackend interface {
 }
 type CompatibleTextHandler struct {
 	executor execution.Executor
-	requestLifetime
+	RequestLifetime
 
 	options     MessagesHTTPOptions
 	backend     CompatibleTextBackend
@@ -92,7 +92,7 @@ func (h *CompatibleTextHandler) concurrencyError(c *gin.Context, err error, slot
 }
 
 func (h *CompatibleTextHandler) Responses(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}
@@ -273,7 +273,7 @@ func (h *CompatibleTextHandler) Responses(c *gin.Context) {
 }
 
 func (h *CompatibleTextHandler) ChatCompletions(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}

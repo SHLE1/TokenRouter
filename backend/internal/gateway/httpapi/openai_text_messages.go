@@ -18,7 +18,7 @@ import (
 )
 
 func (h *OpenAITextHandler) Messages(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "anthropic")
+	done, accepted := h.BeginRequest(c, "anthropic")
 	if !accepted {
 		return
 	}

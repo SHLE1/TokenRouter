@@ -90,7 +90,8 @@ type PassthroughOptions struct {
 
 // PassthroughSession 拥有入站过滤、逐轮快照、relay 观察和错误收尾。
 type PassthroughSession struct {
-	Options PassthroughOptions
-	Port    PassthroughPort
-	Hooks   *PassthroughHooks
+	Parameters func() Parameters
+	Options    PassthroughOptions
+	Port       PassthroughPort
+	Hooks      *PassthroughHooks
 }

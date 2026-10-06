@@ -579,7 +579,7 @@ func TestOpenAIGatewayServiceForwardImages_OAuthAppliesProviderMappingAndReturns
 	require.Equal(t, 2459, result.Usage.ImageOutputTokens)
 
 	require.NotNil(t, upstream.lastReq)
-	require.Equal(t, chatgptCodexURL, upstream.lastReq.URL.String())
+	require.Equal(t, ChatgptCodexURL, upstream.lastReq.URL.String())
 	require.Equal(t, "chatgpt.com", upstream.lastReq.Host)
 	require.Equal(t, upstreamcore.HTTPUpstreamProfileOpenAI, upstreamcore.HTTPUpstreamProfileFromContext(upstream.lastReq.Context()))
 	require.Equal(t, "application/json", upstream.lastReq.Header.Get("Content-Type"))

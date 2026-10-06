@@ -12,7 +12,7 @@ import (
 
 func (p *OpenAIResponseOutput) CCOptions(c *gin.Context, writeError func(*gin.Context, int, string, string)) openai.CCResponseOptions {
 	tierObserver := &forwardcore.ResponseObserver{}
-	maxLineSize := openAIResponseDefaultMaxLineSize
+	maxLineSize := OpenAIResponseDefaultMaxLineSize
 	if p.Options.Configured && p.Options.MaxLineSize > 0 {
 		maxLineSize = p.Options.MaxLineSize
 	}

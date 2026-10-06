@@ -185,6 +185,7 @@ type IngressOptions struct {
 
 // IngressSession 管理 bridge 和 ctx_pool 的逐轮循环及恢复状态。
 type IngressSession struct {
+	Refresh func() Parameters
 	State   *IngressState
 	Store   session.OpenAIWSStateStore
 	Options IngressOptions

@@ -110,7 +110,7 @@ type OpenAITextBackend interface {
 // OpenAITextHandler 不创建工作任务、反馈或缓存，app 可将同一对象绑定三种协议路由。
 type OpenAITextHandler struct {
 	executor execution.Executor
-	requestLifetime
+	RequestLifetime
 
 	options OpenAITextOptions
 	backend OpenAITextBackend

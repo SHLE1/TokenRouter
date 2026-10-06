@@ -17,7 +17,7 @@ import (
 
 	proxyurl "github.com/TokenFlux/TokenRouter/internal/infra/httpclient/proxy"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
-	openaiwsv2 "github.com/TokenFlux/TokenRouter/internal/upstream/openai/wsrelay"
+	openaiwsv2 "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws/relay"
 	coderws "github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 )

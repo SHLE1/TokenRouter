@@ -90,7 +90,7 @@ func TestResponsesLifecycleCompatibility(t *testing.T) {
 				recorder := httptest.NewRecorder()
 				c, _ := gin.CreateTestContext(recorder)
 				c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-				options := &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+				options := &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 				if mode == "async" {
 					options.Output.StreamDataIntervalTimeout = 30
 				}
@@ -137,7 +137,7 @@ func TestResponsesLifecycleErrorThenFailedDone(t *testing.T) {
 				recorder := httptest.NewRecorder()
 				c, _ := gin.CreateTestContext(recorder)
 				c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-				options := &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+				options := &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 				if mode == "async" {
 					options.Output.StreamDataIntervalTimeout = 30
 				}

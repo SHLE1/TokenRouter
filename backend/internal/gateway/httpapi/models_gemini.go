@@ -16,7 +16,7 @@ import (
 
 // @project-doc docs/domains/api_key_model_redirects.md#model_list_projection
 func (h *ModelsHandler) GeminiV1BetaListModels(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "google")
+	done, accepted := h.BeginRequest(c, "google")
 	if !accepted {
 		return
 	}
@@ -34,7 +34,7 @@ func (h *ModelsHandler) GeminiV1BetaListModels(c *gin.Context) {
 }
 
 func (h *ModelsHandler) GeminiV1BetaGetModel(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "google")
+	done, accepted := h.BeginRequest(c, "google")
 	if !accepted {
 		return
 	}

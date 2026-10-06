@@ -38,7 +38,7 @@ type grokForwardAdapter struct {
 }
 
 func (a *grokForwardAdapter) options() grokforward.Options {
-	maxLine := openAIResponseDefaultMaxLineSize
+	maxLine := OpenAIResponseDefaultMaxLineSize
 	if a.s.Output.Options.MaxLineSize > 0 {
 		maxLine = a.s.Output.Options.MaxLineSize
 	}

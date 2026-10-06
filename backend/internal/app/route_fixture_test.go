@@ -10,6 +10,7 @@ import (
 	creativehttpapi "github.com/TokenFlux/TokenRouter/internal/creative/httpapi"
 	egresshttpapi "github.com/TokenFlux/TokenRouter/internal/egress/httpapi"
 	gatewayhttpapi "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
+	wshttp "github.com/TokenFlux/TokenRouter/internal/gateway/ws/httpapi"
 	identityhttpapi "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
 	moderationhttpapi "github.com/TokenFlux/TokenRouter/internal/moderation/httpapi"
 	notificationhttpapi "github.com/TokenFlux/TokenRouter/internal/notification/httpapi"
@@ -104,7 +105,7 @@ type routeTestHandlers struct {
 	QoderChat           *gatewayhttpapi.QoderChatHandler
 	QoderCompatibleHTTP *gatewayhttpapi.QoderCompatibleHandler
 	Redeem              *billinghttpapi.RedeemHandler
-	ResponsesWSHTTP     *gatewayhttpapi.ResponsesWSHandler
+	ResponsesWSHTTP     *wshttp.ResponsesWSHandler
 	Search              *searchhttpapi.Handler
 	SearchHTTP          *gatewayhttpapi.SearchHandler
 	Subscription        *billinghttpapi.SubscriptionHandler

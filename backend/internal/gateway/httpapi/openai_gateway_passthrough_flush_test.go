@@ -93,7 +93,7 @@ func runPassthroughFlushTest(
 	}
 
 	output := newAuxiliaryFixture(auxiliaryFixtureInputs{}).Output
-	output.Options = OpenAIResponseOptions{Configured: true, ReadLimit: 128 * 1024 * 1024, MaxLineSize: openAIResponseDefaultMaxLineSize}
+	output.Options = OpenAIResponseOptions{Configured: true, ReadLimit: 128 * 1024 * 1024, MaxLineSize: OpenAIResponseDefaultMaxLineSize}
 
 	resp := &http.Response{
 		StatusCode: http.StatusOK,

@@ -114,7 +114,7 @@ func TestResponsesStreamAccessStateFailoverPrecedesPassthroughRule(t *testing.T)
 				Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 				Body:       io.NopCloser(strings.NewReader(stream)),
 			}
-			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
+			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}})
 			err := tt.run(svc, c, resp, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 11, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}})
 
 			var failoverErr *forwardcore.UpstreamFailoverError
@@ -161,7 +161,7 @@ func TestResponsesStreamCyberPolicyPrecedesPassthroughRule(t *testing.T) {
 				Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 				Body:       io.NopCloser(strings.NewReader(stream)),
 			}
-			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
+			svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}})
 			err := tt.run(svc, c, resp, &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 12, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth}})
 
 			require.Error(t, err)

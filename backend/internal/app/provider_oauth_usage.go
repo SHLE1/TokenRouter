@@ -7,9 +7,10 @@ import (
 	"math/rand/v2"
 	"time"
 
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
+
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
@@ -26,7 +27,7 @@ func provideOAuthUsageStats(store *usagepostgres.Store, cache *provider.OAuthUsa
 }
 
 // provideOAuthUsageCore 为 OAuth 用量查询绑定数据读取、平台查询及启停操作。
-func provideOAuthUsageCore(store *providerpostgres.ProviderStore, usageStore *usagepostgres.Store, cache *provider.OAuthUsageCache, stats *provider.LocalUsageStatistics, gemini *provider.GeminiQuotaService, antigravity *provider.AntigravityQuota, grokView *provider.GrokQuotaView, grok *provider.GrokQuotaService, openAI *provider.OpenAIQuotaService, fetcher provideradapter.ClaudeUsageClient, fingerprints anthropic.FingerprintCache, profiles *egressprovider.TLSProfiles, transport httpclient.UpstreamTransport, settings *provider.QuotaSettingsCache, connections *gatewayhttp.OpenAIWSConnections, manager *lifecycle.Manager, coordinator *provider.OpenAITaskCoordinator) *provider.OAuthUsageService {
+func provideOAuthUsageCore(store *providerpostgres.ProviderStore, usageStore *usagepostgres.Store, cache *provider.OAuthUsageCache, stats *provider.LocalUsageStatistics, gemini *provider.GeminiQuotaService, antigravity *provider.AntigravityQuota, grokView *provider.GrokQuotaView, grok *provider.GrokQuotaService, openAI *provider.OpenAIQuotaService, fetcher provideradapter.ClaudeUsageClient, fingerprints anthropic.FingerprintCache, profiles *egressprovider.TLSProfiles, transport httpclient.UpstreamTransport, settings *provider.QuotaSettingsCache, connections *openaiws.OpenAIWSConnections, manager *lifecycle.Manager, coordinator *provider.OpenAITaskCoordinator) *provider.OAuthUsageService {
 	taskOptions := provider.OpenAITaskOptions{
 		Read: store.GetByID,
 		Register: func(ctx context.Context, value *provider.Record) (string, error) {

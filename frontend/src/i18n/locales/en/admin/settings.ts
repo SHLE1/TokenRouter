@@ -1,6 +1,43 @@
 export default {
 // Settings
     settings: {
+      responsesWS: {
+  "title": "Long connections and connection pool",
+  "description": "Adjust Responses connection parameters online. Client access is controlled by group protocol settings.",
+  "advanced": "Advanced parameters",
+  "restore": "Use deployment defaults",
+  "inherit": "Leave empty to use deployment defaults. Effective value: {value}",
+  "applies": "Pool limits take effect gradually. Active connections stay open until their sessions finish. Timeouts apply to the next turn or wait.",
+  "zero": "0 means unlimited.",
+  "loadError": "Could not load connection settings. Try again.",
+  "saveError": "Could not save connection settings.",
+  "applyError": "Settings were saved, but applying them failed. Check the service logs and effective values.",
+  "retry": "Reload",
+  "restoring": "Deployment defaults will apply after saving.",
+  "fields": {
+    "max_conns_per_provider": "Maximum connections per provider",
+    "min_idle_per_provider": "Minimum idle connections",
+    "max_idle_per_provider": "Maximum idle connections",
+    "dynamic_max_conns_by_provider_concurrency_enabled": "Scale connections with provider concurrency",
+    "oauth_max_conns_factor": "OAuth connection multiplier",
+    "apikey_max_conns_factor": "API key connection multiplier",
+    "queue_limit_per_conn": "Maximum queued requests per connection",
+    "pool_target_utilization": "Prewarm target utilization",
+    "prewarm_cooldown_ms": "Minimum prewarm interval (ms)",
+    "client_first_message_timeout_seconds": "Wait for the first client message (seconds)",
+    "ingress_inter_turn_idle_timeout_seconds": "Idle time between turns (seconds)",
+    "max_ingress_connections_per_api_key": "Maximum open connections per API key",
+    "client_read_limit_bytes": "Client message limit (MiB)",
+    "http_bridge_threshold_bytes": "Request size for HTTP conversion (MiB)",
+    "dial_timeout_seconds": "Upstream connection timeout (seconds)",
+    "read_timeout_seconds": "Upstream message timeout (seconds)",
+    "write_timeout_seconds": "Message send timeout (seconds)",
+    "ingress_previous_response_recovery_enabled": "Try to recover a missing previous response",
+    "sticky_session_ttl_seconds": "Provider session retention (seconds)",
+    "sticky_response_id_ttl_seconds": "Response continuation retention (seconds)"
+  }
+},
+
       title: 'System Settings',
       description: 'Manage registration, email verification, default values, and SMTP settings',
       tabs: {

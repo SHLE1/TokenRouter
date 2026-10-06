@@ -65,7 +65,7 @@ type GeminiNativeBackend interface {
 }
 type GeminiNativeHandler struct {
 	executor execution.Executor
-	requestLifetime
+	RequestLifetime
 
 	options     GeminiNativeOptions
 	backend     GeminiNativeBackend
@@ -104,7 +104,7 @@ func (e *GeminiPathParseError) Error() string { return e.message }
 // @project-doc docs/interfaces/gemini_upstream.md#gemini_protocol_dispatch
 // @project-doc docs/interfaces/gemini_upstream.md#gemini_protocol_dispatch
 func (h *GeminiNativeHandler) GeminiV1BetaModels(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "google")
+	done, accepted := h.BeginRequest(c, "google")
 	if !accepted {
 		return
 	}

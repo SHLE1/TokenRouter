@@ -81,7 +81,7 @@
 HTTP 入口由 app 构造，执行器、会话和资源都由 app 提供，路由直接拿到需要的接口实现。
 
 - 文本：OpenAI Responses、Chat 和 Messages 的 HTTP 绑定直接接收用户槽和图片槽资源（各一份）、Cyber、审核、归属读取和资金接口。`gateway/httpapi/openaiattempt.Runtime` 绑定平台单次执行能力、调度反馈、槽位和完成器，每次 `Open` 创建一份独立的尝试状态。三个文本入口通过 `UnifiedTextExecutor` 调用所选提供商的单次执行器。强制 Antigravity 和 Gemini 原生入口使用 `textattempt.Runtime`，同样是 app 绑定平台调用、选择反馈和资源，每次 `Open` 只创建请求和尝试状态。
-- WS：入站和每轮单步执行的接口由 `gateway/httpapi/wsentry` 装配，和文本运行时共用同一套尝试绑定。
+- WS：入站和每轮单步执行的接口由 `gateway/ws/httpapi` 装配，和文本运行时共用同一套尝试绑定。
 - 媒体：图片、视频、音频、Embeddings 和 Alpha Search 的请求适配和完成捕获由 `gateway/httpapi/mediaentry` 装配，失败输出和资源释放与文本共用。
 - Wire 手动绑定执行器和完成器，接口测试使用相同的绑定和函数句柄夹具。平台单次交换和 WS relay 直接绑定执行器。
 - 图片：单次执行绑定 `OpenAIImagesExecutor`，和文本共用 `OpenAIRequests`、`OpenAIResponseOutput` 和应用活动屏障；图片工具冷却通过提供商接口写入。图片意图提示由 HTTP 按每次尝试保存，分组改写后重新判断，所以上一次尝试的提示不会带到下一个提供商。
@@ -94,7 +94,7 @@ HTTP 入口由 app 构造，执行器、会话和资源都由 app 提供，路�
 - OpenAI HTTP 的并发辅助和本地图片限制器由 app 构造成一个 `OpenAIHTTPResources`，文本、媒体、WS 和其余兼容入口共用。这个资源对象只接收静态的图片限制参数；用户槽绑定进入等待前的请求 context，context 取消时释放；图片的等待、拒绝和独立作用域各自保留。
 - `gateway/searchtools` 组织工具模拟，`gateway/moderationflow` 准备审核完成所需的输入，`completion.Recorder` 读取资金和用量的独立快照。`ws` 和 `live` 各自管理连接和 turn 状态；摘要、隔离和归属值由 `session` 提供，Redis 协议由 `rediscache` 适配。错误规则和发布后不可变的快照在 `errorpolicy`，调度健康和重试由其他模块决定。
 
-WS 执行使用静态选项，以及请求、输出、会话和选择接口，核心代码读取的是这些参数，完整应用配置留在 app。连接池在第一次使用时启动，关闭屏障保证退出后连接池无法重建。Grok、Live 和 WS 共用拨号器，Agent Identity 凭据失效也作用于这个池。入站、池化、透传和 HTTP 桥接各有自己的恢复和取消规则，测试直接验证帧执行和共享状态。
+WS 每轮读取在线参数快照，并通过请求、输出、会话和选择接口执行。部署默认值由 app 提供，管理端可以覆盖。连接池在第一次使用时启动，关闭屏障保证退出后连接池无法重建。Grok、Live 和 WS 共用拨号器，Agent Identity 凭据失效也作用于这个池。入站、池化、透传和 HTTP 桥接各有自己的恢复和取消规则，测试直接验证帧执行和共享状态。
 
 <a id="apikey_authentication"></a>
 ## 认证与准入

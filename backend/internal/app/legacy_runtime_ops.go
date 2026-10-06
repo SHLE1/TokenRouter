@@ -1,15 +1,12 @@
 package app
 
 import (
-	"github.com/TokenFlux/TokenRouter/internal/usage"
-)
-
-import (
 	"context"
 	"fmt"
 
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
+	"github.com/TokenFlux/TokenRouter/internal/usage"
 
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )

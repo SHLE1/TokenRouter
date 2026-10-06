@@ -36,7 +36,7 @@ func (e *HTTPFailure) Error() string { return e.Message }
 
 // QoderChatHandler 的装配回调加载认证和路由上下文，gateway 执行请求循环。
 type QoderChatHandler struct {
-	requestLifetime
+	RequestLifetime
 
 	Executor interface {
 		Execute(context.Context, gateway.Request, upstream.OutputSink) (gateway.ExecutionResult, error)
@@ -51,7 +51,7 @@ type QoderChatHandler struct {
 
 // ChatCompletions 读取 Chat 请求，写出协议错误或 SSE 响应。
 func (h *QoderChatHandler) ChatCompletions(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}

@@ -197,7 +197,7 @@ func TestForwardAlphaSearchPATUsesResponsesWebSearchFallback(t *testing.T) {
 	require.Equal(t, "/v1/responses", result.UpstreamEndpoint)
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.JSONEq(t, `{"output":"search result","results":[{"type":"text_result","ref_id":"turn0search0","url":"https://example.com/news","title":"Example News"}]}`, recorder.Body.String())
-	require.Equal(t, chatgptCodexURL, upstream.lastReq.URL.String())
+	require.Equal(t, ChatgptCodexURL, upstream.lastReq.URL.String())
 	require.Equal(t, "Bearer at-test-token", upstream.lastReq.Header.Get("Authorization"))
 	require.Equal(t, "chatgpt-provider", upstream.lastReq.Header.Get("ChatGPT-Account-ID"))
 	require.Equal(t, "true", upstream.lastReq.Header.Get("X-OpenAI-Fedramp"))
@@ -484,7 +484,7 @@ func TestForwardAlphaSearchPATFallbackAccessStateUsesTypedFailover(t *testing.T)
 
 	require.Nil(t, result)
 	assertOpenAIAlphaSearchAccessStateFailover(t, err, "req_alpha_pat_access_state")
-	require.Equal(t, chatgptCodexURL, upstream.lastReq.URL.String())
+	require.Equal(t, ChatgptCodexURL, upstream.lastReq.URL.String())
 	require.False(t, c.Writer.Written())
 }
 
@@ -584,7 +584,7 @@ func TestForwardAlphaSearchPATResponsesFallbackUnauthorizedDoesNotMarkProviderEr
 	var failoverErr *forwardcore.UpstreamFailoverError
 	require.ErrorAs(t, err, &failoverErr)
 	require.Equal(t, http.StatusUnauthorized, failoverErr.StatusCode)
-	require.Equal(t, chatgptCodexURL, upstream.lastReq.URL.String())
+	require.Equal(t, ChatgptCodexURL, upstream.lastReq.URL.String())
 	require.Equal(t, "text/event-stream", upstream.lastReq.Header.Get("Accept"))
 	require.Equal(t, "responses=experimental", upstream.lastReq.Header.Get("OpenAI-Beta"))
 	require.Zero(t, repo.setErrorCalls)

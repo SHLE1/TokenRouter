@@ -50,8 +50,6 @@ func selectionOptions(cfg *config.Config) selection.Options {
 	s := cfg.Gateway.Scheduling
 	options.Scheduling = scheduler.FlowOptions{LoadBatchEnabled: s.LoadBatchEnabled, PreferSoonestReset: s.PreferSoonestReset, FallbackMaxWaiting: s.FallbackMaxWaiting, StickySessionMaxWaiting: s.StickySessionMaxWaiting, FallbackSelectionMode: s.FallbackSelectionMode, FallbackWaitTimeout: s.FallbackWaitTimeout, StickySessionWaitTimeout: s.StickySessionWaitTimeout}
 	ws := cfg.Gateway.OpenAIWS
-	options.WS = &egress.OpenAIWSOptions{Enabled: ws.Enabled, ForceHTTP: ws.ForceHTTP, OAuthEnabled: ws.OAuthEnabled, APIKeyEnabled: ws.APIKeyEnabled, ModeRouterV2Enabled: ws.ModeRouterV2Enabled, ResponsesWebsockets: ws.ResponsesWebsockets, ResponsesWebsocketsV2: ws.ResponsesWebsocketsV2}
-	options.WSIngressMode = ws.IngressModeDefault
 	options.ReadLegacySticky = ws.SessionHashReadOldFallback
 	options.WriteLegacySticky = ws.SessionHashDualWriteOld
 	if ws.StickySessionTTLSeconds > 0 {

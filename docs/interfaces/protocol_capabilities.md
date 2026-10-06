@@ -11,6 +11,8 @@
 - `groups` 是数组，只有一个不带 `platform` 的通用 profile，列出所有分组可用的入口、默认集合、转换目标和默认映射。`defaults` 只包含 Messages、Responses、Chat 三个文本入口，`default_fallbacks` 为 `{}`。
 - 目录里没有凭据。前端共用这份只读结果，不维护自己的平台白名单。
 
+Responses WebSocket 的客户端许可在分组协议控制中设置，提供商协议集合声明上游能力。连接方式和在线调参见 [Responses 长连接与在线参数](openai_upstream.md#responses_ws_runtime)。
+
 提供商和分组共用 `protocol.ProtocolID`，平台和提供商类型的常量在 `routing/capability` 定义。HTTP 方法、路径、别名和 WebSocket 标记在 `gateway/httpapi` 声明，实际的路由门禁读取同一份声明；app 把展示用的地址注入 `routing/httpapi` 的目录 handler，纯目录代码不依赖 HTTP 适配层。路由层只规范化别名前缀；各文本入口按自己的原生错误格式和动作校验，Compact 在 Responses 子路径校验之后再检查。内部的路由元数据不出现在管理员 API 的响应里，协议 ID、JSON 字段和持久化格式保持稳定。
 
 前端表单共用目录的加载、错误和重试状态。创建分组时，默认的准入集合和转换映射在目录加载完成后一起初始化；编辑时回显的值，以及管理员明确清空的集合，在目录加载完成后保持原样。目录不可用时禁止提交分组，任何一个协议选择器重试成功后，共享状态都会恢复。目录测试在普通运行中同时核对前端的 JSON 夹具和 `ProtocolID` 联合类型；表单测试按需准备目录，不依赖全局预热。

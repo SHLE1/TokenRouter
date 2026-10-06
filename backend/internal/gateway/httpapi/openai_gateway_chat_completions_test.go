@@ -422,7 +422,7 @@ func TestForwardAsChatCompletions_OAuthDoesNotInjectDefaultInstructions(t *testi
 	require.Error(t, err)
 	require.Nil(t, result)
 	require.NotNil(t, upstream.lastReq)
-	require.Equal(t, chatgptCodexURL, upstream.lastReq.URL.String())
+	require.Equal(t, ChatgptCodexURL, upstream.lastReq.URL.String())
 	require.True(t, gjson.GetBytes(upstream.lastBody, "instructions").Exists())
 	require.Equal(t, "", gjson.GetBytes(upstream.lastBody, "instructions").String())
 	require.NotContains(t, string(upstream.lastBody), "Communicate with the user by streaming thinking")

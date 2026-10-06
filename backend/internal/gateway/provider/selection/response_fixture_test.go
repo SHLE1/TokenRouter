@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
-	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -17,8 +16,6 @@ import (
 // responseSelectionOptions 配置 WSv2 测试开关，并将等待参数设为零。
 func responseSelectionOptions() Options {
 	return Options{
-		WS: &egress.OpenAIWSOptions{Enabled: true, OAuthEnabled: true, APIKeyEnabled: true, ResponsesWebsocketsV2: true},
-
 		StickyTTL:   time.Hour,
 		ResponseTTL: time.Hour,
 	}

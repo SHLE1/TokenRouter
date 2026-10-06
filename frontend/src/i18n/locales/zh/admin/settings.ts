@@ -1,6 +1,43 @@
 export default {
 // Settings
     settings: {
+      responsesWS: {
+  "title": "长连接与连接池",
+  "description": "在线调整 Responses 长连接参数。客户端能否使用长连接，请到分组协议控制中设置。",
+  "advanced": "高级参数",
+  "restore": "恢复部署默认值",
+  "inherit": "留空使用部署默认值。当前有效值：{value}",
+  "applies": "连接数量调整会逐步生效；正在使用的连接会等到会话结束后再回收。超时参数从下一轮或下一次等待开始使用。",
+  "zero": "0 表示不限制。",
+  "loadError": "加载长连接设置失败，请重试。",
+  "saveError": "长连接设置保存失败。",
+  "applyError": "参数已保存，但运行时应用失败。请检查服务日志及当前生效值。",
+  "retry": "重新加载",
+  "restoring": "保存后将使用部署默认值。",
+  "fields": {
+    "max_conns_per_provider": "每个提供商最多保留多少条连接",
+    "min_idle_per_provider": "至少准备多少条空闲连接",
+    "max_idle_per_provider": "最多保留多少条空闲连接",
+    "dynamic_max_conns_by_provider_concurrency_enabled": "按提供商并发计算连接数量",
+    "oauth_max_conns_factor": "OAuth 连接数量系数",
+    "apikey_max_conns_factor": "API Key 连接数量系数",
+    "queue_limit_per_conn": "每条连接最多等待多少个请求",
+    "pool_target_utilization": "预热目标使用率",
+    "prewarm_cooldown_ms": "两次预热的最短间隔（毫秒）",
+    "client_first_message_timeout_seconds": "等待客户端首条消息（秒）",
+    "ingress_inter_turn_idle_timeout_seconds": "两轮之间允许空闲多久（秒）",
+    "max_ingress_connections_per_api_key": "每个 Key 最多打开多少条长连接",
+    "client_read_limit_bytes": "客户端消息大小上限（MiB）",
+    "http_bridge_threshold_bytes": "多大的请求改用 HTTP（MiB）",
+    "dial_timeout_seconds": "连接上游最多等待多久（秒）",
+    "read_timeout_seconds": "等待上游消息的超时（秒）",
+    "write_timeout_seconds": "发送消息的超时（秒）",
+    "ingress_previous_response_recovery_enabled": "上游找不到上一轮时尝试恢复",
+    "sticky_session_ttl_seconds": "提供商会话记录保留多久（秒）",
+    "sticky_response_id_ttl_seconds": "响应续接记录保留多久（秒）"
+  }
+},
+
       title: '系统设置',
       description: '管理注册、邮箱验证、默认值和 SMTP 设置',
       tabs: {

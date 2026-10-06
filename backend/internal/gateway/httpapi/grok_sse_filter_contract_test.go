@@ -26,7 +26,7 @@ func filterGrokPingTestInput(t *testing.T, input string) string {
 	t.Helper()
 	body := grok.NewGrokResponsesBillingPingFilterBody(
 		io.NopCloser(strings.NewReader(input)),
-		openAIResponseDefaultMaxLineSize,
+		OpenAIResponseDefaultMaxLineSize,
 	)
 	output, err := io.ReadAll(body)
 	require.NoError(t, err)
@@ -74,11 +74,11 @@ func TestGrokResponsesBillingPingFilterComposesWithClientToolStream(t *testing.T
 		"event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\"}}\n\n"
 	filtered := grok.NewGrokResponsesBillingPingFilterBody(
 		io.NopCloser(strings.NewReader(input)),
-		openAIResponseDefaultMaxLineSize,
+		OpenAIResponseDefaultMaxLineSize,
 	)
 	body := upstream.NewResponsesClientToolStreamBody(filtered, bridge.ResponsesClientToolMapping{
 		CustomTools: map[string]bool{"apply_patch": true},
-	}, openAIResponseDefaultMaxLineSize)
+	}, OpenAIResponseDefaultMaxLineSize)
 
 	output, err := io.ReadAll(body)
 	require.NoError(t, err)
@@ -185,7 +185,7 @@ func TestGrokResponsesBillingPingFilterDoesNotFilterNonGrokProviders(t *testing.
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	output := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	output := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	_, err := output.ReadStreamObservation(context.Background(), resp, c, &gatewayprovider.ExecutionProvider{Record: providercore.Record{Platform: capability.PlatformOpenAI}}, time.Now(), "model", "model", "")
 	require.NoError(t, err)
 	require.NoError(t, body.Close())
@@ -206,13 +206,13 @@ func TestGrokResponsesBillingPingFilterPreservesUsageAndTerminalEvent(t *testing
 		StatusCode: http.StatusOK,
 		Header:     http.Header{},
 		Body: grok.NewGrokResponsesBillingPingFilterBody(
-			io.NopCloser(strings.NewReader(input)), openAIResponseDefaultMaxLineSize,
+			io.NopCloser(strings.NewReader(input)), OpenAIResponseDefaultMaxLineSize,
 		),
 	}
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	svc := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}, Corrector: openai.NewCodexToolCorrector()}
+	svc := &OpenAIResponseOutput{Options: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}, Corrector: openai.NewCodexToolCorrector()}
 
 	result, err := svc.ReadStreamObservation(context.Background(), resp, c, provider, time.Now(), "grok-4.5", "grok-4.5", "")
 	require.NoError(t, err)
@@ -238,7 +238,7 @@ func (r *grokPingFilterTestReadCloser) Close() error {
 func TestGrokResponsesBillingPingFilterCloseCancelsSourceOnce(t *testing.T) {
 	upstreamReader, upstreamWriter := io.Pipe()
 	source := &grokPingFilterTestReadCloser{reader: upstreamReader}
-	body := grok.NewGrokResponsesBillingPingFilterBody(source, openAIResponseDefaultMaxLineSize)
+	body := grok.NewGrokResponsesBillingPingFilterBody(source, OpenAIResponseDefaultMaxLineSize)
 
 	require.NoError(t, body.Close())
 	require.Eventually(t, func() bool { return source.closeCount.Load() == 1 }, time.Second, time.Millisecond)
@@ -249,7 +249,7 @@ func TestGrokResponsesBillingPingFilterCloseCancelsSourceOnce(t *testing.T) {
 
 func TestGrokResponsesBillingPingFilterFlushesCompletedFrames(t *testing.T) {
 	upstreamReader, upstreamWriter := io.Pipe()
-	body := grok.NewGrokResponsesBillingPingFilterBody(upstreamReader, openAIResponseDefaultMaxLineSize)
+	body := grok.NewGrokResponsesBillingPingFilterBody(upstreamReader, OpenAIResponseDefaultMaxLineSize)
 	t.Cleanup(func() { require.NoError(t, body.Close()) })
 
 	go func() {

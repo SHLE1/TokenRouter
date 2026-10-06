@@ -311,7 +311,7 @@ func TestBuildSchedulerMetadataProvider_KeepsOpenAIAPIKeyProtocolFields(t *testi
 		},
 		Extra: map[string]any{
 			"openai_apikey_responses_websockets_v2_enabled": true,
-			"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
+			"responses_ws_connection_mode":                  "per_session",
 			"openai_ws_force_http":                          true,
 			"openai_text_route_mode":                        "force_chat_completions",
 			"openai_responses_probe_status":                 "unsupported",
@@ -325,9 +325,9 @@ func TestBuildSchedulerMetadataProvider_KeepsOpenAIAPIKeyProtocolFields(t *testi
 
 	got := buildSchedulerMetadataProvider(provider)
 
-	require.Equal(t, true, got.Extra["openai_apikey_responses_websockets_v2_enabled"])
-	require.Equal(t, providercore.OpenAIWSIngressModePassthrough, got.Extra["openai_apikey_responses_websockets_v2_mode"])
-	require.Equal(t, true, got.Extra["openai_ws_force_http"])
+	require.NotContains(t, got.Extra, "openai_apikey_responses_websockets_v2_enabled")
+	require.Equal(t, "per_session", got.Extra["responses_ws_connection_mode"])
+	require.NotContains(t, got.Extra, "openai_ws_force_http")
 	require.Equal(t, "force_chat_completions", got.Extra["openai_text_route_mode"])
 	require.NotContains(t, got.Extra, "openai_responses_probe_status")
 	require.Equal(t, "force_off", got.Extra["openai_compact_mode"])

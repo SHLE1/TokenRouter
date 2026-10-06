@@ -39,7 +39,7 @@ func (p *OpenAIResponseOutput) StreamOptions(ctx context.Context, c *gin.Context
 
 		GrokIdlePolicy: provider != nil && provider.Record.Platform == capability.PlatformGrok,
 
-		MaxLineSize: openAIResponseDefaultMaxLineSize,
+		MaxLineSize: OpenAIResponseDefaultMaxLineSize,
 
 		TTFTMode: func() string { return p.TTFTMode(ctx) },
 

@@ -80,11 +80,12 @@ func TestShouldRefreshOpenAICodexSnapshot_SparkShadowIgnoresWSv2(t *testing.T) {
 		t.Fatal("expected fresh spark shadow to skip refresh (TTL not elapsed)")
 	}
 
-	// 反向对照:普通提供商无 WSv2 + 过期时间戳仍不刷新，WSv2 仅门控普通提供商的 probe 刷新。
+	// 普通提供商未声明上游 WS 能力时，过期时间戳也不触发这项探测。
 	normalNoWS := &Record{
-		Platform: capability.PlatformOpenAI,
-		Type:     capability.ProviderTypeOAuth,
-		Extra:    map[string]any{"codex_usage_updated_at": staleAt},
+		Credentials: map[string]any{"upstream_protocols": []string{"openai_responses"}},
+		Platform:    capability.PlatformOpenAI,
+		Type:        capability.ProviderTypeOAuth,
+		Extra:       map[string]any{"codex_usage_updated_at": staleAt},
 	}
 	if ShouldRefreshOpenAICodexSnapshot(normalNoWS, usage, now) {
 		t.Fatal("expected non-WSv2 normal provider to skip codex probe refresh")

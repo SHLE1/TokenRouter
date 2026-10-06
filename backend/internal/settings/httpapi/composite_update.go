@@ -2225,6 +2225,8 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		MinClaudeCodeVersion:                             updatedSettings.MinClaudeCodeVersion,
 		MaxClaudeCodeVersion:                             updatedSettings.MaxClaudeCodeVersion,
 		BackendModeEnabled:                               updatedSettings.BackendModeEnabled,
+		ResponsesWS:                                      updatedSettings.ResponsesWS,
+		ResponsesWSEffective:                             updatedSettings.ResponsesWSEffective,
 		OpenAITTFTMode:                                   updatedSettings.OpenAITTFTMode,
 		EnableFingerprintUnification:                     updatedSettings.EnableFingerprintUnification,
 		EnableMetadataPassthrough:                        updatedSettings.EnableMetadataPassthrough,

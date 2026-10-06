@@ -25,7 +25,7 @@ import (
 func (p *OpenAIResponseOutput) PassthroughOptions(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider) upstreamopenai.PassthroughOptions {
 	stream := upstreamopenai.StreamOptions{
 		NativeOpenAI: provider != nil && provider.Record.Platform == capability.PlatformOpenAI,
-		MaxLineSize:  openAIResponseDefaultMaxLineSize,
+		MaxLineSize:  OpenAIResponseDefaultMaxLineSize,
 		TTFTMode:     func() string { return p.TTFTMode(ctx) },
 		Logf: func(format string, args ...any) {
 			logging.LegacyPrintf("service.openai_gateway", format, args...)

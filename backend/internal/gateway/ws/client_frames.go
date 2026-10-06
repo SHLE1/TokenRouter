@@ -14,6 +14,7 @@ type clientFrameConn struct {
 	conn                 ClientSocket
 	controlCtx           context.Context
 	interTurnIdleTimeout time.Duration
+	idleTimeout          func() time.Duration
 	interTurnStarted     chan struct{}
 	waitingForNextTurn   atomic.Bool
 	// The relay observes upstream payloads, while clients must keep seeing the
@@ -87,10 +88,14 @@ func (c *clientFrameConn) ReadFrame(ctx context.Context) (int, []byte, error) {
 	if c.controlCtx != nil {
 		controlCtx = c.controlCtx
 	}
+	idleTimeout := c.interTurnIdleTimeout
+	if c.idleTimeout != nil {
+		idleTimeout = c.idleTimeout()
+	}
 	msgType, payload, err := ReadClientMessageWithTimeoutStart(
 		controlCtx,
 		c.conn,
-		c.interTurnIdleTimeout,
+		idleTimeout,
 		1000,
 		"websocket idle timeout",
 		c.interTurnStarted,

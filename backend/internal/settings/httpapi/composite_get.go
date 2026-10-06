@@ -230,6 +230,8 @@ func (h *Handler) GetSettings(c *gin.Context) {
 		MinClaudeCodeVersion:                             settings.MinClaudeCodeVersion,
 		MaxClaudeCodeVersion:                             settings.MaxClaudeCodeVersion,
 		BackendModeEnabled:                               settings.BackendModeEnabled,
+		ResponsesWS:                                      settings.ResponsesWS,
+		ResponsesWSEffective:                             settings.ResponsesWSEffective,
 		OpenAITTFTMode:                                   settings.OpenAITTFTMode,
 		EnableFingerprintUnification:                     settings.EnableFingerprintUnification,
 		EnableMetadataPassthrough:                        settings.EnableMetadataPassthrough,

@@ -5,6 +5,7 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	wshttp "github.com/TokenFlux/TokenRouter/internal/gateway/ws/httpapi"
 )
 
 // gatewayExecutionFixture 保存测试构造的执行组件和输入。
@@ -12,7 +13,7 @@ type gatewayExecutionFixture struct {
 	Text       *gatewayhttp.OpenAITextExecutor
 	Requests   *gatewayhttp.OpenAIRequests
 	Responses  *gatewayhttp.OpenAIResponsesExecutor
-	WebSockets *gatewayhttp.OpenAIWebSocketExecutor
+	WebSockets *wshttp.OpenAIWebSocketExecutor
 	Grok       *gatewayhttp.GrokExecutor
 	Auxiliary  *gatewayhttp.OpenAIAuxiliary
 	Recorder   *completion.Recorder

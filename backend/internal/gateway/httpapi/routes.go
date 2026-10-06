@@ -17,7 +17,7 @@ type RouteEndpoints struct {
 	GeminiNative           *GeminiNativeHandler
 	OpenAIText             *OpenAITextHandler
 	OpenAITokens           *OpenAITokensHandler
-	ResponsesWS            *ResponsesWSHandler
+	ResponsesWS            gin.HandlerFunc
 	Models                 *ModelsHandler
 	Messages               *MessagesHandler
 	Media                  *MediaHandler
@@ -73,7 +73,7 @@ func RegisterGatewayRoutes(engine *gin.Engine, endpoints RouteEndpoints, options
 	videoEditHandler := func(c *gin.Context) { mediaHTTP.GrokVideoEdit(c) }
 	videoExtensionHandler := func(c *gin.Context) { mediaHTTP.GrokVideoExtension(c) }
 
-	responsesWebSocketHandler := func(c *gin.Context) { responsesWSHTTP.ResponsesWebSocket(c) }
+	responsesWebSocketHandler := func(c *gin.Context) { responsesWSHTTP(c) }
 	// Sideband 动态段不能吞掉 fork 已明确移除的旧 Codex models 路由。
 	rejectRemovedCodexRoute := func(c *gin.Context) {
 		if c.Param("call_id") == "models" {

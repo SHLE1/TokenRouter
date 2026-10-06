@@ -105,7 +105,7 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 			Credentials: map[string]any{"api_key": "sk-test", "base_url": upstreamURL},
 			Extra: map[string]any{
 				"openai_apikey_responses_websockets_v2_enabled": true,
-				"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
+				"responses_ws_connection_mode":                  "per_session",
 			},
 		},
 	}
@@ -114,10 +114,7 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Security.URLAllowlist.AllowInsecureHTTP = true
-	cfg.Gateway.OpenAIWS.Enabled = true
-	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
-	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
-	cfg.Gateway.OpenAIWS.ModeRouterV2Enabled = true
+
 	cfg.Gateway.OpenAIWS.DialTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.ReadTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.WriteTimeoutSeconds = 3

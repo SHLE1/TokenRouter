@@ -636,22 +636,21 @@ describe('BulkEditProviderModal', () => {
     expect(wrapper.find('#bulk-edit-codex-image-tool-enabled').exists()).toBe(false)
   })
 
-  it('OpenAI OAuth 批量编辑应提交 OAuth 专属 WS mode 字段', async () => {
+  it('OpenAI OAuth 批量编辑提交统一连接字段', async () => {
     const wrapper = mountModal({
       selectedPlatforms: ['openai'],
       selectedTypes: ['oauth']
     })
 
     await wrapper.get('#bulk-edit-openai-ws-mode-enabled').setValue(true)
-    await wrapper.get('[data-testid="bulk-edit-openai-ws-mode-select"]').setValue('passthrough')
+    await wrapper.get('[data-testid="bulk-edit-openai-ws-mode-select"]').setValue('per_session')
     await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
     expect(adminAPI.providers.bulkUpdate).toHaveBeenCalledTimes(1)
     expect(adminAPI.providers.bulkUpdate).toHaveBeenCalledWith([1, 2], {
       extra: {
-        openai_oauth_responses_websockets_v2_mode: 'passthrough',
-        openai_oauth_responses_websockets_v2_enabled: true
+        responses_ws_connection_mode: 'per_session'
       }
     })
   })
@@ -857,22 +856,21 @@ describe('BulkEditProviderModal', () => {
     })
   })
 
-  it('OpenAI API Key 批量编辑应提交 API Key 专属 WS mode 字段', async () => {
+  it('OpenAI API Key 批量编辑提交统一连接字段', async () => {
     const wrapper = mountModal({
       selectedPlatforms: ['openai'],
       selectedTypes: ['apikey']
     })
 
     await wrapper.get('#bulk-edit-openai-apikey-ws-mode-enabled').setValue(true)
-    await wrapper.get('[data-testid="bulk-edit-openai-apikey-ws-mode-select"]').setValue('ctx_pool')
+    await wrapper.get('[data-testid="bulk-edit-openai-apikey-ws-mode-select"]').setValue('pooled')
     await wrapper.get('#bulk-edit-provider-form').trigger('submit.prevent')
     await flushPromises()
 
     expect(adminAPI.providers.bulkUpdate).toHaveBeenCalledTimes(1)
     expect(adminAPI.providers.bulkUpdate).toHaveBeenCalledWith([1, 2], {
       extra: {
-        openai_apikey_responses_websockets_v2_mode: 'ctx_pool',
-        openai_apikey_responses_websockets_v2_enabled: true
+        responses_ws_connection_mode: 'pooled'
       }
     })
   })

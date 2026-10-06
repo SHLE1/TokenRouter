@@ -2027,7 +2027,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 				},
 				Extra: map[string]any{
 					"openai_apikey_responses_websockets_v2_enabled": true,
-					"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
+					"responses_ws_connection_mode":                  "per_session",
 				},
 			},
 		},
@@ -2047,7 +2047,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 				},
 				Extra: map[string]any{
 					"openai_apikey_responses_websockets_v2_enabled": true,
-					"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
+					"responses_ws_connection_mode":                  "per_session",
 				},
 			},
 		},
@@ -2058,10 +2058,7 @@ func TestOpenAIResponsesWebSocket_FailoverOnUpstreamUsageLimitEvent(t *testing.T
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Security.URLAllowlist.AllowInsecureHTTP = true
-	cfg.Gateway.OpenAIWS.Enabled = true
-	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
-	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
-	cfg.Gateway.OpenAIWS.ModeRouterV2Enabled = true
+
 	cfg.Gateway.OpenAIWS.DialTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.ReadTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.WriteTimeoutSeconds = 3
@@ -2242,7 +2239,7 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 				Credentials: map[string]any{"api_key": "sk-first", "base_url": firstUpstream.URL},
 				Extra: map[string]any{
 					"openai_apikey_responses_websockets_v2_enabled": true,
-					"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
+					"responses_ws_connection_mode":                  "per_session",
 				},
 			},
 		},
@@ -2259,7 +2256,7 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 				Credentials: map[string]any{"api_key": "sk-second", "base_url": secondUpstream.URL},
 				Extra: map[string]any{
 					"openai_apikey_responses_websockets_v2_enabled": true,
-					"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
+					"responses_ws_connection_mode":                  "per_session",
 				},
 			},
 		},
@@ -2271,10 +2268,7 @@ func TestOpenAIResponsesWebSocket_FirstOutputTimeoutWithoutDownstreamReusesClien
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Security.URLAllowlist.AllowInsecureHTTP = true
 	cfg.Gateway.OpenAIFirstOutputTimeoutSeconds = 1
-	cfg.Gateway.OpenAIWS.Enabled = true
-	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
-	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
-	cfg.Gateway.OpenAIWS.ModeRouterV2Enabled = true
+
 	cfg.Gateway.OpenAIWS.DialTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.ReadTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.WriteTimeoutSeconds = 3
@@ -2446,7 +2440,7 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 			},
 			Extra: map[string]any{
 				"openai_apikey_responses_websockets_v2_enabled": true,
-				"openai_apikey_responses_websockets_v2_mode":    providercore.OpenAIWSIngressModePassthrough,
+				"responses_ws_connection_mode":                  "per_session",
 			},
 		},
 	}
@@ -2456,10 +2450,7 @@ func runOpenAIResponsesWebSocketUsageLogCase(t *testing.T, tc openAIResponsesWSU
 	cfg.Default.RateMultiplier = 1
 	cfg.Security.URLAllowlist.Enabled = false
 	cfg.Security.URLAllowlist.AllowInsecureHTTP = true
-	cfg.Gateway.OpenAIWS.Enabled = true
-	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
-	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
-	cfg.Gateway.OpenAIWS.ModeRouterV2Enabled = true
+
 	cfg.Gateway.OpenAIWS.DialTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.ReadTimeoutSeconds = 3
 	cfg.Gateway.OpenAIWS.WriteTimeoutSeconds = 3

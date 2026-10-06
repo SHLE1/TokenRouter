@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 
+	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
@@ -20,8 +22,8 @@ import (
 )
 
 // provideCompositeReadOptions 为综合设置绑定共享读取器，后台初始化和管理查询使用同一套设置解释规则。
-func provideCompositeReadOptions(cfg *config.Config, oauth *identity.OAuthSettings, gatewayRules *gateway.AdminSettingsRules, defaults *scheduler.AdminDefaults) *composite.ReadOptions {
-	return &composite.ReadOptions{OAuth: oauth, Gateway: *gatewayRules, Scheduler: *defaults, DefaultBalance: func() float64 { return cfg.Default.UserBalance }, DefaultConcurrency: func() int { return cfg.Default.UserConcurrency }, Forwarded: func() runtimeconfig.ForwardedInput {
+func provideCompositeReadOptions(cfg *config.Config, oauth *identity.OAuthSettings, gatewayRules *gateway.AdminSettingsRules, defaults *scheduler.AdminDefaults, sockets *ws.Runtime) *composite.ReadOptions {
+	return &composite.ReadOptions{ResponsesWS: sockets, OAuth: oauth, Gateway: *gatewayRules, Scheduler: *defaults, DefaultBalance: func() float64 { return cfg.Default.UserBalance }, DefaultConcurrency: func() int { return cfg.Default.UserConcurrency }, Forwarded: func() runtimeconfig.ForwardedInput {
 		value := cfg.ForwardedClientIPSettings()
 		return runtimeconfig.ForwardedInput{APIKeyACLTrustForwardedIP: value.TrustForwardedIP, ForwardedClientIPHeaders: value.Headers}
 	}, PublishModel: func(model string) {
@@ -35,6 +37,12 @@ func provideCompositeRuntime(store *settings.Store, cfg *config.Config, read *co
 		return billing.ValidateDefaultSubscriptionPlans(ctx, value, plans.GetPlan)
 	}}
 	steps := []composite.Application{
+		{Module: "responses-ws", Apply: func(_ context.Context, s *composite.Snapshot) error {
+			if read.ResponsesWS != nil {
+				return read.ResponsesWS.Publish(string(s.ResponsesWS))
+			}
+			return nil
+		}},
 		{Module: "gateway", Apply: func(_ context.Context, s *composite.Snapshot) error {
 			backendMode.Publish(s.BackendModeEnabled)
 			gatewayRuntime.PublishForwarding(s.MinClaudeCodeVersion, s.MaxClaudeCodeVersion, gateway.ForwardingSnapshot{OpenAITTFTMode: gateway.NormalizeOpenAITTFTMode(s.OpenAITTFTMode), FingerprintUnification: s.EnableFingerprintUnification, MetadataPassthrough: s.EnableMetadataPassthrough, CCHSigning: s.EnableCCHSigning, ClaudeOAuthSystemPromptInjection: s.EnableClaudeOAuthSystemPromptInjection, ClaudeOAuthSystemPrompt: s.ClaudeOAuthSystemPrompt, ClaudeOAuthSystemPromptBlocks: s.ClaudeOAuthSystemPromptBlocks, AnthropicCacheTTL1hInjection: s.EnableAnthropicCacheTTL1hInjection, RewriteMessageCacheControl: s.RewriteMessageCacheControl, ClientDatelineNormalization: s.EnableClientDatelineNormalization})

@@ -88,9 +88,7 @@ func newResponsesFixture(v responsesFixtureInputs) *OpenAIResponsesExecutor {
 	requests.GrokRoutes = routes
 	grok := &GrokExecutor{Credentials: credentials, Transport: v.transport, Output: aux.Output, Health: aux.Output.GrokHealth, Routes: routes, Failure: requests.Failure}
 	text := &OpenAITextExecutor{ForcedTemplate: options.ForcedTemplate, Requests: requests, Output: aux.Output, Grok: grok, Credentials: credentials, FastPolicy: &gatewayadapter.ExecutionFastPolicy{Readers: v.readers}, Continuation: &session.CompatResponses{TTL: aux.Output.ResponseTTL}, PromptCache: session.NewAnthropicPromptCache(time.Now), CodexUsage: aux.CodexUsage, ResponseTTL: aux.Output.ResponseTTL, Compact: &CompactExecutor{Models: gatewayadapter.CompactModels{Default: v.compactModel}}}
-	return &OpenAIResponsesExecutor{Requests: requests, Output: aux.Output, Text: text, Grok: grok, Lineage: &OpenAIEncryptedLineage{Store: store, TTL: aux.Output.ResponseTTL}, ImageBridge: &gatewayadapter.ResponseImagePolicy{DefaultEnabled: options.ImageBridge}, ResolveTransport: func(*gatewayadapter.ExecutionProvider) egress.OpenAIWSProtocolDecision {
-		return egress.OpenAIWSProtocolDecision{Transport: egress.OpenAIUpstreamTransportHTTPSSE}
-	}}
+	return &OpenAIResponsesExecutor{Requests: requests, Output: aux.Output, Text: text, Grok: grok, Lineage: &OpenAIEncryptedLineage{Store: store, TTL: aux.Output.ResponseTTL}, ImageBridge: &gatewayadapter.ResponseImagePolicy{DefaultEnabled: options.ImageBridge}}
 }
 
 // compileHTTPFixtureHeaders 使用 Header 策略，nil 表示使用默认配置。

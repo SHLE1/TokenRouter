@@ -11,7 +11,7 @@ import (
 )
 
 func (p *OpenAIResponseOutput) BufferedOptions(c *gin.Context, logPrefix, requestID string) openai.CompatBufferedOptions {
-	maxLineSize := openAIResponseDefaultMaxLineSize
+	maxLineSize := OpenAIResponseDefaultMaxLineSize
 	if p.Options.Configured && p.Options.MaxLineSize > 0 {
 		maxLineSize = p.Options.MaxLineSize
 	}

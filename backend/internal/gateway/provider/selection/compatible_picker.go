@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
@@ -668,15 +671,8 @@ func (s *Compatible) isOpenAIProviderTransportCompatible(provider *gatewayprovid
 		if provider.View().IsGrok() {
 			return true
 		}
-		if s.options.WS == nil || !s.options.WS.ModeRouterV2Enabled {
-			return s.ResolveTransport(provider).Transport == egress.OpenAIUpstreamTransportResponsesWebsocketV2
-		}
-		switch provider.View().ResolveOpenAIResponsesWebSocketV2Mode(s.options.WSIngressMode) {
-		case providercore.OpenAIWSIngressModeCtxPool, providercore.OpenAIWSIngressModePassthrough, providercore.OpenAIWSIngressModeHTTPBridge, providercore.OpenAIWSIngressModeShared, providercore.OpenAIWSIngressModeDedicated:
-			return true
-		default:
-			return false
-		}
+		return provider.Route.Protocol() == protocol.ProtocolOpenAIResponses || provider.View().SupportsResponsesWS() ||
+			(provider.View().IsOpenAI() && slices.Contains(provider.View().UpstreamProtocols(), capability.ProtocolOpenAIResponses))
 	}
 	return s.ResolveTransport(provider).Transport == requiredTransport
 }

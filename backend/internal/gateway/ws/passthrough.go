@@ -20,6 +20,22 @@ import (
 // Run 执行双向 relay，按轮处理策略检查、完成和失败。
 func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, firstClientMessage []byte) error {
 	p, o, hooks := s.Port, s.Options, s.Hooks
+	var turnParameters atomic.Pointer[Parameters]
+	initial := DefaultParameters()
+	initial.ReadTimeoutSeconds = int(o.IdleTimeout / time.Second)
+	initial.WriteTimeoutSeconds = int(o.WriteTimeout / time.Second)
+	if s.Parameters != nil {
+		initial = s.Parameters()
+	}
+	turnParameters.Store(&initial)
+	currentWriteTimeout := func() time.Duration { return time.Duration(turnParameters.Load().WriteTimeoutSeconds) * time.Second }
+	currentIdleTimeout := func() time.Duration {
+		if s.Parameters != nil {
+			return time.Duration(s.Parameters().IngressInterTurnIdleTimeoutSeconds) * time.Second
+		}
+		return o.InterTurnIdleTimeout
+	}
+
 	firstTurnStartedAt := time.Now()
 	if hooks != nil && !hooks.InitialTurnStartedAt.IsZero() {
 		firstTurnStartedAt = hooks.InitialTurnStartedAt
@@ -203,7 +219,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 			}
 			timeout := p.FirstOutputTimeout(reasoningEffort)
 			if timeout <= 0 {
-				timeout = o.IdleTimeout
+				timeout = time.Duration(turnParameters.Load().ReadTimeoutSeconds) * time.Second
 			}
 			model := RequestModelForFrame(payload)
 			if model == "" {
@@ -213,10 +229,11 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 				model = requestModel
 			}
 			return Deadline{
-				Timeout:         timeout,
-				StartedAt:       time.Now(),
-				RequestModel:    model,
-				ReasoningEffort: reasoningEffort,
+				Timeout:           timeout,
+				ActiveReadTimeout: time.Duration(turnParameters.Load().ReadTimeoutSeconds) * time.Second,
+				StartedAt:         time.Now(),
+				RequestModel:      model,
+				ReasoningEffort:   reasoningEffort,
 			}
 		}, p.ClosedError())
 
@@ -229,6 +246,7 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 		conn:                 clientConn,
 		controlCtx:           ctx,
 		interTurnIdleTimeout: o.InterTurnIdleTimeout,
+		idleTimeout:          currentIdleTimeout,
 		interTurnStarted:     make(chan struct{}, 1),
 		restoreResponseModel: func(payload []byte) []byte {
 			eventType := strings.TrimSpace(gjson.GetBytes(payload, "type").String())
@@ -383,6 +401,10 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 					}
 				}
 				usageMeta.UpdateFromResponseCreate(out)
+				if s.Parameters != nil {
+					next := s.Parameters()
+					turnParameters.Store(&next)
+				}
 				turnPayloads.Push(TurnPayload{
 					StartedAt:                responseCreateAt,
 					RequestBody:              out,
@@ -478,8 +500,9 @@ func (s *PassthroughSession) Run(ctx context.Context, clientConn ClientSocket, f
 		UpstreamConn:       relayUpstreamFrameConn,
 		FirstClientMessage: firstClientMessage,
 		Options: RelayOptions{
-			WriteTimeout:       o.WriteTimeout,
-			FirstTurnStartedAt: firstTurnStartedAt,
+			WriteTimeout:        o.WriteTimeout,
+			WriteTimeoutForTurn: currentWriteTimeout,
+			FirstTurnStartedAt:  firstTurnStartedAt,
 			TakeNextTurnStartedAt: func() time.Time {
 				startedAt := acceptedTurnStartedAt.Swap(nil)
 				if startedAt == nil {

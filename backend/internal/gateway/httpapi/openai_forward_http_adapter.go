@@ -89,7 +89,7 @@ func (s *OpenAIResponsesExecutor) nativeForwardHTTPOptions(ctx context.Context, 
 		ErrorSchedulingModel: gatewayprovider.ErrorSchedulingModel,
 		WrapResponseBody: func(resp *http.Response) {
 			if mapping, ok := OpenAIResponsesClientToolMapping(c); ok && openai.IsEventStreamResponse(resp.Header) {
-				limit := openAIResponseDefaultMaxLineSize
+				limit := OpenAIResponseDefaultMaxLineSize
 				if s.Output.Options.MaxLineSize > 0 {
 					limit = s.Output.Options.MaxLineSize
 				}

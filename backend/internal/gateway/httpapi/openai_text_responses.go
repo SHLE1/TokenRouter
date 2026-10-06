@@ -22,7 +22,7 @@ import (
 // Responses 保留 HTTP Responses 的 compact、归属和等待后资金检查顺序。
 // @project-doc docs/interfaces/openai_upstream.md#openai_protocol_dispatch
 func (h *OpenAITextHandler) Responses(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}

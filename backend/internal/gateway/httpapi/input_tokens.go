@@ -26,7 +26,7 @@ type InputTokensCall struct {
 
 // ResponsesInputTokens 处理 Codex 的 Responses 输入 token 预检，使用无并发槽、免用量记录的计数流程。
 func (h *OpenAITokensHandler) ResponsesInputTokens(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}

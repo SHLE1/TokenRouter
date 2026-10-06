@@ -722,7 +722,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_UpstreamRequestIgnoresClientCance
 			Type:           capability.ProviderTypeOAuth,
 			Concurrency:    1,
 			Credentials:    map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-acc"},
-			Extra:          map[string]any{"openai_passthrough": true, "openai_oauth_responses_websockets_v2_mode": providercore.OpenAIWSIngressModeOff},
+			Extra:          map[string]any{"openai_passthrough": true, "openai_oauth_responses_websockets_v2_mode": "off"},
 			Status:         billing.StatusActive,
 			Schedulable:    true,
 			RateMultiplier: new(float64(1)),
@@ -766,7 +766,7 @@ func TestOpenAIGatewayService_OAuthPassthrough_CodexMissingInstructionsGetsDefau
 				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 123, Name: "acc", Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeOAuth, Concurrency: 1,
 					Credentials: map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-acc"},
-					Extra:       map[string]any{"openai_passthrough": true, "openai_oauth_responses_websockets_v2_mode": providercore.OpenAIWSIngressModeOff},
+					Extra:       map[string]any{"openai_passthrough": true, "openai_oauth_responses_websockets_v2_mode": "off"},
 					Status:      billing.StatusActive, Schedulable: true, RateMultiplier: new(float64(1)),
 				},
 			}
@@ -856,7 +856,7 @@ func TestOpenAIGatewayService_OAuthLegacy_UpstreamRequestIgnoresClientCancel(t *
 			Type:           capability.ProviderTypeOAuth,
 			Concurrency:    1,
 			Credentials:    map[string]any{"access_token": "oauth-token", "chatgpt_account_id": "chatgpt-acc"},
-			Extra:          map[string]any{"openai_passthrough": false, "openai_oauth_responses_websockets_v2_mode": providercore.OpenAIWSIngressModeOff},
+			Extra:          map[string]any{"openai_passthrough": false, "openai_oauth_responses_websockets_v2_mode": "off"},
 			Status:         billing.StatusActive,
 			Schedulable:    true,
 			RateMultiplier: new(float64(1)),

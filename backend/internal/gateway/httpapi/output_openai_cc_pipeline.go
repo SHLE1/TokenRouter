@@ -8,7 +8,7 @@ import (
 )
 
 func (p *OpenAIResponseOutput) Scanner(r io.Reader) *bufio.Scanner {
-	maxLineSize := openAIResponseDefaultMaxLineSize
+	maxLineSize := OpenAIResponseDefaultMaxLineSize
 	if p.Options.Configured && p.Options.MaxLineSize > 0 {
 		maxLineSize = p.Options.MaxLineSize
 	}

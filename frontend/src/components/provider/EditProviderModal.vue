@@ -674,6 +674,8 @@
                   testid="edit-openai-images-url-to-b64-json"
                 />
               </template>
+              <details v-if="upstreamProtocols?.includes('openai_responses_websocket')" class="group">
+              <summary class="cursor-pointer text-sm font-medium">{{ t('admin.providers.openai.wsAdvancedConnections') }}</summary>
               <SettingRow
                 id="edit-openai-ws-mode"
                 label-for="edit-openai-ws-mode-select"
@@ -681,11 +683,12 @@
                 :hint="t('admin.providers.openai.wsModeDesc')"
                 field
               >
-                <Select id="edit-openai-ws-mode-select" v-model="openaiResponsesWebSocketV2Mode" :options="openAIWSModeOptions" />
+                <Select id="edit-openai-ws-mode-select" v-model="responsesWSConnectionMode" :options="responsesWSConnectionOptions" />
                 <template #hint>
-                  <p class="input-hint">{{ t(openAIWSModeConcurrencyHintKey) }}</p>
+                  <p class="input-hint">{{ t(responsesWSConnectionHintKey) }}</p>
                 </template>
               </SettingRow>
+              </details>
             </SettingsSection>
 
             <SettingsSection v-if="provider.type === 'oauth'" :title="t('admin.providers.sections.openaiClient')">
@@ -914,7 +917,7 @@ import {
   useAnthropicAPIKeyAuthSchemeOptions,
   useCodexFingerprintModeOptions,
   useOpenAIOAuthClientPolicyOptions,
-  useOpenAIWSModeOptions,
+  useResponsesWSConnectionModeOptions,
   useWebSearchEmulationOptions,
   type AnthropicAPIKeyAuthScheme,
   type CodexFingerprintMode,
@@ -953,12 +956,12 @@ import {
   groupedProviderSelectOptions
 } from '@/constants/provider'
 import {
-  OPENAI_WS_MODE_OFF,
-  isOpenAIWSModeEnabled,
-  resolveOpenAIWSModeConcurrencyHintKey,
-  type OpenAIWSMode,
-  resolveOpenAIWSModeFromExtra
-} from '@/utils/openaiWsMode'
+  clearLegacyResponsesWSSettings,
+  RESPONSES_WS_POOLED,
+  responsesWSConnectionHint,
+  type ResponsesWSConnectionMode,
+  readResponsesWSConnectionMode
+} from '@/utils/responsesWsConnection'
 import {
   getPresetMappingsByPlatform,
   getModelsByPlatform,
@@ -1252,8 +1255,7 @@ const openAINativeCompactionV2Mode = ref<OpenAICompactMode>('force_on')
 const openAIResponsesContinuationSupported = ref(false)
 // 图片回填默认关闭，只对 OpenAI API Key 提供商生效。
 const openAIImagesURLToB64JSON = ref(false)
-const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
-const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
+const responsesWSConnectionMode = ref<ResponsesWSConnectionMode>(RESPONSES_WS_POOLED)
 const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
 const openAIOAuthClientPolicy = ref<OpenAIOAuthClientPolicy>('any')
 const codexFingerprintMode = ref<CodexFingerprintMode>('off')
@@ -1408,24 +1410,10 @@ const { limits: quotaLimits, setLimit: setQuotaLimit } = bindQuotaLimits({
   resetTimezone: editResetTimezone
 })
 const codexFingerprintModeOptions = useCodexFingerprintModeOptions()
-const openAIWSModeOptions = useOpenAIWSModeOptions()
-const openaiResponsesWebSocketV2Mode = computed({
-  get: () => {
-    if (props.provider?.type === 'apikey') {
-      return openaiAPIKeyResponsesWebSocketV2Mode.value
-    }
-    return openaiOAuthResponsesWebSocketV2Mode.value
-  },
-  set: (mode: OpenAIWSMode) => {
-    if (props.provider?.type === 'apikey') {
-      openaiAPIKeyResponsesWebSocketV2Mode.value = mode
-      return
-    }
-    openaiOAuthResponsesWebSocketV2Mode.value = mode
-  }
-})
-const openAIWSModeConcurrencyHintKey = computed(() =>
-  resolveOpenAIWSModeConcurrencyHintKey(openaiResponsesWebSocketV2Mode.value)
+const responsesWSConnectionOptions = useResponsesWSConnectionModeOptions()
+
+const responsesWSConnectionHintKey = computed(() =>
+  responsesWSConnectionHint(responsesWSConnectionMode.value)
 )
 
 // OpenAI 订阅档位手动覆盖选项(清空 + Plus/Pro/Free;别名/自定义值友好显示且保留 canonical)
@@ -1678,8 +1666,7 @@ const syncFormFromProvider = (newProvider: Provider | null) => {
   openAIResponsesContinuationSupported.value = false
   openAIImagesURLToB64JSON.value = false
   openAICompactModelMappings.value = []
-  openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
-  openaiAPIKeyResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
+  responsesWSConnectionMode.value = RESPONSES_WS_POOLED
   codexCLIOnlyAllowClaudeCodeEnabled.value = false
   openAIOAuthClientPolicy.value = 'any'
   codexFingerprintMode.value = 'off'
@@ -1702,18 +1689,7 @@ const syncFormFromProvider = (newProvider: Provider | null) => {
       openAIImagesURLToB64JSON.value = extra?.images_url_to_b64_json === true
     }
     codexImageToolMode.value = readCodexImageToolMode(extra)
-    openaiOAuthResponsesWebSocketV2Mode.value = resolveOpenAIWSModeFromExtra(extra, {
-      modeKey: 'openai_oauth_responses_websockets_v2_mode',
-      enabledKey: 'openai_oauth_responses_websockets_v2_enabled',
-      fallbackEnabledKeys: ['responses_websockets_v2_enabled', 'openai_ws_enabled'],
-      defaultMode: OPENAI_WS_MODE_OFF
-    })
-    openaiAPIKeyResponsesWebSocketV2Mode.value = resolveOpenAIWSModeFromExtra(extra, {
-      modeKey: 'openai_apikey_responses_websockets_v2_mode',
-      enabledKey: 'openai_apikey_responses_websockets_v2_enabled',
-      fallbackEnabledKeys: ['responses_websockets_v2_enabled', 'openai_ws_enabled'],
-      defaultMode: OPENAI_WS_MODE_OFF
-    })
+    responsesWSConnectionMode.value = readResponsesWSConnectionMode(extra)
     if (newProvider.type === 'oauth') {
       openAIOAuthClientPolicy.value = normalizeOpenAIOAuthClientPolicy(extra?.openai_oauth_client_policy, extra?.codex_cli_only)
       codexCLIOnlyAllowClaudeCodeEnabled.value =
@@ -2962,14 +2938,8 @@ const handleSubmit = async () => {
       const currentExtra = (props.provider.extra as Record<string, unknown>) || {}
       const newExtra = normalizeLegacyOpenAIExtra(currentExtra)
       const hadCodexCLIOnlyEnabled = currentExtra.codex_cli_only === true
-      if (props.provider.type === 'oauth' || props.provider.type === 'setup-token') {
-        newExtra.openai_oauth_responses_websockets_v2_mode = openaiOAuthResponsesWebSocketV2Mode.value
-        newExtra.openai_oauth_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(openaiOAuthResponsesWebSocketV2Mode.value)
-      } else if (props.provider.type === 'apikey') {
-        newExtra.openai_apikey_responses_websockets_v2_mode = openaiAPIKeyResponsesWebSocketV2Mode.value
-        newExtra.openai_apikey_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(openaiAPIKeyResponsesWebSocketV2Mode.value)
-      }
-      delete newExtra.responses_websockets_v2_enabled
+      newExtra.responses_ws_connection_mode = responsesWSConnectionMode.value
+      clearLegacyResponsesWSSettings(newExtra)
       delete newExtra.openai_ws_enabled
       delete newExtra.openai_long_context_billing_enabled
       if (openaiPassthroughEnabled.value) {

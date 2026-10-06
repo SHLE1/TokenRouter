@@ -33,7 +33,7 @@ type CountTokensBackend interface {
 	FailoverObservation(context.Context, string, map[string]any)
 }
 type CountTokensHandler struct {
-	requestLifetime
+	RequestLifetime
 
 	maxBodyBytes int64
 	maxSwitches  int
@@ -59,7 +59,7 @@ func countMaxBytesError(err error) (*http.MaxBytesError, bool) {
 // POST /v1/messages/count_tokens
 // 特点：校验订阅/余额，但不计算并发、不记录使用量
 func (h *CountTokensHandler) CountTokens(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "anthropic")
+	done, accepted := h.BeginRequest(c, "anthropic")
 	if !accepted {
 		return
 	}

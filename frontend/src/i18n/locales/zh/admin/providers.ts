@@ -851,9 +851,14 @@ export default {
         responsesWebsocketsV2: 'Responses WebSocket v2',
         responsesWebsocketsV2Desc:
           '默认关闭。开启后可启用 responses_websockets_v2 协议能力（受网关全局开关与提供商类型开关约束）。',
-        wsMode: 'WS mode',
-        wsModeDesc:
-          '仅对当前 OpenAI 提供商类型生效；包括 http_bridge 在内的提供商 WS mode 仅在全局 gateway.openai_ws.mode_router_v2_enabled=true 时生效。',
+        wsMode: "连接方式",
+        wsModeDesc: "连接复用方式不会改变分组的协议许可。",
+        wsAdvancedConnections: "高级连接设置",
+        wsConnectionPooled: "优先复用已有连接（默认）",
+        wsConnectionPerSession: "每个会话新建连接",
+        wsConnectionPooledHint: "会话结束后，连接可以供后续会话使用，减少重复连接的开销。",
+        wsConnectionPerSessionHint: "每个客户端会话单独连接上游，会话结束后关闭连接。",
+
         wsModeOff: '关闭（off）',
         wsModeCtxPool: '上下文池（ctx_pool）',
         wsModePassthrough: '透传（passthrough）',

@@ -153,7 +153,7 @@ func TestOpenAIStreamMetadataPreambleAndMessageOnlyOverloadFailOver(t *testing.T
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}})
+			svc := newResponsesFixture(responsesFixtureInputs{options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}})
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
@@ -181,7 +181,7 @@ func TestOpenAIStreamMetadataPreambleAndMessageOnlyOverloadFailOver(t *testing.T
 // TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver 覆盖 created、in_progress、error、response.failed 的降载序列。
 // 预期执行同提供商重试并记录请求级瞬时标记，客户端输出为空。
 func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *testing.T) {
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()
@@ -222,7 +222,7 @@ func TestOpenAIStreamCapacityShedErrorFramePrecedingFailedStillFailsOver(t *test
 func TestOpenAIStreamCapacityShedAfterOutputRewritesCodeForClient(t *testing.T) {
 	logSink, restore := captureHandlerStructuredLog(t)
 	defer restore()
-	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize}}
+	cfg := &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize}}
 	svc := newResponsesFixture(responsesFixtureInputs{options: cfg})
 
 	rec := httptest.NewRecorder()

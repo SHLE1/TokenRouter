@@ -12,7 +12,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
-	"github.com/TokenFlux/TokenRouter/internal/egress"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
@@ -40,8 +39,6 @@ func selectionOptionsForTest(cfg *config.Config) Options {
 	value := cfg.Gateway.Scheduling
 	options.Scheduling = scheduler.FlowOptions{LoadBatchEnabled: value.LoadBatchEnabled, PreferSoonestReset: value.PreferSoonestReset, FallbackMaxWaiting: value.FallbackMaxWaiting, StickySessionMaxWaiting: value.StickySessionMaxWaiting, FallbackSelectionMode: value.FallbackSelectionMode, FallbackWaitTimeout: value.FallbackWaitTimeout, StickySessionWaitTimeout: value.StickySessionWaitTimeout}
 	ws := cfg.Gateway.OpenAIWS
-	options.WS = &egress.OpenAIWSOptions{Enabled: ws.Enabled, ForceHTTP: ws.ForceHTTP, OAuthEnabled: ws.OAuthEnabled, APIKeyEnabled: ws.APIKeyEnabled, ModeRouterV2Enabled: ws.ModeRouterV2Enabled, ResponsesWebsockets: ws.ResponsesWebsockets, ResponsesWebsocketsV2: ws.ResponsesWebsocketsV2}
-	options.WSIngressMode = ws.IngressModeDefault
 	options.ReadLegacySticky = ws.SessionHashReadOldFallback
 	options.WriteLegacySticky = ws.SessionHashDualWriteOld
 	if ws.StickySessionTTLSeconds > 0 {

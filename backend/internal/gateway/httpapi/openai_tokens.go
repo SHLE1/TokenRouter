@@ -36,7 +36,7 @@ type OpenAITokenBackend interface {
 	InputTokensExecution(*gin.Context, InputTokensCall) text.InputTokensPorts
 }
 type OpenAITokensHandler struct {
-	requestLifetime
+	RequestLifetime
 	options OpenAITokenOptions
 	backend OpenAITokenBackend
 	prompt  MessagesPrompt

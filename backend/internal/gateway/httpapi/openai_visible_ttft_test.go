@@ -85,7 +85,7 @@ func TestOpenAIResponsesTTFTStartsAtCompletedImage(t *testing.T) {
 }
 
 func TestOpenAINativeMetadataDoesNotDisarmFirstOutputTimeout(t *testing.T) {
-	svc := newResponsesFixture(responsesFixtureInputs{readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{gateway.SettingKeyOpenAITTFTMode: gateway.OpenAITTFTModeVisible}}, nil), options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize, OpenAIFirstOutputTimeoutSeconds: 1}}})
+	svc := newResponsesFixture(responsesFixtureInputs{readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{gateway.SettingKeyOpenAITTFTMode: gateway.OpenAITTFTModeVisible}}, nil), options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize, OpenAIFirstOutputTimeoutSeconds: 1}}})
 	reader, writer := io.Pipe()
 	writerDone := make(chan struct{})
 	go func() {
@@ -117,7 +117,7 @@ func TestOpenAINativeMetadataDoesNotDisarmFirstOutputTimeout(t *testing.T) {
 func runSyntheticVisibleTTFTStream(t *testing.T, passthrough bool, visibleDelay time.Duration, timeoutSeconds int, visibleEvent string) *responseupstream.StreamingResult {
 	t.Helper()
 
-	svc := newResponsesFixture(responsesFixtureInputs{readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{gateway.SettingKeyOpenAITTFTMode: gateway.OpenAITTFTModeVisible}}, nil), options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize, OpenAIFirstOutputTimeoutSeconds: timeoutSeconds}}})
+	svc := newResponsesFixture(responsesFixtureInputs{readers: newHTTPReadersFixture(&gatewaytestkit.FastPolicySettingsRepo{Values: map[string]string{gateway.SettingKeyOpenAITTFTMode: gateway.OpenAITTFTModeVisible}}, nil), options: &responsesFixtureOptions{Response: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize, OpenAIFirstOutputTimeoutSeconds: timeoutSeconds}}})
 	reader, writer := io.Pipe()
 	writerDone := make(chan struct{})
 	go func() {

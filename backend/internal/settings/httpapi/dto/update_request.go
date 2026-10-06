@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"encoding/json"
+
 	billinghttp "github.com/TokenFlux/TokenRouter/internal/billing/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	gatewaydto "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/dto"
@@ -14,6 +16,7 @@ import (
 
 // UpdateSettingsRequest 只保留综合 HTTP 文档的扁平形状与字段存在性，规则由各所有者解释。
 type UpdateSettingsRequest struct {
+	ResponsesWS json.RawMessage `json:"responses_ws,omitempty"`
 	// 注册设置
 	RegistrationEnabled                 bool                             `json:"registration_enabled"`
 	EmailVerifyEnabled                  bool                             `json:"email_verify_enabled"`

@@ -27,7 +27,7 @@ type OpenAICountCall struct {
 }
 
 func (h *OpenAITokensHandler) GrokCountTokens(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "anthropic")
+	done, accepted := h.BeginRequest(c, "anthropic")
 	if !accepted {
 		return
 	}
@@ -72,7 +72,7 @@ func (h *OpenAITokensHandler) GrokCountTokens(c *gin.Context) {
 }
 
 func (h *OpenAITokensHandler) CountTokens(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "anthropic")
+	done, accepted := h.BeginRequest(c, "anthropic")
 	if !accepted {
 		return
 	}

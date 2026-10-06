@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
@@ -18,15 +19,16 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// BindStickySession sets session -> provider binding with standard TTL.
+// BindStickySession 使用调度器默认期限绑定提供商会话。
 func (s *Compatible) BindStickySession(ctx context.Context, groupID *int64, sessionHash string, providerID int64) error {
-	if sessionHash == "" || providerID <= 0 {
+	return s.BindStickySessionWithTTL(ctx, groupID, sessionHash, providerID, s.SessionStickyTTL())
+}
+
+// BindStickySessionWithTTL 让 WS 请求按当前参数保存会话期限。
+func (s *Compatible) BindStickySessionWithTTL(ctx context.Context, groupID *int64, sessionHash string, providerID int64, ttl time.Duration) error {
+	if sessionHash == "" || providerID <= 0 || requeststate.PreserveGuardianParentBinding(ctx, sessionHash) {
 		return nil
 	}
-	if requeststate.PreserveGuardianParentBinding(ctx, sessionHash) {
-		return nil
-	}
-	ttl := s.SessionStickyTTL()
 	return s.setStickySessionProviderID(ctx, groupID, sessionHash, providerID, ttl)
 }
 

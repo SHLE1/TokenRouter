@@ -397,7 +397,7 @@
           <BulkApplyField
             v-if="allOpenAIOAuth"
             id="bulk-edit-openai-ws-mode"
-            v-model="enableOpenAIWSMode"
+            v-model="enableResponsesWSConnectionMode"
             :label="t('admin.providers.openai.wsMode')"
             :hint="`${t('admin.providers.openai.wsModeDesc')} ${t(openAIWSModeConcurrencyHintKey)}`"
           >
@@ -643,7 +643,7 @@ import RpmLimitPanel from '@/components/provider/form/RpmLimitPanel.vue'
 import {
   useCodexFingerprintModeOptions,
   useOpenAIOAuthClientPolicyOptions,
-  useOpenAIWSModeOptions,
+  useResponsesWSConnectionModeOptions,
   useUserMsgQueueModeOptions,
   type CodexFingerprintMode,
   type RpmStrategy
@@ -670,11 +670,10 @@ import {
 } from '@/components/provider/credentialsBuilder'
 import GrokBaseUrlPresets from '@/components/provider/GrokBaseUrlPresets.vue'
 import {
-  OPENAI_WS_MODE_OFF,
-  isOpenAIWSModeEnabled,
-  resolveOpenAIWSModeConcurrencyHintKey
-} from '@/utils/openaiWsMode'
-import type { OpenAIWSMode } from '@/utils/openaiWsMode'
+  RESPONSES_WS_POOLED,
+  responsesWSConnectionHint
+} from '@/utils/responsesWsConnection'
+import type { ResponsesWSConnectionMode } from '@/utils/responsesWsConnection'
 import {
   applyCodexImageToolMode,
   type CodexImageToolMode
@@ -875,7 +874,7 @@ const enableUpstreamProtocols = ref(false)
 const upstreamProtocols = ref<ProtocolID[] | undefined>(undefined)
 watch(() => [targetSelectedPlatforms.value.join(','), targetSelectedTypes.value.join(',')], () => { enableUpstreamProtocols.value = false; upstreamProtocols.value = undefined })
 const enableOpenAIResponsesContinuationSupported = ref(false)
-const enableOpenAIWSMode = ref(false)
+const enableResponsesWSConnectionMode = ref(false)
 const enableOpenAIAPIKeyWSMode = ref(false)
 const enableCodexCLIOnly = ref(false)
 const enableCodexCLIOnlyAllowClaudeCode = ref(false)
@@ -912,8 +911,8 @@ const openaiFlattenNamespacesEnabled = ref(false)
 const codexImageToolMode = ref<CodexImageToolMode>('inherit')
 // 勾选 continuation 后才提交该字段，未勾选时保留提供商的当前设置。
 const openAIResponsesContinuationSupported = ref(false)
-const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
-const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
+const openaiOAuthResponsesWebSocketV2Mode = ref<ResponsesWSConnectionMode>(RESPONSES_WS_POOLED)
+const openaiAPIKeyResponsesWebSocketV2Mode = ref<ResponsesWSConnectionMode>(RESPONSES_WS_POOLED)
 const openAIOAuthClientPolicy = ref<OpenAIOAuthClientPolicy>('any')
 const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
 const autoPause5hThreshold = ref<OptionalNumberInputValue>(null)
@@ -955,13 +954,13 @@ const statusOptions = computed(() => [
   { value: 'inactive', label: t('common.inactive') }
 ])
 
-const openAIWSModeOptions = useOpenAIWSModeOptions()
+const openAIWSModeOptions = useResponsesWSConnectionModeOptions()
 const openAIOAuthClientPolicyOptions = useOpenAIOAuthClientPolicyOptions()
 const openAIWSModeConcurrencyHintKey = computed(() =>
-  resolveOpenAIWSModeConcurrencyHintKey(openaiOAuthResponsesWebSocketV2Mode.value)
+  responsesWSConnectionHint(openaiOAuthResponsesWebSocketV2Mode.value)
 )
 const openAIAPIKeyWSModeConcurrencyHintKey = computed(() =>
-  resolveOpenAIWSModeConcurrencyHintKey(openaiAPIKeyResponsesWebSocketV2Mode.value)
+  responsesWSConnectionHint(openaiAPIKeyResponsesWebSocketV2Mode.value)
 )
 
 const cloneModelMappings = (mappings: ModelMappingRow[]) =>
@@ -1253,20 +1252,16 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     credentialsChanged = true
   }
 
-  if (enableOpenAIWSMode.value) {
+  if (enableResponsesWSConnectionMode.value) {
     const extra = ensureExtra()
-    extra.openai_oauth_responses_websockets_v2_mode = openaiOAuthResponsesWebSocketV2Mode.value
-    extra.openai_oauth_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(
-      openaiOAuthResponsesWebSocketV2Mode.value
-    )
+    extra.responses_ws_connection_mode = openaiOAuthResponsesWebSocketV2Mode.value
+
   }
 
   if (enableOpenAIAPIKeyWSMode.value) {
     const extra = ensureExtra()
-    extra.openai_apikey_responses_websockets_v2_mode = openaiAPIKeyResponsesWebSocketV2Mode.value
-    extra.openai_apikey_responses_websockets_v2_enabled = isOpenAIWSModeEnabled(
-      openaiAPIKeyResponsesWebSocketV2Mode.value
-    )
+    extra.responses_ws_connection_mode = openaiAPIKeyResponsesWebSocketV2Mode.value
+
   }
 
   if (enableCodexCLIOnly.value) {
@@ -1406,7 +1401,7 @@ const handleSubmit = async () => {
     enableRateMultiplier.value ||
     enableStatus.value ||
     enableGroups.value ||
-    enableOpenAIWSMode.value ||
+    enableResponsesWSConnectionMode.value ||
     enableOpenAIAPIKeyWSMode.value ||
     enableCodexCLIOnly.value ||
     enableCodexCLIOnlyAllowClaudeCode.value ||
@@ -1514,7 +1509,7 @@ const resetBulkEditFormState = () => {
   enableUpstreamProtocols.value = false
   upstreamProtocols.value = undefined
   enableOpenAIResponsesContinuationSupported.value = false
-  enableOpenAIWSMode.value = false
+  enableResponsesWSConnectionMode.value = false
   enableOpenAIAPIKeyWSMode.value = false
   enableCodexCLIOnly.value = false
   enableCodexCLIOnlyAllowClaudeCode.value = false
@@ -1546,8 +1541,8 @@ const resetBulkEditFormState = () => {
   rateMultiplier.value = 1
   status.value = 'active'
   groupIds.value = []
-  openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
-  openaiAPIKeyResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
+  openaiOAuthResponsesWebSocketV2Mode.value = RESPONSES_WS_POOLED
+  openaiAPIKeyResponsesWebSocketV2Mode.value = RESPONSES_WS_POOLED
   openAIOAuthClientPolicy.value = 'any'
   codexCLIOnlyAllowClaudeCodeEnabled.value = false
   autoPause5hThreshold.value = null

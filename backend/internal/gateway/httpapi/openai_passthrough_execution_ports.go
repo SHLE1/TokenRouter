@@ -257,7 +257,7 @@ func (p *openAIPassthroughExecutionAdapter) ErrorResponsePass(ctx context.Contex
 
 func (p *openAIPassthroughExecutionAdapter) WrapResponseBody(r *http.Response) {
 	if mapping, ok := OpenAIResponsesClientToolMapping(p.c); ok && openai.IsEventStreamResponse(r.Header) {
-		limit := openAIResponseDefaultMaxLineSize
+		limit := OpenAIResponseDefaultMaxLineSize
 		if p.s.Output.Options.MaxLineSize > 0 {
 			limit = p.s.Output.Options.MaxLineSize
 		}

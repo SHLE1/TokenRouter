@@ -119,9 +119,7 @@ func (p openAIForwardPreludeAdapter) LitePayload(body []byte) ([]byte, bool, str
 }
 
 func (p openAIForwardPreludeAdapter) Transport() forward.TransportDecision {
-	v := p.s.ResolveTransport(p.provider)
-	v = ResolveOpenAIWSDecisionByClientTransport(v, GetOpenAIClientTransport(p.c))
-	return forward.TransportDecision{Transport: string(v.Transport), Reason: v.Reason}
+	return forward.TransportDecision{Transport: "http_sse", Reason: "client_protocol_http"}
 }
 
 func (p openAIForwardPreludeAdapter) CompactPath() bool {

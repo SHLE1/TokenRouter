@@ -3,6 +3,7 @@ package app
 import (
 	batchhttp "github.com/TokenFlux/TokenRouter/internal/batchimage/httpapi"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
+	wshttp "github.com/TokenFlux/TokenRouter/internal/gateway/ws/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/usage/httpapi"
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +15,7 @@ func provideGatewayRouteMount(eCountTokensHTTP *gatewayhttp.CountTokensHandler,
 	eGeminiNativeHTTP *gatewayhttp.GeminiNativeHandler,
 	eOpenAITextHTTP *gatewayhttp.OpenAITextHandler,
 	eOpenAITokensHTTP *gatewayhttp.OpenAITokensHandler,
-	eResponsesWSHTTP *gatewayhttp.ResponsesWSHandler,
+	eResponsesWSHTTP *wshttp.ResponsesWSHandler,
 	eModelsHTTP *gatewayhttp.ModelsHandler,
 	eMessagesHTTP *gatewayhttp.MessagesHandler,
 	eMediaHTTP *gatewayhttp.MediaHandler,
@@ -27,6 +28,6 @@ func provideGatewayRouteMount(eCountTokensHTTP *gatewayhttp.CountTokensHandler,
 	options gatewayhttp.RouteMiddleware,
 ) gatewayRouteMount {
 	return func(r *gin.Engine) {
-		gatewayhttp.RegisterGatewayRoutes(r, gatewayhttp.RouteEndpoints{CountTokens: eCountTokensHTTP, QoderCompatible: eQoderCompatibleHTTP, CompatibleText: eCompatibleTextHTTP, GeminiNative: eGeminiNativeHTTP, OpenAIText: eOpenAITextHTTP, OpenAITokens: eOpenAITokensHTTP, ResponsesWS: eResponsesWSHTTP, Models: eModelsHTTP, Messages: eMessagesHTTP, Media: eMediaHTTP, Auxiliary: eAuxiliaryHTTP, Live: eLiveHTTP, Search: eSearchHTTP, PublicUsage: ePublicUsage.Usage, QoderChat: eQoderChat.ChatCompletions}, options, func(group *gin.RouterGroup) { batchhttp.RegisterGatewayRoutes(group, batch) })
+		gatewayhttp.RegisterGatewayRoutes(r, gatewayhttp.RouteEndpoints{CountTokens: eCountTokensHTTP, QoderCompatible: eQoderCompatibleHTTP, CompatibleText: eCompatibleTextHTTP, GeminiNative: eGeminiNativeHTTP, OpenAIText: eOpenAITextHTTP, OpenAITokens: eOpenAITokensHTTP, ResponsesWS: eResponsesWSHTTP.ResponsesWebSocket, Models: eModelsHTTP, Messages: eMessagesHTTP, Media: eMediaHTTP, Auxiliary: eAuxiliaryHTTP, Live: eLiveHTTP, Search: eSearchHTTP, PublicUsage: ePublicUsage.Usage, QoderChat: eQoderChat.ChatCompletions}, options, func(group *gin.RouterGroup) { batchhttp.RegisterGatewayRoutes(group, batch) })
 	}
 }

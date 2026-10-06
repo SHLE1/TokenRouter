@@ -4,9 +4,10 @@ import (
 	"context"
 	"log/slog"
 
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
+
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/provider/postgres"
@@ -15,7 +16,7 @@ import (
 )
 
 // provideOpenAIQuota 组合提供商查询、数据库写入和共享任务协调器。
-func provideOpenAIQuota(admin *provider.Admin, store *postgres.ProviderStore, proxies egress.ProxyRepository, transport httpclient.UpstreamTransport, token *provider.OpenAITokenSource, profiles *egressprovider.TLSProfiles, routers *egress.TLSFingerprintRouterService, connections *gatewayhttp.OpenAIWSConnections, coordinator *provider.OpenAITaskCoordinator) *provider.OpenAIQuotaService {
+func provideOpenAIQuota(admin *provider.Admin, store *postgres.ProviderStore, proxies egress.ProxyRepository, transport httpclient.UpstreamTransport, token *provider.OpenAITokenSource, profiles *egressprovider.TLSProfiles, routers *egress.TLSFingerprintRouterService, connections *openaiws.OpenAIWSConnections, coordinator *provider.OpenAITaskCoordinator) *provider.OpenAIQuotaService {
 	factory := &provideradapter.OpenAIQuotaFactory{
 		Proxy: proxies.GetByID, Transport: transport, Profiles: profiles, Routers: routers,
 		Tasks: coordinator,

@@ -17,7 +17,7 @@ import (
 )
 
 func (h *OpenAITextHandler) ChatCompletions(c *gin.Context) {
-	done, accepted := h.beginRequest(c, "openai")
+	done, accepted := h.BeginRequest(c, "openai")
 	if !accepted {
 		return
 	}

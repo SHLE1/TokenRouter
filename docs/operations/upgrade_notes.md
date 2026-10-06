@@ -4,6 +4,31 @@
 
 各节里提到的认证缓存版本（v34 到 v46）、调度缓存命名空间，都是对应迁移发布时的值。当前代码的认证缓存版本是 46，调度缓存命名空间是 `sched:v4:`，以[提供商调度与缓存一致性](../architecture/provider_scheduling_and_cache.md)为准。后面的迁移可能取代前面的字段，所以不能只看某一节判断当前的接口；"当前状态"一列标出了已被取代的专题。
 
+## Responses WS 设置与在线调参（迁移 292）
+
+本次升级需要一起更新前后端，停止旧实例后执行迁移。提供商的连接方式统一保存为 `responses_ws_connection_mode`，旧的透传选择转为 `per_session`，其他普通连接模式转为 `pooled`。之前受旧全局开关影响而未生效的透传选择，会在升级后生效。
+
+旧的 WS 关闭字段退出运行判断。需要关闭客户端 WS 的分组，应在升级前取消分组的 WebSocket 协议许可。提供商已保存的协议集合保持明确选择，空数组继续禁止提供商承接新调用。旧 HTTP 桥接或提供商强制 HTTP 会移除上游 WS 能力，之后根据已有的 HTTP 能力和分组转换规则选择提供商。
+
+升级前可查询旧 HTTP 桥接提供商所在分组，核对 HTTP 能力和转换许可；查询只返回标识和协议配置：
+
+```sql
+SELECT p.id AS provider_id, g.id AS group_id, g.name AS group_name,
+       p.credentials->'upstream_protocols' AS upstream_protocols,
+       g.allowed_protocols, g.protocol_fallbacks
+FROM providers p
+JOIN provider_groups pg ON pg.provider_id = p.id
+JOIN groups g ON g.id = pg.group_id
+WHERE p.platform = 'openai'
+  AND (p.extra->>'openai_oauth_responses_websockets_v2_mode' = 'http_bridge'
+    OR p.extra->>'openai_apikey_responses_websockets_v2_mode' = 'http_bridge'
+    OR p.extra->'openai_ws_force_http' = 'true'::jsonb);
+```
+
+提供商缺少 `openai_responses`，或分组的 `protocol_fallbacks.openai_responses_websocket` 为 `[]` 时，需要管理员调整配置后才能通过 HTTP 承接 WS。迁移保持分组限制。调度缓存命名空间更新为 `sched:v5`，新实例从已迁移数据重建缓存。
+
+在线设置首次没有覆盖值时继续使用环境变量、YAML 和代码默认值。上线后验证池化和单会话连接、HTTP 转换、分组禁用、参数保存与恢复默认，以及多实例刷新。回退需要恢复升级前的数据库备份，切换旧二进制不会撤销字段迁移。
+
 ## 总览
 
 | 迁移 | 专题 | 升级方式 | 当前状态 |

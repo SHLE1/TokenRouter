@@ -488,15 +488,6 @@ func TestLoadDefaultOpenAIWSConfig(t *testing.T) {
 		t.Fatalf("Load() error: %v", err)
 	}
 
-	if !cfg.Gateway.OpenAIWS.Enabled {
-		t.Fatalf("Gateway.OpenAIWS.Enabled = false, want true")
-	}
-	if !cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 {
-		t.Fatalf("Gateway.OpenAIWS.ResponsesWebsocketsV2 = false, want true")
-	}
-	if cfg.Gateway.OpenAIWS.ResponsesWebsockets {
-		t.Fatalf("Gateway.OpenAIWS.ResponsesWebsockets = true, want false")
-	}
 	if !cfg.Gateway.OpenAIWS.DynamicMaxConnsByProviderConcurrencyEnabled {
 		t.Fatalf("Gateway.OpenAIWS.DynamicMaxConnsByProviderConcurrencyEnabled = false, want true")
 	}
@@ -536,54 +527,22 @@ func TestLoadDefaultOpenAIWSConfig(t *testing.T) {
 	if cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds != 3600 {
 		t.Fatalf("Gateway.OpenAIWS.StickyResponseIDTTLSeconds = %d, want 3600", cfg.Gateway.OpenAIWS.StickyResponseIDTTLSeconds)
 	}
-	if cfg.Gateway.OpenAIWS.EventFlushBatchSize != 1 {
-		t.Fatalf("Gateway.OpenAIWS.EventFlushBatchSize = %d, want 1", cfg.Gateway.OpenAIWS.EventFlushBatchSize)
-	}
-	if cfg.Gateway.OpenAIWS.EventFlushIntervalMS != 10 {
-		t.Fatalf("Gateway.OpenAIWS.EventFlushIntervalMS = %d, want 10", cfg.Gateway.OpenAIWS.EventFlushIntervalMS)
-	}
+
 	if cfg.Gateway.OpenAIWS.PrewarmCooldownMS != 300 {
 		t.Fatalf("Gateway.OpenAIWS.PrewarmCooldownMS = %d, want 300", cfg.Gateway.OpenAIWS.PrewarmCooldownMS)
 	}
 	if cfg.Gateway.OpenAIWS.ClientReadLimitBytes != 64*1024*1024 {
 		t.Fatalf("Gateway.OpenAIWS.ClientReadLimitBytes = %d, want %d", cfg.Gateway.OpenAIWS.ClientReadLimitBytes, 64*1024*1024)
 	}
-	if !cfg.Gateway.OpenAIWS.HTTPBridgeEnabled {
-		t.Fatalf("Gateway.OpenAIWS.HTTPBridgeEnabled = false, want true")
-	}
+
 	if cfg.Gateway.OpenAIWS.HTTPBridgeThresholdBytes != 15*1024*1024 {
 		t.Fatalf("Gateway.OpenAIWS.HTTPBridgeThresholdBytes = %d, want %d", cfg.Gateway.OpenAIWS.HTTPBridgeThresholdBytes, 15*1024*1024)
 	}
-	if cfg.Gateway.OpenAIWS.RetryBackoffInitialMS != 120 {
-		t.Fatalf("Gateway.OpenAIWS.RetryBackoffInitialMS = %d, want 120", cfg.Gateway.OpenAIWS.RetryBackoffInitialMS)
-	}
-	if cfg.Gateway.OpenAIWS.RetryBackoffMaxMS != 2000 {
-		t.Fatalf("Gateway.OpenAIWS.RetryBackoffMaxMS = %d, want 2000", cfg.Gateway.OpenAIWS.RetryBackoffMaxMS)
-	}
-	if cfg.Gateway.OpenAIWS.RetryJitterRatio != 0.2 {
-		t.Fatalf("Gateway.OpenAIWS.RetryJitterRatio = %v, want 0.2", cfg.Gateway.OpenAIWS.RetryJitterRatio)
-	}
-	if cfg.Gateway.OpenAIWS.RetryTotalBudgetMS != 5000 {
-		t.Fatalf("Gateway.OpenAIWS.RetryTotalBudgetMS = %d, want 5000", cfg.Gateway.OpenAIWS.RetryTotalBudgetMS)
-	}
-	if cfg.Gateway.OpenAIWS.PayloadLogSampleRate != 0.2 {
-		t.Fatalf("Gateway.OpenAIWS.PayloadLogSampleRate = %v, want 0.2", cfg.Gateway.OpenAIWS.PayloadLogSampleRate)
-	}
+
 	if cfg.Gateway.AdvancedScheduler.ScoreWeights.QuotaHeadroom != 0 {
 		t.Fatalf("Gateway.AdvancedScheduler.ScoreWeights.QuotaHeadroom = %v, want 0", cfg.Gateway.AdvancedScheduler.ScoreWeights.QuotaHeadroom)
 	}
-	if !cfg.Gateway.OpenAIWS.StoreDisabledForceNewConn {
-		t.Fatalf("Gateway.OpenAIWS.StoreDisabledForceNewConn = false, want true")
-	}
-	if cfg.Gateway.OpenAIWS.StoreDisabledConnMode != "strict" {
-		t.Fatalf("Gateway.OpenAIWS.StoreDisabledConnMode = %q, want %q", cfg.Gateway.OpenAIWS.StoreDisabledConnMode, "strict")
-	}
-	if cfg.Gateway.OpenAIWS.ModeRouterV2Enabled {
-		t.Fatalf("Gateway.OpenAIWS.ModeRouterV2Enabled = true, want false")
-	}
-	if cfg.Gateway.OpenAIWS.IngressModeDefault != "ctx_pool" {
-		t.Fatalf("Gateway.OpenAIWS.IngressModeDefault = %q, want %q", cfg.Gateway.OpenAIWS.IngressModeDefault, "ctx_pool")
-	}
+
 	if cfg.Gateway.OpenAIWS.ClientFirstMessageTimeoutSeconds != DefaultOpenAIWSClientFirstMessageTimeoutSeconds {
 		t.Fatalf(
 			"Gateway.OpenAIWS.ClientFirstMessageTimeoutSeconds = %d, want %d",
@@ -608,13 +567,13 @@ func TestLoadOpenAIWSClientFirstMessageTimeoutFromEnv(t *testing.T) {
 	require.Equal(t, 120, cfg.Gateway.OpenAIWS.ClientFirstMessageTimeoutSeconds)
 }
 
-func TestLoadOpenAIWSForceHTTPFromEnv(t *testing.T) {
+func TestLoadIgnoresRemovedOpenAIWSSwitch(t *testing.T) {
 	resetViperWithJWTSecret(t)
 	t.Setenv("GATEWAY_OPENAI_WS_FORCE_HTTP", "true")
 
 	cfg, err := Load()
 	require.NoError(t, err)
-	require.True(t, cfg.Gateway.OpenAIWS.ForceHTTP)
+	require.Equal(t, 128, cfg.Gateway.OpenAIWS.MaxConnsPerProvider)
 }
 
 func TestLoadDefaultOpenAIHTTP2Enabled(t *testing.T) {
@@ -2276,26 +2235,7 @@ func TestValidateConfig_OpenAIWSRules(t *testing.T) {
 			mutate:  func(c *Config) { c.Gateway.OpenAIWS.QueueLimitPerConn = 0 },
 			wantErr: "gateway.openai_ws.queue_limit_per_conn",
 		},
-		{
-			name:    "store_disabled_conn_mode 必须为 strict|adaptive|off",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.StoreDisabledConnMode = "invalid" },
-			wantErr: "gateway.openai_ws.store_disabled_conn_mode",
-		},
-		{
-			name:    "ingress_mode_default 必须为 off|ctx_pool|passthrough|http_bridge",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.IngressModeDefault = "invalid" },
-			wantErr: "gateway.openai_ws.ingress_mode_default",
-		},
-		{
-			name:    "payload_log_sample_rate 必须在 [0,1] 范围内",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.PayloadLogSampleRate = 1.2 },
-			wantErr: "gateway.openai_ws.payload_log_sample_rate",
-		},
-		{
-			name:    "retry_total_budget_ms 不能为负数",
-			mutate:  func(c *Config) { c.Gateway.OpenAIWS.RetryTotalBudgetMS = -1 },
-			wantErr: "gateway.openai_ws.retry_total_budget_ms",
-		},
+
 		{
 			name:    "lb_top_k 必须为正数",
 			mutate:  func(c *Config) { c.Gateway.AdvancedScheduler.LBTopK = 0 },
@@ -2679,38 +2619,11 @@ func TestLoadIgnoresRetiredSubscriptionMaintenance(t *testing.T) {
 
 // TestLoadIgnoresRetiredOpenAIWSFallbackCooldown 验证旧冷却键被忽略，重试配置仍按原规则读取和校验。
 func TestLoadIgnoresRetiredOpenAIWSFallbackCooldown(t *testing.T) {
-	cases := []struct {
-		name string
-		yaml string
-		env  string
-	}{
-		{
-			name: "YAML",
-			yaml: "gateway:\n  openai_ws:\n    fallback_cooldown_seconds: -1\n    retry_backoff_initial_ms: 137\n",
-		},
-		{
-			name: "环境变量",
-			yaml: "gateway:\n  openai_ws:\n    retry_backoff_initial_ms: 137\n",
-			env:  "-2",
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			resetViperWithJWTSecret(t)
-			configFile := filepath.Join(t.TempDir(), "config.yaml")
-			require.NoError(t, os.WriteFile(configFile, []byte(tc.yaml), 0o600))
-			t.Setenv("CONFIG_FILE", configFile)
-			t.Setenv("GATEWAY_OPENAI_WS_FALLBACK_COOLDOWN_SECONDS", tc.env)
-			t.Setenv("GATEWAY_OPENAI_WS_RETRY_BACKOFF_INITIAL_MS", "")
-
-			cfg, err := Load()
-			require.NoError(t, err)
-			require.Equal(t, 137, cfg.Gateway.OpenAIWS.RetryBackoffInitialMS)
-
-			cfg.Gateway.OpenAIWS.RetryBackoffInitialMS = -1
-			require.ErrorContains(t, cfg.Validate(), "gateway.openai_ws.retry_backoff_initial_ms")
-		})
-	}
+	resetViperWithJWTSecret(t)
+	t.Setenv("GATEWAY_OPENAI_WS_FALLBACK_COOLDOWN_SECONDS", "-2")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, 10, cfg.Gateway.OpenAIWS.DialTimeoutSeconds)
 }
 
 // TestProductConfigDirectories 验证显式路径不回退，默认搜索同时兼容新旧系统目录。

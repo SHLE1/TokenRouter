@@ -34,6 +34,7 @@ var gatewayExecutionProviders = wire.NewSet(
 	provideOpenAIImageBridgePolicy,
 	provideOpenAIEncryptedLineage,
 	provideOpenAIWebSockets,
+	provideResponsesWSRuntime,
 	provideOpenAIResponses,
 	provideOpenAIAuxiliary,
 	provideOpenAIImages,

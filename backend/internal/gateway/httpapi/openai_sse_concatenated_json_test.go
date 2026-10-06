@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -13,12 +12,7 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
-
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
@@ -41,181 +35,6 @@ func TestOpenAIStreamingPassthroughRepairsConcatenatedJSONDocumentsInSingleDataL
 	testOpenAIStreamingRepairsConcatenatedJSONDocuments(t, true, 0)
 }
 
-func TestOpenAIWSv2StreamingRepairsConcatenatedJSONDocumentsInSingleMessage(t *testing.T) {
-	largeInProgress, outputItemAdded, completed := openAIConcatenatedJSONTestEvents(t)
-	captureConn := &openAIWSCaptureConn{events: [][]byte{
-		[]byte(largeInProgress + outputItemAdded),
-		[]byte(completed),
-	}}
-
-	options := &wsFixtureOptions{}
-	options.Request.URLPolicy.Enabled = false
-	options.WS.Enabled = true
-	options.WS.APIKeyEnabled = true
-	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerProvider = 1
-	options.Pool.MaxIdlePerProvider = 1
-	options.Pool.QueueLimitPerConn = 8
-	options.WS.DialTimeoutSeconds = 3
-	options.WS.ReadTimeoutSeconds = 5
-	options.WS.WriteTimeoutSeconds = 3
-
-	pool := newOpenAIWSConnPool(options)
-	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
-	svc := newWSFixture(wsFixtureInputs{options: options, cache: &sessiontestkit.StickyCache{}, transport: &auxiliaryHTTPRecorder{}, pool: pool, corrector: openaicore.NewCodexToolCorrector()})
-	provider := &gatewayprovider.ExecutionProvider{
-		Record: providercore.Record{
-			LoadLocation: time.LoadLocation, ID: 2,
-			Name:        "ws-test",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.ProviderTypeAPIKey,
-			Status:      billing.StatusActive,
-			Schedulable: true,
-			Concurrency: 1,
-			Credentials: map[string]any{"api_key": "sk-test"},
-			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
-		},
-	}
-
-	recorder := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	groupID := int64(1)
-	c.Set("api_key", &apikey.APIKey{GroupID: &groupID})
-
-	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Equal(t, 7, result.Usage.InputTokens)
-	require.Equal(t, 9, result.Usage.OutputTokens)
-	require.Nil(t, result.FirstTokenMs)
-	assertOpenAISSEFrames(t, recorder.Body.String(), []string{
-		"response.in_progress",
-		"response.output_item.added",
-		"response.completed",
-	})
-}
-
-// TestOpenAIWSv2RejectsMalformedTypedEventBeforeWritingDownstream 验证下游写入前后对畸形 WS v2 事件的拒绝处理。
-func TestOpenAIWSv2RejectsMalformedTypedEventBeforeWritingDownstream(t *testing.T) {
-	largeInProgress, _, _ := openAIConcatenatedJSONTestEvents(t)
-	testOpenAIWSv2RejectsMalformedEventBeforeWritingDownstream(t, []byte(largeInProgress+"unexpected-tail"))
-}
-
-func TestOpenAIWSv2RejectsMalformedUntypedMessageBeforeWritingDownstream(t *testing.T) {
-	testOpenAIWSv2RejectsMalformedEventBeforeWritingDownstream(t, []byte("not-json"))
-}
-
-func TestOpenAIWSv2RejectsMalformedEventAfterWritingDownstream(t *testing.T) {
-	outputTextDelta := `{"type":"response.output_text.delta","delta":"ok","sequence_number":1}`
-	malformedMessage := `{"type":"response.in_progress"}unexpected-tail`
-	captureConn := &openAIWSCaptureConn{events: [][]byte{
-		[]byte(outputTextDelta),
-		[]byte(malformedMessage),
-	}}
-
-	options := &wsFixtureOptions{}
-	options.Request.URLPolicy.Enabled = false
-	options.WS.Enabled = true
-	options.WS.APIKeyEnabled = true
-	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerProvider = 1
-	options.Pool.MaxIdlePerProvider = 1
-	options.Pool.QueueLimitPerConn = 8
-	options.WS.DialTimeoutSeconds = 3
-	options.WS.ReadTimeoutSeconds = 5
-	options.WS.WriteTimeoutSeconds = 3
-
-	pool := newOpenAIWSConnPool(options)
-	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
-	svc := newWSFixture(wsFixtureInputs{options: options, cache: &sessiontestkit.StickyCache{}, transport: &auxiliaryHTTPRecorder{}, pool: pool, corrector: openaicore.NewCodexToolCorrector()})
-	provider := &gatewayprovider.ExecutionProvider{
-		Record: providercore.Record{
-			LoadLocation: time.LoadLocation, ID: 5,
-			Name:        "ws-malformed-event-after-output",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.ProviderTypeAPIKey,
-			Status:      billing.StatusActive,
-			Schedulable: true,
-			Concurrency: 1,
-			Credentials: map[string]any{"api_key": "sk-test"},
-			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
-		},
-	}
-
-	recorder := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	groupID := int64(1)
-	c.Set("api_key", &apikey.APIKey{GroupID: &groupID})
-
-	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "after downstream output")
-	require.Nil(t, result)
-	require.True(t, captureConn.closed)
-	require.Contains(t, recorder.Body.String(), `"delta":"ok"`)
-	require.NotContains(t, recorder.Body.String(), "unexpected-tail")
-	require.NotContains(t, recorder.Body.String(), "response.in_progress")
-	assertOpenAISSEFrames(t, recorder.Body.String(), []string{"response.output_text.delta"})
-}
-
-func testOpenAIWSv2RejectsMalformedEventBeforeWritingDownstream(t *testing.T, malformedMessage []byte) {
-	t.Helper()
-
-	_, _, completed := openAIConcatenatedJSONTestEvents(t)
-	outputTextDelta := `{"type":"response.output_text.delta","delta":"ok","sequence_number":3}`
-	captureConn := &openAIWSCaptureConn{events: [][]byte{
-		malformedMessage,
-		[]byte(outputTextDelta),
-		[]byte(completed),
-	}}
-
-	options := &wsFixtureOptions{}
-	options.Request.URLPolicy.Enabled = false
-	options.WS.Enabled = true
-	options.WS.APIKeyEnabled = true
-	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerProvider = 1
-	options.Pool.MaxIdlePerProvider = 1
-	options.Pool.QueueLimitPerConn = 8
-	options.WS.DialTimeoutSeconds = 3
-	options.WS.ReadTimeoutSeconds = 5
-	options.WS.WriteTimeoutSeconds = 3
-
-	pool := newOpenAIWSConnPool(options)
-	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
-	svc := newWSFixture(wsFixtureInputs{options: options, cache: &sessiontestkit.StickyCache{}, transport: &auxiliaryHTTPRecorder{}, pool: pool, corrector: openaicore.NewCodexToolCorrector()})
-	provider := &gatewayprovider.ExecutionProvider{
-		Record: providercore.Record{
-			LoadLocation: time.LoadLocation, ID: 4,
-			Name:        "ws-malformed-event",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.ProviderTypeAPIKey,
-			Status:      billing.StatusActive,
-			Schedulable: true,
-			Concurrency: 1,
-			Credentials: map[string]any{"api_key": "sk-test"},
-			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
-		},
-	}
-
-	recorder := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	groupID := int64(1)
-	c.Set("api_key", &apikey.APIKey{GroupID: &groupID})
-
-	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
-	require.Error(t, err)
-	var fallbackErr *ws.FallbackError
-	require.ErrorAs(t, err, &fallbackErr)
-	require.Equal(t, "invalid_event_json", fallbackErr.Reason)
-	require.Nil(t, result)
-	require.Empty(t, recorder.Body.String())
-	require.True(t, captureConn.closed)
-}
-
 func TestSplitOpenAIConcatenatedJSONDocumentsRejectsPayloadOverRepairLimit(t *testing.T) {
 	first := `{"type":"response.in_progress","padding":"` + strings.Repeat("x", 16*1024*1024) + `"}`
 	second := `{"type":"response.completed"}`
@@ -233,53 +52,6 @@ func TestSplitOpenAIConcatenatedJSONDocumentsRejectsPayloadOverRepairLimit(t *te
 	require.Equal(t, line, documentScanner.Text())
 	require.False(t, documentScanner.Scan())
 	require.NoError(t, documentScanner.Err())
-}
-
-func TestOpenAIWSv2StreamingBreaksConnectionWhenTerminalHasTrailingDocument(t *testing.T) {
-	completed := `{"type":"response.completed","response":{"id":"resp_terminal_tail","usage":{"input_tokens":2,"output_tokens":1}}}`
-	tail := `{"type":"error","error":{"type":"upstream_error","message":"tail"}}`
-	captureConn := &openAIWSCaptureConn{events: [][]byte{[]byte(completed + tail)}}
-
-	options := &wsFixtureOptions{}
-	options.Request.URLPolicy.Enabled = false
-	options.WS.Enabled = true
-	options.WS.APIKeyEnabled = true
-	options.WS.ResponsesWebsocketsV2 = true
-	options.Pool.MaxConnsPerProvider = 1
-	options.Pool.MaxIdlePerProvider = 1
-	options.Pool.QueueLimitPerConn = 8
-	options.WS.DialTimeoutSeconds = 3
-	options.WS.ReadTimeoutSeconds = 5
-	options.WS.WriteTimeoutSeconds = 3
-
-	pool := newOpenAIWSConnPool(options)
-	pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
-	svc := newWSFixture(wsFixtureInputs{options: options, cache: &sessiontestkit.StickyCache{}, transport: &auxiliaryHTTPRecorder{}, pool: pool, corrector: openaicore.NewCodexToolCorrector()})
-	provider := &gatewayprovider.ExecutionProvider{
-		Record: providercore.Record{
-			LoadLocation: time.LoadLocation, ID: 3,
-			Name:        "ws-terminal-tail",
-			Platform:    capability.PlatformOpenAI,
-			Type:        capability.ProviderTypeAPIKey,
-			Status:      billing.StatusActive,
-			Schedulable: true,
-			Concurrency: 1,
-			Credentials: map[string]any{"api_key": "sk-test"},
-			Extra:       map[string]any{"responses_websockets_v2_enabled": true},
-		},
-	}
-
-	recorder := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	groupID := int64(1)
-	c.Set("api_key", &apikey.APIKey{GroupID: &groupID})
-
-	result, err := svc.Responses.Forward(context.Background(), c, provider, []byte(`{"model":"gpt-5.6-sol","stream":true,"input":"hello"}`))
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.True(t, captureConn.closed, "a WS message with data after a terminal event must not return to the pool")
-	assertOpenAISSEFrames(t, recorder.Body.String(), []string{"response.completed"})
 }
 
 func testOpenAIStreamingRepairsConcatenatedJSONDocuments(t *testing.T, passthrough bool, streamDataIntervalTimeout int) {
@@ -304,7 +76,7 @@ func testOpenAIStreamingRepairsConcatenatedJSONDocuments(t *testing.T, passthrou
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
-	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: openAIResponseDefaultMaxLineSize, StreamDataIntervalTimeout: streamDataIntervalTimeout}}, corrector: openaicore.NewCodexToolCorrector()})
+	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: OpenAIResponseOptions{MaxLineSize: OpenAIResponseDefaultMaxLineSize, StreamDataIntervalTimeout: streamDataIntervalTimeout}}, corrector: openaicore.NewCodexToolCorrector()})
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Name: "test", Platform: capability.PlatformOpenAI}}
 
 	var usage *openai.ForwardUsage
