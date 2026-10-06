@@ -674,21 +674,6 @@
                   testid="edit-openai-images-url-to-b64-json"
                 />
               </template>
-              <details v-if="upstreamProtocols?.includes('openai_responses_websocket')" class="group">
-              <summary class="cursor-pointer text-sm font-medium">{{ t('admin.providers.openai.wsAdvancedConnections') }}</summary>
-              <SettingRow
-                id="edit-openai-ws-mode"
-                label-for="edit-openai-ws-mode-select"
-                :label="t('admin.providers.openai.wsMode')"
-                :hint="t('admin.providers.openai.wsModeDesc')"
-                field
-              >
-                <Select id="edit-openai-ws-mode-select" v-model="responsesWSConnectionMode" :options="responsesWSConnectionOptions" />
-                <template #hint>
-                  <p class="input-hint">{{ t(responsesWSConnectionHintKey) }}</p>
-                </template>
-              </SettingRow>
-              </details>
             </SettingsSection>
 
             <SettingsSection v-if="provider.type === 'oauth'" :title="t('admin.providers.sections.openaiClient')">
@@ -744,6 +729,12 @@
             </SettingsSection>
 
             <CodexImageToolModeSelector v-model="codexImageToolMode" />
+
+            <ResponsesWSConnectionModeSelector
+              v-if="upstreamProtocols?.includes('openai_responses_websocket')"
+              v-model="responsesWSConnectionMode"
+              test-id-prefix="edit-openai-ws-connection"
+            />
 
             <SettingsSection :title="t('admin.providers.sections.compaction')">
               <OpenAICompactionToggle
@@ -886,6 +877,7 @@ import ProxySelector from '@/components/common/ProxySelector.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
 import CodexImageToolModeSelector from '@/components/provider/CodexImageToolModeSelector.vue'
 import ModelWhitelistSelector from '@/components/provider/ModelWhitelistSelector.vue'
+import ResponsesWSConnectionModeSelector from '@/components/provider/ResponsesWSConnectionModeSelector.vue'
 import GrokBaseUrlPresets from '@/components/provider/GrokBaseUrlPresets.vue'
 import CnBaseUrlPresets from '@/components/provider/CnBaseUrlPresets.vue'
 import OllamaCloudUsageSettings from '@/components/provider/OllamaCloudUsageSettings.vue'
@@ -917,7 +909,6 @@ import {
   useAnthropicAPIKeyAuthSchemeOptions,
   useCodexFingerprintModeOptions,
   useOpenAIOAuthClientPolicyOptions,
-  useResponsesWSConnectionModeOptions,
   useWebSearchEmulationOptions,
   type AnthropicAPIKeyAuthScheme,
   type CodexFingerprintMode,
@@ -958,7 +949,6 @@ import {
 import {
   clearLegacyResponsesWSSettings,
   RESPONSES_WS_POOLED,
-  responsesWSConnectionHint,
   type ResponsesWSConnectionMode,
   readResponsesWSConnectionMode
 } from '@/utils/responsesWsConnection'
@@ -1410,12 +1400,6 @@ const { limits: quotaLimits, setLimit: setQuotaLimit } = bindQuotaLimits({
   resetTimezone: editResetTimezone
 })
 const codexFingerprintModeOptions = useCodexFingerprintModeOptions()
-const responsesWSConnectionOptions = useResponsesWSConnectionModeOptions()
-
-const responsesWSConnectionHintKey = computed(() =>
-  responsesWSConnectionHint(responsesWSConnectionMode.value)
-)
-
 // OpenAI 订阅档位手动覆盖选项(清空 + Plus/Pro/Free;别名/自定义值友好显示且保留 canonical)
 const planTypeOptions = computed(() =>
   buildPlanTypeOptions(editPlanType.value, t('admin.providers.openai.planTypeClear'))

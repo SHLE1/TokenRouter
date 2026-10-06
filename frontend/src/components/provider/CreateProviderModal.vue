@@ -1112,21 +1112,6 @@
                   testid="create-openai-images-url-to-b64-json"
                 />
               </template>
-              <details v-if="upstreamProtocols?.includes('openai_responses_websocket')" class="group">
-              <summary class="cursor-pointer text-sm font-medium">{{ t('admin.providers.openai.wsAdvancedConnections') }}</summary>
-              <SettingRow
-                id="create-openai-ws-mode"
-                label-for="create-openai-ws-mode-select"
-                :label="t('admin.providers.openai.wsMode')"
-                :hint="t('admin.providers.openai.wsModeDesc')"
-                field
-              >
-                <Select id="create-openai-ws-mode-select" v-model="responsesWSConnectionMode" :options="responsesWSConnectionOptions" />
-                <template #hint>
-                  <p class="input-hint">{{ t(responsesWSConnectionHintKey) }}</p>
-                </template>
-              </SettingRow>
-              </details>
             </SettingsSection>
 
             <SettingsSection v-if="isOpenAIOAuthCategory" :title="t('admin.providers.sections.openaiClient')">
@@ -1164,6 +1149,12 @@
                 />
               </SettingRow>
             </SettingsSection>
+
+            <ResponsesWSConnectionModeSelector
+              v-if="upstreamProtocols?.includes('openai_responses_websocket')"
+              v-model="responsesWSConnectionMode"
+              test-id-prefix="create-openai-ws-connection"
+            />
 
             <SettingsSection
               v-if="isOpenAIOAuthCategory || providerCategory === 'apikey'"
@@ -1627,6 +1618,7 @@ import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import ProxySelector from '@/components/common/ProxySelector.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
 import ModelWhitelistSelector from '@/components/provider/ModelWhitelistSelector.vue'
+import ResponsesWSConnectionModeSelector from '@/components/provider/ResponsesWSConnectionModeSelector.vue'
 import GrokBaseUrlPresets from '@/components/provider/GrokBaseUrlPresets.vue'
 import CnBaseUrlPresets from '@/components/provider/CnBaseUrlPresets.vue'
 import UpstreamUsageConfigEditor from '@/components/provider/UpstreamUsageConfigEditor.vue'
@@ -1657,7 +1649,6 @@ import {
   useAnthropicAPIKeyAuthSchemeOptions,
   useCodexFingerprintModeOptions,
   useOpenAIOAuthClientPolicyOptions,
-  useResponsesWSConnectionModeOptions,
   useWebSearchEmulationOptions,
   type AnthropicAPIKeyAuthScheme,
   type CodexFingerprintMode,
@@ -1688,7 +1679,6 @@ import {
 import {
   clearLegacyResponsesWSSettings,
   RESPONSES_WS_POOLED,
-  responsesWSConnectionHint,
   type ResponsesWSConnectionMode
 } from '@/utils/responsesWsConnection'
 import OAuthAuthorizationFlow from './OAuthAuthorizationFlow.vue'
@@ -2206,14 +2196,6 @@ const geminiSelectedTier = computed(() => {
       return geminiTierAIStudio.value
   }
 })
-
-const responsesWSConnectionOptions = useResponsesWSConnectionModeOptions()
-
-
-
-const responsesWSConnectionHintKey = computed(() =>
-  responsesWSConnectionHint(responsesWSConnectionMode.value)
-)
 
 const geminiQuotaDocs = {
   codeAssist: 'https://developers.google.com/gemini-code-assist/resources/quotas',
