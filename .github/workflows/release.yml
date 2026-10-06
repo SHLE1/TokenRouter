@@ -84,13 +84,10 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - name: Read pnpm version
-        id: pnpm-version
-        run: echo "version=$(cat .pnpm-version)" >> "$GITHUB_OUTPUT"
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: ${{ steps.pnpm-version.outputs.version }}
+          package_json_file: frontend/package.json
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -162,9 +159,6 @@ jobs:
           go-version-file: backend/go.mod
           check-latest: false
           cache-dependency-path: backend/go.sum
-
-      - name: Verify Go version
-        run: make verify-go-version
 
       - name: Build ${{ matrix.target }} binary
         working-directory: backend
@@ -242,9 +236,6 @@ jobs:
           go-version-file: backend/go.mod
           check-latest: false
           cache-dependency-path: backend/go.sum
-
-      - name: Verify Go version
-        run: make verify-go-version
 
       # Docker setup for GoReleaser
       - name: Set up QEMU

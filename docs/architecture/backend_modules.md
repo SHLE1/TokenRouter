@@ -313,7 +313,7 @@ backend/
 <a id="static_dependencies"></a>
 ## 静态依赖
 
-实线箭头表示生产代码的 Go import，从导入方指向被依赖方。下图挑选了几个具体包来展示各层关系，各业务核心的实际依赖以代码为准。依赖限制由 `tools/architecture/` 的 arch-go 架构测试执行：按角色限制能用哪些技术库，按模块表限制模块之间的协作，纯叶子包、平台依赖方向和文件级的特殊权限另有单独检查。执行入口为 `make -C backend test-architecture`；golangci-lint 负责通用代码质量检查。
+实线箭头表示生产代码的 Go import，从导入方指向被依赖方。下图挑选了几个具体包来展示各层关系，各业务核心的实际依赖以代码为准。依赖限制由 `tools/architecture/` 的 arch-go 架构测试执行：按角色限制能用哪些技术库，按模块表限制模块之间的协作，纯叶子包、平台依赖方向和文件级的特殊权限另有单独检查。执行入口为 `make lint-go`，它先运行架构测试，再用 golangci-lint 检查通用代码质量。
 
 ```mermaid
 flowchart TB

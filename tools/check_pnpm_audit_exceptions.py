@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import datetime
 from pathlib import Path
 import subprocess
 import sys
@@ -153,20 +152,12 @@ def validate_audit(data: dict, exit_code: int | None = None) -> None:
 
 
 def run_audit() -> tuple[dict, int]:
-    """保留扫描输出和退出码，供失败诊断和例外复核。"""
-    from verify import ROOT, frontend_command, git
-    common = Path(git('rev-parse', '--git-common-dir'))
-    if not common.is_absolute():
-        common = ROOT / common
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
-    directory = common / 'verification' / ('audit-' + stamp)
-    directory.mkdir(parents=True)
-    result = subprocess.run(frontend_command('pnpm', '--dir', 'frontend', 'audit', '--prod', '--audit-level=high', '--json'),
-                            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    (directory / 'audit.json').write_text(result.stdout)
-    (directory / 'stderr.log').write_text(result.stderr)
-    (directory / 'exit-code').write_text(str(result.returncode) + '\n')
-    print('审计日志: ' + str(directory))
+    """执行 pnpm audit，返回 JSON 报告和退出码；stderr 原样转给调用方查看。"""
+    root = Path(__file__).resolve().parent.parent
+    result = subprocess.run(['pnpm', '--dir', 'frontend', 'audit', '--prod', '--audit-level=high', '--json'],
+                            cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.stderr:
+        print(result.stderr, file=sys.stderr)
     return json.loads(result.stdout), result.returncode
 
 

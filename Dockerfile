@@ -24,13 +24,13 @@ ARG NPM_CONFIG_REGISTRY
 
 WORKDIR /app/frontend
 
-# 构建工具版本与本地验证共用声明，镜像覆盖值也需要满足 Node 版本。
-COPY .node-version .pnpm-version /app/
-RUN test "$(node -p 'process.versions.node')" = "$(cat /app/.node-version)" && \
-    npm install --global "pnpm@$(cat /app/.pnpm-version)"
-
-# Install dependencies first (better caching)
+# Node 版本需要与 .node-version 一致，镜像覆盖值同样检查；pnpm 版本取 package.json 的 packageManager。
+COPY .node-version /app/
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+RUN test "$(node -p 'process.versions.node')" = "$(cat /app/.node-version)" && \
+    npm install --global "$(node -p 'require("./package.json").packageManager')"
+
+# 源码变化时复用已安装的依赖层。
 RUN --mount=type=cache,id=tokenrouter-pnpm-store,target=/root/.local/share/pnpm/store \
     if [ -n "${NPM_CONFIG_REGISTRY}" ]; then pnpm config set registry "${NPM_CONFIG_REGISTRY}"; fi && \
     pnpm install --frozen-lockfile --prefer-offline

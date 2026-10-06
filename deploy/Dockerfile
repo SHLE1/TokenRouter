@@ -20,13 +20,13 @@ FROM ${NODE_IMAGE} AS frontend-builder
 WORKDIR /app/frontend
 ENV NODE_OPTIONS=--max-old-space-size=1536
 
-# 安装 pnpm，并固定到与 lockfile 兼容的精确版本，避免配置校验规则变化破坏构建。
-COPY .node-version .pnpm-version /app/
-RUN test "$(node -p 'process.versions.node')" = "$(cat /app/.node-version)" && \
-    npm install --global "pnpm@$(cat /app/.pnpm-version)"
-
-# Install dependencies first (better caching)
+# Node 版本需要与 .node-version 一致；pnpm 版本取 package.json 的 packageManager，与 lockfile 匹配。
+COPY .node-version /app/
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+RUN test "$(node -p 'process.versions.node')" = "$(cat /app/.node-version)" && \
+    npm install --global "$(node -p 'require("./package.json").packageManager')"
+
+# 源码变化时复用已安装的依赖层。
 RUN pnpm install --frozen-lockfile
 
 # 复制前端源码、法律文档和共享语言资源后构建。
