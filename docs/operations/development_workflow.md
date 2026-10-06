@@ -212,6 +212,8 @@ npx --yes pnpm@12.9.1 --dir frontend run build
 
 部署文件变更时可以先执行 `make verify-scripts` 和 `make verify-installer`，完整验证会覆盖这两组检查。依赖安全检查使用 `make verify-security`，与 Security Scan workflow 共用目标。govulncheck 版本在 `.govulncheck-version` 固定，漏洞数据在线更新。前端审计保留退出码、stdout 和 stderr；空报告、错误对象或结构不完整都返回失败，高危漏洞按 `.github/audit-exceptions.yml` 核对例外与有效期。网络安全扫描结果独立于代码验证报告。
 
+Vue 的最低版本为 `3.5.42`，该版本修复了 `@vue/server-renderer` 属性名检查中的 XSS 漏洞。`frontend/pnpm-workspace.yaml` 将低于 `1.2.2` 的 `source-map-js` 依赖提升到修复版本，覆盖 Vue 编译器和 i18n 引入的索引偏移 DoS 漏洞。更新这些依赖时同步维护锁文件，并运行前端测试、生产构建和安全扫描。
+
 管理员用量导出通过动态导入 `xlsx` 生成工作簿，当前使用 `0.18.5`，调用 `aoa_to_sheet`、`sheet_add_aoa` 和 `write`。两条 SheetJS 漏洞例外有效期为 2026-10-06。[原型污染公告](https://github.com/advisories/GHSA-4r6h-8v6p-xvw6)说明纯导出流程不受该漏洞影响；[ReDoS 公告](https://github.com/advisories/GHSA-5pgg-2g8v-p4x9)仍需按升级后的依赖审计结果核对。后续优先评估 [SheetJS 官方分发](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/)的修复版本并验证导出兼容性，普通 npm 版本范围更新无法取得公告列出的修复版本。替换导出库作为单独变更处理。
 
 CI 的安装器兼容测试在 Linux 上运行，依赖 Bash 4+ 和 `sha256sum`。Apple container 测试和其余的 shell、Compose 检查在 macOS 上运行，覆盖系统自带的 Bash 3.2。
