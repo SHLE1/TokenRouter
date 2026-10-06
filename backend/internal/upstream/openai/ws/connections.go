@@ -15,7 +15,9 @@ type OpenAIWSConnections struct {
 	pool       *WSConnPool
 	poolOnce   sync.Once
 	poolMu     sync.Mutex
-	closed     bool
+	// updateMu 串行执行参数更新和关闭，poolMu 保护连接池的创建与引用。
+	updateMu sync.Mutex
+	closed   bool
 }
 
 // NewOpenAIWSConnections 保存配置和拨号器，连接池在首次使用时启动。
@@ -68,6 +70,8 @@ func (s *OpenAIWSConnections) Close() {
 	if s == nil {
 		return
 	}
+	s.updateMu.Lock()
+	defer s.updateMu.Unlock()
 	s.poolMu.Lock()
 	s.closed = true
 	pool := s.pool
@@ -77,16 +81,20 @@ func (s *OpenAIWSConnections) Close() {
 	}
 }
 
-// UpdateOptions 更新待创建或已创建的池，参数发布不会主动创建连接。
+// UpdateOptions 串行发布参数，回收连接时其他请求仍可取得池引用。
 func (s *OpenAIWSConnections) UpdateOptions(options WSPoolOptions) error {
+	s.updateMu.Lock()
+	defer s.updateMu.Unlock()
 	s.poolMu.Lock()
-	defer s.poolMu.Unlock()
 	if s.closed {
+		s.poolMu.Unlock()
 		return errors.New("responses websocket connections are stopped")
 	}
 	s.Options = &options
-	if s.pool != nil {
-		return s.pool.UpdateOptions(options)
+	pool := s.pool
+	s.poolMu.Unlock()
+	if pool != nil {
+		return pool.UpdateOptions(options)
 	}
 	return nil
 }

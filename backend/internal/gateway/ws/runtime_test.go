@@ -39,6 +39,26 @@ func TestParametersPartialUpdateAndReset(t *testing.T) {
 	}
 }
 
+// 零空闲连接同时适用于部署默认值、在线覆盖和恢复默认。
+func TestRuntimeAcceptsZeroIdleConnections(t *testing.T) {
+	defaults := DefaultParameters()
+	defaults.MinIdlePerProvider = 0
+	defaults.MaxIdlePerProvider = 0
+	runtime := NewRuntime(defaults, nil, nil)
+	require.NoError(t, runtime.Publish(`{}`))
+	require.Zero(t, runtime.Snapshot().MaxIdlePerProvider)
+	stored, err := PatchParameters(DefaultParameters(), "", json.RawMessage(`{"min_idle_per_provider":0,"max_idle_per_provider":0}`))
+	require.NoError(t, err)
+	cleared, err := PatchParameters(defaults, stored, json.RawMessage(`null`))
+	require.NoError(t, err)
+	require.NoError(t, runtime.Publish(cleared))
+	require.Zero(t, runtime.Snapshot().MaxIdlePerProvider)
+	_, err = PatchParameters(defaults, "", json.RawMessage(`{"max_idle_per_provider":-1}`))
+	require.Error(t, err)
+	_, err = PatchParameters(defaults, "", json.RawMessage(`{"min_idle_per_provider":1}`))
+	require.Error(t, err)
+}
+
 func TestRuntimeLateRefreshCannotOverwriteSavedSettings(t *testing.T) {
 	started, release := make(chan struct{}), make(chan struct{})
 	source := settingReadFunc(func(context.Context, []string) (map[string]string, error) {

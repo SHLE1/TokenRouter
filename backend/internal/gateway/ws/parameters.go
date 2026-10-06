@@ -47,8 +47,8 @@ func (v Parameters) Validate() error {
 	if v.MinIdlePerProvider < 0 {
 		return fmt.Errorf("min_idle_per_provider must be non-negative")
 	}
-	if v.MaxIdlePerProvider <= 0 {
-		return fmt.Errorf("max_idle_per_provider must be positive")
+	if v.MaxIdlePerProvider < 0 {
+		return fmt.Errorf("max_idle_per_provider must be non-negative")
 	}
 	if v.QueueLimitPerConn <= 0 {
 		return fmt.Errorf("queue_limit_per_conn must be positive")
