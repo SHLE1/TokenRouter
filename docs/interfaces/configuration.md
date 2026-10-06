@@ -252,7 +252,7 @@ base URL 模式只在提供商没有保存手动端点时生效，可以选 CLI 
 
 ## 前端变量
 
-Vite 在构建和 dev server 启动时读取 `VITE_API_BASE_URL`、`VITE_WS_BASE_URL`、`VITE_DEV_PROXY_TARGET` 和 `VITE_DEV_PORT`。默认的 API base 是 `/api/v1`，dev proxy target 是 `http://localhost:8080`，dev port 是 `3000`。
+Vite 在构建和 dev server 启动时读取 `VITE_API_BASE_URL`、`VITE_DEV_PROXY_TARGET` 和 `VITE_DEV_PORT`。默认的 API base 是 `/api/v1`，dev proxy target 是 `http://localhost:8080`，dev port 是 `3000`。
 
 `VITE_*` 会被打包进客户端代码，所以里面只能放公开的值。生产环境的内嵌前端，动态的品牌、功能和公开认证配置通过后端设置注入或 API 获取，和 Vite 构建变量是两条通道。修改后端的公开 URL 时，还要核对 OAuth callback、邮件链接、CORS 和 CSP、反向代理路径，只改前端的 base 是不够的。
 
