@@ -1,33 +1,6 @@
 import { getLocale } from '@/i18n'
-// 支付订单列表、详情和退款弹窗共用的显示函数。
 
-const STATUS_BADGE_MAP: Record<string, string> = {
-  PENDING: 'badge-warning',
-  PROCESSING: 'badge-info',
-  PAID: 'badge-info',
-  RECHARGING: 'badge-info',
-  COMPLETED: 'badge-success',
-  EXPIRED: 'badge-secondary',
-  CANCELLED: 'badge-secondary',
-  FAILED: 'badge-danger',
-  REFUND_REQUESTED: 'badge-warning',
-  REFUNDING: 'badge-warning',
-  REFUND_PENDING: 'badge-warning',
-  PARTIALLY_REFUNDED: 'badge-warning',
-  REFUNDED: 'badge-info',
-  REFUND_FAILED: 'badge-danger',
-}
-
-const REFUNDABLE_STATUSES = ['COMPLETED', 'PARTIALLY_REFUNDED', 'REFUND_REQUESTED', 'REFUND_FAILED']
-
-export function statusBadgeClass(status: string): string {
-  return STATUS_BADGE_MAP[status] || 'badge-secondary'
-}
-
-export function canRefund(status: string): boolean {
-  return REFUNDABLE_STATUSES.includes(status)
-}
-
+// formatOrderDateTime 按当前界面语言显示订单时间。
 export function formatOrderDateTime(dateStr: string): string {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString(getLocale())

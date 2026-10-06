@@ -418,12 +418,6 @@ export interface ApiResponse<T = unknown> {
   data: T
 }
 
-export interface ApiError {
-  detail: string
-  code?: string
-  field?: string
-}
-
 export interface PaginatedResponse<T> {
   items: T[]
   total: number
@@ -1864,34 +1858,6 @@ export interface UsageLogTiming {
   upstream_first_response_byte_count?: number | null
   upstream_connection_reused?: boolean
   upstream_wrote_request_error?: boolean
-}
-
-export interface UsageCleanupFilters {
-  start_time: string
-  end_time: string
-  user_id?: number
-  api_key_id?: number
-  provider_id?: number
-  group_id?: number
-  model?: string | null
-  request_type?: UsageRequestType | null
-  stream?: boolean | null
-  billing_type?: number | null
-}
-
-export interface UsageCleanupTask {
-  id: number
-  status: string
-  filters: UsageCleanupFilters
-  created_by: number
-  deleted_rows: number
-  error_message?: string | null
-  canceled_by?: number | null
-  canceled_at?: string | null
-  started_at?: string | null
-  finished_at?: string | null
-  created_at: string
-  updated_at: string
 }
 
 export interface RedeemCode {
