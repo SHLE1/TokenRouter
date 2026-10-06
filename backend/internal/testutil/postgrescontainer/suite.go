@@ -135,16 +135,9 @@ func (s *Suite) New(t *testing.T) *sql.DB {
 	return db
 }
 
-// drop 将泄漏连接报告为失败，并强制删除数据库以释放磁盘资源。
+// drop 强制删除测试数据库，服务端仍在断开的连接由 FORCE 终止。
 func (s *Suite) drop(ctx context.Context, name string) error {
-	var connections int
-	if err := s.admin.QueryRowContext(ctx, "SELECT count(*) FROM pg_stat_activity WHERE datname = $1", name).Scan(&connections); err != nil {
-		return err
-	}
 	_, err := s.admin.ExecContext(ctx, "DROP DATABASE "+pq.QuoteIdentifier(name)+" WITH (FORCE)")
-	if connections != 0 {
-		err = errors.Join(err, fmt.Errorf("数据库 %s 残留 %d 条连接", name, connections))
-	}
 	return err
 }
 

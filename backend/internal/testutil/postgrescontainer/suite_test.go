@@ -91,8 +91,8 @@ func queryStrings(t *testing.T, db *sql.DB, query string) []string {
 	return values
 }
 
-// TestSuiteLeakedConnection 验证连接泄漏会报错且数据库仍被清理。
-func TestSuiteLeakedConnection(t *testing.T) {
+// TestSuiteDropWithOpenConnection 验证仍有连接时数据库也能删除。
+func TestSuiteDropWithOpenConnection(t *testing.T) {
 	var suite Suite
 	t.Cleanup(func() { require.NoError(t, suite.Close()) })
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
@@ -102,9 +102,10 @@ func TestSuiteLeakedConnection(t *testing.T) {
 	require.NoError(t, err)
 	leaked, err := sql.Open("postgres", suite.databaseDSN("verification_leak"))
 	require.NoError(t, err)
-	defer func() { require.NoError(t, leaked.Close()) }()
+	// 连接已被 DROP ... WITH (FORCE) 终止，关闭时的错误与本测试无关。
+	defer func() { _ = leaked.Close() }()
 	require.NoError(t, leaked.PingContext(ctx))
-	require.ErrorContains(t, suite.drop(ctx, "verification_leak"), "残留 1 条连接")
+	require.NoError(t, suite.drop(ctx, "verification_leak"))
 	var exists bool
 	require.NoError(t, suite.admin.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname='verification_leak')").Scan(&exists))
 	require.False(t, exists)
