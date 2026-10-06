@@ -1,8 +1,5 @@
 import { getLocale } from '@/i18n'
-/**
- * Shared utility functions for payment order display.
- * Used by AdminOrderDetail, AdminOrderTable, AdminRefundDialog, AdminOrdersView, etc.
- */
+// 支付订单列表、详情和退款弹窗共用的显示函数。
 
 const STATUS_BADGE_MAP: Record<string, string> = {
   PENDING: 'badge-warning',

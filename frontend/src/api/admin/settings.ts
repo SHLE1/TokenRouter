@@ -147,12 +147,6 @@ export interface PaymentVisibleMethodSourceOption {
   labelEn: string;
 }
 
-export interface WeChatConnectModeOption {
-  value: WeChatConnectMode;
-  labelZh: string;
-  labelEn: string;
-}
-
 const AUTH_SOURCE_TYPES: AuthSourceType[] = [
   "email",
   "linuxdo",
@@ -224,19 +218,6 @@ const PAYMENT_VISIBLE_METHOD_SOURCE_ALIASES: Record<
     easypay: "easypay_wxpay",
   },
 };
-const WECHAT_CONNECT_MODE_OPTIONS: WeChatConnectModeOption[] = [
-  { value: "open", labelZh: "PC 应用", labelEn: "PC App" },
-  {
-    value: "mp",
-    labelZh: "公众号",
-    labelEn: "Official Account",
-  },
-  {
-    value: "mobile",
-    labelZh: "移动应用",
-    labelEn: "Mobile App",
-  },
-];
 const WECHAT_CONNECT_MODE_ALIASES: Record<string, WeChatConnectMode> = {
   open: "open",
   open_platform: "open",
@@ -341,10 +322,6 @@ export function normalizePaymentVisibleMethodSource(
   if (!normalized) return "";
 
   return PAYMENT_VISIBLE_METHOD_SOURCE_ALIASES[method][normalized] ?? "";
-}
-
-export function getWeChatConnectModeOptions(): WeChatConnectModeOption[] {
-  return WECHAT_CONNECT_MODE_OPTIONS;
 }
 
 export function normalizeWeChatConnectMode(source: unknown): WeChatConnectMode {

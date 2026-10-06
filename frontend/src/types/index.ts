@@ -327,37 +327,6 @@ export interface AuthResponse {
 
 export type CurrentUserResponse = User
 
-// ==================== Subscription Types ====================
-
-export interface Subscription {
-  id: number
-  user_id: number
-  name: string
-  url: string
-  type: 'clash' | 'v2ray' | 'surge' | 'quantumult' | 'shadowrocket'
-  update_interval: number // in hours
-  last_updated: string | null
-  node_count: number
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface CreateSubscriptionRequest {
-  name: string
-  url: string
-  type: Subscription['type']
-  update_interval?: number
-}
-
-export interface UpdateSubscriptionRequest {
-  name?: string
-  url?: string
-  type?: Subscription['type']
-  update_interval?: number
-  is_active?: boolean
-}
-
 // ==================== Announcement Types ====================
 
 export type AnnouncementStatus = 'draft' | 'active' | 'archived'
@@ -441,66 +410,6 @@ export interface AnnouncementUserReadStatus {
   read_at?: string
 }
 
-// ==================== Proxy Node Types ====================
-
-export interface ProxyNode {
-  id: number
-  subscription_id: number
-  name: string
-  type: 'ss' | 'ssr' | 'vmess' | 'vless' | 'trojan' | 'hysteria' | 'hysteria2'
-  server: string
-  port: number
-  config: Record<string, unknown> // JSON configuration specific to proxy type
-  latency: number | null // in milliseconds
-  last_checked: string | null
-  is_available: boolean
-  created_at: string
-  updated_at: string
-}
-
-// ==================== Conversion Types ====================
-
-export interface ConversionRequest {
-  subscription_ids: number[]
-  target_type: 'clash' | 'v2ray' | 'surge' | 'quantumult' | 'shadowrocket'
-  filter?: {
-    name_pattern?: string
-    types?: ProxyNode['type'][]
-    min_latency?: number
-    max_latency?: number
-    available_only?: boolean
-  }
-  sort?: {
-    by: 'name' | 'latency' | 'type'
-    order: 'asc' | 'desc'
-  }
-}
-
-export interface ConversionResult {
-  url: string // URL to download the converted subscription
-  expires_at: string
-  node_count: number
-}
-
-// ==================== Statistics Types ====================
-
-export interface SubscriptionStats {
-  subscription_id: number
-  total_nodes: number
-  available_nodes: number
-  avg_latency: number | null
-  by_type: Record<ProxyNode['type'], number>
-  last_update: string
-}
-
-export interface UserStats {
-  total_subscriptions: number
-  total_nodes: number
-  active_subscriptions: number
-  total_conversions: number
-  last_conversion: string | null
-}
-
 // ==================== API Response Types ====================
 
 export interface ApiResponse<T = unknown> {
@@ -539,29 +448,6 @@ export interface AppState {
   sidebarCollapsed: boolean
   loading: boolean
   toasts: Toast[]
-}
-
-// ==================== Validation Types ====================
-
-export interface ValidationError {
-  field: string
-  message: string
-}
-
-// ==================== Table/List Types ====================
-
-export interface SortConfig {
-  key: string
-  order: 'asc' | 'desc'
-}
-
-export interface FilterConfig {
-  [key: string]: string | number | boolean | null | undefined
-}
-
-export interface PaginationConfig {
-  page: number
-  page_size: number
 }
 
 // ==================== API Key & Group Types ====================
@@ -1079,7 +965,6 @@ export type ProviderPlatform =
   | 'zhipu'
   | 'deepseek'
 export type ProviderType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock' | 'service_account' | 'cosy'
-export type OAuthAddMethod = 'oauth' | 'setup-token'
 export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'socks5h'
 
 // Claude Model type (returned by /v1/models and provider models API)
@@ -1183,13 +1068,6 @@ export interface GeminiCredentials {
   scope?: string
   expires_at?: string
   model_mapping?: Record<string, string>
-}
-
-export interface TempUnschedulableRule {
-  error_code: number
-  keywords: string[]
-  duration_minutes: number
-  description: string
 }
 
 export interface TempUnschedulableState {
@@ -1571,12 +1449,6 @@ export type UpstreamUsageAdapter =
   | 'zhipu_coding'
   | 'deepseek_balance'
 
-export interface UpstreamUsageQueryConfig {
-  enabled: boolean
-  adapter: UpstreamUsageAdapter
-  base_url?: string
-}
-
 export interface UpstreamUsageAmount {
   used?: number
   total?: number
@@ -1676,7 +1548,6 @@ export type OpenAITextRouteMode =
   | 'preserve_client_protocol'
   | 'force_responses'
   | 'force_chat_completions'
-export type OpenAIWorkloadCapability = 'text_generation' | 'embeddings'
 
 export interface OpenAICompactState {
   openai_compact_mode?: OpenAICompactMode
@@ -2070,11 +1941,6 @@ export interface BatchUpdateRedeemCodeFields {
   status?: 'unused' | 'disabled'
   expires_at?: string | null
   notes?: string
-}
-
-export interface BatchUpdateRedeemCodesRequest {
-  ids: number[]
-  fields: BatchUpdateRedeemCodeFields
 }
 
 export interface RedeemCodeRequest {

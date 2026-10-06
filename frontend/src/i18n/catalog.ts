@@ -3,7 +3,6 @@ import manifest from '../../../backend/internal/pkg/locale/manifest.json'
 export type LocaleCode = typeof manifest.locales[number]['code']
 
 // 语言标识和兼容映射与服务端共用同一份目录。
-export const languageCatalog = manifest
 export const defaultLocale = manifest.default as LocaleCode
 export const availableLocales = manifest.locales.map(item => ({
   ...item,
