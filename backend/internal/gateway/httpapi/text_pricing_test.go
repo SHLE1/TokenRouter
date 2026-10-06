@@ -98,7 +98,7 @@ func TestTextPricingUsesBillingModel(t *testing.T) {
 			if source == "" {
 				source = protocol.ProtocolOpenAIResponses
 			}
-			err := CheckTextModelPricing(ctx, prices, key, gatewayprovider.NewExecutionProvider(record), tc.requested, tc.mapped, false, source)
+			err := CheckTextModelPricing(ctx, prices, key, gatewayprovider.NewExecutionProvider(record), tc.requested, tc.mapped, nil, source)
 			if tc.missing {
 				require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable)
 			} else {

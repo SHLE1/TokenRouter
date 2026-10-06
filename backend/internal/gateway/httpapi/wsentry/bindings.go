@@ -467,7 +467,7 @@ func (t *openAIWSEntryTarget) ResolveRouting(ctx context.Context, model string, 
 	if err != nil {
 		return "", err
 	}
-	err = gatewayhttp.CheckTextModelPricing(ctx, t.root.bindings.Pricing, t.root.key, t.provider, model, mapped, false, protocol.ProtocolResponsesWebSocket)
+	err = gatewayhttp.CheckTextModelPricing(ctx, t.root.bindings.Pricing, t.root.key, t.provider, model, mapped, nil, protocol.ProtocolResponsesWebSocket)
 	if err != nil {
 		gatewayhttp.MarkOpsClientBusinessLimited(t.root.c, gatewayhttp.OpsClientBusinessLimitedReasonLocalPolicyDenied)
 		return "", err
