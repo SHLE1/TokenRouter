@@ -654,12 +654,7 @@ func MappingHasWildcardForModel(mapping map[string]string, model string) bool {
 	return false
 }
 
-// NormalizeRequestedModelForLookup 保留模型拼写，只清理首尾空白。
-func NormalizeRequestedModelForLookup(platform, requestedModel string) string {
-	return strings.TrimSpace(requestedModel)
-}
-
-// ResolveRequestedModelInMapping 复用纯模型匹配，平台归一化由调用方负责。
+// ResolveRequestedModelInMapping 按精确名称和末尾通配符查找模型映射。
 func ResolveRequestedModelInMapping(mapping map[string]string, requestedModel string) (mappedModel string, matched bool) {
 	return modelmap.Resolve(mapping, requestedModel)
 }
@@ -667,7 +662,7 @@ func ResolveRequestedModelInMapping(mapping map[string]string, requestedModel st
 // ExtractFinalModelWhitelist 从 model_mapping 中提取“最终模型白名单”。
 // 约定：只有精确自映射（from == to，且不含通配符）的条目才算白名单。
 // 这样既能兼容历史上把白名单持久化为 key=value 的做法，又不会把普通映射规则误判成白名单。
-func ExtractFinalModelWhitelist(platform string, mapping map[string]string) map[string]struct{} {
+func ExtractFinalModelWhitelist(mapping map[string]string) map[string]struct{} {
 	if len(mapping) == 0 {
 		return nil
 	}
@@ -676,8 +671,8 @@ func ExtractFinalModelWhitelist(platform string, mapping map[string]string) map[
 		if strings.Contains(rawFrom, "*") {
 			continue
 		}
-		from := NormalizeRequestedModelForLookup(platform, rawFrom)
-		to := NormalizeRequestedModelForLookup(platform, strings.TrimSpace(rawTo))
+		from := strings.TrimSpace(rawFrom)
+		to := strings.TrimSpace(rawTo)
 		if from == "" || to == "" || from != to {
 			continue
 		}
@@ -691,7 +686,7 @@ func ExtractFinalModelWhitelist(platform string, mapping map[string]string) map[
 
 // ExtractExplicitFinalModelWhitelist 从独立的 model_whitelist 字段提取最终模型白名单。
 // 支持精确名称和末尾通配符；非法的中间通配符仍被忽略。
-func ExtractExplicitFinalModelWhitelist(platform string, rawWhitelist any) map[string]struct{} {
+func ExtractExplicitFinalModelWhitelist(rawWhitelist any) map[string]struct{} {
 	if rawWhitelist == nil {
 		return nil
 	}
@@ -711,7 +706,7 @@ func ExtractExplicitFinalModelWhitelist(platform string, rawWhitelist any) map[s
 	}
 	whitelist := make(map[string]struct{})
 	for _, rawModel := range values {
-		model := NormalizeRequestedModelForLookup(platform, rawModel)
+		model := strings.TrimSpace(rawModel)
 		if model == "" || strings.Contains(strings.TrimSuffix(model, "*"), "*") {
 			continue
 		}
@@ -728,13 +723,13 @@ func ExtractExplicitFinalModelWhitelist(platform string, rawWhitelist any) map[s
 func ResolveFinalModelWhitelist(platform string, credentials map[string]any, mapping map[string]string) (map[string]struct{}, bool) {
 	if credentials != nil {
 		if rawWhitelist, exists := credentials["model_whitelist"]; exists {
-			return ExtractExplicitFinalModelWhitelist(platform, rawWhitelist), true
+			return ExtractExplicitFinalModelWhitelist(rawWhitelist), true
 		}
 	}
 	if platform == PlatformQoder {
 		return nil, false
 	}
-	return ExtractFinalModelWhitelist(platform, mapping), false
+	return ExtractFinalModelWhitelist(mapping), false
 }
 
 // GetOpenAICompactMode 返回管理员选择的旧版压缩开关。

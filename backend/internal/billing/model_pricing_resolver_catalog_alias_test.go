@@ -21,9 +21,9 @@ import (
 
 // TestResolveCatalogAliasesPreserveConfigPricing 验证旧别名缺价，完整型号的显式零价独立生效。
 func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
-	previous := xai.RuntimeModelMappingOptions()
-	t.Cleanup(func() { xai.SetRuntimeModelMappingOptions(previous) })
-	xai.SetRuntimeModelMappingOptions(xai.ModelMappingOptions{DefaultText: "X-AI/GROK-4.6"})
+	previous := xai.RuntimeDefaultTextModel()
+	t.Cleanup(func() { xai.SetRuntimeDefaultTextModel(previous) })
+	xai.SetRuntimeDefaultTextModel("X-AI/GROK-4.6")
 	for _, tc := range []struct{ platform, base, alias string }{
 		{capability.PlatformGemini, "gemini-3.8-flash", "gemini-3.8-flash-tiered"},
 		{capability.PlatformGemini, "gemini-3.7-flash", "models/gemini-3.7-flash-medium"},

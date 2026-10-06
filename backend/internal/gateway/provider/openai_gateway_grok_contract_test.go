@@ -395,7 +395,6 @@ func TestParseGrokMediaRequestAcceptsOfficialImageURLFields(t *testing.T) {
 		"https://example.com/source.png",
 		"https://example.com/reference.png",
 	}, info.InputImageURLs)
-	require.True(t, info.HasInputImage())
 }
 
 func TestNormalizeGrokMediaForwardBodyCanonicalizesImageURLAlias(t *testing.T) {
@@ -491,7 +490,8 @@ func TestPrepareGrokImageEditRejectsMoreThanThreeSources(t *testing.T) {
 	require.Contains(t, err.Error(), "maximum of 3 source images")
 }
 
-func TestNormalizeGrokMediaModelForEndpoint(t *testing.T) {
+// TestGrokMediaForwardBodyPreservesModel 检查媒体转发中的完整型号和图片输入。
+func TestGrokMediaForwardBodyPreservesModel(t *testing.T) {
 	tests := []struct {
 		name          string
 		endpoint      grok.GrokMediaEndpoint
@@ -510,7 +510,18 @@ func TestNormalizeGrokMediaModelForEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, gatewayprovider.GrokMediaCodec().NormalizeGrokMediaModelForEndpoint(tt.endpoint, tt.model, tt.hasInputImage))
+			request := map[string]any{"model": tt.model}
+			if tt.hasInputImage {
+				request["image"] = map[string]any{"image_url": "https://example.com/input.png"}
+			}
+			body, err := json.Marshal(request)
+			require.NoError(t, err)
+			body, _, err = gatewayprovider.GrokMediaCodec().NormalizeGrokMediaForwardBody(tt.endpoint, body, "application/json")
+			require.NoError(t, err)
+			require.Equal(t, tt.want, gjson.GetBytes(body, "model").String())
+			if tt.hasInputImage {
+				require.Equal(t, "https://example.com/input.png", gjson.GetBytes(body, "image.url").String())
+			}
 		})
 	}
 }
