@@ -195,7 +195,7 @@ class PrePushTest(GitFixture):
         (self.root / 'sleep').write_text('wait')
         self.commit()
         process = subprocess.Popen(['git', 'push', 'origin', 'main'], cwd=self.root,
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    start_new_session=True)
         try:
             deadline = time.monotonic() + 30
@@ -206,16 +206,16 @@ class PrePushTest(GitFixture):
                     self.fail('推送检查没有启动')
                 time.sleep(0.05)
             os.killpg(process.pid, signal.SIGTERM)
-            self.assertNotEqual(process.wait(timeout=15), 0)
-            deadline = time.monotonic() + 5
-            while self.git('worktree', 'list', '--porcelain').count('worktree ') > 1 and time.monotonic() < deadline:
-                time.sleep(0.05)
+            # hook 继承输出管道；读到 EOF 时，hook 已退出并完成 worktree 清理。
+            # Git 主进程可能先退出，清理期间查询 worktree 会与目录删除竞争。
+            process.communicate(timeout=15)
+            self.assertNotEqual(process.returncode, 0)
             self.assert_cleaned()
             self.assertEqual(self.git('ls-remote', 'origin', 'refs/heads/main'), '')
         finally:
             if process.poll() is None:
                 os.killpg(process.pid, signal.SIGKILL)
-                process.wait()
+                process.communicate()
 
 
 class VerificationRunnerTest(GitFixture):
