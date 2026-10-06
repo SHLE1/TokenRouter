@@ -198,6 +198,8 @@ func ResumeVisibleMethodSourceSettingKey(method string) string {
 	}
 }
 
+// CanonicalizeReturnURL 校验支付结果页地址，并清除用户提供的查询参数和片段。
+// @project-doc docs/domains/payments_and_entitlements.md#callback_security
 func CanonicalizeReturnURL(raw string, srcHost string, srcURL string) (string, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -211,6 +213,9 @@ func CanonicalizeReturnURL(raw string, srcHost string, srcURL string) (string, e
 		return "", infraerrors.BadRequest("INVALID_RETURN_URL", "return_url must use http or https")
 	}
 	parsed.Fragment = ""
+	// 结果页参数由服务端生成，用户参数混入支付签名后可被重组为回调字段。
+	parsed.RawQuery = ""
+	parsed.ForceQuery = false
 	if parsed.Path == "" {
 		parsed.Path = "/"
 	}

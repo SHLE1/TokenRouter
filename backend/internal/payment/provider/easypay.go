@@ -393,15 +393,26 @@ func parseEasyPayQueryResponse(statusCode int, body []byte, fallbackTradeNo stri
 	}, nil
 }
 
+// VerifyNotification 检查易支付通知字段和签名后解析支付结果。
+// @project-doc docs/domains/payments_and_entitlements.md#callback_security
 func (e *EasyPay) VerifyNotification(_ context.Context, rawBody string, _ map[string]string) (*payment.PaymentNotification, error) {
 	values, err := url.ParseQuery(rawBody)
 	if err != nil {
 		return nil, fmt.Errorf("parse notify: %w", err)
 	}
-	// url.ParseQuery already decodes values — no additional decode needed.
-	params := make(map[string]string)
-	for k := range values {
-		params[k] = values.Get(k)
+	// 易支付签名直接拼接参数值，回调字段白名单阻止下单参数重组后复用签名。
+	params := make(map[string]string, len(values))
+	for key, entries := range values {
+		switch key {
+		case "pid", "trade_no", "out_trade_no", "type", "name", "money", "trade_status", "param", "sign", "sign_type":
+		default:
+			return nil, fmt.Errorf("unexpected notify param: %s", key)
+		}
+		// 每个字段对应一个值，重复字段会让不同处理步骤读取到不同内容。
+		if len(entries) != 1 {
+			return nil, fmt.Errorf("duplicate notify param: %s", key)
+		}
+		params[key] = entries[0]
 	}
 	sign := params["sign"]
 	if sign == "" {
