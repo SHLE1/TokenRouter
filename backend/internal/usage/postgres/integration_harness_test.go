@@ -25,10 +25,10 @@ import (
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/TokenFlux/TokenRouter/internal/testutil/rediscontainer"
 	_ "github.com/lib/pq"
 	redisclient "github.com/redis/go-redis/v9"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
-	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
 const (
@@ -75,7 +75,7 @@ func TestMain(m *testing.M) {
 	}
 	defer func() { _ = pgContainer.Terminate(ctx) }()
 
-	redisContainer, err := tcredis.Run(
+	redisContainer, err := rediscontainer.Run(
 		ctx,
 		redisImageTag,
 	)

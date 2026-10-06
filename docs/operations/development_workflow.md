@@ -133,7 +133,11 @@ Ent schema 不是生产环境的迁移器。数据库的变更需要新建 `back
 
 ### 完整验证入口
 
-`make verify` 依次调用环境检查、差异和格式检查、架构和 lint、后端测试、前端测试和构建、embed、工具测试及部署脚本检查。CI 的各 job 调用相同的 Make 目标。普通、unit、integration、embed 分别执行 lint；后端测试使用 `-count=1`，integration 使用 `-p=4`。前端运行完整 Vitest，构建资源生成后再执行 embed 测试和关闭 CGO 的发布形态编译。
+`make verify` 先执行环境、差异和格式、工具及部署脚本检查，再并行执行前端和后端检查。`VERIFY_JOBS` 接受 `1` 或 `2`，默认 `2`；设为 `1` 时串行执行。后端依次执行架构、普通与标签 lint，以及普通、unit、integration 测试。embed 等待后端测试和前端构建完成，可与前端 lint 和完整 Vitest 并行。任一检查失败会取消运行中的其他任务，等待子进程退出后再清理临时检出。
+
+CI 将普通、unit、integration 分配到独立 runner，`test` 汇总三组结果。前端构建完成后上传资源并启动 embed，前端 lint 和 Vitest 在独立 job 执行，`frontend` 汇总两组结果。单组入口与本地共用。四种 Go 标签都执行全量测试并使用 `-count=1`，integration 保持 `-p=4`；embed 同时执行 lint 和关闭 CGO 的发布形态编译。前端 `typecheck` 使用 `vue-tsc -b` 检查应用及构建配置，验证流程随后调用 `build:assets` 打包；日常 `build` 包含类型检查。
+
+CI 编译和 lint 缓存按操作系统、架构、工具版本、任务、依赖及配置摘要隔离，从最近兼容缓存恢复，成功后按提交和运行标识保存本轮缓存。每次测试仍重新执行；pnpm 缓存用于下载依赖，安装遵守锁文件。
 
 环境检查需要可用的 Docker 服务、PostgreSQL 18 的 `pg_dump` 和 `psql`、版本匹配的 Go 和 golangci-lint，以及 Git、Python 3.10+、make 和 npm/npx。缺失环境会中止验证。Linux 安装器测试在 Linux 主机执行，macOS 本地通过 Ubuntu 24.04 容器执行。
 
@@ -141,7 +145,7 @@ Ent schema 不是生产环境的迁移器。数据库的变更需要新建 `back
 
 手动验证同时检查上游共同祖先到 HEAD 的变化、暂存区和工作区；没有上游时比较空树。推送检查接收准确的远端基准。检查过程不自动格式化或更新快照，修复后形成新的提交再推送。
 
-日志位于 `git rev-parse --git-common-dir` 返回目录下的 `verification/`。每组检查有独立日志，`summary.json` 记录提交 SHA、通过、失败和未执行状态。推送额外记录引用和比较基准。验证不自动重试失败测试，临时副本在退出时清理，日志保留。
+日志位于 `git rev-parse --git-common-dir` 返回目录下的 `verification/`。每组检查有独立日志，`summary.json` 记录提交 SHA、开始结束时间、单调时钟耗时，以及通过、失败、取消和未执行状态。`go-<标签>.json` 记录标签耗时、跳过项和最慢的包、顶层测试、子测试，三种列表分别排序。CI 在成功和失败时上传报告与原始日志，保留七天。推送额外记录引用和比较基准。验证不自动重试失败测试，临时副本在退出时清理，日志保留。
 
 严格验证为测试设置 `CI=true` 和 `TOKENROUTER_VERIFY_STRICT=1`。依赖容器的测试因环境缺失而不能执行时返回失败。Go JSON 事件保存完整输出并列出跳过项，调用供应商或外部网络的测试被跳过时单独报告。完整验证的子进程清除 OpenAI 实测密钥和 Qoder 实测开关，供应商实测通过局部命令单独执行。
 
@@ -166,7 +170,7 @@ make -C backend test
 
 ### 测试分层
 
-普通、unit 和 integration 三组全量测试分别串行运行，避免多个 Ent schema loader 会话争用临时目录；用 go list 和 JSON 事件核对实际的标签、OS 文件和执行的测试。`make -C backend test-integration` 固定使用 `-p=4`，本地和 CI 共用这个入口，测试内部的并发和断言保持不变。测试事件、跳过、原始的失败和之后的通过，分别保存，不能只比较数量来代替逐项诊断。跳过和只编译的结果，不算行为通过。
+同一本地检出中的普通、unit、integration 和 embed 全量测试串行运行，避免多个 Ent schema loader 会话争用临时目录；CI 的不同 runner 各有独立检出。用 go list 和 JSON 事件核对实际的标签、OS 文件和执行的测试。完整验证和 CI 共用 `make verify-backend-integration`，开发命令 `make -C backend test-integration` 使用相同的 `-p=4`。测试内部的并发和断言按各测试的要求执行。测试事件、跳过、原始的失败和之后的通过，分别保存，不能只比较数量来代替逐项诊断。跳过和只编译的结果，不算行为通过。
 
 集成测试可能启动 PostgreSQL 和 Redis 容器；环境里没有 Docker 时，明确报告没有运行，单元测试的结果代替不了它。涉及迁移时，还要运行 migration runner 和对应的 schema、数据回归测试。
 
@@ -179,6 +183,12 @@ make -C backend test
 - Messages、Chat、Responses 和 Raw Chat 的协议测试，直接构造 `gateway/httpapi` 的单次执行器，共用实际的请求、响应和会话组件；纯流终态和用量 JSON 的断言在 `protocol/openai`。阻塞读取、响应关闭等 I/O 替身在 `gateway/testkit` 共用，测试不重建旧的网关应用图。
 - 用量 HTTP、仪表盘和 DTO 的接口测试，直接构造 usage 和使用方的查询数据，不经过旧的 service 或完整的设置服务。日期测试明确指定 Calendar，分别覆盖用户时区的回退、夏令时和各入口的结束边界；清理任务的存储缺失错误，先由 PostgreSQL 适配层的测试核对，再用相同的错误链输入 HTTP 夹具。
 - 团队所有权的两次有序 SQL 更新，由 `team/postgres` 同包的测试直接验证。sqlmock 夹具检查关闭错误时，同时登记关闭的预期，测试资源的清理不会被误判为业务 SQL 的失败。
+
+identity 和 promotion 的集成测试通过 `postgrescontainer.Suite` 在各自的测试进程内复用 PostgreSQL 容器，模板数据库执行当前源码的全部迁移后关闭连接。每个测试从模板克隆独立数据库，支持提交、回滚和多连接；测试完成后依次关闭应用连接、连接池并删除数据库。泄漏连接或清理失败会使测试失败，`TestMain` 最后回收容器。模板随进程销毁，迁移、恢复及实例级测试使用独立容器入口。
+
+Redis 测试通过 `rediscontainer.Run` 启动独立容器，等待监听就绪及启动日志，等待上限为一分钟。调用方的 context 可提前取消；超时或就绪检查失败仍使测试失败。这个入口覆盖库默认的十秒监听等待，以容纳 Docker 并发启动时的延迟。
+
+纯内存的重试与超时测试使用 `testing/synctest` 推进虚拟时间。网络测试使用本地服务和短退避配置，退避算法单独核对递增与上限，生产默认参数由正常配置提供。
 
 ### 各模块的验证要求
 

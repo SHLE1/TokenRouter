@@ -62,7 +62,7 @@ check-fmt-go-changed:
 # 完整验证顺序由这里维护，CI 分组调用同名目标。
 .PHONY: verify verify-environment verify-diff verify-static verify-backend verify-frontend verify-embed verify-scripts verify-installer verify-tools verify-security verify-security-backend verify-security-frontend install-hooks
 verify:
-	@python3 tools/verify.py run verify-environment verify-diff verify-static verify-backend verify-frontend verify-embed verify-tools verify-scripts verify-installer
+	@python3 tools/verify.py full
 
 verify-environment:
 	@python3 tools/verify.py preflight all
@@ -78,19 +78,36 @@ verify-static:
 	@cd backend && bash ../tools/golangci-lint.sh run --timeout=30m --build-tags=unit ./...
 	@cd backend && bash ../tools/golangci-lint.sh run --timeout=30m --build-tags=integration ./...
 
+# 单组入口供 CI 矩阵和本地调度共用。
+.PHONY: verify-backend-ordinary verify-backend-unit verify-backend-integration verify-frontend-build verify-frontend-checks verify-frontend-ci-checks
 verify-backend:
+	@$(MAKE) verify-backend-ordinary
+	@$(MAKE) verify-backend-unit
+	@$(MAKE) verify-backend-integration
+
+verify-backend-ordinary verify-backend-unit verify-backend-integration:
 	@python3 tools/verify.py preflight backend
-	@python3 tools/verify.py go-test ordinary
-	@python3 tools/verify.py go-test unit
-	@python3 tools/verify.py go-test integration
+	@python3 tools/verify.py go-test $(patsubst verify-backend-%,%,$@)
 
 verify-frontend:
+	@$(MAKE) verify-frontend-build
+	@$(MAKE) verify-frontend-checks
+
+verify-frontend-build:
 	@python3 tools/verify.py preflight frontend
 	@$(PNPM) --dir frontend install --frozen-lockfile
-	@$(PNPM) --dir frontend run lint:check
 	@$(PNPM) --dir frontend run typecheck
+	@$(PNPM) --dir frontend run build:assets
+
+# 本地在构建后复用依赖，CI 的独立检出先执行安装入口。
+verify-frontend-ci-checks:
+	@python3 tools/verify.py preflight frontend
+	@$(PNPM) --dir frontend install --frozen-lockfile
+	@$(MAKE) verify-frontend-checks
+
+verify-frontend-checks:
+	@$(PNPM) --dir frontend run lint:check
 	@$(PNPM) --dir frontend run test:run
-	@$(PNPM) --dir frontend run build
 
 # embed 测试要求已经生成前端资源，.keep 占位文件不能代替生产构建。
 verify-embed:

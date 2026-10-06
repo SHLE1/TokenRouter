@@ -21,6 +21,7 @@ github.com/stretchr/testify/require github.com/testcontainers/testcontainers-go/
 	"fixture": {Production: `entgo.io/ent/dialect entgo.io/ent/dialect/sql github.com/alicebob/miniredis/v2
 github.com/gin-gonic/gin github.com/lib/pq github.com/redis/go-redis/v9
 github.com/stretchr/testify/require github.com/stretchr/testify/suite
+github.com/testcontainers/testcontainers-go github.com/testcontainers/testcontainers-go/wait
 github.com/testcontainers/testcontainers-go/modules/postgres
 github.com/testcontainers/testcontainers-go/modules/redis modernc.org/sqlite`, Tests: `github.com/DATA-DOG/go-sqlmock github.com/fxamacker/cbor/v2 github.com/golang-jwt/jwt/v5
 github.com/google/uuid github.com/patrickmn/go-cache github.com/pquerna/otp/totp
@@ -179,7 +180,7 @@ internal/server/clientip internal/server/httpx internal/settings internal/site i
 internal/usage/postgres/query`, Tests: `internal/apikey internal/apikey/httpapi/dto internal/audit internal/gateway
 internal/notification/smtp internal/routing internal/routing/capability internal/routing/httpapi/dto
 internal/scheduler internal/testutil/rediscontainer internal/testutil/postgrescontainer migrations`},
-	"internal/infra": {Production: "internal/infra/... internal/pkg/", Tests: "migrations"},
+	"internal/infra": {Production: "internal/infra/... internal/pkg/", Tests: "internal/testutil/rediscontainer migrations"},
 	"internal/moderation": {Production: `internal/infra/httpclient/... internal/infra/telemetry/... internal/moderation/...
 internal/notification/contract internal/pkg/ internal/server/httpx internal/settings
 internal/upstream`, Tests: `internal/egress internal/gateway/media internal/identity/postgres internal/notification
@@ -190,7 +191,7 @@ internal/settings`, Tests: "internal/testutil/assertion"},
 internal/identity/httpapi/authctx internal/infra/httpclient/... internal/infra/postgres/...
 internal/infra/telemetry/... internal/notification/contract internal/ops/... internal/pkg/
 internal/scheduler internal/server/httpx internal/server/middleware internal/settings
-internal/settings/preaggregation`, Tests: `ent/... internal/notification internal/notification/smtp internal/notification/testkit
+internal/settings/preaggregation`, Tests: `internal/testutil/rediscontainer ent/... internal/notification internal/notification/smtp internal/notification/testkit
 internal/routing/capability internal/testutil/assertion migrations`},
 	"internal/payment": {Production: `ent/... internal/billing internal/billing/httpapi internal/billing/postgres internal/identity
 internal/identity/httpapi internal/identity/httpapi/authctx internal/payment/... internal/pkg/
@@ -212,9 +213,9 @@ internal/gateway/provider internal/gateway/provider/modelidentity internal/idemp
 internal/identity/httpapi/authctx internal/scheduler internal/testutil/postgrescontainer migrations internal/modelcatalog/provider`},
 	"internal/scheduler": {Production: `internal/provider internal/egress internal/infra/postgres/... internal/infra/telemetry/...
 internal/pkg/ internal/routing internal/routing/accessview internal/routing/capability
-internal/scheduler/... internal/server/httpx internal/settings`, Tests: "internal/provider/provider internal/billing internal/protocol internal/testutil/postgrescontainer"},
+internal/scheduler/... internal/server/httpx internal/settings`, Tests: "internal/testutil/rediscontainer internal/provider/provider internal/billing internal/protocol internal/testutil/postgrescontainer"},
 	"internal/search": {Production: `internal/infra/httpclient/... internal/pkg/ internal/search/... internal/server/httpx
-internal/settings`, Tests: ""},
+internal/settings`, Tests: "internal/testutil/rediscontainer "},
 	"internal/server": {Production: `internal/apikey/httpapi internal/audit/httpapi internal/identity internal/identity/httpapi
 internal/identity/httpapi/authctx internal/infra/telemetry/... internal/pkg/ internal/server/...
 internal/settings`, Tests: `internal/provider internal/provider/httpapi internal/provider/provider internal/apikey
@@ -258,7 +259,7 @@ internal/identity/httpapi/authctx internal/identity/httpapi/dto internal/identit
 internal/infra/postgres/... internal/infra/telemetry/... internal/ops internal/pkg/ internal/routing
 internal/routing/accessview internal/routing/httpapi/dto internal/routing/postgres
 internal/server/httpx internal/settings internal/settings/preaggregation internal/team
-internal/usage/...`, Tests: `internal/ops/postgres internal/audit internal/audit/postgres internal/gateway/httpapi internal/infra/timingwheel/...
+internal/usage/...`, Tests: `internal/testutil/rediscontainer internal/ops/postgres internal/audit internal/audit/postgres internal/gateway/httpapi internal/infra/timingwheel/...
 internal/routing/capability internal/testutil/assertion migrations`},
 	"internal/web": {Production: "internal/pkg/locale internal/server/middleware internal/web/...", Tests: ""},
 	"migrations":   {Production: "migrations/...", Tests: "internal/infra/postgres internal/billing/pricing internal/pkg/locale"},
@@ -392,6 +393,15 @@ var ioFileExceptions = map[string]string{
 
 // 窄权限属于指定文件，不能由相邻文件或目标子包继承。
 var filePermissions = []filePermission{
+	// 容器启动等待由共用测试入口提供，许可限定到接入该入口的文件。
+	{Scope: "internal/infra/redis", Imports: "internal/testutil/rediscontainer", Files: "fixed_window_integration_test.go"},
+	{Scope: "internal/ops/postgres", Imports: "internal/testutil/rediscontainer", Files: "integration_harness_test.go"},
+	{Scope: "internal/ops/rediscache", Imports: "internal/testutil/rediscontainer", Files: "integration_harness_test.go"},
+	{Scope: "internal/scheduler/rediscache", Imports: "internal/testutil/rediscontainer", Files: "integration_redis_test.go"},
+	{Scope: "internal/search/provider", Imports: "internal/testutil/rediscontainer", Files: "redis_integration_test.go"},
+	{Scope: "internal/usage/postgres", Imports: "internal/testutil/rediscontainer", Files: "integration_harness_test.go"},
+	{Scope: "internal/usage/rediscache", Imports: "internal/testutil/rediscontainer", Files: "dashboard_integration_test.go"},
+	{Scope: "internal/testutil/rediscontainer", Imports: "github.com/testcontainers/testcontainers-go github.com/testcontainers/testcontainers-go/wait", Files: "run.go"},
 	{Scope: "migrations", Imports: "internal/billing/pricing", Files: "pricing_preview_fixture_test.go pricing_merge_fixture_test.go pricing_merge_test.go"},
 	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go provider_names_integration_test.go product_brand_integration_test.go antigravity_retirement_integration_test.go user_localization_integration_test.go"},
 	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_integration_test.go"},
@@ -470,7 +480,8 @@ internal/routing/testkit`,
 }
 
 var permissionChildImports = map[string]string{
-	"internal/gateway/clientmeta": "net/http/httptest",
-	"internal/gateway/completion": "internal/gateway/provider/modelidentity",
-	"internal/routing":            "internal/gateway/provider/modelidentity",
+	"internal/testutil/rediscontainer": "github.com/testcontainers/testcontainers-go/modules/redis github.com/testcontainers/testcontainers-go/wait",
+	"internal/gateway/clientmeta":      "net/http/httptest",
+	"internal/gateway/completion":      "internal/gateway/provider/modelidentity",
+	"internal/routing":                 "internal/gateway/provider/modelidentity",
 }

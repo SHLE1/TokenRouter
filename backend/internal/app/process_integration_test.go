@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/testutil/rediscontainer"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
-	tcredis "github.com/testcontainers/testcontainers-go/modules/redis"
 	"gopkg.in/yaml.v3"
 )
 
@@ -159,7 +159,7 @@ func TestProcessModes(t *testing.T) {
 	})
 	fixture := newDatabaseFixture(t)
 	ctx := context.Background()
-	rdb, err := tcredis.Run(ctx, "redis:8.4-alpine")
+	rdb, err := rediscontainer.Run(ctx, "redis:8.4-alpine")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, rdb.Terminate(context.Background())) })
 	redisHost, err := rdb.Host(ctx)

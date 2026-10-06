@@ -7,13 +7,26 @@ on:
 permissions:
   contents: read
 
+env:
+  VERIFY_LOG_DIR: ${{ github.workspace }}/.verification
+
 jobs:
   shell:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
       - name: Check deployment scripts
-        run: make verify-scripts
+        run: python3 tools/verify.py run verify-scripts
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-${{ github.job }}
+          path: .verification
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
 
   installer:
     # Linux 安装器依赖 Bash 4+ 和 sha256sum；macOS 系统 Bash 仅支持 3.2。
@@ -21,9 +34,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Check installer compatibility
-        run: make verify-installer
+        run: python3 tools/verify.py run verify-installer
 
-  test:
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-${{ github.job }}
+          path: .verification
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+
+  backend-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: [ordinary, unit, integration]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -31,8 +58,12 @@ jobs:
         with:
           go-version-file: backend/go.mod
           check-latest: false
-          cache: true
-          cache-dependency-path: backend/go.sum
+          cache: false
+      - name: Restore Go build and lint cache
+        id: build-cache
+        uses: ./.github/actions/verification-cache
+        with:
+          variant: ${{ matrix.tag }}
       - name: Install PostgreSQL 18 client
         run: |
           # 恢复夹具使用 PostgreSQL 18；pg_dump 不能备份高于自身主版本的服务端。
@@ -46,9 +77,26 @@ jobs:
           /usr/lib/postgresql/18/bin/pg_dump --version
           /usr/lib/postgresql/18/bin/psql --version
       - name: Backend tests
-        run: make verify-backend
+        run: python3 tools/verify.py run verify-backend-${{ matrix.tag }}
 
-  frontend:
+      - name: Save Go build and lint cache
+        if: success()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.build-cache.outputs.paths }}
+          key: ${{ steps.build-cache.outputs.key }}
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-${{ github.job }}-${{ matrix.tag }}
+          path: .verification
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+
+  frontend-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -66,7 +114,7 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Frontend checks and production build
-        run: make verify-frontend
+        run: python3 tools/verify.py run verify-frontend-build
       - name: Upload frontend build
         uses: actions/upload-artifact@v7
         with:
@@ -74,15 +122,60 @@ jobs:
           path: backend/internal/web/dist
           retention-days: 1
 
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-${{ github.job }}
+          path: .verification
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+
+  frontend-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Read pnpm version
+        id: pnpm-version
+        run: echo "version=$(cat .pnpm-version)" >> "$GITHUB_OUTPUT"
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ steps.pnpm-version.outputs.version }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Frontend lint and tests
+        run: python3 tools/verify.py run verify-frontend-ci-checks
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-${{ github.job }}
+          path: .verification
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+
   embed:
-    needs: frontend
+    needs: frontend-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
+          cache: false
+      - name: Restore Go build and lint cache
+        id: build-cache
+        uses: ./.github/actions/verification-cache
+        with:
+          variant: embed
       - name: Download frontend build
         uses: actions/download-artifact@v8
         with:
@@ -96,8 +189,26 @@ jobs:
         with:
           version: ${{ steps.golangci-version.outputs.version }}
           install-only: true
+          skip-cache: true
       - name: Embedded tests and release build
-        run: make verify-embed
+        run: python3 tools/verify.py run verify-embed
+
+      - name: Save Go build and lint cache
+        if: success()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.build-cache.outputs.paths }}
+          key: ${{ steps.build-cache.outputs.key }}
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-${{ github.job }}
+          path: .verification
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
 
   golangci-lint:
     runs-on: ubuntu-latest
@@ -111,10 +222,12 @@ jobs:
         with:
           go-version-file: backend/go.mod
           check-latest: false
-          cache: true
-          cache-dependency-path: |
-            backend/go.sum
-            tools/architecture/go.sum
+          cache: false
+      - name: Restore Go build and lint cache
+        id: build-cache
+        uses: ./.github/actions/verification-cache
+        with:
+          variant: golangci-lint
       - name: Read golangci-lint version
         id: golangci-version
         run: echo "version=$(cat .golangci-version)" >> "$GITHUB_OUTPUT"
@@ -123,10 +236,11 @@ jobs:
         with:
           version: ${{ steps.golangci-version.outputs.version }}
           install-only: true
+          skip-cache: true
       - name: Architecture and tagged lint
-        run: make verify-static
+        run: VERIFY_LOG_DIR="$VERIFY_LOG_DIR/static" python3 tools/verify.py run verify-static
       - name: Verification tooling tests
-        run: make verify-tools
+        run: VERIFY_LOG_DIR="$VERIFY_LOG_DIR/tools" python3 tools/verify.py run verify-tools
       - name: Check formatting of changed Go files
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -146,4 +260,42 @@ jobs:
             # 首次推送默认分支没有旧提交，以空树为基准。
             FMT_BASE=$(git hash-object -t tree --stdin < /dev/null)
           fi
-          VERIFY_BASE="$FMT_BASE" make verify-diff
+          VERIFY_BASE="$FMT_BASE" VERIFY_LOG_DIR="$VERIFY_LOG_DIR/diff" python3 tools/verify.py run verify-diff
+      - name: Save Go build and lint cache
+        if: success()
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ steps.build-cache.outputs.paths }}
+          key: ${{ steps.build-cache.outputs.key }}
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-${{ github.job }}
+          path: .verification
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # 保持必需检查名称，取消或跳过的矩阵也不能通过。
+  test:
+    if: always()
+    needs: backend-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all backend tests
+        env:
+          RESULT: ${{ needs.backend-tests.result }}
+        run: test "$RESULT" = success
+
+  frontend:
+    if: always()
+    needs: [frontend-build, frontend-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require frontend build and checks
+        env:
+          BUILD_RESULT: ${{ needs.frontend-build.result }}
+          CHECK_RESULT: ${{ needs.frontend-checks.result }}
+        run: test "$BUILD_RESULT" = success && test "$CHECK_RESULT" = success

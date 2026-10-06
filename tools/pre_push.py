@@ -10,6 +10,8 @@ import subprocess
 import sys
 import tempfile
 
+from verify import stop_processes
+
 ROOT = Path(__file__).resolve().parent.parent
 HOOK = '.githooks'
 
@@ -104,6 +106,7 @@ def validate(selected):
         env.update(VERIFY_BASES=json.dumps(entry['bases']), VERIFY_LOG_DIR=str(logs))
         with tempfile.TemporaryDirectory(prefix='tokenrouter-verify-') as temporary:
             tree = Path(temporary) / 'source'
+            handlers = {}
             try:
                 git('worktree', 'add', '--detach', str(tree), sha)
                 print('验证待推送提交: ' + sha + '\n日志: ' + str(logs), flush=True)
@@ -118,19 +121,20 @@ def validate(selected):
                             print(line, end='', flush=True)
                         code = process.wait()
                     finally:
-                        if process.poll() is None:
-                            os.killpg(process.pid, signal.SIGTERM)
-                            try:
-                                process.wait(timeout=10)
-                            except subprocess.TimeoutExpired:
-                                os.killpg(process.pid, signal.SIGKILL)
-                                process.wait()
+                        # make 退出后调度器可能还在收回独立进程组，等待整组退出。
+                        handlers = {sig: signal.signal(sig, signal.SIG_IGN)
+                                    for sig in (signal.SIGTERM, signal.SIGINT)}
+                        stop_processes([process], timeout=10)
                 if code:
                     raise RuntimeError('提交 ' + sha + ' 验证失败，日志: ' + str(logs))
             finally:
-                # --force 用于移除构建生成物；原工作区没有参与清理。
-                if tree.exists():
-                    git('worktree', 'remove', '--force', str(tree))
+                try:
+                    # 测试进程全部结束后移除构建生成物和临时检出。
+                    if tree.exists():
+                        git('worktree', 'remove', '--force', str(tree))
+                finally:
+                    for sig, handler in handlers.items():
+                        signal.signal(sig, handler)
 
 
 def main():

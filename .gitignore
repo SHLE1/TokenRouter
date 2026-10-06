@@ -154,3 +154,6 @@ output/
 
 # Vitest 的测试报告和失败附件。
 .vitest/
+
+# CI 验证日志通过 artifact 保存。
+/.verification/

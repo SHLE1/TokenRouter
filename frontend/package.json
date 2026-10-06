@@ -10,7 +10,8 @@
     "lint": "eslint . --fix",
     "lint:check": "eslint . && npm run check:ui",
     "check:ui": "node scripts/check-ui-tokens.mjs",
-    "typecheck": "vue-tsc --noEmit",
+    "typecheck": "vue-tsc -b",
+    "build:assets": "vite build",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
