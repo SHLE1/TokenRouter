@@ -4,11 +4,7 @@
  */
 
 import { apiClient } from './client'
-import type {
-  UserSubscription,
-  SubscriptionProgress,
-  SubscriptionProgressInfo
-} from '@/types'
+import type { UserSubscription } from '@/types'
 
 // 撤销订阅接口返回被撤销记录、接续记录和改绑 Key 数量。
 export interface RevokeSubscriptionResponse {
@@ -54,34 +50,6 @@ export async function getActiveSubscriptions(): Promise<UserSubscription[]> {
   return response.data
 }
 
-/**
- * Get progress for all user's active subscriptions
- */
-export async function getSubscriptionsProgress(): Promise<SubscriptionProgressInfo[]> {
-  const response = await apiClient.get<SubscriptionProgressInfo[]>('/subscriptions/progress')
-  return response.data
-}
-
-/**
- * Get subscription summary for dashboard display
- */
-export async function getSubscriptionSummary(): Promise<SubscriptionSummary> {
-  const response = await apiClient.get<SubscriptionSummary>('/subscriptions/summary')
-  return response.data
-}
-
-/**
- * Get progress for a specific subscription
- */
-export async function getSubscriptionProgress(
-  subscriptionId: number
-): Promise<SubscriptionProgress> {
-  const response = await apiClient.get<SubscriptionProgress>(
-    `/subscriptions/${subscriptionId}/progress`
-  )
-  return response.data
-}
-
 /** 撤销当前用户额度耗尽的订阅，并在有接续包时改绑显式订阅 Key。 */
 export async function revokeExhaustedSubscription(
   subscriptionId: number
@@ -95,8 +63,5 @@ export async function revokeExhaustedSubscription(
 export default {
   getMySubscriptions,
   getActiveSubscriptions,
-  getSubscriptionsProgress,
-  getSubscriptionSummary,
-  getSubscriptionProgress,
   revokeExhaustedSubscription
 }

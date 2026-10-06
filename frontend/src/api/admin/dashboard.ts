@@ -25,25 +25,6 @@ export async function getStats(): Promise<DashboardStats> {
   return data
 }
 
-/**
- * Get real-time metrics
- * @returns Real-time system metrics
- */
-export async function getRealtimeMetrics(): Promise<{
-  active_requests: number
-  requests_per_minute: number
-  average_response_time: number
-  error_rate: number
-}> {
-  const { data } = await apiClient.get<{
-    active_requests: number
-    requests_per_minute: number
-    average_response_time: number
-    error_rate: number
-  }>('/admin/dashboard/realtime')
-  return data
-}
-
 export interface TrendParams {
   start_date?: string
   end_date?: string
@@ -65,16 +46,6 @@ export interface TrendResponse {
   start_date: string
   end_date: string
   granularity: string
-}
-
-/**
- * Get usage trend data
- * @param params - Query parameters for filtering
- * @returns Usage trend data
- */
-export async function getUsageTrend(params?: TrendParams): Promise<TrendResponse> {
-  const { data } = await apiClient.get<TrendResponse>('/admin/dashboard/trend', { params })
-  return data
 }
 
 export interface ModelStatsParams {
@@ -154,16 +125,6 @@ export interface DashboardSnapshotV2Response {
   users_trend?: UserUsageTrendPoint[]
 }
 
-/**
- * Get group usage statistics
- * @param params - Query parameters for filtering
- * @returns Group usage statistics
- */
-export async function getGroupStats(params?: GroupStatsParams): Promise<GroupStatsResponse> {
-  const { data } = await apiClient.get<GroupStatsResponse>('/admin/dashboard/groups', { params })
-  return data
-}
-
 export interface UserBreakdownParams {
   start_date?: string
   end_date?: string
@@ -217,20 +178,6 @@ export interface ApiKeyTrendResponse {
   start_date: string
   end_date: string
   granularity: string
-}
-
-/**
- * Get API key usage trend data
- * @param params - Query parameters for filtering
- * @returns API key usage trend data
- */
-export async function getApiKeyUsageTrend(
-  params?: ApiKeyTrendParams
-): Promise<ApiKeyTrendResponse> {
-  const { data } = await apiClient.get<ApiKeyTrendResponse>('/admin/dashboard/api-keys-trend', {
-    params
-  })
-  return data
 }
 
 export interface UserTrendParams extends TrendParams {
@@ -314,35 +261,13 @@ export interface BatchApiKeysUsageResponse {
   stats: Record<string, BatchApiKeyUsageStats>
 }
 
-/**
- * Get batch usage stats for multiple API keys
- * @param apiKeyIds - Array of API key IDs
- * @returns Usage stats map keyed by API key ID
- */
-export async function getBatchApiKeysUsage(
-  apiKeyIds: number[]
-): Promise<BatchApiKeysUsageResponse> {
-  const { data } = await apiClient.post<BatchApiKeysUsageResponse>(
-    '/admin/dashboard/api-keys-usage',
-    {
-      api_key_ids: apiKeyIds
-    }
-  )
-  return data
-}
-
 export const dashboardAPI = {
   getStats,
-  getRealtimeMetrics,
-  getUsageTrend,
   getModelStats,
-  getGroupStats,
   getSnapshotV2,
-  getApiKeyUsageTrend,
   getUserUsageTrend,
   getUserSpendingRanking,
   getBatchUsersUsage,
-  getBatchApiKeysUsage
 }
 
 export default dashboardAPI

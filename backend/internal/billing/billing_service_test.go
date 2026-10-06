@@ -777,49 +777,6 @@ func TestCalculateCost_ZeroTokens(t *testing.T) {
 	require.Equal(t, 0.0, cost.ActualCost)
 }
 
-func TestCalculateCostWithConfig(t *testing.T) {
-	cfg := &config.Config{}
-	cfg.Default.RateMultiplier = 1.5
-	svc := newCalculator(cfg, nil)
-
-	tokens := billingpricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}
-	cost, err := svc.CalculateCostWithConfig("claude-sonnet-4", tokens)
-	require.NoError(t, err)
-
-	expected, _ := svc.CalculateCost("claude-sonnet-4", tokens, 1.5)
-	require.InDelta(t, expected.ActualCost, cost.ActualCost, 1e-10)
-}
-
-func TestCalculateCostWithConfig_ZeroMultiplier(t *testing.T) {
-	cfg := &config.Config{}
-	cfg.Default.RateMultiplier = 0
-	svc := newCalculator(cfg, nil)
-
-	tokens := billingpricing.UsageTokens{InputTokens: 1000}
-	cost, err := svc.CalculateCostWithConfig("claude-sonnet-4", tokens)
-	require.NoError(t, err)
-
-	// 倍率 <=0 时默认 1.0
-	expected, _ := svc.CalculateCost("claude-sonnet-4", tokens, 1.0)
-	require.InDelta(t, expected.ActualCost, cost.ActualCost, 1e-10)
-}
-
-func TestGetEstimatedCost(t *testing.T) {
-	svc := newTestCalculator()
-
-	est, err := svc.GetEstimatedCost("claude-sonnet-4", 1000, 500)
-	require.NoError(t, err)
-	require.True(t, est > 0)
-}
-
-func TestGetCatalogStatus_NilService(t *testing.T) {
-	svc := billing.NewCalculator(nil, billing.CalculatorOptions{})
-
-	status := svc.GetCatalogStatus()
-	require.NotNil(t, status)
-	require.Equal(t, "unavailable", status["last_updated"])
-}
-
 func TestForceUpdatePricing_NilService(t *testing.T) {
 	svc := billing.NewCalculator(nil, billing.CalculatorOptions{})
 

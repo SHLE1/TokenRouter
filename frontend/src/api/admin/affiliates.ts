@@ -129,44 +129,6 @@ export async function listUsers(
   return data
 }
 
-export async function lookupUsers(q: string): Promise<SimpleUser[]> {
-  const { data } = await apiClient.get<SimpleUser[]>(
-    '/admin/affiliates/users/lookup',
-    { params: { q } },
-  )
-  return data
-}
-
-export async function updateUserSettings(
-  userId: number,
-  payload: UpdateAffiliateUserRequest,
-): Promise<{ user_id: number }> {
-  const { data } = await apiClient.put<{ user_id: number }>(
-    `/admin/affiliates/users/${userId}`,
-    payload,
-  )
-  return data
-}
-
-export async function clearUserSettings(
-  userId: number,
-): Promise<{ user_id: number }> {
-  const { data } = await apiClient.delete<{ user_id: number }>(
-    `/admin/affiliates/users/${userId}`,
-  )
-  return data
-}
-
-export async function batchSetRate(
-  payload: BatchSetRateRequest,
-): Promise<{ affected: number }> {
-  const { data } = await apiClient.post<{ affected: number }>(
-    '/admin/affiliates/users/batch-rate',
-    payload,
-  )
-  return data
-}
-
 function recordParams(params: ListAffiliateRecordsParams = {}) {
   return {
     page: params.page ?? 1,
@@ -221,10 +183,6 @@ export async function getUserOverview(
 
 export const affiliatesAPI = {
   listUsers,
-  lookupUsers,
-  updateUserSettings,
-  clearUserSettings,
-  batchSetRate,
   listInviteRecords,
   listRebateRecords,
   listTransferRecords,

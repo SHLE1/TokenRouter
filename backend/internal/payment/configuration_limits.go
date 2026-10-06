@@ -140,8 +140,8 @@ func (s *ConfigService) ConfigPcInstancePaymentCurrency(inst *ProviderInstance) 
 	}
 	cfg := map[string]string{}
 	if s != nil {
-		decrypted, err := s.ConfigDecryptConfig(inst.Config)
-		if err == nil && decrypted != nil {
+		decrypted := s.ConfigDecryptConfig(inst.Config)
+		if decrypted != nil {
 			cfg = decrypted
 		}
 	}
@@ -174,8 +174,8 @@ func (s *ConfigService) ConfigPcInstanceEasyPayCustomMethodDisplayName(inst *Pro
 	}
 	cfg := map[string]string{}
 	if s != nil {
-		decrypted, err := s.ConfigDecryptConfig(inst.Config)
-		if err == nil && decrypted != nil {
+		decrypted := s.ConfigDecryptConfig(inst.Config)
+		if decrypted != nil {
 			cfg = decrypted
 		}
 	}

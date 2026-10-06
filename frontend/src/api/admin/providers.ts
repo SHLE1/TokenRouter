@@ -481,24 +481,6 @@ export async function toggleStatus(id: number, status: 'active' | 'inactive'): P
 }
 
 /**
- * Test provider connectivity
- * @param id - Provider ID
- * @returns Test result
- */
-export async function testProvider(id: number): Promise<{
-  success: boolean
-  message: string
-  latency_ms?: number
-}> {
-  const { data } = await apiClient.post<{
-    success: boolean
-    message: string
-    latency_ms?: number
-  }>(`/admin/providers/${id}/test`)
-  return data
-}
-
-/**
  * Refresh provider credentials
  * @param id - Provider ID
  * @returns Updated provider
@@ -650,18 +632,6 @@ export async function getTempUnschedulableStatus(id: number): Promise<TempUnsche
 }
 
 /**
- * Reset temporary unschedulable status
- * @param id - Provider ID
- * @returns Success confirmation
- */
-export async function resetTempUnschedulable(id: number): Promise<{ message: string }> {
-  const { data } = await apiClient.delete<{ message: string }>(
-    `/admin/providers/${id}/temp-unschedulable`
-  )
-  return data
-}
-
-/**
  * Generate OAuth authorization URL
  * @param endpoint - API endpoint path
  * @param config - Proxy configuration
@@ -708,28 +678,6 @@ export async function batchCreate(providers: CreateProviderRequest[]): Promise<{
 }
 
 /**
- * Batch update credentials fields for multiple providers
- * @param request - Batch update request containing provider IDs, field name, and value
- * @returns Results of batch update
- */
-export async function batchUpdateCredentials(request: {
-  provider_ids: number[]
-  field: string
-  value: any
-}): Promise<{
-  success: number
-  failed: number
-  results: Array<{ provider_id: number; success: boolean; error?: string }>
-}> {
-  const { data } = await apiClient.post<{
-    success: number
-    failed: number
-    results: Array<{ provider_id: number; success: boolean; error?: string }>
-  }>('/admin/providers/batch-update-credentials', request)
-  return data
-}
-
-/**
  * Bulk update multiple providers
  * @param providerIds - Array of provider IDs
  * @param updates - Fields to update
@@ -758,16 +706,6 @@ export async function bulkUpdate(
     failed_ids?: number[]
     results: Array<{ provider_id: number; success: boolean; error?: string }>
   }>('/admin/providers/bulk-update', payload)
-  return data
-}
-
-/**
- * Get provider today statistics
- * @param id - Provider ID
- * @returns Today's stats (requests, tokens, cost)
- */
-export async function getTodayStats(id: number): Promise<WindowStats> {
-  const { data } = await apiClient.get<WindowStats>(`/admin/providers/${id}/today-stats`)
   return data
 }
 
@@ -1119,16 +1057,6 @@ export async function consumeCodexInviteReset(
 }
 
 /**
- * 查询 OpenAI OAuth 提供商的上游限流和重置次数。
- * @param id - 提供商 ID
- * @returns OpenAI 上游限流状态
- */
-export async function queryOpenAIQuota(id: number): Promise<OpenAIQuotaUsage> {
-  const { data } = await apiClient.get<OpenAIQuotaUsage>(`/admin/openai/providers/${id}/quota`)
-  return data
-}
-
-/**
  * 查询 OpenAI OAuth 提供商额度，并持久化可过期的重置次数快照。
  * @param id - 提供商 ID
  * @returns 实时额度及快照是否成功持久化
@@ -1136,21 +1064,6 @@ export async function queryOpenAIQuota(id: number): Promise<OpenAIQuotaUsage> {
 export async function refreshOpenAIQuota(id: number): Promise<OpenAIQuotaRefreshResult> {
   const { data } = await apiClient.post<OpenAIQuotaRefreshResult>(
     `/admin/openai/providers/${id}/quota/refresh`
-  )
-  return data
-}
-
-/**
- * 重置 OpenAI OAuth 提供商的上游额度。
- * @param id - 提供商 ID
- * @returns OpenAI 上游限流状态
- */
-export async function resetOpenAIQuota(id: number): Promise<OpenAIQuotaResetResult> {
-  // 重置次数不可退还，扩大超时可避免客户端过早中断后误以为失败并重复消费。
-  const { data } = await apiClient.post<OpenAIQuotaResetResult>(
-    `/admin/openai/providers/${id}/reset-quota`,
-    undefined,
-    { timeout: 90_000 }
   )
   return data
 }
@@ -1222,7 +1135,6 @@ export const providersAPI = {
   update,
   delete: deleteProvider,
   toggleStatus,
-  testProvider,
   refreshCredentials,
   applyOAuthCredentials,
   getStats,
@@ -1231,13 +1143,11 @@ export const providersAPI = {
   getBatchUsage,
   queryUpstreamUsage,
   queryBatchUpstreamUsage,
-  getTodayStats,
   getBatchTodayStats,
   clearRateLimit,
   recoverState,
   resetProviderQuota,
   getTempUnschedulableStatus,
-  resetTempUnschedulable,
   setSchedulable,
   getAvailableModels,
   syncUpstreamModels,
@@ -1246,7 +1156,6 @@ export const providersAPI = {
   exchangeCode,
   refreshOpenAIToken,
   batchCreate,
-  batchUpdateCredentials,
   bulkUpdate,
   previewFromCrs,
   syncFromCrs,
@@ -1262,10 +1171,8 @@ export const providersAPI = {
   getCodexInviteResetStatus,
   sendCodexInviteResetInvite,
   consumeCodexInviteReset,
-  queryOpenAIQuota,
   refreshOpenAIQuota,
   revertProxyFallback,
-  resetOpenAIQuota,
   createSparkShadow,
   getOllamaCloudUsageSettings,
   updateOllamaCloudUsageSettings,

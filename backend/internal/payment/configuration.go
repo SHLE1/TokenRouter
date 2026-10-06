@@ -293,8 +293,8 @@ func (s *ConfigService) ConfigGetStripePublishableKey(ctx context.Context) strin
 	if err != nil || len(instances) == 0 {
 		return ""
 	}
-	cfg, err := s.ConfigDecryptConfig(instances[0].Config)
-	if err != nil || cfg == nil {
+	cfg := s.ConfigDecryptConfig(instances[0].Config)
+	if cfg == nil {
 		return ""
 	}
 	return cfg[ConfigKeyPublishableKey]
