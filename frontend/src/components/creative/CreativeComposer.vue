@@ -35,7 +35,6 @@
       class="composer-textarea block w-full resize-none bg-transparent px-4 pb-1.5 pt-3.5 text-sm leading-relaxed text-gray-900 outline-none placeholder:text-gray-400 dark:text-dark-50 dark:placeholder:text-dark-400"
       :class="studio.busy.value && 'opacity-60'"
       :placeholder="t('creative.panel.promptPlaceholder')"
-      @input="autosize"
       @keydown="onKeydown"
     ></textarea>
 
@@ -668,13 +667,15 @@ function autosize(): void {
   el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`
 }
 
-// 空画布引导的示例提示词：写入提示词、调整高度并把光标放到末尾
+// 输入框挂载或提示词变化后，等 DOM 更新再测量内容高度。
+watch([prompt, textareaRef], autosize, { flush: 'post' })
+
+// 空画布引导的示例提示词：写入提示词并把光标放到末尾
 function fillPrompt(text: string): void {
   prompt.value = text
   const el = textareaRef.value
   if (!el) return
   requestAnimationFrame(() => {
-    autosize()
     el.focus()
     el.setSelectionRange(text.length, text.length)
   })

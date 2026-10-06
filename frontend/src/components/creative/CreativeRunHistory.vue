@@ -112,6 +112,13 @@
                   :animate-on-hover="false"
                 />
               </div>
+              <!-- 提示词摘要：展开后下方显示完整提示词，摘要隐藏 -->
+              <p
+                v-if="paramsFor(run.id)?.prompt && expandedRunId !== run.id"
+                class="mt-1 line-clamp-2 break-words text-xs text-gray-700 dark:text-dark-200"
+              >
+                {{ paramsFor(run.id)!.prompt }}
+              </p>
               <div class="mt-1 flex items-center gap-2 text-xs tabular-nums text-gray-400 dark:text-dark-400">
                 <span :title="formatRunTime(run.created_at)">{{ formatRunRelative(run.created_at) }}</span>
                 <span
@@ -127,11 +134,42 @@
               </div>
             </button>
 
-            <!-- 进行中的任务只显示加载状态，终态任务才显示素材与操作按钮。 -->
+            <!-- 展开后先显示提交参数；进行中的任务接着显示加载状态，终态任务显示素材与操作按钮。 -->
             <MotionTransition name="history-details">
               <div v-if="expandedRunId === run.id" class="history-details-grid">
                 <div class="min-h-0 overflow-hidden">
                   <div class="space-y-2 px-2.5 pb-2.5">
+                    <!-- 提交参数：完整提示词和参数标签。本机没有这次任务的记录时显示说明 -->
+                    <div class="space-y-2 rounded-control bg-white p-2 dark:bg-dark-950">
+                      <div v-if="paramsFor(run.id)" class="flex items-start gap-1">
+                        <p class="max-h-40 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-800 dark:text-dark-100">{{ paramsFor(run.id)!.prompt }}</p>
+                        <button
+                          type="button"
+                          class="history-param-btn"
+                          :title="t('creative.history.copyPrompt')"
+                          :aria-label="t('creative.history.copyPrompt')"
+                          @click="copyToClipboard(paramsFor(run.id)!.prompt, t('creative.history.promptCopied'))"
+                        >
+                          <Icon name="copy" size="xs" />
+                        </button>
+                        <button
+                          type="button"
+                          class="history-param-btn"
+                          :title="t('creative.history.reuseParams')"
+                          :aria-label="t('creative.history.reuseParams')"
+                          @click="reuseParams(run.id)"
+                        >
+                          <Icon name="edit" size="xs" />
+                        </button>
+                      </div>
+                      <p v-else class="text-xs text-gray-400 dark:text-dark-400">{{ t('creative.history.promptUnavailable') }}</p>
+                      <div class="flex flex-wrap gap-1">
+                        <span v-for="tag in paramTags(run)" :key="tag.key" class="history-param-tag">
+                          <span v-if="tag.label" class="text-gray-400 dark:text-dark-400">{{ tag.label }}</span>
+                          {{ tag.value }}
+                        </span>
+                      </div>
+                    </div>
                     <div v-if="isActive(run)" class="flex items-center gap-3 text-xs text-gray-500 dark:text-dark-300">
                       <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-control bg-white dark:bg-dark-950">
                         <Icon
@@ -217,11 +255,12 @@ import MotionTransition from '@/components/common/MotionTransition.vue'
  * 创作 run 历史（右侧侧栏）：
  * - 画布右上角图标按钮从右侧拉开侧栏，Esc、关闭按钮或窄屏遮罩收起；展开状态通过 v-model:open 交给父级，
  *   父级据此让顶部工具条和输入框在侧栏左侧的区域居中
- * - 列表每行 = 状态 + 模型名 + 相对时间（悬停显示完整时间）+ 耗时 + 实际费用
+ * - 列表每行 = 状态 + 模型名 + 提示词摘要 + 相对时间（悬停显示完整时间）+ 耗时 + 实际费用
  * - 状态按四种色调显示：进行中品牌青加转圈、成功绿色、失败和结果丢失红色、取消灰色
- * - 点击行原地向下展开：终态任务显示本地保存的输出图片，图片按原始比例撑满侧栏宽度并可拖到画布；
+ * - 点击行原地向下展开：先显示完整提示词和提交参数，可以复制提示词或把整组参数填回输入框；
+ *   终态任务再显示本地保存的输出图片，图片按原始比例撑满侧栏宽度并可拖到画布；
  *   「导入到画布」和「下载」悬浮在图片右上角，本地素材缺失时显示缺失占位
- * - 进行中的任务只展示加载状态，界面上没有素材操作或取消入口
+ * - 进行中的任务在参数下方展示加载状态
  */
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -231,9 +270,10 @@ import Icon from '@/components/icons/Icon.vue'
 import { CREATIVE_RUN_TERMINAL_STATUSES, type CreativeRun } from '@/api/creative'
 import { formatDateTime, formatRelativeTime } from '@/utils/format'
 import { creativeTimestampToMs, formatCreativeRunElapsed } from '@/utils/creativeRunTime'
-import { outputAssetKey, type LocalAsset } from '@/utils/creativeLocalStore'
+import { outputAssetKey, type LocalAsset, type LocalRunParams } from '@/utils/creativeLocalStore'
 import { CREATIVE_OUTPUT_DRAG_MIME, serializeCreativeOutputDrag } from '@/utils/creativeDrag'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
+import { useClipboard } from '@/composables/useClipboard'
 import { MEDIA_MAX_MD } from '@/constants/layout'
 import type { useCreativeStudio } from '@/composables/useCreativeStudio'
 
@@ -251,6 +291,7 @@ const props = withDefaults(defineProps<Props>(), {
 const studio = props.studio
 const { t } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()
+const { copyToClipboard } = useClipboard()
 
 // 侧栏展开状态：默认收起，父级不绑定 v-model 时由组件自己维护
 const open = defineModel<boolean>('open', { default: false })
@@ -294,6 +335,44 @@ function toggleRun(runId: string): void {
 
 function assetFor(runId: string, outputIndex: number): LocalAsset | null {
   return studio.outputAssetMap.value.get(outputAssetKey(runId, outputIndex)) ?? null
+}
+
+function paramsFor(runId: string): LocalRunParams | null {
+  return studio.runParamsMap.value.get(runId) ?? null
+}
+
+interface ParamTag {
+  key: string
+  // 操作类型的取值本身就能看懂，label 留空
+  label?: string
+  value: string
+}
+
+// 参数标签：操作、尺寸、比例和张数在服务端有记录；分组、画质、背景、思考强度和参考图张数来自本机记录。
+// 模型没有的参数提交时为空，这里跳过空值。
+function paramTags(run: CreativeRun): ParamTag[] {
+  const params = paramsFor(run.id)
+  const tags: ParamTag[] = []
+  const push = (key: string, value: string | undefined, label?: string) => {
+    if (value) tags.push({ key, label, value })
+  }
+  push('operation', t(`creative.operations.${run.operation}`, run.operation))
+  push('group', params?.groupName, t('creative.history.params.group'))
+  push('size', params?.imageSize || run.image_size, t('creative.history.params.size'))
+  const ratio = params?.aspectRatio || run.aspect_ratio
+  push('ratio', ratio === 'auto' ? t('creative.composer.autoRatio') : ratio, t('creative.history.params.ratio'))
+  if (params?.quality) push('quality', t(`creative.qualities.${params.quality}`, params.quality), t('creative.panel.quality'))
+  if (params?.background) push('background', t(`creative.backgrounds.${params.background}`, params.background), t('creative.panel.background'))
+  if (params?.thinkingLevel) push('thinking', t(`creative.thinkingLevels.${params.thinkingLevel}`, params.thinkingLevel), t('creative.history.params.thinking'))
+  if (params?.referenceCount) push('references', String(params.referenceCount), t('creative.history.params.references'))
+  if (run.requested_output_count > 1) push('count', String(run.requested_output_count), t('creative.history.params.count'))
+  return tags
+}
+
+// 把这次任务的模型、参数和提示词填回输入框；窄屏收起侧栏，让用户看到输入框
+function reuseParams(runId: string): void {
+  const applied = studio.applyRunParams(runId)
+  if (applied && isNarrow.value) open.value = false
 }
 
 function urlForAsset(key: string, blob: Blob): string {
@@ -477,6 +556,15 @@ async function refresh(): Promise<void> {
 
 .run-status-muted {
   @apply text-gray-500 dark:text-dark-300;
+}
+
+/* 提交参数区：提示词旁的小图标按钮和参数标签 */
+.history-param-btn {
+  @apply inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-control text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-100;
+}
+
+.history-param-tag {
+  @apply inline-flex items-center gap-1 rounded-control bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700 dark:bg-dark-800 dark:text-dark-200;
 }
 
 /* 输出图片右上角的操作按钮：有悬停能力的设备悬停或聚焦时显示，触屏设备常显 */
