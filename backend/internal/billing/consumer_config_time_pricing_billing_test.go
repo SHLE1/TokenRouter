@@ -29,7 +29,7 @@ func TestCalculateCostUnifiedAppliesPricingTimeMultiplierToTokenBuckets(t *testi
 		BasePricing:   &billingpricing.ModelPricing{InputPricePerToken: 5e-6, OutputPricePerToken: 15e-6},
 		ConfigPricing: pricing,
 	}
-	service := billingtestkit.Calculator(0, nil, nil)
+	service := billingtestkit.Calculator(nil, nil)
 	resolver := billing.NewPriceResolver(nil, service, modelidentity.Identity, nil)
 
 	cost, err := service.CalculateCostUnified(billing.CostInput{
@@ -59,7 +59,7 @@ func TestCalculateCostUnifiedDoesNotApplyConfigTimeMultiplierToPerRequest(t *tes
 		},
 	}
 	resolved := &billingpricing.ResolvedPricing{Mode: routing.BillingModePerRequest, Source: billingpricing.PricingSourceConfig, ConfigPricing: pricing, DefaultPerRequestPrice: 0.05}
-	service := billingtestkit.Calculator(0, nil, nil)
+	service := billingtestkit.Calculator(nil, nil)
 	resolver := billing.NewPriceResolver(nil, service, modelidentity.Identity, nil)
 
 	cost, err := service.CalculateCostUnified(billing.CostInput{
@@ -98,7 +98,7 @@ func TestDisplayPricingCarriesConfigTimePricingAndMaxReasoningMultiplier(t *test
 		},
 		ConfigPricing: pricing,
 	}
-	service := billingtestkit.Calculator(0, nil, nil)
+	service := billingtestkit.Calculator(nil, nil)
 
 	display := service.DisplayPricingWithResolvedMultipliers("claude-sonnet-4", 2, resolved)
 
@@ -132,7 +132,7 @@ func TestDisplayPricingOmitsNeutralModifiers(t *testing.T) {
 			},
 		},
 	}
-	service := billingtestkit.Calculator(0, nil, nil)
+	service := billingtestkit.Calculator(nil, nil)
 
 	display := service.DisplayPricingWithResolvedMultipliers("claude-sonnet-4", 1, resolved)
 

@@ -337,14 +337,6 @@ export async function refreshToken(): Promise<RefreshTokenResponse> {
 }
 
 /**
- * Check if user is authenticated
- * @returns True if user has valid token
- */
-export function isAuthenticated(): boolean {
-  return getAuthToken() !== null
-}
-
-/**
  * Get public settings (no auth required)
  * @returns Public settings including registration and Turnstile config
  */
@@ -674,7 +666,6 @@ export const authAPI = {
   register,
   getCurrentUser,
   logout,
-  isAuthenticated,
   setAuthToken,
   setRefreshToken,
   setTokenExpiresAt,

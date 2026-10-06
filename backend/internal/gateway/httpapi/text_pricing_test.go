@@ -27,7 +27,7 @@ import (
 // textPricingFixture 提供一个目录型号及可选的分组价卡。
 func textPricingFixture(t *testing.T, cards ...routing.ModelPricingEntry) *admission.ModelPricing {
 	t.Helper()
-	calculator := testkit.Calculator(1, nil, map[string]*pricing.ModelPricing{
+	calculator := testkit.Calculator(nil, map[string]*pricing.ModelPricing{
 		"gpt-5.6-luna": {InputPricePerToken: 2e-7, OutputPricePerToken: 1.2e-6},
 	})
 	return &admission.ModelPricing{Resolver: testkit.ResolverWithCards(t, calculator, cards)}

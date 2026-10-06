@@ -114,7 +114,7 @@ func (lb *DefaultLoadBalancer) SelectInstance(
 
 	// Step 4: pick by strategy.
 	selected := lb.pickByStrategy(available, strategy)
-	return lb.buildSelection(selected.inst)
+	return lb.buildSelection(selected.inst), nil
 }
 
 // queryEnabledInstances returns enabled instances that support paymentType.
@@ -262,7 +262,8 @@ func pickLeastAmount(candidates []instanceCandidate) instanceCandidate {
 	return best
 }
 
-func (lb *DefaultLoadBalancer) buildSelection(selected *ProviderInstance) (*InstanceSelection, error) {
+// buildSelection 将支付实例配置和支付模式整理为渠道选择结果。
+func (lb *DefaultLoadBalancer) buildSelection(selected *ProviderInstance) *InstanceSelection {
 	config := lb.decryptConfig(selected.Config)
 	if config == nil {
 		config = map[string]string{}
@@ -278,7 +279,7 @@ func (lb *DefaultLoadBalancer) buildSelection(selected *ProviderInstance) (*Inst
 		Config:         config,
 		SupportedTypes: selected.SupportedTypes,
 		PaymentMode:    selected.PaymentMode,
-	}, nil
+	}
 }
 
 // decryptConfig 读取支付实例配置，无法解析时记录日志并返回空配置。

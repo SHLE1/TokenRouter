@@ -120,7 +120,7 @@ func TestGetIntervalPricing_NoMatch_FallsBackToBase(t *testing.T) {
 }
 
 func TestGPT56ExplicitZeroCacheWritePriceIsPreserved(t *testing.T) {
-	bs := newCalculatorWithPrices(nil, nil, map[string]*billingpricing.ModelPricing{})
+	bs := newCalculatorWithPrices(nil, map[string]*billingpricing.ModelPricing{})
 	resolver := billingtestkit.PriceResolver(nil, bs)
 	zero := 0.0
 
@@ -260,7 +260,7 @@ func TestResolve_WithPricingConfigOverride_TokenFlatPreservesNativeTierRatio(t *
 		CacheReadPricePerToken:         0.5e-6,
 		CacheReadPricePerTokenPriority: 1e-6,
 	}
-	bs := newCalculatorWithPrices(nil, nil, prices)
+	bs := newCalculatorWithPrices(nil, prices)
 	r := billingtestkit.ResolverWithCards(t, bs, []routing.ModelPricingEntry{{
 		Models:         []string{"gpt-5.4"},
 		BillingMode:    routing.BillingModeToken,
@@ -355,7 +355,7 @@ func TestResolve_QoderCustomAliasMappedToRouteKeyZerosMissingPartialConfigPricin
 	cache.LoadedAt = time.Now()
 
 	pricingConfigService := routingtestkit.ModelConfigFromData(cache)
-	billingService := newCalculator(nil, nil)
+	billingService := newCalculator(nil)
 	r := billingtestkit.PriceResolver(pricingConfigService, billingService)
 
 	resolved := r.Resolve(context.Background(), billing.PricingInput{
@@ -385,7 +385,7 @@ func TestResolve_QoderStandardModelMappedToRouteKeyKeepsBaseForPartialConfigPric
 	cache.LoadedAt = time.Now()
 
 	pricingConfigService := routingtestkit.ModelConfigFromData(cache)
-	billingService := newCalculator(nil, nil)
+	billingService := newCalculator(nil)
 	r := billingtestkit.PriceResolver(pricingConfigService, billingService)
 
 	basePricing, err := billingService.GetModelPricing("gpt-5.4")
@@ -422,7 +422,7 @@ func TestResolve_QoderStandardModelMappedToRouteKeyKeepsBaseForPartialIntervalPr
 	cache.LoadedAt = time.Now()
 
 	pricingConfigService := routingtestkit.ModelConfigFromData(cache)
-	billingService := newCalculator(nil, nil)
+	billingService := newCalculator(nil)
 	r := billingtestkit.PriceResolver(pricingConfigService, billingService)
 
 	basePricing, err := billingService.GetModelPricing("gpt-5.4")
@@ -456,7 +456,7 @@ func TestResolve_QoderCustomAliasUnknownBaseZerosMissingPartialConfigPricing(t *
 	cache.LoadedAt = time.Now()
 
 	pricingConfigService := routingtestkit.ModelConfigFromData(cache)
-	billingService := newCalculator(nil, nil)
+	billingService := newCalculator(nil)
 	r := billingtestkit.PriceResolver(pricingConfigService, billingService)
 
 	resolved := r.Resolve(context.Background(), billing.PricingInput{
@@ -488,7 +488,7 @@ func TestResolve_QoderCustomAliasUnknownBaseZerosMissingPartialIntervalPricing(t
 	cache.LoadedAt = time.Now()
 
 	pricingConfigService := routingtestkit.ModelConfigFromData(cache)
-	billingService := newCalculator(nil, nil)
+	billingService := newCalculator(nil)
 	r := billingtestkit.PriceResolver(pricingConfigService, billingService)
 
 	resolved := r.Resolve(context.Background(), billing.PricingInput{
@@ -522,7 +522,7 @@ func TestResolve_QoderBlankRouteKeyPricingIsUnpricedButAliasManualPricingWorks(t
 	cache.LoadedAt = time.Now()
 
 	pricingConfigService := routingtestkit.ModelConfigFromData(cache)
-	billingService := newCalculator(nil, nil)
+	billingService := newCalculator(nil)
 	r := billingtestkit.PriceResolver(pricingConfigService, billingService)
 
 	routeResolved := r.Resolve(context.Background(), billing.PricingInput{
@@ -571,7 +571,7 @@ func TestResolve_BlankWildcardPricingDoesNotMaskLaterEffectiveWildcard(t *testin
 	cache.LoadedAt = time.Now()
 
 	pricingConfigService := routingtestkit.ModelConfigFromData(cache)
-	billingService := newCalculator(nil, nil)
+	billingService := newCalculator(nil)
 	r := billingtestkit.PriceResolver(pricingConfigService, billingService)
 
 	resolved := r.Resolve(context.Background(), billing.PricingInput{
@@ -608,7 +608,7 @@ func TestResolve_QoderPerRequestRouteKeyTokenOnlyIntervalIsUnpriced(t *testing.T
 	cache.LoadedAt = time.Now()
 
 	pricingConfigService := routingtestkit.ModelConfigFromData(cache)
-	billingService := newCalculator(nil, nil)
+	billingService := newCalculator(nil)
 	r := billingtestkit.PriceResolver(pricingConfigService, billingService)
 
 	routeResolved := r.Resolve(context.Background(), billing.PricingInput{
@@ -1369,7 +1369,7 @@ func TestIntervalToModelPricingWithBaseClearsImageOutputWhenPricingConfigUnset(t
 // 会先克隆 BasePricing，避免写穿 fallbackPrices 中的共享条目。
 func TestApplyTokenOverrides_FlatDoesNotPolluteFallbackPrices(t *testing.T) {
 	prices := billingtestkit.ResolverFallbackPrices()
-	calculator := newCalculatorWithPrices(nil, nil, prices)
+	calculator := newCalculatorWithPrices(nil, prices)
 	r := billingtestkit.ResolverWithCards(t, calculator, []routing.ModelPricingEntry{{
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
@@ -1398,7 +1398,7 @@ func TestApplyTokenOverrides_FlatDoesNotPolluteFallbackPrices(t *testing.T) {
 // 同样会在修改前克隆基础定价。
 func TestApplyTokenOverrides_IntervalDoesNotPolluteFallbackPrices(t *testing.T) {
 	prices := billingtestkit.ResolverFallbackPrices()
-	calculator := newCalculatorWithPrices(nil, nil, prices)
+	calculator := newCalculatorWithPrices(nil, prices)
 	r := billingtestkit.ResolverWithCards(t, calculator, []routing.ModelPricingEntry{{
 		Models:      []string{"claude-sonnet-4"},
 		BillingMode: routing.BillingModeToken,
@@ -1441,7 +1441,7 @@ func TestResolve_ConfigIntervalsOverridePresetRegardlessOfToggle(t *testing.T) {
 	prices["claude-sonnet-4"].LongContextThresholdInclusive = true
 	prices["claude-sonnet-4"].LongContextInputMultiplier = 2
 	prices["claude-sonnet-4"].LongContextOutputMultiplier = 2
-	bs := newCalculatorWithPrices(nil, nil, prices)
+	bs := newCalculatorWithPrices(nil, prices)
 	settings := billingpricing.DefaultBillingSettings()
 	settings.LongContextPricingEnabled = false
 	cards := []routing.ModelPricingEntry{{

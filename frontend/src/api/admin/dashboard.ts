@@ -9,21 +9,11 @@ import type {
   TrendDataPoint,
   ModelStat,
   GroupStat,
-  ApiKeyUsageTrendPoint,
   UserUsageTrendPoint,
   UserSpendingRankingResponse,
   UserBreakdownItem,
   UsageRequestType
 } from '@/types'
-
-/**
- * Get dashboard statistics
- * @returns Dashboard statistics including users, keys, providers, and token usage
- */
-export async function getStats(): Promise<DashboardStats> {
-  const { data } = await apiClient.get<DashboardStats>('/admin/dashboard/stats')
-  return data
-}
 
 export interface TrendParams {
   start_date?: string
@@ -39,13 +29,6 @@ export interface TrendParams {
   stream?: boolean
   billing_type?: number | null
   native_compaction_v2?: boolean | null
-}
-
-export interface TrendResponse {
-  trend: TrendDataPoint[]
-  start_date: string
-  end_date: string
-  granularity: string
 }
 
 export interface ModelStatsParams {
@@ -78,26 +61,6 @@ export interface ModelStatsResponse {
 export async function getModelStats(params?: ModelStatsParams): Promise<ModelStatsResponse> {
   const { data } = await apiClient.get<ModelStatsResponse>('/admin/dashboard/models', { params })
   return data
-}
-
-export interface GroupStatsParams {
-  start_date?: string
-  end_date?: string
-  user_id?: number
-  api_key_id?: number
-  provider_id?: number
-  group_id?: number
-  team_id?: number
-  request_type?: UsageRequestType
-  stream?: boolean
-  billing_type?: number | null
-  native_compaction_v2?: boolean | null
-}
-
-export interface GroupStatsResponse {
-  groups: GroupStat[]
-  start_date: string
-  end_date: string
 }
 
 export interface DashboardSnapshotV2Params extends TrendParams {
@@ -167,17 +130,6 @@ export async function getSnapshotV2(params?: DashboardSnapshotV2Params): Promise
     params
   })
   return data
-}
-
-export interface ApiKeyTrendParams extends TrendParams {
-  limit?: number
-}
-
-export interface ApiKeyTrendResponse {
-  trend: ApiKeyUsageTrendPoint[]
-  start_date: string
-  end_date: string
-  granularity: string
 }
 
 export interface UserTrendParams extends TrendParams {
@@ -251,18 +203,7 @@ export async function getBatchUsersUsage(userIds: number[]): Promise<BatchUsersU
   return data
 }
 
-export interface BatchApiKeyUsageStats {
-  api_key_id: number
-  today_actual_cost: number
-  total_actual_cost: number
-}
-
-export interface BatchApiKeysUsageResponse {
-  stats: Record<string, BatchApiKeyUsageStats>
-}
-
 export const dashboardAPI = {
-  getStats,
   getModelStats,
   getSnapshotV2,
   getUserUsageTrend,

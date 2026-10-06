@@ -338,15 +338,13 @@ func (s *Calculator) DefaultVideoPrice(model string, resolution string) (float64
 // PriceCatalog 暴露目录读取及既有维护操作，不向核心暴露文件或网络客户端。
 type PriceCatalog interface {
 	GetModelPricing(string) *purepricing.CatalogModelPricing
-	GetStatus() map[string]any
 	ForceUpdate() error
 }
 
-// CalculatorOptions 包含 app 提供的默认倍率、时钟、时区加载器和平台模型标识。
+// CalculatorOptions 包含 app 提供的时钟和时区加载器。
 type CalculatorOptions struct {
-	DefaultRateMultiplier float64
-	Now                   func() time.Time
-	LoadLocation          func(string) (*time.Location, error)
+	Now          func() time.Time
+	LoadLocation func(string) (*time.Location, error)
 }
 
 // Calculator 统一拥有查价及计费编排；价卡算法由 pricing 唯一实现。

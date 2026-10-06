@@ -95,7 +95,7 @@ func (h *DataManagementHandler) GetAgentHealth(c *gin.Context) {
 }
 
 func (h *DataManagementHandler) GetConfig(c *gin.Context) {
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) UpdateConfig(c *gin.Context) {
@@ -105,7 +105,7 @@ func (h *DataManagementHandler) UpdateConfig(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) TestS3(c *gin.Context) {
@@ -115,7 +115,7 @@ func (h *DataManagementHandler) TestS3(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) CreateBackupJob(c *gin.Context) {
@@ -125,7 +125,7 @@ func (h *DataManagementHandler) CreateBackupJob(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) ListSourceProfiles(c *gin.Context) {
@@ -139,7 +139,7 @@ func (h *DataManagementHandler) ListSourceProfiles(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) CreateSourceProfile(c *gin.Context) {
@@ -155,7 +155,7 @@ func (h *DataManagementHandler) CreateSourceProfile(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) UpdateSourceProfile(c *gin.Context) {
@@ -176,7 +176,7 @@ func (h *DataManagementHandler) UpdateSourceProfile(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) DeleteSourceProfile(c *gin.Context) {
@@ -191,7 +191,7 @@ func (h *DataManagementHandler) DeleteSourceProfile(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) SetActiveSourceProfile(c *gin.Context) {
@@ -206,11 +206,11 @@ func (h *DataManagementHandler) SetActiveSourceProfile(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) ListS3Profiles(c *gin.Context) {
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) CreateS3Profile(c *gin.Context) {
@@ -220,7 +220,7 @@ func (h *DataManagementHandler) CreateS3Profile(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) UpdateS3Profile(c *gin.Context) {
@@ -236,7 +236,7 @@ func (h *DataManagementHandler) UpdateS3Profile(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) DeleteS3Profile(c *gin.Context) {
@@ -246,7 +246,7 @@ func (h *DataManagementHandler) DeleteS3Profile(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) SetActiveS3Profile(c *gin.Context) {
@@ -256,11 +256,11 @@ func (h *DataManagementHandler) SetActiveS3Profile(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) ListBackupJobs(c *gin.Context) {
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
 func (h *DataManagementHandler) GetBackupJob(c *gin.Context) {
@@ -270,25 +270,24 @@ func (h *DataManagementHandler) GetBackupJob(c *gin.Context) {
 		return
 	}
 
-	h.requireAgentEnabled(c)
+	h.respondAgentUnavailable(c)
 }
 
-func (h *DataManagementHandler) requireAgentEnabled(c *gin.Context) bool {
+// respondAgentUnavailable 写出数据管理服务缺失或功能下线的错误响应。
+func (h *DataManagementHandler) respondAgentUnavailable(c *gin.Context) {
 	if h.dataManagementService == nil {
 		err := infraerrors.ServiceUnavailable(
 			backup.DataManagementAgentUnavailableReason,
 			"data management agent service is not configured",
 		).WithMetadata(map[string]string{"socket_path": backup.DefaultDataManagementAgentSocketPath})
 		response.ErrorFrom(c, err)
-		return false
+		return
 	}
 
 	if err := h.dataManagementService.EnsureAgentEnabled(c.Request.Context()); err != nil {
 		response.ErrorFrom(c, err)
-		return false
+		return
 	}
-
-	return true
 }
 
 func (h *DataManagementHandler) getAgentHealth(c *gin.Context) backup.DataManagementAgentHealth {

@@ -8,19 +8,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func newTestCalculator() *billing.Calculator {
-	return newCalculator(&config.Config{}, nil)
+	return newCalculator(nil)
 }
 
 func newLadderCalculator(t *testing.T) *billing.Calculator {
 	t.Helper()
-	return newCalculator(&config.Config{}, newStubCatalogFromJSON(t, openAILadderCatalogJSON))
+	return newCalculator(newStubCatalogFromJSON(t, openAILadderCatalogJSON))
 }
 
 func TestCalculateCost_BasicComputation(t *testing.T) {
@@ -256,7 +255,7 @@ func TestCalculateCost_OpenAILongContextBoundaryIncludesCacheTokens(t *testing.T
 }
 
 func TestCalculateCost_GPT56SolMarketplaceIntervalsMatchSettlement(t *testing.T) {
-	svc := newCalculator(&config.Config{}, newStubCatalogFromJSON(t, gpt56LadderCatalogJSON))
+	svc := newCalculator(newStubCatalogFromJSON(t, gpt56LadderCatalogJSON))
 	const groupRate = 3.0
 
 	display := svc.DisplayPricing("gpt-5.6-sol", groupRate)
@@ -549,7 +548,7 @@ func TestCalculateCost_OpenAIGPT54NoLongContextKeepsCacheCreationAtBasePrice(t *
 // 使用手工构造的 pricing（参考 TestCalculateCost_SupportsCacheBreakdown 的写法）
 // 以便同时控制 SupportsCacheBreakdown + 长上下文阈值。
 func TestCalculateCost_LongContextAppliesMultiplierToCacheCreation5mAnd1h(t *testing.T) {
-	svc := newCalculatorWithPrices(&config.Config{}, nil, map[string]*billingpricing.ModelPricing{
+	svc := newCalculatorWithPrices(nil, map[string]*billingpricing.ModelPricing{
 		"claude-sonnet-4": {
 			InputPricePerToken:          3e-6,
 			OutputPricePerToken:         15e-6,
@@ -975,7 +974,7 @@ func TestGetModelPricing_GrokCatalogFallbacks(t *testing.T) {
 }
 
 func TestCalculateCost_SupportsCacheBreakdown(t *testing.T) {
-	svc := newCalculatorWithPrices(&config.Config{}, nil, map[string]*billingpricing.ModelPricing{
+	svc := newCalculatorWithPrices(nil, map[string]*billingpricing.ModelPricing{
 		"claude-sonnet-4": {
 			InputPricePerToken:     3e-6,
 			OutputPricePerToken:    15e-6,
@@ -1280,7 +1279,7 @@ func TestBillingServiceGetModelPricing_UsesDynamicPriorityFields(t *testing.T) {
 			},
 		},
 	})
-	svc := newCalculator(&config.Config{}, pricingSvc)
+	svc := newCalculator(pricingSvc)
 
 	pricing, err := svc.GetModelPricing("gpt-5.4")
 	require.NoError(t, err)
@@ -1310,7 +1309,7 @@ func TestBillingServiceGetModelPricing_OpenAIFallbackGpt52Variants(t *testing.T)
 }
 
 func TestCalculateCostWithServiceTier_MissingPriorityDoesNotInventMultiplier(t *testing.T) {
-	svc := newCalculator(&config.Config{}, newCatalogFixture(catalogFixture{
+	svc := newCalculator(newCatalogFixture(catalogFixture{
 		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"custom-no-priority": {
 				InputCostPerToken:           1e-6,
@@ -1351,7 +1350,7 @@ func TestGetModelPricing_OpenAIGpt52FallbacksExposePriorityPrices(t *testing.T) 
 }
 
 func TestGetModelPricing_MapsDynamicPriorityFieldsIntoBillingPricing(t *testing.T) {
-	svc := newCalculator(&config.Config{}, newCatalogFixture(catalogFixture{
+	svc := newCalculator(newCatalogFixture(catalogFixture{
 		pricingData: map[string]*billingpricing.CatalogModelPricing{
 			"dynamic-tier-model": {
 				InputCostPerToken:                   1e-6,

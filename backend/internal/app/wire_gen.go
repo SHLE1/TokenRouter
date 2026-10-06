@@ -110,7 +110,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	if err != nil {
 		return nil, err
 	}
-	calculator := provideBillingCalculator(cfg, service, calendar)
+	calculator := provideBillingCalculator(service, calendar)
 	priceResolver := provideBillingPriceResolver(pricingConfigService, calculator)
 	sessionLimitCache := provideSessionCache(redisClient, cfg)
 	rpmCache := rediscache3.NewRPMCache(redisClient)

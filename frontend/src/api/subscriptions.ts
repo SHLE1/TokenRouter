@@ -14,27 +14,6 @@ export interface RevokeSubscriptionResponse {
 }
 
 /**
- * Subscription summary for user dashboard
- */
-export interface SubscriptionSummary {
-  active_count: number
-  total_used_usd?: number
-  subscriptions: Array<{
-    id: number
-    plan_id: number
-    plan_name: string
-    status: string
-    daily_used_usd: number
-    daily_limit_usd: number
-    weekly_used_usd: number
-    weekly_limit_usd: number
-    monthly_used_usd: number
-    monthly_limit_usd: number
-    expires_at: string | null
-  }>
-}
-
-/**
  * Get list of current user's subscriptions
  */
 export async function getMySubscriptions(): Promise<UserSubscription[]> {

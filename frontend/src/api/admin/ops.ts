@@ -453,7 +453,6 @@ export type OpsSeverity = string
 export type OpsPhase = string
 
 export type AlertSeverity = 'critical' | 'warning' | 'info'
-export type ThresholdMode = 'count' | 'percentage' | 'both'
 export type MetricType =
   | 'success_rate'
   | 'error_rate'

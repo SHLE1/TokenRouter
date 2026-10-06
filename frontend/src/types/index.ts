@@ -438,12 +438,6 @@ export interface Toast {
   duration?: number // in milliseconds, undefined means no auto-dismiss
 }
 
-export interface AppState {
-  sidebarCollapsed: boolean
-  loading: boolean
-  toasts: Toast[]
-}
-
 // ==================== API Key & Group Types ====================
 
 export type GroupSchedulerType = 'basic' | 'advanced'
@@ -2071,14 +2065,6 @@ export interface UserSpendingRankingResponse {
   end_date: string
 }
 
-export interface ApiKeyUsageTrendPoint {
-  date: string
-  api_key_id: number
-  key_name: string
-  requests: number
-  tokens: number
-}
-
 // ==================== Admin User Management ====================
 
 export interface UpdateUserRequest {
@@ -2129,57 +2115,8 @@ export interface UserSubscription {
   plan?: SubscriptionPlan
 }
 
-export interface SubscriptionProgress {
-  id: number
-  plan_id: number
-  plan_name: string
-  starts_at: string
-  expires_at: string
-  status: 'active' | 'pending' | 'expired' | 'suspended' | 'revoked'
-  expires_in_days: number
-  daily: {
-    limit_usd: number
-    used_usd: number
-    remaining_usd: number
-    percentage: number
-    window_start: string
-    resets_at: string
-    resets_in_seconds: number
-  } | null
-  weekly: {
-    limit_usd: number
-    used_usd: number
-    remaining_usd: number
-    percentage: number
-    window_start: string
-    resets_at: string
-    resets_in_seconds: number
-  } | null
-  monthly: {
-    limit_usd: number
-    used_usd: number
-    remaining_usd: number
-    percentage: number
-    window_start: string
-    resets_at: string
-    resets_in_seconds: number
-  } | null
-}
-
-export interface SubscriptionProgressInfo {
-  subscription: UserSubscription
-  progress: SubscriptionProgress
-}
-
 export interface AssignSubscriptionRequest {
   user_id: number
-  plan_id: number
-  validity_days?: number
-  notes?: string
-}
-
-export interface BulkAssignSubscriptionRequest {
-  user_ids: number[]
   plan_id: number
   validity_days?: number
   notes?: string

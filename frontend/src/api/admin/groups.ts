@@ -75,16 +75,6 @@ export async function getLiveCapability(): Promise<LiveCapability> {
 }
 
 /**
- * Get group by ID
- * @param id - Group ID
- * @returns Group details
- */
-export async function getById(id: number): Promise<AdminGroup> {
-  const { data } = await apiClient.get<AdminGroup>(`/admin/groups/${id}`)
-  return data
-}
-
-/**
  * 获取自定义 /v1/models 列表的候选模型。
  * id=0 表示创建分组流程，返回通用候选模型。
  */
@@ -205,16 +195,6 @@ export async function update(id: number, updates: UpdateGroupRequest): Promise<A
 export async function deleteGroup(id: number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/groups/${id}`)
   return data
-}
-
-/**
- * Toggle group status
- * @param id - Group ID
- * @param status - New status
- * @returns Updated group
- */
-export async function toggleStatus(id: number, status: 'active' | 'inactive'): Promise<AdminGroup> {
-  return update(id, { status })
 }
 
 /**
@@ -354,13 +334,11 @@ export const groupsAPI = {
   getAll,
   getAllIncludingInactive,
   getLiveCapability,
-  getById,
   getModelsListCandidates,
   create,
   duplicate,
   update,
   delete: deleteGroup,
-  toggleStatus,
   getGroupRateMultipliers,
   batchSetGroupRateMultipliers,
   getGroupRPMOverrides,

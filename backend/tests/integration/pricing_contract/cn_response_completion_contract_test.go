@@ -41,7 +41,7 @@ func TestFilterCNProviderBillingModelCandidates(t *testing.T) {
 func TestFilterCNProviderBillingModelCandidatesKeepsExplicitConfigPricing(t *testing.T) {
 	inputPrice := 0.000001
 	outputPrice := 0.000002
-	billing := billingtestkit.Calculator(0, nil, nil)
+	billing := billingtestkit.Calculator(nil, nil)
 	resolver := billingtestkit.SharedPriceResolver(billing, 1, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{
 		Models:      []string{"claude-sonnet-4-5"},
 		BillingMode: routing.BillingModeToken,

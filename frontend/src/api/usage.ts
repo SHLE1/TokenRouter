@@ -119,25 +119,6 @@ export interface UsageRankingParams {
   end_date?: string
 }
 
-export interface ApiKeyDailyUsagePoint {
-  date: string
-  requests: number
-  input_tokens: number
-  output_tokens: number
-  cache_read_tokens: number
-  cache_write_tokens: number
-  total_tokens: number
-  cost: number
-  actual_cost: number
-}
-
-export interface ApiKeyDailyUsageResponse {
-  items: ApiKeyDailyUsagePoint[]
-  days: number
-  start_date: string
-  end_date: string
-}
-
 export interface UsageDashboardSnapshotV2Params extends TrendParams {
   include_trend?: boolean
   include_model_stats?: boolean
@@ -152,33 +133,6 @@ export interface UsageDashboardSnapshotV2Response {
   trend?: TrendDataPoint[]
   models?: ModelStat[]
   groups?: GroupStat[]
-}
-
-/**
- * List usage logs with optional filters
- * @param page - Page number (default: 1)
- * @param pageSize - Items per page (default: 20)
- * @param apiKeyId - Filter by API key ID
- * @returns Paginated list of usage logs
- */
-export async function list(
-  page: number = 1,
-  pageSize: number = 20,
-  apiKeyId?: number
-): Promise<PaginatedResponse<UsageLog>> {
-  const params: UsageQueryParams = {
-    page,
-    page_size: pageSize
-  }
-
-  if (apiKeyId !== undefined) {
-    params.api_key_id = apiKeyId
-  }
-
-  const { data } = await apiClient.get<PaginatedResponse<UsageLog>>('/usage', {
-    params
-  })
-  return data
 }
 
 /**
@@ -218,16 +172,6 @@ export async function getStats(
   const { data } = await apiClient.get<UsageStatsResponse>('/usage/stats', {
     params
   })
-  return data
-}
-
-/**
- * Get detailed usage log by ID
- * @param id - Usage log ID
- * @returns Usage log details
- */
-export async function getById(id: number): Promise<UsageLog> {
-  const { data } = await apiClient.get<UsageLog>(`/usage/${id}`)
   return data
 }
 
@@ -344,10 +288,8 @@ export async function getMyErrorDetail(id: number): Promise<UserErrorRequestDeta
 }
 
 export const usageAPI = {
-  list,
   query,
   getStats,
-  getById,
   getRanking,
   // Dashboard
   getDashboardStats,

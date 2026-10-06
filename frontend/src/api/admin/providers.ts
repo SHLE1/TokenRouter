@@ -114,30 +114,6 @@ export interface OpenAIQuotaUsage {
   fetched_at: number
 }
 
-export interface OpenAIQuotaResetCredit {
-  id?: string
-  reset_type?: string
-  status?: string
-  granted_at?: string
-  expires_at?: string
-  redeem_started_at?: string
-  redeemed_at?: string
-}
-
-export interface OpenAIQuotaResetResult {
-  code: string
-  credit?: OpenAIQuotaResetCredit | null
-  windows_reset: number
-  quota?: OpenAIQuotaUsage | null
-  provider?: Provider | null
-  cache_refreshed: boolean
-  provider_state_recovered: boolean
-  warning_code?:
-    | 'reset_credit_cache_refresh_failed'
-    | 'provider_state_recovery_failed'
-    | 'provider_state_refresh_failed'
-}
-
 export interface OpenAIQuotaRefreshResult extends OpenAIQuotaUsage {
   cache_persisted: boolean
 }
@@ -471,16 +447,6 @@ export async function deleteProvider(id: number): Promise<{ message: string }> {
 }
 
 /**
- * Toggle provider status
- * @param id - Provider ID
- * @param status - New status
- * @returns Updated provider
- */
-export async function toggleStatus(id: number, status: 'active' | 'inactive'): Promise<Provider> {
-  return update(id, { status })
-}
-
-/**
  * Refresh provider credentials
  * @param id - Provider ID
  * @returns Updated provider
@@ -586,18 +552,6 @@ export async function queryBatchUpstreamUsage(providerIds: number[]): Promise<Ba
 }
 
 /**
- * Clear provider rate limit status
- * @param id - Provider ID
- * @returns Updated provider
- */
-export async function clearRateLimit(id: number): Promise<Provider> {
-  const { data } = await apiClient.post<Provider>(
-    `/admin/providers/${id}/clear-rate-limit`
-  )
-  return data
-}
-
-/**
  * Recover provider runtime state in one call
  * @param id - Provider ID
  * @returns Updated provider
@@ -656,24 +610,6 @@ export async function exchangeCode(
   exchangeData: { session_id: string; code: string; state?: string; proxy_id?: number; tls_fingerprint_router_id?: number }
 ): Promise<Record<string, unknown>> {
   const { data } = await apiClient.post<Record<string, unknown>>(endpoint, exchangeData)
-  return data
-}
-
-/**
- * Batch create providers
- * @param providers - Array of provider data
- * @returns Results of batch creation
- */
-export async function batchCreate(providers: CreateProviderRequest[]): Promise<{
-  success: number
-  failed: number
-  results: Array<{ success: boolean; provider?: Provider; error?: string }>
-}> {
-  const { data } = await apiClient.post<{
-    success: number
-    failed: number
-    results: Array<{ success: boolean; provider?: Provider; error?: string }>
-  }>('/admin/providers/batch', { providers })
   return data
 }
 
@@ -1134,7 +1070,6 @@ export const providersAPI = {
   duplicate,
   update,
   delete: deleteProvider,
-  toggleStatus,
   refreshCredentials,
   applyOAuthCredentials,
   getStats,
@@ -1144,7 +1079,6 @@ export const providersAPI = {
   queryUpstreamUsage,
   queryBatchUpstreamUsage,
   getBatchTodayStats,
-  clearRateLimit,
   recoverState,
   resetProviderQuota,
   getTempUnschedulableStatus,
@@ -1155,7 +1089,6 @@ export const providersAPI = {
   generateAuthUrl,
   exchangeCode,
   refreshOpenAIToken,
-  batchCreate,
   bulkUpdate,
   previewFromCrs,
   syncFromCrs,

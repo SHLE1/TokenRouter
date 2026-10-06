@@ -48,16 +48,6 @@ export async function list(
 }
 
 /**
- * Get subscription by ID
- * @param id - Subscription ID
- * @returns Subscription details
- */
-export async function getById(id: number): Promise<UserSubscription> {
-  const { data } = await apiClient.get<UserSubscription>(`/admin/subscriptions/${id}`)
-  return data
-}
-
-/**
  * Assign subscription to user
  * @param request - Assignment request
  * @returns Created subscription
@@ -118,7 +108,6 @@ export async function resetQuota(
 
 export const subscriptionsAPI = {
   list,
-  getById,
   assign,
   extend,
   revoke,
