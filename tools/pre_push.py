@@ -10,7 +10,7 @@ import subprocess
 import sys
 import tempfile
 
-from verify import stop_processes
+from verify import handle_termination, stop_processes
 
 ROOT = Path(__file__).resolve().parent.parent
 HOOK = '.githooks'
@@ -152,7 +152,8 @@ def main():
 
 
 if __name__ == '__main__':
-    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+    signal.signal(signal.SIGTERM, handle_termination)
+    signal.signal(signal.SIGINT, handle_termination)
     try:
         main()
     except (OSError, RuntimeError, subprocess.CalledProcessError, KeyboardInterrupt) as error:

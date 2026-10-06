@@ -1,4 +1,5 @@
 #!/bin/sh
 # Git 提供待推送引用；检查提交副本后再更新远端。
 set -eu
-exec python3 "$(git rev-parse --show-toplevel)/tools/pre_push.py" "$@"
+# 导入验证模块时关闭字节码缓存，保持工作区干净。
+exec python3 -B "$(git rev-parse --show-toplevel)/tools/pre_push.py" "$@"

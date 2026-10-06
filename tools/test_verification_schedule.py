@@ -15,7 +15,7 @@ class ScheduleTest(GitFixture):
     def prepare(self, graph, jobs=2):
         (self.root / 'graph.json').write_text(json.dumps(graph))
         (self.root / 'runner.py').write_text(
-            'import sys,json,signal\nsys.path.insert(0,"tools")\nimport verify\nsignal.signal(signal.SIGTERM, lambda *_: sys.exit(143))\n'
+            'import sys,json,signal\nsys.path.insert(0,"tools")\nimport verify\nsignal.signal(signal.SIGTERM, verify.handle_termination)\n'
             f'raise SystemExit(verify.run_targets([],graph=json.load(open("graph.json")),jobs={jobs}))\n')
         (self.root / 'stage.py').write_text(
             'import sys,time,os,signal,subprocess\nfrom pathlib import Path\n'
@@ -127,10 +127,19 @@ class ScheduleTest(GitFixture):
                 markers = list((self.root / '.git/verification').glob('push-*/*/child.pid'))
                 time.sleep(.01)
             # 对 git 所在进程组中断，包含 hook；测试自身处于另一个组。
-            os.killpg(process.pid, signal.SIGTERM)
-            process.communicate(timeout=20)
+            # Git 和 make 会转发中断，覆盖多个信号接连到达的情况。
+            for _ in range(3):
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    break
+                time.sleep(.002)
+            stdout, stderr = process.communicate(timeout=20)
             self.assertNotEqual(process.returncode, 0)
-            self.assertTrue((markers[0].parent / 'cleaned').exists())
+            evidence = stdout.decode() + stderr.decode()
+            for log in markers[0].parent.glob('*.log'):
+                evidence += log.read_text(errors='replace')
+            self.assertTrue((markers[0].parent / 'cleaned').exists(), evidence)
             with self.assertRaises(ProcessLookupError):
                 os.kill(int(markers[0].read_text()), 0)
             self.assert_cleaned()

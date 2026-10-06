@@ -133,7 +133,7 @@ Ent schema 不是生产环境的迁移器。数据库的变更需要新建 `back
 
 ### 完整验证入口
 
-`make verify` 先执行环境、差异和格式、工具及部署脚本检查，再并行执行前端和后端检查。`VERIFY_JOBS` 接受 `1` 或 `2`，默认 `2`；设为 `1` 时串行执行。后端依次执行架构、普通与标签 lint，以及普通、unit、integration 测试。embed 等待后端测试和前端构建完成，可与前端 lint 和完整 Vitest 并行。任一检查失败会取消运行中的其他任务，等待子进程退出后再清理临时检出。
+`make verify` 先执行环境、差异和格式、工具及部署脚本检查，再并行执行前端和后端检查。`VERIFY_JOBS` 接受 `1` 或 `2`，默认 `2`；设为 `1` 时串行执行。后端依次执行架构、普通与标签 lint，以及普通、unit、integration 测试。embed 等待后端测试和前端构建完成，可与前端 lint 和完整 Vitest 并行。任一检查失败会取消运行中的其他任务，等待子进程退出后再清理临时检出。首次中断即屏蔽重复信号，清理完成后退出。
 
 CI 将普通、unit、integration 分配到独立 runner，`test` 汇总三组结果。前端构建完成后上传资源并启动 embed，前端 lint 和 Vitest 在独立 job 执行，`frontend` 汇总两组结果。单组入口与本地共用。四种 Go 标签都执行全量测试并使用 `-count=1`，integration 保持 `-p=4`；embed 同时执行 lint 和关闭 CGO 的发布形态编译。前端 `typecheck` 使用 `vue-tsc -b` 检查应用及构建配置，验证流程随后调用 `build:assets` 打包；日常 `build` 包含类型检查。
 

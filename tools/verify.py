@@ -177,6 +177,13 @@ def utc_now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
+def handle_termination(signum, _frame):
+    """收到首次中断即屏蔽重复信号，让 finally 完成子进程清理。"""
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    raise SystemExit(128 + signum)
+
+
 def stop_processes(processes, timeout=5):
     """取消整个任务进程组，等待退出后允许调用方清理检出。"""
     for process in processes:
@@ -319,7 +326,8 @@ def main():
 
 
 if __name__ == '__main__':
-    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+    signal.signal(signal.SIGTERM, handle_termination)
+    signal.signal(signal.SIGINT, handle_termination)
     try:
         sys.exit(main())
     except (OSError, RuntimeError, subprocess.CalledProcessError, KeyboardInterrupt) as error:
