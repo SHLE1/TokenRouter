@@ -33,7 +33,7 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"$(cat .golang
 
 在仓库根目录执行安装命令，并把 Go 安装目录里的二进制加入 PATH。`tools/golangci-lint.sh` 会验证实际的版本，版本不符的本地工具会被拒绝；CI 的 action 从同一个版本文件读取要安装的版本。
 
-Go 版本在 `backend/go.mod` 声明。根 Makefile 据此设置 `GOTOOLCHAIN`，本地 Go 较旧时自动下载声明的版本；workflow 使用 `go-version-file` 安装。Node 版本在 `.node-version` 声明，CI 和 Dockerfile 按它安装。pnpm 版本写在 `frontend/package.json` 的 `packageManager` 字段，CI 的 `pnpm/action-setup` 和 Dockerfile 都读取这个字段。前端 ESLint 10 使用 `eslint.config.js`，pnpm 12 的依赖覆盖和构建许可维护在 `frontend/pnpm-workspace.yaml`。TypeScript 使用 typescript-eslint 支持的最新 6.x 系列，升级到 7.x 前核对解析器的 peerDependencies。
+Go 版本在 `backend/go.mod` 声明。根 Makefile 据此设置 `GOTOOLCHAIN`，本地 Go 较旧时自动下载声明的版本；workflow 使用 `go-version-file` 安装。Node 版本在 `.node-version` 声明，CI 和 Dockerfile 按它安装。pnpm 版本写在 `frontend/package.json` 的 `packageManager` 字段，CI 的 `pnpm/action-setup` 和 Dockerfile 都读取这个字段。pnpm 12 把自身版本和各平台安装包记录在 `pnpm-lock.yaml` 开头的独立文档里，缺少这段记录时冻结安装会失败。升级 pnpm 时，先改 `packageManager`，再用新版本执行一次 `pnpm install`，把锁文件的变化一起提交。前端 ESLint 10 使用 `eslint.config.js`，pnpm 12 的依赖覆盖和构建许可维护在 `frontend/pnpm-workspace.yaml`。TypeScript 使用 typescript-eslint 支持的最新 6.x 系列，升级到 7.x 前核对解析器的 peerDependencies。
 
 个人的数据库路径、固定的密码，或者某台机器的服务配置，不写进工程文档。开发配置使用不提交的环境文件或 `backend/config.yaml`；可以提交的样例在 `deploy/`。前端开发服务器默认通过 `VITE_DEV_PROXY_TARGET` 代理到后端，端口由 `VITE_DEV_PORT` 控制。
 
@@ -66,7 +66,7 @@ HTTP、用例、存储和后台资源，由 app 装配各模块的实现。业�
 - 普通的辅助子包继承所属的角色。没有登记的顶层模块和平台，只能使用少量基础标准库，要声明业务或 I/O 依赖，需要先登记。新目录不能靠任意嵌套的 `postgres` 之类的名称，获得适配层的权限。
 - 扫描器读取所有手写的 Go 文件，覆盖测试、构建标签、平台文件和 wireinject；生成代码不参与架构规则的判断。这是静态的 import 检查，所有构建组合实际编译、执行的结果，需要另外验证。
 
-`make -C backend test-architecture` 用固定版本 arch-go 的 Go API 检查规则，并运行正反例、扫描覆盖和文件许可的使用方测试。工具要读取独立模块之外的源码，所以入口使用 `-count=1` 关闭测试缓存。后端的 `make test` 和 CI 的 lint job 都执行这个入口；CI 分别缓存后端和架构工具的 Go 依赖。修改角色和模块关系时，维护规则表，不另外引入生成配置的流程。golangci-lint 负责通用的代码质量检查，架构白名单不放在它里面。
+`make lint-go` 的第一步用固定版本 arch-go 的 Go API 检查规则，并运行正反例、扫描覆盖和文件许可的使用方测试。工具要读取独立模块之外的源码，所以入口使用 `-count=1` 关闭测试缓存。CI 的 go-lint job 和推送前快检都运行这一步，CI 的 lint 缓存组同时包含后端和架构工具的 Go 依赖。修改角色和模块关系时，维护规则表，不另外引入生成配置的流程。golangci-lint 负责通用的代码质量检查，架构白名单不放在它里面。
 
 ### 通用规则
 
