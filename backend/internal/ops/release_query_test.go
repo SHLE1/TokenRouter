@@ -1,5 +1,3 @@
-//go:build unit
-
 package ops
 
 import (
@@ -21,6 +19,7 @@ func (s *updateServiceCacheStub) GetUpdateInfo(context.Context) (string, error) 
 	}
 	return s.data, nil
 }
+
 func (s *updateServiceCacheStub) SetUpdateInfo(_ context.Context, data string, _ time.Duration) error {
 	s.data = data
 	return nil
@@ -35,15 +34,19 @@ type updateServiceGitHubClientStub struct {
 func (s *updateServiceGitHubClientStub) FetchLatestRelease(context.Context, string) (*GitHubRelease, error) {
 	return s.release, nil
 }
+
 func (s *updateServiceGitHubClientStub) FetchRecentReleases(context.Context, string, int) ([]*GitHubRelease, error) {
 	return s.recentReleases, s.recentErr
 }
+
 func (s *updateServiceGitHubClientStub) DownloadFile(context.Context, string, string, int64) error {
 	panic("DownloadFile should not be called when no update is available")
 }
+
 func (s *updateServiceGitHubClientStub) FetchChecksumFile(context.Context, string) ([]byte, error) {
 	panic("FetchChecksumFile should not be called when no update is available")
 }
+
 func newRollbackTestService(current string, releases []*GitHubRelease) *ReleaseQuery {
 	return NewReleaseQuery(
 		&updateServiceCacheStub{},
@@ -52,6 +55,7 @@ func newRollbackTestService(current string, releases []*GitHubRelease) *ReleaseQ
 		"release",
 	)
 }
+
 func TestUpdateServiceListRollbackVersionsFiltersAndCaps(t *testing.T) {
 	releases := []*GitHubRelease{
 		{TagName: "v0.1.148", PublishedAt: "2026-07-09T00:00:00Z"},                       // 新于当前版本，排除。
@@ -74,6 +78,7 @@ func TestUpdateServiceListRollbackVersionsFiltersAndCaps(t *testing.T) {
 	require.Equal(t, "0.1.144", versions[1].Version)
 	require.Equal(t, "0.1.143", versions[2].Version)
 }
+
 func TestUpdateServiceListRollbackVersionsSortsUnorderedInput(t *testing.T) {
 	releases := []*GitHubRelease{
 		{TagName: "v0.1.144"},
@@ -90,6 +95,7 @@ func TestUpdateServiceListRollbackVersionsSortsUnorderedInput(t *testing.T) {
 	require.Equal(t, "0.1.145", versions[1].Version)
 	require.Equal(t, "0.1.144", versions[2].Version)
 }
+
 func TestUpdateServiceListRollbackVersionsRejectsNonSemverTags(t *testing.T) {
 	releases := []*GitHubRelease{
 		{TagName: "v0.1.146"},
@@ -105,6 +111,7 @@ func TestUpdateServiceListRollbackVersionsRejectsNonSemverTags(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []RollbackVersion{{Version: "0.1.146"}}, versions)
 }
+
 func TestUpdateServiceListRollbackVersionsEmptyWhenNoneOlder(t *testing.T) {
 	releases := []*GitHubRelease{
 		{TagName: "v0.1.147"},
@@ -117,6 +124,7 @@ func TestUpdateServiceListRollbackVersionsEmptyWhenNoneOlder(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, versions)
 }
+
 func TestUpdateServiceListRollbackVersionsPropagatesFetchError(t *testing.T) {
 	svc := NewReleaseQuery(
 		&updateServiceCacheStub{},
