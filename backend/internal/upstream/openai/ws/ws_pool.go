@@ -231,14 +231,14 @@ func (l *WSConnLease) Release() {
 	}
 }
 
+// WSConn 保存一条上游连接及其独占租约。
 type WSConn struct {
 	id string
 	ws openai.WSClientConn
 
-	handshakeHeaders       http.Header
-	handshakeCompatibility openAIWSHandshakeCompatibilityKey
-	tlsProfileKey          string
-	routingAffinity        string
+	handshakeHeaders http.Header
+	compatibility    wsConnCompatibility
+	routingAffinity  string
 
 	leaseCh   chan struct{}
 	closedCh  chan struct{}
@@ -253,6 +253,7 @@ type WSConn struct {
 	prewarmed     atomic.Bool
 }
 
+// NewWSConn 创建可领取租约的连接，拨号完成后由池填入出站配置。
 func NewWSConn(id string, _ int64, ws openai.WSClientConn, handshakeHeaders http.Header, profile *tlsfingerprint.Profile, profileKey string) *WSConn {
 	now := time.Now()
 	conn := &WSConn{
@@ -262,7 +263,7 @@ func NewWSConn(id string, _ int64, ws openai.WSClientConn, handshakeHeaders http
 
 		handshakeHeaders: cloneHeader(handshakeHeaders),
 
-		tlsProfileKey: openAIWSTLSProfileKey(profile, profileKey),
+		compatibility: wsConnCompatibility{tlsProfileKey: openAIWSTLSProfileKey(profile, profileKey)},
 
 		leaseCh: make(chan struct{}, 1),
 
@@ -294,34 +295,6 @@ func (c *WSConn) tryAcquire() bool {
 		return true
 	default:
 		return false
-	}
-}
-
-func (c *WSConn) acquire(ctx context.Context) error {
-	if c == nil {
-		return errOpenAIWSConnClosed
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-c.closedCh:
-			return errOpenAIWSConnClosed
-		case <-c.leaseCh:
-			// 取消信号与租约可能同时就绪；消费信号量后再次检查上下文，并在
-			// 返回取消错误前归还租约，避免已取消的等待者占死池化连接。
-			if err := ctx.Err(); err != nil {
-				c.release()
-				return err
-			}
-			select {
-			case <-c.closedCh:
-				c.release()
-				return errOpenAIWSConnClosed
-			default:
-			}
-			return nil
-		}
 	}
 }
 
@@ -533,11 +506,6 @@ func (c *WSConn) handshakeHeader(name string) string {
 	return strings.TrimSpace(c.handshakeHeaders.Get(strings.TrimSpace(name)))
 }
 
-// matchesHandshakeCompatibility 保证只复用握手阶段启用了相同硬兼容特征的连接。
-func (c *WSConn) matchesHandshakeCompatibility(compatibility openAIWSHandshakeCompatibilityKey) bool {
-	return c != nil && c.handshakeCompatibility == compatibility
-}
-
 func (c *WSConn) matchesRoutingAffinity(routingAffinity string) bool {
 	return c != nil && c.routingAffinity == routingAffinity
 }
@@ -556,13 +524,6 @@ func (c *WSConn) markPrewarmed() {
 	c.prewarmed.Store(true)
 }
 
-func (c *WSConn) matchesTLSProfile(profile *tlsfingerprint.Profile, profileKey string) bool {
-	if c == nil {
-		return false
-	}
-	return c.tlsProfileKey == openAIWSTLSProfileKey(profile, profileKey)
-}
-
 func openAIWSTLSProfileKey(profile *tlsfingerprint.Profile, profileKey string) string {
 	if key := stringsTrim(profileKey); key != "" {
 		return key
@@ -570,11 +531,13 @@ func openAIWSTLSProfileKey(profile *tlsfingerprint.Profile, profileKey string) s
 	return tlsfingerprint.CacheKey(profile)
 }
 
+// openAIWSProviderPool 管理一个提供商的连接、排队名额和预热任务。
 type openAIWSProviderPool struct {
 	mu            sync.Mutex
 	conns         map[string]*WSConn
 	pinnedConns   map[string]int
 	changedCh     chan struct{}
+	waiters       map[wsConnCompatibility]int
 	creating      int
 	generation    uint64
 	lastCleanupAt time.Time
@@ -645,15 +608,17 @@ type WSConnPool struct {
 
 	metrics openAIWSPoolMetrics
 
-	workerStopCh chan struct{}
-	workerWg     sync.WaitGroup
-	closeOnce    sync.Once
+	workerStopCh  chan struct{}
+	cleanupWakeCh chan struct{}
+	workerWg      sync.WaitGroup
+	closeOnce     sync.Once
 }
 
 func NewWSConnPool(cfg *WSPoolOptions) *WSConnPool {
 	pool := &WSConnPool{
-		clientDialer: openai.NewDefaultWSClientDialer(),
-		workerStopCh: make(chan struct{}),
+		clientDialer:  openai.NewDefaultWSClientDialer(),
+		workerStopCh:  make(chan struct{}),
+		cleanupWakeCh: make(chan struct{}, 1),
 	}
 	if cfg != nil {
 		copy := *cfg
@@ -722,21 +687,25 @@ func (p *WSConnPool) Close() {
 		}
 		p.runtimeMu.Unlock()
 		closeConnections := func() {
+			var idle []*WSConn
 			p.providers.Range(func(_, value any) bool {
 				ap, ok := value.(*openAIWSProviderPool)
 				if !ok || ap == nil {
 					return true
 				}
 				ap.mu.Lock()
-				for _, conn := range ap.conns {
+				for id, conn := range ap.conns {
 					if conn != nil && !conn.isLeased() {
-						conn.close()
+						delete(ap.conns, id)
+						delete(ap.pinnedConns, id)
+						idle = append(idle, conn)
 					}
 				}
 				ap.signalChangedLocked()
 				ap.mu.Unlock()
 				return true
 			})
+			closeOpenAIWSConns(idle)
 		}
 		// 在途租约返回时关闭连接，空闲和迟到连接在这里回收。
 		closeConnections()
@@ -821,7 +790,7 @@ func (p *WSConnPool) snapshotIdleConnsForPing() []openAIWSIdlePingCandidate {
 		}
 		ap.mu.Lock()
 		for _, conn := range ap.conns {
-			if conn == nil || conn.isLeased() || conn.waiters.Load() > 0 {
+			if conn == nil || conn.isLeased() || conn.waiters.Load() > 0 || hasCompatibleWaiterLocked(ap, conn) {
 				continue
 			}
 			candidates = append(candidates, openAIWSIdlePingCandidate{
@@ -844,6 +813,8 @@ func (p *WSConnPool) runBackgroundCleanupWorker() {
 	for {
 		select {
 		case <-ticker.C:
+			p.runBackgroundCleanupSweep(time.Now())
+		case <-p.cleanupWakeCh:
 			p.runBackgroundCleanupSweep(time.Now())
 		case <-p.workerStopCh:
 			return
@@ -882,6 +853,7 @@ func (p *WSConnPool) runBackgroundCleanupSweep(now time.Time) {
 	}
 }
 
+// Acquire 获取独占租约，ctx 限制选择、排队和拨号的总时间。
 func (p *WSConnPool) Acquire(ctx context.Context, req WSAcquireRequest) (*WSConnLease, error) {
 	if p != nil {
 		p.runtimeMu.Lock()
@@ -896,403 +868,217 @@ func (p *WSConnPool) Acquire(ctx context.Context, req WSAcquireRequest) (*WSConn
 	if p != nil {
 		p.metrics.acquireTotal.Add(1)
 	}
-	return p.acquire(ctx, CloneWSAcquireRequest(req), 0)
+	return p.acquire(ctx, CloneWSAcquireRequest(req))
 }
 
-func (p *WSConnPool) acquire(ctx context.Context, req WSAcquireRequest, retry int) (*WSConnLease, error) {
+// acquire 在同一取消预算内选择连接、拨号或等待提供商池发生变化。
+func (p *WSConnPool) acquire(ctx context.Context, req WSAcquireRequest) (lease *WSConnLease, err error) {
 	if p == nil || req.Provider == nil || req.Provider.ID <= 0 {
 		return nil, errors.New("invalid ws acquire request")
 	}
 	if stringsTrim(req.WSURL) == "" {
 		return nil, errors.New("ws url is empty")
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	providerID := req.Provider.ID
+	compatibility := wsCompatibilityForRequest(req)
+	routingAffinity := normalizeOpenAIWSRoutingAffinity(req.Headers)
+	forcePreferred := !req.ForceNewConn && req.ForcePreferredConn
+	ap := p.getOrCreateProviderPool(providerID)
+	var waiter *wsPoolWaiter
+	var queueWait time.Duration
+	queued := false
+	retry := 0
+	finishWaitingLocked := func() bool {
+		if waiter == nil {
+			return false
+		}
+		queueWait += removeWaiterLocked(ap, waiter)
+		waiter = nil
+		return true
+	}
+	defer func() {
+		ap.mu.Lock()
+		removed := finishWaitingLocked()
+		ap.mu.Unlock()
+		if removed {
+			// 后台任务回收等待者取消后剩余的空闲连接。
+			p.requestCleanup()
+		}
+		if queued {
+			p.metrics.acquireQueueWaitMs.Add(queueWait.Milliseconds())
+		}
+		if lease != nil {
+			lease.queueWait = queueWait
+		}
+	}()
 
-retryAcquire:
+	for {
+		p.runtimeMu.Lock()
+		closed := p.closed
+		p.runtimeMu.Unlock()
+		if closed {
+			return nil, errOpenAIWSConnClosed
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		maxConns := p.effectiveMaxConnsByProvider(req.Provider)
+		ap.mu.Lock()
+		generation := ap.generation
+		now := time.Now()
+		evicted := p.retireExpiredConnsLocked(ap, now)
+		if ap.lastCleanupAt.IsZero() || now.Sub(ap.lastCleanupAt) >= openAIWSAcquireCleanupInterval {
+			evicted = append(evicted, p.cleanupProviderLocked(ap, now, maxConns)...)
+			ap.lastCleanupAt = now
+		}
+		pickStarted := time.Now()
+		var preferred, selected *WSConn
+		if forcePreferred {
+			preferred = ap.conns[req.PreferredConnID]
+			if !preferred.matchesCompatibility(compatibility) || p.connMaxAgeReached(preferred, now) {
+				ap.mu.Unlock()
+				closeOpenAIWSConns(evicted)
+				return nil, openai.ErrOpenAIWSPreferredConnUnavailable
+			}
+			if preferred.tryAcquire() {
+				selected = preferred
+			}
+		} else if !req.ForceNewConn {
+			allowAny := routingAffinity == "" || waiter != nil || len(ap.conns)+ap.creating >= maxConns
+			selected = p.pickAvailableConnLocked(ap, req.PreferredConnID, compatibility, routingAffinity, allowAny)
+		}
+		if selected != nil {
+			if finishWaitingLocked() {
+				// 多余空闲连接由后台回收，已取得的租约继续交付。
+				p.requestCleanup()
+			}
+			connPick := time.Since(pickStarted)
+			p.recordConnPickDuration(connPick)
+			ap.mu.Unlock()
+			closeOpenAIWSConns(evicted)
+			if p.shouldHealthCheckConn(selected) {
+				if pingErr := selected.pingWithTimeout(openAIWSConnHealthCheckTO); pingErr != nil {
+					p.evictConn(providerID, selected.id)
+					if retry < 1 {
+						retry++
+						continue
+					}
+					return nil, pingErr
+				}
+			}
+			return p.deliverLease(ctx, req, generation, selected, true, connPick)
+		}
+
+		if !forcePreferred && len(ap.conns)+ap.creating >= maxConns {
+			var idle *WSConn
+			if req.ForceNewConn {
+				idle = p.pickOldestIdleConnLocked(ap)
+			} else {
+				idle = p.pickOldestIncompatibleIdleConnLocked(ap, compatibility)
+			}
+			if idle != nil {
+				delete(ap.conns, idle.id)
+				evicted = append(evicted, idle)
+				p.metrics.scaleDownTotal.Add(1)
+			}
+		}
+		connPick := time.Since(pickStarted)
+		p.recordConnPickDuration(connPick)
+		if !forcePreferred && len(ap.conns)+ap.creating < maxConns {
+			finishWaitingLocked()
+			ap.creating++
+			ap.mu.Unlock()
+			closeOpenAIWSConns(evicted)
+			conn, dialErr := p.dialConn(ctx, req)
+			ap.mu.Lock()
+			ap.creating--
+			ap.signalChangedLocked()
+			if ap.generation != generation {
+				ap.mu.Unlock()
+				conn.close()
+				if retry < 1 {
+					retry++
+					continue
+				}
+				return nil, errOpenAIWSConnClosed
+			}
+			if dialErr != nil {
+				ap.prewarmFails++
+				ap.prewarmFailAt = time.Now()
+				ap.mu.Unlock()
+				return nil, dialErr
+			}
+			if len(ap.conns) >= p.effectiveMaxConnsByProvider(req.Provider) {
+				ap.mu.Unlock()
+				conn.close()
+				return nil, openai.ErrOpenAIWSConnQueueFull
+			}
+			// 发起拨号的请求先领取租约，再把连接交给池内的等待者查看。
+			if !conn.tryAcquire() {
+				ap.mu.Unlock()
+				conn.close()
+				return nil, errOpenAIWSConnClosed
+			}
+			ap.conns[conn.id] = conn
+			ap.prewarmFails = 0
+			ap.prewarmFailAt = time.Time{}
+			ap.mu.Unlock()
+			return p.deliverLease(ctx, req, generation, conn, false, connPick)
+		}
+		if req.ForceNewConn {
+			ap.mu.Unlock()
+			closeOpenAIWSConns(evicted)
+			return nil, openai.ErrOpenAIWSConnQueueFull
+		}
+		if waiter == nil {
+			waiter, err = p.addWaiterLocked(ap, ctx, compatibility, preferred, maxConns)
+			if err != nil {
+				ap.mu.Unlock()
+				closeOpenAIWSConns(evicted)
+				return nil, err
+			}
+			if !queued {
+				p.metrics.acquireQueueWaitTotal.Add(1)
+				queued = true
+			}
+		}
+		changed := ap.changeChannelLocked()
+		ap.mu.Unlock()
+		closeOpenAIWSConns(evicted)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-p.workerStopCh:
+			return nil, errOpenAIWSConnClosed
+		case <-changed:
+		}
+	}
+}
+
+// deliverLease 在交付前检查取消和关闭，并记录成功获取的连接。
+func (p *WSConnPool) deliverLease(ctx context.Context, req WSAcquireRequest, generation uint64, conn *WSConn, reused bool, pick time.Duration) (*WSConnLease, error) {
+	lease := &WSConnLease{pool: p, ProviderID: req.Provider.ID, Conn: conn, connPick: pick, reused: reused}
 	p.runtimeMu.Lock()
 	closed := p.closed
 	p.runtimeMu.Unlock()
 	if closed {
+		p.releaseUndeliveredConn(req.Provider.ID, conn)
 		return nil, errOpenAIWSConnClosed
 	}
-	providerID := req.Provider.ID
-	compatibility := normalizeOpenAIWSHandshakeCompatibility(req.Provider, req.Headers)
-	routingAffinity := normalizeOpenAIWSRoutingAffinity(req.Headers)
-	effectiveMaxConns := p.effectiveMaxConnsByProvider(req.Provider)
-	if effectiveMaxConns <= 0 {
-		return nil, openai.ErrOpenAIWSConnQueueFull
-	}
-	var evicted []*WSConn
-	ap := p.getOrCreateProviderPool(providerID)
-	ap.mu.Lock()
-	acquireGeneration := ap.generation
-	now := time.Now()
-	if ap.lastCleanupAt.IsZero() || now.Sub(ap.lastCleanupAt) >= openAIWSAcquireCleanupInterval {
-		evicted = p.cleanupProviderLocked(ap, now, effectiveMaxConns)
-		ap.lastCleanupAt = now
-	}
-	pickStartedAt := time.Now()
-	allowReuse := !req.ForceNewConn
-	preferredConnID := stringsTrim(req.PreferredConnID)
-	forcePreferredConn := allowReuse && req.ForcePreferredConn
-
-	if allowReuse {
-		if forcePreferredConn {
-			if preferredConnID == "" {
-				p.recordConnPickDuration(time.Since(pickStartedAt))
-				ap.mu.Unlock()
-				closeOpenAIWSConns(evicted)
-				return nil, openai.ErrOpenAIWSPreferredConnUnavailable
-			}
-			preferredConn, ok := ap.conns[preferredConnID]
-			if !ok || !preferredConn.matchesHandshakeCompatibility(compatibility) {
-				p.recordConnPickDuration(time.Since(pickStartedAt))
-				ap.mu.Unlock()
-				closeOpenAIWSConns(evicted)
-				return nil, openai.ErrOpenAIWSPreferredConnUnavailable
-			}
-			if !preferredConn.matchesTLSProfile(req.TLSProfile, req.TLSProfileKey) {
-				p.recordConnPickDuration(time.Since(pickStartedAt))
-				ap.mu.Unlock()
-				closeOpenAIWSConns(evicted)
-				return nil, openai.ErrOpenAIWSPreferredConnUnavailable
-			}
-			if preferredConn.tryAcquire() {
-				connPick := time.Since(pickStartedAt)
-				p.recordConnPickDuration(connPick)
-				ap.mu.Unlock()
-				closeOpenAIWSConns(evicted)
-				if p.shouldHealthCheckConn(preferredConn) {
-					if err := preferredConn.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
-						preferredConn.close()
-						p.evictConn(providerID, preferredConn.id)
-						if retry < 1 {
-							return p.acquire(ctx, req, retry+1)
-						}
-						return nil, err
-					}
-				}
-				lease := &WSConnLease{
-					pool:       p,
-					ProviderID: providerID,
-					Conn:       preferredConn,
-					connPick:   connPick,
-					reused:     true,
-				}
-				p.metrics.acquireReuseTotal.Add(1)
-				p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
-				p.ensureTargetIdleAsync(providerID)
-				return lease, nil
-			}
-
-			connPick := time.Since(pickStartedAt)
-			p.recordConnPickDuration(connPick)
-			if int(preferredConn.waiters.Load()) >= p.queueLimitPerConn() {
-				ap.mu.Unlock()
-				closeOpenAIWSConns(evicted)
-				return nil, openai.ErrOpenAIWSConnQueueFull
-			}
-			preferredConn.waiters.Add(1)
-			ap.mu.Unlock()
-			closeOpenAIWSConns(evicted)
-			defer preferredConn.waiters.Add(-1)
-			waitStart := time.Now()
-			p.metrics.acquireQueueWaitTotal.Add(1)
-
-			if err := preferredConn.acquire(ctx); err != nil {
-				if errors.Is(err, errOpenAIWSConnClosed) && retry < 1 {
-					return p.acquire(ctx, req, retry+1)
-				}
-				return nil, err
-			}
-			if p.shouldHealthCheckConn(preferredConn) {
-				if err := preferredConn.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
-					preferredConn.release()
-					preferredConn.close()
-					p.evictConn(providerID, preferredConn.id)
-					if retry < 1 {
-						return p.acquire(ctx, req, retry+1)
-					}
-					return nil, err
-				}
-			}
-
-			queueWait := time.Since(waitStart)
-			p.metrics.acquireQueueWaitMs.Add(queueWait.Milliseconds())
-			lease := &WSConnLease{
-				pool: p,
-
-				ProviderID: providerID,
-
-				Conn: preferredConn,
-
-				queueWait: queueWait,
-
-				connPick: connPick,
-
-				reused: true,
-			}
-			p.metrics.acquireReuseTotal.Add(1)
-			p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
-			p.ensureTargetIdleAsync(providerID)
-			return lease, nil
-		}
-
-		if preferredConnID != "" {
-			if conn, ok := ap.conns[preferredConnID]; ok &&
-				conn.matchesTLSProfile(req.TLSProfile, req.TLSProfileKey) &&
-				conn.matchesHandshakeCompatibility(compatibility) &&
-				conn.tryAcquire() {
-				connPick := time.Since(pickStartedAt)
-				p.recordConnPickDuration(connPick)
-				ap.mu.Unlock()
-				closeOpenAIWSConns(evicted)
-				if p.shouldHealthCheckConn(conn) {
-					if err := conn.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
-						conn.close()
-						p.evictConn(providerID, conn.id)
-						if retry < 1 {
-							return p.acquire(ctx, req, retry+1)
-						}
-						return nil, err
-					}
-				}
-				lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: conn, connPick: connPick, reused: true}
-				p.metrics.acquireReuseTotal.Add(1)
-				p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
-				p.ensureTargetIdleAsync(providerID)
-				return lease, nil
-			}
-		}
-
-		// routing hint 只在拨号和普通复用时提供软亲和；连接的硬兼容性仍由
-		// beta feature 与 TLS 指纹共同决定。
-		best := p.pickLeastBusyConnWithRoutingAffinityLocked(
-			ap, req.TLSProfile, req.TLSProfileKey, compatibility, routingAffinity,
-		)
-		if best != nil && best.tryAcquire() {
-			connPick := time.Since(pickStartedAt)
-			p.recordConnPickDuration(connPick)
-			ap.mu.Unlock()
-			closeOpenAIWSConns(evicted)
-			if p.shouldHealthCheckConn(best) {
-				if err := best.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
-					best.close()
-					p.evictConn(providerID, best.id)
-					if retry < 1 {
-						return p.acquire(ctx, req, retry+1)
-					}
-					return nil, err
-				}
-			}
-			lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: best, connPick: connPick, reused: true}
-			p.metrics.acquireReuseTotal.Add(1)
-			p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
-			p.ensureTargetIdleAsync(providerID)
-			return lease, nil
-		}
-		if routingAffinity == "" || len(ap.conns)+ap.creating >= effectiveMaxConns {
-			for _, conn := range ap.conns {
-				if conn == nil || conn == best || !conn.matchesHandshakeCompatibility(compatibility) {
-					continue
-				}
-				if !conn.matchesTLSProfile(req.TLSProfile, req.TLSProfileKey) {
-					continue
-				}
-				if conn.tryAcquire() {
-					connPick := time.Since(pickStartedAt)
-					p.recordConnPickDuration(connPick)
-					ap.mu.Unlock()
-					closeOpenAIWSConns(evicted)
-					if p.shouldHealthCheckConn(conn) {
-						if err := conn.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
-							conn.close()
-							p.evictConn(providerID, conn.id)
-							if retry < 1 {
-								return p.acquire(ctx, req, retry+1)
-							}
-							return nil, err
-						}
-					}
-					lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: conn, connPick: connPick, reused: true}
-					p.metrics.acquireReuseTotal.Add(1)
-					p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
-					p.ensureTargetIdleAsync(providerID)
-					return lease, nil
-				}
-			}
-		}
-	}
-
-	if !req.ForceNewConn && len(ap.conns)+ap.creating >= effectiveMaxConns {
-		affine := p.pickLeastBusyConnWithRoutingAffinityLocked(
-			ap, req.TLSProfile, req.TLSProfileKey, compatibility, routingAffinity,
-		)
-		if idle := p.pickOldestIdleConnWithoutHandshakeCompatibilityLocked(
-			ap, req.TLSProfile, req.TLSProfileKey, compatibility,
-		); idle != nil {
-			delete(ap.conns, idle.id)
-			evicted = append(evicted, idle)
-			p.metrics.scaleDownTotal.Add(1)
-		} else if affine == nil {
-			compatible := p.pickLeastBusyConnLocked(
-				ap, "", req.TLSProfile, req.TLSProfileKey, compatibility,
-			)
-			if compatible != nil {
-				// 池已满且硬兼容连接都在忙时，hint 保持软约束，转到下方排队。
-				goto acquireAtCapacity
-			}
-			hasConnection := false
-			for _, conn := range ap.conns {
-				if conn != nil {
-					hasConnection = true
-					break
-				}
-			}
-			if !hasConnection && ap.creating == 0 {
-				ap.mu.Unlock()
-				closeOpenAIWSConns(evicted)
-				return nil, errOpenAIWSConnClosed
-			}
-			changedCh := ap.changeChannelLocked()
-			ap.mu.Unlock()
-			closeOpenAIWSConns(evicted)
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-changedCh:
-				goto retryAcquire
-			}
-		}
-	}
-
-	if req.ForceNewConn && len(ap.conns)+ap.creating >= effectiveMaxConns {
-		if idle := p.pickOldestIdleConnLocked(ap); idle != nil {
-			delete(ap.conns, idle.id)
-			evicted = append(evicted, idle)
-			p.metrics.scaleDownTotal.Add(1)
-		}
-	}
-	if len(ap.conns)+ap.creating >= effectiveMaxConns {
-		if idle := p.pickOldestIdleMismatchedTLSConnLocked(ap, req.TLSProfile, req.TLSProfileKey); idle != nil {
-			delete(ap.conns, idle.id)
-			evicted = append(evicted, idle)
-			p.metrics.scaleDownTotal.Add(1)
-		}
-	}
-
-	if len(ap.conns)+ap.creating < effectiveMaxConns {
-		connPick := time.Since(pickStartedAt)
-		p.recordConnPickDuration(connPick)
-		ap.creating++
-		ap.mu.Unlock()
-		closeOpenAIWSConns(evicted)
-
-		conn, dialErr := p.dialConn(ctx, req)
-
-		ap = p.getOrCreateProviderPool(providerID)
-		ap.mu.Lock()
-		ap.creating--
-		if ap.generation != acquireGeneration {
-			ap.signalChangedLocked()
-			ap.mu.Unlock()
-			if conn != nil {
-				conn.close()
-			}
-			if retry < 1 {
-				return p.acquire(ctx, req, retry+1)
-			}
-			return nil, errOpenAIWSConnClosed
-		}
-		if dialErr != nil {
-			ap.prewarmFails++
-			ap.prewarmFailAt = time.Now()
-			ap.signalChangedLocked()
-			ap.mu.Unlock()
-			return nil, dialErr
-		}
-		// 新连接发布到池前先领取租约，避免下方唤醒的拓扑等待者抢先获取，
-		// 导致发起拨号的请求反而排在其后。
-		if !conn.tryAcquire() {
-			ap.signalChangedLocked()
-			ap.mu.Unlock()
-			conn.close()
-			return nil, errOpenAIWSConnClosed
-		}
-		// 拨号期间可能缩容，尚未交付的连接按最新上限重新检查。
-		if len(ap.conns) >= p.effectiveMaxConnsByProvider(req.Provider) {
-			ap.signalChangedLocked()
-			ap.mu.Unlock()
-			conn.close()
-			return nil, openai.ErrOpenAIWSConnQueueFull
-		}
-		ap.conns[conn.id] = conn
-		ap.prewarmFails = 0
-		ap.prewarmFailAt = time.Time{}
-		// 唤醒曾观察到正在创建连接但池内无兼容连接的请求；否则即使拓扑已
-		// 变化，它们仍可能一直等待到新租约释放。
-		ap.signalChangedLocked()
-		ap.mu.Unlock()
-		p.metrics.acquireCreateTotal.Add(1)
-		lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: conn, connPick: connPick}
-		p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
-		p.ensureTargetIdleAsync(providerID)
-		return lease, nil
-	}
-
-	if req.ForceNewConn {
-		p.recordConnPickDuration(time.Since(pickStartedAt))
-		ap.mu.Unlock()
-		closeOpenAIWSConns(evicted)
-		return nil, openai.ErrOpenAIWSConnQueueFull
-	}
-
-acquireAtCapacity:
-	target := p.pickLeastBusyConnLocked(
-		ap, req.PreferredConnID, req.TLSProfile, req.TLSProfileKey, compatibility,
-	)
-	connPick := time.Since(pickStartedAt)
-	p.recordConnPickDuration(connPick)
-	if target == nil {
-		ap.mu.Unlock()
-		closeOpenAIWSConns(evicted)
-		return nil, errOpenAIWSConnClosed
-	}
-	if int(target.waiters.Load()) >= p.queueLimitPerConn() {
-		ap.mu.Unlock()
-		closeOpenAIWSConns(evicted)
-		return nil, openai.ErrOpenAIWSConnQueueFull
-	}
-	target.waiters.Add(1)
-	ap.mu.Unlock()
-	closeOpenAIWSConns(evicted)
-	defer target.waiters.Add(-1)
-	waitStart := time.Now()
-	p.metrics.acquireQueueWaitTotal.Add(1)
-
-	if err := target.acquire(ctx); err != nil {
-		if errors.Is(err, errOpenAIWSConnClosed) && retry < 1 {
-			return p.acquire(ctx, req, retry+1)
-		}
+	if err := ctx.Err(); err != nil {
+		p.releaseUndeliveredConn(req.Provider.ID, conn)
 		return nil, err
 	}
-	if p.shouldHealthCheckConn(target) {
-		if err := target.pingWithTimeout(openAIWSConnHealthCheckTO); err != nil {
-			target.release()
-			target.close()
-			p.evictConn(providerID, target.id)
-			if retry < 1 {
-				return p.acquire(ctx, req, retry+1)
-			}
-			return nil, err
-		}
+	if reused {
+		p.metrics.acquireReuseTotal.Add(1)
+	} else {
+		p.metrics.acquireCreateTotal.Add(1)
 	}
-
-	queueWait := time.Since(waitStart)
-	p.metrics.acquireQueueWaitMs.Add(queueWait.Milliseconds())
-	lease := &WSConnLease{pool: p, ProviderID: providerID, Conn: target, queueWait: queueWait, connPick: connPick, reused: true}
-	p.metrics.acquireReuseTotal.Add(1)
-	p.recordLastSuccessfulAcquire(providerID, acquireGeneration, req)
-	p.ensureTargetIdleAsync(providerID)
+	p.recordLastSuccessfulAcquire(req.Provider.ID, generation, req)
+	p.ensureTargetIdleAsync(req.Provider.ID)
 	return lease, nil
 }
 
@@ -1324,13 +1110,14 @@ func (p *WSConnPool) recordLastSuccessfulAcquire(providerID int64, generation ui
 	ap.mu.Unlock()
 }
 
+// pickOldestIdleConnLocked 返回可回收连接中最久未使用的一条。
 func (p *WSConnPool) pickOldestIdleConnLocked(ap *openAIWSProviderPool) *WSConn {
 	if ap == nil || len(ap.conns) == 0 {
 		return nil
 	}
 	var oldest *WSConn
 	for _, conn := range ap.conns {
-		if conn == nil || conn.isLeased() || conn.waiters.Load() > 0 || p.isConnPinnedLocked(ap, conn.id) {
+		if conn == nil || conn.isLeased() || conn.waiters.Load() > 0 || p.isConnPinnedLocked(ap, conn.id) || hasCompatibleWaiterLocked(ap, conn) {
 			continue
 		}
 		if oldest == nil || conn.lastUsedAt().Before(oldest.lastUsedAt()) {
@@ -1340,40 +1127,12 @@ func (p *WSConnPool) pickOldestIdleConnLocked(ap *openAIWSProviderPool) *WSConn 
 	return oldest
 }
 
-// pickOldestIdleMismatchedTLSConnLocked 选取可淘汰的 TLS 配置不兼容空闲连接。
-func (p *WSConnPool) pickOldestIdleMismatchedTLSConnLocked(ap *openAIWSProviderPool, profile *tlsfingerprint.Profile, profileKey string) *WSConn {
-	if ap == nil || len(ap.conns) == 0 {
-		return nil
-	}
+// pickOldestIncompatibleIdleConnLocked 为新出站配置选择可回收的空闲连接。
+func (p *WSConnPool) pickOldestIncompatibleIdleConnLocked(ap *openAIWSProviderPool, compatibility wsConnCompatibility) *WSConn {
 	var oldest *WSConn
 	for _, conn := range ap.conns {
-		if conn == nil || conn.isLeased() || conn.waiters.Load() > 0 || p.isConnPinnedLocked(ap, conn.id) || conn.matchesTLSProfile(profile, profileKey) {
-			continue
-		}
-		if oldest == nil || conn.lastUsedAt().Before(oldest.lastUsedAt()) {
-			oldest = conn
-		}
-	}
-	return oldest
-}
-
-// pickOldestIdleConnWithoutHandshakeCompatibilityLocked 选取握手或 TLS 不兼容的空闲连接，
-// routing hint 属于软亲和，不应阻止池在容量受限时回收连接。
-func (p *WSConnPool) pickOldestIdleConnWithoutHandshakeCompatibilityLocked(
-	ap *openAIWSProviderPool,
-	profile *tlsfingerprint.Profile,
-	profileKey string,
-	compatibility openAIWSHandshakeCompatibilityKey,
-) *WSConn {
-	if ap == nil || len(ap.conns) == 0 {
-		return nil
-	}
-	var oldest *WSConn
-	for _, conn := range ap.conns {
-		if conn == nil ||
-			(conn.matchesTLSProfile(profile, profileKey) &&
-				conn.matchesHandshakeCompatibility(compatibility)) ||
-			conn.isLeased() || conn.waiters.Load() > 0 || p.isConnPinnedLocked(ap, conn.id) {
+		if conn == nil || conn.matchesCompatibility(compatibility) || conn.isLeased() ||
+			conn.waiters.Load() > 0 || p.isConnPinnedLocked(ap, conn.id) || hasCompatibleWaiterLocked(ap, conn) {
 			continue
 		}
 		if oldest == nil || conn.lastUsedAt().Before(oldest.lastUsedAt()) {
@@ -1434,53 +1193,12 @@ func (p *WSConnPool) isConnPinnedLocked(ap *openAIWSProviderPool, connID string)
 	return ap.pinnedConns[connID] > 0
 }
 
+// cleanupProviderLocked 按过期时间、空闲上限和总容量回收连接，调用方持有 ap.mu。
 func (p *WSConnPool) cleanupProviderLocked(ap *openAIWSProviderPool, now time.Time, maxConns int) []*WSConn {
 	if ap == nil {
 		return nil
 	}
-	maxAge := p.maxConnAge()
-
-	evicted := make([]*WSConn, 0)
-	for id, conn := range ap.conns {
-		if conn == nil {
-			delete(ap.conns, id)
-			if len(ap.pinnedConns) > 0 {
-				delete(ap.pinnedConns, id)
-			}
-			continue
-		}
-		select {
-		case <-conn.closedCh:
-			delete(ap.conns, id)
-			if len(ap.pinnedConns) > 0 {
-				delete(ap.pinnedConns, id)
-			}
-			evicted = append(evicted, conn)
-			continue
-		default:
-		}
-		if p.isConnPinnedLocked(ap, id) {
-			continue
-		}
-		if !conn.isLeased() && conn.waiters.Load() == 0 &&
-			!conn.supportsIdlePingWithoutReader() &&
-			conn.idleDuration(now) >= openAIWSConnIdleRecycleAfter {
-			delete(ap.conns, id)
-			if len(ap.pinnedConns) > 0 {
-				delete(ap.pinnedConns, id)
-			}
-			evicted = append(evicted, conn)
-			p.metrics.scaleDownTotal.Add(1)
-			continue
-		}
-		if maxAge > 0 && !conn.isLeased() && conn.age(now) > maxAge {
-			delete(ap.conns, id)
-			if len(ap.pinnedConns) > 0 {
-				delete(ap.pinnedConns, id)
-			}
-			evicted = append(evicted, conn)
-		}
-	}
+	evicted := p.retireExpiredConnsLocked(ap, now)
 
 	if maxConns <= 0 {
 		maxConns = p.maxConnsHardCap()
@@ -1499,8 +1217,8 @@ func (p *WSConnPool) cleanupProviderLocked(ap *openAIWSProviderPool, now time.Ti
 				}
 				continue
 			}
-			// 有等待者的连接不能在清理阶段被淘汰，否则等待中的 acquire 会收到 closed 错误。
-			if conn.isLeased() || conn.waiters.Load() > 0 || p.isConnPinnedLocked(ap, conn.id) {
+			// 等待者领取兼容连接后，归还租约时再检查空闲上限。
+			if conn.isLeased() || conn.waiters.Load() > 0 || p.isConnPinnedLocked(ap, conn.id) || hasCompatibleWaiterLocked(ap, conn) {
 				continue
 			}
 			idleConns = append(idleConns, conn)
@@ -1508,7 +1226,7 @@ func (p *WSConnPool) cleanupProviderLocked(ap *openAIWSProviderPool, now time.Ti
 		sort.SliceStable(idleConns, func(i, j int) bool {
 			return idleConns[i].lastUsedAt().Before(idleConns[j].lastUsedAt())
 		})
-		redundant := len(ap.conns) - maxIdle
+		redundant := max(0, len(idleConns)-maxIdle, len(ap.conns)-maxConns)
 		if redundant > len(idleConns) {
 			redundant = len(idleConns)
 		}
@@ -1531,81 +1249,39 @@ func (p *WSConnPool) cleanupProviderLocked(ap *openAIWSProviderPool, now time.Ti
 	return evicted
 }
 
-func (p *WSConnPool) pickLeastBusyConnLocked(
-	ap *openAIWSProviderPool,
-	preferredConnID string,
-	profile *tlsfingerprint.Profile,
-	profileKey string,
-	compatibility openAIWSHandshakeCompatibilityKey,
-) *WSConn {
-	if ap == nil || len(ap.conns) == 0 {
-		return nil
+// pickAvailableConnLocked 优先领取指定连接和路由提示相同的连接，调用方持有 ap.mu。
+func (p *WSConnPool) pickAvailableConnLocked(ap *openAIWSProviderPool, preferredID string, compatibility wsConnCompatibility, routingAffinity string, allowAny bool) *WSConn {
+	now := time.Now()
+	available := func(conn *WSConn) bool {
+		return conn.matchesCompatibility(compatibility) && !conn.isLeased() &&
+			conn.waiters.Load() == 0 && !p.connMaxAgeReached(conn, now)
 	}
-	preferredConnID = stringsTrim(preferredConnID)
-	if preferredConnID != "" {
-		if conn, ok := ap.conns[preferredConnID]; ok {
-			if conn.matchesTLSProfile(profile, profileKey) && conn.matchesHandshakeCompatibility(compatibility) {
-				return conn
+	if preferred := ap.conns[preferredID]; available(preferred) && preferred.tryAcquire() {
+		return preferred
+	}
+	var affine, other *WSConn
+	for _, conn := range ap.conns {
+		if !available(conn) {
+			continue
+		}
+		if conn.matchesRoutingAffinity(routingAffinity) {
+			if affine == nil || conn.lastUsedAt().Before(affine.lastUsedAt()) {
+				affine = conn
 			}
-			return nil
+		} else if allowAny && (other == nil || conn.lastUsedAt().Before(other.lastUsedAt())) {
+			other = conn
 		}
 	}
-	var best *WSConn
-	var bestWaiters int32
-	var bestLastUsed time.Time
-	for _, conn := range ap.conns {
-		if conn == nil || !conn.matchesHandshakeCompatibility(compatibility) {
-			continue
-		}
-		if !conn.matchesTLSProfile(profile, profileKey) {
-			continue
-		}
-		waiters := conn.waiters.Load()
-		lastUsed := conn.lastUsedAt()
-		if best == nil ||
-			waiters < bestWaiters ||
-			(waiters == bestWaiters && lastUsed.Before(bestLastUsed)) {
-			best = conn
-			bestWaiters = waiters
-			bestLastUsed = lastUsed
-		}
+	if affine != nil && affine.tryAcquire() {
+		return affine
 	}
-	return best
+	if other != nil && other.tryAcquire() {
+		return other
+	}
+	return nil
 }
 
-func (p *WSConnPool) pickLeastBusyConnWithRoutingAffinityLocked(
-	ap *openAIWSProviderPool,
-	profile *tlsfingerprint.Profile,
-	profileKey string,
-	compatibility openAIWSHandshakeCompatibilityKey,
-	routingAffinity string,
-) *WSConn {
-	if ap == nil || len(ap.conns) == 0 {
-		return nil
-	}
-	var best *WSConn
-	var bestWaiters int32
-	var bestLastUsed time.Time
-	for _, conn := range ap.conns {
-		if conn == nil ||
-			!conn.matchesTLSProfile(profile, profileKey) ||
-			!conn.matchesHandshakeCompatibility(compatibility) ||
-			!conn.matchesRoutingAffinity(routingAffinity) {
-			continue
-		}
-		waiters := conn.waiters.Load()
-		lastUsed := conn.lastUsedAt()
-		if best == nil ||
-			waiters < bestWaiters ||
-			(waiters == bestWaiters && lastUsed.Before(bestLastUsed)) {
-			best = conn
-			bestWaiters = waiters
-			bestLastUsed = lastUsed
-		}
-	}
-	return best
-}
-
+// providerPoolLoadLocked 汇总租约和两类等待者，调用方持有 ap.mu。
 func providerPoolLoadLocked(ap *openAIWSProviderPool) (inflight int, waiters int) {
 	if ap == nil {
 		return 0, 0
@@ -1618,6 +1294,9 @@ func providerPoolLoadLocked(ap *openAIWSProviderPool) (inflight int, waiters int
 			inflight++
 		}
 		waiters += int(conn.waiters.Load())
+	}
+	for _, count := range ap.waiters {
+		waiters += count
 	}
 	return inflight, waiters
 }
@@ -1976,7 +1655,7 @@ func (p *WSConnPool) dialConn(ctx context.Context, req WSAcquireRequest) (*WSCon
 	}
 	id := p.nextConnID(req.Provider.ID)
 	pooledConn := NewWSConn(id, req.Provider.ID, conn, handshakeHeaders, req.TLSProfile, req.TLSProfileKey)
-	pooledConn.handshakeCompatibility = normalizeOpenAIWSHandshakeCompatibility(req.Provider, req.Headers)
+	pooledConn.compatibility = wsCompatibilityForRequest(req)
 	pooledConn.routingAffinity = normalizeOpenAIWSRoutingAffinity(req.Headers)
 	return pooledConn, nil
 }
@@ -2059,10 +1738,7 @@ func CloneWSAcquireRequestPtr(req *WSAcquireRequest) *WSAcquireRequest {
 // sameOpenAIWSPrewarmTarget 判断预热拨号的硬兼容目标是否仍然有效。
 // routing hint 仅用于软亲和，变化时无需丢弃已经建立的兼容连接。
 func sameOpenAIWSPrewarmTarget(a, b WSAcquireRequest) bool {
-	return stringsTrim(a.WSURL) == stringsTrim(b.WSURL) &&
-		stringsTrim(a.ProxyURL) == stringsTrim(b.ProxyURL) &&
-		normalizeOpenAIWSHandshakeCompatibility(a.Provider, a.Headers) == normalizeOpenAIWSHandshakeCompatibility(b.Provider, b.Headers) &&
-		openAIWSTLSProfileKey(a.TLSProfile, a.TLSProfileKey) == openAIWSTLSProfileKey(b.TLSProfile, b.TLSProfileKey)
+	return wsCompatibilityForRequest(a) == wsCompatibilityForRequest(b)
 }
 
 // normalizeOpenAIWSBetaFeatures 将握手 beta feature 去重排序，生成稳定的连接兼容键。

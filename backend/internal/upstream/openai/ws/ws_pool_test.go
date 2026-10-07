@@ -320,6 +320,7 @@ func TestOpenAIWSConnPool_AcquireQueueWaitMetrics(t *testing.T) {
 	providerID := int64(99)
 	provider := &WSPoolProvider{ID: providerID, Type: "apikey"}
 	conn := NewWSConn("busy", providerID, &openAIWSFakeConn{}, nil, nil, "")
+	conn.compatibility = wsCompatibilityForRequest(WSAcquireRequest{Provider: provider, WSURL: "wss://example.com/v1/responses"})
 	require.True(t, conn.tryAcquire()) // 占用连接，触发后续排队
 
 	ap := pool.getOrCreateProviderPool(providerID)
@@ -333,7 +334,7 @@ func TestOpenAIWSConnPool_AcquireQueueWaitMetrics(t *testing.T) {
 
 	go func() {
 		time.Sleep(60 * time.Millisecond)
-		conn.release()
+		(&WSConnLease{pool: pool, ProviderID: provider.ID, Conn: conn}).Release()
 	}()
 
 	lease, err := pool.Acquire(context.Background(), WSAcquireRequest{
@@ -390,8 +391,7 @@ func TestOpenAIWSConnPool_DialSuccessWakesTopologyWaiterAndCanceledWaiterDoesNot
 	require.NoError(t, first.err)
 	require.NotNil(t, first.lease)
 
-	// 第二次获取会在首次拨号期间等待提供商拓扑变化；拨号成功后必须立即唤醒，
-	// 使其能排队等待新建但仍被占用的连接。
+	// 拨号和占用期间的等待都计入提供商队列。
 	require.Eventually(t, func() bool {
 		ap, ok := pool.getProviderPool(provider.ID)
 		if !ok || ap == nil {
@@ -399,12 +399,8 @@ func TestOpenAIWSConnPool_DialSuccessWakesTopologyWaiterAndCanceledWaiterDoesNot
 		}
 		ap.mu.Lock()
 		defer ap.mu.Unlock()
-		for _, conn := range ap.conns {
-			if conn != nil && conn.waiters.Load() == 1 {
-				return true
-			}
-		}
-		return false
+		_, waiters := providerPoolLoadLocked(ap)
+		return waiters == 1
 	}, time.Second, 5*time.Millisecond)
 
 	cancelWait()
@@ -897,7 +893,9 @@ func TestOpenAIWSConnPool_AcquireForcePreferredConnQueuesOnPreferredOnly(t *test
 	provider := &WSPoolProvider{ID: 125, Type: "apikey"}
 	ap := pool.getOrCreateProviderPool(provider.ID)
 	preferredConn := NewWSConn("preferred_conn", provider.ID, &openAIWSFakeConn{}, nil, nil, "")
+	preferredConn.compatibility = wsCompatibilityForRequest(WSAcquireRequest{Provider: provider, WSURL: "wss://example.com/v1/responses"})
 	otherConn := NewWSConn("other_conn_idle", provider.ID, &openAIWSFakeConn{}, nil, nil, "")
+	otherConn.compatibility = preferredConn.compatibility
 	require.True(t, preferredConn.tryAcquire(), "先占用 preferred 连接，触发排队获取")
 	ap.mu.Lock()
 	ap.conns[preferredConn.id] = preferredConn
@@ -907,7 +905,7 @@ func TestOpenAIWSConnPool_AcquireForcePreferredConnQueuesOnPreferredOnly(t *test
 
 	go func() {
 		time.Sleep(60 * time.Millisecond)
-		preferredConn.release()
+		(&WSConnLease{pool: pool, ProviderID: provider.ID, Conn: preferredConn}).Release()
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -938,7 +936,9 @@ func TestOpenAIWSConnPool_AcquireForcePreferredConnDirectAndQueueFull(t *testing
 	provider := &WSPoolProvider{ID: 127, Type: "apikey"}
 	ap := pool.getOrCreateProviderPool(provider.ID)
 	preferredConn := NewWSConn("preferred_conn_direct", provider.ID, &openAIWSFakeConn{}, nil, nil, "")
+	preferredConn.compatibility = wsCompatibilityForRequest(WSAcquireRequest{Provider: provider, WSURL: "wss://example.com/v1/responses"})
 	otherConn := NewWSConn("other_conn_direct", provider.ID, &openAIWSFakeConn{}, nil, nil, "")
+	otherConn.compatibility = preferredConn.compatibility
 	ap.mu.Lock()
 	ap.conns[preferredConn.id] = preferredConn
 	ap.conns[otherConn.id] = otherConn
@@ -1704,11 +1704,6 @@ func TestOpenAIWSConn_LeaseAndTimeHelpers_NilAndClosedBranches(t *testing.T) {
 	require.False(t, conn.isLeased())
 	conn.close()
 	require.False(t, conn.tryAcquire())
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	err := conn.acquire(ctx)
-	require.Error(t, err)
 }
 
 func TestOpenAIWSConnLease_ReadWriteNilConnBranches(t *testing.T) {
@@ -1774,17 +1769,9 @@ func TestOpenAIWSConnLease_MarkBrokenAfterRelease_NoEviction(t *testing.T) {
 func TestOpenAIWSConn_AdditionalGuardBranches(t *testing.T) {
 	var nilConn *WSConn
 	require.False(t, nilConn.tryAcquire())
-	require.ErrorIs(t, nilConn.acquire(context.Background()), errOpenAIWSConnClosed)
 	nilConn.release()
 	nilConn.close()
 	require.Equal(t, "", nilConn.handshakeHeader("x-test"))
-
-	connBusy := NewWSConn("busy_ctx", 1, &openAIWSFakeConn{}, nil, nil, "")
-	require.True(t, connBusy.tryAcquire())
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	require.ErrorIs(t, connBusy.acquire(ctx), context.Canceled)
-	connBusy.release()
 
 	connClosed := NewWSConn("closed_guard", 1, &openAIWSFakeConn{}, nil, nil, "")
 	connClosed.close()
@@ -1828,20 +1815,6 @@ func TestOpenAIWSConn_AdditionalGuardBranches(t *testing.T) {
 	require.Equal(t, "v1", copied.Get("X-Test"))
 
 	closeOpenAIWSConns([]*WSConn{nil, connOK})
-}
-
-func TestOpenAIWSConnPool_CanceledWaiterReturnsDeliveredLease(t *testing.T) {
-	conn := NewWSConn("cancelled_delivery", 1, &openAIWSFakeConn{}, nil, nil, "")
-
-	// acquire 的 select 两个分支同时就绪；若不在收到租约后检查取消状态，可能
-	// 消耗唯一租约却返回 nil，导致后续连接池获取永久阻塞。
-	for range 64 {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		require.ErrorIs(t, conn.acquire(ctx), context.Canceled)
-		require.True(t, conn.tryAcquire(), "a canceled waiter must return a delivered lease token")
-		conn.release()
-	}
 }
 
 func TestOpenAIWSConnLease_MarkBrokenEvictsConn(t *testing.T) {
@@ -1929,22 +1902,25 @@ func TestOpenAIWSConnPool_Acquire_ErrorBranches(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "ws url is empty")
 
-	// target=nil 分支：池满且仅有 nil 连接
+	// 无效连接条目被清理后，可以使用释放的容量重新拨号。
 	cfg := &WSPoolOptions{}
 	cfg.MaxConnsPerProvider = 1
 	cfg.QueueLimitPerConn = 1
 	fullPool := newStartedWSConnPoolForTest(cfg)
+	fullPool.SetClientDialerForTest(&openAIWSFakeDialer{})
 	provider := &WSPoolProvider{ID: 2001, Type: "apikey"}
 	ap := fullPool.getOrCreateProviderPool(provider.ID)
 	ap.mu.Lock()
 	ap.conns["nil"] = nil
 	ap.lastCleanupAt = time.Now()
 	ap.mu.Unlock()
-	_, err = fullPool.Acquire(context.Background(), WSAcquireRequest{
+	lease, err := fullPool.Acquire(context.Background(), WSAcquireRequest{
 		Provider: provider,
 		WSURL:    "wss://example.com/v1/responses",
 	})
-	require.ErrorIs(t, err, errOpenAIWSConnClosed)
+	require.NoError(t, err)
+	require.False(t, lease.Reused())
+	lease.Release()
 
 	// queue full 分支：waiters 达上限
 	provider2 := &WSPoolProvider{ID: 2002, Type: "apikey"}
