@@ -7,6 +7,7 @@
 - [工具链与本地运行](#工具链与本地运行)：准备环境或更新依赖时读取。
 - [依赖规则](#backend_dependency_rules)：新增后端模块、调整 import 或文件许可时读取。
 - [编码约定](#编码约定)：写注释、修改前端时读取。
+- [后端文件组织](#backend_file_layout)：新增、拆分、合并或改名后端 Go 文件和测试文件时读取。
 - [生成代码与迁移](#生成代码与迁移)：修改 Ent schema、Wire 或数据库时读取。
 - [验证策略](#验证策略)：实现完成、提交之前读取。
 - [提交与文档](#提交与文档)：形成提交或维护 Project Doc 时读取。
@@ -111,6 +112,73 @@ HTTP、用例、存储和后台资源，由 app 装配各模块的实现。业�
 
 支付页动态导入 Stripe 和 Airwallex SDK，`frontend/vite.config.ts` 通过 Rolldown 的 `codeSplitting` 将它们分别放进独立的 vendor 包。Airwallex 在模块加载时会预取远程支付脚本，因此它和同命名空间的依赖一起分包。调整分包规则后，检查生产构建的依赖关系，确认支付 SDK 由支付流程触发加载。
 
+<a id="backend_file_layout"></a>
+## 后端文件组织
+
+本节规定 `backend/` 下手写 Go 文件的拆分和命名。带生成标记的文件（`ent/` 的生成代码、`wire_gen.go` 等）由生成命令决定。仓库里还有很多文件不符合本节，修改某个包时，把这次碰到的文件一起按本节改名或合并。
+
+### 源文件
+
+- 一个源文件写一个主题，文件名用 snake_case 写出主题，例如 `redeem_admin.go`。
+- 文件名去掉所在目录的包名：`ops` 包里的告警文件叫 `alerts.go`，`apikey` 包里的服务文件叫 `service.go`。`api_key_service.go` 这种开头几段拼起来等于包名的写法也要去掉前缀。文件名正好等于包名时（`ops/ops.go`），用它放包的主入口。
+- 源文件的名字要能看出主题。`helper.go`、`helpers.go`、`util.go`、`utils.go`、`common.go`、`misc.go`、`shared.go` 和 `other.go` 都看不出主题，换成具体名字。`helpers` 留给测试辅助文件。
+- 去掉空行、注释和 import 后不到 30 行的源文件，如果没有自己的主题，就并进主题相同或者使用它最多的文件。几个常量、一两个错误变量、一个几行的小函数、一个只有一处调用的转换函数，都属于这种情况。`doc.go`、`wire.go`、带平台后缀或 `//go:build` 约束的文件，以及包里唯一的源文件，再小也单独保留。
+- 大包按主题给文件加统一前缀，让同一主题的文件在目录里排在一起，例如 app 包的 `gateway_*` 和 `provider_*`。新文件沿用已有前缀。
+
+### 包说明 doc.go
+
+手写源文件达到 15 个的包需要 `doc.go`，文件里只有包注释和 `package` 子句。包注释依次写三部分：
+
+1. 第一句以 `Package <包名>` 开头，写包负责什么。
+2. 阅读入口：第一次读这个包时先看哪两三个文件，每个文件一句话。
+3. 文件分组：按前缀或主题列出文件分组，每组一句话，写出代表文件。
+
+```go
+// Package billing 计算请求费用，维护余额、订阅和兑换码。
+//
+// 阅读入口：
+//   - calculator.go：按模型价格和用量计算单次请求的费用。
+//   - settlement.go：扣费、退款和任务资金的结算。
+//
+// 文件分组：
+//   - subscription*.go：订阅的分配、额度窗口和过期。
+//   - redeem_*.go：兑换码的生成、兑换和后台管理。
+//   - eligibility*.go：请求前的余额和额度准入。
+package billing
+```
+
+包注释写在 `doc.go` 里，其他文件的 `package` 子句上方留空。新文件归入已有分组时，`doc.go` 保持原样；新增分组，或者入口文件改名、删除时，在同一次修改里更新 `doc.go`。`doc.go` 提到的每个文件名都要在目录里存在。
+
+### 测试文件
+
+GoLand 把 `X_test.go` 折叠在 `X.go` 下面，读者也靠这个名字从源文件找到测试。测试文件按下表命名：
+
+| 文件名 | 内容 | 要求 |
+| --- | --- | --- |
+| `X_test.go` | `X.go` 的单元测试、基准测试和模糊测试 | 同目录有 `X.go`；没有构建标签，或者只有 `!integration` |
+| `X_integration_test.go` | `X.go` 的集成测试 | 同目录有 `X.go`；`//go:build integration` |
+| `X_external_test.go` | `X.go` 的外部测试包（`package <包名>_test`）单元测试 | `X_test.go` 是包内测试，两者无法合并时使用 |
+| `X_external_integration_test.go` | 上一行的集成测试版本 | `//go:build integration` |
+| `main_test.go` | 包的 `TestMain` | 包里另有集成测试的 `TestMain` 时，加 `//go:build !integration` |
+| `main_integration_test.go` | 集成测试的 `TestMain` | `//go:build integration` |
+| `helpers_test.go` | 两个以上测试文件共用的 fixture、替身和断言函数 | 每个包一个 |
+| `helpers_integration_test.go` | 集成测试共用的辅助代码 | `//go:build integration` |
+| `<场景>_scenario_test.go` | 跨多个源文件、找不到单一被测文件的场景测试 | 文件开头的注释写出覆盖的源文件 |
+| `<场景>_scenario_integration_test.go` | 上一行的集成测试版本 | `//go:build integration` |
+
+归属和拆分按下面的规则判断：
+
+- 测试函数直接调用的函数或方法定义在哪个源文件，测试就写进这个源文件对应的测试文件。HTTP handler 的测试归到 handler 函数所在的文件。
+- 一个测试文件里的测试函数分别测不同的源文件时，按测试函数拆到各自的测试文件。被测函数移到别的文件时，测试跟着移动。
+- 只有一个测试文件使用的 fixture、替身和构造函数，写在这个测试文件里；两个以上测试文件使用时，放进 `helpers_test.go`。
+- 测试类型和场景写进测试函数名，例如 `TestCalculator_ImagePricingRegression`。文件名使用上表的形式，`_contract`、`_fixture`、`_unit`、`_regression`、`_lifecycle`、`_compat` 这类后缀改写进函数名。
+- 包内测试和外部测试包的文件合并时，先改成包内测试 `package <包名>`。外部测试导入的包反过来依赖本包（常见于 `testkit`），改成包内测试会形成导入环时，放进 `X_external_test.go`。
+- 能找到被测文件时使用 `X_test.go`，`_scenario_test.go` 留给确实跨多个源文件的场景。
+
+`backend/tests/` 存放跨模块测试，`backend/migrations/` 的测试检查 SQL 文件，这两个目录的测试按场景命名。
+
+`X_integration_test.go` 等三种带后缀的测试文件，需要在 GoLand 里加一条折叠规则：打开 Project 视图选项菜单里的 Appearance → File Nesting，找到父文件后缀为 `.go` 的规则（没有就新建一条），把子文件后缀改成 `_test.go; _integration_test.go; _external_test.go; _external_integration_test.go`。
+
 ## 生成代码与迁移
 
 `backend/ent/` 的大部分文件由 Ent 生成，`backend/internal/app/wire_gen.go` 由 Wire 生成。统一使用：
@@ -142,7 +210,7 @@ Ent schema 不是生产环境的迁移器。数据库的变更需要新建 `back
 - 集成测试带 `//go:build integration`，通过 Testcontainers 启动 PostgreSQL 和 Redis。`make test-integration` 用 grep 找出含这个标签的包，只编译和运行这些包，包级并发为 4。集成构建同时编译同包的无标签测试，这些包的单元测试会再运行一次。
 - embed 测试带 `//go:build embed`，读取前端生产构建的产物。`make test-embed` 对 `internal/web` 和 `cmd/server` 运行 lint 和测试。
 
-新测试默认不加标签，需要 Docker 的测试才加 `integration`。同一个包的无标签文件和 integration 文件会一起编译，两边的测试函数和辅助函数需要使用不同的名字。只给单元测试构建用的文件标记 `//go:build !integration`，例如 `tests/integration/identity/suite_test.go`。
+新测试默认不加标签，需要 Docker 的测试才加 `integration`。同一个包的无标签文件和 integration 文件会一起编译，两边的测试函数和辅助函数需要使用不同的名字。只给单元测试构建用的文件标记 `//go:build !integration`，例如 `tests/integration/identity/suite_test.go`。测试文件的命名和归属见[后端文件组织](#backend_file_layout)。
 
 集成测试需要 Docker。本地没有 Docker 时，交付说明里写明集成测试没有运行。涉及迁移时，还要运行 migration runner 和对应的 schema、数据回归测试。
 
