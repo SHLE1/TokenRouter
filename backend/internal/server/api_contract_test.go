@@ -1220,6 +1220,29 @@ func TestAPIContracts(t *testing.T) {
 									"rules": []
 								},
 								"openai_ttft_mode": "semantic",
+								"responses_ws": {},
+								"responses_ws_effective": {
+									"max_conns_per_provider": 128,
+									"min_idle_per_provider": 4,
+									"max_idle_per_provider": 12,
+									"dynamic_max_conns_by_provider_concurrency_enabled": true,
+									"oauth_max_conns_factor": 1,
+									"apikey_max_conns_factor": 1,
+									"queue_limit_per_conn": 64,
+									"pool_target_utilization": 0.7,
+									"prewarm_cooldown_ms": 300,
+									"client_first_message_timeout_seconds": 30,
+									"ingress_inter_turn_idle_timeout_seconds": 300,
+									"max_ingress_connections_per_api_key": 64,
+									"client_read_limit_bytes": 67108864,
+									"http_bridge_threshold_bytes": 15728640,
+									"dial_timeout_seconds": 10,
+									"read_timeout_seconds": 900,
+									"write_timeout_seconds": 120,
+									"ingress_previous_response_recovery_enabled": true,
+									"sticky_session_ttl_seconds": 3600,
+									"sticky_response_id_ttl_seconds": 3600
+								},
 								"user_prompt_replacement_config": {
 									"enabled": true,
 									"rules": [
@@ -1566,6 +1589,29 @@ func TestAPIContracts(t *testing.T) {
 									"rules": []
 								},
 								"openai_ttft_mode": "semantic",
+								"responses_ws": {},
+								"responses_ws_effective": {
+									"max_conns_per_provider": 128,
+									"min_idle_per_provider": 4,
+									"max_idle_per_provider": 12,
+									"dynamic_max_conns_by_provider_concurrency_enabled": true,
+									"oauth_max_conns_factor": 1,
+									"apikey_max_conns_factor": 1,
+									"queue_limit_per_conn": 64,
+									"pool_target_utilization": 0.7,
+									"prewarm_cooldown_ms": 300,
+									"client_first_message_timeout_seconds": 30,
+									"ingress_inter_turn_idle_timeout_seconds": 300,
+									"max_ingress_connections_per_api_key": 64,
+									"client_read_limit_bytes": 67108864,
+									"http_bridge_threshold_bytes": 15728640,
+									"dial_timeout_seconds": 10,
+									"read_timeout_seconds": 900,
+									"write_timeout_seconds": 120,
+									"ingress_previous_response_recovery_enabled": true,
+									"sticky_session_ttl_seconds": 3600,
+									"sticky_response_id_ttl_seconds": 3600
+								},
 								"user_prompt_replacement_config": {
 									"enabled": true,
 									"rules": [
