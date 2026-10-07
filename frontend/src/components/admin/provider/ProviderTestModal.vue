@@ -62,6 +62,7 @@
           <label class="input-label" :for="modelFieldId">{{ t('admin.providers.testDialog.model') }}</label>
           <Select
             :id="modelFieldId"
+            data-testid="provider-test-model"
             v-model="selectedModelId"
             :options="availableModels"
             :disabled="loadingModels || busy"
@@ -305,8 +306,6 @@ const requestProtocol = computed<ProviderTestProtocol | undefined>(() => {
   return testProtocol.value
 })
 
-const prioritizedGeminiModels = ['gemini-3.1-flash-image', 'gemini-2.5-flash-image', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3-flash-preview', 'gemini-3-pro-preview', 'gemini-2.0-flash']
-
 // 图片或文字请求类型由管理员选择。
 const imageTestAvailable = computed(() => {
   const platform = props.provider?.platform
@@ -340,16 +339,6 @@ const singleButtonLabel = computed(() => {
 // 批量测试按模型列表的顺序执行已选模型。
 const selectedBatchModels = computed(() => batch.models.filter((model) => batch.selected.has(model)))
 
-const sortTestModels = (models: ClaudeModel[]) => {
-  const priorityMap = new Map(prioritizedGeminiModels.map((id, index) => [id, index]))
-
-  return [...models].sort((a, b) => {
-    const aPriority = priorityMap.get(a.id) ?? Number.MAX_SAFE_INTEGER
-    const bPriority = priorityMap.get(b.id) ?? Number.MAX_SAFE_INTEGER
-    return aPriority - bPriority
-  })
-}
-
 // 打开弹窗时重置参数并加载可测试模型。
 watch(
   () => props.show,
@@ -360,6 +349,7 @@ watch(
       lastDefaultPrompt = ''
       testMode.value = 'default'
       testType.value = 'text'
+      updateDefaultPrompt()
       testProtocol.value = defaultProviderTestProtocol(props.provider, protocolPlan.value)
       resetProviderTestRun(singleRun)
       batch.reset([])
@@ -371,7 +361,7 @@ watch(
 )
 
 // 提示词未被手动修改时，跟随测试类型切换默认值。
-watch([selectedModelId, testType], () => {
+function updateDefaultPrompt() {
   const nextDefaultPrompt = testType.value === 'image'
     ? t('admin.providers.imagePromptDefault')
     : t('admin.providers.textPromptDefault')
@@ -379,7 +369,8 @@ watch([selectedModelId, testType], () => {
     testPrompt.value = nextDefaultPrompt
     lastDefaultPrompt = nextDefaultPrompt
   }
-})
+}
+watch([selectedModelId, testType], updateDefaultPrompt)
 
 watch(testType, (nextType) => {
   if (nextType === 'image') {
@@ -391,21 +382,11 @@ const loadAvailableModels = async () => {
   if (!props.provider) return
 
   loadingModels.value = true
+  // 统一目录包含多个供应商的型号，单次测试由管理员明确选择 ID。
   selectedModelId.value = ''
   try {
     const models = await adminAPI.providers.getAvailableModels(props.provider.id)
-    availableModels.value = props.provider.platform === 'gemini' || props.provider.platform === 'antigravity'
-      ? sortTestModels(models)
-      : models
-    if (availableModels.value.length > 0) {
-      if (props.provider.platform === 'gemini') {
-        selectedModelId.value = availableModels.value[0].id
-      } else {
-        // 优先选中 Sonnet，没有时取第一个模型。
-        const sonnetModel = availableModels.value.find((m) => m.id.includes('sonnet'))
-        selectedModelId.value = sonnetModel?.id || availableModels.value[0].id
-      }
-    }
+    availableModels.value = models
   } catch (error) {
     console.error('Failed to load available models:', error)
     availableModels.value = []

@@ -419,3 +419,19 @@ func (s *Service) ModelVersion() string {
 	}
 	return s.modelCatalog.Version
 }
+
+// ModelIDsForOutput 枚举声明指定输出模态的目录候选，未知模态留给手动配置。
+func (s *Service) ModelIDsForOutput(modality string) []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	ids := []string{}
+	if s.modelCatalog != nil {
+		for id, entry := range s.modelCatalog.Entries {
+			if entry.Attributes.OutputModalities != nil && slices.Contains(*entry.Attributes.OutputModalities, modality) {
+				ids = append(ids, id)
+			}
+		}
+	}
+	slices.Sort(ids)
+	return ids
+}

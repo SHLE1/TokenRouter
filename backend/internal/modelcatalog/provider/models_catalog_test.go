@@ -226,3 +226,14 @@ func TestDirectoryReaderTracksPublishedVersion(t *testing.T) {
 	require.Equal(t, version, service.ModelVersion())
 	require.Equal(t, "New name", *service.ModelEntry("claude-new").Attributes.DisplayName)
 }
+
+// TestImageCandidatesUseOutputModality 根据目录模态枚举图片候选，支持任意型号命名。
+func TestImageCandidatesUseOutputModality(t *testing.T) {
+	remote := &catalogRemoteFixture{body: []byte(`{"providers":{"google":{"models":{"arbitrary-output":{"name":"Image","modalities":{"output":["image"]}},"gemini-text-image-name":{"name":"Text","modalities":{"output":["text"]}},"unknown":{"name":"Unknown"}}}}}`)}
+	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: t.TempDir()}, remote)
+	require.NoError(t, service.ForceUpdate())
+	ids := service.ModelIDsForOutput("image")
+	require.Contains(t, ids, "arbitrary-output")
+	require.NotContains(t, ids, "gemini-text-image-name")
+	require.NotContains(t, ids, "unknown")
+}

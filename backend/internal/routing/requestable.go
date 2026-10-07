@@ -52,16 +52,21 @@ func (s *RequestableResolver) ResolveWithProviders(
 	providerCandidateModels = append(providerCandidateModels, currentProviderModels...)
 
 	var policy *GroupPolicyView
+	billingSource := BillingModelSourceRequested
 	policyPlatform := strings.TrimSpace(platform)
 	var err error
 	if groupID != nil && s.GroupPolicies != nil {
 		policy, err = s.GroupPolicies.GetGroupPolicy(ctx, *groupID)
 		if err != nil {
-			s.Warn("failed to load group policy for requestable model resolution",
-				"group_id", *groupID,
-				"platform", platform,
-				"error", err)
+			if s.Warn != nil {
+				s.Warn("failed to load group policy for requestable model resolution", "group_id", *groupID, "platform", platform, "error", err)
+			}
 			return RequestableModelsResult{Restricted: true, HadExplicitProviderModels: hadExplicitProviderModels}
+		}
+		// 每次目录查询预先读取分组策略与计费来源。
+		billingSource = BillingModelSourceGroupMapped
+		if config, err := s.GroupPolicies.GetPricingConfigForGroup(ctx, *groupID); err == nil && config != nil && config.BillingModelSource != "" {
+			billingSource = config.BillingModelSource
 		}
 	}
 
@@ -76,7 +81,7 @@ func (s *RequestableResolver) ResolveWithProviders(
 
 	result.Models = make([]RequestableModel, 0, len(candidates))
 	for _, requestedModel := range candidates {
-		if resolved, ok := s.resolveRequestableModel(ctx, groupID, policy, providers, requestedModel); ok {
+		if resolved, ok := resolveRequestableModel(ctx, policy, billingSource, providers, requestedModel); ok {
 			result.Models = append(result.Models, resolved)
 		}
 	}
@@ -183,29 +188,22 @@ func sortedModelMappingSources(mapping map[string]string) []string {
 	return models
 }
 
-func (s *RequestableResolver) resolveRequestableModel(
+// resolveRequestableModel 用本次查询的策略快照解析单个候选。
+func resolveRequestableModel(
 	ctx context.Context,
-	groupID *int64,
 	policy *GroupPolicyView,
+	billingSource string,
 	providers []CatalogueProvider,
 	requestedModel string,
 ) (RequestableModel, bool) {
 	groupMappedModel := requestedModel
-	billingSource := BillingModelSourceRequested
-	if groupID != nil && s.GroupPolicies != nil {
-		mapping := s.GroupPolicies.ResolveGroupMapping(ctx, *groupID, requestedModel)
-		if mapped := strings.TrimSpace(mapping.MappedModel); mapped != "" {
-			groupMappedModel = mapped
-		}
-		billingSource = mapping.BillingModelSource
-		if billingSource == "" {
-			billingSource = BillingModelSourceGroupMapped
-		}
+	if mapped := strings.TrimSpace(policy.ResolveModel(requestedModel)); mapped != "" {
+		groupMappedModel = mapped
 	}
 
 	if policy != nil && policy.RestrictModels && policy.RestrictionSource() != BillingModelSourceUpstream {
 		pricingModel := ModelForRestriction(policy.RestrictionSource(), requestedModel, groupMappedModel)
-		if s.requestableModelRestricted(ctx, groupID, pricingModel) {
+		if policy.IsModelRestricted(pricingModel) {
 			return RequestableModel{}, false
 		}
 	}
@@ -247,7 +245,7 @@ func (s *RequestableResolver) resolveRequestableModel(
 		contributed := false
 		for _, upstreamModel := range provider.Rules.UpstreamModels(ctx, groupMappedModel) {
 			if policy != nil && policy.RestrictModels && policy.RestrictionSource() == BillingModelSourceUpstream &&
-				s.requestableModelRestricted(ctx, groupID, upstreamModel) {
+				policy.IsModelRestricted(upstreamModel) {
 				continue
 			}
 			upstreamModels = append(upstreamModels, upstreamModel)
@@ -287,17 +285,6 @@ func (s *RequestableResolver) resolveRequestableModel(
 		resolved.PricingModel = groupMappedModel
 	}
 	return resolved, true
-}
-
-func (s *RequestableResolver) requestableModelRestricted(ctx context.Context, groupID *int64, pricingModel string) bool {
-	if groupID == nil || s == nil || s.GroupPolicies == nil {
-		return false
-	}
-	pricingModel = strings.TrimSpace(pricingModel)
-	if pricingModel == "" || !s.GroupPolicies.IsModelRestricted(ctx, *groupID, pricingModel) {
-		return false
-	}
-	return true
 }
 
 func uniquePricingModel(models []string) (string, bool) {
@@ -351,8 +338,7 @@ type CatalogueDefaults struct {
 }
 type CataloguePolicies interface {
 	GetGroupPolicy(context.Context, int64) (*GroupPolicyView, error)
-	ResolveGroupMapping(context.Context, int64, string) GroupMappingResult
-	IsModelRestricted(context.Context, int64, string) bool
+	GetPricingConfigForGroup(context.Context, int64) (*PricingConfig, error)
 }
 
 // RequestableResolver 只编排目录规则，缓存和数据取得均由现有唯一来源提供。

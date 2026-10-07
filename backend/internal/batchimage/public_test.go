@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -1104,4 +1105,33 @@ var (
 func TestBatchImageServiceAccountErrorCode(t *testing.T) {
 	err := batchimage.BatchImageProviderSubmitPublicError(batchimage.ErrBatchImageProviderMissingServiceAccount)
 	require.Equal(t, "BATCH_IMAGE_PROVIDER_MISSING_SERVICE_ACCOUNT", apperror.Reason(err))
+}
+
+// TestBatchImageConfiguredAlias 保留有价格的自定义图片型号，并检查提供商白名单。
+func TestBatchImageConfiguredAlias(t *testing.T) {
+	for _, allowed := range []bool{true, false} {
+		t.Run(fmt.Sprintf("allowed=%t", allowed), func(t *testing.T) {
+			svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
+			repo := testassert.MustType[*publicBatchImageProviderRepo](testassert.MustType[*batchProviderFixture](svc.ProviderRepo).source)
+			value := testBatchImageMappedProvider(303, capability.ProviderTypeAPIKey, map[string]any{"public-image": "nano-banana-pro"})
+			if !allowed {
+				value.Credentials["model_whitelist"] = []string{"other-model"}
+			}
+			repo.providers = []providercore.Record{value}
+			svc.Pricing = &fakeBatchImagePricingResolver{unitPrice: 0.1}
+			result, err := svc.ListModels(context.Background(), testBatchImageOwner())
+			require.NoError(t, err)
+			ids := []string{}
+			for _, model := range result.Data {
+				ids = append(ids, model.ID)
+			}
+			if allowed {
+				require.Contains(t, ids, "public-image")
+				require.Contains(t, ids, "nano-banana-pro")
+			} else {
+				require.NotContains(t, ids, "public-image")
+				require.NotContains(t, ids, "nano-banana-pro")
+			}
+		})
+	}
 }

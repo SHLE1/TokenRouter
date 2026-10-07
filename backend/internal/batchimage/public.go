@@ -81,7 +81,7 @@ type PublicOptions struct {
 	DefaultResponseMimeType, DefaultImageSize                                                                                                                                     string
 }
 type Public struct {
-	// ModelIDs 提供统一目录的候选，支持展开映射中的通配符。
+	// ModelIDs 提供统一目录的图片候选，配置中的具体型号另行合并。
 	ModelIDs               func() []string
 	GroupPolicy            func(context.Context, int64) (*routing.GroupPolicyView, error)
 	Now                    func() time.Time
@@ -649,8 +649,7 @@ func (s *Public) ListModels(ctx context.Context, owner BatchImageOwner) (*BatchI
 				if _, err := s.Pricing.BatchImageUnitPrice(ctx, BatchImagePriceInput{Model: pricingModel, GroupID: owner.GroupID, ImageSize: "1K"}); err != nil {
 					continue
 				}
-				imageModel := strings.TrimPrefix(strings.ToLower(upstreamModel), "models/")
-				if !provider.IsModelSupported(routingModel) || !strings.HasPrefix(imageModel, "gemini-") || !strings.Contains(imageModel, "image") {
+				if !provider.IsModelSupported(routingModel) {
 					continue
 				}
 				if modelsByProvider[providerName] == nil {

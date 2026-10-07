@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProviderTestModal from '../ProviderTestModal.vue'
 import { ADMIN_UI_REQUEST_HEADER } from '@/api/adminUIRequest'
@@ -76,7 +76,7 @@ function mountModal(provider: Record<string, unknown> = {
     global: {
       stubs: {
         BaseDialog: { template: '<div><slot name="header-actions" /><slot /></div>' },
-        Select: { props: ['disabled'], template: '<div class="select-stub" :data-disabled="disabled ? \'true\' : \'false\'"></div>' },
+        Select: { props: ['disabled', 'modelValue'], emits: ['update:modelValue'], template: '<div class="select-stub" :data-disabled="disabled ? \'true\' : \'false\'"></div>' },
         PlatformIcon: true,
         TextArea: {
           props: ['modelValue'],
@@ -87,6 +87,12 @@ function mountModal(provider: Record<string, unknown> = {
       }
     }
   })
+}
+
+// 模拟管理员在型号选择框中选择实际 ID。
+async function chooseModel(wrapper: VueWrapper, id: string) {
+  wrapper.getComponent('[data-testid="provider-test-model"]').vm.$emit('update:modelValue', id)
+  await wrapper.vm.$nextTick()
 }
 
 describe('ProviderTestModal', () => {
@@ -123,6 +129,7 @@ describe('ProviderTestModal', () => {
     const wrapper = mountModal()
     await wrapper.setProps({ show: true })
     await flushPromises()
+    await chooseModel(wrapper, 'gemini-3.1-flash-image')
 
     ;(wrapper.vm as any).testType = 'image'
 
@@ -150,7 +157,7 @@ describe('ProviderTestModal', () => {
     expect(preview.attributes('src')).toBe('data:image/png;base64,QUJD')
   })
 
-  it('grok 提供商测试默认选择 Grok 模型', async () => {
+  it('grok 提供商测试使用管理员选择的模型', async () => {
     getAvailableModels.mockResolvedValue([
       { id: 'grok-4.3', display_name: 'Grok 4.3' },
       { id: 'grok-build-0.1', display_name: 'Grok Build 0.1' }
@@ -172,6 +179,7 @@ describe('ProviderTestModal', () => {
     })
     await wrapper.setProps({ show: true })
     await flushPromises()
+    await chooseModel(wrapper, 'grok-4.3')
 
     const startButton = wrapper.find('[data-testid="provider-test-start"]')
     expect(startButton.exists()).toBe(true)
@@ -193,6 +201,7 @@ describe('ProviderTestModal', () => {
     const wrapper = mountModal(provider)
     await wrapper.setProps({ show: true })
     await flushPromises()
+    await chooseModel(wrapper, 'gpt-5.4')
     expect(wrapper.find('[data-testid="provider-test-protocol"]').exists()).toBe(true)
     ;(wrapper.vm as any).testProtocol = 'chat_completions'
     await (wrapper.vm as any).startTest()
@@ -285,6 +294,7 @@ describe('ProviderTestModal', () => {
     const wrapper = mountModal()
     await wrapper.setProps({ show: true })
     await flushPromises()
+    await chooseModel(wrapper, 'gemini-custom-text')
     await wrapper.find('textarea.textarea-stub').setValue('say hello in one sentence')
 
     await wrapper.find('[data-testid="provider-test-start"]').trigger('click')
@@ -314,6 +324,7 @@ describe('ProviderTestModal', () => {
     })
     await wrapper.setProps({ show: true })
     await flushPromises()
+    await chooseModel(wrapper, 'glm-4.7')
 
     expect((wrapper.vm as any).testProtocol).toBe('chat_completions')
     expect((wrapper.vm as any).protocolOptions.map((item: { value: string }) => item.value)).toEqual(['chat_completions', 'anthropic', 'all'])
@@ -340,6 +351,7 @@ describe('ProviderTestModal', () => {
     })
     await wrapper.setProps({ show: true })
     await flushPromises()
+    await chooseModel(wrapper, 'kimi-k2.5')
 
     expect(wrapper.find('[data-testid="provider-test-protocol"]').attributes('data-disabled')).toBe('true')
     await (wrapper.vm as any).startTest()
@@ -361,6 +373,7 @@ describe('ProviderTestModal', () => {
     const wrapper = mountModal({ id: 9, name: 'OpenAI', platform: 'openai', type: 'apikey', status: 'active' })
     await wrapper.setProps({ show: true })
     await flushPromises()
+    await chooseModel(wrapper, 'gpt-5.4')
     await wrapper.find('[data-testid="provider-test-start"]').trigger('click')
     await flushPromises()
 
@@ -386,6 +399,7 @@ describe('ProviderTestModal', () => {
     const wrapper = mountModal()
     await wrapper.setProps({ show: true })
     await flushPromises()
+    await chooseModel(wrapper, 'gemini-2.0-flash')
     await (wrapper.vm as any).startTest()
     await flushPromises()
 
@@ -415,9 +429,9 @@ describe('ProviderTestModal', () => {
     ;(wrapper.vm as any).testScope = 'batch'
     await wrapper.vm.$nextTick()
     const batch = (wrapper.vm as any).batch
-    expect([...batch.selected]).toEqual(['model-a', 'model-b', 'model-c'])
-
-    batch.toggle('model-c', false)
+    expect([...batch.selected]).toEqual([])
+    batch.toggle('model-a', true)
+    batch.toggle('model-b', true)
     await wrapper.vm.$nextTick()
     await wrapper.find('[data-testid="provider-batch-start"]').trigger('click')
     await flushPromises()
@@ -453,6 +467,7 @@ describe('ProviderTestModal', () => {
     await flushPromises()
     ;(wrapper.vm as any).testScope = 'batch'
     const batch = (wrapper.vm as any).batch
+    batch.setMany(['model-a', 'model-b', 'model-c'], true)
     batch.concurrency = 1
     await wrapper.vm.$nextTick()
 
@@ -469,4 +484,27 @@ describe('ProviderTestModal', () => {
     expect(batch.rows['model-c'].state).toBe('stopped')
     expect(batch.running).toBe(false)
   })
+
+  it.each(['anthropic', 'openai', 'gemini', 'grok', 'kimi', 'zhipu', 'deepseek', 'qoder', 'antigravity'])('%s 测试打开后等待管理员选择，不默认选中目录中的 Sonnet', async platform => {
+    getAvailableModels.mockResolvedValue([
+      { id: '302ai/claude-sonnet-4-5-20250929', display_name: 'Claude Sonnet' },
+      { id: 'custom-model', display_name: 'Custom Model' }
+    ])
+    const wrapper = mountModal({ id: 91, name: 'Provider', platform, type: 'apikey', status: 'active' })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    expect(wrapper.getComponent('[data-testid="provider-test-model"]').props('modelValue')).toBe('')
+    expect(wrapper.get('[data-testid="provider-test-start"]').attributes('disabled')).toBeDefined()
+    await wrapper.get('[data-testid="provider-test-start"]').trigger('click')
+    expect(global.fetch).not.toHaveBeenCalled()
+    expect([...(wrapper.vm as any).batch.selected]).toEqual([])
+    await chooseModel(wrapper, 'custom-model')
+    expect(wrapper.getComponent('[data-testid="provider-test-model"]').props('modelValue')).toBe('custom-model')
+    await wrapper.setProps({ show: false })
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    expect(wrapper.getComponent('[data-testid="provider-test-model"]').props('modelValue')).toBe('')
+    wrapper.unmount()
+  })
+
 })
