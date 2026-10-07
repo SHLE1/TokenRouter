@@ -450,7 +450,7 @@ func (s *Marketplace) resolveGroupModels(ctx context.Context, group *Group) []Ma
 		groupID := group.ID
 		resolution := s.models.ResolveRequestableModels(ctx, &groupID, "")
 		if len(resolution.Models) > 0 {
-			return buildMarketplaceModelDefsFromRequestable(resolution.Models, s.options.DisplayNames(""))
+			return buildMarketplaceModelDefsFromRequestable(resolution.Models)
 		}
 		// 已完成提供商和分组策略解析后，空结果必须保持为空，不能再次回退平台默认模型。
 		return nil
@@ -459,7 +459,7 @@ func (s *Marketplace) resolveGroupModels(ctx context.Context, group *Group) []Ma
 	if group == nil {
 		return nil
 	}
-	return s.options.DefaultModels("")
+	return nil
 }
 
 // resolveGroupModelsWithProviders 直接使用预取提供商生成候选和执行 R -> G -> U 校验。
@@ -473,7 +473,7 @@ func (s *Marketplace) resolveGroupModelsWithProviders(ctx context.Context, group
 	if len(resolution.Models) == 0 {
 		return nil
 	}
-	return buildMarketplaceModelDefsFromRequestable(resolution.Models, s.options.DisplayNames(""))
+	return buildMarketplaceModelDefsFromRequestable(resolution.Models)
 }
 
 type MarketplaceModelDef struct {
@@ -486,7 +486,7 @@ type MarketplaceModelDef struct {
 	PricingAmbiguous bool
 }
 
-func buildMarketplaceModelDefsFromRequestable(models []RequestableModel, displayNames map[string]string) []MarketplaceModelDef {
+func buildMarketplaceModelDefsFromRequestable(models []RequestableModel) []MarketplaceModelDef {
 	defs := make([]MarketplaceModelDef, 0, len(models))
 	for _, model := range models {
 		defs = append(defs, MarketplaceModelDef{
@@ -494,68 +494,12 @@ func buildMarketplaceModelDefsFromRequestable(models []RequestableModel, display
 			UpstreamModels:   model.UpstreamModels,
 			Protocols:        model.Protocols,
 			NativeProtocols:  model.NativeProtocols,
-			DisplayName:      lookupMarketplaceDisplayName(model.ID, displayNames),
+			DisplayName:      model.ID,
 			PricingModel:     model.PricingModel,
 			PricingAmbiguous: model.PricingAmbiguous,
 		})
 	}
 	return defs
-}
-
-func SortMarketplaceModelDefs(models []MarketplaceModelDef) {
-	for i := 1; i < len(models); i++ {
-		for j := i; j > 0 && models[j-1].ID > models[j].ID; j-- {
-			models[j-1], models[j] = models[j], models[j-1]
-		}
-	}
-}
-
-func lookupMarketplaceDisplayName(modelID string, displayNames map[string]string) string {
-	for _, candidate := range marketplaceLookupCandidates(modelID) {
-		if displayName, ok := displayNames[candidate]; ok && strings.TrimSpace(displayName) != "" {
-			return displayName
-		}
-	}
-	return modelID
-}
-
-func RegisterMarketplaceDisplayName(out map[string]string, modelID string, displayName string) {
-	for _, key := range marketplaceLookupCandidates(modelID) {
-		if _, exists := out[key]; exists {
-			continue
-		}
-		out[key] = displayName
-	}
-}
-
-func marketplaceLookupCandidates(modelID string) []string {
-	candidates := []string{
-		strings.TrimSpace(modelID),
-		strings.TrimPrefix(strings.TrimSpace(modelID), "models/"),
-	}
-
-	trimmed := strings.TrimSpace(modelID)
-	if idx := strings.LastIndex(trimmed, "/models/"); idx != -1 {
-		candidates = append(candidates, trimmed[idx+len("/models/"):])
-	}
-	if idx := strings.LastIndex(trimmed, "/"); idx != -1 {
-		candidates = append(candidates, trimmed[idx+1:])
-	}
-
-	seen := make(map[string]struct{}, len(candidates))
-	out := make([]string, 0, len(candidates))
-	for _, candidate := range candidates {
-		candidate = strings.TrimSpace(candidate)
-		if candidate == "" {
-			continue
-		}
-		if _, ok := seen[candidate]; ok {
-			continue
-		}
-		seen[candidate] = struct{}{}
-		out = append(out, candidate)
-	}
-	return out
 }
 
 type MarketplaceGroups interface {
@@ -585,12 +529,10 @@ type MarketplacePrices interface {
 	GetModelModalities(string) ([]string, []string)
 }
 type MarketplaceOptions struct {
-	Attributes    func(context.Context, map[int64][]RequestableModel) (map[int64]map[string]EffectiveModelAttributes, error)
-	Timezone      string
-	Now           func() time.Time
-	Warn          func(string, ...any)
-	DefaultModels func(string) []MarketplaceModelDef
-	DisplayNames  func(string) map[string]string
+	Attributes func(context.Context, map[int64][]RequestableModel) (map[int64]map[string]EffectiveModelAttributes, error)
+	Timezone   string
+	Now        func() time.Time
+	Warn       func(string, ...any)
 }
 
 // Marketplace 拥有公开模型市场的编排，辅助观测失败不阻断模型及价格展示。

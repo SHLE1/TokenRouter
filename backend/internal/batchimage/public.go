@@ -81,6 +81,9 @@ type PublicOptions struct {
 	DefaultResponseMimeType, DefaultImageSize                                                                                                                                     string
 }
 type Public struct {
+	// ModelIDs 提供统一目录的候选，支持展开映射中的通配符。
+	ModelIDs               func() []string
+	GroupPolicy            func(context.Context, int64) (*routing.GroupPolicyView, error)
 	Now                    func() time.Time
 	Repo                   BatchImageRepository
 	ProviderRepo           ProviderReader
@@ -606,6 +609,22 @@ func (s *Public) ListModels(ctx context.Context, owner BatchImageOwner) (*BatchI
 		return nil, err
 	}
 
+	var candidates []string
+	if s.ModelIDs != nil {
+		candidates = s.ModelIDs()
+	}
+	if s.GroupPolicy != nil && owner.GroupID != nil {
+		policy, err := s.GroupPolicy(ctx, *owner.GroupID)
+		if err != nil {
+			return nil, err
+		}
+		if policy != nil {
+			candidates = append(candidates, policy.AllowedModels...)
+			for id := range policy.ModelMapping {
+				candidates = append(candidates, id)
+			}
+		}
+	}
 	modelsByProvider := make(map[string]map[string]struct{})
 	for _, providerName := range BatchImageProviderSelectionOrder("") {
 		if !s.ProviderExists(providerName) {
@@ -620,7 +639,7 @@ func (s *Public) ListModels(ctx context.Context, owner BatchImageOwner) (*BatchI
 			if !provider.IsSchedulable() || !provider.SupportsProvider(providerName) {
 				continue
 			}
-			for _, model := range BatchImageModelsFromProviderMapping(&provider) {
+			for _, model := range BatchImageModelsFromProviderMapping(&provider, candidates...) {
 				mapping, routingModel, err := s.ResolveBatchImageGroupModel(ctx, owner.GroupID, model)
 				if err != nil {
 					continue
@@ -630,7 +649,8 @@ func (s *Public) ListModels(ctx context.Context, owner BatchImageOwner) (*BatchI
 				if _, err := s.Pricing.BatchImageUnitPrice(ctx, BatchImagePriceInput{Model: pricingModel, GroupID: owner.GroupID, ImageSize: "1K"}); err != nil {
 					continue
 				}
-				if !provider.IsModelSupported(model) {
+				imageModel := strings.TrimPrefix(strings.ToLower(upstreamModel), "models/")
+				if !provider.IsModelSupported(routingModel) || !strings.HasPrefix(imageModel, "gemini-") || !strings.Contains(imageModel, "image") {
 					continue
 				}
 				if modelsByProvider[providerName] == nil {
@@ -1236,22 +1256,27 @@ func BatchImageProviderSelectionOrder(requestedProvider string) []string {
 	return []string{BatchImageProviderGeminiAPI, BatchImageProviderVertex}
 }
 
-func BatchImageModelsFromProviderMapping(provider *Candidate) []string {
+func BatchImageModelsFromProviderMapping(provider *Candidate, candidates ...string) []string {
 	if provider == nil {
 		return nil
 	}
 	mapping := provider.GetModelMapping()
-	if len(mapping) == 0 {
-		return nil
-	}
 	models := make(map[string]struct{})
+	if configured, ok := provider.CandidateRules.(interface{ GetConfiguredRequestModels() []string }); ok {
+		candidates = append(candidates, configured.GetConfiguredRequestModels()...)
+	}
+	for _, id := range candidates {
+		if id != "" && !strings.ContainsAny(id, "*?") {
+			models[id] = struct{}{}
+		}
+	}
 	for model := range mapping {
 		model = strings.TrimSpace(model)
 		if model == "" {
 			continue
 		}
 		if strings.ContainsAny(model, "*?") {
-			for _, candidate := range DefaultBatchImageModelCandidates() {
+			for _, candidate := range candidates {
 				if modelmap.Matches(model, candidate) {
 					models[candidate] = struct{}{}
 				}

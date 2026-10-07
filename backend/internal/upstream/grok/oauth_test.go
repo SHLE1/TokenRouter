@@ -407,34 +407,3 @@ func TestNormalizeModelID(t *testing.T) {
 		require.Equal(t, want, NormalizeModelID(input), input)
 	}
 }
-
-// TestDefaultModelIDsPreserveCatalogue 检查默认目录独立于运行时默认文本型号。
-func TestDefaultModelIDsPreserveCatalogue(t *testing.T) {
-	original := RuntimeDefaultTextModel()
-	t.Cleanup(func() { SetRuntimeDefaultTextModel(original) })
-	SetRuntimeDefaultTextModel("")
-	models := DefaultModelIDs()
-	SetRuntimeDefaultTextModel("custom-grok")
-	require.Equal(t, models, DefaultModelIDs())
-	require.NotContains(t, models, "grok")
-	require.NotContains(t, models, "grok-latest")
-	require.Contains(t, models, "grok-4.6")
-	require.NotContains(t, models, "grok-4.6-latest")
-	require.Contains(t, models, "grok-4.5")
-	require.NotContains(t, models, "grok-4.5-latest")
-	require.NotContains(t, models, "grok-build")
-	require.NotContains(t, models, "grok-build-latest")
-	require.NotContains(t, models, "grok-composer")
-	require.NotContains(t, models, "composer-2.5")
-	require.NotContains(t, models, "grok-4.20-reasoning")
-	require.NotContains(t, models, "grok-4.20-non-reasoning")
-	require.Contains(t, models, "grok-4.20-multi-agent-0309")
-	require.NotContains(t, models, "grok-imagine")
-	require.Contains(t, models, "grok-imagine-image")
-	require.Contains(t, models, "grok-imagine-image-quality")
-	require.NotContains(t, models, "grok-imagine-edit")
-	require.Contains(t, models, "grok-imagine-video")
-	require.Contains(t, models, "grok-imagine-video-1.5")
-	require.NotContains(t, models, "grok-imagine-video-1.5-preview")
-	require.NotContains(t, models, "gpt-*")
-}

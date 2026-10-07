@@ -94,6 +94,8 @@ type PublicOptions struct {
 	DefaultImageSize                  string
 }
 type Public struct {
+	// ModelIDs 读取统一目录的候选，实际执行资格仍由提供商检查。
+	ModelIDs               func() []string
 	Now                    func() time.Time
 	Repo                   CreativeRunRepository
 	UserRepo               UserReader
@@ -605,6 +607,9 @@ func (s *Public) creativeModelRoutes(ctx context.Context, group *GroupView) (map
 	}
 	policy := newGroupModelPolicy(group.RoutingPolicy)
 	var configured []string
+	if s.ModelIDs != nil {
+		configured = s.ModelIDs()
+	}
 	for _, setting := range s.CreativeModelSettings(ctx) {
 		if setting.GroupID == group.ID {
 			configured = append(configured, setting.Model)
@@ -653,21 +658,6 @@ func IsCreativeGeminiImageModel(model string) bool {
 	model = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(model)), "models/")
 	return (strings.HasPrefix(model, "gemini-") && strings.Contains(model, "image")) ||
 		strings.HasPrefix(model, "nano-banana-")
-}
-
-func DefaultCreativeOpenAIModelCandidates() []string {
-	return []string{"gpt-image-1", "gpt-image-2"}
-}
-
-// DefaultCreativeGeminiModelCandidates 返回创作台内置的 Gemini 图片模型候选。
-// nano-banana-* 是代理侧常用别名，保留已知别名以支持未配置提供商映射的提供商。
-func DefaultCreativeGeminiModelCandidates() []string {
-	candidates := append([]string(nil), upstream.DefaultImageTaskGeminiModels()...)
-	return append(candidates, "nano-banana-pro", "nano-banana-2")
-}
-
-func DefaultCreativeGrokModelCandidates() []string {
-	return []string{"grok-imagine", "grok-imagine-edit", "grok-imagine-image", "grok-imagine-image-quality", "grok-imagine-image-1.0", "grok-imagine-image-2.0"}
 }
 
 // ValidatedCreativeParams 是校验通过的创建参数。

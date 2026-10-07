@@ -24,7 +24,7 @@ func TestRequestableNativeProtocolsRequireEveryProvider(t *testing.T) {
 			ID:       1,
 			Platform: capability.PlatformAnthropic,
 			Type:     capability.ProviderTypeAPIKey,
-			Credentials: map[string]any{"model_mapping": map[string]any{
+			Credentials: map[string]any{"model_whitelist": []string{"claude-sonnet-4-6"}, "model_mapping": map[string]any{
 				"claude-only": "claude-sonnet-4-6",
 				"shared":      "claude-sonnet-4-6",
 			}},
@@ -33,7 +33,7 @@ func TestRequestableNativeProtocolsRequireEveryProvider(t *testing.T) {
 			ID:       2,
 			Platform: capability.PlatformOpenAI,
 			Type:     capability.ProviderTypeAPIKey,
-			Credentials: map[string]any{"model_mapping": map[string]any{
+			Credentials: map[string]any{"model_whitelist": []string{"gpt-5.5"}, "model_mapping": map[string]any{
 				"shared": "gpt-5.5",
 			}},
 		},

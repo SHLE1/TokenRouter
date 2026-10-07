@@ -144,7 +144,7 @@ func (h *ModelsHandler) AntigravityModels(c *gin.Context) {
 		h.WriteClaudeCompatiblePlatformModelsList(c, capability.PlatformAntigravity, nil)
 		return
 	}
-	modelIDs := h.DefaultModelIDsForPlatform(capability.PlatformAntigravity)
+	modelIDs := h.catalog.ModelIDs()
 	if apiKey != nil {
 		modelIDs = apikey.AppendAPIKeyModelAliases(modelIDs, apiKey.ModelMapping)
 	}
@@ -201,8 +201,8 @@ func (h *ModelsHandler) WriteCompositeModelsList(c *gin.Context, modelIDs []stri
 	models := make([]gin.H, 0, len(modelIDs))
 	for _, modelID := range modelIDs {
 		models = append(models, gin.H{
-			"id": modelID, "object": "model", "type": "model", "created": 1704067200,
-			"created_at": "2024-01-01T00:00:00Z", "owned_by": "token-router", "display_name": modelID,
+			"id": modelID, "object": "model", "type": "model", "created": 0,
+			"created_at": "", "owned_by": "token-router", "display_name": modelID,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"object": "list", "data": models})
@@ -214,8 +214,8 @@ func (h *ModelsHandler) WriteModelsList(c *gin.Context, modelIDs []string) {
 		models = append(models, ClaudeModel{
 			ID:          modelID,
 			Type:        "model",
-			DisplayName: modelID,
-			CreatedAt:   "2024-01-01T00:00:00Z",
+			DisplayName: h.catalog.Model(modelID).DisplayName,
+			CreatedAt:   "",
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -236,27 +236,14 @@ func (h *ModelsHandler) WriteCustomModelsList(c *gin.Context, platform string, m
 }
 
 func (h *ModelsHandler) WriteGrokModelsList(c *gin.Context, modelIDs []string) {
-	defaults := h.catalog.GrokModels()
-	defaultsByID := make(map[string]GrokModel, len(defaults))
-	for _, model := range defaults {
-		defaultsByID[model.ID] = model
-	}
-
 	models := make([]grokModelListItem, 0, len(modelIDs))
 	for _, modelID := range modelIDs {
-		model, ok := defaultsByID[modelID]
-		if !ok {
-			model = GrokModel{
-				ID:          modelID,
-				Object:      "model",
-				OwnedBy:     "xai",
-				DisplayName: modelID,
-			}
-		}
+		metadata := h.catalog.Model(modelID)
+		model := GrokModel{ID: modelID, Object: "model", OwnedBy: "xai", DisplayName: metadata.DisplayName}
 		item := grokModelListItem{
 			GrokModel: model,
 			Type:      "model",
-			CreatedAt: "2024-01-01T00:00:00Z",
+			CreatedAt: "",
 		}
 		if GrokModelSupportsConfigurableReasoning(modelID) {
 			item.SupportsReasoningEffort = true
@@ -294,25 +281,9 @@ func (h *ModelsHandler) WriteDefaultModelsList(c *gin.Context, platform string, 
 }
 
 func (h *ModelsHandler) WriteOpenAIModelsList(c *gin.Context, modelIDs []string) {
-	defaultsByID := make(map[string]OpenAIModel, len(h.catalog.OpenAIModels()))
-	for _, model := range h.catalog.OpenAIModels() {
-		defaultsByID[model.ID] = model
-	}
-
 	models := make([]OpenAIModel, 0, len(modelIDs))
-	for _, modelID := range modelIDs {
-		if model, ok := defaultsByID[modelID]; ok {
-			models = append(models, model)
-			continue
-		}
-		models = append(models, OpenAIModel{
-			ID:          modelID,
-			Object:      "model",
-			Created:     1704067200,
-			OwnedBy:     "openai",
-			Type:        "model",
-			DisplayName: modelID,
-		})
+	for _, id := range modelIDs {
+		models = append(models, h.catalog.Model(id))
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"object": "list",
@@ -321,56 +292,15 @@ func (h *ModelsHandler) WriteOpenAIModelsList(c *gin.Context, modelIDs []string)
 }
 
 func (h *ModelsHandler) WriteClaudeCompatiblePlatformModelsList(c *gin.Context, platform string, modelIDs []string) {
-	defaultsByID := make(map[string]ClaudeModel)
-	appendDefault := func(id, modelType, displayName, createdAt string) {
-		defaultsByID[id] = ClaudeModel{
-			ID:          id,
-			Type:        modelType,
-			DisplayName: displayName,
-			CreatedAt:   createdAt,
-		}
-	}
-
-	switch platform {
-	case capability.PlatformGemini:
-		for _, model := range h.catalog.ClaudeModels(capability.PlatformGemini) {
-			appendDefault(model.ID, model.Type, model.DisplayName, model.CreatedAt)
-		}
-	case capability.PlatformAntigravity:
-		for _, model := range h.catalog.ClaudeModels(capability.PlatformAntigravity) {
-			appendDefault(model.ID, model.Type, model.DisplayName, model.CreatedAt)
-		}
-	case capability.PlatformQoder:
-		for _, model := range h.catalog.ClaudeModels(capability.PlatformQoder) {
-			appendDefault(model.ID, model.Type, model.DisplayName, model.CreatedAt)
-		}
-	default:
-		for _, model := range h.catalog.ClaudeModels(capability.PlatformAnthropic) {
-			appendDefault(model.ID, model.Type, model.DisplayName, model.CreatedAt)
-		}
-	}
-
 	models := make([]ClaudeModel, 0, len(modelIDs))
-	for _, modelID := range modelIDs {
-		if model, ok := defaultsByID[modelID]; ok {
-			models = append(models, model)
-			continue
-		}
-		models = append(models, ClaudeModel{
-			ID:          modelID,
-			Type:        "model",
-			DisplayName: modelID,
-			CreatedAt:   "2024-01-01T00:00:00Z",
-		})
+	for _, id := range modelIDs {
+		metadata := h.catalog.Model(id)
+		models = append(models, ClaudeModel{ID: id, Type: "model", DisplayName: metadata.DisplayName})
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"object": "list",
 		"data":   models,
 	})
-}
-
-func (h *ModelsHandler) DefaultModelIDsForPlatform(platform string) []string {
-	return modeldisplay.DefaultModelIDs(h.catalog, platform)
 }
 
 func FilterModelsByCustomList(availableModels, fallbackModels, selectedModels []string) []string {

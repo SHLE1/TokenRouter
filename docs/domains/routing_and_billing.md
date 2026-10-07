@@ -280,3 +280,5 @@ Usage Log 保存付款用户、行为用户或团队、Key、提供商、分组�
 - 新增计费类型时，测试要覆盖订阅和余额混合分配、团队归属、重复提交、死锁重试和日志写入失败。
 
 相关文档：[网关请求生命周期](../architecture/gateway_request_lifecycle.md)、[提供商调度与缓存一致性](../architecture/provider_scheduling_and_cache.md)、[网关策略控制](gateway_policy_controls.md)、[身份与租户](identity_and_tenancy.md)、[领域目录](index.md)。
+
+提供商模型范围由非空 `model_whitelist` 限定；字段缺失或为空时允许目录未知型号。`model_mapping` 负责一跳改写，最终型号仍需通过协议和平台执行资格检查。统一目录提供候选、属性及价格，目录是否收录型号不作为模型权限依据。

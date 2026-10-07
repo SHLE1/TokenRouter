@@ -10,7 +10,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 )
 
 // newMarketplaceFixture 只绑定原价卡及目录输入，规则由 routing 和 billing 唯一实现。
@@ -19,7 +18,7 @@ func newMarketplaceFixture(groups routing.MarketplaceGroups, settings routing.Ma
 	if calculator != nil {
 		prices = marketplaceQuoteFixture{calculator: calculator, resolver: resolver}
 	}
-	return routing.NewMarketplace(groups, settings, nil, routing.RequestableResolver{}, prices, nil, nil, routing.MarketplaceOptions{Now: time.Now, Warn: slog.Warn, DefaultModels: routingprovider.MarketplaceModelDefs, DisplayNames: routingprovider.MarketplaceDisplayNames})
+	return routing.NewMarketplace(groups, settings, nil, routing.RequestableResolver{}, prices, nil, nil, routing.MarketplaceOptions{Now: time.Now, Warn: slog.Warn})
 }
 
 func newMarketplaceCalculator(catalog *catalogprovider.Service, prices map[string]*pricing.ModelPricing) *billing.Calculator {

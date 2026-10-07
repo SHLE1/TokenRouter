@@ -200,3 +200,29 @@ func TestModelsCatalogAttributesOnlyWithUnknownPatch(t *testing.T) {
 	require.Nil(t, service.GetModelPricing("attributes-only"))
 	require.Equal(t, "No prices", *service.ModelAttributes("attributes-only").DisplayName)
 }
+
+// TestDirectoryReaderTracksPublishedVersion 候选和名称随成功发布更新，坏目录保留上一版。
+func TestDirectoryReaderTracksPublishedVersion(t *testing.T) {
+	remote := &catalogRemoteFixture{body: []byte(modelsCatalogFixture), etag: "v1"}
+	service := NewService(Options{RemoteURL: "https://models.dev/catalog.json", DataDir: t.TempDir()}, remote)
+	require.NoError(t, service.ForceUpdate())
+	version := service.ModelVersion()
+	require.Contains(t, service.ModelIDs(), "claude-test")
+	require.Equal(t, "Claude", *service.ModelEntry("claude-test").Attributes.DisplayName)
+	require.Nil(t, service.ModelEntry("unknown-model").Attributes.DisplayName)
+	remote.mu.Lock()
+	remote.body = []byte(`{"providers":{"anthropic":{"models":{"claude-new":{"name":"New name"}}}}}`)
+	remote.etag = "v2"
+	remote.mu.Unlock()
+	require.NoError(t, service.ForceUpdate())
+	require.NotEqual(t, version, service.ModelVersion())
+	require.Contains(t, service.ModelIDs(), "claude-new")
+	require.NotContains(t, service.ModelIDs(), "claude-test")
+	version = service.ModelVersion()
+	remote.mu.Lock()
+	remote.body = []byte(`invalid`)
+	remote.mu.Unlock()
+	require.Error(t, service.ForceUpdate())
+	require.Equal(t, version, service.ModelVersion())
+	require.Equal(t, "New name", *service.ModelEntry("claude-new").Attributes.DisplayName)
+}

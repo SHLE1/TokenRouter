@@ -10,7 +10,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
@@ -50,10 +49,10 @@ func newGroupAdminPortsForTest(repo routing.GroupRepository, duplicate routing.G
 		return group, err
 	}})
 	return routing.NewGroupAdmin(groupPortFixture{repo}, duplicates, sortOrder, providers, keys, invalidator, pricingConfigs, routing.GroupAdminOptions{
-		DefaultModels: routingprovider.DefaultGroupModelCandidates,
+		DefaultModels: func(string) []string { return []string{"claude-sonnet-4-6", "gpt-5.4"} },
 		ModelResolver: routing.RequestableResolver{
 			GroupPolicies: modelPolicies,
-			Defaults:      gatewayprovider.CatalogueDefaults(),
+			Defaults:      gatewayprovider.CatalogueDefaults(nil),
 			Warn:          slog.Warn,
 		},
 		GlobalWeights: func(ctx context.Context) (policy.ScoreWeights, error) {

@@ -263,7 +263,7 @@
 <a id="rule_list_editor"></a>
 ## 行列表编辑器
 
-逐条添加的映射和规则列表使用 `components/common/RuleListEditor.vue`。从来源模型到目标模型的映射使用基于它的 `ModelMappingEditor.vue`，提供商弹窗再包一层 `components/provider/ProviderModelMappingEditor.vue`，默认带上提供商映射的说明、占位和预设。
+逐条添加的映射和规则列表使用 `components/common/RuleListEditor.vue`。从来源模型到目标模型的映射使用基于它的 `ModelMappingEditor.vue`，提供商弹窗再包一层 `components/provider/ProviderModelMappingEditor.vue`，默认带上提供商映射的说明和占位。
 
 - 外壳只负责展示。增删和排序通过 `add`、`remove(index)`、`move(from, to)` 事件交给父级执行，所以既能接入向上 emit 的组件，也能接入用不可变更新的组件。
 - 头部左侧是标题和说明，右侧是带加号的 `btn btn-secondary` 添加按钮，行数达到 `max` 时按钮禁用。列表没有自己的标题（标题和开关在外层）时，使用 `add-placement="footer"`，按钮放到列表下方。
@@ -336,3 +336,5 @@
 
 - [系统架构](system_architecture.md)：前端在整体部署中的位置和静态资源的交付方式。
 - [开发、验证与上游同步](../operations/development_workflow.md)：前端工具链和验证分层。
+
+模型测试、定时测试、白名单及配置选择器显示实际 ID；模型广场和首页推荐卡片使用展示名称，并提供 ID 和复制操作。白名单候选通过统一属性目录分页搜索，保留已选项和手动输入；明确传入的候选范围直接使用。真实上游同步合并提供商返回的 ID，由管理员保存后生效。

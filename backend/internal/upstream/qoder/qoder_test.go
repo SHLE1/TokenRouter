@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -292,10 +293,7 @@ func TestComposeBearer(t *testing.T) {
 }
 
 func TestDefaultModels(t *testing.T) {
-	var ids []string
-	for _, model := range DefaultModels {
-		ids = append(ids, model.ID)
-	}
+	ids := DefaultRequestModelIDs()
 	want := []string{
 		"claude-opus-4-6",
 		"auto",
@@ -319,6 +317,7 @@ func TestDefaultModels(t *testing.T) {
 	if len(ids) != len(want) {
 		t.Fatalf("default model count = %d, want %d", len(ids), len(want))
 	}
+	slices.Sort(want)
 	for i := range want {
 		if ids[i] != want[i] {
 			t.Fatalf("default model %d = %q, want %q", i, ids[i], want[i])

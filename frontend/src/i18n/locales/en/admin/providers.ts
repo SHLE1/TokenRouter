@@ -922,12 +922,12 @@ export default {
       fromModel: 'Source model',
       toModel: 'Target model',
       modelMapping: 'Provider Model Mapping',
-      modelRestrictionCombinedHint: 'Apply the provider model mapping, then check the final model whitelist. An empty whitelist uses the default catalog for the provider platform and authentication type. Explicit mappings can add custom models. A trailing * or standalone * is supported; protocol and provider capabilities still apply.',
-      selectAllowedModels: 'Leave empty to use the default model catalog. Add model IDs, trailing wildcards, or * to define an explicit range.',
+      modelRestrictionCombinedHint: 'Apply the provider model mapping, then check the final model whitelist. Leave it empty to allow any model ID, including IDs missing from the catalog. A trailing * or standalone * is supported. Protocol and provider eligibility checks still apply.',
+      selectAllowedModels: 'Leave empty to allow any model ID. Add IDs or trailing wildcards to restrict the final models.',
       mapRequestModels:
         'Rewrite the model name received by this provider before sending it to the upstream API. If the group also has a mapping, group mapping runs first, followed by this provider mapping; unmatched names pass through unchanged.',
       selectedModels: 'Selected {count} model(s)',
-      supportsAllModels: 'Use default model catalog',
+      supportsAllModels: 'An empty whitelist allows any model ID',
       requestModel: 'Request model',
       actualModel: 'Actual model',
       addMapping: 'Add Mapping',
@@ -937,7 +937,7 @@ export default {
       targetNoWildcard: 'Target model cannot contain wildcard *',
       searchModels: 'Search models...',
       noMatchingModels: 'No matching models',
-      fillRelatedModels: 'Sync latest supported models',
+      loadMoreModels: 'Load more models',
       syncUpstreamModels: 'Sync upstream supported models',
       syncUpstreamModelsLoading: 'Syncing upstream...',
       syncUpstreamModelsSuccess: 'Synced {count} new model(s) from upstream ({total} upstream total)',
@@ -1407,7 +1407,7 @@ export default {
 	          missingProjectId: 'GCP Project ID retrieval failed: Your Google account is not linked to an active GCP project. Please activate GCP and bind a credit card in Google Cloud Console, or manually enter the Project ID during authorization.',
 	          modelPassthrough: 'Gemini Model Passthrough',
 	          modelPassthroughDesc:
-	            'Requests are forwarded to Gemini API. Model mappings, whitelists and the default model catalog still apply.',
+	            'Requests are forwarded to Gemini API using the configured model mappings and whitelist.',
 	          stateWarningTitle: 'Note',
 	          stateWarningDesc: 'Recommended: paste the full callback URL (includes code & state).',
 	          oauthTypeLabel: 'OAuth Type',
@@ -1459,7 +1459,7 @@ export default {
         },
         modelPassthrough: 'Gemini Model Passthrough',
         modelPassthroughDesc:
-          'Requests are forwarded to Gemini API. Model mappings, whitelists and the default model catalog still apply.',
+          'Requests are forwarded to Gemini API using the configured model mappings and whitelist.',
         baseUrlHint: 'Leave default for official Gemini API',
         apiKeyHint: 'Your Gemini API Key (starts with AIza)',
         connectionSource: {

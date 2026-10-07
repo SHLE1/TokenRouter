@@ -710,6 +710,7 @@ func TestBatchImagePublicService_ListModels(t *testing.T) {
 
 	t.Run("expands wildcard mappings against batch image candidates", func(t *testing.T) {
 		svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
+		svc.ModelIDs = func() []string { return []string{"gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"} }
 		providerRepo := testassert.MustType[*publicBatchImageProviderRepo](testassert.MustType[*batchProviderFixture](svc.ProviderRepo).source)
 		providerRepo.providers = []providercore.Record{testBatchImageMappedProvider(303, capability.ProviderTypeAPIKey, map[string]any{
 			"gemini-3.1-*": "gemini-3.1-flash-lite-image",

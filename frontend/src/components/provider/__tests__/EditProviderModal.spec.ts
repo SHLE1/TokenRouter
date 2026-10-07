@@ -814,8 +814,6 @@ describe('EditProviderModal', () => {
     updateProviderMock.mockResolvedValue(provider)
 
     const wrapper = mountModal(provider)
-    expect(wrapper.text()).toContain('Imagine Image')
-    expect(wrapper.text()).toContain('Imagine Video')
 
     const inputWithValue = (value: string) => {
       const input = wrapper

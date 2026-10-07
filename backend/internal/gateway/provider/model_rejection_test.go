@@ -10,10 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultRequestModelIDsForPlatformQoder(t *testing.T) {
-	require.Equal(t, qoder.DefaultRequestModelIDs(), DefaultRequestModels(capability.PlatformQoder))
-}
-
 func TestAvailableRequestModelsFromProvidersUsesQoderProviderSite(t *testing.T) {
 	newProvider := func(id int64, site string) providercore.Record {
 		return providercore.Record{

@@ -16,6 +16,9 @@ import (
 // 它会聚合每个提供商显式配置的“可请求模型”（model_mapping 的 key 或独立 model_whitelist）。
 func (s *ModelList) Available(ctx context.Context, groupID *int64, platform string) []string {
 	cacheKey := ModelListCacheKey(groupID, platform)
+	if s.Version != nil {
+		cacheKey += "|" + s.Version()
+	}
 	if s.Cache != nil {
 		if cached, found := s.Cache.Get(cacheKey); found {
 			if models, ok := cached.([]string); ok {
@@ -36,7 +39,7 @@ func (s *ModelList) Available(ctx context.Context, groupID *int64, platform stri
 	}
 
 	models := ConfiguredRequestModelsFromProviders(providers, platform)
-	// 没有提供商显式模型范围时返回 nil，由调用方使用平台默认模型。
+	// 具体配置为空时，后续解析仍会合并统一目录候选。
 	if len(models) == 0 {
 		if s.Cache != nil {
 			s.Cache.Set(cacheKey, []string(nil), s.TTL)
@@ -58,16 +61,11 @@ func (s *ModelList) Invalidate(groupID *int64, platform string) {
 	}
 
 	normalizedPlatform := strings.TrimSpace(platform)
-	// 完整匹配时精准失效；否则按维度批量失效。
-	if groupID != nil && normalizedPlatform != "" {
-		s.Cache.Delete(ModelListCacheKey(groupID, normalizedPlatform))
-		return
-	}
-
+	// 配置变化需要清理对应分组和平台的所有目录版本。
 	targetGroup := modelListGroupID(groupID)
 	for key := range s.Cache.Items() {
-		parts := strings.SplitN(key, "|", 2)
-		if len(parts) != 2 {
+		parts := strings.SplitN(key, "|", 3)
+		if len(parts) < 2 {
 			continue
 		}
 		groupPart, parseErr := strconv.ParseInt(parts[0], 10, 64)
@@ -90,9 +88,10 @@ func ModelListCacheKey(groupID *int64, platform string) string {
 
 // ModelList 维护原模型列表短缓存，构造时不启动 janitor，由应用时间轮执行到期清理。
 type ModelList struct {
-	Cache *gocache.Cache
-	TTL   time.Duration
-	Read  func(context.Context, *int64) ([]CatalogueProvider, error)
+	Version func() string
+	Cache   *gocache.Cache
+	TTL     time.Duration
+	Read    func(context.Context, *int64) ([]CatalogueProvider, error)
 }
 
 func NewModelList(read func(context.Context, *int64) ([]CatalogueProvider, error), ttl time.Duration) *ModelList {

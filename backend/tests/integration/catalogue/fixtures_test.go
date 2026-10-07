@@ -12,7 +12,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 )
 
 const modelRateLimitsKey = "model_rate_limits"
@@ -94,7 +93,7 @@ func newCatalogueFixture(rows catalogueRows, pricingConfigs *routing.PricingConf
 	if pricingConfigs != nil {
 		pricingConfigPort = pricingConfigs
 	}
-	core := &routing.RequestableCatalogue{Models: &routing.ModelList{Read: read}, Read: read, Resolver: routing.RequestableResolver{GroupPolicies: pricingConfigPort, Defaults: gatewayprovider.CatalogueDefaults(), Warn: slog.Warn}, Warn: slog.Warn}
+	core := &routing.RequestableCatalogue{Models: &routing.ModelList{Read: read}, Read: read, Resolver: routing.RequestableResolver{GroupPolicies: pricingConfigPort, Defaults: gatewayprovider.CatalogueDefaults(nil), Warn: slog.Warn}, Warn: slog.Warn}
 	return &catalogueFixture{RequestableCatalogue: core, prices: prices}
 }
 
@@ -135,7 +134,7 @@ func (p cataloguePrices) GetModelModalities(model string) ([]string, []string) {
 
 func newCatalogueMarketplace(groups routing.MarketplaceGroups, catalogue *catalogueFixture, calculator *billing.Calculator) *routing.Marketplace {
 	var source routing.MarketplaceModels
-	resolver := routing.RequestableResolver{Defaults: gatewayprovider.CatalogueDefaults(), Warn: slog.Warn}
+	resolver := routing.RequestableResolver{Defaults: gatewayprovider.CatalogueDefaults(nil), Warn: slog.Warn}
 	var priceSource routing.MarketplacePrices
 	if catalogue != nil {
 		source = catalogue.RequestableCatalogue
@@ -151,5 +150,5 @@ func newCatalogueMarketplace(groups routing.MarketplaceGroups, catalogue *catalo
 		}
 		priceSource = cataloguePrices{prices, calculator}
 	}
-	return routing.NewMarketplace(groups, nil, source, resolver, priceSource, nil, nil, routing.MarketplaceOptions{Now: time.Now, Warn: slog.Warn, DefaultModels: routingprovider.MarketplaceModelDefs, DisplayNames: routingprovider.MarketplaceDisplayNames})
+	return routing.NewMarketplace(groups, nil, source, resolver, priceSource, nil, nil, routing.MarketplaceOptions{Now: time.Now, Warn: slog.Warn})
 }

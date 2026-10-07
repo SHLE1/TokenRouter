@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	catalogtest "github.com/TokenFlux/TokenRouter/internal/modelcatalog/testkit"
+
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
@@ -333,6 +336,7 @@ func TestResolveRequestableModels_UpstreamMarksAntigravityThinkingVariantAmbiguo
 	provider := providercore.Record{ID: 75, Platform: capability.PlatformAntigravity}
 	svc := newCatalogueFixture(&modelsListProviderRepoStub{byGroup: map[int64][]providercore.Record{groupID: {provider}}}, routingtestkit.PricingConfig(groupID, capability.PlatformAntigravity, pricingConfig), nil)
 
+	svc.Resolver.Defaults = gatewayprovider.CatalogueDefaults(catalogtest.New("claude-sonnet-4-5"))
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformAntigravity)
 	model, ok := requestableModelByID(result.Models, "claude-sonnet-4-5")
 	require.True(t, ok)
@@ -494,13 +498,13 @@ func TestResolveRequestableModels_QoderRequiresEffectivePricing(t *testing.T) {
 	require.Contains(t, routing.RequestableModelIDs(result.Models), "qoder-model")
 }
 
-func TestResolveRequestableModels_ProviderQueryFailureKeepsFallback(t *testing.T) {
+func TestResolveRequestableModels_ProviderQueryFailureKeepsEmpty(t *testing.T) {
 	groupID := int64(4109)
 	svc := newCatalogueFixture(&modelsListProviderRepoStub{err: errors.New("temporary failure")}, nil, nil)
 
 	result := svc.ResolveRequestableModels(context.Background(), &groupID, capability.PlatformOpenAI)
-	require.False(t, result.Restricted)
-	require.Contains(t, routing.RequestableModelIDs(result.Models), "gpt-5.5")
+	require.True(t, result.Restricted)
+	require.Empty(t, routing.RequestableModelIDs(result.Models))
 }
 
 // TestResolveRequestableModels_SecondProviderQueryRestoresWhitelistCandidates 验证缓存层查询失败后仍使用当前提供商白名单。

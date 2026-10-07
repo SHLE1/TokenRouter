@@ -66,7 +66,7 @@
             :options="availableModels"
             :disabled="loadingModels || busy"
             value-key="id"
-            label-key="display_name"
+            label-key="id"
             creatable
             :placeholder="loadingModels ? t('common.loading') : t('admin.providers.testDialog.modelPlaceholder')"
           />

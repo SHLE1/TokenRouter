@@ -38,40 +38,40 @@ func TestAntigravityGatewayService_GetMappedModel(t *testing.T) {
 
 		// 2. 默认映射（DefaultAntigravityModelMapping）
 		{
-			name:            "默认映射 - claude-opus-4-6 → claude-opus-4-6-thinking",
+			name:            "未配置映射时透传 claude-opus-4-6",
 			requestedModel:  "claude-opus-4-6",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-opus-4-6",
 		},
 		{
-			name:            "默认映射 - claude-opus-4-5-20251101 → claude-opus-4-6-thinking",
+			name:            "未配置映射时透传 claude-opus-4-5-20251101",
 			requestedModel:  "claude-opus-4-5-20251101",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-opus-4-5-20251101",
 		},
 		{
-			name:            "默认映射 - claude-opus-4-5-thinking → claude-opus-4-6-thinking",
+			name:            "未配置映射时透传 claude-opus-4-5-thinking",
 			requestedModel:  "claude-opus-4-5-thinking",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-opus-4-5-thinking",
 		},
 		{
-			name:            "默认映射 - claude-haiku-4-5 → claude-sonnet-4-6",
+			name:            "未配置映射时透传 claude-haiku-4-5",
 			requestedModel:  "claude-haiku-4-5",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-haiku-4-5",
 		},
 		{
-			name:            "默认映射 - claude-haiku-4-5-20251001 → claude-sonnet-4-6",
+			name:            "未配置映射时透传 claude-haiku-4-5-20251001",
 			requestedModel:  "claude-haiku-4-5-20251001",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-haiku-4-5-20251001",
 		},
 		{
-			name:            "默认映射 - claude-sonnet-4-5-20250929 → claude-sonnet-4-5",
+			name:            "未配置映射时透传 claude-sonnet-4-5-20250929",
 			requestedModel:  "claude-sonnet-4-5-20250929",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-sonnet-4-5-20250929",
 		},
 
 		// 3. 默认映射中的透传（映射到自己）
@@ -142,36 +142,36 @@ func TestAntigravityGatewayService_GetMappedModel(t *testing.T) {
 			expected:        "gemini-3-flash",
 		},
 
-		// 4. 未在默认映射中的模型返回空字符串（不支持）
+		// 未配置白名单的型号直接交给上游。
 		{
-			name:            "未知模型 - claude-unknown 返回空",
+			name:            "未知模型 - claude-unknown 保持原 ID",
 			requestedModel:  "claude-unknown",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-unknown",
 		},
 		{
-			name:            "未知模型 - claude-3-5-sonnet-20241022 返回空（未在默认映射）",
+			name:            "未知模型 - claude-3-5-sonnet-20241022 保持原 ID",
 			requestedModel:  "claude-3-5-sonnet-20241022",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-3-5-sonnet-20241022",
 		},
 		{
-			name:            "未知模型 - claude-3-opus-20240229 返回空",
+			name:            "未知模型 - claude-3-opus-20240229 保持原 ID",
 			requestedModel:  "claude-3-opus-20240229",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-3-opus-20240229",
 		},
 		{
-			name:            "未知模型 - claude-opus-4 返回空",
+			name:            "未知模型 - claude-opus-4 保持原 ID",
 			requestedModel:  "claude-opus-4",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "claude-opus-4",
 		},
 		{
-			name:            "未知模型 - gemini-future-model 返回空",
+			name:            "未知模型 - gemini-future-model 保持原 ID",
 			requestedModel:  "gemini-future-model",
 			providerMapping: nil,
-			expected:        "",
+			expected:        "gemini-future-model",
 		},
 	}
 
@@ -203,10 +203,10 @@ func TestAntigravityGatewayService_GetMappedModel_EdgeCases(t *testing.T) {
 		requestedModel string
 		expected       string
 	}{
-		// 空字符串和非 claude/gemini 前缀返回空字符串
+		// 空字符串保持为空，其他厂商型号交给上游。
 		{"空字符串", "", ""},
-		{"非claude/gemini前缀 - gpt", "gpt-4", ""},
-		{"非claude/gemini前缀 - llama", "llama-3", ""},
+		{"非claude/gemini前缀 - gpt", "gpt-4", "gpt-4"},
+		{"非claude/gemini前缀 - llama", "llama-3", "llama-3"},
 	}
 
 	for _, tt := range tests {
@@ -243,7 +243,7 @@ func TestMapAntigravityModel_WildcardTargetEqualsRequest(t *testing.T) {
 			name:           "wildcard no match",
 			modelMapping:   map[string]any{"claude-*": "claude-sonnet-4-5"},
 			requestedModel: "gpt-4o",
-			expected:       "",
+			expected:       "gpt-4o",
 		},
 		{
 			name:           "explicit passthrough same name",
@@ -261,7 +261,7 @@ func TestMapAntigravityModel_WildcardTargetEqualsRequest(t *testing.T) {
 			name:           "customtools alias falls back to normalized preview mapping",
 			modelMapping:   map[string]any{"gemini-3.1-pro-preview": "gemini-3.1-pro-high"},
 			requestedModel: "gemini-3.1-pro-preview-customtools",
-			expected:       "",
+			expected:       "gemini-3.1-pro-preview-customtools",
 		},
 	}
 

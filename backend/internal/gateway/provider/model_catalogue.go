@@ -6,54 +6,23 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// DefaultRequestModels 延续各平台原目录来源与未知平台回退，不另建模型缓存。
-func DefaultRequestModels(platform string) []string {
-	switch platform {
-	case capability.PlatformOpenAI:
-		return openai.DefaultModelIDs()
-	case capability.PlatformGemini:
-		ids := make([]string, 0, len(codeassist.DefaultModels))
-		for _, model := range codeassist.DefaultModels {
-			ids = append(ids, model.ID)
+// CatalogueDefaults 从统一目录提供候选，专用路由别名由提供商配置读取器加入。
+func CatalogueDefaults(catalog modelcatalog.Reader) routing.CatalogueDefaults {
+	ids := func() []string {
+		if catalog == nil {
+			return nil
 		}
-		return ids
-	case capability.PlatformAntigravity:
-		models := antigravity.DefaultModels()
-		ids := make([]string, 0, len(models))
-		for _, model := range models {
-			ids = append(ids, model.ID)
-		}
-		return ids
-	case capability.PlatformQoder:
-		return qoder.DefaultRequestModelIDs()
-	case capability.PlatformGrok:
-		return grok.DefaultModelIDs()
-	default:
-		return anthropic.DefaultModelIDs()
+		return catalog.ModelIDs()
 	}
-}
-
-func CatalogueDefaults() routing.CatalogueDefaults {
-	return routing.CatalogueDefaults{Platform: DefaultRequestModels, Qoder: func(cn bool) []string {
-		site := qoder.SiteGlobal
-		if cn {
-			site = qoder.SiteCN
-		}
-		return qoder.DefaultRequestModelIDsForSite(site)
-	}}
+	return routing.CatalogueDefaults{Platform: func(string) []string { return ids() }}
 }
 
 type catalogueRules struct{ policy ModelPolicy }
@@ -85,15 +54,6 @@ func (v catalogueRules) ConfiguredModels() []string {
 
 func (v catalogueRules) Mapping() map[string]string {
 	return provider.ResolveModelMapping(v.policy.Record, provideradapter.ModelDefaults())
-}
-
-func (v catalogueRules) Unrestricted() bool {
-	return v.policy.Record.HasUnrestrictedModelScope(provideradapter.ModelDefaults())
-}
-
-func (v catalogueRules) QoderCN() bool {
-	site, err := qoder.ParseSite(v.policy.Record.GetCredential("site"))
-	return err == nil && site == qoder.SiteCN
 }
 
 func (v catalogueRules) Supports(ctx context.Context, model string) bool {

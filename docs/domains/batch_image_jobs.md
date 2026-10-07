@@ -364,3 +364,5 @@ go test ./... -run '^$'
 这些命令不应依赖 Docker、Testcontainers、Redis、GCP、Gemini、Vertex 或 GCS。
 
 相关 Project Doc：[路由与结算](routing_and_billing.md)、[复合 API Key](composite_api_keys.md)、[网关请求生命周期](../architecture/gateway_request_lifecycle.md)和[领域目录](index.md)。
+
+批量图片的模型候选来自统一目录、提供商白名单与映射、分组规则。映射中的通配符按这些候选展开，模型列表再检查最终图片型号、提供商资格及按张价格。提供商空白名单允许任意型号，模型映射按一跳执行。

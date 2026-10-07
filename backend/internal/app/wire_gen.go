@@ -8,7 +8,6 @@ package app
 
 import (
 	"context"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	postgres8 "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/apikey/rediscache"
@@ -85,9 +84,14 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 		return nil, err
 	}
 	groupStore := provideRoutingGroupStore(client, db)
+	remoteClient := provideModelCatalogRemoteClient(cfg)
+	service, err := provideModelCatalogService(cfg, remoteClient)
+	if err != nil {
+		return nil, err
+	}
 	snapshotCache := provideSchedulerCache(redisClient, cfg)
 	providerStore := provideProviderStore(client, db, snapshotCache)
-	modelList := provideRoutingModelList(providerStore, cfg)
+	modelList := provideRoutingModelList(service, providerStore, cfg)
 	pricingConfigStore := postgres.NewPricingConfigStore(db)
 	preAggregationSettingsService := providePreAggregationSettings(store, cfg)
 	keyStore := provideKeyStore(client, db, preAggregationSettingsService)
@@ -105,12 +109,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	apiKeyService := provideKeys(keyStore, userStore, groupStore, subscriptionStore, groupRateStore, apiKeyCache, cfg, eligibility, concurrencyService, teamRepository, calendar)
 	apiKeyAuthCacheInvalidator := provideKeyInvalidator(apiKeyService)
 	pricingConfigService := providePricingConfigService(pricingConfigStore, groupStore, apiKeyAuthCacheInvalidator)
-	requestableCatalogue := provideRequestableCatalogue(modelList, providerStore, pricingConfigService)
-	remoteClient := provideModelCatalogRemoteClient(cfg)
-	service, err := provideModelCatalogService(cfg, remoteClient)
-	if err != nil {
-		return nil, err
-	}
+	requestableCatalogue := provideRequestableCatalogue(service, modelList, providerStore, pricingConfigService)
 	calculator := provideBillingCalculator(service, calendar)
 	priceResolver := provideBillingPriceResolver(pricingConfigService, calculator)
 	sessionLimitCache := provideSessionCache(redisClient, cfg)
@@ -183,7 +182,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	contentModerationService := provideModerationCore(store, contentModerationRepository, contentModerationHashCache, groupStore, riskStatusCommands, proxyStore, apiKeyService, riskDelivery, tasks)
 	creativeRuntimeSettings := provideCreativeRuntimeSettings(store)
 	creativeRunOutboxRepository := postgres5.NewCreativeRunOutboxRepository(db)
-	public := provideCreativePublic(creativeRunRepository, keyStore, userStore, providerStore, groupStore, groupRateStore, creativeRunQueue, creativeTransientStore, funds, settlementStore, usageLogRepository, priceResolver, pricingConfigService, contentModerationService, apiKeyAuthCacheInvalidator, creativeRuntimeSettings, cfg, creativeRunOutboxRepository)
+	public := provideCreativePublic(service, creativeRunRepository, keyStore, userStore, providerStore, groupStore, groupRateStore, creativeRunQueue, creativeTransientStore, funds, settlementStore, usageLogRepository, priceResolver, pricingConfigService, contentModerationService, apiKeyAuthCacheInvalidator, creativeRuntimeSettings, cfg, creativeRunOutboxRepository)
 	providerUsageStore := provideProviderUsage(db, providerStore, snapshotCache)
 	providerExecutionProviderStore := provideExecutionProviderStore(providerStore, providerUsageStore)
 	openAITaskCoordinator := provideAgentTaskCoordinator()
@@ -315,7 +314,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	tlsFingerprintProfileHandler := provideEgressProfileHTTP(tlsFingerprintProfileService, tlsFingerprintCollectorService)
 	privacyService := provideProviderPrivacy(providerStore, proxyStore, privacyClientFactory, manager)
 	admin := provideProviderAdmin(providerStore, providerUsageStore, runtimeBlockState, privacyService, groupStore, proxyStore, tasks, transportClient, tlsProfiles)
-	groupAdmin := provideRoutingGroupAdmin(groupStore, providerStore, keyStore, apiKeyAuthCacheInvalidator, pricingConfigService, store, adminDefaults)
+	groupAdmin := provideRoutingGroupAdmin(service, groupStore, providerStore, keyStore, apiKeyAuthCacheInvalidator, pricingConfigService, store, adminDefaults)
 	diagnostics := provideProviderDiagnostics(admin, groupAdmin, concurrencyService, generic, compatible, appSchedulerSharedState)
 	diagnosticsHandler := provideSchedulerDiagnosticsHTTP(diagnostics)
 	tlsFingerprintRouterHandler := httpapi5.NewTLSFingerprintRouterHandler(tlsFingerprintRouterService)
@@ -346,7 +345,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	managedRefreshService := provideManagedRefresh(admin, privacyService, oAuthRefreshAPI, transportClient, tlsProfiles, claudeAuthorization, openAIAuthorization, geminiAuthorization, antigravityAuthorization, grokAuthorization, tokenCacheInvalidator)
 	recoveryService := provideProviderRecovery(appProviderHealthRuntime)
 	managementList := provideProviderManagementList(admin, ollamaCloudUsageService, concurrencyService, postgresStore, sessionLimitCache, rpmCache, quotaSettingsCache, appSchedulerSharedState, store, cfg)
-	adminCatalog := provideAdminModelCatalog()
+	adminCatalog := provideAdminModelCatalog(service)
 	tierManagement := provideProviderTier(admin, geminiAuthorization, manager)
 	claudeTokenSource := provideClaudeTokens(providerStore, accessTokenCache, claudeAuthorization, oAuthRefreshAPI)
 	antigravityTokenSource := provideAntigravityTokens(providerStore, accessTokenCache, antigravityAuthorization, oAuthRefreshAPI, tempUnschedCache)
@@ -489,7 +488,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	openAIWebSocketExecutor := provideOpenAIWebSockets(runtime, cfg, openAIWSConnections, openAITextExecutor, promptpolicyService, compatible, openAIEncryptedLineage, responseImagePolicy, gatewayCache)
 	requestCredentialExecutor := provideRequestCredentialExecutor(requestCredentials)
 	responsesWSHandler := provideResponsesWSHTTP(openAIWebSocketExecutor, requestCredentialExecutor, fundingAdmission, apiKeyService, bindings, promptpolicyService, cyberBlocks, cfg, appGatewayRequestActivity, compatible, routePlanner, subscriptionService, priceResolver)
-	modelsHandler := provideModelsHTTP(requestableCatalogue, googleforwardGemini, appGatewayRequestActivity, gemini)
+	modelsHandler := provideModelsHTTP(service, requestableCatalogue, googleforwardGemini, appGatewayRequestActivity, gemini)
 	messagesHandler := provideMessagesHTTP(appMessageHTTPBindings, textattemptRuntime, appGatewayRequestActivity)
 	videoTasks := provideGrokVideoTasks(gatewayCache, cfg)
 	openAIImagesExecutor := provideOpenAIImages(openAITextExecutor, appGatewayRequestActivity)
@@ -506,7 +505,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	batchImageQueue := provideBatchQueue(redisClient, cfg)
 	pricing := provideBatchPricing(priceResolver, groupRepository, pricingConfigService)
 	batchimageRegistry := provideBatchRegistry(cfg)
-	batchimagePublic := provideBatchPublic(batchImageRepository, providerStore, pricingConfigService, groupRepository, groupRateStore, batchImageQueue, pricing, funds, settlementStore, apiKeyAuthCacheInvalidator, cfg, batchimageRegistry)
+	batchimagePublic := provideBatchPublic(service, batchImageRepository, providerStore, pricingConfigService, groupRepository, groupRateStore, batchImageQueue, pricing, funds, settlementStore, apiKeyAuthCacheInvalidator, cfg, batchimageRegistry)
 	batchImageDownloadLimiter := provideBatchDownloadLimiter(redisClient, cfg)
 	download := provideBatchDownload(batchImageRepository, providerStore, batchImageDownloadLimiter, cfg, batchimageRegistry)
 	cleanup := provideBatchCleanup(batchImageRepository, providerStore, cfg, batchimageRegistry)

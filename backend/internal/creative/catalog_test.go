@@ -31,6 +31,9 @@ func creativeProviderModelsForTest(t *testing.T, value *providercore.Record) []s
 	}
 	value.Schedulable = true
 	svc := &creative.Public{ProviderRepo: creativeCatalogTestProviders{[]creative.CatalogProvider{creativeprovider.CatalogProvider(value)}}}
+	svc.ModelIDs = func() []string {
+		return []string{"grok-imagine-image", "grok-imagine-image-quality", "grok-imagine-image-2.0"}
+	}
 	models, err := svc.CreativeModelsForGroup(context.Background(), &creative.GroupView{ID: 12, Operations: creative.OperationsForGroup(false, nil)})
 	require.NoError(t, err)
 	result := make([]string, 0, len(models))

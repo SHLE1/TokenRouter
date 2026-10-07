@@ -28,7 +28,7 @@ func WriteGroupSelectionBusinessError(c *gin.Context, err error, streamStarted b
 			if platform == "" {
 				platform = ""
 			}
-			availableModels := FilterModelsByCustomList(modelErr.AvailableModels, modeldisplay.DefaultModelIDs(catalogue, platform), apiKey.Group.ModelsListConfig.Models)
+			availableModels := FilterModelsByCustomList(modelErr.AvailableModels, catalogue.ModelIDs(), apiKey.Group.ModelsListConfig.Models)
 			message = (&routing.GroupModelUnsupportedError{
 				RequestedModel:  modelErr.RequestedModel,
 				AvailableModels: availableModels,

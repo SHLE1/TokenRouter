@@ -5,9 +5,10 @@ import (
 	"database/sql"
 	"log/slog"
 
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 
-	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
@@ -50,12 +51,12 @@ func provideGroupReader(store *routingpostgres.GroupStore) routing.GroupReposito
 	return store
 }
 
-func provideRoutingGroupAdmin(store *routingpostgres.GroupStore, providers *providerpostgres.ProviderStore, keys *apikeypostgres.KeyStore, invalidator apikey.APIKeyAuthCacheInvalidator, modelConfigs *routing.PricingConfigService, settings *settingscore.Store, defaults *scheduler.AdminDefaults) *routing.GroupAdmin {
+func provideRoutingGroupAdmin(catalog *catalogprovider.Service, store *routingpostgres.GroupStore, providers *providerpostgres.ProviderStore, keys *apikeypostgres.KeyStore, invalidator apikey.APIKeyAuthCacheInvalidator, modelConfigs *routing.PricingConfigService, settings *settingscore.Store, defaults *scheduler.AdminDefaults) *routing.GroupAdmin {
 	return routing.NewGroupAdmin(store, store, store, routingGroupProviders{Store: providers}, keys, invalidator, modelConfigs, routing.GroupAdminOptions{
-		DefaultModels: routingprovider.DefaultGroupModelCandidates,
+		DefaultModels: func(string) []string { return catalog.ModelIDs() },
 		ModelResolver: routing.RequestableResolver{
 			GroupPolicies: modelConfigs,
-			Defaults:      provider.CatalogueDefaults(),
+			Defaults:      provider.CatalogueDefaults(catalog),
 			Warn:          slog.Warn,
 		},
 		GlobalWeights: func(ctx context.Context) (policy.ScoreWeights, error) {

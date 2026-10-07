@@ -7568,7 +7568,7 @@ async function loadHomeFeaturedModelOptions() {
       for (const model of group.models) {
         options.push({
           value: model.id,
-          label: model.display_name ? `${model.display_name}（${model.id}）` : model.id,
+          label: model.id,
         });
       }
     }

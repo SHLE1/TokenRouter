@@ -46,41 +46,10 @@ const (
 	QoderDSMLParameterEnd   = "</｜｜DSML｜｜parameter>"
 )
 
-// DefaultQoderModelAliases 将兜底的 TokenRouter 请求侧 alias 映射到 Qoder API key。
-// 已配置 model_mapping 的 Qoder 提供商以提供商配置为准，此表仅作为兜底路由和默认展示面。
-var DefaultQoderModelAliases = map[string]QoderModelInfo{
-	// 通过加密 reasoning metadata 确认该路由为 Claude Opus 4.6。
-	"claude-opus-4-6": {Key: "ultimate", Source: "system", Provider: "Claude", Notes: "Confirmed Claude Opus 4.6 via encrypted reasoning metadata.", DisplayName: "Claude Opus 4.6"},
-	// Qoder 自动选择路由，具体上游模型动态变化且未确认。
-	"auto": {Key: "auto", Source: "system", Provider: "Qoder", Notes: "Qoder-selected route; exact upstream model is dynamic and unconfirmed.", DisplayName: "Qoder Auto"},
-	// Qoder performance/efficient/lite tier 目前没有确认到具体供应商模型。
-	"performance": {Key: "performance", Source: "system", Provider: "Qoder", Notes: "Qoder performance tier; exact upstream model is unconfirmed.", DisplayName: "Qoder Performance"},
-	"efficient":   {Key: "efficient", Source: "system", Provider: "Qoder", Notes: "Qoder efficient tier; exact upstream model is unconfirmed.", DisplayName: "Qoder Efficient"},
-	// Qoder lite tier 尚未验证，观测结果不完全一致。
-	"lite": {Key: "lite", Source: "system", Provider: "Qoder", Notes: "Unverified Qoder lite tier; observations are mixed.", DisplayName: "Qoder Lite"},
-	// Qoder UI 暴露的是这些供应商模型名，这里把可读公开 alias 映射到内部 route key。
-	"qwen3.8-max":       {Key: "qmodel_38max", Source: "system", Provider: "Qwen", Notes: "Qoder UI model name Qwen3.8-Max.", DisplayName: "Qwen3.8-Max"},
-	"qwen3.7-max":       {Key: "qmodel_latest", Source: "system", Provider: "Qwen", Notes: "Qoder UI model name Qwen3.7-Max.", DisplayName: "Qwen3.7-Max"},
-	"qwen3.7-plus":      {Key: "qmodel", Source: "system", Provider: "Qwen", Notes: "Qoder UI model name Qwen3.7-Plus.", DisplayName: "Qwen3.7-Plus"},
-	"qwen3.6-flash":     {Key: "q36fmodel", Source: "system", Provider: "Qwen", Notes: "Qoder CN UI model name Qwen3.6-Flash.", DisplayName: "Qwen3.6-Flash"},
-	"deepseek-v4-pro":   {Key: "dmodel", Source: "system", Provider: "DeepSeek", Notes: "Qoder UI model name DeepSeek-V4-Pro.", DisplayName: "DeepSeek-V4-Pro"},
-	"deepseek-v4-flash": {Key: "dfmodel", Source: "system", Provider: "DeepSeek", Notes: "Qoder UI model name DeepSeek-V4-Flash.", DisplayName: "DeepSeek-V4-Flash"},
-	"glm-5.3":           {Key: "gmodel", Source: "system", Provider: "GLM", Notes: "Qoder UI model name GLM-5.3.", DisplayName: "GLM-5.3"},
-	"glm-5.2":           {Key: "gm51model", Source: "system", Provider: "GLM", Notes: "Qoder UI model name GLM-5.2.", DisplayName: "GLM-5.2"},
-	// Qoder 1.15.0 起同时展示 Kimi-K3 与 Kimi-K2.7-Code，两者使用不同路由 key。
-	"kimi-k3":        {Key: "kmodel_latest", Source: "system", Provider: "Kimi", Notes: "Qoder UI model name Kimi-K3.", DisplayName: "Kimi-K3"},
-	"kimi-k2.7-code": {Key: "kmodel", Source: "system", Provider: "Kimi", Notes: "Qoder UI model name Kimi-K2.7-Code.", DisplayName: "Kimi-K2.7-Code"},
-	"minimax-m3":     {Key: "mmodel", Source: "system", Provider: "MiniMax", Notes: "Qoder UI model name MiniMax-M3.", DisplayName: "MiniMax-M3"},
-	"minimax-m2.7":   {Key: "mmodel", Source: "system", Provider: "MiniMax", Notes: "Qoder CN UI model name MiniMax-M2.7.", DisplayName: "MiniMax-M2.7"},
-}
-
+// QoderModelInfo 包含上游请求的路由键和来源标记。
 type QoderModelInfo struct {
-	Key         string `json:"key"`
-	Source      string `json:"source"`
-	Provider    string `json:"provider,omitempty"`
-	Notes       string `json:"notes,omitempty"`
-	DisplayName string `json:"display_name,omitempty"`
-	Description string `json:"description,omitempty"`
+	Key    string `json:"key"`
+	Source string `json:"source"`
 }
 
 type QoderMessage struct {
@@ -2554,19 +2523,18 @@ func GjsonBool(body []byte, path string) bool {
 
 // LookupQoderModelAlias 仅解析当前公开 alias，未命中的模型由调用方原样透传。
 func LookupQoderModelAlias(model string) (QoderModelInfo, bool) {
-	model = NormalizeQoderAliasModel(model)
-	info, ok := DefaultQoderModelAliases[model]
-	return info, ok
+	for _, site := range []Site{SiteGlobal, SiteCN} {
+		if info, ok := LookupQoderModelAliasForSite(site, model); ok {
+			return info, true
+		}
+	}
+	return QoderModelInfo{}, false
 }
 
-// LookupQoderModelAliasForSite 只解析提供商站点实际支持的公开 alias。
+// LookupQoderModelAliasForSite 使用站点实际的路由映射。
 func LookupQoderModelAliasForSite(site Site, model string) (QoderModelInfo, bool) {
-	model = NormalizeQoderAliasModel(model)
-	if _, ok := AliasForSite(site, model); !ok {
-		return QoderModelInfo{}, false
-	}
-	info, ok := DefaultQoderModelAliases[model]
-	return info, ok
+	key, ok := AliasForSite(site, NormalizeQoderAliasModel(model))
+	return QoderModelInfo{Key: key, Source: "system"}, ok
 }
 
 func NormalizeQoderAliasModel(model string) string {

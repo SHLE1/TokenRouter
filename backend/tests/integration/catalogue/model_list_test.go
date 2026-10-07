@@ -163,7 +163,7 @@ func TestGetAvailableModels_GlobalListPreservesMappedModelsWithOpenAIPassthrough
 
 	models := svc.Available(context.Background(), &groupID, "")
 	require.Contains(t, models, "claude-mapped")
-	require.Contains(t, models, "gpt-5.6-sol")
+	require.NotContains(t, models, "gpt-5.6-sol", "配置缓存只保存提供商明确的型号")
 	require.NotContains(t, models, "unknown-model")
 }
 

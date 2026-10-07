@@ -40,11 +40,7 @@ func TestMarketplaceCapacityQuery(t *testing.T) {
 	} {
 		t.Run(tc.query, func(t *testing.T) {
 			capacity := &marketplaceHTTPCapacity{}
-			core := routing.NewMarketplace(marketplaceHTTPGroups{}, nil, nil, routing.RequestableResolver{}, nil, capacity, nil, routing.MarketplaceOptions{
-				DefaultModels: func(string) []routing.MarketplaceModelDef {
-					return []routing.MarketplaceModelDef{{ID: "model"}}
-				},
-			})
+			core := routing.NewMarketplace(marketplaceHTTPGroups{}, nil, marketplaceHTTPModels{}, routing.RequestableResolver{}, nil, capacity, nil, routing.MarketplaceOptions{})
 			router := gin.New()
 			RegisterPublicMarketplaceRoutes(router.Group("/api/v1"), NewMarketplaceHandler(core, nil))
 			response := httptest.NewRecorder()
@@ -61,4 +57,15 @@ func TestMarketplaceCapacityQuery(t *testing.T) {
 			}
 		})
 	}
+}
+
+// marketplaceHTTPModels 提供真实目录解析形状，测试容量查询参数。
+type marketplaceHTTPModels struct{}
+
+func (marketplaceHTTPModels) ResolveRequestableModels(context.Context, *int64, string) routing.RequestableModelsResult {
+	return routing.RequestableModelsResult{Models: []routing.RequestableModel{{ID: "model"}}}
+}
+
+func (marketplaceHTTPModels) Prefetch(context.Context) ([]routing.CatalogueProvider, bool, error) {
+	return nil, false, nil
 }

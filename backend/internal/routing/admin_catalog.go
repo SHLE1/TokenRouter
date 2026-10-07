@@ -1,7 +1,7 @@
 package routing
 
 import (
-	"slices"
+	"sort"
 )
 
 // AdminCatalogKind 标识管理目录的数据来源。
@@ -25,6 +25,7 @@ type AdminCatalogModel struct {
 type AdminCatalogInput struct {
 	Platform, Site                string
 	OAuth, GoogleOne, Passthrough bool
+	Accept                        func(string) bool
 }
 type AdminCatalogResult struct {
 	Kind   AdminCatalogKind
@@ -40,11 +41,9 @@ type AdminCatalog struct{ options AdminCatalogOptions }
 func NewAdminCatalog(options AdminCatalogOptions) *AdminCatalog { return &AdminCatalog{options} }
 func (s *AdminCatalog) Available(input AdminCatalogInput, configured func() []string) (AdminCatalogResult, error) {
 	kind := CatalogClaude
-	ignore := input.OAuth
 	switch input.Platform {
 	case "openai":
 		kind = CatalogOpenAI
-		ignore = input.Passthrough
 	case "gemini":
 		kind = CatalogGemini
 		if input.GoogleOne && input.OAuth {
@@ -52,29 +51,20 @@ func (s *AdminCatalog) Available(input AdminCatalogInput, configured func() []st
 		}
 	case "antigravity":
 		kind = CatalogAntigravity
-		ignore = true
 	case "qoder":
 		kind = CatalogQoder
-		ignore = false
 	case "grok":
 		kind = CatalogGrok
-		ignore = false
 	}
-	var requested []string
-	// Qoder 与 Grok 先读取目录；其它分支保留先解析当前配置的时机。
-	if !ignore && kind != CatalogQoder && kind != CatalogGrok {
-		requested = configured()
-	}
+	requested := configured()
 	defaults, err := s.options.Defaults(kind, input.Site)
 	if err != nil {
 		return AdminCatalogResult{}, err
 	}
-	if !ignore && (kind == CatalogQoder || kind == CatalogGrok) {
-		requested = configured()
+	for _, model := range defaults {
+		requested = append(requested, model.ID)
 	}
-	if ignore || len(requested) == 0 {
-		return AdminCatalogResult{Kind: kind, Models: slices.Clone(defaults)}, nil
-	}
+	sort.Strings(requested)
 	byID := make(map[string]AdminCatalogModel, len(defaults))
 	for _, m := range defaults {
 		if _, ok := byID[m.ID]; ok && kind != CatalogGrok {
@@ -83,7 +73,12 @@ func (s *AdminCatalog) Available(input AdminCatalogInput, configured func() []st
 		byID[m.ID] = m
 	}
 	var models []AdminCatalogModel
+	seen := make(map[string]bool)
 	for _, id := range requested {
+		if seen[id] || (input.Accept != nil && !input.Accept(id)) {
+			continue
+		}
+		seen[id] = true
 		if m, ok := byID[id]; ok {
 			models = append(models, m)
 			continue

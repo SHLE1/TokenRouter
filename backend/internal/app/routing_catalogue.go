@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
+
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
@@ -28,6 +30,6 @@ func catalogueReader(store *providerpostgres.ProviderStore) func(context.Context
 }
 
 // provideRequestableCatalogue 与市场、模型列表共用缓存和提供商存储。
-func provideRequestableCatalogue(models *routing.ModelList, store *providerpostgres.ProviderStore, modelConfigs *routing.PricingConfigService) *routing.RequestableCatalogue {
-	return &routing.RequestableCatalogue{Models: models, Read: catalogueReader(store), Resolver: routing.RequestableResolver{GroupPolicies: modelConfigs, Defaults: gatewayprovider.CatalogueDefaults(), Warn: slog.Warn}, Warn: slog.Warn}
+func provideRequestableCatalogue(catalog *catalogprovider.Service, models *routing.ModelList, store *providerpostgres.ProviderStore, modelConfigs *routing.PricingConfigService) *routing.RequestableCatalogue {
+	return &routing.RequestableCatalogue{Models: models, Read: catalogueReader(store), Resolver: routing.RequestableResolver{GroupPolicies: modelConfigs, Defaults: gatewayprovider.CatalogueDefaults(catalog), Warn: slog.Warn}, Warn: slog.Warn}
 }

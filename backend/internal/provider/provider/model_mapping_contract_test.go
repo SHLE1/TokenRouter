@@ -40,18 +40,18 @@ func TestProviderIsModelSupported(t *testing.T) {
 		requestedModel string
 		expected       bool
 	}{
-		// 未配置白名单使用默认目录，未知平台没有隐式全模型权限。
+		// 空白名单允许目录未知的具体型号。
 		{
-			name:           "missing mapping rejects unknown model",
+			name:           "missing mapping allows unknown model",
 			credentials:    nil,
 			requestedModel: "any-model",
-			expected:       false,
+			expected:       true,
 		},
 		{
-			name:           "empty mapping rejects unknown model",
+			name:           "empty mapping allows unknown model",
 			credentials:    map[string]any{},
 			requestedModel: "any-model",
-			expected:       false,
+			expected:       true,
 		},
 
 		// 精确匹配
@@ -73,7 +73,7 @@ func TestProviderIsModelSupported(t *testing.T) {
 				},
 			},
 			requestedModel: "claude-opus-4-5",
-			expected:       false,
+			expected:       true,
 		},
 
 		// 通配符匹配
@@ -96,7 +96,7 @@ func TestProviderIsModelSupported(t *testing.T) {
 				},
 			},
 			requestedModel: "gemini-3.1-pro-preview-customtools",
-			expected:       false,
+			expected:       true,
 		},
 		{
 			name: "wildcard mapping miss is allowed as passthrough without whitelist",
@@ -106,7 +106,7 @@ func TestProviderIsModelSupported(t *testing.T) {
 				},
 			},
 			requestedModel: "gemini-3-flash",
-			expected:       false,
+			expected:       true,
 		},
 		{
 			name: "mapping is checked before final whitelist",
@@ -170,7 +170,7 @@ func TestProviderIsModelSupported(t *testing.T) {
 				"model_whitelist": []any{},
 			},
 			requestedModel: "model-c",
-			expected:       false,
+			expected:       true,
 		},
 		{
 			name:           "qoder mapping absent does not restrict public alias",
@@ -248,7 +248,7 @@ func TestProviderIsModelSupported(t *testing.T) {
 				"model_whitelist": []any{},
 			},
 			requestedModel: "glm-5",
-			expected:       false,
+			expected:       true,
 		},
 		{
 			name:     "qoder whitelist allows mapped final route key",
@@ -639,32 +639,14 @@ func TestProviderGetModelMapping_AntigravityEnsuresGeminiDefaultPassthroughs(t *
 	}
 }
 
-func TestProviderGetModelMapping_GoogleOneUsesConservativeDefaults(t *testing.T) {
-	provider := &acct.Record{
-		Platform: capability.PlatformGemini,
-		Type:     capability.ProviderTypeOAuth,
-		Credentials: map[string]any{
-			"oauth_type": "google_one",
-		},
+// TestGoogleOneEmptyWhitelistAllowsUnknownModel 检查 Google One 使用通用白名单规则。
+func TestGoogleOneEmptyWhitelistAllowsUnknownModel(t *testing.T) {
+	value := &acct.Record{Platform: capability.PlatformGemini, Type: capability.ProviderTypeOAuth, Credentials: map[string]any{"oauth_type": "google_one"}}
+	if len(acct.ResolveModelMapping(value, ModelDefaults())) != 0 {
+		t.Fatal("unexpected implicit mapping")
 	}
-
-	mapping := acct.ResolveModelMapping(provider, ModelDefaults())
-	for _, model := range []string{"gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"} {
-		if mapping[model] != model {
-			t.Fatalf("expected Google One model %q to map to itself, got %q", model, mapping[model])
-		}
-	}
-	for _, model := range []string{"gemini-2.5-flash-image", "gemini-3.1-flash-image", "gemini-3.5-flash"} {
-		if _, ok := mapping[model]; ok {
-			t.Fatalf("did not expect unsupported Google One model %q", model)
-		}
-	}
-	if provider.IsModelSupported("gemini-3.5-flash", ModelDefaults(), ModelRules(provider)) {
-		t.Fatal("Google One defaults must not treat unsupported models as eligible")
-	}
-	mapping["gemini-2.5-flash"] = "mutated"
-	if acct.ResolveModelMapping(provider, ModelDefaults())["gemini-2.5-flash"] != "gemini-2.5-flash" {
-		t.Fatal("Google One 默认映射被调用方修改")
+	if !value.IsModelSupported("gemini-future-model", ModelDefaults(), ModelRules(value)) {
+		t.Fatal("empty whitelist rejected unknown model")
 	}
 }
 

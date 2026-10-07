@@ -4,9 +4,9 @@ import (
 	"maps"
 )
 
-// ModelMappingDefaults 按需读取平台默认模型目录。
+// ModelMappingDefaults 提供专用路由和独立型号配额的读取函数。
 type ModelMappingDefaults struct {
-	// Models 按提供商平台和认证类型提供当前默认模型目录。
+	// Models 枚举专用路由别名，Spark 返回独立配额对应的型号。
 	Models      func(*Record) []string
 	Antigravity func() map[string]string
 }
@@ -23,9 +23,6 @@ func ResolveModelMapping(a *Record, defaults ModelMappingDefaults) map[string]st
 		return nil
 	}
 	if len(rawMapping) == 0 {
-		if a.IsGeminiGoogleOne() {
-			return modelDirectoryMapping(a, defaults)
-		}
 		// Antigravity 平台使用默认映射
 		if a.Platform == PlatformAntigravity {
 			return maps.Clone(defaults.Antigravity())
@@ -43,24 +40,8 @@ func ResolveModelMapping(a *Record, defaults ModelMappingDefaults) map[string]st
 		return result
 	}
 
-	if a.IsGeminiGoogleOne() {
-		return modelDirectoryMapping(a, defaults)
-	}
 	if a.Platform == PlatformAntigravity {
 		return maps.Clone(defaults.Antigravity())
 	}
 	return nil
-}
-
-// modelDirectoryMapping 将默认目录转换成独立的恒等白名单。
-func modelDirectoryMapping(a *Record, defaults ModelMappingDefaults) map[string]string {
-	if defaults.Models == nil {
-		return nil
-	}
-	models := defaults.Models(a)
-	mapping := make(map[string]string, len(models))
-	for _, model := range models {
-		mapping[model] = model
-	}
-	return mapping
 }

@@ -6,6 +6,9 @@ import (
 	"log/slog"
 	"time"
 
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
+
 	routingprovider "github.com/TokenFlux/TokenRouter/internal/routing/provider"
 
 	usagetypes "github.com/TokenFlux/TokenRouter/internal/usage"
@@ -28,7 +31,9 @@ func provideProviderManagement(admin *provider.Admin, presenter *providerhttp.Ru
 		}
 		return value, nil
 	}
-	return providerhttp.NewManagementHandler(admin, providerhttp.ManagementOptions{Models: models, Reports: providerhttp.ProviderReportOptions{Now: calendar.Now, StartOfDay: calendar.StartOfDay, Query: query}, Tier: tier, Catalog: catalog, ModelDefaults: provideradapter.ModelDefaults(), List: listing, RuntimePresenter: presenter, Recovery: recovery, Batch: provider.NewManagementBatch(admin, managed, provider.ManagementCreationOptions{Privacy: privacy, Background: tasks.Go, AfterCreate: func(v *provider.Record) {
+	return providerhttp.NewManagementHandler(admin, providerhttp.ManagementOptions{Models: models, Reports: providerhttp.ProviderReportOptions{Now: calendar.Now, StartOfDay: calendar.StartOfDay, Query: query}, Tier: tier, Catalog: catalog, ModelDefaults: provideradapter.ModelDefaults(), ModelSupports: func(ctx context.Context, v *provider.Record, id string) bool {
+		return (gatewayprovider.ModelPolicy{Record: v}).Supports(ctx, id)
+	}, List: listing, RuntimePresenter: presenter, Recovery: recovery, Batch: provider.NewManagementBatch(admin, managed, provider.ManagementCreationOptions{Privacy: privacy, Background: tasks.Go, AfterCreate: func(v *provider.Record) {
 		if v == nil {
 			return
 		}
@@ -44,6 +49,6 @@ func provideProviderManagement(admin *provider.Admin, presenter *providerhttp.Ru
 }
 
 // provideAdminModelCatalog 在每次查询时读取平台快照。
-func provideAdminModelCatalog() *routing.AdminCatalog {
-	return routing.NewAdminCatalog(routingprovider.AdminCatalogOptions())
+func provideAdminModelCatalog(catalog *catalogprovider.Service) *routing.AdminCatalog {
+	return routing.NewAdminCatalog(routingprovider.AdminCatalogOptions(catalog))
 }

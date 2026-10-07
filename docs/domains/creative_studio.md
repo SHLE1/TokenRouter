@@ -105,7 +105,7 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 <a id="creative_model_policy"></a>
 ## 模型与分组策略
 
-目录和提交校验使用同一模型集合。目录从组内 OpenAI、Gemini 和 Grok 候选提供商读取模型，并同时检查提供商协议及分组允许的操作；分组本身没有平台。候选来自平台默认图片模型、提供商配置、分组映射和白名单中的具体名称，以及创作台已配置的请求模型；通配符只参与匹配。每个请求模型先执行一次分组映射，再执行一次提供商映射及平台名称规范化，最终模型必须具备图片能力并满足提供商限制。白名单按分组的 `requested`、`group_mapped` 或 `upstream` 阶段检查，空白名单拒绝全部模型。关闭分组策略后，保存的映射和白名单草稿均不参与解析。完整规则见[分组独立策略](gateway_policy_controls.md#group_routing_policy)。
+目录和提交校验使用同一模型集合。目录从组内 OpenAI、Gemini 和 Grok 候选提供商读取模型，并同时检查提供商协议及分组允许的操作；分组本身没有平台。候选来自统一模型目录、提供商配置、分组映射和白名单中的具体名称，以及创作台已配置的请求模型；通配符只参与匹配。每个请求模型先执行一次分组映射，再执行一次提供商映射及平台名称规范化，最终模型必须具备图片能力并满足提供商限制。白名单按分组的 `requested`、`group_mapped` 或 `upstream` 阶段检查，空白名单拒绝全部模型。关闭分组策略后，保存的映射和白名单草稿均不参与解析。完整规则见[分组独立策略](gateway_policy_controls.md#group_routing_policy)。
 
 每次任务执行前重新取得分组策略副本；读取失败时停止本次执行。调度器接收原请求模型，执行器把已解析的分组模型交给所选提供商，并对实际要发送的上游模型复核白名单。通过检查后固定执行模型，组装请求体时不再重复映射。目录和执行使用同一套网关提供商规则，所以透传提供商也按实际发送的模型检查。没有关联共享价格配置时，上述规则仍然生效。
 
@@ -213,7 +213,7 @@ app 固定唯一生产实例，提供商目录复用 creative/provider 对原生
 
 以下上游参数和异步任务、存储或计费的模型对不上，目前不开放：OpenAI `moderation`、`input_fidelity`、`stream`、`partial_images`，Gemini `includeThoughts`、`temperature`、`topP`、`topK`、`seed`、Google Search grounding 和通用 `candidateCount`，以及任意自定义 OpenAI `WxH` 尺寸。审核策略由服务端统一控制，`gpt-image-2` 固定高保真，Gemini 中间 thought image 固定不返回。
 
-模型候选：Gemini 复用批量图片的提供商模型映射展开（含 Vertex），并额外内置 `nano-banana-pro`/`nano-banana-2` 两个代理别名；`nano-banana-*` 别名族按 Gemini 图片模型处理；OpenAI 候选为 `gpt-image-1`/`gpt-image-2`；Grok 候选为 `grok-imagine` 系列。提供商没有配置模型映射时，相当于网关的全量透传，按平台默认候选回退，并加入提供商 `model_whitelist` 里符合图片模型判断条件的变体，再执行提供商最终模型白名单过滤。
+模型候选合并统一目录、提供商配置、分组规则和创作台配置，再执行图片型号、协议、站点与白名单检查。自定义请求别名按最终上游型号判断图片能力。目录未收录的具体型号可通过管理员配置加入。
 
 可选的尺寸档位只由平台和模型能力决定，是否填写了单价不影响；GPT Image 2 开放 `4K`；Gemini 3.1 Flash Image 额外开放 `512`，该档位优先使用价格配置价卡的 `512` 分层价格，未配置时回退价卡默认价格；`gemini-2.5-flash-image` 与 `gemini-3.1-flash-lite-image` 固定为 `1K`。接口同时返回按模型广场分组倍率计算的各尺寸展示单价，创作台预估费用按所选尺寸单价计算，每次任务固定单张输出。
 
@@ -272,7 +272,7 @@ creative:
 
 - 确认 Redis 可用（临时存储与队列都依赖 Redis）。
 - 确认 `creative.enabled`、数据库运行时开关 `creative_enabled` 与 `creative.queue_enabled`。
-- 确认目标分组启用图片生成；未配置图片尺寸价格或提供商模型映射时会按平台默认值回退，GPT Image 2 缺少 4K 覆盖价时仍使用默认价开放 4K。
+- 确认目标分组启用图片生成；未配置图片尺寸价格时按完整型号查询目录价格，提供商模型映射按已保存配置执行，GPT Image 2 缺少 4K 覆盖价时仍使用默认价开放 4K。
 - 确认上游提供商凭据有效（Gemini apikey/Vertex/OAuth、OpenAI、xAI）。
 - 确认价格配置价卡与分组有效倍率，验证估价的 hold/capture/release 行为。
 - 临时输出默认 30 分钟过期：通知用户及时取回，或按需调大 `transient_ttl_seconds`。

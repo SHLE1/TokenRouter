@@ -154,35 +154,13 @@ func mergeRequestableModelCandidates(baseModels []string, providers []CatalogueP
 		}
 	}
 
-	hasUnrestrictedProvider := false
-	hasUnrestrictedQoderGlobal := false
-	hasUnrestrictedQoderCN := false
 	for i := range providers {
-		provider := &providers[i]
-		appendModels(sortedModelMappingSources(provider.Rules.Mapping())...)
-		if provider.Rules.Unrestricted() {
-			hasUnrestrictedProvider = true
-			if platform == PlatformQoder && provider.Platform == PlatformQoder {
-				if provider.Rules.QoderCN() {
-					hasUnrestrictedQoderCN = true
-				} else {
-					hasUnrestrictedQoderGlobal = true
-				}
-			}
-		}
+		appendModels(sortedModelMappingSources(providers[i].Rules.Mapping())...)
 	}
-	if hasUnrestrictedProvider {
-		if platform == PlatformQoder {
-			if hasUnrestrictedQoderGlobal {
-				appendModels(defaults.Qoder(false)...)
-			}
-			if hasUnrestrictedQoderCN {
-				appendModels(defaults.Qoder(true)...)
-			}
-		} else {
-			appendModels(defaults.Platform(platform)...)
-		}
+	if defaults.Platform != nil {
+		appendModels(defaults.Platform(platform)...)
 	}
+
 	return candidates
 }
 
@@ -203,27 +181,6 @@ func sortedModelMappingSources(mapping map[string]string) []string {
 		return models[i] < models[j]
 	})
 	return models
-}
-
-func RequestableModelsFallback(models []string, platform string, defaults CatalogueDefaults) RequestableModelsResult {
-	if len(models) == 0 {
-		models = defaults.Platform(platform)
-	}
-	result := RequestableModelsResult{Models: make([]RequestableModel, 0, len(models))}
-	seen := make(map[string]struct{}, len(models))
-	for _, model := range models {
-		model = strings.TrimSpace(model)
-		if model == "" || strings.Contains(model, "*") {
-			continue
-		}
-		key := strings.ToLower(model)
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		seen[key] = struct{}{}
-		result.Models = append(result.Models, RequestableModel{ID: model, PricingModel: model})
-	}
-	return result
 }
 
 func (s *RequestableResolver) resolveRequestableModel(
@@ -377,8 +334,6 @@ func RequestableModelIDs(models []RequestableModel) []string {
 type CatalogueRules interface {
 	ConfiguredModels() []string
 	Mapping() map[string]string
-	Unrestricted() bool
-	QoderCN() bool
 	Supports(context.Context, string) bool
 	UpstreamModels(context.Context, string) []string
 }
@@ -393,7 +348,6 @@ type CatalogueProvider struct {
 }
 type CatalogueDefaults struct {
 	Platform func(string) []string
-	Qoder    func(bool) []string
 }
 type CataloguePolicies interface {
 	GetGroupPolicy(context.Context, int64) (*GroupPolicyView, error)

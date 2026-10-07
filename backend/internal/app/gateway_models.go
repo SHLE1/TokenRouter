@@ -3,6 +3,9 @@ package app
 import (
 	"context"
 
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
+
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
@@ -16,7 +19,15 @@ import (
 )
 
 // provideModelsHTTP 构造四个模型目录查询入口。
-func provideModelsHTTP(catalogue *routing.RequestableCatalogue, reader *googleforward.Gemini, activity *gatewayRequestActivity, choices *selection.Gemini) *gatewayhttp.ModelsHandler {
+func provideModelsHTTP(catalog *catalogprovider.Service, catalogue *routing.RequestableCatalogue, reader *googleforward.Gemini, activity *gatewayRequestActivity, choices *selection.Gemini) *gatewayhttp.ModelsHandler {
+	if catalog == nil {
+		return modelsHTTP(nil, catalogue, reader, activity, choices)
+	}
+	return modelsHTTP(catalog, catalogue, reader, activity, choices)
+}
+
+// modelsHTTP 为目录查询绑定统一元数据读取和客户端权限上下文。
+func modelsHTTP(catalog modelcatalog.Reader, catalogue *routing.RequestableCatalogue, reader *googleforward.Gemini, activity *gatewayRequestActivity, choices *selection.Gemini) *gatewayhttp.ModelsHandler {
 	ports := gatewayhttp.ModelsPorts{
 		ReadAccess: keyhttp.GetAPIKeyFromContext, ReadPlatform: keyhttp.GetForcePlatformFromContext,
 		ReadBilling: func(c *gin.Context) (*billing.APIKeyBillingContext, bool) {
@@ -35,7 +46,11 @@ func provideModelsHTTP(catalogue *routing.RequestableCatalogue, reader *googlefo
 	if catalogue != nil {
 		ports.Catalogue = catalogue
 	}
-	result := gatewayhttp.NewModelsHandler(ports, gatewayprovider.ModelDisplayCatalogue{})
+	display := gatewayprovider.ModelDisplayCatalogue{}
+	if catalog != nil {
+		display.Source = catalog
+	}
+	result := gatewayhttp.NewModelsHandler(ports, display)
 	if activity != nil {
 		result.BindRequestActivity(activity.Enter)
 	}

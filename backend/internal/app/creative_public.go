@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
+
 	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -29,7 +31,7 @@ import (
 )
 
 // provideCreativePublic 绑定创作任务、资金及查询接口，共享应用存储实例。
-func provideCreativePublic(repo creative.CreativeRunRepository, keys *keypostgres.KeyStore, users *identitypostgres.UserStore, providers *providerpostgres.ProviderStore, groups *routingpostgres.GroupStore, rates billing.UserGroupRateRepository, queue creative.CreativeRunQueue, transient creative.CreativeTransientStore, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, logs usage.UsageLogRepository, pricing *billing.PriceResolver, modelConfigs *routing.PricingConfigService, moderation *moderation.ContentModerationService, auth apikey.APIKeyAuthCacheInvalidator, settings *creative.RuntimeSettings, cfg *config.Config, outbox creative.CreativeRunOutboxRepository) *creative.Public {
+func provideCreativePublic(catalog *catalogprovider.Service, repo creative.CreativeRunRepository, keys *keypostgres.KeyStore, users *identitypostgres.UserStore, providers *providerpostgres.ProviderStore, groups *routingpostgres.GroupStore, rates billing.UserGroupRateRepository, queue creative.CreativeRunQueue, transient creative.CreativeTransientStore, funds *billing.Funds, subscriptions *billingpostgres.SettlementStore, logs usage.UsageLogRepository, pricing *billing.PriceResolver, modelConfigs *routing.PricingConfigService, moderation *moderation.ContentModerationService, auth apikey.APIKeyAuthCacheInvalidator, settings *creative.RuntimeSettings, cfg *config.Config, outbox creative.CreativeRunOutboxRepository) *creative.Public {
 	ttl := 30 * time.Minute
 	if cfg.Creative.TransientTTLSeconds > 0 {
 		ttl = time.Duration(cfg.Creative.TransientTTLSeconds) * time.Second
@@ -62,6 +64,7 @@ func provideCreativePublic(repo creative.CreativeRunRepository, keys *keypostgre
 		NamePrefix: "creative-studio",
 	}
 	return &creative.Public{
+		ModelIDs:          catalog.ModelIDs,
 		Now:               time.Now,
 		Repo:              repo,
 		UserRepo:          creativeUsers{users},

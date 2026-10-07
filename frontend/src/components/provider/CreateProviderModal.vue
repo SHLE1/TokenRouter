@@ -830,15 +830,12 @@
             :allowed-models="allowedModels"
             v-model:mappings="modelMappings"
             :platform="isBedrockCategory ? 'anthropic' : form.platform"
-            :models="form.platform === 'qoder' ? qoderAvailableModels : undefined"
             :sync-credentials="form.platform === 'qoder' ? undefined : syncPreviewCredentials"
-            :presets="isBedrockCategory ? bedrockPresets : presetMappings"
             :source-placeholder="isBedrockCategory ? t('admin.providers.fromModel') : undefined"
             :target-placeholder="isBedrockCategory ? t('admin.providers.toModel') : undefined"
             @update:allowed-models="setAllowedModels"
             @add="touchQoderModelRestriction"
             @remove="touchQoderModelRestriction"
-            @preset="addPresetMapping"
           />
 
           <!-- Antigravity 白名单与映射分别控制最终范围和请求改写。 -->
@@ -850,9 +847,7 @@
             <ModelWhitelistSelector v-model="antigravityWhitelistModels" platform="antigravity" />
             <ProviderModelMappingEditor
               v-model="antigravityModelMappings"
-              :presets="antigravityPresetMappings"
               wildcard-validation
-              @preset="addAntigravityPresetMapping"
             />
           </SettingsSection>
         </template>
@@ -1571,9 +1566,6 @@ import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import {
-  claudeModels,
-  getPresetMappingsByPlatform,
-  getModelsByPlatform,
   buildModelMappingObject,
   buildPersistedModelRestriction,
   fetchAntigravityDefaultMappings
@@ -2104,8 +2096,6 @@ const antigravityProjectId = ref('')
 const antigravityModelRestrictionMode = ref<'whitelist' | 'mapping'>('whitelist')
 const antigravityWhitelistModels = ref<string[]>([])
 const antigravityModelMappings = ref<ModelMappingRow[]>([])
-const antigravityPresetMappings = computed(() => getPresetMappingsByPlatform('antigravity'))
-const bedrockPresets = computed(() => getPresetMappingsByPlatform('bedrock'))
 
 // Bedrock credentials
 const bedrockAuthMode = ref<'sigv4' | 'apikey'>('sigv4')
@@ -2211,12 +2201,6 @@ const geminiHelpLinks = {
   countryCheck: 'https://policies.google.com/terms',
   countryChange: 'https://policies.google.com/country-association-form'
 }
-
-// Computed: current preset mappings based on platform
-const presetMappings = computed(() =>
-  getPresetMappingsByPlatform(form.platform, form.platform === 'qoder' ? qoderSite.value : undefined)
-)
-const qoderAvailableModels = computed(() => getModelsByPlatform('qoder', qoderSite.value))
 
 const form = reactive({
   name: '',
@@ -2464,9 +2448,8 @@ watch(
           : newPlatform === 'grok'
             ? 'https://api.x.ai/v1'
             : 'https://api.anthropic.com'
-    // 切换平台时旧平台模型不再适用。Qoder 由提供商 model_mapping
-    // 配置展示/请求模型，默认不填充会过期的前端硬编码白名单。
-    allowedModels.value = newPlatform === 'qoder' ? [] : [...getModelsByPlatform(newPlatform)]
+    // 切换平台后清空表单中的模型限制，由管理员选择或同步上游型号。
+    allowedModels.value = []
     modelMappings.value = []
     modelRestrictionMode.value = (newPlatform === 'qoder' || newPlatform === 'grok') ? 'mapping' : 'whitelist'
     qoderModelRestrictionTouched.value = false
@@ -2670,23 +2653,6 @@ const applyQoderModelRestriction = (credentials: Record<string, unknown>) => {
   credentials.model_whitelist = persisted.modelWhitelist
 }
 
-const addPresetMapping = (from: string, to: string) => {
-  touchQoderModelRestriction()
-  if (modelMappings.value.some((m) => m.from === from)) {
-    appStore.showInfo(t('admin.providers.mappingExists', { model: from }))
-    return
-  }
-  modelMappings.value.push({ from, to })
-}
-
-const addAntigravityPresetMapping = (from: string, to: string) => {
-  if (antigravityModelMappings.value.some((m) => m.from === from)) {
-    appStore.showInfo(t('admin.providers.mappingExists', { model: from }))
-    return
-  }
-  antigravityModelMappings.value.push({ from, to })
-}
-
 const buildTempUnschedRules = (rules: TempUnschedRuleForm[]) => {
   const out: Array<{
     error_code: number
@@ -2832,7 +2798,7 @@ const resetForm = () => {
   modelMappings.value = []
   openAICompactModelMappings.value = []
   modelRestrictionMode.value = 'whitelist'
-  allowedModels.value = [...claudeModels] // Default fill related models
+  allowedModels.value = []
   qoderModelRestrictionTouched.value = false
   qoderModelWhitelistTouched.value = false
 

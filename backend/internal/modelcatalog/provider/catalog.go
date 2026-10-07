@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -374,4 +375,47 @@ func (s *Service) updateModelsCatalog(force bool) (err error) {
 	}
 	s.catalogETag = etag
 	return nil
+}
+
+// ModelIDs 返回当前目录的完整型号，保留供应商限定名称。
+func (s *Service) ModelIDs() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	ids := []string{}
+	if s.modelCatalog != nil {
+		for id := range s.modelCatalog.Entries {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+// ModelEntry 按统一身份规则读取名称和厂商，未知型号保留请求 ID。
+func (s *Service) ModelEntry(model string) modelcatalog.Entry {
+	candidates := []string{model}
+	if s.options.ModelLookupCandidates != nil {
+		candidates = append(candidates, s.options.ModelLookupCandidates()(model)...)
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	entry := modelcatalog.Entry{Model: model}
+	if s.modelCatalog == nil {
+		return entry
+	}
+	if found, ok := s.modelCatalog.Lookup(s.modelCatalog.IdentityCandidates(model, candidates)); ok {
+		return found
+	}
+	entry.Attributes, _ = s.modelCatalog.LookupAttributes(model, candidates)
+	return entry
+}
+
+// ModelVersion 用于隔离目录更新前后的候选缓存。
+func (s *Service) ModelVersion() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.modelCatalog == nil {
+		return ""
+	}
+	return s.modelCatalog.Version
 }

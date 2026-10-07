@@ -48,14 +48,6 @@ func (p groupModelPolicy) candidates(platform string, configured []string, provi
 			}
 		}
 	}
-	switch platform {
-	case PlatformOpenAI:
-		add(DefaultCreativeOpenAIModelCandidates()...)
-	case PlatformGemini:
-		add(DefaultCreativeGeminiModelCandidates()...)
-	case PlatformGrok:
-		add(DefaultCreativeGrokModelCandidates()...)
-	}
 	add(configured...)
 	if p.view != nil {
 		add(p.view.AllowedModels...)

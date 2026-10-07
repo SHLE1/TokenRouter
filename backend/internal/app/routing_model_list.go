@@ -3,6 +3,8 @@ package app
 import (
 	"time"
 
+	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
+
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -11,8 +13,10 @@ import (
 )
 
 // provideRoutingModelList 为模型列表缓存配置 TTL，默认十五秒。
-func provideRoutingModelList(repo *providerpostgres.ProviderStore, cfg *config.Config) *routing.ModelList {
-	return routing.NewModelList(catalogueReader(repo), resolveModelsListCacheTTL(cfg))
+func provideRoutingModelList(catalog *catalogprovider.Service, repo *providerpostgres.ProviderStore, cfg *config.Config) *routing.ModelList {
+	result := routing.NewModelList(catalogueReader(repo), resolveModelsListCacheTTL(cfg))
+	result.Version = catalog.ModelVersion
+	return result
 }
 
 // resolveModelsListCacheTTL 返回配置的正数 TTL，其他情况使用十五秒。

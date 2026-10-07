@@ -18,7 +18,7 @@ func (c *RequestableCatalogue) Prefetch(ctx context.Context) ([]CatalogueProvide
 	return values, err == nil, err
 }
 
-// ResolveRequestableModels 保留先取基础目录再查询候选、以及查询失败后的原降级。
+// ResolveRequestableModels 合并目录与配置，并用当前提供商复核候选。
 func (c *RequestableCatalogue) ResolveRequestableModels(ctx context.Context, groupID *int64, platform string) RequestableModelsResult {
 	if c == nil || c.Read == nil {
 		return RequestableModelsResult{}
@@ -37,9 +37,7 @@ func (c *RequestableCatalogue) ResolveRequestableModels(ctx context.Context, gro
 			}
 			c.Warn("failed to load providers for requestable model resolution", "group_id", id, "platform", platform, "error", err)
 		}
-		result := RequestableModelsFallback(base, platform, c.Resolver.Defaults)
-		result.HadExplicitProviderModels = len(base) > 0
-		return result
+		return RequestableModelsResult{Restricted: true, HadExplicitProviderModels: len(base) > 0}
 	}
 	return c.Resolver.ResolveWithProviders(ctx, groupID, platform, base, providers)
 }

@@ -681,3 +681,14 @@ func TestWebSearchPreservesSelectedModel(t *testing.T) {
 		require.Equal(t, model, wrapped.Model)
 	}
 }
+
+// TestIdentityPatchOmitsModelDeclaration 通用补丁继续发送，型号身份声明已移除。
+func TestIdentityPatchOmitsModelDeclaration(t *testing.T) {
+	var request ClaudeRequest
+	require.NoError(t, json.Unmarshal([]byte(`{"model":"claude-sonnet-4-6","max_tokens":100,"messages":[{"role":"user","content":"hello"}]}`), &request))
+	body, err := TransformClaudeToGemini(&request, "project", "claude-sonnet-4-6")
+	require.NoError(t, err)
+	require.Contains(t, string(body), "You are Antigravity")
+	require.NotContains(t, string(body), "You are Model")
+	require.NotContains(t, string(body), "ModelId is")
+}

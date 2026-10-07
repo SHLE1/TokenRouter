@@ -6,8 +6,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
+	catalogtest "github.com/TokenFlux/TokenRouter/internal/modelcatalog/testkit"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 
@@ -25,10 +29,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-
-	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
-
-	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -167,8 +167,8 @@ func newGatewayModelsHandlerWithPricingConfigForTest(repo modelHTTPProviderRows,
 	if modelConfigs != nil {
 		pricingConfigPort = modelConfigs
 	}
-	catalogue := &routing.RequestableCatalogue{Models: &routing.ModelList{Read: read}, Read: read, Resolver: routing.RequestableResolver{GroupPolicies: pricingConfigPort, Defaults: gatewayprovider.CatalogueDefaults(), Warn: slog.Warn}, Warn: slog.Warn}
-	return provideModelsHTTP(catalogue, nil, nil, nil)
+	catalogue := &routing.RequestableCatalogue{Models: &routing.ModelList{Read: read}, Read: read, Resolver: routing.RequestableResolver{GroupPolicies: pricingConfigPort, Defaults: gatewayprovider.CatalogueDefaults(gatewayModelCatalogFixture()), Warn: slog.Warn}, Warn: slog.Warn}
+	return modelsHTTP(gatewayModelCatalogFixture(), catalogue, nil, nil, nil)
 }
 
 // newGatewayModelsPricingConfigServiceForTest 构造模型接口测试使用的模型配置服务。
@@ -216,13 +216,11 @@ func TestGatewayModels_GeminiGroupFallsBackToGeminiModels(t *testing.T) {
 	require.Contains(t, modelIDsForTest(got.Data), "gemini-2.5-flash")
 	require.Contains(t, modelIDsForTest(got.Data), "gemini-review")
 	require.NotContains(t, modelIDsForTest(got.Data), "wild-*")
-	require.NotContains(t, modelIDsForTest(got.Data), "claude-sonnet-4-6")
+	require.Contains(t, modelIDsForTest(got.Data), "claude-sonnet-4-6")
 }
 
-func TestAntigravityModelsIncludesRequestableExactAPIKeyAlias(t *testing.T) {
-	defaults := antigravity.DefaultModels()
-	require.NotEmpty(t, defaults)
-	targetModel := defaults[0].ID
+func TestAntigravityModelsWithoutCatalogueReturnsEmpty(t *testing.T) {
+	targetModel := "claude-fable-5"
 
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -233,23 +231,20 @@ func TestAntigravityModelsIncludesRequestableExactAPIKeyAlias(t *testing.T) {
 		"missing":            "not-requestable",
 	}})
 
-	provideModelsHTTP(nil, nil, nil, nil).AntigravityModels(c)
+	provideModelsHTTP(nil, nil, nil, nil, nil).AntigravityModels(c)
 
 	require.Equal(t, http.StatusOK, recorder.Code)
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &got))
 	ids := modelIDsForTest(got.Data)
-	require.Contains(t, ids, targetModel)
-	require.Contains(t, ids, "antigravity-review")
+	require.Empty(t, ids)
 	require.NotContains(t, ids, "wild-*")
 	require.NotContains(t, ids, "missing")
 }
 
 func TestAntigravityModelsExcludesAliasWhoseTargetIsUnavailableToBoundGroup(t *testing.T) {
-	defaults := antigravity.DefaultModels()
-	require.GreaterOrEqual(t, len(defaults), 2)
-	availableModel := defaults[0].ID
-	unavailableModel := defaults[1].ID
+	availableModel := "claude-fable-5"
+	unavailableModel := "claude-sonnet-4-6"
 	groupID := int64(46)
 	h := newGatewayModelsHandlerForTest(&gatewayModelsProviderRepoStub{byGroup: map[int64][]provider.Record{
 		groupID: {
@@ -463,10 +458,14 @@ func TestGatewayModels_AntigravityGroupKeepsDefaultModelMetadata(t *testing.T) {
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	require.NotEmpty(t, got.Data)
-	require.Equal(t, "claude-fable-5", got.Data[0].ID)
-	require.Equal(t, "model", got.Data[0].Type)
-	require.Equal(t, "Claude Fable 5", got.Data[0].DisplayName)
-	require.Equal(t, "2026-06-09T00:00:00Z", got.Data[0].CreatedAt)
+	for _, model := range got.Data {
+		if model.ID == "claude-fable-5" {
+			require.Equal(t, "Claude Fable 5", model.DisplayName)
+			require.Empty(t, model.CreatedAt)
+			return
+		}
+	}
+	t.Fatal("catalog model missing")
 }
 
 func TestGatewayModels_QoderGroupFallsBackToQoderModels(t *testing.T) {
@@ -496,7 +495,7 @@ func TestGatewayModels_QoderGroupFallsBackToQoderModels(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	require.Equal(t, "list", got.Object)
 	require.Contains(t, modelIDsForTest(got.Data), "deepseek-v4-pro")
-	require.NotContains(t, modelIDsForTest(got.Data), "claude-sonnet-4-6")
+	require.Contains(t, modelIDsForTest(got.Data), "claude-sonnet-4-6")
 }
 
 // TestGatewayModels_Grok45AdvertisesReasoningEffortForGrokBuild 检查推理能力元数据与兼容字段同时返回。
@@ -597,7 +596,7 @@ func TestGatewayModels_GrokDefaultsExcludeBuiltinAliases(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	require.ElementsMatch(t, xai.DefaultModelIDs(), modelIDsForTest(got.Data))
+	require.Contains(t, modelIDsForTest(got.Data), "grok-4.6")
 	require.NotContains(t, modelIDsForTest(got.Data), "grok")
 	require.NotContains(t, modelIDsForTest(got.Data), "grok-latest")
 
@@ -1054,7 +1053,7 @@ func TestGatewayModels_OpenAICustomModelsListKeepsOpenAIResponseShapeForDefaultF
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	require.Equal(t, []string{"gpt-5.5", "gpt-5.4"}, modelIDsForTest(got.Data))
 	require.Equal(t, "model", got.Data[0].Object)
-	require.NotZero(t, got.Data[0].Created)
+	require.Zero(t, got.Data[0].Created)
 	require.Equal(t, "openai", got.Data[0].OwnedBy)
 	require.Empty(t, got.Data[0].CreatedAt)
 }
@@ -1083,8 +1082,8 @@ func TestGatewayModels_OpenAIUnrestrictedListKeepsOpenAIResponseShape(t *testing
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	require.NotEmpty(t, got.Data)
 	require.Equal(t, "model", got.Data[0].Object)
-	require.NotZero(t, got.Data[0].Created)
-	require.Equal(t, "openai", got.Data[0].OwnedBy)
+	require.Zero(t, got.Data[0].Created)
+	require.NotEmpty(t, got.Data[0].OwnedBy)
 	require.Empty(t, got.Data[0].CreatedAt)
 }
 
@@ -1119,7 +1118,7 @@ func TestGatewayModels_QoderCustomModelsListFiltersDefaultFallbackModels(t *test
 
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	require.Equal(t, []string{"deepseek-v4-pro", "lite"}, modelIDsForTest(got.Data))
+	require.Equal(t, []string{"deepseek-v4-pro", "claude-sonnet-4-6", "lite"}, modelIDsForTest(got.Data))
 }
 
 func TestGatewayModels_GroupRestrictionEmptyDoesNotFallBackToDefaults(t *testing.T) {
@@ -1211,4 +1210,25 @@ type modelCatalogueEmptyPrices struct {
 
 func (modelCatalogueEmptyPrices) ListAll(context.Context) ([]routing.PricingConfig, error) {
 	return nil, nil
+}
+
+// gatewayModelCatalogFixture 为网关目录测试声明明确的可查询元数据。
+func gatewayModelCatalogFixture() *catalogtest.Catalog {
+	c := catalogtest.New("claude-opus-4-6", "claude-opus-4-8", "gpt-5", "gpt-5.5", "claude-fable-5", "claude-sonnet-4-6", "claude-sonnet-4-5-20250929", "gpt-5.4", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gemini-2.5-flash", "gemini-3.1-flash-image", "grok-4.5", "grok-4.6")
+	for id, entry := range c.Entries {
+		switch {
+		case strings.HasPrefix(id, "gpt-"):
+			entry.Provider = "openai"
+		case strings.HasPrefix(id, "claude-"):
+			entry.Provider = "anthropic"
+		case strings.HasPrefix(id, "gemini-"):
+			entry.Provider = "google"
+		case strings.HasPrefix(id, "grok-"):
+			entry.Provider = "xai"
+		}
+		c.Entries[id] = entry
+	}
+	name := "Claude Fable 5"
+	c.Entries["claude-fable-5"] = modelcatalog.Entry{Model: "claude-fable-5", Provider: "anthropic", Attributes: modelcatalog.Attributes{DisplayName: &name}}
+	return c
 }

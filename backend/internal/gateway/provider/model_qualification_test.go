@@ -138,7 +138,7 @@ func TestIsModelRateLimited(t *testing.T) {
 				},
 			},
 			requestedModel: "gemini-3-pro-preview",
-			expected:       false,
+			expected:       true,
 		},
 		{
 			name: "antigravity platform - gemini family rate limit does not block claude",

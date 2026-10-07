@@ -455,7 +455,6 @@ func TestResolveQoderModelUsesQwen38MaxAlias(t *testing.T) {
 		info := qoder.ResolveQoderModelForSite(site, "qwen3.8-max")
 		require.Equal(t, "qmodel_38max", info.Key)
 		require.Equal(t, "system", info.Source)
-		require.Equal(t, "Qwen3.8-Max", info.DisplayName)
 	}
 }
 
@@ -463,14 +462,12 @@ func TestResolveQoderModelUsesKimiK3Alias(t *testing.T) {
 	info := qoder.ResolveQoderModelForSite(qoder.SiteGlobal, "kimi-k3")
 	require.Equal(t, "kmodel_latest", info.Key)
 	require.Equal(t, "system", info.Source)
-	require.Equal(t, "Kimi-K3", info.DisplayName)
 }
 
 func TestResolveQoderModelUsesGLM52RouteKey(t *testing.T) {
 	info := qoder.ResolveQoderModelForSite(qoder.SiteGlobal, "glm-5.2")
 	require.Equal(t, "gm51model", info.Key)
 	require.Equal(t, "system", info.Source)
-	require.Equal(t, "GLM-5.2", info.DisplayName)
 }
 
 func TestResolveQoderModelUsesGLM53RouteKey(t *testing.T) {
@@ -478,7 +475,6 @@ func TestResolveQoderModelUsesGLM53RouteKey(t *testing.T) {
 		info := qoder.ResolveQoderModelForSite(site, "glm-5.3")
 		require.Equal(t, "gmodel", info.Key)
 		require.Equal(t, "system", info.Source)
-		require.Equal(t, "GLM-5.3", info.DisplayName)
 	}
 }
 
@@ -487,7 +483,6 @@ func TestResolveQoderModelDoesNotTranslateRemovedCompatibilityAliases(t *testing
 		info := qoder.ResolveQoderModelForSite(qoder.SiteGlobal, model)
 		require.Equal(t, model, info.Key)
 		require.Equal(t, "system", info.Source)
-		require.Empty(t, info.DisplayName)
 	}
 }
 

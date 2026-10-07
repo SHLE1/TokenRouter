@@ -1,75 +1,29 @@
 package provider
 
 import (
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
-	geminicli "github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
-	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 
-// AdminCatalogOptions 提供管理端按需读取平台模型目录的函数。
-func AdminCatalogOptions() routing.AdminCatalogOptions {
-	return routing.AdminCatalogOptions{Defaults: func(kind routing.AdminCatalogKind, site string) ([]routing.AdminCatalogModel, error) {
-		var out []routing.AdminCatalogModel
-		switch kind {
-		case routing.CatalogOpenAI:
-			models := openai.DefaultModels
-			if models != nil {
-				out = make([]routing.AdminCatalogModel, 0, len(models))
+// AdminCatalogOptions 在查询时读取统一目录，响应格式由 HTTP 适配器决定。
+func AdminCatalogOptions(catalog modelcatalog.Reader) routing.AdminCatalogOptions {
+	return routing.AdminCatalogOptions{Defaults: func(kind routing.AdminCatalogKind, _ string) ([]routing.AdminCatalogModel, error) {
+		out := []routing.AdminCatalogModel{}
+		if catalog == nil {
+			return out, nil
+		}
+		for _, id := range catalog.ModelIDs() {
+			entry := catalog.ModelEntry(id)
+			name := id
+			if entry.Attributes.DisplayName != nil && *entry.Attributes.DisplayName != "" {
+				name = *entry.Attributes.DisplayName
 			}
-			for _, m := range models {
-				out = append(out, routing.AdminCatalogModel{ID: m.ID, Object: m.Object, Type: m.Type, Created: m.Created, OwnedBy: m.OwnedBy, DisplayName: m.DisplayName})
+			model := routing.AdminCatalogModel{ID: id, Type: "model", DisplayName: name}
+			if kind == routing.CatalogOpenAI || kind == routing.CatalogGrok {
+				model.Object = "model"
+				model.OwnedBy = entry.Provider
 			}
-		case routing.CatalogGrok:
-			models := xai.DefaultModels()
-			if models != nil {
-				out = make([]routing.AdminCatalogModel, 0, len(models))
-			}
-			for _, m := range models {
-				out = append(out, routing.AdminCatalogModel{ID: m.ID, Object: m.Object, Type: m.Type, Created: m.Created, OwnedBy: m.OwnedBy, DisplayName: m.DisplayName})
-			}
-		case routing.CatalogGemini, routing.CatalogGoogleOne:
-			models := geminicli.DefaultModels
-			if kind == routing.CatalogGoogleOne {
-				models = geminicli.GoogleOneModels
-			}
-			if models != nil {
-				out = make([]routing.AdminCatalogModel, 0, len(models))
-			}
-			for _, m := range models {
-				out = append(out, routing.AdminCatalogModel{ID: m.ID, Type: m.Type, DisplayName: m.DisplayName, CreatedAt: m.CreatedAt})
-			}
-		case routing.CatalogAntigravity:
-			models := antigravity.DefaultModels()
-			if models != nil {
-				out = make([]routing.AdminCatalogModel, 0, len(models))
-			}
-			for _, m := range models {
-				out = append(out, routing.AdminCatalogModel{ID: m.ID, Type: m.Type, DisplayName: m.DisplayName, CreatedAt: m.CreatedAt})
-			}
-		case routing.CatalogQoder:
-			parsed, err := qoder.ParseSite(site)
-			if err != nil {
-				return nil, err
-			}
-			models := qoder.DefaultModelsForSite(parsed)
-			if models != nil {
-				out = make([]routing.AdminCatalogModel, 0, len(models))
-			}
-			for _, m := range models {
-				out = append(out, routing.AdminCatalogModel{ID: m.ID, Type: m.Type, DisplayName: m.DisplayName, CreatedAt: m.CreatedAt})
-			}
-		default:
-			models := claude.DefaultModels
-			if models != nil {
-				out = make([]routing.AdminCatalogModel, 0, len(models))
-			}
-			for _, m := range models {
-				out = append(out, routing.AdminCatalogModel{ID: m.ID, Type: m.Type, DisplayName: m.DisplayName, CreatedAt: m.CreatedAt})
-			}
+			out = append(out, model)
 		}
 		return out, nil
 	}}

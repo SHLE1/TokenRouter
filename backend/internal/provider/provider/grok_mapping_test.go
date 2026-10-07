@@ -47,8 +47,8 @@ func TestGrokProviderModelMappingRemainsExplicit(t *testing.T) {
 
 func TestGrokWhitelistRunsBeforeBuiltinNormalization(t *testing.T) {
 	unrestricted := &providercore.Record{Platform: capability.PlatformGrok, Credentials: map[string]any{}}
-	require.False(t, unrestricted.IsModelSupported("custom-grok-model", ModelDefaults(), ModelRules(unrestricted)))
-	require.False(t, unrestricted.IsModelSupported("grok", ModelDefaults(), ModelRules(unrestricted)))
+	require.True(t, unrestricted.IsModelSupported("custom-grok-model", ModelDefaults(), ModelRules(unrestricted)))
+	require.True(t, unrestricted.IsModelSupported("grok", ModelDefaults(), ModelRules(unrestricted)))
 
 	strict := &providercore.Record{
 		Platform: capability.PlatformGrok,
@@ -78,5 +78,5 @@ func TestGrokWhitelistRunsBeforeBuiltinNormalization(t *testing.T) {
 
 		// TestGrokFinalUpstreamModelNormalization 验证 OAuth 和 API Key 共用 Grok 最终标准化。
 		legacy)))
-	require.False(t, legacy.IsModelSupported("grok", ModelDefaults(), ModelRules(legacy)))
+	require.True(t, legacy.IsModelSupported("grok", ModelDefaults(), ModelRules(legacy)))
 }

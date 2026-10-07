@@ -324,3 +324,5 @@ API Key passthrough 的池模式，把命中 `pool_mode_retry_status_codes` 的 
 实际输出一旦开始，网关就不再重放请求或换提供商。最终的错误还可以命中[网关错误响应策略](gateway_error_policy.md)，但规则不会把失败结算成成功。排查问题时，同时检查提供商类型、需要的 transport 和 capability、客户端限制、privacy status、模型映射、配额重置时间、代理和 TLS，以及 attempt 记录。
 
 相关文档：[网关请求生命周期](../architecture/gateway_request_lifecycle.md)、[提供商调度与缓存一致性](../architecture/provider_scheduling_and_cache.md)、[模型目录与市场](model_catalog_and_marketplace.md)。
+
+模型名称与通用候选来自[统一模型目录](model_catalog_and_marketplace.md#model_catalog_resolution)。提供商空白名单允许任意型号，平台的请求格式、认证和协议规则分别检查；默认测试型号用于探测请求。

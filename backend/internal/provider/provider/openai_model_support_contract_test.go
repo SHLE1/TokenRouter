@@ -17,13 +17,13 @@ func newOpenAIOAuthProviderForModelTest() *acct.Record {
 	}
 }
 
-func TestIsModelSupported_OpenAIOAuthEmptyMapping_UsesDefaultDirectory(t *testing.T) {
+func TestIsModelSupported_OpenAIOAuthEmptyMappingAllowsUnknownModels(t *testing.T) {
 	provider := newOpenAIOAuthProviderForModelTest()
 	for _, model := range []string{"gpt-5.4", "gpt-5.6-terra", "gpt-5.6-sol"} {
 		require.True(t, provider.IsModelSupported(model, ModelDefaults(), ModelRules(provider)), model)
 	}
-	for _, model := range []string{"", "my-custom-alias", "model-outside-current-catalog"} {
-		require.False(t, provider.IsModelSupported(model, ModelDefaults(), ModelRules(provider)), model)
+	for _, model := range []string{"my-custom-alias", "model-outside-current-catalog"} {
+		require.True(t, provider.IsModelSupported(model, ModelDefaults(), ModelRules(provider)), model)
 	}
 }
 
@@ -59,7 +59,7 @@ func TestIsModelSupported_OpenAIOAuthMappingKeepsForkSemantics(t *testing.T) {
 		"model_mapping": map[string]any{"deepseek-v4": "gpt-5.4", "k3": "gpt-5.4"},
 	}
 
-	// 映射可以引入别名；未命中的模型仍受默认目录和认证能力限制。
+	// 映射可以引入别名；未命中的模型继续检查认证资格。
 	require.True(t, provider.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(provider)))
 	require.True(t, provider.IsModelSupported("k3", ModelDefaults(), ModelRules(provider)))
 	require.False(t, provider.IsModelSupported("glm-4.7", ModelDefaults(), ModelRules(provider)))
@@ -87,16 +87,16 @@ func TestIsModelSupported_OpenAIOAuthPassthroughKeepsModelScope(t *testing.T) {
 	require.False(t, provider.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(provider)))
 }
 
-func TestIsModelSupported_OpenAIAPIKeyRequiresExplicitCustomScope(t *testing.T) {
+func TestIsModelSupported_OpenAIAPIKeyAllowsUnknownModels(t *testing.T) {
 	provider := &acct.Record{ID: 2, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey}
-	require.False(t, provider.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(provider)))
+	require.True(t, provider.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(provider)))
 	require.True(t, provider.IsModelSupported("gpt-5.4", ModelDefaults(), ModelRules(provider)))
 	provider.Credentials = map[string]any{"model_whitelist": []string{"*"}}
 	require.True(t, provider.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(provider)))
 }
 
-func TestIsModelSupported_AnthropicDefaultsRejectForeignModel(t *testing.T) {
+func TestIsModelSupported_AnthropicEmptyWhitelistAllowsForeignModel(t *testing.T) {
 	anthropic := &acct.Record{ID: 3, Platform: capability.PlatformAnthropic, Type: capability.ProviderTypeOAuth}
 	require.True(t, anthropic.IsModelSupported("claude-sonnet-4-6", ModelDefaults(), ModelRules(anthropic)))
-	require.False(t, anthropic.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(anthropic)))
+	require.True(t, anthropic.IsModelSupported("deepseek-v4", ModelDefaults(), ModelRules(anthropic)))
 }

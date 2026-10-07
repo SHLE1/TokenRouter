@@ -88,7 +88,10 @@
                 <Icon name="copy" size="sm" />
               </button>
             </div>
-            <div v-if="filteredModels.length === 0" class="px-3 py-4 text-center text-sm text-gray-500">
+            <div v-if="loadingCatalog" class="px-3 py-2 text-sm text-gray-500">{{ t('common.loading') }}</div>
+            <button v-if="catalogFailed" type="button" class="btn btn-secondary m-2" @click.stop="loadCatalog()">{{ t('common.retry') }}</button>
+            <button v-if="!loadingCatalog && !catalogFailed && props.models === undefined && catalogModels.length < catalogTotal" type="button" class="btn btn-secondary m-2" @click.stop="loadCatalog(true)">{{ t('admin.providers.loadMoreModels') }}</button>
+            <div v-if="!loadingCatalog && !catalogFailed && filteredModels.length === 0" class="px-3 py-4 text-center text-sm text-gray-500">
               {{ t('admin.providers.noMatchingModels') }}
             </div>
           </div>
@@ -98,13 +101,6 @@
 
     <!-- Quick Actions -->
     <div class="mb-4 flex flex-wrap gap-2">
-      <button
-        type="button"
-        @click="fillRelated"
-        class="rounded-control border border-primary-200 px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 dark:border-primary-500/15 dark:text-primary-500 dark:hover:bg-primary-500/8"
-      >
-        {{ t('admin.providers.fillRelatedModels') }}
-      </button>
       <button
         v-if="canSyncUpstream"
         type="button"
@@ -152,7 +148,7 @@
 import { prepareListLeave, restoreEnteringElement } from '@/utils/leavingElement'
 
 import MotionTransition from '@/components/common/MotionTransition.vue'
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { providersAPI } from '@/api/admin/providers'
@@ -160,7 +156,8 @@ import type { SyncUpstreamPreviewParams } from '@/api/admin/providers'
 import { useClipboard } from '@/composables/useClipboard'
 import ModelIcon from '@/components/common/ModelIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { allModels, getModelsByPlatform } from '@/composables/useModelWhitelist'
+import { modelAttributesAPI } from '@/api/admin/modelAttributes'
+import { SEARCH_DEBOUNCE_MS } from '@/constants/ui'
 
 const { t } = useI18n()
 
@@ -228,31 +225,54 @@ const canSyncUpstream = computed(() => {
   return false
 })
 
-const availableOptions = computed(() => {
-  if (props.models) {
-    const allowedModels = new Set(props.models)
-    return allModels.filter(model => allowedModels.has(model.value))
-  }
-  if (normalizedPlatforms.value.length === 0) {
-    return allModels
-  }
+// 目录查询只更新候选，已选 ID 由表单持有。
+const catalogModels = ref<string[]>([])
+const catalogPage = ref(0)
+const catalogTotal = ref(0)
+const loadingCatalog = ref(false)
+const catalogFailed = ref(false)
+let queryVersion = 0
+let searchTimer: ReturnType<typeof setTimeout> | undefined
 
-  const allowedModels = new Set<string>()
-  for (const platform of normalizedPlatforms.value) {
-    for (const model of getModelsByPlatform(platform)) {
-      allowedModels.add(model)
-    }
+const loadCatalog = async (append = false) => {
+  if (props.models !== undefined) return
+  const version = ++queryVersion
+  const page = append ? catalogPage.value + 1 : 1
+  loadingCatalog.value = true
+  catalogFailed.value = false
+  try {
+    const result = await modelAttributesAPI.defaults({ search: searchQuery.value.trim(), page, page_size: 50 })
+    if (version !== queryVersion) return
+    catalogModels.value = [...new Set([...(append ? catalogModels.value : []), ...result.items.map(item => item.model)])]
+    catalogPage.value = page
+    catalogTotal.value = result.total
+  } catch {
+    if (version === queryVersion) catalogFailed.value = true
+  } finally {
+    if (version === queryVersion) loadingCatalog.value = false
   }
+}
 
-  return allModels.filter(model => allowedModels.has(model.value))
+watch([showDropdown, searchQuery, () => props.models], () => {
+  queryVersion++
+  clearTimeout(searchTimer)
+  loadingCatalog.value = false
+  catalogFailed.value = false
+  catalogModels.value = []
+  catalogTotal.value = 0
+  if (showDropdown.value && props.models === undefined) {
+    searchTimer = setTimeout(() => { void loadCatalog() }, SEARCH_DEBOUNCE_MS)
+  }
+})
+onBeforeUnmount(() => {
+  queryVersion++
+  clearTimeout(searchTimer)
 })
 
 const filteredModels = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
-  if (!query) return availableOptions.value
-  return availableOptions.value.filter(
-    m => m.value.toLowerCase().includes(query) || m.label.toLowerCase().includes(query)
-  )
+  const ids = props.models === undefined ? catalogModels.value : props.models.filter(id => id.toLowerCase().includes(query))
+  return [...new Set(ids)].map(id => ({ value: id, label: id }))
 })
 
 const toggleDropdown = () => {
@@ -289,25 +309,6 @@ const addCustom = () => {
 
 const handleEnter = () => {
   if (!isComposing.value) addCustom()
-}
-
-const fillRelated = () => {
-  const newModels = [...props.modelValue]
-  if (props.models) {
-    for (const model of props.models) {
-      if (!newModels.includes(model)) newModels.push(model)
-    }
-    emit('update:modelValue', newModels)
-    return
-  }
-  for (const platform of normalizedPlatforms.value) {
-    for (const model of getModelsByPlatform(platform)) {
-      if (!newModels.includes(model)) {
-        newModels.push(model)
-      }
-    }
-  }
-  emit('update:modelValue', newModels)
 }
 
 const syncUpstreamModels = async () => {

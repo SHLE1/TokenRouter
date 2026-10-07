@@ -104,7 +104,7 @@ func RegisterGatewayRoutes(
 	}
 	modelsHTTP := h.ModelsHTTP
 	if modelsHTTP == nil && h.TextEnabled {
-		modelsHTTP = provideModelsHTTP(nil, nil, nil, nil)
+		modelsHTTP = provideModelsHTTP(nil, nil, nil, nil, nil)
 	}
 	messagesHTTP := h.MessagesHTTP
 	if messagesHTTP == nil && h.TextEnabled {

@@ -101,8 +101,6 @@
             <ProviderModelMappingEditor
               v-else
               v-model="modelMappings"
-              :presets="filteredPresets"
-              @preset="addPresetMapping"
             />
           </BulkApplyField>
         </template>
@@ -653,7 +651,6 @@ import type { ModelMappingRow } from '@/utils/modelMappingRules'
 import {
   buildModelMappingObject,
   buildPersistedModelRestriction,
-  getPresetMappingsByPlatform,
   normalizeModelWhitelist,
   splitQoderPersistedModelRestriction,
   splitModelMappingObject,
@@ -827,22 +824,6 @@ const formTabs = computed(() => {
     { key: 'quota', label: t('admin.providers.tabs.quota'), hidden: !allAnthropicOAuthOrSetupToken.value },
     { key: 'request', label: t('admin.providers.tabs.request'), hidden: !hasRequest }
   ]
-})
-
-const filteredPresets = computed(() => {
-  if (targetSelectedPlatforms.value.length === 0) return []
-
-  const dedupedPresets = new Map<string, ReturnType<typeof getPresetMappingsByPlatform>[number]>()
-  for (const platform of targetSelectedPlatforms.value) {
-    for (const preset of getPresetMappingsByPlatform(platform)) {
-      const key = `${preset.from}=>${preset.to}`
-      if (!dedupedPresets.has(key)) {
-        dedupedPresets.set(key, preset)
-      }
-    }
-  }
-
-  return Array.from(dedupedPresets.values())
 })
 
 // Model mapping type
@@ -1118,15 +1099,6 @@ const loadSelectedProviderDefaults = async () => {
 }
 
 // Model mapping helpers
-const addPresetMapping = (from: string, to: string) => {
-  const exists = modelMappings.value.some((m) => m.from === from)
-  if (exists) {
-    appStore.showInfo(t('admin.providers.mappingExists', { model: from }))
-    return
-  }
-  modelMappings.value.push({ from, to })
-}
-
 
 const buildOpenAICompactModelMapping = (): Record<string, string> | null => {
   return buildModelMappingObject('mapping', [], openAICompactModelMappings.value)

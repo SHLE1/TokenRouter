@@ -2727,7 +2727,7 @@ const handleSchedule = async (a: Provider) => {
   showSchedulePanel.value = true
   try {
     const models = await adminAPI.providers.getAvailableModels(a.id)
-    scheduleModelOptions.value = models.map((m: ClaudeModel) => ({ value: m.id, label: m.display_name || m.id }))
+    scheduleModelOptions.value = models.map((m: ClaudeModel) => ({ value: m.id, label: m.id }))
   } catch {
     scheduleModelOptions.value = []
   }

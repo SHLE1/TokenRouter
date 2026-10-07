@@ -34,7 +34,8 @@ func TestGeminiV1BetaListUsesMixedGroupCapabilitiesAndAliases(t *testing.T) {
 	var got gemini.ModelsListResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	require.Len(t, got.Models, 4)
-	pro, custom := gemini.FallbackModel("gemini-2.5-pro"), gemini.FallbackModel("gemini-custom")
+	pro := gemini.Model{Name: "models/gemini-2.5-pro", DisplayName: "gemini-2.5-pro", SupportedGenerationMethods: []string{"generateContent", "streamGenerateContent"}}
+	custom := gemini.Model{Name: "models/gemini-custom", DisplayName: "gemini-custom", SupportedGenerationMethods: []string{"generateContent", "streamGenerateContent"}}
 	require.Equal(t, []gemini.Model{pro, custom}, got.Models[:2])
 	pro.Name, pro.DisplayName = "models/my-gemini", "my-gemini"
 	custom.Name, custom.DisplayName = "models/custom-alias", "custom-alias"
@@ -58,7 +59,7 @@ func TestGeminiV1BetaCustomListCannotInventProviders(t *testing.T) {
 	c, _ := gin.CreateTestContext(rec)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v1beta/models", nil)
 	c.Set(string(keyhttp.ContextKeyAPIKey), &apikey.APIKey{Group: &routing.Group{ID: 42, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolGeminiGenerateContent}, ModelsListConfig: routing.GroupModelsListConfig{Enabled: true, Models: []string{"gemini-2.5-pro"}}}})
-	provideModelsHTTP(nil, nil, nil, nil).GeminiV1BetaListModels(c)
+	provideModelsHTTP(nil, nil, nil, nil, nil).GeminiV1BetaListModels(c)
 	require.Equal(t, 200, rec.Code)
 	require.JSONEq(t, `{"models":[]}`, rec.Body.String())
 }

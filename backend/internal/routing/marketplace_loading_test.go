@@ -81,9 +81,8 @@ func TestMarketplaceBatchAttributesAndOptionalCapacity(t *testing.T) {
 			name := "display"
 			modalities := []string{"image"}
 			options := routing.MarketplaceOptions{
-				Now:          time.Now,
-				Warn:         func(string, ...any) {},
-				DisplayNames: func(string) map[string]string { return nil },
+				Now:  time.Now,
+				Warn: func(string, ...any) {},
 				Attributes: func(_ context.Context, models map[int64][]routing.RequestableModel) (map[int64]map[string]routing.EffectiveModelAttributes, error) {
 					calls++
 					require.Len(t, models, 2)

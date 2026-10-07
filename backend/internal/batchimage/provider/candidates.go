@@ -90,3 +90,8 @@ func (r candidateRules) IsModelSupported(model string) bool {
 func (r candidateRules) ResolveMappedModel(model string) (string, bool) {
 	return provider.ResolveMappedModel(r.GetModelMapping(), model)
 }
+
+// GetConfiguredRequestModels 提供白名单和映射中的具体型号。
+func (r candidateRules) GetConfiguredRequestModels() []string {
+	return r.Record.GetConfiguredRequestModels(provideradapter.ModelDefaults())
+}

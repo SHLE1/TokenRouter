@@ -1,49 +1,9 @@
 package qoder
 
-import "strings"
-
-// Model 表示暴露给管理端和模型选择 API 的 Qoder 模型。
-type Model struct {
-	ID          string `json:"id"`
-	Type        string `json:"type"`
-	DisplayName string `json:"display_name"`
-	CreatedAt   string `json:"created_at"`
-}
-
-// globalModels 是国际站当前客户端展示的稳定模型快照。
-var globalModels = []Model{
-	{ID: "claude-opus-4-6", Type: "model", DisplayName: "Claude Opus 4.6", CreatedAt: ""},
-	{ID: "auto", Type: "model", DisplayName: "Qoder Auto", CreatedAt: ""},
-	{ID: "performance", Type: "model", DisplayName: "Qoder Performance", CreatedAt: ""},
-	{ID: "efficient", Type: "model", DisplayName: "Qoder Efficient", CreatedAt: ""},
-	{ID: "lite", Type: "model", DisplayName: "Qoder Lite", CreatedAt: ""},
-	{ID: "qwen3.8-max", Type: "model", DisplayName: "Qwen3.8-Max", CreatedAt: ""},
-	{ID: "qwen3.7-max", Type: "model", DisplayName: "Qwen3.7-Max", CreatedAt: ""},
-	{ID: "qwen3.7-plus", Type: "model", DisplayName: "Qwen3.7-Plus", CreatedAt: ""},
-	// Kimi-K3 与 Kimi-K2.7-Code 是 Qoder 当前同时提供的两个独立模型。
-	{ID: "kimi-k3", Type: "model", DisplayName: "Kimi-K3", CreatedAt: ""},
-	{ID: "kimi-k2.7-code", Type: "model", DisplayName: "Kimi-K2.7-Code", CreatedAt: ""},
-	{ID: "glm-5.3", Type: "model", DisplayName: "GLM-5.3", CreatedAt: ""},
-	{ID: "glm-5.2", Type: "model", DisplayName: "GLM-5.2", CreatedAt: ""},
-	{ID: "deepseek-v4-pro", Type: "model", DisplayName: "DeepSeek-V4-Pro", CreatedAt: ""},
-	{ID: "deepseek-v4-flash", Type: "model", DisplayName: "DeepSeek-V4-Flash", CreatedAt: ""},
-	{ID: "minimax-m3", Type: "model", DisplayName: "MiniMax-M3", CreatedAt: ""},
-}
-
-// cnModels 是国内站当前客户端展示的稳定模型快照。
-var cnModels = []Model{
-	{ID: "auto", Type: "model", DisplayName: "Qoder Auto", CreatedAt: ""},
-	{ID: "qwen3.8-max", Type: "model", DisplayName: "Qwen3.8-Max", CreatedAt: ""},
-	{ID: "qwen3.7-max", Type: "model", DisplayName: "Qwen3.7-Max", CreatedAt: ""},
-	{ID: "qwen3.7-plus", Type: "model", DisplayName: "Qwen3.7-Plus", CreatedAt: ""},
-	{ID: "qwen3.6-flash", Type: "model", DisplayName: "Qwen3.6-Flash", CreatedAt: ""},
-	{ID: "deepseek-v4-pro", Type: "model", DisplayName: "DeepSeek-V4-Pro", CreatedAt: ""},
-	{ID: "deepseek-v4-flash", Type: "model", DisplayName: "DeepSeek-V4-Flash", CreatedAt: ""},
-	{ID: "glm-5.3", Type: "model", DisplayName: "GLM-5.3", CreatedAt: ""},
-	{ID: "glm-5.2", Type: "model", DisplayName: "GLM-5.2", CreatedAt: ""},
-	{ID: "kimi-k2.7-code", Type: "model", DisplayName: "Kimi-K2.7-Code", CreatedAt: ""},
-	{ID: "minimax-m2.7", Type: "model", DisplayName: "MiniMax-M2.7", CreatedAt: ""},
-}
+import (
+	"slices"
+	"strings"
+)
 
 // globalAliases 与 cnAliases 固化公开模型 ID 到内部 route key 的站点映射。
 var globalAliases = map[string]string{
@@ -167,18 +127,6 @@ var cnContextCapabilities = map[string]ContextCapability{
 	"mmodel":        {MaxInputTokens: 200000, RuntimeSelectable: true},
 }
 
-// DefaultModels 是无提供商上下文使用的两站稳定并集，国际站模型排在前面。
-var DefaultModels = unionModels(globalModels, cnModels)
-
-// DefaultModelsForSite 返回指定站点的模型快照副本。
-func DefaultModelsForSite(site Site) []Model {
-	models := globalModels
-	if site == SiteCN {
-		models = cnModels
-	}
-	return append([]Model(nil), models...)
-}
-
 // AliasesForSite 返回指定站点公开 alias 到内部 route key 的副本。
 func AliasesForSite(site Site) map[string]string {
 	aliases := globalAliases
@@ -283,38 +231,21 @@ func isKnownRouteKey(model string) bool {
 	return false
 }
 
-func unionModels(groups ...[]Model) []Model {
-	seen := make(map[string]struct{})
-	var models []Model
-	for _, group := range groups {
-		for _, model := range group {
-			if _, ok := seen[model.ID]; ok {
-				continue
-			}
-			seen[model.ID] = struct{}{}
-			models = append(models, model)
-		}
-	}
-	return models
-}
-
-// DefaultRequestModelIDsForSite 返回指定站点的公开模型 ID。
+// DefaultRequestModelIDsForSite 从站点路由规则中枚举公开别名。
 func DefaultRequestModelIDsForSite(site Site) []string {
-	models := DefaultModelsForSite(site)
-	ids := make([]string, 0, len(models))
-	for _, model := range models {
-		ids = append(ids, model.ID)
+	ids := []string{}
+	for alias := range AliasesForSite(site) {
+		ids = append(ids, alias)
 	}
+	slices.Sort(ids)
 	return ids
 }
 
-// DefaultRequestModelIDs 返回无提供商上下文使用的两站模型并集。
+// DefaultRequestModelIDs 返回两个站点的路由别名并集。
 func DefaultRequestModelIDs() []string {
-	ids := make([]string, 0, len(DefaultModels))
-	for _, model := range DefaultModels {
-		ids = append(ids, model.ID)
-	}
-	return ids
+	ids := append(DefaultRequestModelIDsForSite(SiteGlobal), DefaultRequestModelIDsForSite(SiteCN)...)
+	slices.Sort(ids)
+	return slices.Compact(ids)
 }
 
 // AuthInfo 保存从本地 Qoder 认证存储解密出的用户信息。

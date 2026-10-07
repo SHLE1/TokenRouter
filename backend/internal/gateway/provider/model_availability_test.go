@@ -85,10 +85,10 @@ func TestDiagnoseModelAvailabilityForPlatform_ExplicitMappingMatches(t *testing.
 	require.True(t, diag.HasModelSupport)
 }
 
-func TestDiagnoseModelAvailabilityUsesDefaultCatalogForEmptyScope(t *testing.T) {
+func TestDiagnoseModelAvailabilityAllowsUnknownModelForEmptyScope(t *testing.T) {
 	repo := &availabilityProviderStore{
 		providers: []gatewayprovider.ExecutionProvider{
-			{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true} /* 未配置范围时使用提供商默认目录 */},
+			{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 1, Platform: capability.PlatformOpenAI, Status: billing.StatusActive, Schedulable: true} /* 空白名单允许目录未知型号 */},
 		},
 		providersByID: map[int64]*gatewayprovider.ExecutionProvider{},
 	}
@@ -99,7 +99,7 @@ func TestDiagnoseModelAvailabilityUsesDefaultCatalogForEmptyScope(t *testing.T) 
 
 	diag := svc.DiagnoseGeneral(context.Background(), availabilityFixtureGroupID(), "gpt-5.1-codex-mini", capability.PlatformOpenAI)
 
-	require.False(t, diag.HasModelSupport, "默认目录外的模型不能隐式放行")
+	require.True(t, diag.HasModelSupport, "空白名单允许未知型号")
 	diag = svc.DiagnoseGeneral(context.Background(), availabilityFixtureGroupID(), "gpt-5.6-sol", capability.PlatformOpenAI)
 	require.True(t, diag.HasModelSupport)
 }
@@ -144,7 +144,7 @@ func TestDiagnoseModelAvailabilityForPlatform_NoMatchingModel_ReturnsNotFoundSig
 					ProviderGroups: []providercore.GroupMembership{
 						{GroupID: groupID},
 					},
-					Credentials: map[string]any{"model_mapping": map[string]any{"gpt-5": "gpt-5"}},
+					Credentials: map[string]any{"model_whitelist": []string{"gpt-5"}},
 				},
 			},
 			{
@@ -156,7 +156,7 @@ func TestDiagnoseModelAvailabilityForPlatform_NoMatchingModel_ReturnsNotFoundSig
 					ProviderGroups: []providercore.GroupMembership{
 						{GroupID: groupID},
 					},
-					Credentials: map[string]any{"model_mapping": map[string]any{"gpt-5-mini": "gpt-5-mini"}},
+					Credentials: map[string]any{"model_whitelist": []string{"gpt-5-mini"}},
 				},
 			},
 		},
@@ -170,7 +170,7 @@ func TestDiagnoseModelAvailabilityForPlatform_NoMatchingModel_ReturnsNotFoundSig
 	diag := svc.DiagnoseGeneral(context.Background(), &groupID, "gpt-5.1-codex-mini", capability.PlatformOpenAI)
 
 	require.True(t, diag.HasProvidersInPool, "分组内存在 OpenAI 提供商")
-	require.False(t, diag.HasModelSupport, "没有提供商映射允许该模型时 handler 应返回 404")
+	require.False(t, diag.HasModelSupport, "没有提供商白名单允许该模型时 handler 应返回 404")
 }
 
 func TestDiagnoseModelAvailabilityForPlatform_RateLimitedSupportingProviderRemainsConfigured(t *testing.T) {

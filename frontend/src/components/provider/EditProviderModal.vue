@@ -340,14 +340,11 @@
             v-model:mappings="modelMappings"
             :platform="provider.type === 'bedrock' ? 'anthropic' : provider.platform"
             :provider-id="provider.type === 'bedrock' ? undefined : provider.id"
-            :models="isQoderCosyProvider ? qoderAvailableModels : undefined"
-            :presets="provider.type === 'bedrock' ? bedrockPresets : presetMappings"
             :source-placeholder="provider.type === 'bedrock' ? t('admin.providers.fromModel') : undefined"
             :target-placeholder="provider.type === 'bedrock' ? t('admin.providers.toModel') : undefined"
             @update:allowed-models="setAllowedModels"
             @add="touchQoderModelRestriction"
             @remove="touchQoderModelRestriction"
-            @preset="addPresetMapping"
           />
 
           <!-- Antigravity 白名单与映射分别控制最终范围和请求改写。 -->
@@ -359,9 +356,7 @@
             <ModelWhitelistSelector v-model="antigravityWhitelistModels" platform="antigravity" />
             <ProviderModelMappingEditor
               v-model="antigravityModelMappings"
-              :presets="antigravityPresetMappings"
               wildcard-validation
-              @preset="addAntigravityPresetMapping"
             >
               <template #header-actions>
                 <button
@@ -953,8 +948,6 @@ import {
   readResponsesWSConnectionMode
 } from '@/utils/responsesWsConnection'
 import {
-  getPresetMappingsByPlatform,
-  getModelsByPlatform,
   buildModelMappingObject,
   buildPersistedModelRestriction,
   splitQoderPersistedModelRestriction,
@@ -997,9 +990,6 @@ const baseUrlHint = computed(() => {
   if (props.provider.platform === 'grok') return ''
   return t('admin.providers.baseUrlHint')
 })
-
-const antigravityPresetMappings = computed(() => getPresetMappingsByPlatform('antigravity'))
-const bedrockPresets = computed(() => getPresetMappingsByPlatform('bedrock'))
 
 // Model mapping type
 // State
@@ -1283,7 +1273,7 @@ const originalQoderSite = computed<QoderSite>(() => {
   return credentials?.site === 'cn' ? 'cn' : 'global'
 })
 const qoderSiteChanged = computed(() => isQoderCosyProvider.value && qoderSite.value !== originalQoderSite.value)
-const qoderAvailableModels = computed(() => getModelsByPlatform('qoder', qoderSite.value))
+
 const supportsOAuthLikeModelRestriction = computed(() =>
   (props.provider?.platform === 'openai' && props.provider?.type === 'oauth') ||
   (props.provider?.platform === 'grok' && props.provider?.type === 'oauth') ||
@@ -1405,14 +1395,6 @@ const planTypeOptions = computed(() =>
   buildPlanTypeOptions(editPlanType.value, t('admin.providers.openai.planTypeClear'))
 )
 const openAIOAuthClientPolicyOptions = useOpenAIOAuthClientPolicyOptions()
-
-// Computed: current preset mappings based on platform
-const presetMappings = computed(() =>
-  getPresetMappingsByPlatform(
-    props.provider?.platform || 'anthropic',
-    isQoderCosyProvider.value ? qoderSite.value : undefined
-  )
-)
 
 // Computed: default base URL based on platform
 const defaultBaseUrl = computed(() => {
@@ -2034,25 +2016,6 @@ const setAllowedModels = (models: string[]) => {
     qoderModelWhitelistTouched.value = true
   }
   allowedModels.value = models
-}
-
-const addPresetMapping = (from: string, to: string) => {
-  touchQoderModelRestriction()
-  const exists = modelMappings.value.some((m) => m.from === from)
-  if (exists) {
-    appStore.showInfo(t('admin.providers.mappingExists', { model: from }))
-    return
-  }
-  modelMappings.value.push({ from, to })
-}
-
-const addAntigravityPresetMapping = (from: string, to: string) => {
-  const exists = antigravityModelMappings.value.some((m) => m.from === from)
-  if (exists) {
-    appStore.showInfo(t('admin.providers.mappingExists', { model: from }))
-    return
-  }
-  antigravityModelMappings.value.push({ from, to })
 }
 
 const syncAntigravityUpstreamModels = async () => {

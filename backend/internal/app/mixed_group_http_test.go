@@ -165,6 +165,8 @@ func TestMixedGroupTextHTTP(t *testing.T) {
 				providers := &mixedHTTPProviders{}
 				for index, p := range []string{"anthropic", "openai", "gemini"} {
 					record := &provider.Record{ID: int64(index + 1), Name: p, Platform: p, Type: "apikey", Status: "active", Schedulable: true, Priority: index + 1, Concurrency: 1, GroupIDs: []int64{groupID}, Credentials: map[string]any{"api_key": "test-key", "base_url": upstream.URL}}
+					// 混合分组的测试提供商明确声明各自可承接的型号。
+					record.Credentials["model_whitelist"] = []string{map[string]string{"anthropic": "claude-sonnet-4-5-20250929", "openai": "gpt-5.4", "gemini": "gemini-2.5-flash"}[p]}
 					if p == "openai" && platform == "failover" {
 						record.Credentials["model_mapping"] = map[string]any{"claude-sonnet-4-5-20250929": "gpt-5.4"}
 					}
