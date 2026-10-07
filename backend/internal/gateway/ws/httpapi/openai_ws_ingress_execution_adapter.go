@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"time"
 
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 
@@ -193,12 +192,14 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 			return fmt.Errorf("build ws headers: %w", buildHdrErr)
 		}
 		tlsProfile, tlsProfileKey := s.Requests.WSTLSProfile(provider, tlsRouterMatch)
+		// 后台预热与逐轮替换执行器并发，凭据刷新使用固定的身份服务。
+		identity := s.Requests.Identity
 		baseAcquireReq = openaiws.WSAcquireRequest{
 			Provider: openAIWSPoolProviderView(provider),
 			WSURL:    wsURL,
 			Headers:  wsHeaders,
 			HeadersFactory: func(factoryCtx context.Context, headers http.Header) (http.Header, error) {
-				return s.Requests.Identity.RefreshHeaders(factoryCtx, provider, headers)
+				return identity.RefreshHeaders(factoryCtx, provider, headers)
 			},
 			TLSProfile:    tlsProfile,
 			TLSProfileKey: tlsProfileKey,
@@ -247,17 +248,13 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 		return nil
 	}
 
-	acquireTimeout := s.openAIWSAcquireTimeout()
-	if acquireTimeout <= 0 {
-		acquireTimeout = 30 * time.Second
-	}
-
 	acquireTurnLease := func(turn int, preferred string, forcePreferredConn bool, allowRecovery bool) (*openaiws.WSConnLease, error) {
 		req := openaiws.CloneWSAcquireRequest(baseAcquireReq)
 		req.PreferredConnID = strings.TrimSpace(preferred)
 		req.ForcePreferredConn = forcePreferredConn
-		// dedicated 模式为每次获取创建独立连接，隔离会话上下文。
 		req.ForceNewConn = false
+		// 当前轮次的快照决定等待预算，排队期间的配置更新在下一轮生效。
+		acquireTimeout := s.openAIWSAcquireTimeout()
 		acquireCtx, acquireCancel := context.WithTimeout(ctx, acquireTimeout)
 		lease, acquireErr := pool.Acquire(acquireCtx, req)
 		acquireCancel()

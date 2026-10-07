@@ -186,7 +186,7 @@ Responses 历史 Chat 格式的转换、工具 ID 清理、平台 schema 选择�
 <a id="responses_ws_runtime"></a>
 ### Responses 长连接与在线参数
 
-客户端能否使用 Responses WebSocket，由分组的 `allowed_protocols` 决定；上游使用 WS 还是 HTTP，由提供商的 `credentials.upstream_protocols` 和分组转换规则共同决定。WS 功能没有全局启停开关，上游 WS 使用 v2。
+客户端能否使用 Responses WebSocket，由分组的 `allowed_protocols` 决定；上游使用 WS 还是 HTTP，由提供商的 `credentials.upstream_protocols` 和分组转换规则共同决定。WS 功能没有全局启停开关，上游 WS 使用 v2。分组撤销 WS 许可后，已有连接在下一轮准入时以 1008 关闭，已放行轮次照常完成。
 
 提供商的 `extra.responses_ws_connection_mode` 在 `pooled` 和 `per_session` 中选择，缺省为 `pooled`。页面分别显示“优先复用已有连接”和“每个会话新建连接”。连接方式与协议许可分别保存。HTTP 转换由分组配置，超大首帧也要通过上游 HTTP 能力和分组转换检查。
 
@@ -194,13 +194,16 @@ Responses 历史 Chat 格式的转换、工具 ID 清理、平台 schema 选择�
 
 `gateway/ws.Runtime` 保存一份不可变快照。综合设置完成校验和原子持久化后，本实例发布配置；其他实例每五秒回源一次，读取失败继续使用最后一次有效快照。发布代次阻止较早的回源覆盖新保存值。启动时首次读取失败使用部署默认值。保存成功但运行时应用失败时，接口返回 `SETTINGS_APPLY_FAILED`，metadata 的 `persisted=true` 表示参数已写入数据库。
 
-连接池扩容按需执行，缩容回收空闲连接，已占用连接等会话结束后回收。回收时的关闭握手在池引用的访问锁外执行，其他请求仍可获取连接池。最少和最多空闲连接数均支持 0，两项同时设为 0 时不保留空闲连接。拨号和预热结束时重新检查最新容量。客户端连接数量和消息读取上限作用于新连接，超时和恢复参数按下一轮快照执行，轮间超时在下一次等待时读取。会话记录 TTL 作用于新写入和续期，已有记录自然过期。参数更新不会主动终止正在生成的回答。
+连接池扩容按需执行，缩容回收空闲连接，已占用连接等会话结束后回收。回收时的关闭握手在池引用的访问锁外执行，其他请求仍可获取连接池。最少和最多空闲连接数均支持 0，两项同时设为 0 时不保留空闲连接。预热每次拨号前和结果入池前检查当前需求、总容量及空闲上限。超出新限制的结果立即关闭，未使用的建连名额归还连接池。客户端连接数量和消息读取上限作用于新连接，超时和恢复参数按下一轮快照执行，轮间超时在下一次等待时读取。每次获取连接的等待预算按当前轮次快照计算，已排队请求使用入队时的预算。会话记录 TTL 作用于新写入和续期，已有记录自然过期。参数更新不会主动终止正在生成的回答。
 
 WS 入口、逐轮执行适配和 HTTP 转换在 `gateway/ws/httpapi`，会话与恢复规则在 `gateway/ws`，连接池、握手和 relay 在 `upstream/openai/ws`。app 创建共享拨号器和参数读取器，并在关闭连接资源前停止设置刷新。公开 HTTP Responses 请求固定走 HTTP/SSE。
 
+<a id="responses_ws_warmup"></a>
 ### WebSocket 预热和续接
 
 官方的 Codex WebSocket v2 先发送一个 `generate=false` 的预热 `response.create`，再把预热响应的 ID 作为业务请求的 `previous_response_id`。严格的续接比较会忽略每次请求都会变的 `client_metadata`、只用于传输的 `stream_options`，并把 `generate=false` 和之后省略这个字段看作等价；`generate=true`，以及 model、instructions、tools、reasoning、store 等上下文字段，仍然需要一致，无关的请求才不会被错误地串在一起。
+
+OpenAI 和 Grok 的 HTTP 桥接在本地处理 `generate=false`：返回共享同一个响应 ID 的 `response.created` 和 `response.completed`，输出为空、用量为零。预热输入保存在当前连接的重放历史中，下一轮用该 ID 续接时才调用 HTTP 推理接口。OpenAI API Key 和 Grok 的预热还会保存工具声明及名称映射，后续轮次省略 `tools` 时可继承这些工具。预热执行身份、协议和资金准入，完成后释放并发槽位；本地预热结果跳过计费、上游健康反馈和上游额度刷新。写客户端失败时结束该轮。
 
 ### 路由提示和 beta 头
 

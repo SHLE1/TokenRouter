@@ -438,3 +438,28 @@ type bulkGroupsFixture struct {
 func (s *bulkGroupsFixture) GetByID(context.Context, int64) (*routing.Group, error) {
 	return routing.CloneGroup(s.group), nil
 }
+
+// 批量连接方式更新在任何提供商写入前验证统一字段。
+func TestBulkResponsesWSConnectionModeValidation(t *testing.T) {
+	for _, value := range []any{"typo", "", nil, false, 1} {
+		repo := &providerRepoStubForBulkUpdate{}
+		svc := newProviderEditorForTest(repo)
+		_, err := svc.BulkUpdateProviders(context.Background(), &providercore.BulkUpdateProvidersInput{
+			ProviderIDs: []int64{1, 2}, Extra: map[string]any{providercore.ResponsesWSConnectionModeKey: value},
+		})
+		require.Error(t, err, "mode=%#v", value)
+		require.Empty(t, repo.bulkUpdateIDs)
+	}
+	for _, value := range []string{providercore.ResponsesWSPooled, providercore.ResponsesWSPerSession} {
+		repo := &providerRepoStubForBulkUpdate{}
+		svc := newProviderEditorForTest(repo)
+		result, err := svc.BulkUpdateProviders(context.Background(), &providercore.BulkUpdateProvidersInput{
+			ProviderIDs: []int64{1, 2}, Extra: map[string]any{providercore.ResponsesWSConnectionModeKey: value},
+		})
+		require.NoError(t, err)
+		require.Equal(t, 2, result.Success)
+		require.Equal(t, value, repo.lastBulkUpdate.Extra[providercore.ResponsesWSConnectionModeKey])
+		require.Empty(t, repo.lastBulkUpdate.Credentials)
+		require.Empty(t, repo.lastBulkUpdate.ProtocolUpdates)
+	}
+}

@@ -77,9 +77,6 @@ func NormalizeProviderProtocols(provider *Record) error {
 	if provider == nil || provider.IsCredentialShadow() {
 		return nil
 	}
-	if err := NormalizeResponsesWS(provider); err != nil {
-		return err
-	}
 	protocols := provider.UpstreamProtocols()
 	if raw, exists := provider.Credentials[UpstreamProtocolsKey]; exists {
 		var err error
@@ -97,6 +94,9 @@ func NormalizeProviderProtocols(provider *Record) error {
 		provider.Credentials = map[string]any{}
 	}
 	provider.Credentials[UpstreamProtocolsKey] = normalized
+	if err := normalizeResponsesWS(provider); err != nil {
+		return err
+	}
 	MigrateLegacyProtocolCredentials(provider)
 	return nil
 }

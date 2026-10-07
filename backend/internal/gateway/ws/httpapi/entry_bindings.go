@@ -277,6 +277,9 @@ func (p *openAIWSEntryAdapter) AuthorizeTurn(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if key == nil || key.Group == nil || !key.Group.AllowsClientProtocol(protocol.ProtocolResponsesWebSocket) {
+		return errors.New("responses websocket protocol is not allowed by group")
+	}
 	funding, err := admission.ResolveFundingFromKey(ctx, key, p.bindings.Subscriptions, true)
 	if err != nil {
 		return err

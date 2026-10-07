@@ -2200,3 +2200,127 @@ func TestOpenAIWSHTTPBridge_IdleTimeoutClosesClientSession(t *testing.T) {
 	}
 	require.Len(t, upstream.bodies, 1, "an idle client must not leave a continuation request running")
 }
+
+// HTTP 桥接预热应返回空响应，输入留给下一轮生成。
+func TestHTTPBridgeWarmupDoesNotGenerate(t *testing.T) {
+	upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+		Body:       io.NopCloser(strings.NewReader("data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_remote\",\"status\":\"completed\",\"usage\":{\"input_tokens\":5,\"output_tokens\":3}}}\n\n")),
+	}}
+	svc := newWSFixture(wsFixtureInputs{options: &wsFixtureOptions{Output: gatewayhttp.OpenAIResponseOptions{MaxLineSize: gatewayhttp.OpenAIResponseDefaultMaxLineSize}}, transport: upstream})
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 999, Platform: capability.PlatformOpenAI, Type: capability.ProviderTypeAPIKey, Concurrency: 1}}
+	payload := []byte(`{"type":"response.create","model":"gpt-5.5","generate":false,"input":"hello"}`)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/responses", nil)
+	var events [][]byte
+	result, err := svc.proxyOpenAIWSHTTPBridgeTurn(context.Background(), c, provider, "test", payload, len(payload), "gpt-5.5", "", "", "", "", 1, func(b []byte) error { events = append(events, append([]byte(nil), b...)); return nil })
+	require.NoError(t, err)
+	require.Empty(t, upstream.requests)
+	require.Zero(t, result.Usage.InputTokens)
+	require.Zero(t, result.Usage.OutputTokens)
+	require.Len(t, events, 2)
+	require.Equal(t, "response.created", gjson.GetBytes(events[0], "type").String())
+	require.Equal(t, "response.completed", gjson.GetBytes(events[1], "type").String())
+	require.Equal(t, result.RequestID, gjson.GetBytes(events[1], "response.id").String())
+	require.Empty(t, gjson.GetBytes(events[1], "response.output").Array())
+}
+
+// 预热输入在当前连接中保留，业务轮次通过预热 ID 续接时只生成一次。
+func TestHTTPBridgeWarmupContinuation(t *testing.T) {
+	for _, platform := range []string{capability.PlatformOpenAI, capability.PlatformGrok} {
+		t.Run(platform, func(t *testing.T) {
+			upstream := &auxiliaryHTTPRecorder{resp: &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+				Body:       io.NopCloser(strings.NewReader(`data: {"type":"response.completed","response":{"id":"resp_generated","model":"test-model","status":"completed","output":[{"type":"function_call","id":"item_exec","call_id":"call_exec","name":"exec","arguments":"{\"input\":\"pwd\"}","status":"completed"}],"usage":{"input_tokens":5,"output_tokens":3}}}` + "\n\n")),
+			}}
+			options := &wsFixtureOptions{Output: gatewayhttp.OpenAIResponseOptions{MaxLineSize: gatewayhttp.OpenAIResponseDefaultMaxLineSize}}
+			options.Request.URLPolicy.Enabled = false
+			svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}})
+			provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{
+				LoadLocation: time.LoadLocation, ID: 7001, Platform: platform, Type: capability.ProviderTypeAPIKey, Concurrency: 1,
+				Credentials: map[string]any{"api_key": "test", providercore.UpstreamProtocolsKey: []string{"openai_responses"}},
+			}}
+			captures := make(chan ws.OpenAITurnCapture, 2)
+			finished := make(chan error, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				conn, err := coderws.Accept(w, r, nil)
+				if err != nil {
+					finished <- err
+					return
+				}
+				defer func() { _ = conn.CloseNow() }()
+				ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+				defer cancel()
+				_, first, err := conn.Read(ctx)
+				if err != nil {
+					finished <- err
+					return
+				}
+				c, _ := gin.CreateTestContext(httptest.NewRecorder())
+				c.Request = r
+				finished <- svc.ProxyResponsesWebSocketFromClient(ctx, c, conn, provider, "test", first, &ws.OpenAIIngressHooks{AfterTurn: func(capture ws.OpenAITurnCapture) { captures <- capture }})
+			}))
+			defer server.Close()
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			client, _, err := coderws.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http"), nil)
+			require.NoError(t, err)
+			defer func() { _ = client.CloseNow() }()
+			require.NoError(t, client.Write(ctx, coderws.MessageText, []byte(`{"type":"response.create","model":"test-model","generate":false,"tools":[{"type":"custom","name":"exec","description":"Run command"}],"input":[{"role":"user","content":"hello"}]}`)))
+			var warmID string
+			for range 2 {
+				_, event, err := client.Read(ctx)
+				require.NoError(t, err)
+				if gjson.GetBytes(event, "type").String() == "response.completed" {
+					warmID = gjson.GetBytes(event, "response.id").String()
+				}
+			}
+			require.NotEmpty(t, warmID)
+			first := <-captures
+			require.NoError(t, first.Err)
+			require.True(t, first.Result.LocalWarmup)
+			require.Empty(t, upstream.requests)
+			request, err := json.Marshal(map[string]any{"type": "response.create", "model": "test-model", "previous_response_id": warmID, "input": []any{}})
+			require.NoError(t, err)
+			require.NoError(t, client.Write(ctx, coderws.MessageText, request))
+			_, event, err := client.Read(ctx)
+			require.NoError(t, err)
+			require.Equal(t, "resp_generated", gjson.GetBytes(event, "response.id").String())
+			require.Equal(t, "custom_tool_call", gjson.GetBytes(event, "response.output.0.type").String())
+			require.Equal(t, "exec", gjson.GetBytes(event, "response.output.0.name").String())
+			require.Equal(t, "pwd", gjson.GetBytes(event, "response.output.0.input").String())
+			second := <-captures
+			require.NoError(t, second.Err)
+			require.False(t, second.Result.LocalWarmup)
+			require.Equal(t, 3, second.Result.Usage.OutputTokens)
+			require.Len(t, upstream.requests, 1)
+			require.False(t, gjson.GetBytes(upstream.lastBody, "previous_response_id").Exists())
+			require.Len(t, gjson.GetBytes(upstream.lastBody, "input").Array(), 1)
+			require.Contains(t, gjson.GetBytes(upstream.lastBody, "input").Raw, "hello")
+			require.Equal(t, "function", gjson.GetBytes(upstream.lastBody, "tools.0.type").String())
+			require.Equal(t, "exec", gjson.GetBytes(upstream.lastBody, "tools.0.name").String())
+			require.NoError(t, client.Close(coderws.StatusNormalClosure, ""))
+			require.NoError(t, <-finished)
+		})
+	}
+}
+
+// 下行预热事件发送失败时结束本轮，上游保持未调用状态。
+func TestHTTPBridgeWarmupWriteFailure(t *testing.T) {
+	for _, failAt := range []int{1, 2} {
+		writes := 0
+		rejected := errors.New("client disconnected")
+		result, err := completeHTTPBridgeWarmup("model", func([]byte) error {
+			writes++
+			if writes == failAt {
+				return rejected
+			}
+			return nil
+		})
+		require.ErrorIs(t, err, rejected)
+		require.Nil(t, result)
+		require.Equal(t, failAt, writes)
+	}
+}

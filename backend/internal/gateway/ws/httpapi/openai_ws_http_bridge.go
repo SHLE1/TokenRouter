@@ -456,16 +456,12 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 	if s == nil {
 		return nil, errors.New("service is nil")
 	}
-	if s.Requests.Transport == nil {
-		return nil, errors.New("openai http upstream is nil")
-	}
 	if provider == nil {
 		return nil, errors.New("provider is nil")
 	}
 	if writeClientMessage == nil {
 		return nil, errors.New("client websocket writer is nil")
 	}
-
 	body, err := prepareOpenAIWSHTTPBridgeBody(provider, payload)
 	if err != nil {
 		return nil, fmt.Errorf("prepare http bridge body: %w", err)
@@ -505,6 +501,13 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 			ClientMapping: clientToolMapping,
 			LoweredTools:  loweredTools,
 		})
+	}
+	// 预热先保存工具声明和名称映射，后续省略 tools 的轮次据此续接。
+	if openai.IsWSWarmupPayload(payload) {
+		return completeHTTPBridgeWarmup(originalModel, writeClientMessage)
+	}
+	if s.Requests == nil || s.Requests.Transport == nil {
+		return nil, errors.New("openai http upstream is nil")
 	}
 	responsesLite := provider.Record.Platform == capability.PlatformOpenAI && gatewayprovider.ImageIntent().IsOpenAIResponsesLiteWebSocketPayload(payload)
 	if responsesLite {

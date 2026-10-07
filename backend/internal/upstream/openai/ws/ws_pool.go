@@ -1655,6 +1655,9 @@ func (p *WSConnPool) ensureTargetIdleAsync(providerID int64) {
 	if p.shouldSuppressPrewarmLocked(ap, now) {
 		return
 	}
+	if !p.prewarmNeededLocked(ap) {
+		return
+	}
 	effectiveMaxConns := p.maxConnsHardCap()
 	if ap.lastAcquire != nil && ap.lastAcquire.Provider != nil {
 		effectiveMaxConns = p.effectiveMaxConnsByProvider(ap.lastAcquire.Provider)
@@ -1721,43 +1724,79 @@ func (p *WSConnPool) targetConnCountLocked(ap *openAIWSProviderPool, maxConns in
 	return target
 }
 
+// prewarmNeededLocked 检查当前需求、总容量和空闲上限，调用方持有提供商池锁。
+func (p *WSConnPool) prewarmNeededLocked(ap *openAIWSProviderPool) bool {
+	if ap.lastAcquire == nil {
+		return false
+	}
+	limit := p.effectiveMaxConnsByProvider(ap.lastAcquire.Provider)
+	if len(ap.conns) >= p.targetConnCountLocked(ap, limit) {
+		return false
+	}
+	idle := 0
+	for id, conn := range ap.conns {
+		if conn != nil && !conn.isLeased() && conn.waiters.Load() == 0 && !p.isConnPinnedLocked(ap, id) {
+			idle++
+		}
+	}
+	return idle < p.maxIdlePerProvider()
+}
+
 func (p *WSConnPool) prewarmConns(providerID int64, req WSAcquireRequest, total int, generations ...uint64) {
 	generation := uint64(0)
 	if len(generations) > 0 {
 		generation = generations[0]
 	}
 	staleTarget := false
+	remaining := total
 	defer func() {
 		if ap, ok := p.getProviderPool(providerID); ok && ap != nil {
 			ap.mu.Lock()
+			// 提前停止时归还本批尚未拨号的预留名额，后续请求可以按新容量建连。
+			ap.creating = max(0, ap.creating-remaining)
 			ap.prewarmActive = false
 			ap.signalChangedLocked()
 			ap.mu.Unlock()
 		}
 		if staleTarget {
-			// 旧拨号尚未结束时出现了更新的获取请求；先清除 prewarmActive，
-			// 再按最新 beta/hint 目标重新计算空闲连接需求。
+			// 按最近一次请求的凭据和握手参数重新计算预热需求。
 			p.ensureTargetIdleAsync(providerID)
 		}
 	}()
 
-	for i := 0; i < total; i++ {
+	for remaining > 0 {
 		parent := p.prewarmCtx
 		if parent == nil {
 			parent = context.Background()
 		}
+		if parent.Err() != nil {
+			return
+		}
+		ap, ok := p.getProviderPool(providerID)
+		if !ok || ap == nil {
+			return
+		}
+		ap.mu.Lock()
+		if ap.generation != generation || ap.lastAcquire == nil {
+			ap.mu.Unlock()
+			return
+		}
+		if !sameOpenAIWSPrewarmTarget(req, *ap.lastAcquire) {
+			staleTarget = true
+			ap.mu.Unlock()
+			return
+		}
+		if !p.prewarmNeededLocked(ap) {
+			ap.mu.Unlock()
+			return
+		}
+		ap.mu.Unlock()
 		ctx, cancel := context.WithTimeout(parent, p.dialTimeout()+openAIWSConnPrewarmExtraDelay)
 		conn, err := p.dialConn(ctx, req)
 		cancel()
 
-		ap, ok := p.getProviderPool(providerID)
-		if !ok || ap == nil {
-			if conn != nil {
-				conn.close()
-			}
-			return
-		}
 		ap.mu.Lock()
+		remaining--
 		if ap.creating > 0 {
 			ap.creating--
 		}
@@ -1771,20 +1810,21 @@ func (p *WSConnPool) prewarmConns(providerID int64, req WSAcquireRequest, total 
 		if ap.generation != generation || ap.lastAcquire == nil {
 			ap.mu.Unlock()
 			conn.close()
-			continue
+			return
 		}
 		if !sameOpenAIWSPrewarmTarget(req, *ap.lastAcquire) {
 			staleTarget = true
 			ap.signalChangedLocked()
 			ap.mu.Unlock()
 			conn.close()
-			continue
+			return
 		}
-		if len(ap.conns) >= p.effectiveMaxConnsByProvider(req.Provider) {
+		// 拨号期间需求和配置均可变化，迟到结果入池前再次检查。
+		if parent.Err() != nil || !p.prewarmNeededLocked(ap) {
 			ap.signalChangedLocked()
 			ap.mu.Unlock()
 			conn.close()
-			continue
+			return
 		}
 		ap.conns[conn.id] = conn
 		ap.prewarmFails = 0

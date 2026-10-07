@@ -28,8 +28,26 @@ func (a *Record) SupportsResponsesWS() bool {
 	return a != nil && a.IsOpenAI() && slices.Contains(a.UpstreamProtocols(), capability.ProtocolResponsesWebSocket)
 }
 
-// NormalizeResponsesWS 在保存和导入时转换旧连接设置，分组决定客户端协议许可。
-func NormalizeResponsesWS(a *Record) error {
+// parseResponsesWSConnectionMode 校验所有保存入口使用的连接方式。
+func parseResponsesWSConnectionMode(raw any) (string, error) {
+	value, ok := raw.(string)
+	if !ok || (value != ResponsesWSPooled && value != ResponsesWSPerSession) {
+		return "", apperror.BadRequest("INVALID_RESPONSES_WS_CONNECTION_MODE", "responses_ws_connection_mode must be pooled or per_session")
+	}
+	return value, nil
+}
+
+// validateResponsesWSConnectionModePatch 检查增量请求中提供的连接方式。
+func validateResponsesWSConnectionModePatch(extra map[string]any) error {
+	if value, present := extra[ResponsesWSConnectionModeKey]; present {
+		_, err := parseResponsesWSConnectionMode(value)
+		return err
+	}
+	return nil
+}
+
+// normalizeResponsesWS 在协议集合通过校验后转换旧连接设置。
+func normalizeResponsesWS(a *Record) error {
 	if a == nil || !a.IsOpenAI() {
 		return nil
 	}
@@ -40,9 +58,9 @@ func NormalizeResponsesWS(a *Record) error {
 	mode := ResponsesWSPooled
 	bridge := false
 	if raw, exists := extra[ResponsesWSConnectionModeKey]; exists {
-		value, ok := raw.(string)
-		if !ok || (value != ResponsesWSPooled && value != ResponsesWSPerSession) {
-			return apperror.BadRequest("INVALID_RESPONSES_WS_CONNECTION_MODE", "responses_ws_connection_mode must be pooled or per_session")
+		value, err := parseResponsesWSConnectionMode(raw)
+		if err != nil {
+			return err
 		}
 		mode = value
 	} else {

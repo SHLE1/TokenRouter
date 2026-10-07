@@ -9,6 +9,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,6 +42,7 @@ func TestAuthorizeTurn(t *testing.T) {
 	for _, name := range []string{"allowed", "deleted", "funding_denied", "subscription_missing"} {
 		t.Run(name, func(t *testing.T) {
 			original := &apikey.APIKey{ID: 1, User: &identity.User{ID: 2}, BillingMode: billing.APIKeyBillingModeBalance, RateLimit5h: 10}
+			original.Group = &routing.Group{AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolResponsesWebSocket}}
 			current := apikey.CopyAPIKey(original)
 			current.RateLimit5h = 1
 			auth := &turnAuthentication{key: current}
@@ -94,7 +97,7 @@ func (s turnSubscriptions) ValidateAndCheckLimits(*billing.UserSubscription) (bo
 
 // TestAuthorizeTurnReloadsSubscription 验证资金检查读取本轮订阅，不复用连接建立时的剩余额度。
 func TestAuthorizeTurnReloadsSubscription(t *testing.T) {
-	key := &apikey.APIKey{ID: 1, User: &identity.User{ID: 2}}
+	key := &apikey.APIKey{ID: 1, User: &identity.User{ID: 2}, Group: &routing.Group{AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolResponsesWebSocket}}}
 	old := &billing.UserSubscription{ID: 3, DailyUsageUSD: 0}
 	current := &billing.UserSubscription{ID: 3, DailyUsageUSD: 10}
 	denied := errors.New("subscription exhausted")
@@ -113,6 +116,7 @@ func TestAuthorizeTurnReloadsSubscription(t *testing.T) {
 // TestKeyAdmissionUsesCurrentTurnLimits 后续轮次使用重新认证得到的上限。
 func TestKeyAdmissionUsesCurrentTurnLimits(t *testing.T) {
 	original := &apikey.APIKey{ID: 1, User: &identity.User{ID: 2}, BillingMode: billing.APIKeyBillingModeBalance, RPMLimit: 20}
+	original.Group = &routing.Group{AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolResponsesWebSocket}}
 	current := apikey.CopyAPIKey(original)
 	current.RPMLimit = 1
 	auth := &turnAuthentication{key: current}
@@ -128,4 +132,26 @@ func TestKeyAdmissionUsesCurrentTurnLimits(t *testing.T) {
 	require.Equal(t, 1013, adapter.CloseInfo(err).Status)
 	require.Same(t, current, auth.acquired)
 	require.Equal(t, 20, original.RPMLimit)
+}
+
+// 分组取消 WS 许可后，下一轮在资金检查前拒绝，已经完成的轮次快照保持独立。
+func TestAuthorizeTurnRejectsRevokedWSProtocol(t *testing.T) {
+	original := &apikey.APIKey{
+		ID: 1, User: &identity.User{ID: 2}, BillingMode: billing.APIKeyBillingModeBalance,
+		Group: &routing.Group{ID: 3, AllowedProtocols: []protocol.ProtocolID{protocol.ProtocolResponsesWebSocket}},
+	}
+	current := apikey.CopyAPIKey(original)
+	current.Group.AllowedProtocols = []protocol.ProtocolID{protocol.ProtocolOpenAIResponses}
+	fundingCalled := false
+	adapter := &openAIWSEntryAdapter{key: original, bindings: Bindings{
+		Keys: &turnAuthentication{key: current},
+		CheckFunding: func(context.Context, *apikey.APIKey, *billing.UserSubscription, string, bool) error {
+			fundingCalled = true
+			return nil
+		},
+	}}
+	require.Error(t, adapter.AuthorizeTurn(context.Background()))
+	require.False(t, fundingCalled)
+	require.True(t, original.Group.AllowsClientProtocol(protocol.ProtocolResponsesWebSocket))
+	require.Nil(t, adapter.requestKey)
 }

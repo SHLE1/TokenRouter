@@ -167,6 +167,7 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsync(t *testing.T) {
 	cfg := &WSPoolOptions{}
 	cfg.MaxConnsPerProvider = 4
 	cfg.MinIdlePerProvider = 2
+	cfg.MaxIdlePerProvider = cfg.MinIdlePerProvider
 	cfg.PoolTargetUtilization = 0.8
 	cfg.DialTimeoutSeconds = 1
 
@@ -203,6 +204,7 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsyncCooldown(t *testing.T) {
 	cfg := &WSPoolOptions{}
 	cfg.MaxConnsPerProvider = 4
 	cfg.MinIdlePerProvider = 2
+	cfg.MaxIdlePerProvider = cfg.MinIdlePerProvider
 	cfg.PoolTargetUtilization = 0.8
 	cfg.DialTimeoutSeconds = 1
 	cfg.PrewarmCooldownMS = 500
@@ -260,6 +262,7 @@ func TestOpenAIWSConnPool_EnsureTargetIdleAsyncFailureSuppress(t *testing.T) {
 	cfg := &WSPoolOptions{}
 	cfg.MaxConnsPerProvider = 2
 	cfg.MinIdlePerProvider = 1
+	cfg.MaxIdlePerProvider = cfg.MinIdlePerProvider
 	cfg.PoolTargetUtilization = 0.8
 	cfg.DialTimeoutSeconds = 1
 	cfg.PrewarmCooldownMS = 0
@@ -1888,7 +1891,7 @@ func TestOpenAIWSConnPool_TargetConnCountAndPrewarmBranches(t *testing.T) {
 	target := pool.targetConnCountLocked(ap, 4)
 	require.GreaterOrEqual(t, target, len(ap.conns)+1)
 
-	// prewarm: provider pool 缺失时，拨号后的连接应被关闭并提前返回
+	// 提供商池缺失时跳过预热拨号。
 	req := WSAcquireRequest{
 		Provider: &WSPoolProvider{ID: 999, Type: "apikey"},
 		WSURL:    "wss://example.com/v1/responses",
@@ -1897,13 +1900,16 @@ func TestOpenAIWSConnPool_TargetConnCountAndPrewarmBranches(t *testing.T) {
 
 	// prewarm: 拨号失败分支（prewarmFails 累加）
 	providerID := int64(1000)
+	cfg.MinIdlePerProvider = 1
+	cfg.MaxIdlePerProvider = 1
 	failPool := newStartedWSConnPoolForTest(cfg)
 	failPool.SetClientDialerForTest(&openAIWSAlwaysFailDialer{})
 	apFail := failPool.getOrCreateProviderPool(providerID)
 	apFail.mu.Lock()
 	apFail.creating = 1
-	apFail.mu.Unlock()
 	req.Provider.ID = providerID
+	apFail.lastAcquire = CloneWSAcquireRequestPtr(&req)
+	apFail.mu.Unlock()
 	failPool.prewarmConns(providerID, req, 1)
 	apFail.mu.Lock()
 	require.GreaterOrEqual(t, apFail.prewarmFails, 1)
@@ -1984,6 +1990,7 @@ type openAIWSFirstDialBlockingCaptureDialer struct {
 	mu           sync.Mutex
 	dialCount    int
 	headers      []http.Header
+	connections  []*openAIWSFakeConn
 	firstStarted chan struct{}
 	releaseFirst chan struct{}
 }
@@ -2089,7 +2096,11 @@ func (d *openAIWSFirstDialBlockingCaptureDialer) Dial(
 		case <-d.releaseFirst:
 		}
 	}
-	return &openAIWSFakeConn{}, 0, nil, nil
+	conn := &openAIWSFakeConn{}
+	d.mu.Lock()
+	d.connections = append(d.connections, conn)
+	d.mu.Unlock()
+	return conn, 0, nil, nil
 }
 
 func (d *openAIWSFirstDialBlockingCaptureDialer) DialCount() int {
@@ -2330,6 +2341,8 @@ func newStartedWSConnPoolForTest(options *WSPoolOptions) *WSConnPool {
 func TestOpenAIWSConnPoolHeadersFactoryRunsAtDialAndStalePrewarmIsDiscarded(t *testing.T) {
 	cfg := &WSPoolOptions{}
 	cfg.MaxConnsPerProvider = 1
+	cfg.MinIdlePerProvider = 1
+	cfg.MaxIdlePerProvider = 1
 	pool := newStartedWSConnPoolForTest(cfg)
 	defer pool.Close()
 	pool.SetClientDialerForTest(&openAIWSFakeDialer{})

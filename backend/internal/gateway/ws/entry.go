@@ -565,7 +565,7 @@ func RunEntry(ctx context.Context, p EntryPorts, in EntryInput, client ClientSoc
 						EntryError(turnErr),
 					)
 				}
-				if result == nil {
+				if result == nil || result.LocalWarmup {
 					return
 				}
 				// WS 每个 turn 的分组映射可能覆盖默认计费模型，统一在记录用量前解析。

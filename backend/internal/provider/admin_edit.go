@@ -367,6 +367,9 @@ func (s *Admin) UpdateProvider(ctx context.Context, id int64, input *UpdateProvi
 
 // UpdateProviderExtra 按键合并 Extra JSONB，其余运行状态和配置字段保持当前值。
 func (s *Admin) UpdateProviderExtra(ctx context.Context, id int64, updates map[string]any) error {
+	if err := validateResponsesWSConnectionModePatch(updates); err != nil {
+		return err
+	}
 	updates = SanitizedCodexFingerprintExtraUpdates(updates)
 	DiscardDeprecatedProviderExtra(updates)
 	if err := NormalizeUpstreamUsageExtra(updates); err != nil {
@@ -400,6 +403,9 @@ func (s *Admin) UpdateProviderExtra(ctx context.Context, id int64, updates map[s
 // BulkUpdateProviders 在单次请求中更新多个提供商。
 // 凭据和 extra 使用键级合并，不覆盖整个对象。
 func (s *Admin) BulkUpdateProviders(ctx context.Context, input *BulkUpdateProvidersInput) (*BulkUpdateProvidersResult, error) {
+	if err := validateResponsesWSConnectionModePatch(input.Extra); err != nil {
+		return nil, err
+	}
 	// 受管会话状态只能通过专用类型接口更新，废弃提供商扩展字段直接丢弃。
 	input.Extra = SanitizedCodexFingerprintExtraUpdates(input.Extra)
 	DiscardDeprecatedProviderExtra(input.Extra)

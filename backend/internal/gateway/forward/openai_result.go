@@ -11,6 +11,8 @@ import (
 
 // OpenAIResult 保存 OpenAI 兼容执行的观测结果，恢复报文仍由本次执行私有持有。
 type OpenAIResult struct {
+	// LocalWarmup 表示网关本地完成的预热，完成处理跳过计费和上游健康更新。
+	LocalWarmup bool `json:"-"`
 	// UpstreamResponseModel 是协议转换前的上游模型声明；空值表示未声明。
 	UpstreamResponseModel string
 	// NativeUsage 保存非 OpenAI 执行器各自独立的输入分桶，桥接结果直接使用这些值。
@@ -79,6 +81,9 @@ type OpenAIResult struct {
 // SucceededForScheduling 判断转发结果能否作为上游调度成功，并清除模型级短暂状态。
 // 零值表示非 WebSocket 调用成功。
 func (r *OpenAIResult) SucceededForScheduling() bool {
+	if r != nil && r.LocalWarmup {
+		return false
+	}
 	if r == nil || !r.OpenAIWSMode || r.UpstreamTerminalEvent == "" {
 		return true
 	}

@@ -167,6 +167,11 @@ func (target *keyLimitTarget) Run(ctx context.Context, _ ClientSocket, _ []byte,
 		return detached.Err()
 	}
 
+	if p.mode == "local_warmup" {
+		hooks.AfterTurn(TurnCapture{Turn: 1, Result: &ForwardResult{LocalWarmup: true, RequestID: "resp_warmup"}})
+		require.Zero(p.t, p.active)
+		return nil
+	}
 	if p.mode == "retry" && p.attempts == 1 {
 		hooks.AfterTurn(TurnCapture{Turn: 1, Err: errKeyLimitRetry})
 		require.Equal(p.t, 1, p.active, "故障转移期间持有本轮预占")
@@ -189,7 +194,7 @@ func (target *keyLimitTarget) Run(ctx context.Context, _ ClientSocket, _ []byte,
 
 // TestEntryKeyLimits 覆盖首轮、后续轮次、空闲释放和同轮故障转移。
 func TestEntryKeyLimits(t *testing.T) {
-	for _, mode := range []string{"two_turns", "rpm", "retry", "lost_lease"} {
+	for _, mode := range []string{"two_turns", "rpm", "retry", "lost_lease", "local_warmup"} {
 		t.Run(mode, func(t *testing.T) {
 			p := &keyLimitEntry{t: t, mode: mode}
 			p.target = &keyLimitTarget{root: p}
@@ -205,6 +210,8 @@ func TestEntryKeyLimits(t *testing.T) {
 			}
 			if mode == "retry" {
 				require.Equal(t, 2, p.attempts)
+			} else if mode == "local_warmup" {
+				require.Zero(t, p.authorized)
 			} else if mode != "lost_lease" {
 				require.Equal(t, 1, p.authorized)
 			}

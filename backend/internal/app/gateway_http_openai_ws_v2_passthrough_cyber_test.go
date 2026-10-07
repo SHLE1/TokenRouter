@@ -47,6 +47,7 @@ type openAIWSPassthroughHandlerHarness struct {
 	gatewayCache   session.GatewayCache
 	apiKey         *apikey.APIKey
 	keys           *wsTurnKeys
+	groups         *wsTurnGroups
 }
 
 // wsTurnKeys 独立保存当前认证记录，测试中的删除不会修改连接已持有的快照。
@@ -69,6 +70,27 @@ func (r *wsTurnKeys) remove() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.key = nil
+}
+
+// wsTurnGroups 按快照返回分组许可，供长连接测试在轮次之间撤销协议。
+type wsTurnGroups struct {
+	routing.GroupRepository
+	mu    sync.Mutex
+	group routing.Group
+}
+
+func (r *wsTurnGroups) GetByIDLite(context.Context, int64) (*routing.Group, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	value := r.group
+	value.AllowedProtocols = append([]capability.ProtocolID(nil), r.group.AllowedProtocols...)
+	return &value, nil
+}
+
+func (r *wsTurnGroups) revokeWS() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.group.AllowedProtocols = []capability.ProtocolID{capability.ProtocolOpenAIResponses}
 }
 
 func (r *contentModerationHandlerTestRepo) cyberWarningSnapshot() []moderation.ContentModerationCyberWarning {
@@ -144,8 +166,10 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 		GroupID: &groupID,
 		User:    &identity.User{ID: 1751, Status: billing.StatusActive},
 	}
+	apiKey.Group = &routing.Group{ID: groupID, Status: "active", AllowedProtocols: []capability.ProtocolID{capability.ProtocolResponsesWebSocket}}
 	keys := &wsTurnKeys{key: apikey.CopyAPIKey(apiKey)}
-	keyService := testkit.NewService(keys, nil, fallbackGroupRepository{group: &routing.Group{ID: groupID, Status: "active"}}, nil, nil, nil, nil)
+	groups := &wsTurnGroups{group: *apiKey.Group}
+	keyService := testkit.NewService(keys, nil, groups, nil, nil, nil, nil)
 	h := newGatewayHTTPEndpoints(gatewayHTTPFixtureInput{
 		Source: gatewaySvc, Credentials: gatewaySvcCredentialPort,
 		Funding:     newFundingAdmissionFixture(billingCacheSvc, cfg),
@@ -181,6 +205,7 @@ func newOpenAIWSPassthroughHandlerHarness(t *testing.T, upstreamURL string) *ope
 		gatewayCache:   gatewayCache,
 		apiKey:         apiKey,
 		keys:           keys,
+		groups:         groups,
 	}
 }
 
@@ -376,6 +401,16 @@ func TestOpenAIResponsesWebSocketV2PassthroughNonCyberTurnAllowsFollowup(t *test
 
 // TestOpenAIResponsesWebSocketDeletedKeyRejectsFollowup 验证删除后新一轮不会到达上游。
 func TestOpenAIResponsesWebSocketDeletedKeyRejectsFollowup(t *testing.T) {
+	testOpenAIWSRevokedAccessRejectsFollowup(t, func(h *openAIWSPassthroughHandlerHarness) { h.keys.remove() })
+}
+
+// 分组协议撤销通过实际重新认证流程关闭下一轮，上游收不到后续请求。
+func TestOpenAIResponsesWebSocketDisabledGroupRejectsFollowup(t *testing.T) {
+	testOpenAIWSRevokedAccessRejectsFollowup(t, func(h *openAIWSPassthroughHandlerHarness) { h.groups.revokeWS() })
+}
+
+func testOpenAIWSRevokedAccessRejectsFollowup(t *testing.T, revoke func(*openAIWSPassthroughHandlerHarness)) {
+	t.Helper()
 	reached := make(chan bool, 1)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := coderws.Accept(w, r, nil)
@@ -406,19 +441,19 @@ func TestOpenAIResponsesWebSocketDeletedKeyRejectsFollowup(t *testing.T) {
 	_, event, err := harness.clientConn.Read(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "resp_before_delete", gjson.GetBytes(event, "response.id").String())
-	harness.keys.remove()
+	revoke(harness)
 	require.NoError(t, harness.clientConn.Write(ctx, coderws.MessageText, payload))
 	_, _, err = harness.clientConn.Read(ctx)
 	require.Equal(t, coderws.StatusPolicyViolation, coderws.CloseStatus(err))
 	select {
 	case forwarded := <-reached:
-		require.False(t, forwarded, "删除后的第二轮不能到达上游")
+		require.False(t, forwarded, "撤销权限后的第二轮不能到达上游")
 	case <-ctx.Done():
 		t.Fatal("上游连接未结束")
 	}
 	select {
 	case <-harness.handlerDone:
 	case <-ctx.Done():
-		t.Fatal("删除后的连接未结束")
+		t.Fatal("撤销权限后的连接未结束")
 	}
 }
