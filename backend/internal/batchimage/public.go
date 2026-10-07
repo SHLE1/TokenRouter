@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,7 +18,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/modelmap"
 )
 
 const PlatformGemini = "gemini"
@@ -30,6 +30,8 @@ type (
 	GroupMappingReader interface {
 		ResolveGroupMapping(context.Context, int64, string) GroupMappingResult
 		IsModelRestricted(context.Context, int64, string) bool
+		GetGroupPolicy(context.Context, int64) (*routing.GroupPolicyView, error)
+		GetPricingConfigForGroup(context.Context, int64) (*routing.PricingConfig, error)
 	}
 )
 
@@ -81,9 +83,10 @@ type PublicOptions struct {
 	DefaultResponseMimeType, DefaultImageSize                                                                                                                                     string
 }
 type Public struct {
-	// ModelIDs 提供统一目录的图片候选，配置中的具体型号另行合并。
-	ModelIDs               func() []string
-	GroupPolicy            func(context.Context, int64) (*routing.GroupPolicyView, error)
+	// ModelIDs 提供展开通配映射所需的完整目录。
+	ModelIDs func() []string
+	// ModelOutputModalities 按最终型号查询输出模态，nil 表示未知。
+	ModelOutputModalities  func(string) *[]string
 	Now                    func() time.Time
 	Repo                   BatchImageRepository
 	ProviderRepo           ProviderReader
@@ -613,18 +616,27 @@ func (s *Public) ListModels(ctx context.Context, owner BatchImageOwner) (*BatchI
 	if s.ModelIDs != nil {
 		candidates = s.ModelIDs()
 	}
-	if s.GroupPolicy != nil && owner.GroupID != nil {
-		policy, err := s.GroupPolicy(ctx, *owner.GroupID)
+	var policy *routing.GroupPolicyView
+	billingMapping := GroupMappingResult{BillingModelSource: routing.BillingModelSourceGroupMapped}
+	if s.PricingConfigService != nil && owner.GroupID != nil {
+		var err error
+		policy, err = s.PricingConfigService.GetGroupPolicy(ctx, *owner.GroupID)
 		if err != nil {
 			return nil, err
 		}
-		if policy != nil {
-			candidates = append(candidates, policy.AllowedModels...)
-			for id := range policy.ModelMapping {
-				candidates = append(candidates, id)
-			}
+		if config, err := s.PricingConfigService.GetPricingConfigForGroup(ctx, *owner.GroupID); err == nil && config != nil {
+			billingMapping.PricingConfigID = config.ID
+			billingMapping.BillingModelSource = config.BillingModelSource
 		}
 	}
+	if policy != nil {
+		candidates = append(candidates, policy.AllowedModels...)
+		for id := range policy.ModelMapping {
+			candidates = append(candidates, id)
+		}
+	}
+	// 多个来源可以映射到同一上游型号，每次查询复用它的模态结果。
+	outputs := make(map[string]*[]string)
 	modelsByProvider := make(map[string]map[string]struct{})
 	for _, providerName := range BatchImageProviderSelectionOrder("") {
 		if !s.ProviderExists(providerName) {
@@ -639,17 +651,36 @@ func (s *Public) ListModels(ctx context.Context, owner BatchImageOwner) (*BatchI
 			if !provider.IsSchedulable() || !provider.SupportsProvider(providerName) {
 				continue
 			}
+			configured := batchImageConfiguredModels(&provider, policy)
 			for _, model := range BatchImageModelsFromProviderMapping(&provider, candidates...) {
-				mapping, routingModel, err := s.ResolveBatchImageGroupModel(ctx, owner.GroupID, model)
-				if err != nil {
-					continue
+				routingModel := strings.TrimSpace(policy.ResolveModel(model))
+				if routingModel == "" {
+					routingModel = model
 				}
 				upstreamModel := mappedCandidateModel(&provider, routingModel)
-				pricingModel := BatchImagePricingModel(mapping, model, routingModel, upstreamModel)
-				if _, err := s.Pricing.BatchImageUnitPrice(ctx, BatchImagePriceInput{Model: pricingModel, GroupID: owner.GroupID, ImageSize: "1K"}); err != nil {
+				restrictionModel := routing.ModelForRestriction(policy.RestrictionSource(), model, routingModel)
+				if policy.RestrictionSource() == routing.BillingModelSourceUpstream {
+					restrictionModel = upstreamModel
+				}
+				if policy.IsModelRestricted(restrictionModel) || !provider.IsModelSupported(routingModel) {
 					continue
 				}
-				if !provider.IsModelSupported(routingModel) {
+				modalities, found := outputs[upstreamModel]
+				if !found && s.ModelOutputModalities != nil {
+					modalities = s.ModelOutputModalities(upstreamModel)
+					outputs[upstreamModel] = modalities
+				}
+				if modalities != nil {
+					if !slices.Contains(*modalities, "image") {
+						continue
+					}
+				} else if !configured[model] && !configured[routingModel] && !configured[upstreamModel] {
+					continue
+				}
+				mapping := billingMapping
+				mapping.MappedModel = routingModel
+				pricingModel := BatchImagePricingModel(mapping, model, routingModel, upstreamModel)
+				if _, err := s.Pricing.BatchImageUnitPrice(ctx, BatchImagePriceInput{Model: pricingModel, GroupID: owner.GroupID, ImageSize: "1K"}); err != nil {
 					continue
 				}
 				if modelsByProvider[providerName] == nil {
@@ -1255,6 +1286,37 @@ func BatchImageProviderSelectionOrder(requestedProvider string) []string {
 	return []string{BatchImageProviderGeminiAPI, BatchImageProviderVertex}
 }
 
+// batchImageConfiguredModels 收集管理员声明的具体型号，供未知模态的候选使用。
+func batchImageConfiguredModels(provider *Candidate, policy *routing.GroupPolicyView) map[string]bool {
+	ids := make(map[string]bool)
+	add := func(id string) {
+		id = strings.TrimSpace(id)
+		if id != "" && !strings.ContainsAny(id, "*?") {
+			ids[id] = true
+		}
+	}
+	if configured, ok := provider.CandidateRules.(interface{ GetConfiguredRequestModels() []string }); ok {
+		for _, id := range configured.GetConfiguredRequestModels() {
+			add(id)
+		}
+	}
+	for source, target := range provider.GetModelMapping() {
+		add(source)
+		add(target)
+	}
+	if policy != nil {
+		for _, id := range policy.AllowedModels {
+			add(id)
+		}
+		for source, target := range policy.ModelMapping {
+			add(source)
+			add(target)
+		}
+	}
+	return ids
+}
+
+// BatchImageModelsFromProviderMapping 合并完整目录与具体配置，通配映射在解析候选时执行。
 func BatchImageModelsFromProviderMapping(provider *Candidate, candidates ...string) []string {
 	if provider == nil {
 		return nil
@@ -1275,11 +1337,6 @@ func BatchImageModelsFromProviderMapping(provider *Candidate, candidates ...stri
 			continue
 		}
 		if strings.ContainsAny(model, "*?") {
-			for _, candidate := range candidates {
-				if modelmap.Matches(model, candidate) {
-					models[candidate] = struct{}{}
-				}
-			}
 			continue
 		}
 		models[model] = struct{}{}
