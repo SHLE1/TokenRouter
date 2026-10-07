@@ -8,9 +8,10 @@
     >
       <!-- Four-square grid icon -->
       <Icon name="grid" size="xs" class="h-3 w-3" />
-      <span class="font-mono">{{ current }}</span>
-      <span class="text-gray-400 dark:text-gray-500">/</span>
-      <span class="font-mono">{{ max }}</span>
+      <!-- 数字加 self-baseline，徽章的基线取自数字，移动卡片的标签和它对齐。 -->
+      <span class="self-baseline font-mono">{{ current }}</span>
+      <span class="self-baseline text-gray-400 dark:text-gray-500">/</span>
+      <span class="self-baseline font-mono">{{ max }}</span>
     </span>
   </div>
 </template>

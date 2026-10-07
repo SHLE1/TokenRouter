@@ -1,10 +1,11 @@
 <template>
+  <!-- 各段文字加 self-baseline，徽章的基线取自第一段文字，移动卡片的标签和它对齐。 -->
   <div class="inline-flex flex-col gap-0.5 text-xs font-medium">
     <!-- Row 1: Platform + Type -->
     <div class="inline-flex items-center overflow-hidden rounded-compact">
       <span :class="['inline-flex items-center gap-1 px-2 py-1', platformClass]">
         <PlatformIcon :platform="platform" size="xs" />
-        <span>{{ platformLabel }}</span>
+        <span class="self-baseline">{{ platformLabel }}</span>
       </span>
       <span :class="['inline-flex items-center gap-1 px-1.5 py-1', typeClass]">
         <!-- OAuth icon -->
@@ -14,7 +15,7 @@
         <!-- API Key icon -->
         <Icon v-else-if="type === 'service_account'" name="cloud" size="xs" />
         <Icon v-else name="key" size="xs" />
-        <span>{{ typeLabel }}</span>
+        <span class="self-baseline">{{ typeLabel }}</span>
       </span>
     </div>
     <!-- Row 2: Plan type + Privacy mode (only if either exists) -->
@@ -31,7 +32,7 @@
           data-testid="grok-plan-icon"
           aria-hidden="true"
         />
-        <span>{{ planLabel }}</span>
+        <span class="self-baseline">{{ planLabel }}</span>
       </span>
       <span
         v-if="privacyBadge"
@@ -39,7 +40,7 @@
         :title="privacyBadge.title"
       >
         <Icon :name="privacyBadge.icon" size="xs" :animate-on-hover="false" />
-        <span>{{ privacyBadge.label }}</span>
+        <span class="self-baseline">{{ privacyBadge.label }}</span>
       </span>
     </div>
     <!-- Row 3: Subscription expiration (non-free paid providers only) -->

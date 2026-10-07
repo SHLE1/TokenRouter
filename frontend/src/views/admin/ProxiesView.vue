@@ -218,10 +218,11 @@
                 :alt="row.country || row.country_code"
                 class="h-4 w-6 rounded-compact"
               />
-              <span v-if="formatLocation(row)" class="text-sm text-gray-700 dark:text-gray-200">
+              <!-- 位置文字加 self-baseline，移动卡片的标签对齐文字。 -->
+              <span v-if="formatLocation(row)" class="self-baseline text-sm text-gray-700 dark:text-gray-200">
                 {{ formatLocation(row) }}
               </span>
-              <span v-else class="text-sm text-gray-400">-</span>
+              <span v-else class="self-baseline text-sm text-gray-400">-</span>
             </div>
           </template>
 

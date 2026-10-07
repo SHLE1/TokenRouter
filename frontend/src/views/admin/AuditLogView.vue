@@ -93,7 +93,8 @@
           <template #cell-status_code="{ row }">
             <span :class="statusBadgeClass(row.status_code)">
               <span class="h-1.5 w-1.5 rounded-full" :class="statusDotClass(row.status_code)"></span>
-              {{ row.status_code }}
+              <!-- 状态码加 self-baseline，移动卡片的标签对齐状态码。 -->
+              <span class="self-baseline">{{ row.status_code }}</span>
             </span>
           </template>
 

@@ -371,7 +371,8 @@
               'badge-gray'
             ]">
               <Icon v-if="row.team_owner_disabled" name="lock" size="xs" />
-              {{ row.team_owner_disabled ? t('keys.status.team_owner_disabled') : t('keys.status.' + value) }}
+              <!-- 状态文字加 self-baseline，前面有锁图标时，移动卡片的标签仍对齐文字。 -->
+              <span class="self-baseline">{{ row.team_owner_disabled ? t('keys.status.team_owner_disabled') : t('keys.status.' + value) }}</span>
             </span>
           </template>
 

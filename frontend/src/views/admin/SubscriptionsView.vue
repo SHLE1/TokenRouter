@@ -191,7 +191,8 @@
                 :alt="row.user?.email || ''"
                 size-class="h-8 w-8"
               />
-              <span class="font-medium text-gray-900 dark:text-white">
+              <!-- 用户名按基线对齐，移动卡片的标签对齐用户名。行高 32px 和头像等高，用户名仍在头像中线上。 -->
+              <span class="self-baseline font-medium leading-8 text-gray-900 dark:text-white">
                 {{ userColumnMode === 'email'
                   ? (row.user?.email || t('admin.redeem.userPrefix', { id: row.user_id }))
                   : (row.user?.username || '-')
