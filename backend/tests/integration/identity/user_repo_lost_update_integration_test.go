@@ -102,7 +102,7 @@ func (s *UserRepoSuite) TestUpdate_DoesNotRevertConcurrentLimitChanges() {
 	s.Require().Equal(90, got.RPMLimit, "rpm limit must not be reverted")
 }
 
-// TestUpdate_DoesNotRevertConcurrentAllowedGroupGrant 验证AllowedGroups 只在显式声明时才同步，否则并发授予的分组权限会被旧快照删掉。
+// TestUpdate_DoesNotRevertConcurrentAllowedGroupGrant 验证 AllowedGroups 只在显式声明时才同步，否则并发授予的分组权限会被旧快照删掉。
 func (s *UserRepoSuite) TestUpdate_DoesNotRevertConcurrentAllowedGroupGrant() {
 	group := s.mustCreateGroup("lost-update-group")
 	user := s.mustCreateUser(&identity.User{

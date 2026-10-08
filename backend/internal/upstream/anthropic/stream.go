@@ -66,7 +66,7 @@ func (o StreamOptions) failover(body []byte) error {
 
 func (e *StreamReadFailure) Error() string { return "upstream error: 502 (failover)" }
 func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.OutputContext, options StreamOptions, startTime time.Time, originalModel, mappedModel string, mimicClaudeCode bool) (*StreamResult, error) {
-	// 更新5h窗口状态
+	// 更新 5h 窗口状态
 	if options.UpdateWindow != nil {
 		options.UpdateWindow(ctx, resp.Header)
 	}
@@ -75,7 +75,7 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 		options.WriteHeaders(c.Writer.Header(), resp.Header)
 	}
 
-	// 设置SSE响应头
+	// 设置 SSE 响应头
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -95,7 +95,7 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 	usage := &upstream.TokenUsage{}
 	var firstTokenMs *int
 	scanner := bufio.NewScanner(resp.Body)
-	// 设置更大的buffer以处理长行
+	// 设置更大的 buffer 以处理长行
 	maxLineSize := options.MaxLineSize
 	if maxLineSize <= 0 {
 		maxLineSize = upstream.DefaultSSELineLimit
@@ -107,7 +107,7 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 		line string
 		err  error
 	}
-	// 独立 goroutine 读取上游，避免读取阻塞导致超时/keepalive无法处理
+	// 独立 goroutine 读取上游，避免读取阻塞导致超时/keepalive 无法处理
 	events := make(chan scanEvent, 16)
 	done := make(chan struct{})
 	sendEvent := func(ev scanEvent) bool {

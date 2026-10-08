@@ -25,7 +25,7 @@ import (
 
 type failingProjection struct{ billingpg.TaskProjection }
 
-// TestProviderOutcomeRollbackAndDeliveryLost 验证PostgreSQL 验证成功记录和 outbox 原子性；该测试不保存图片、prompt 或供应商原文。
+// TestProviderOutcomeRollbackAndDeliveryLost 验证 PostgreSQL 验证成功记录和 outbox 原子性；该测试不保存图片、prompt 或供应商原文。
 func TestProviderOutcomeRollbackAndDeliveryLost(t *testing.T) {
 	ctx := context.Background()
 	client := committedEntitlementClient(t)

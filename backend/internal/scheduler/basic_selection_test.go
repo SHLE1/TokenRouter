@@ -95,9 +95,9 @@ func TestShuffleWithinSortGroups_MixedGroups(t *testing.T) {
 	earlier := now.Add(-1 * time.Hour)
 	sameAsNow := time.Unix(now.Unix(), 0)
 
-	// 组1: Priority=1, LoadRate=10, LastUsedAt=earlier (ID 1)，单元素组
-	// 组2: Priority=1, LoadRate=20, LastUsedAt=now (ID 2, 3)，双元素组
-	// 组3: Priority=2, LoadRate=10, LastUsedAt=earlier (ID 4)，单元素组
+	// 组 1: Priority=1, LoadRate=10, LastUsedAt=earlier (ID 1)，单元素组
+	// 组 2: Priority=1, LoadRate=20, LastUsedAt=now (ID 2, 3)，双元素组
+	// 组 3: Priority=2, LoadRate=10, LastUsedAt=earlier (ID 4)，单元素组
 	providers := []BasicCandidate{
 		{Provider: &BasicProvider{ID: 1, Priority: 1, LastUsedAt: &earlier}, Load: &ProviderLoadInfo{LoadRate: 10}},
 		{Provider: &BasicProvider{ID: 2, Priority: 1, LastUsedAt: &now}, Load: &ProviderLoadInfo{LoadRate: 20}},
@@ -114,7 +114,7 @@ func TestShuffleWithinSortGroups_MixedGroups(t *testing.T) {
 		require.Equal(t, int64(1), cpy[0].Provider.ID, "group 1 position fixed")
 		require.Equal(t, int64(4), cpy[3].Provider.ID, "group 3 position fixed")
 
-		// 组2 内部可以打乱，但仍在位置 1 和 2
+		// 组 2 内部可以打乱，但仍在位置 1 和 2
 		mid := map[int64]bool{cpy[1].Provider.ID: true, cpy[2].Provider.ID: true}
 		require.True(t, mid[2] && mid[3], "group 2 elements should stay in positions 1-2")
 	}
@@ -374,10 +374,10 @@ func TestSortProvidersByPriorityAndLastUsed_MixedPriorityAndTime(t *testing.T) {
 		{ID: 4, Priority: 2, LastUsedAt: testTimePtr(now.Add(-2 * time.Hour))},
 	}
 	SortProvidersByPriorityAndLastUsed(providers, false)
-	// 优先级1排前：nil < earlier
+	// 优先级 1 排前：nil < earlier
 	require.Equal(t, int64(3), providers[0].ID, "优先级1 + 更早")
 	require.Equal(t, int64(2), providers[1].ID, "优先级1 + 现在")
-	// 优先级2排后：nil < time
+	// 优先级 2 排后：nil < time
 	require.Equal(t, int64(1), providers[2].ID, "优先级2 + nil")
 	require.Equal(t, int64(4), providers[3].ID, "优先级2 + 有时间")
 }

@@ -144,7 +144,7 @@ func TestCompleteDingTalkRegistration_UsernameFromEmailLocalPart(t *testing.T) {
 	}
 }
 
-// TestBuildDingTalkUpstreamClaims_SubjectEqualsUnionID 验证subject = unionID
+// TestBuildDingTalkUpstreamClaims_SubjectEqualsUnionID 验证 subject = unionID
 // 并检查它与 identityKey.ProviderSubject 一致。
 func TestBuildDingTalkUpstreamClaims_SubjectEqualsUnionID(t *testing.T) {
 	staff := &identityprovider.DingTalkStaffInfo{UserID: "user123", Name: "张三", Email: "zhangsan@corp.com"}

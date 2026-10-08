@@ -18,7 +18,7 @@ import (
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
-// TestExtractImagesUpstreamError_IncompleteIsRetryable 验证response.incomplete（生成超时/截断）应被识别为可重试的 502 上游错误，触发 failover。
+// TestExtractImagesUpstreamError_IncompleteIsRetryable 验证 response.incomplete（生成超时/截断）应被识别为可重试的 502 上游错误，触发 failover。
 func TestExtractImagesUpstreamError_IncompleteIsRetryable(t *testing.T) {
 	body := "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\n" +
 		"data: {\"type\":\"response.incomplete\",\"response\":{\"id\":\"resp_1\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"max_output_tokens\"}}}\n\n"
@@ -41,7 +41,7 @@ func TestExtractImagesUpstreamError_IncompleteIsRetryable(t *testing.T) {
 	}
 }
 
-// TestExtractImagesUpstreamError_IncompleteContentFilterNotRetryable 验证incomplete 因 content_filter → 400，重试无意义，不应触发 failover。
+// TestExtractImagesUpstreamError_IncompleteContentFilterNotRetryable 验证 incomplete 因 content_filter → 400，重试无意义，不应触发 failover。
 func TestExtractImagesUpstreamError_IncompleteContentFilterNotRetryable(t *testing.T) {
 	body := "data: {\"type\":\"response.incomplete\",\"response\":{\"id\":\"r\",\"status\":\"incomplete\",\"incomplete_details\":{\"reason\":\"content_filter\"}}}\n\n"
 	got := upstreamopenai.ExtractOpenAIImagesUpstreamError([]byte(body))
@@ -252,7 +252,7 @@ func TestImagesOAuthStreaming_SplitSafetyRefusalReturns400(t *testing.T) {
 	}
 }
 
-// TestExtractModelRefusal_EmptyWhenNoText 验证extractOpenAIImagesModelRefusal：真空响应（无文字）返回空串。
+// TestExtractModelRefusal_EmptyWhenNoText 验证 extractOpenAIImagesModelRefusal：真空响应（无文字）返回空串。
 func TestExtractModelRefusal_EmptyWhenNoText(t *testing.T) {
 	body := "data: {\"type\":\"response.completed\",\"response\":{\"output\":[],\"tool_usage\":{\"image_gen\":{\"output_tokens\":0}}}}\n\n"
 	if refusal := upstreamopenai.ExtractOpenAIImagesModelRefusal([]byte(body)); refusal != "" {

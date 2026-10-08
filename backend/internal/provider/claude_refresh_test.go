@@ -145,7 +145,7 @@ func TestClaudeTokenRefresher_NeedsRefresh_WithinWindow(t *testing.T) {
 	refresher := &ClaudeTokenRefresher{}
 	refreshWindow := 30 * time.Minute
 
-	// 设置一个在刷新窗口内的时间（当前时间 + 15分钟）
+	// 设置一个在刷新窗口内的时间（当前时间 + 15 分钟）
 	expiresAt := time.Now().Add(15 * time.Minute).Unix()
 
 	tests := []struct {
@@ -184,7 +184,7 @@ func TestClaudeTokenRefresher_NeedsRefresh_OutsideWindow(t *testing.T) {
 	refresher := &ClaudeTokenRefresher{}
 	refreshWindow := 30 * time.Minute
 
-	// 设置一个在刷新窗口外的时间（当前时间 + 1小时）
+	// 设置一个在刷新窗口外的时间（当前时间 + 1 小时）
 	expiresAt := time.Now().Add(1 * time.Hour).Unix()
 
 	tests := []struct {

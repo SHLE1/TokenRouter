@@ -550,8 +550,6 @@ func (h *OpsHandler) ResolveUpstreamError(c *gin.Context) {
 	h.UpdateErrorResolution(c)
 }
 
-// ==================== Existing endpoints ====================
-
 // ListRequestDetails returns a request-level list (success + error) for drill-down.
 // GET /api/v1/admin/ops/requests
 func (h *OpsHandler) ListRequestDetails(c *gin.Context) {

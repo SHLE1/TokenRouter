@@ -33,7 +33,7 @@ type GroupGrantMutations interface {
 }
 
 // AdminUpdateAPIKeyGroupID 管理员修改 API Key 分组绑定
-// groupID: nil=不修改, 指向0=解绑, 指向正整数=绑定到目标分组
+// groupID: nil=不修改, 指向 0=解绑, 指向正整数=绑定到目标分组
 // AdminUpdateAPIKeyGroupID 通过 updateManagedFields 校验并更新 Key 的分组。
 func (s *Admin) AdminUpdateAPIKeyGroupID(ctx context.Context, id int64, gid *int64) (*AdminUpdateAPIKeyGroupIDResult, error) {
 	return s.updateManagedFields(ctx, id, gid, false, true)

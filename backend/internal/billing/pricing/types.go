@@ -46,7 +46,7 @@ type ContextModelPrice struct {
 	Pricing   *ModelPricing
 }
 
-// UsageTokens 使用的token数量。
+// UsageTokens 使用的 token 数量。
 type UsageTokens struct {
 	InputTokens           int
 	ImageInputTokens      int

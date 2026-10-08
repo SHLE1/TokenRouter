@@ -70,7 +70,7 @@ type liveFixtureInputs struct {
 	duration    time.Duration
 }
 
-// TLS替身仅提供预热读取，实际模板及规则匹配由原生实现执行。
+// TLS 替身仅提供预热读取，实际模板及规则匹配由原生实现执行。
 type liveProfileStore struct {
 	egress.TLSFingerprintProfileRepository
 	values []*egress.TLSFingerprintProfile
@@ -675,7 +675,7 @@ func TestWaitForLiveObserverRetryLeavesExpiryToLoopFinalize(t *testing.T) {
 	require.False(t, svc.liveRuntime().WaitForObserverRetry(context.Background(), record))
 }
 
-// TestWaitForLiveObserverRetryTreatsStoreErrorAsRetryable 验证store 抖动不表示 observer 已失去控制权，只有记录不存在时才停止重试。
+// TestWaitForLiveObserverRetryTreatsStoreErrorAsRetryable 验证 store 抖动不表示 observer 已失去控制权，只有记录不存在时才停止重试。
 func TestWaitForLiveObserverRetryTreatsStoreErrorAsRetryable(t *testing.T) {
 	record := &gatewaysession.LiveCallRecord{
 		CallID:     "call_flaky_store",

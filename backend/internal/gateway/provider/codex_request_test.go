@@ -1143,7 +1143,7 @@ func TestApplyCodexOAuthTransform_DoesNotAddSparkImageUnsupportedForNonSpark(t *
 	require.NotContains(t, instructions, openai.CodexSparkImageUnsupportedMarker)
 }
 
-// TestApplyCodexOAuthTransform_StripsImageGenerationToolForSpark 验证gpt-5.3-codex-spark 上游会拒绝 image_generation 工具，OAuth 转换需要剥离该工具并保留其它工具。
+// TestApplyCodexOAuthTransform_StripsImageGenerationToolForSpark 验证 gpt-5.3-codex-spark 上游会拒绝 image_generation 工具，OAuth 转换需要剥离该工具并保留其它工具。
 func TestApplyCodexOAuthTransform_StripsImageGenerationToolForSpark(t *testing.T) {
 	reqBody := map[string]any{
 		"model": "gpt-5.3-codex-spark",
@@ -1167,7 +1167,7 @@ func TestApplyCodexOAuthTransform_StripsImageGenerationToolForSpark(t *testing.T
 	require.Equal(t, "shell", first["name"])
 }
 
-// TestApplyCodexOAuthTransform_StripsImageGenerationToolForSparkAlias 验证Spark 推理强度别名会归一化为 gpt-5.3-codex-spark，也需要剥离 image_generation。
+// TestApplyCodexOAuthTransform_StripsImageGenerationToolForSparkAlias 验证 Spark 推理强度别名会归一化为 gpt-5.3-codex-spark，也需要剥离 image_generation。
 func TestApplyCodexOAuthTransform_StripsImageGenerationToolForSparkAlias(t *testing.T) {
 	reqBody := map[string]any{
 		"model": "gpt-5.3-codex-spark",

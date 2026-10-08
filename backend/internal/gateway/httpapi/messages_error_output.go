@@ -87,7 +87,7 @@ func ForwardErrorAlreadyCommunicated(c *gin.Context, writerSizeBeforeForward int
 	return !strings.Contains(contentType, "text/event-stream")
 }
 
-// Error 返回Claude API格式的错误响应。
+// Error 返回 Claude API 格式的错误响应。
 func (h MessagesErrorOutput) Error(c *gin.Context, status int, errType, message string) {
 	h.ErrorWithCode(c, status, errType, "", message)
 }

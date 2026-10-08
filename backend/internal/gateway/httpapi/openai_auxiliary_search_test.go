@@ -109,7 +109,7 @@ func alphaSearchResponsesSSE(output string) string {
 		`data: {"type":"response.completed","response":{"output":[{"type":"message","content":[{"type":"output_text","text":` + strconv.Quote(output) + `}]}]}}` + "\n\n"
 }
 
-// TestForwardAlphaSearchOAuthPreservesWire 验证OAuth 请求应原样保留 alpha wire，同时应用 fork 的 UA 与 TLS 路由结果。
+// TestForwardAlphaSearchOAuthPreservesWire 验证 OAuth 请求应原样保留 alpha wire，同时应用 fork 的 UA 与 TLS 路由结果。
 func TestForwardAlphaSearchOAuthPreservesWire(t *testing.T) {
 	body := []byte(`{
 		"id":"search-session",
@@ -339,7 +339,7 @@ func TestForwardAlphaSearchPATBackfillsMissingChatGPTAccountMetadata(t *testing.
 	require.Equal(t, providercore.OpenAIAuthModePersonalAccessToken, repo.updatedCredentials["auth_mode"])
 }
 
-// TestForwardAlphaSearchAPIKeyMapsModelAndPassesThroughError 验证API-key 提供商应映射模型，并原样返回不可重试的上游错误。
+// TestForwardAlphaSearchAPIKeyMapsModelAndPassesThroughError 验证 API-key 提供商应映射模型，并原样返回不可重试的上游错误。
 func TestForwardAlphaSearchAPIKeyMapsModelAndPassesThroughError(t *testing.T) {
 	body := []byte(`{"id":"search-session","model":"gpt-5.6-sol","commands":{"search_query":[{"q":"news"}]}}`)
 	recorder := httptest.NewRecorder()

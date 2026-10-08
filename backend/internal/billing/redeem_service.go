@@ -428,7 +428,7 @@ func (s *RedeemService) tryAccrueAffiliateRebateForRedeem(ctx context.Context, u
 	}
 }
 
-// GetByID 根据ID获取兑换码。
+// GetByID 根据 ID 获取兑换码。
 func (s *RedeemService) GetByID(ctx context.Context, id int64) (*RedeemCode, error) {
 	code, err := s.redeemRepo.GetByID(ctx, id)
 	if err != nil {
@@ -437,7 +437,7 @@ func (s *RedeemService) GetByID(ctx context.Context, id int64) (*RedeemCode, err
 	return code, nil
 }
 
-// GetByCode 根据Code获取兑换码。
+// GetByCode 根据 Code 获取兑换码。
 func (s *RedeemService) GetByCode(ctx context.Context, code string) (*RedeemCode, error) {
 	redeemCode, err := s.redeemRepo.GetByCode(ctx, code)
 	if err != nil {

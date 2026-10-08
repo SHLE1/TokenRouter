@@ -13,7 +13,7 @@ import (
 	errors2 "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// ---------- 辅助函数 ----------
+// 辅助函数
 
 // parseResponseBody 从 httptest.ResponseRecorder 中解析 JSON 响应体。
 func parseResponseBody(t *testing.T, w *httptest.ResponseRecorder) Response {
@@ -48,8 +48,6 @@ func newContextWithQuery(query string) (*httptest.ResponseRecorder, *gin.Context
 	c.Request = httptest.NewRequest(http.MethodGet, "/?"+query, nil)
 	return w, c
 }
-
-// ---------- 现有测试 ----------
 
 func TestErrorWithDetails(t *testing.T) {
 	tests := []struct {
@@ -202,8 +200,6 @@ func TestErrorFrom(t *testing.T) {
 		})
 	}
 }
-
-// ---------- 新增测试 ----------
 
 func TestSuccess(t *testing.T) {
 	tests := []struct {

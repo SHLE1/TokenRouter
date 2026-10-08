@@ -102,7 +102,7 @@ func TestOpsSystemLogSinkFlushBackoffForFallbacks(t *testing.T) {
 	}
 }
 
-// TestOpsSystemLogSinkSuppressesRetriesDuringBackoff 验证issue #5265：写入失败后如果按 flushInterval 继续每秒重试，每一轮都会占用并取消
+// TestOpsSystemLogSinkSuppressesRetriesDuringBackoff 验证 issue #5265：写入失败后如果按 flushInterval 继续每秒重试，每一轮都会占用并取消
 // 一条池内连接（远程 PG 上 COPY 取消会让连接协议失步而被销毁），小连接池会被日志
 // 通道长期占满，业务侧最终报 Billing 503。失败后必须退避。
 func TestOpsSystemLogSinkSuppressesRetriesDuringBackoff(t *testing.T) {

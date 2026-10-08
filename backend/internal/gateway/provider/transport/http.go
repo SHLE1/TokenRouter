@@ -30,16 +30,16 @@ const (
 	// defaultMaxConnsPerHost: 默认每主机最大连接数（含活跃连接）
 	// 达到连接上限后，新请求等待空闲连接。
 	defaultMaxConnsPerHost = 240
-	// defaultIdleConnTimeout: 默认空闲连接超时时间（90秒）
+	// defaultIdleConnTimeout: 默认空闲连接超时时间（90 秒）
 	// 超时后连接会被关闭，释放系统资源（建议小于上游 LB 超时）。
 	defaultIdleConnTimeout = 90 * time.Second
-	// defaultResponseHeaderTimeout: 默认等待响应头超时时间（5分钟）
+	// defaultResponseHeaderTimeout: 默认等待响应头超时时间（5 分钟）
 	// LLM 请求可能排队较久，需要较长超时。
 	defaultResponseHeaderTimeout = 300 * time.Second
 	// defaultMaxUpstreamClients: 默认最大客户端缓存数量
 	// 超出后会淘汰最久未使用的客户端。
 	defaultMaxUpstreamClients = 5000
-	// defaultClientIdleTTLSeconds: 默认客户端空闲回收阈值（15分钟）。
+	// defaultClientIdleTTLSeconds: 默认客户端空闲回收阈值（15 分钟）。
 	defaultClientIdleTTLSeconds = 900
 	// OpenAI HTTP/2 代理回退策略默认值。
 	defaultOpenAIHTTP2FallbackErrorThreshold = 2

@@ -44,7 +44,7 @@ func OpenAI429ResetTime(snapshot *openai.OpenAICodexUsageSnapshot, clock func() 
 		return &resetAt
 	}
 
-	// 都未达到100%但收到429，使用较长的重置时间
+	// 都未达到 100%但收到 429，使用较长的重置时间
 	var maxResetSecs int
 	if normalized.Reset7dSeconds != nil && *normalized.Reset7dSeconds > maxResetSecs {
 		maxResetSecs = *normalized.Reset7dSeconds

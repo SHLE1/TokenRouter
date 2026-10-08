@@ -549,7 +549,7 @@ func TestForwardAsAnthropic_DoesNotAutoDerivePromptCacheKeyForNonCodexModel(t *t
 	require.Empty(t, upstream.lastReq.Header.Get("session_id"))
 }
 
-// TestForwardAsAnthropic_OAuthNonCodexModelRestoresCodexIdentity 验证OAuth Messages 即使映射到非 Codex 模型，也通过 ChatGPT Codex 端点并恢复官方身份头。
+// TestForwardAsAnthropic_OAuthNonCodexModelRestoresCodexIdentity 验证 OAuth Messages 即使映射到非 Codex 模型，也通过 ChatGPT Codex 端点并恢复官方身份头。
 func TestForwardAsAnthropic_OAuthNonCodexModelRestoresCodexIdentity(t *testing.T) {
 	t.Parallel()
 
@@ -2348,7 +2348,7 @@ func TestForwardAsAnthropicForGrokUsesXAIResponses(t *testing.T) {
 	require.Contains(t, recorder.Body.String(), "ok")
 }
 
-// TestForwardAsAnthropicForGrokRetriesInvalidEncryptedContentOnce 验证Grok Messages 在提供商缓存身份变化后应剥离旧推理密文，并通过同一路由重试一次。
+// TestForwardAsAnthropicForGrokRetriesInvalidEncryptedContentOnce 验证 Grok Messages 在提供商缓存身份变化后应剥离旧推理密文，并通过同一路由重试一次。
 func TestForwardAsAnthropicForGrokRetriesInvalidEncryptedContentOnce(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)

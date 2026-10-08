@@ -66,16 +66,16 @@ type Fingerprint struct {
 type FingerprintCache interface {
 	GetFingerprint(ctx context.Context, providerID int64) (*Fingerprint, error)
 	SetFingerprint(ctx context.Context, providerID int64, fp *Fingerprint) error
-	// GetMaskedSessionID 获取固定的会话ID（用于会话ID伪装功能）
+	// GetMaskedSessionID 获取固定的会话 ID（用于会话 ID 伪装功能）
 	// 返回的 sessionID 是一个 UUID 格式的字符串
-	// 如果不存在或已过期（15分钟无请求），返回空字符串
+	// 如果不存在或已过期（15 分钟无请求），返回空字符串
 	GetMaskedSessionID(ctx context.Context, providerID int64) (string, error)
-	// SetMaskedSessionID 设置固定的会话ID，TTL 为 15 分钟
+	// SetMaskedSessionID 设置固定的会话 ID，TTL 为 15 分钟
 	// 每次调用都会刷新 TTL
 	SetMaskedSessionID(ctx context.Context, providerID int64, sessionID string) error
 }
 
-// RequestFingerprint 管理OAuth提供商的请求身份指纹。
+// RequestFingerprint 管理 OAuth 提供商的请求身份指纹。
 type RequestFingerprint struct {
 	cache FingerprintCache
 }
@@ -106,14 +106,14 @@ func IsAcceptableFingerprintUserAgent(userAgent string) bool {
 	return major <= currentMajor+MaxClaudeCLIMajorVersionSkew
 }
 
-// NewRequestFingerprint 创建新的RequestFingerprint。
+// NewRequestFingerprint 创建新的 RequestFingerprint。
 func NewRequestFingerprint(cache FingerprintCache) *RequestFingerprint {
 	return &RequestFingerprint{cache: cache}
 }
 
 // GetOrCreateFingerprint 获取或创建提供商的指纹
-// 如果缓存存在，检测user-agent版本，新版本则更新
-// 如果缓存不存在，生成随机ClientID并从请求头创建指纹，然后缓存。
+// 如果缓存存在，检测 user-agent 版本，新版本则更新
+// 如果缓存不存在，生成随机 ClientID 并从请求头创建指纹，然后缓存。
 func (s *RequestFingerprint) GetOrCreateFingerprint(ctx context.Context, providerID int64, headers http.Header) (*Fingerprint, error) {
 	// 创建、升级和历史缓存自愈必须共用同一份校验结果。
 	clientUA := strings.TrimSpace(headers.Get("User-Agent"))
@@ -152,7 +152,7 @@ func (s *RequestFingerprint) GetOrCreateFingerprint(ctx context.Context, provide
 		}
 
 		if !needWrite && time.Since(time.Unix(cached.UpdatedAt, 0)) > 24*time.Hour {
-			// 距上次写入超过24小时，续期TTL
+			// 距上次写入超过 24 小时，续期 TTL
 			needWrite = true
 		}
 
@@ -173,11 +173,11 @@ func (s *RequestFingerprint) GetOrCreateFingerprint(ctx context.Context, provide
 	}
 	fp := s.createFingerprintFromHeaders(headers)
 
-	// 生成随机ClientID
+	// 生成随机 ClientID
 	fp.ClientID = GenerateClientID()
 	fp.UpdatedAt = time.Now().Unix()
 
-	// 保存到缓存（7天TTL，每24小时自动续期）
+	// 保存到缓存（7 天 TTL，每 24 小时自动续期）
 	if err := s.cache.SetFingerprint(ctx, providerID, fp); err != nil {
 		logger.LegacyPrintf("service.identity", "Warning: failed to cache fingerprint for provider %d: %v", providerID, err)
 	}
@@ -197,7 +197,7 @@ func (s *RequestFingerprint) createFingerprintFromHeaders(headers http.Header) *
 		fp.UserAgent = DefaultFingerprint.UserAgent
 	}
 
-	// 获取x-stainless-*头，如果没有则使用默认值
+	// 获取 x-stainless-*头，如果没有则使用默认值
 	fp.StainlessLang = GetHeaderOrDefault(headers, "X-Stainless-Lang", DefaultFingerprint.StainlessLang)
 	fp.StainlessPackageVersion = GetHeaderOrDefault(headers, "X-Stainless-Package-Version", DefaultFingerprint.StainlessPackageVersion)
 	fp.StainlessOS = GetHeaderOrDefault(headers, "X-Stainless-OS", DefaultFingerprint.StainlessOS)
@@ -233,7 +233,7 @@ func MergeHeader(headers http.Header, key string, target *string) {
 	}
 }
 
-// GetHeaderOrDefault 获取header值，如果不存在则返回默认值。
+// GetHeaderOrDefault 获取 header 值，如果不存在则返回默认值。
 func GetHeaderOrDefault(headers http.Header, key, defaultValue string) string {
 	if v := headers.Get(key); v != "" {
 		return v
@@ -241,19 +241,19 @@ func GetHeaderOrDefault(headers http.Header, key, defaultValue string) string {
 	return defaultValue
 }
 
-// ApplyFingerprint 将指纹应用到请求头（覆盖原有的x-stainless-*头）
+// ApplyFingerprint 将指纹应用到请求头（覆盖原有的 x-stainless-*头）
 // 使用 setHeaderRaw 保持请求头的大小写，例如 X-Stainless-OS。
 func (s *RequestFingerprint) ApplyFingerprint(req *http.Request, fp *Fingerprint) {
 	if fp == nil {
 		return
 	}
 
-	// 设置user-agent
+	// 设置 user-agent
 	if fp.UserAgent != "" {
 		SetHeaderRaw(req.Header, "User-Agent", fp.UserAgent)
 	}
 
-	// 设置x-stainless-*头（保持与 DefaultHeaders 一致的大小写）
+	// 设置 x-stainless-*头（保持与 DefaultHeaders 一致的大小写）
 	if fp.StainlessLang != "" {
 		SetHeaderRaw(req.Header, "X-Stainless-Lang", fp.StainlessLang)
 	}
@@ -274,7 +274,7 @@ func (s *RequestFingerprint) ApplyFingerprint(req *http.Request, fp *Fingerprint
 	}
 }
 
-// RewriteUserID 重写body中的metadata.user_id
+// RewriteUserID 重写 body 中的 metadata.user_id
 // 支持旧拼接格式和新 JSON 格式的 user_id 解析，
 // 根据 fingerprintUA 版本选择输出格式。
 //
@@ -310,7 +310,7 @@ func (s *RequestFingerprint) RewriteUserID(body []byte, providerID int64, provid
 
 	sessionTail := parsed.SessionID // 原始session UUID
 
-	// 生成新的session hash: SHA256(providerID::sessionTail) -> UUID格式
+	// 生成新的 session hash: SHA256(providerID::sessionTail) -> UUID 格式
 	seed := fmt.Sprintf("%d::%s", providerID, sessionTail)
 	newSessionHash := GenerateUUIDFromSeed(seed)
 
@@ -328,9 +328,9 @@ func (s *RequestFingerprint) RewriteUserID(body []byte, providerID int64, provid
 	return newBody, nil
 }
 
-// RewriteUserIDWithMasking 重写body中的metadata.user_id，支持会话ID伪装
-// 如果提供商启用了会话ID伪装（session_id_masking_enabled），
-// 则在完成常规重写后，将 session 部分替换为固定的伪装ID（15分钟内保持不变）
+// RewriteUserIDWithMasking 重写 body 中的 metadata.user_id，支持会话 ID 伪装
+// 如果提供商启用了会话 ID 伪装（session_id_masking_enabled），
+// 则在完成常规重写后，将 session 部分替换为固定的伪装 ID（15 分钟内保持不变）
 //
 // 重要：此函数使用 json.RawMessage 保留其他字段的原始字节，
 // 避免重新序列化导致 thinking 块等内容被修改。
@@ -341,7 +341,7 @@ func (s *RequestFingerprint) RewriteUserIDWithMasking(ctx context.Context, body 
 		return newBody, err
 	}
 
-	// 检查是否启用会话ID伪装
+	// 检查是否启用会话 ID 伪装
 	if !masking {
 		return newBody, nil
 	}
@@ -425,25 +425,25 @@ func GenerateRandomUUID() string {
 		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }
 
-// GenerateClientID 生成64位十六进制客户端ID（32字节随机数）。
+// GenerateClientID 生成 64 位十六进制客户端 ID（32 字节随机数）。
 func GenerateClientID() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		// 极罕见的情况，使用时间戳+固定值作为fallback
+		// 极罕见的情况，使用时间戳+固定值作为 fallback
 		logger.LegacyPrintf("service.identity", "Warning: crypto/rand.Read failed: %v, using fallback", err)
-		// 使用SHA256(当前纳秒时间)作为fallback
+		// 使用 SHA256(当前纳秒时间)作为 fallback
 		h := sha256.Sum256([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
 		return hex.EncodeToString(h[:])
 	}
 	return hex.EncodeToString(b)
 }
 
-// GenerateUUIDFromSeed 从种子生成确定性UUID v4格式字符串。
+// GenerateUUIDFromSeed 从种子生成确定性 UUID v4 格式字符串。
 func GenerateUUIDFromSeed(seed string) string {
 	hash := sha256.Sum256([]byte(seed))
 	bytes := hash[:16]
 
-	// 设置UUID v4版本和变体位
+	// 设置 UUID v4 版本和变体位
 	bytes[6] = (bytes[6] & 0x0f) | 0x40
 	bytes[8] = (bytes[8] & 0x3f) | 0x80
 
@@ -451,7 +451,7 @@ func GenerateUUIDFromSeed(seed string) string {
 		bytes[0:4], bytes[4:6], bytes[6:8], bytes[8:10], bytes[10:16])
 }
 
-// ParseUserAgentVersion 解析user-agent版本号
+// ParseUserAgentVersion 解析 user-agent 版本号
 // 例如：claude-cli/2.1.2 -> (2, 1, 2)。
 func ParseUserAgentVersion(ua string) (major, minor, patch int, ok bool) {
 	// 匹配 xxx/x.y.z 格式
@@ -481,7 +481,7 @@ func ExtractProduct(ua string) string {
 	return ""
 }
 
-// IsNewerVersion 比较版本号，判断newUA是否比cachedUA更新
+// IsNewerVersion 比较版本号，判断 newUA 是否比 cachedUA 更新
 // 要求产品名一致（防止浏览器 UA 如 Mozilla/5.0 误判为更新版本）。
 func IsNewerVersion(newUA, cachedUA string) bool {
 	// 校验产品名一致性

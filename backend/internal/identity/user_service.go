@@ -872,7 +872,7 @@ func (s *UserService) ChangePassword(ctx context.Context, userID int64, req Chan
 	return nil
 }
 
-// GetByID 根据ID获取用户（管理员功能）。
+// GetByID 根据 ID 获取用户（管理员功能）。
 func (s *UserService) GetByID(ctx context.Context, id int64) (*User, error) {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {

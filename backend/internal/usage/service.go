@@ -32,7 +32,7 @@ func NewUsageService(usageRepo UsageLogRepository, optional ...QueryReaders) *Us
 	}
 }
 
-// GetByID 根据ID获取使用日志。
+// GetByID 根据 ID 获取使用日志。
 func (s *UsageService) GetByID(ctx context.Context, id int64) (*UsageLog, error) {
 	log, err := s.usageRepo.GetByID(ctx, id)
 	if err != nil {
@@ -50,7 +50,7 @@ func (s *UsageService) ListByUser(ctx context.Context, userID int64, params pagi
 	return logs, pagination, nil
 }
 
-// ListByAPIKey 获取API Key的使用日志列表。
+// ListByAPIKey 获取 API Key 的使用日志列表。
 func (s *UsageService) ListByAPIKey(ctx context.Context, apiKeyID int64, params pagination.PaginationParams) ([]UsageLog, *pagination.PaginationResult, error) {
 	logs, pagination, err := s.usageRepo.ListByAPIKey(ctx, apiKeyID, params)
 	if err != nil {

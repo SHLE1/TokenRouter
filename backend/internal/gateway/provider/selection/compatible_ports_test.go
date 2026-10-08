@@ -62,7 +62,7 @@ func openAIPlanScores(plan openAIProviderLoadPlan) map[int64]float64 {
 	return scores
 }
 
-// TestBuildOpenAIProviderLoadPlan_ResetWeightPrefersSoonestReset 验证Reset 权重 > 0 时，会话窗口最早重置的提供商应获得更高分。
+// TestBuildOpenAIProviderLoadPlan_ResetWeightPrefersSoonestReset 验证 Reset 权重 > 0 时，会话窗口最早重置的提供商应获得更高分。
 func TestBuildOpenAIProviderLoadPlan_ResetWeightPrefersSoonestReset(t *testing.T) {
 	now := time.Now()
 	soon := now.Add(1 * time.Hour)

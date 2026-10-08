@@ -182,7 +182,7 @@ func TransformClaudeToGeminiWithOptions(claudeReq *ClaudeRequest, projectID, map
 		SessionID: generateStableSessionID(contents),
 	}
 
-	// 针对 Gemini Reasoning 模型（如 gemini-3.1-pro-high等）过滤强制空 ToolConfig
+	// 针对 Gemini Reasoning 模型（如 gemini-3.1-pro-high 等）过滤强制空 ToolConfig
 	isReasoning := IsGeminiReasoningModel(targetModel)
 	if !isReasoning || len(tools) > 0 {
 		// 总是设置 toolConfig，与官方客户端一致

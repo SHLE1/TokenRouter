@@ -1591,9 +1591,9 @@ func (r *Record) GetTLSFingerprintRouterID() int64 {
 	return 0
 }
 
-// IsSessionIDMaskingEnabled 检查是否启用会话ID伪装
+// IsSessionIDMaskingEnabled 检查是否启用会话 ID 伪装
 // 仅适用于 Anthropic OAuth/SetupToken 类型提供商
-// 启用后将在一段时间内（15分钟）固定 metadata.user_id 中的 session ID，
+// 启用后将在一段时间内（15 分钟）固定 metadata.user_id 中的 session ID，
 // 使上游认为请求来自同一个会话。
 func (r *Record) IsSessionIDMaskingEnabled() bool {
 	if !r.IsAnthropicOAuthOrSetupToken() {

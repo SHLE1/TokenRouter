@@ -70,7 +70,7 @@ type AuthRegistrationArtifacts struct {
 	EnforceEmailDomainQuota bool
 }
 
-// RegisterWithVerification 用户注册（支持邮件验证、优惠码、邀请码和邀请返利码），返回token和用户。
+// RegisterWithVerification 用户注册（支持邮件验证、优惠码、邀请码和邀请返利码），返回 token 和用户。
 func (s *AuthService) RegisterWithVerification(ctx context.Context, email, password, verifyCode, promoCode, invitationCode, affiliateCode string) (string, *User, error) {
 	// 检查是否开放注册（默认关闭：settingService 未配置时不允许注册）
 	if s.Settings == nil || !s.Settings.IsRegistrationEnabled(ctx) {
@@ -171,7 +171,7 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 		}
 	}
 
-	// 生成token
+	// 生成 token
 	token, err := s.GenerateToken(ctx, user)
 	if err != nil {
 		return "", nil, fmt.Errorf("generate token: %w", err)
@@ -373,7 +373,7 @@ func (s *AuthService) VerifyActionCaptchaIfEnabled(ctx context.Context, proof Ca
 	)
 }
 
-// IsTurnstileEnabled 检查是否启用Turnstile验证。
+// IsTurnstileEnabled 检查是否启用 Turnstile 验证。
 func (s *AuthService) IsTurnstileEnabled(ctx context.Context) bool {
 	if s.Turnstile == nil {
 		return false
@@ -397,7 +397,7 @@ func (s *AuthService) IsEmailVerifyEnabled(ctx context.Context) bool {
 	return s.Settings.IsEmailVerifyEnabled(ctx)
 }
 
-// Login 用户登录，返回JWT token。
+// Login 用户登录，返回 JWT token。
 func (s *AuthService) Login(ctx context.Context, email, password string) (string, *User, error) {
 	// 查找用户
 	user, err := s.Users.GetByEmail(ctx, email)
@@ -420,7 +420,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 		return "", nil, ErrUserNotActive
 	}
 
-	// 生成JWT token
+	// 生成 JWT token
 	token, err := s.GenerateToken(ctx, user)
 	if err != nil {
 		return "", nil, fmt.Errorf("generate token: %w", err)

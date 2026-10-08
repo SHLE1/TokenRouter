@@ -27,8 +27,6 @@ const (
 	// clientTimeout 整体请求超时（含连接、发送、等待响应、读取 body）。
 	clientTimeout = 10 * time.Second
 
-	// ── Privacy API ──────────────────────────────────────────────────────.
-
 	// privacyBaseURL 隐私设置 API 仅使用 daily 端点（与 Antigravity 客户端行为一致）。
 	privacyBaseURL = antigravityDailyBaseURL
 )

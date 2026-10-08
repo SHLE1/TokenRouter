@@ -16,7 +16,7 @@ const (
 // APIKeyAuthMiddleware 是 API Key 认证的 Gin 中间件。
 type APIKeyAuthMiddleware gin.HandlerFunc
 
-// GetAPIKeyFromContext 从上下文中获取API key。
+// GetAPIKeyFromContext 从上下文中获取 API key。
 func GetAPIKeyFromContext(c *gin.Context) (*apikey.APIKey, bool) {
 	value, exists := c.Get(string(ContextKeyAPIKey))
 	if !exists {

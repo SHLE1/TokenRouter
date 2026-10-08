@@ -229,7 +229,7 @@ func (h *DingTalkHandler) DingTalkOAuthCallback(c *gin.Context) {
 	}
 	forceEmailOnSignup := h.isForceEmailOnThirdPartySignup(c.Request.Context())
 
-	// ─── 4 步链（Step 1 + Step 2 必须；Step 3/4 按需 + 跨组织降级）───
+	// 4 步链（Step 1 + Step 2 必须；Step 3/4 按需 + 跨组织降级）
 	client := h.syncer.Client(cfg)
 	userToken, err := client.ExchangeCodeForUserToken(c.Request.Context(), code)
 	if err != nil {
@@ -267,7 +267,7 @@ func (h *DingTalkHandler) DingTalkOAuthCallback(c *gin.Context) {
 
 	upstreamClaims := identity.DingTalkUpstreamClaims(staff, unionID, corpID)
 
-	// ─── S1 主动绑定分支（PR-3 才走到这里）───
+	// S1 主动绑定分支
 	if intent == OauthIntentBindCurrentUser {
 		targetUserID, err := h.binding.ReadOAuthBindUserIDFromCookie(c, DingTalkOAuthBindUserCookieName)
 		if err != nil {
@@ -294,7 +294,7 @@ func (h *DingTalkHandler) DingTalkOAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// ─── 第一级：命中 auth_identities ───
+	// 第一级：命中 auth_identities
 	if existing, _ := h.flow.Database.FindOAuthIdentityUser(c.Request.Context(), identityKey); existing != nil {
 		// 身份同步：已登录用户，直接同步（user_id 已知）。
 		// 异步执行避免上游钉钉接口（GetStaffInfoByUserId / 部门递归）阻塞登录跳转。
@@ -314,7 +314,7 @@ func (h *DingTalkHandler) DingTalkOAuthCallback(c *gin.Context) {
 
 	signupBlocked := h.isDingTalkSignupBlocked(c.Request.Context(), cfg)
 
-	// ─── 非命中：require_email=false 走 synthetic email 直接登录 ───
+	// 非命中：require_email=false 走 synthetic email 直接登录
 	if !cfg.RequireEmail {
 		if signupBlocked {
 			// 注册被拦 + 无邮箱可输：唯一出路是绑定已有账户
@@ -344,7 +344,7 @@ func (h *DingTalkHandler) DingTalkOAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// ─── require_email=true 且 staff.Email 空 → 补邮箱（默认）或直接 bind_login（注册被拦时） ───
+	// require_email=true 且 staff.Email 空 → 补邮箱（默认）或直接 bind_login（注册被拦时）
 	if staff.Email == "" {
 		completionResponse := map[string]any{
 			"step":                      "email_completion",
@@ -368,7 +368,7 @@ func (h *DingTalkHandler) DingTalkOAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// ─── L3/L4 有邮箱：统一 choice pending session ───
+	// L3/L4 有邮箱：统一 choice pending session
 	var compatEmailUser *identity.User
 	if DingTalkLevelThreeEnabled && staff.Email != "" {
 		compatEmailUser, _ = h.findDingTalkCompatEmailUser(c.Request.Context(), staff.Email)

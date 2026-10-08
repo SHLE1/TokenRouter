@@ -24,7 +24,7 @@ type ResponseOptions struct {
 }
 
 func NonStreamResponse(ctx context.Context, resp *http.Response, c *upstream.OutputContext, options ResponseOptions, originalModel, mappedModel string) (*upstream.TokenUsage, error) {
-	// 更新5h窗口状态
+	// 更新 5h 窗口状态
 	if options.UpdateWindow != nil {
 		options.UpdateWindow(ctx, resp.Header)
 	}
@@ -34,7 +34,7 @@ func NonStreamResponse(ctx context.Context, resp *http.Response, c *upstream.Out
 		return nil, err
 	}
 
-	// 解析usage
+	// 解析 usage
 	var response struct {
 		Usage upstream.TokenUsage `json:"usage"`
 	}
@@ -81,7 +81,7 @@ func NonStreamResponse(ctx context.Context, resp *http.Response, c *upstream.Out
 		}
 	}
 
-	// 如果有模型映射，替换响应中的model字段
+	// 如果有模型映射，替换响应中的 model 字段
 	if originalModel != mappedModel {
 		body = ReplaceModelInResponseBody(body, mappedModel, originalModel)
 	}
@@ -154,7 +154,7 @@ func NonStreamResponsePassthrough(
 	return usage, nil
 }
 
-// ReplaceModelInResponseBody 替换响应体中的model字段
+// ReplaceModelInResponseBody 替换响应体中的 model 字段
 // 使用 gjson/sjson 精确替换，避免全量 JSON 反序列化。
 func ReplaceModelInResponseBody(body []byte, fromModel, toModel string) []byte {
 	if m := gjson.GetBytes(body, "model"); m.Exists() && m.Str == fromModel {

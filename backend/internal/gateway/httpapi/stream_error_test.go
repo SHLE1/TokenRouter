@@ -124,7 +124,7 @@ func TestGatewayHandleStreamingAwareError_ResponsesStreamingEmitsResponseFailed(
 	assert.Equal(t, "upstream gone", errObj["message"])
 }
 
-// TestGatewayHandleStreamingAwareError_MessagesStreamingKeepsLegacy 验证Gateway handler 的 /v1/messages 继续保留 legacy data:{type:error,...} 格式。
+// TestGatewayHandleStreamingAwareError_MessagesStreamingKeepsLegacy 验证 Gateway handler 的 /v1/messages 继续保留 legacy data:{type:error,...} 格式。
 func TestGatewayHandleStreamingAwareError_MessagesStreamingKeepsLegacy(t *testing.T) {
 	c, w := newGinContextForEndpoint(t, EndpointMessages)
 	WriteAnthropicStreamError(c, http.StatusBadGateway, "upstream_error", "", "boom", true, MarkOpsStreamError)

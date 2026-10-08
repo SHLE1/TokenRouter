@@ -88,7 +88,7 @@ func TestWrapReleaseOnDone_NoGoroutineLeak(t *testing.T) {
 	runtime.GC()
 	time.Sleep(100 * time.Millisecond)
 
-	// 验证 goroutine 数量没有增加（允许±2的误差，考虑到测试框架本身可能创建的 goroutine）
+	// 验证 goroutine 数量没有增加（允许±2 的误差，考虑到测试框架本身可能创建的 goroutine）
 	finalGoroutines := runtime.NumGoroutine()
 	if finalGoroutines > initialGoroutines+2 {
 		t.Errorf("goroutine leak detected: initial=%d, final=%d, leaked=%d",

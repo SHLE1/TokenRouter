@@ -81,7 +81,7 @@ func (s *TurnstileService) IsEnabled(ctx context.Context) bool {
 
 // ValidateSecretKey 验证 Turnstile Secret Key 是否有效。
 func (s *TurnstileService) ValidateSecretKey(ctx context.Context, secretKey string) error {
-	// 发送一个测试token的验证请求来检查secret_key是否有效
+	// 发送一个测试 token 的验证请求来检查 secret_key 是否有效
 	result, err := s.verifier.VerifyToken(ctx, secretKey, "test-validation", "")
 	if err != nil {
 		return fmt.Errorf("validate secret key: %w", err)

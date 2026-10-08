@@ -560,7 +560,7 @@ func TestRetypedResponsesToolCallItemID(t *testing.T) {
 	}
 }
 
-// TestRestoreResponsesClientToolPayloadRetypesItemIDs 验证function-only 上游返回 fc_ ID；若还原为 custom_tool_call 仍保留该前缀，
+// TestRestoreResponsesClientToolPayloadRetypesItemIDs 验证 function-only 上游返回 fc_ ID；若还原为 custom_tool_call 仍保留该前缀，
 // 客户端下一次重放历史时会被 Responses API 拒绝。
 func TestRestoreResponsesClientToolPayloadRetypesItemIDs(t *testing.T) {
 	mapping := ResponsesClientToolMapping{
@@ -613,7 +613,7 @@ func TestResponsesClientToolStreamRestorerRetypesCustomItemID(t *testing.T) {
 	require.Equal(t, "custom_tool_call", added[0].Item.Type)
 	require.Equal(t, clientID, added[0].Item.ID)
 
-	// 后续事件仍通过上游 ID 匹配，但发给客户端的事件使用重typed ID。
+	// 后续事件仍通过上游 ID 匹配，但发给客户端的事件使用重 typed ID。
 	require.Empty(t, restorer.Restore(ResponsesStreamEvent{
 		Type: "response.function_call_arguments.delta", SequenceNumber: 1, ItemID: upstreamID, Delta: `{"input":"di`,
 	}))
@@ -650,7 +650,7 @@ func TestResponsesClientToolStreamRestorerRetypesToolSearchItemID(t *testing.T) 
 	require.Equal(t, "tsc_search1", added[0].Item.ID)
 }
 
-// TestAdaptResponsesClientToolsRecoversRetypedItemID 验证WS bridge 会把客户端还原后的项目再次发回上游，因此 ctc_/tsc_ 必须恢复为 fc_。
+// TestAdaptResponsesClientToolsRecoversRetypedItemID 验证 WS bridge 会把客户端还原后的项目再次发回上游，因此 ctc_/tsc_ 必须恢复为 fc_。
 func TestAdaptResponsesClientToolsRecoversRetypedItemID(t *testing.T) {
 	req := map[string]any{
 		"tools": []any{

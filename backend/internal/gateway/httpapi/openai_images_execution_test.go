@@ -2315,7 +2315,7 @@ func openAIImagesJSONResponse() *http.Response {
 	}
 }
 
-// TestForwardOpenAIImagesAPIKey_NonStreamDetachesUpstreamContext 验证issue #5411：生图是长耗时、上游侧已经产生实际成本的操作。客户端中途断开时，
+// TestForwardOpenAIImagesAPIKey_NonStreamDetachesUpstreamContext 验证 issue #5411：生图是长耗时、上游侧已经产生实际成本的操作。客户端中途断开时，
 // 如果连带取消上游请求，就会出现「上游已出图并计费、网关记 502 context canceled、
 // 用户不扣费」。非流式路径以前走 gatewayprovider.DetachStreamUpstreamContext(ctx, false)，
 // 该函数在非流式时原样返回请求 context，因此不脱钩。

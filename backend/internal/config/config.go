@@ -298,13 +298,13 @@ type DingTalkConnectConfig = authconfig.DingTalkConnectConfig
 // EmailOAuthProviderConfig 保存 GitHub/Google 这类邮箱 OAuth 登录的配置。
 type EmailOAuthProviderConfig = authconfig.EmailOAuthProviderConfig
 
-// TokenRefreshConfig OAuth token自动刷新配置。
+// TokenRefreshConfig OAuth token 自动刷新配置。
 type TokenRefreshConfig struct {
 	// 是否启用自动刷新
 	Enabled bool `mapstructure:"enabled"`
 	// 检查间隔（分钟）
 	CheckIntervalMinutes int `mapstructure:"check_interval_minutes"`
-	// 提前刷新时间（小时），在token过期前多久开始刷新
+	// 提前刷新时间（小时），在 token 过期前多久开始刷新
 	RefreshBeforeExpiryHours float64 `mapstructure:"refresh_before_expiry_hours"`
 	// 最大重试次数
 	MaxRetries int `mapstructure:"max_retries"`
@@ -464,7 +464,7 @@ type ConcurrencyConfig struct {
 type ImageConcurrencyConfig struct {
 	// Enabled: 是否启用图片生成独立并发限制，默认关闭以保持现有行为
 	Enabled bool `mapstructure:"enabled"`
-	// MaxConcurrentRequests: 当前进程允许同时处理的图片生成请求数，0表示不限制
+	// MaxConcurrentRequests: 当前进程允许同时处理的图片生成请求数，0 表示不限制
 	MaxConcurrentRequests int `mapstructure:"max_concurrent_requests"`
 	// OverflowMode: 图片并发达到上限后的处理方式：reject/wait
 	OverflowMode string `mapstructure:"overflow_mode"`
@@ -474,18 +474,18 @@ type ImageConcurrencyConfig struct {
 	MaxWaitingRequests int `mapstructure:"max_waiting_requests"`
 }
 
-// GatewayConfig API网关相关配置。
+// GatewayConfig API 网关相关配置。
 type GatewayConfig struct {
-	// 等待上游响应头的超时时间（秒），0表示无超时
+	// 等待上游响应头的超时时间（秒），0 表示无超时
 	// 注意：这不影响流式数据传输，只控制等待响应头的时间
 	ResponseHeaderTimeout int `mapstructure:"response_header_timeout"`
-	// OpenAIResponseHeaderTimeout: OpenAI/Codex 上游等待响应头的超时时间（秒），0表示无超时
+	// OpenAIResponseHeaderTimeout: OpenAI/Codex 上游等待响应头的超时时间（秒），0 表示无超时
 	// OpenAI/Codex 请求可能在上游排队较久；默认不使用通用响应头超时截断。
 	OpenAIResponseHeaderTimeout int `mapstructure:"openai_response_header_timeout"`
 	// GrokResponseHeaderTimeout bounds the pre-first-byte wait for xAI/Grok.
 	// A zero value uses the provider-safe default instead of the generic gateway timeout.
 	GrokResponseHeaderTimeout int `mapstructure:"grok_response_header_timeout"`
-	// OpenAIFirstOutputTimeoutSeconds: native HTTP Responses 首个语义输出超时（秒），0表示禁用。
+	// OpenAIFirstOutputTimeoutSeconds: native HTTP Responses 首个语义输出超时（秒），0 表示禁用。
 	OpenAIFirstOutputTimeoutSeconds int `mapstructure:"openai_first_output_timeout_seconds"`
 	// OpenAIHighEffortFirstOutputTimeoutSeconds: high/xhigh/max 推理的首个语义输出超时（秒）。
 	// 0 表示回退到 OpenAIFirstOutputTimeoutSeconds。
@@ -539,7 +539,7 @@ type GatewayConfig struct {
 	MaxIdleConns int `mapstructure:"max_idle_conns"`
 	// MaxIdleConnsPerHost: 每个主机的最大空闲连接数（关键参数，影响连接复用率）
 	MaxIdleConnsPerHost int `mapstructure:"max_idle_conns_per_host"`
-	// MaxConnsPerHost: 每个主机的最大连接数（包括活跃+空闲），0表示无限制
+	// MaxConnsPerHost: 每个主机的最大连接数（包括活跃+空闲），0 表示无限制
 	MaxConnsPerHost int `mapstructure:"max_conns_per_host"`
 	// IdleConnTimeoutSeconds: 空闲连接超时时间（秒）
 	IdleConnTimeoutSeconds int `mapstructure:"idle_conn_timeout_seconds"`
@@ -560,17 +560,17 @@ type GatewayConfig struct {
 	// 空闲超过此时间的会话将被自动释放
 	SessionIdleTimeoutMinutes int `mapstructure:"session_idle_timeout_minutes"`
 
-	// StreamDataIntervalTimeout: 流数据间隔超时（秒），0表示禁用
+	// StreamDataIntervalTimeout: 流数据间隔超时（秒），0 表示禁用
 	StreamDataIntervalTimeout int `mapstructure:"stream_data_interval_timeout"`
-	// StreamKeepaliveInterval: 流式 keepalive 间隔（秒），0表示禁用
+	// StreamKeepaliveInterval: 流式 keepalive 间隔（秒），0 表示禁用
 	StreamKeepaliveInterval int `mapstructure:"stream_keepalive_interval"`
-	// ImageStreamDataIntervalTimeout: 图片流数据间隔超时（秒），0表示禁用
+	// ImageStreamDataIntervalTimeout: 图片流数据间隔超时（秒），0 表示禁用
 	ImageStreamDataIntervalTimeout int `mapstructure:"image_stream_data_interval_timeout"`
-	// ImageStreamKeepaliveInterval: 图片流式 keepalive 间隔（秒），0表示禁用
+	// ImageStreamKeepaliveInterval: 图片流式 keepalive 间隔（秒），0 表示禁用
 	ImageStreamKeepaliveInterval int `mapstructure:"image_stream_keepalive_interval"`
-	// ImageNonstreamKeepaliveInterval: 图片非流式 JSON keepalive 间隔（秒），0表示禁用
+	// ImageNonstreamKeepaliveInterval: 图片非流式 JSON keepalive 间隔（秒），0 表示禁用
 	ImageNonstreamKeepaliveInterval int `mapstructure:"image_nonstream_keepalive_interval"`
-	// MaxLineSize: 上游 SSE 单行最大字节数（0使用默认值）
+	// MaxLineSize: 上游 SSE 单行最大字节数（0 使用默认值）
 	MaxLineSize int `mapstructure:"max_line_size"`
 
 	// 是否记录上游错误响应体摘要（避免输出请求内容）
@@ -595,7 +595,7 @@ type GatewayConfig struct {
 	// Scheduling: 提供商调度相关配置
 	Scheduling GatewaySchedulingConfig `mapstructure:"scheduling"`
 
-	// TLSFingerprint: TLS指纹伪装配置
+	// TLSFingerprint: TLS 指纹伪装配置
 	TLSFingerprint TLSFingerprintConfig `mapstructure:"tls_fingerprint"`
 
 	// UsageRecord: 使用量记录异步队列配置（有界队列 + 固定 worker）
@@ -792,25 +792,25 @@ type GatewayUsageRecordConfig struct {
 	AutoScaleCooldownSeconds int `mapstructure:"auto_scale_cooldown_seconds"`
 }
 
-// TLSFingerprintConfig TLS指纹伪装配置
+// TLSFingerprintConfig TLS 指纹伪装配置
 // 用于模拟 Claude CLI (Node.js) 的 TLS 握手特征，避免被识别为非官方客户端。
 type TLSFingerprintConfig struct {
-	// Enabled: 是否全局启用TLS指纹功能
+	// Enabled: 是否全局启用 TLS 指纹功能
 	Enabled bool `mapstructure:"enabled"`
-	// Profiles: 预定义的TLS指纹配置模板
+	// Profiles: 预定义的 TLS 指纹配置模板
 	// key 为模板名称，如 "claude_cli_v2", "chrome_120" 等
 	Profiles map[string]TLSProfileConfig `mapstructure:"profiles"`
 }
 
-// TLSProfileConfig 单个TLS指纹模板的配置
+// TLSProfileConfig 单个 TLS 指纹模板的配置
 // 所有列表字段为空时使用内置默认值（Claude CLI 2.x / Node.js 20.x）
 // 建议通过 TLS 指纹采集工具 (tests/tls-fingerprint-web) 获取完整配置。
 type TLSProfileConfig struct {
 	// Name: 模板显示名称
 	Name string `mapstructure:"name"`
-	// EnableGREASE: 是否启用GREASE扩展（Chrome使用，Node.js不使用）
+	// EnableGREASE: 是否启用 GREASE 扩展（Chrome 使用，Node.js 不使用）
 	EnableGREASE bool `mapstructure:"enable_grease"`
-	// CipherSuites: TLS加密套件列表
+	// CipherSuites: TLS 加密套件列表
 	CipherSuites []uint16 `mapstructure:"cipher_suites"`
 	// Curves: 椭圆曲线列表
 	Curves []uint16 `mapstructure:"curves"`
@@ -818,17 +818,17 @@ type TLSProfileConfig struct {
 	PointFormats []uint16 `mapstructure:"point_formats"`
 	// SignatureAlgorithms: 签名算法列表
 	SignatureAlgorithms []uint16 `mapstructure:"signature_algorithms"`
-	// ALPNProtocols: ALPN协议列表（如 ["h2", "http/1.1"]）
+	// ALPNProtocols: ALPN 协议列表（如 ["h2", "http/1.1"]）
 	ALPNProtocols []string `mapstructure:"alpn_protocols"`
-	// SupportedVersions: 支持的TLS版本列表（如 [0x0304, 0x0303] 即 TLS1.3, TLS1.2）
+	// SupportedVersions: 支持的 TLS 版本列表（如 [0x0304, 0x0303] 即 TLS1.3, TLS1.2）
 	SupportedVersions []uint16 `mapstructure:"supported_versions"`
-	// KeyShareGroups: Key Share中发送的曲线组（如 [29] 即 X25519）
+	// KeyShareGroups: Key Share 中发送的曲线组（如 [29] 即 X25519）
 	KeyShareGroups []uint16 `mapstructure:"key_share_groups"`
-	// PSKModes: PSK密钥交换模式（如 [1] 即 psk_dhe_ke）
+	// PSKModes: PSK 密钥交换模式（如 [1] 即 psk_dhe_ke）
 	PSKModes []uint16 `mapstructure:"psk_modes"`
-	// Extensions: TLS扩展类型ID列表，按发送顺序排列
+	// Extensions: TLS 扩展类型 ID 列表，按发送顺序排列
 	// 空则使用内置默认顺序 [0,11,10,35,16,22,23,13,43,45,51]
-	// GREASE值(如0x0a0a)会自动插入GREASE扩展
+	// GREASE 值(如 0x0a0a)会自动插入 GREASE 扩展
 	Extensions []uint16 `mapstructure:"extensions"`
 }
 
@@ -971,13 +971,13 @@ type OpsMetricsCollectorCacheConfig struct {
 type JWTConfig struct {
 	Secret     string `mapstructure:"secret"`
 	ExpireHour int    `mapstructure:"expire_hour"`
-	// AccessTokenExpireMinutes: Access Token有效期（分钟）
+	// AccessTokenExpireMinutes: Access Token 有效期（分钟）
 	// - >0: 使用分钟配置（优先级高于 ExpireHour）
 	// - =0: 回退使用 ExpireHour（向后兼容旧配置）
 	AccessTokenExpireMinutes int `mapstructure:"access_token_expire_minutes"`
-	// RefreshTokenExpireDays: Refresh Token有效期（天），默认30天
+	// RefreshTokenExpireDays: Refresh Token 有效期（天），默认 30 天
 	RefreshTokenExpireDays int `mapstructure:"refresh_token_expire_days"`
-	// RefreshWindowMinutes: 刷新窗口（分钟），在Access Token过期前多久开始允许刷新
+	// RefreshWindowMinutes: 刷新窗口（分钟），在 Access Token 过期前多久开始允许刷新
 	RefreshWindowMinutes int `mapstructure:"refresh_window_minutes"`
 }
 
@@ -2190,7 +2190,7 @@ func setDefaults() {
 	viper.SetDefault("gateway.usage_record.auto_scale_cooldown_seconds", 10)
 	viper.SetDefault("gateway.user_group_rate_cache_ttl_seconds", 30)
 	viper.SetDefault("gateway.models_list_cache_ttl_seconds", 15)
-	// TLS指纹伪装配置（默认关闭，需要提供商级别单独启用）
+	// TLS 指纹伪装配置（默认关闭，需要提供商级别单独启用）
 	// 用户消息串行队列默认值
 	viper.SetDefault("gateway.user_message_queue.enabled", false)
 	viper.SetDefault("gateway.user_message_queue.lock_ttl_ms", 120000)
@@ -2477,7 +2477,7 @@ func (c *Config) Validate() error {
 	if c.JWT.ExpireHour > 24 {
 		slog.Warn("jwt.expire_hour is high; consider shorter expiration for security", "expire_hour", c.JWT.ExpireHour)
 	}
-	// JWT Refresh Token配置验证
+	// JWT Refresh Token 配置验证
 	if c.JWT.AccessTokenExpireMinutes < 0 {
 		return fmt.Errorf("jwt.access_token_expire_minutes must be non-negative")
 	}

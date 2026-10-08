@@ -186,7 +186,7 @@ func (s *HealthService) UpdateSessionWindow(ctx context.Context, provider *Recor
 	// 被动采样：从响应头收集 5h + 7d + 7d_oi utilization，合并为一次 DB 写入
 	s.PersistPassiveUsage(ctx, provider, observation.Passive)
 
-	// 如果状态为allowed且之前有限流，说明窗口已重置，清除限流状态
+	// 如果状态为 allowed 且之前有限流，说明窗口已重置，清除限流状态
 	if status == "allowed" && provider.IsRateLimited() && s.options.ClearWindowRateLimit != nil {
 		if err := s.options.ClearWindowRateLimit(ctx, provider.ID); err != nil {
 			s.options.Warn("rate_limit_clear_failed", "provider_id", provider.ID, "error", err)

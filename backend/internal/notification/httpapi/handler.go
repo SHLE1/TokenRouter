@@ -12,7 +12,7 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// TestSMTPRequest 测试SMTP连接请求。
+// TestSMTPRequest 测试 SMTP 连接请求。
 type TestSMTPRequest struct {
 	SMTPHost     string `json:"smtp_host"`
 	SMTPPort     int    `json:"smtp_port"`
@@ -50,7 +50,7 @@ func ResolveSMTPUseTLS(requested *bool, savedConfig *notification.SMTPConfig) bo
 	return savedConfig != nil && savedConfig.UseTLS
 }
 
-// TestSMTPConnection 测试SMTP连接
+// TestSMTPConnection 测试 SMTP 连接
 // POST /api/v1/admin/settings/test-smtp
 func (h *Handler) TestSMTPConnection(c *gin.Context) {
 	var req TestSMTPRequest

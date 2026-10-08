@@ -288,9 +288,7 @@ func generateSecret(length int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// =============================================================================
 // Auto Setup for Docker Deployment
-// =============================================================================
 
 // AutoSetupEnabled checks if auto setup is enabled via environment variable.
 func AutoSetupEnabled() bool {

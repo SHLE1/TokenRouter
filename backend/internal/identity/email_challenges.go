@@ -27,7 +27,7 @@ func NewEmailChallenges(cache EmailCache, sender EmailChallengeSender) *EmailCha
 	return &EmailChallenges{cache: cache, sender: sender}
 }
 
-// GenerateVerifyCode 生成6位数字验证码。
+// GenerateVerifyCode 生成 6 位数字验证码。
 func (s *EmailChallenges) GenerateVerifyCode() (string, error) {
 	const digits = "0123456789"
 	code := make([]byte, 6)

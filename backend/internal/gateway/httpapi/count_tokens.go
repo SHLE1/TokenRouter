@@ -66,7 +66,7 @@ func (h *CountTokensHandler) CountTokens(c *gin.Context) {
 	}
 	defer done()
 
-	// 从context获取apiKey和user（ApiKeyAuth中间件已设置）
+	// 从 context 获取 apiKey 和 user（ApiKeyAuth 中间件已设置）
 	apiKey, ok := h.backend.Access(c)
 	if !ok {
 		h.errorResponse(c, http.StatusUnauthorized, "authentication_error", "Invalid API key")
@@ -136,7 +136,7 @@ func (h *CountTokensHandler) CountTokens(c *gin.Context) {
 	h.backend.ObserveRequest(c, parsedReq.Model, parsedReq.Stream)
 	h.backend.ObserveEndpoint(c, parsedReq.Stream)
 
-	// 获取订阅信息（可能为nil）
+	// 获取订阅信息（可能为 nil）
 	subscription, _ := SubscriptionFromContext(c)
 
 	// 校验 billing eligibility（订阅/余额）

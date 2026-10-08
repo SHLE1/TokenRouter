@@ -76,7 +76,7 @@ func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType,
 	}
 	clientHeaders := options.ClientHeaders
 	// OAuth 提供商：应用统一指纹和重写 userID（受设置开关控制）
-	// 如果启用了会话ID伪装，会在重写后替换 session 部分为固定值
+	// 如果启用了会话 ID 伪装，会在重写后替换 session 部分为固定值
 	ctEnableFP, ctEnableMPT := true, false
 	if options.Forwarding != nil {
 		ctEnableFP, ctEnableMPT = options.Forwarding(ctx)

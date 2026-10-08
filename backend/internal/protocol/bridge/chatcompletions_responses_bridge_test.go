@@ -606,7 +606,7 @@ func TestResponsesToChatCompletionsRequest_DropsDeferredFlagWithToolSearch(t *te
 	require.Contains(t, string(encoded), `"name":"tool_search"`)
 }
 
-// TestChatCompletionsResponseToResponses_ToolSearchCallOutputItem 验证codex 只在 ResponseItem 为 tool_search_call 变体且 execution=client 时执行
+// TestChatCompletionsResponseToResponses_ToolSearchCallOutputItem 验证 codex 只在 ResponseItem 为 tool_search_call 变体且 execution=client 时执行
 // tool search；同名 function_call 会命中 ToolSearchHandler 后因 payload 不匹配
 // 触发 FunctionCallError::Fatal，直接中止整个 turn，因此回程必须还原项类型。
 func TestChatCompletionsResponseToResponses_ToolSearchCallOutputItem(t *testing.T) {
@@ -1020,7 +1020,7 @@ func TestResponsesToChatCompletionsRequest_RejectsDuplicateTopLevelExecutableNam
 	}
 }
 
-// TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool 验证tool_choice 指向被转换丢弃的工具（如 web_search）或不存在的名字时不能原样转发，
+// TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool 验证 tool_choice 指向被转换丢弃的工具（如 web_search）或不存在的名字时不能原样转发，
 // chat 上游会因选择项指向未声明工具而 400；字符串形式与指向幸存工具的选择保持转发。
 func TestResponsesToChatCompletionsRequest_DropsToolChoiceForDroppedTool(t *testing.T) {
 	// web_search 被丢弃时，指向它的强制选择项一并丢弃。
@@ -1149,7 +1149,7 @@ func TestResponsesToChatCompletionsRequest_DedupesIdenticalNamespaceChildren(t *
 	assert.Equal(t, "gmail__send", out.Tools[0].Function.Name)
 }
 
-// TestChatCompletionsResponseToResponses_NamespacedToolCallRestored 验证codex 按 namespace+name 路由 namespace 子工具的调用：回程必须把摊平名还原为
+// TestChatCompletionsResponseToResponses_NamespacedToolCallRestored 验证 codex 按 namespace+name 路由 namespace 子工具的调用：回程必须把摊平名还原为
 // 裸子工具名并带独立 namespace 字段，平铺名的 function_call 会被 codex 判为
 // unsupported call 拒绝执行。
 func TestChatCompletionsResponseToResponses_NamespacedToolCallRestored(t *testing.T) {
@@ -1477,7 +1477,7 @@ func TestRequest_SequentialToolCallsStaySeparate(t *testing.T) {
 	require.Equal(t, 2, assistants)
 }
 
-// TestGolden_MessageBetweenToolCallAndOutput 验证Codex 有时会在 function_call 和 output 之间插入通知消息；这类中间消息必须
+// TestGolden_MessageBetweenToolCallAndOutput 验证 Codex 有时会在 function_call 和 output 之间插入通知消息；这类中间消息必须
 // 移到 tool reply 之后，保证 assistant tool_calls 后面紧跟对应回复。
 func TestGolden_MessageBetweenToolCallAndOutput(t *testing.T) {
 	msgs := convertGolden(t, `[
@@ -1528,7 +1528,7 @@ func TestGolden_DanglingToolCallDropped(t *testing.T) {
 	}
 }
 
-// TestNormalize_DropsOrphanToolReply 验证normalizeChatMessages 会丢弃没有对应 assistant tool_call 的孤儿 tool reply。
+// TestNormalize_DropsOrphanToolReply 验证 normalizeChatMessages 会丢弃没有对应 assistant tool_call 的孤儿 tool reply。
 func TestNormalize_DropsOrphanToolReply(t *testing.T) {
 	msgs := convertGolden(t, `[
 		{"type":"message","role":"user","content":[{"type":"input_text","text":"q"}]},

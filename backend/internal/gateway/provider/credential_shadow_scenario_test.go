@@ -56,9 +56,7 @@ func TestSparkShadowIntegration(t *testing.T) {
 		return ExecutionRecord(value), err
 	}}
 
-	// ──────────────────────────────────────────────────────────────────────
 	// 属性 1：凭据轮换读透（脱钩命门）
-	// ──────────────────────────────────────────────────────────────────────
 
 	t.Run("credential_readthrough_initial_T1", func(t *testing.T) {
 		// 影子无凭据，resolveCredentialProvider 必须透传到母提供商。
@@ -110,9 +108,7 @@ func TestSparkShadowIntegration(t *testing.T) {
 		require.Equal(t, "ordinary-token", token)
 	})
 
-	// ──────────────────────────────────────────────────────────────────────
 	// 属性 2：路由不变量（路由资格由 IsModelSupported 决定）
-	// ──────────────────────────────────────────────────────────────────────
 
 	t.Run("routing_invariant", func(t *testing.T) {
 		// 路由资格已从「按提供商类型」改为「按提供商支持模型」(model_mapping / IsModelSupported)。
@@ -135,9 +131,7 @@ func TestSparkShadowIntegration(t *testing.T) {
 		require.False(t, ExecutionProtocolRecord(normalNoSpark).IsModelSupported(sparkModel, provideradapter.ModelDefaults(), provideradapter.ModelRules(ExecutionProtocolRecord(normalNoSpark))), "普通提供商显式白名单不含 Spark 时拒绝")
 	})
 
-	// ──────────────────────────────────────────────────────────────────────
 	// 属性 3：母提供商健康度联动（parentHealthyForShadow）
-	// ──────────────────────────────────────────────────────────────────────
 
 	t.Run("parent_health_propagated_to_shadow", func(t *testing.T) {
 		// 恢复母提供商健康状态（属性 1/2 测试可能改过）

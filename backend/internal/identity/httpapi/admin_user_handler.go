@@ -66,7 +66,7 @@ type CreateUserRequest struct {
 }
 
 // UpdateUserRequest represents admin update user request
-// 使用指针类型来区分"未提供"和"设置为0"。
+// 使用指针类型来区分"未提供"和"设置为 0"。
 type UpdateUserRequest struct {
 	Email         string   `json:"email" binding:"omitempty,email"`
 	Password      string   `json:"password" binding:"omitempty,min=6"`

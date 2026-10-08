@@ -551,7 +551,7 @@ func (r *KeyStore) RotateCredential(ctx context.Context, key *keycore.APIKey, ol
 }
 
 func (r *KeyStore) Delete(ctx context.Context, id int64) error {
-	// 存在唯一键约束 生成tombstone key 用来释放原key，长度远小于 128，满足 schema 限制
+	// 存在唯一键约束 生成 tombstone key 用来释放原 key，长度远小于 128，满足 schema 限制
 	tombstoneKey := fmt.Sprintf("__deleted__%d__%d", id, time.Now().UnixNano())
 	// 显式软删除：避免依赖 Hook 行为，确保 deleted_at 一定被设置。
 	affected, err := r.client.APIKey.Update().

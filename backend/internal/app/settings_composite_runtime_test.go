@@ -1057,7 +1057,7 @@ func TestUpdateSettingsFullPayloadStillClearsSentEmptyFields(t *testing.T) {
 		"明确发送的空值表示主动清空，而不是省略字段")
 }
 
-// TestUpdateSettingsSMTPFromAliasIsWritable 验证smtp_from_email 是唯一一个 JSON 名称与持久化设置键不同的请求字段，
+// TestUpdateSettingsSMTPFromAliasIsWritable 验证 smtp_from_email 是唯一一个 JSON 名称与持久化设置键不同的请求字段，
 // 别名映射用于识别请求中的 smtp_from_email 字段。
 func TestUpdateSettingsSMTPFromAliasIsWritable(t *testing.T) {
 	h, repo := newStepUpSwitchTestHandler(t, map[string]string{

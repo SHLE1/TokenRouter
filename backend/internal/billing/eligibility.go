@@ -50,8 +50,8 @@ const (
 
 var (
 	// 错误定义
-	// 注：ErrInsufficientBalance在redeem_service.go中定义
-	// 注：ErrDailyLimitExceeded/ErrWeeklyLimitExceeded/ErrMonthlyLimitExceeded在subscription_service.go中定义。
+	// 注：ErrInsufficientBalance 在 redeem_service.go 中定义
+	// 注：ErrDailyLimitExceeded/ErrWeeklyLimitExceeded/ErrMonthlyLimitExceeded 在 subscription_service.go 中定义。
 	ErrBillingServiceUnavailable = apperror.ServiceUnavailable("BILLING_SERVICE_ERROR", "Billing service temporarily unavailable. Please retry later.")
 
 	ErrAPIKeyNotFound                    = apperror.NotFound("API_KEY_NOT_FOUND", "api key not found")
@@ -291,7 +291,7 @@ func (s *Eligibility) logCacheWriteDrop(task cacheWriteTask, reason string) {
 // GetUserBalance 获取用户余额（优先从缓存读取）。
 func (s *Eligibility) GetUserBalance(ctx context.Context, userID int64) (float64, error) {
 	if s == nil || s.cache == nil {
-		// Redis不可用，直接查询数据库
+		// Redis 不可用，直接查询数据库
 		return s.getUserBalanceFromDB(ctx, userID)
 	}
 

@@ -878,7 +878,7 @@ func TestBufferedResponseAccumulator_IgnoresNonFunctionCallItems(t *testing.T) {
 	assert.False(t, acc.HasContent())
 }
 
-// TestResponsesEventToChatChunks_CustomToolCallInputDelta 验证custom_tool_call（custom/freeform 工具，如新版 apply_patch）应像 function_call 一样
+// TestResponsesEventToChatChunks_CustomToolCallInputDelta 验证 custom_tool_call（custom/freeform 工具，如新版 apply_patch）应像 function_call 一样
 // 注册为工具调用，其 *_input.delta 增量映射到正确的工具索引。
 func TestResponsesEventToChatChunks_CustomToolCallInputDelta(t *testing.T) {
 	state := NewResponsesEventToChatState(testRuntime())

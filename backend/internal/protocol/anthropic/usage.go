@@ -6,7 +6,7 @@ type ClaudeUsageWindow struct {
 	ResetsAt    string  `json:"resets_at"`
 }
 
-// ClaudeUsageResponse Anthropic API返回的usage结构。
+// ClaudeUsageResponse Anthropic API 返回的 usage 结构。
 type ClaudeUsageResponse struct {
 	FiveHour struct {
 		Utilization float64 `json:"utilization"`

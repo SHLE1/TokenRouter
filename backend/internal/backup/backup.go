@@ -98,7 +98,7 @@ var (
 	}
 )
 
-// ─── 接口定义 ───
+// 接口定义
 
 // DBDumper 抽象数据库导出和恢复操作。
 type DBDumper interface {
@@ -134,7 +134,7 @@ type BackupObjectStoreSizedUploader interface {
 // BackupObjectStoreFactory 根据 S3 配置创建对象存储客户端。
 type BackupObjectStoreFactory func(ctx context.Context, cfg *BackupS3Config) (BackupObjectStore, error)
 
-// ─── 数据模型 ───
+// 数据模型
 
 // BackupStorageConfig 备份存储配置，决定后续新备份写入本地还是远程对象存储。
 type BackupStorageConfig struct {
@@ -389,7 +389,7 @@ func (s *BackupService) TestStorageConnection(ctx context.Context, cfg BackupSto
 	}
 }
 
-// ─── 备份内容配置管理 ───
+// 备份内容配置管理
 
 func (s *BackupService) GetContentConfig(ctx context.Context) (*BackupContentConfig, error) {
 	cfg, err := s.loadContentConfig(ctx)
@@ -413,7 +413,7 @@ func (s *BackupService) UpdateContentConfig(ctx context.Context, cfg BackupConte
 	return &normalized, nil
 }
 
-// ─── S3 配置管理（兼容旧接口） ───
+// S3 配置管理（兼容旧接口）
 
 func (s *BackupService) GetS3Config(ctx context.Context) (*BackupS3Config, error) {
 	cfg, err := s.loadS3Config(ctx)
@@ -483,7 +483,7 @@ func (s *BackupService) TestS3Connection(ctx context.Context, cfg BackupS3Config
 	return store.HeadBucket(ctx)
 }
 
-// ─── 定时备份管理 ───
+// 定时备份管理
 
 func (s *BackupService) GetSchedule(ctx context.Context) (*BackupScheduleConfig, error) {
 	raw, err := s.settingRepo.GetValue(ctx, settingKeyBackupSchedule)
@@ -602,10 +602,10 @@ func (s *BackupService) runScheduledBackup() {
 	}
 }
 
-// ─── 备份/恢复核心 ───
+// 备份/恢复核心
 
 // createBackup 创建全量数据库备份并写入当前配置的存储后端（流式处理）
-// expireDays: 备份过期天数，0=永不过期，默认14天。
+// expireDays: 备份过期天数，0=永不过期，默认 14 天。
 func (s *BackupService) createBackup(ctx context.Context, triggeredBy string, expireDays int) (*BackupRecord, error) {
 	if s.shuttingDown.Load() {
 		return nil, infraerrors.ServiceUnavailable("SERVER_SHUTTING_DOWN", "server is shutting down")
@@ -972,7 +972,7 @@ func (s *BackupService) completeRestore(record *BackupRecord) {
 	}
 }
 
-// ─── 备份记录管理 ───
+// 备份记录管理
 
 func (s *BackupService) ListBackups(ctx context.Context) ([]BackupRecord, error) {
 	records, err := s.loadRecords(ctx)
@@ -1099,7 +1099,7 @@ func (s *BackupService) OpenBackupDownload(ctx context.Context, backupID string)
 	return body, record, nil
 }
 
-// ─── 内部方法 ───
+// 内部方法
 
 func (s *BackupService) loadStorageConfig(ctx context.Context) (*BackupStorageConfig, error) {
 	raw, err := s.settingRepo.GetValue(ctx, settingKeyBackupStorageConfig)

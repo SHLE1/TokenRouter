@@ -25,7 +25,7 @@ func (r *AntigravityRefreshRules) CanRefresh(provider *Record) bool {
 }
 
 // NeedsRefresh 检查提供商是否需要刷新
-// Antigravity 使用固定的15分钟刷新窗口，忽略全局配置。
+// Antigravity 使用固定的 15 分钟刷新窗口，忽略全局配置。
 func (r *AntigravityRefreshRules) NeedsRefresh(provider *Record, _ time.Duration) bool {
 	if !r.CanRefresh(provider) {
 		return false

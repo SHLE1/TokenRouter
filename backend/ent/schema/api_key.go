@@ -84,7 +84,7 @@ func (APIKey) Fields() []ent.Field {
 			Optional().
 			Comment("Blocked IPs/CIDRs"),
 
-		// ========== Quota fields ==========
+		// Quota fields
 		// Quota limit in USD (0 = unlimited)
 		field.Float("quota").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).
@@ -105,7 +105,7 @@ func (APIKey) Fields() []ent.Field {
 		field.Int("concurrency_limit").NonNegative().Default(0),
 		field.Int("rpm_limit").NonNegative().Default(0),
 
-		// ========== Rate limit fields ==========
+		// Rate limit fields
 		// Rate limit configuration (0 = unlimited)
 		field.Float("rate_limit_5h").
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,8)"}).

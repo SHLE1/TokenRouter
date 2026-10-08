@@ -723,7 +723,7 @@ func TestHandleSSEToJSON_PathBasedCompactRawOutputItemDoneRepairsJSON(t *testing
 	require.Equal(t, "compact-v1-raw", gjson.Get(body, "output.0.encrypted_content").String())
 }
 
-// TestReconstructResponseOutputFromSSE_PrefersRawDoneItems 验证raw done item 是协议上的最终完整形态，优先于 delta 重建且不得重复计入。
+// TestReconstructResponseOutputFromSSE_PrefersRawDoneItems 验证 raw done item 是协议上的最终完整形态，优先于 delta 重建且不得重复计入。
 func TestReconstructResponseOutputFromSSE_PrefersRawDoneItems(t *testing.T) {
 	bodyText := strings.Join([]string{
 		`data: {"type":"response.output_text.delta","delta":"hel"}`,

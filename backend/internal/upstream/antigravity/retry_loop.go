@@ -157,7 +157,7 @@ func (s *RetryAdapter) HandleSmartRetry(p RetryInput, resp *http.Response, respB
 		}
 	}
 
-	// 情况1: retryDelay >= 阈值，限流模型并切换提供商
+	// 情况 1: retryDelay >= 阈值，限流模型并切换提供商
 	if shouldRateLimitModel {
 		// 单提供商 503 退避重试模式：不设限流、不切换提供商，改为原地等待+重试
 		// 谷歌上游 503 (MODEL_CAPACITY_EXHAUSTED) 通常是暂时性的，等几秒就能恢复。
@@ -191,7 +191,7 @@ func (s *RetryAdapter) HandleSmartRetry(p RetryInput, resp *http.Response, respB
 		}
 	}
 
-	// 情况2: retryDelay < 阈值（或 MODEL_CAPACITY_EXHAUSTED），智能重试
+	// 情况 2: retryDelay < 阈值（或 MODEL_CAPACITY_EXHAUSTED），智能重试
 	if shouldSmartRetry {
 		var lastRetryResp *http.Response
 		var lastRetryBody []byte
@@ -822,7 +822,7 @@ func SleepAntigravityBackoffWithContext(ctx context.Context, attempt int) bool {
 //
 // 必须满足以下条件才会返回有效值：
 // - error.details[] 中存在 @type == "type.googleapis.com/google.rpc.RetryInfo" 的元素
-// - 该元素包含 retryDelay 字段，格式为 "数字s"（如 "0.201506475s"）。
+// - 该元素包含 retryDelay 字段，格式为 "数字 s"（如 "0.201506475s"）。
 func ParseAntigravitySmartRetryInfo(body []byte) *AntigravitySmartRetryInfo {
 	var parsed map[string]any
 	if err := json.Unmarshal(body, &parsed); err != nil {
@@ -835,8 +835,8 @@ func ParseAntigravitySmartRetryInfo(body []byte) *AntigravitySmartRetryInfo {
 	}
 
 	// 检查 status 是否符合条件
-	// 情况1: 429 RESOURCE_EXHAUSTED (需要进一步检查 reason == RATE_LIMIT_EXCEEDED)
-	// 情况2: 503 UNAVAILABLE (需要进一步检查 reason == MODEL_CAPACITY_EXHAUSTED)
+	// 情况 1: 429 RESOURCE_EXHAUSTED (需要进一步检查 reason == RATE_LIMIT_EXCEEDED)
+	// 情况 2: 503 UNAVAILABLE (需要进一步检查 reason == MODEL_CAPACITY_EXHAUSTED)
 	status, _ := errObj["status"].(string)
 	isResourceExhausted := status == GoogleRPCStatusResourceExhausted
 	isUnavailable := status == GoogleRPCStatusUnavailable
@@ -900,8 +900,8 @@ func ParseAntigravitySmartRetryInfo(body []byte) *AntigravitySmartRetryInfo {
 	}
 
 	// 验证条件
-	// 情况1: RESOURCE_EXHAUSTED 需要有 RATE_LIMIT_EXCEEDED reason
-	// 情况2: UNAVAILABLE 需要有 MODEL_CAPACITY_EXHAUSTED reason
+	// 情况 1: RESOURCE_EXHAUSTED 需要有 RATE_LIMIT_EXCEEDED reason
+	// 情况 2: UNAVAILABLE 需要有 MODEL_CAPACITY_EXHAUSTED reason
 	if isResourceExhausted && !hasRateLimitExceeded {
 		return nil
 	}

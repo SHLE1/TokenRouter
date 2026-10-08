@@ -17,13 +17,13 @@ type UpdateOverloadCooldownSettingsRequest struct {
 	CooldownMinutes int  `json:"cooldown_minutes"`
 }
 
-// UpdateRateLimit429CooldownSettingsRequest 接收429 冷却设置。
+// UpdateRateLimit429CooldownSettingsRequest 接收 429 冷却设置。
 type UpdateRateLimit429CooldownSettingsRequest struct {
 	Enabled         bool `json:"enabled"`
 	CooldownSeconds int  `json:"cooldown_seconds"`
 }
 
-// UpdateOpenAIImagesOAuthUnavailableCooldownSettingsRequest 接收OAuth 图片不可用冷却设置。
+// UpdateOpenAIImagesOAuthUnavailableCooldownSettingsRequest 接收 OAuth 图片不可用冷却设置。
 type UpdateOpenAIImagesOAuthUnavailableCooldownSettingsRequest struct {
 	CooldownMinutes int `json:"cooldown_minutes"`
 }
@@ -37,7 +37,7 @@ type UpdateStreamTimeoutSettingsRequest struct {
 	ThresholdWindowMinutes int    `json:"threshold_window_minutes"`
 }
 
-// UpdateOpenAI403CooldownSettingsRequest 接收OpenAI 403 冷却设置。
+// UpdateOpenAI403CooldownSettingsRequest 接收 OpenAI 403 冷却设置。
 type UpdateOpenAI403CooldownSettingsRequest struct {
 	Enabled                 bool  `json:"enabled"`
 	CooldownMinutes         int   `json:"cooldown_minutes"`

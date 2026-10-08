@@ -5909,7 +5909,7 @@ func TestOpenAIGatewayService_OAuthPreservesCodexNamespaceTools(t *testing.T) {
 	require.Empty(t, OpenAIResponsesNamespaceNames(c))
 }
 
-// TestOpenAIGatewayService_APIKeyPreservesDeclaredNamespaceToolCalls 验证API Key 自定义上游若接受 namespace 工具声明，也要求历史 function_call 原样携带
+// TestOpenAIGatewayService_APIKeyPreservesDeclaredNamespaceToolCalls 验证 API Key 自定义上游若接受 namespace 工具声明，也要求历史 function_call 原样携带
 // namespace。声明仍为命名空间工具却清掉调用项字段，会触发 Missing namespace。
 func TestOpenAIGatewayService_APIKeyPreservesDeclaredNamespaceToolCalls(t *testing.T) {
 	body := []byte(codexNamespaceRequestBody)

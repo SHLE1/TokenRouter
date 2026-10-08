@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConvertClaudeToolsToGeminiTools_CustomType 测试custom类型工具转换。
+// TestConvertClaudeToolsToGeminiTools_CustomType 测试 custom 类型工具转换。
 func TestConvertClaudeToolsToGeminiTools_CustomType(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -134,7 +134,7 @@ func TestConvertClaudeToolsToGeminiTools_CustomType(t *testing.T) {
 			for _, tool := range toolsArr {
 				toolMap, _ := tool.(map[string]any)
 				if toolMap["name"] != "" {
-					// 检查是否为有效的custom工具
+					// 检查是否为有效的 custom 工具
 					if toolMap["type"] == "custom" {
 						if toolMap["custom"] != nil {
 							expectedFuncCount++

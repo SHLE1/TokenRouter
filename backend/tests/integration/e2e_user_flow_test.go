@@ -231,9 +231,7 @@ func TestAPIKeyLifecycle(t *testing.T) {
 	})
 }
 
-// =============================================================================
 // 辅助函数
-// =============================================================================
 
 func doRequest(t *testing.T, method, path string, body []byte, token string) (*http.Response, error) {
 	t.Helper()

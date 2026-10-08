@@ -191,7 +191,7 @@ type APIKeyAuthCacheInvalidator interface {
 	InvalidateAuthCacheByGroupID(ctx context.Context, groupID int64)
 }
 
-// CreateAPIKeyRequest 创建API Key请求。
+// CreateAPIKeyRequest 创建 API Key 请求。
 type CreateAPIKeyRequest struct {
 	Name        string `json:"name"`
 	Scope       string `json:"scope"`
@@ -239,7 +239,7 @@ type APIKeyBillingSubscriptionOption struct {
 	ApplicableGroups []int64
 }
 
-// UpdateAPIKeyRequest 更新API Key请求。
+// UpdateAPIKeyRequest 更新 API Key 请求。
 type UpdateAPIKeyRequest struct {
 	Name        *string `json:"name"`
 	GroupID     *int64  `json:"group_id"`
@@ -277,7 +277,7 @@ type UpdateAPIKeyRequest struct {
 	FallbackWhenGroupUnavailable *bool `json:"fallback_when_group_unavailable"`
 }
 
-// APIKeyService API Key服务
+// APIKeyService API Key 服务
 // RateLimitCacheInvalidator invalidates rate limit cache entries on manual reset.
 type RateLimitCacheInvalidator interface {
 	InvalidateAPIKeyRateLimit(ctx context.Context, keyID int64) error
@@ -420,7 +420,7 @@ func KeyValidateUpdateAPIKeyRequest(req UpdateAPIKeyRequest) error {
 	return nil
 }
 
-// NewAPIKeyService 创建API Key服务实例。
+// NewAPIKeyService 创建 API Key 服务实例。
 func NewAPIKeyService(
 	apiKeyRepo APIKeyRepository,
 	userRepo UserRepository,
@@ -490,7 +490,7 @@ func (s *APIKeyService) KeyCompileAPIKeyIPRules(apiKey *APIKey) {
 	apiKey.CompiledIPBlacklist = ipmatch.CompileIPRules(apiKey.IPBlacklist)
 }
 
-// GenerateKey 生成随机API Key。
+// GenerateKey 生成随机 API Key。
 func (s *APIKeyService) GenerateKey() (string, error) {
 	prefix := s.cfg.Default.APIKeyPrefix
 	if prefix == "" {
@@ -501,7 +501,7 @@ func (s *APIKeyService) GenerateKey() (string, error) {
 
 // GenerateAPIKeyString 生成带前缀的随机 API Key 字符串，供 Key 服务与创作台托管 Key 共用。
 func GenerateAPIKeyString(prefix string) (string, error) {
-	// 生成32字节随机数据
+	// 生成 32 字节随机数据
 	bytes := make([]byte, 32)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", fmt.Errorf("generate random bytes: %w", err)
@@ -514,7 +514,7 @@ func GenerateAPIKeyString(prefix string) (string, error) {
 	return key, nil
 }
 
-// ValidateCustomKey 验证自定义API Key格式。
+// ValidateCustomKey 验证自定义 API Key 格式。
 func (s *APIKeyService) ValidateCustomKey(key string) error {
 	// 检查长度
 	if len(key) < 16 {
@@ -535,7 +535,7 @@ func (s *APIKeyService) ValidateCustomKey(key string) error {
 	return nil
 }
 
-// KeyCheckAPIKeyRateLimit 检查用户创建自定义Key的错误次数是否超限。
+// KeyCheckAPIKeyRateLimit 检查用户创建自定义 Key 的错误次数是否超限。
 func (s *APIKeyService) KeyCheckAPIKeyRateLimit(ctx context.Context, userID int64) error {
 	if s.cache == nil {
 		return nil
@@ -554,7 +554,7 @@ func (s *APIKeyService) KeyCheckAPIKeyRateLimit(ctx context.Context, userID int6
 	return nil
 }
 
-// KeyIncrementAPIKeyErrorCount 增加用户创建自定义Key的错误计数。
+// KeyIncrementAPIKeyErrorCount 增加用户创建自定义 Key 的错误计数。
 func (s *APIKeyService) KeyIncrementAPIKeyErrorCount(ctx context.Context, userID int64) {
 	if s.cache == nil {
 		return
@@ -698,7 +698,7 @@ func (s *APIKeyService) KeyCanUserUseBoundGroup(ctx context.Context, apiKey *API
 	return loadedUser.CanBindGroup(apiKey.Group.ID, apiKey.Group.IsExclusive)
 }
 
-// Create 创建API Key。
+// Create 创建 API Key。
 func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIKeyRequest) (*APIKey, error) {
 	if !req.IsComposite && (req.GroupID == nil || *req.GroupID <= 0) {
 		return nil, infraerrors.BadRequest("GROUP_REQUIRED", "API Key must be assigned to a group")
@@ -812,32 +812,32 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 
 	var key string
 
-	// 判断是否使用自定义Key
+	// 判断是否使用自定义 Key
 	if req.CustomKey != nil && *req.CustomKey != "" {
-		// 检查限流（仅对自定义key进行限流）
+		// 检查限流（仅对自定义 key 进行限流）
 		if err := s.KeyCheckAPIKeyRateLimit(ctx, userID); err != nil {
 			return nil, err
 		}
 
-		// 验证自定义Key格式
+		// 验证自定义 Key 格式
 		if err := s.ValidateCustomKey(*req.CustomKey); err != nil {
 			return nil, err
 		}
 
-		// 检查Key是否已存在
+		// 检查 Key 是否已存在
 		exists, err := s.apiKeyRepo.ExistsByKey(ctx, *req.CustomKey)
 		if err != nil {
 			return nil, fmt.Errorf("check key exists: %w", err)
 		}
 		if exists {
-			// Key已存在，增加错误计数
+			// Key 已存在，增加错误计数
 			s.KeyIncrementAPIKeyErrorCount(ctx, userID)
 			return nil, ErrAPIKeyExists
 		}
 
 		key = *req.CustomKey
 	} else {
-		// 生成随机API Key
+		// 生成随机 API Key
 		var err error
 		key, err = s.GenerateKey()
 		if err != nil {
@@ -851,7 +851,7 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 		fallbackWhenGroupUnavailable = *req.FallbackWhenGroupUnavailable
 	}
 
-	// 创建API Key记录
+	// 创建 API Key 记录
 	apiKey := &APIKey{
 		UserID:                       userID,
 		TeamID:                       teamID,
@@ -895,7 +895,7 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 	return apiKey, nil
 }
 
-// List 获取用户的API Key列表。
+// List 获取用户的 API Key 列表。
 func (s *APIKeyService) List(ctx context.Context, userID int64, params pagination.PaginationParams, filters APIKeyListFilters) ([]APIKey, *pagination.PaginationResult, error) {
 	keys, pagination, err := s.apiKeyRepo.ListByUserID(ctx, userID, params, filters)
 	if err != nil {
@@ -947,7 +947,7 @@ func (s *APIKeyService) VerifyOwnership(ctx context.Context, userID int64, apiKe
 	return validIDs, nil
 }
 
-// GetByID 根据ID获取API Key。
+// GetByID 根据 ID 获取 API Key。
 func (s *APIKeyService) GetByID(ctx context.Context, id int64) (*APIKey, error) {
 	apiKey, err := s.apiKeyRepo.GetByID(ctx, id)
 	if err != nil {
@@ -964,7 +964,7 @@ func (s *APIKeyService) GetByID(ctx context.Context, id int64) (*APIKey, error) 
 	return apiKey, nil
 }
 
-// GetByKey 根据Key字符串获取API Key（用于认证）。
+// GetByKey 根据 Key 字符串获取 API Key（用于认证）。
 func (s *APIKeyService) GetByKey(ctx context.Context, key string) (*APIKey, error) {
 	if key == "" || len(key) > MaxAPIKeyCredentialBytes {
 		return nil, ErrAPIKeyNotFound
@@ -1110,7 +1110,7 @@ func (s *APIKeyService) KeyRefreshFallbackUserGroupRPMOverride(ctx context.Conte
 	}
 }
 
-// Update 更新API Key。
+// Update 更新 API Key。
 func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req UpdateAPIKeyRequest) (*APIKey, error) {
 	if err := KeyValidateUpdateAPIKeyRequest(req); err != nil {
 		return nil, err
@@ -1344,7 +1344,7 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 		}
 		apiKey.Status = *req.Status
 		fields.Status = true
-		// 如果状态改变，清除Redis缓存
+		// 如果状态改变，清除 Redis 缓存
 		if s.cache != nil {
 			_ = s.cache.DeleteCreateAttemptCount(ctx, apiKey.UserID)
 		}
@@ -1449,7 +1449,7 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 	return apiKey, nil
 }
 
-// Delete 删除API Key。
+// Delete 删除 API Key。
 func (s *APIKeyService) Delete(ctx context.Context, id int64, userID int64) error {
 	existing, err := s.apiKeyRepo.GetByID(ctx, id)
 	if err != nil {
@@ -1559,15 +1559,15 @@ func (s *APIKeyService) TouchLastUsed(ctx context.Context, keyID int64) error {
 	return err
 }
 
-// IncrementUsage 增加API Key使用次数（可选：用于统计）。
+// IncrementUsage 增加 API Key 使用次数（可选：用于统计）。
 func (s *APIKeyService) IncrementUsage(ctx context.Context, keyID int64) error {
-	// 使用Redis计数器
+	// 使用 Redis 计数器
 	if s.cache != nil {
 		cacheKey := fmt.Sprintf("apikey:usage:%d:%s", keyID, s.calendar.Now().Format("2006-01-02"))
 		if err := s.cache.IncrementDailyUsage(ctx, cacheKey); err != nil {
 			return fmt.Errorf("increment usage: %w", err)
 		}
-		// 设置24小时过期
+		// 设置 24 小时过期
 		_ = s.cache.SetDailyUsageExpiry(ctx, cacheKey, 24*time.Hour)
 	}
 	return nil

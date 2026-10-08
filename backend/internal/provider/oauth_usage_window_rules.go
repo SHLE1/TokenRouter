@@ -145,13 +145,13 @@ func ParseUsageTime(s string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("unable to parse time: %s", s)
 }
 
-// BuildUsageInfo 构建UsageInfo。
+// BuildUsageInfo 构建 UsageInfo。
 func BuildUsageInfo(resp *ClaudeUsageResponse, updatedAt *time.Time, now func() time.Time, logf func(string, ...any)) *UsageInfo {
 	info := &UsageInfo{
 		UpdatedAt: updatedAt,
 	}
 
-	// 5小时窗口 - 始终创建对象（即使 ResetsAt 为空）
+	// 5 小时窗口 - 始终创建对象（即使 ResetsAt 为空）
 	info.FiveHour = &UsageProgress{
 		Utilization: resp.FiveHour.Utilization,
 	}
@@ -164,7 +164,7 @@ func BuildUsageInfo(resp *ClaudeUsageResponse, updatedAt *time.Time, now func() 
 		}
 	}
 
-	// 7天窗口
+	// 7 天窗口
 	if resp.SevenDay.ResetsAt != "" {
 		if sevenDayReset, err := ParseUsageTime(resp.SevenDay.ResetsAt); err == nil {
 			info.SevenDay = &UsageProgress{
@@ -180,7 +180,7 @@ func BuildUsageInfo(resp *ClaudeUsageResponse, updatedAt *time.Time, now func() 
 		}
 	}
 
-	// 7天Sonnet窗口
+	// 7 天 Sonnet 窗口
 	if resp.SevenDaySonnet.ResetsAt != "" {
 		if sonnetReset, err := ParseUsageTime(resp.SevenDaySonnet.ResetsAt); err == nil {
 			info.SevenDaySonnet = &UsageProgress{
@@ -196,7 +196,7 @@ func BuildUsageInfo(resp *ClaudeUsageResponse, updatedAt *time.Time, now func() 
 		}
 	}
 
-	// 7天Fable窗口（响应头 7d_oi 对应的窗口）
+	// 7 天 Fable 窗口（响应头 7d_oi 对应的窗口）
 	if fable := resp.SevenDayOverageIncluded; fable.ResetsAt != "" {
 		if fableReset, err := ParseUsageTime(fable.ResetsAt); err == nil {
 			info.SevenDayFable = &UsageProgress{
@@ -215,11 +215,11 @@ func BuildUsageInfo(resp *ClaudeUsageResponse, updatedAt *time.Time, now func() 
 	return info
 }
 
-// EstimateSetupTokenUsage 根据session_window推算Setup Token提供商的使用量。
+// EstimateSetupTokenUsage 根据 session_window 推算 Setup Token 提供商的使用量。
 func EstimateSetupTokenUsage(provider *Record, now func() time.Time) *UsageInfo {
 	info := &UsageInfo{}
 
-	// 如果有session_window信息
+	// 如果有 session_window 信息
 	if provider.SessionWindowEnd != nil {
 		remaining := int(provider.SessionWindowEnd.Sub(now()).Seconds())
 		if remaining < 0 {
@@ -273,7 +273,7 @@ func EstimateSetupTokenUsage(provider *Record, now func() time.Time) *UsageInfo 
 		}
 	}
 
-	// Setup Token无法获取7d数据
+	// Setup Token 无法获取 7d 数据
 	return info
 }
 

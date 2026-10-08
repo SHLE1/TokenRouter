@@ -102,7 +102,7 @@ func RegisterGatewayRoutes(engine *gin.Engine, endpoints RouteEndpoints, options
 		}
 	}
 
-	// API网关（Claude API兼容）
+	// API 网关（Claude API 兼容）
 	gateway := r.Group("/v1")
 	gateway.Use(bodyLimit)
 	gateway.Use(clientRequestID)

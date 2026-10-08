@@ -476,7 +476,7 @@ func BenchmarkSecurityHeadersMiddleware(b *testing.B) {
 	}
 }
 
-// TestGoogleIdentityCSPPreservesOfficialAccountsOrigins 验证Google SDK 的域名是外部契约，默认和旧自定义策略都必须允许真实来源。
+// TestGoogleIdentityCSPPreservesOfficialAccountsOrigins 验证 Google SDK 的域名是外部契约，默认和旧自定义策略都必须允许真实来源。
 func TestGoogleIdentityCSPPreservesOfficialAccountsOrigins(t *testing.T) {
 	expected := map[string]string{
 		"script-src":  "https://accounts.google.com/gsi/client",

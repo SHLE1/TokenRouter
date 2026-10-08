@@ -1109,7 +1109,7 @@ func TestBatchImagePublicService_StatusItemsAndCancel(t *testing.T) {
 	})
 }
 
-// TestBatchImageServiceAccountErrorCode 验证Google Service Account 是第三方凭据类型，公开错误码保持原协议名称。
+// TestBatchImageServiceAccountErrorCode 验证 Google Service Account 是第三方凭据类型，公开错误码保持原协议名称。
 func TestBatchImageServiceAccountErrorCode(t *testing.T) {
 	err := batchimage.BatchImageProviderSubmitPublicError(batchimage.ErrBatchImageProviderMissingServiceAccount)
 	require.Equal(t, "BATCH_IMAGE_PROVIDER_MISSING_SERVICE_ACCOUNT", apperror.Reason(err))

@@ -222,7 +222,7 @@ func (s *OpsCleanupService) Reload(ctx context.Context) error {
 
 // computeEffectiveLocked 计算生效配置并写入 s.effective。调用方持锁。
 //
-// 优先级：UI 写入的 settings.ops_advanced_settings.data_retention覆盖 cfg.Ops.Cleanup 的副本。
+// 优先级：UI 写入的 settings.ops_advanced_settings.data_retention 覆盖 cfg.Ops.Cleanup 的副本。
 //   - Enabled：settings 直接覆盖
 //   - Schedule：settings 非空时覆盖，否则保留 cfg
 //   - *RetentionDays：settings >=0 时覆盖（包括 0=TRUNCATE），<0 沿用 cfg

@@ -218,7 +218,7 @@ func (s *mixedSessionLimits) RegisterSession(_ context.Context, id int64, hash s
 	return id != s.blocked, nil
 }
 
-// TestMixedGroupRespectsAnthropicSessionLimit 验证Anthropic 的会话限制在通用选号循环中仍然生效，并继续尝试组内其它提供商。
+// TestMixedGroupRespectsAnthropicSessionLimit 验证 Anthropic 的会话限制在通用选号循环中仍然生效，并继续尝试组内其它提供商。
 func TestMixedGroupRespectsAnthropicSessionLimit(t *testing.T) {
 	group := &routing.Group{ID: 91, Hydrated: true, Status: routing.StatusActive}
 	first := mixedGroupProvider(1, capability.PlatformAnthropic, "*", 91)

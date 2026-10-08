@@ -325,7 +325,7 @@ func TestSetOverloadCooldownSettings_DisabledNormalizesOutOfRange(t *testing.T) 
 	repo := newCooldownSettingsStore()
 	svc := NewRuntimeSettings(repo, errCooldownSettingMissing)
 
-	// enabled=false + cooldown_minutes=0 应该保存成功，值被归一化为10
+	// enabled=false + cooldown_minutes=0 应该保存成功，值被归一化为 10
 	err := svc.SetOverloadCooldownSettings(context.Background(), &OverloadCooldownSettings{
 		Enabled: false, CooldownMinutes: 0,
 	})

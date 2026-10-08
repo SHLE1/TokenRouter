@@ -90,7 +90,7 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityProvider_MixedSchedul
 	group := &routing.Group{
 		ID:       groupID,
 		Hydrated: true,
-		// /v1/messages（Claude兼容）入口
+		// /v1/messages（Claude 兼容）入口
 		Status: billing.StatusActive,
 	}
 
@@ -212,8 +212,8 @@ func TestGatewayHandlerMessages_InterceptWarmup_AntigravityProvider_ForcePlatfor
 	req.Header.Set("Content-Type", "application/json")
 
 	// 模拟 routes/gateway.go 里的 ForcePlatform 中间件效果：
-	// - 写入 request.Context（Service读取）
-	// - 写入 gin.Context（Handler快速读取）
+	// - 写入 request.Context（Service 读取）
+	// - 写入 gin.Context（Handler 快速读取）
 	ctx := requeststate.WithGroup(req.Context(), group)
 	ctx = apikey.WithForcePlatform(ctx, capability.PlatformAntigravity)
 	req = req.WithContext(ctx)

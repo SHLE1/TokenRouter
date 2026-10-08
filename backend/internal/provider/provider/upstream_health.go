@@ -215,7 +215,7 @@ func (s *UpstreamHealth) HandleDefault(ctx context.Context, provider *providerco
 		shouldDisable = false
 	default:
 		if statusCode >= 500 {
-			// 未启用自定义错误码时：仅记录5xx错误
+			// 未启用自定义错误码时：仅记录 5xx 错误
 			slog.Warn("provider_upstream_error", "provider_id", provider.ID, "status_code", statusCode)
 			shouldDisable = false
 		}

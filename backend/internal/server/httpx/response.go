@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 )
 
-// Response 标准API响应格式。
+// Response 标准 API 响应格式。
 type Response struct {
 	Code     int               `json:"code"`
 	Message  string            `json:"message"`
@@ -31,7 +31,7 @@ type PaginatedData struct {
 	Pages    int   `json:"pages"`
 }
 
-// PaginationResult 分页结果（与pagination.PaginationResult兼容）。
+// PaginationResult 分页结果（与 pagination.PaginationResult 兼容）。
 type PaginationResult struct {
 	Total    int64
 	Page     int
@@ -110,27 +110,27 @@ func ErrorFrom(c *gin.Context, err error) bool {
 	return true
 }
 
-// BadRequest 返回400错误。
+// BadRequest 返回 400 错误。
 func BadRequest(c *gin.Context, message string) {
 	Error(c, http.StatusBadRequest, message)
 }
 
-// Unauthorized 返回401错误。
+// Unauthorized 返回 401 错误。
 func Unauthorized(c *gin.Context, message string) {
 	Error(c, http.StatusUnauthorized, message)
 }
 
-// Forbidden 返回403错误。
+// Forbidden 返回 403 错误。
 func Forbidden(c *gin.Context, message string) {
 	Error(c, http.StatusForbidden, message)
 }
 
-// NotFound 返回404错误。
+// NotFound 返回 404 错误。
 func NotFound(c *gin.Context, message string) {
 	Error(c, http.StatusNotFound, message)
 }
 
-// InternalError 返回500错误。
+// InternalError 返回 500 错误。
 func InternalError(c *gin.Context, message string) {
 	Error(c, http.StatusInternalServerError, message)
 }
@@ -151,7 +151,7 @@ func Paginated(c *gin.Context, items any, total int64, page, pageSize int) {
 	})
 }
 
-// PaginatedWithResult 使用PaginationResult返回分页数据。
+// PaginatedWithResult 使用 PaginationResult 返回分页数据。
 func PaginatedWithResult(c *gin.Context, items any, pagination *PaginationResult) {
 	if pagination == nil {
 		Success(c, PaginatedData{

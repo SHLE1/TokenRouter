@@ -75,7 +75,7 @@ var (
 	// HeaderWireOrderSet 用于快速判断某个 key 是否在 HeaderWireOrder 中（按 lowercase 匹配）。
 	HeaderWireOrderSet map[string]struct{}
 
-	// AllowedHeaders 白名单headers（参考CRS项目）。
+	// AllowedHeaders 白名单 headers（参考 CRS 项目）。
 	AllowedHeaders = map[string]bool{
 		"accept":                                    true,
 		"x-stainless-retry-count":                   true,

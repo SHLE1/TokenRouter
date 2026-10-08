@@ -20,7 +20,7 @@ func NewErrorResponse(code, message string) ErrorResponse {
 	}
 }
 
-// AbortWithError 中断请求并返回JSON错误。
+// AbortWithError 中断请求并返回 JSON 错误。
 func AbortWithError(c *gin.Context, statusCode int, code, message string) {
 	language := locale.Default()
 	if c.Request != nil {

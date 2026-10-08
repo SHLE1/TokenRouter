@@ -150,7 +150,7 @@ type UpdateSettingsRequest struct {
 	GoogleOAuthRedirectURL         string `json:"google_oauth_redirect_url"`
 	GoogleOAuthFrontendRedirectURL string `json:"google_oauth_frontend_redirect_url"`
 
-	// OEM设置
+	// OEM 设置
 	LocalizedSettings           locale.TextUpdates               `json:"localized_settings"`
 	SiteTexts                   sitedto.LocalizedTexts           `json:"site_texts"`
 	DefaultLocale               string                           `json:"default_locale"`

@@ -1761,7 +1761,7 @@ func TestHandleSingleProviderRetryInPlace_NetworkError_ContinuesRetry(t *testing
 		Body:       io.NopCloser(strings.NewReader(`{"result":"ok"}`)),
 	}
 	upstream := &mockSmartRetryUpstream{
-		// 第1次网络错误（nil resp），第2次成功
+		// 第 1 次网络错误（nil resp），第 2 次成功
 		responses: []*http.Response{nil, successResp},
 		errors:    []error{nil, nil},
 	}
@@ -1900,9 +1900,9 @@ func TestAntigravityRetryLoop_PreCheck_NoSingleProviderRetry_SwitchesOnRateLimit
 }
 
 // TestHandleSmartRetry_503_SingleProvider_RetryInPlace_ThenSuccess_E2E
-// 端到端场景：503 + 单提供商 + 原地重试第2次成功。
+// 端到端场景：503 + 单提供商 + 原地重试第 2 次成功。
 func TestHandleSmartRetry_503_SingleProvider_RetryInPlace_ThenSuccess_E2E(t *testing.T) {
-	// 第1次原地重试仍返回 503，第2次成功
+	// 第 1 次原地重试仍返回 503，第 2 次成功
 	fail503Body := `{
 		"error": {
 			"code": 503,
@@ -1995,8 +1995,8 @@ func TestAntigravityRetryLoop_503_SingleProvider_InPlaceRetryUsed_E2E(t *testing
 	}
 
 	upstream := &mockSmartRetryUpstream{
-		// 第1次调用（retryLoop 主循环）返回 503
-		// 第2次调用（handleSingleProviderRetryInPlace 原地重试）返回 200
+		// 第 1 次调用（retryLoop 主循环）返回 503
+		// 第 2 次调用（handleSingleProviderRetryInPlace 原地重试）返回 200
 		responses: []*http.Response{initial503Resp, successResp},
 		errors:    []error{nil, nil},
 	}

@@ -29,7 +29,7 @@ type DashboardStats = usage.DashboardStats
 // UserDashboardStats 用户仪表盘统计。
 type UserDashboardStats = usage.UserDashboardStats
 
-// getPerformanceStats 获取 RPM 和 TPM（近5分钟平均值，可选纳入 Owner 团队）。
+// getPerformanceStats 获取 RPM 和 TPM（近 5 分钟平均值，可选纳入 Owner 团队）。
 func (r *Store) getPerformanceStats(ctx context.Context, userID int64, includeOwnedTeam bool) (rpm, tpm int64, err error) {
 	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
 	args := []any{fiveMinutesAgo}
@@ -469,7 +469,7 @@ func (r *Store) GetUserDashboardStats(ctx context.Context, userID int64) (*UserD
 	return stats, nil
 }
 
-// getPerformanceStatsByAPIKey 获取指定 API Key 的 RPM 和 TPM（近5分钟平均值）。
+// getPerformanceStatsByAPIKey 获取指定 API Key 的 RPM 和 TPM（近 5 分钟平均值）。
 func (r *Store) getPerformanceStatsByAPIKey(ctx context.Context, apiKeyID int64) (rpm, tpm int64, err error) {
 	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
 	query := `

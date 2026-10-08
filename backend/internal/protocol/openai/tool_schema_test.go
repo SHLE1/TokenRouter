@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// TestSanitizeOpenAIResponsesToolParameterTypes_TopLevelFunctionTool 验证issue #5364 的最小复现体：Codex Desktop 内置 automation_update 带
+// TestSanitizeOpenAIResponsesToolParameterTypes_TopLevelFunctionTool 验证 issue #5364 的最小复现体：Codex Desktop 内置 automation_update 带
 // parameters.type = null，upstream 回 400 invalid_function_parameters。
 func TestSanitizeOpenAIResponsesToolParameterTypes_TopLevelFunctionTool(t *testing.T) {
 	body := []byte(`{
@@ -152,7 +152,7 @@ func TestSanitizeOpenAIResponsesToolParameterTypes_NestedHistoryTools(t *testing
 	require.Equal(t, "hi", gjson.GetBytes(sanitized, "input.0.content").String())
 }
 
-// TestSanitizeOpenAIResponsesToolParameterTypes_ChatCompletionsShape 验证ChatCompletions 形态的工具（{type:"function", function:{...}}）同样可能出现在
+// TestSanitizeOpenAIResponsesToolParameterTypes_ChatCompletionsShape 验证 ChatCompletions 形态的工具（{type:"function", function:{...}}）同样可能出现在
 // Responses 请求里，见 normalizeCodexTools。
 func TestSanitizeOpenAIResponsesToolParameterTypes_ChatCompletionsShape(t *testing.T) {
 	body := []byte(`{"tools":[{"type":"function","function":{"name":"legacy","parameters":{"type":null}}}]}`)

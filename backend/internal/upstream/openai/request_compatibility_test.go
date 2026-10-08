@@ -9,7 +9,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// benchmarkIntSink 记录空Base64图片候选的命中次数。
+// benchmarkIntSink 记录空 Base64 图片候选的命中次数。
 var benchmarkIntSink int
 
 // TestSanitizeOpenAICrossModeFailoverReasoning_DropsWholeEncryptedItem 验证跨模式故障转移时删除完整的加密推理项。

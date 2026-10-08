@@ -80,7 +80,7 @@ func TestMaxReasoningPricing_ProviderStatsPriority(t *testing.T) {
 	require.InDelta(t, *standard*3, *cost, 1e-12)
 }
 
-// TestMaxReasoningPricing_OpenAIUsageUsesFinalEffort 验证OpenAI 兼容转发的账单按结果档位计算，策略前的 max 仅用于审计。
+// TestMaxReasoningPricing_OpenAIUsageUsesFinalEffort 验证 OpenAI 兼容转发的账单按结果档位计算，策略前的 max 仅用于审计。
 func TestMaxReasoningPricing_OpenAIUsageUsesFinalEffort(t *testing.T) {
 	bs := newCalculator(nil)
 	for _, resolver := range []*billing.PriceResolver{nil, billingtestkit.PriceResolver(nil, bs)} {

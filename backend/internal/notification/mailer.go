@@ -74,7 +74,7 @@ func EmailRecipientName(email string) string {
 	return trimmed
 }
 
-// GetSMTPConfig 从数据库获取SMTP配置。
+// GetSMTPConfig 从数据库获取 SMTP 配置。
 func (s *Mailer) GetSMTPConfig(ctx context.Context) (*SMTPConfig, error) {
 	keys := []string{
 		SettingKeySMTPHost,

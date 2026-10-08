@@ -82,7 +82,7 @@ func GenerateSessionHash(parsed *requeststate.ParsedRequest, observe func(string
 		return hash
 	}
 
-	// 3. 最后 fallback: 使用 session上下文 + system + 所有消息的完整摘要串
+	// 3. 最后 fallback: 使用 session 上下文 + system + 所有消息的完整摘要串
 	var combined strings.Builder
 	// 哈希中加入请求来源，使不同用户的相同消息生成不同哈希。
 	if parsed.SessionContext != nil {

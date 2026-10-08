@@ -40,7 +40,7 @@ type OpenAIWSDependencies struct {
 	Cache       session.GatewayCache
 }
 
-// OpenAIWebSocketExecutor 适配帧、凭据、健康与HTTP桥接，逐轮循环由gateway/ws唯一拥有。
+// OpenAIWebSocketExecutor 适配帧、凭据、健康与 HTTP 桥接，逐轮循环由 gateway/ws 唯一拥有。
 type OpenAIWebSocketExecutor struct {
 	OpenAIWSDependencies
 	openaiWSSessionPreemptions openAIWSSessionPreemptRegistry

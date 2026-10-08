@@ -36,9 +36,7 @@ const (
 	ctxKeyActualUpstreamEndpoint = "_gateway_actual_upstream_endpoint"
 )
 
-// ──────────────────────────────────────────────────────────
 // Normalization functions
-// ──────────────────────────────────────────────────────────
 
 // NormalizeInboundEndpoint maps a raw request path (which may carry
 // prefixes like /antigravity, /openai) to its canonical form.
@@ -202,9 +200,7 @@ func responsesSubpathSuffix(rawPath string) string {
 	return suffix
 }
 
-// ──────────────────────────────────────────────────────────
 // Middleware
-// ──────────────────────────────────────────────────────────
 
 // InboundEndpointMiddleware normalizes the request path and stores the
 // canonical inbound endpoint in gin.Context so that every handler in

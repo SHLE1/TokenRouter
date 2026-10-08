@@ -217,7 +217,7 @@ func (b *messageAttemptBridge) Acquire() bool {
 // Forward 应用消息队列和兼容策略，再向所选平台转发请求。
 func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Outcome {
 	var err error
-	// ===== 用户消息串行队列 START =====
+	// 用户消息串行队列开始。
 	var queueRelease func()
 	umqMode := b.binding().getUserMsgQueueMode(b.provider, b.attemptParsedReq)
 
@@ -268,7 +268,7 @@ func (b *messageAttemptBridge) Forward(state textflow.AttemptState) textflow.Out
 	b.sessionAttempts.Own(b.provider.Record.ID, queueRelease)
 	// 注入回调到 ParsedRequest：使用外层 wrapper 以便提前清理 AfterFunc
 	b.attemptParsedReq.OnUpstreamAccepted = queueRelease
-	// ===== 用户消息串行队列 END =====
+	// 用户消息串行队列结束。
 
 	// Bedrock CC 兼容：清理 body 专有字段 + 过滤 anthropic-beta header，适用于所有转发路径
 	if err := b.attemptParsedReq.ReplaceBody(b.binding().bedrockCompat(b.c, b.attemptParsedReq.Body.Bytes(), b.attemptParsedReq.Model, b.provider, b.currentAPIKey.GroupID)); err != nil {

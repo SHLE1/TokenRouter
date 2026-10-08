@@ -266,7 +266,7 @@ func installWithRestart(c *gin.Context, restarter RestartRequester) {
 	req.Redis.Host = strings.TrimSpace(req.Redis.Host)
 	req.Redis.Username = strings.TrimSpace(req.Redis.Username)
 
-	// ========== COMPREHENSIVE INPUT VALIDATION ==========
+	// COMPREHENSIVE INPUT VALIDATION
 	// Database validation
 	if !validateHostname(req.Database.Host) {
 		response.Error(c, http.StatusBadRequest, "Invalid database hostname")
@@ -319,7 +319,7 @@ func installWithRestart(c *gin.Context, restarter RestartRequester) {
 		return
 	}
 
-	// ========== SET DEFAULTS ==========
+	// SET DEFAULTS
 	if req.Database.SSLMode == "" {
 		req.Database.SSLMode = "disable"
 	}

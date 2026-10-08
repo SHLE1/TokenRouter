@@ -292,7 +292,7 @@ func TestGatewayService_BuildAnthropicVertexServiceAccount_StripsContextManageme
 		"与 body 对称：outgoing anthropic-beta header 也不含 context-management beta")
 }
 
-// TestGatewayService_BuildAnthropicVertexServiceAccount_PreservesContextManagementWhenBetaPresent 验证Vertex 路径反面：客户端 header 含 context-management beta 时保留字段。
+// TestGatewayService_BuildAnthropicVertexServiceAccount_PreservesContextManagementWhenBetaPresent 验证 Vertex 路径反面：客户端 header 含 context-management beta 时保留字段。
 func TestGatewayService_BuildAnthropicVertexServiceAccount_PreservesContextManagementWhenBetaPresent(t *testing.T) {
 	c := &requestBoundaryFixture{}
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)

@@ -103,7 +103,7 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 	}
 	defer done()
 
-	// 从context获取apiKey和user（ApiKeyAuth中间件已设置）
+	// 从 context 获取 apiKey 和 user（ApiKeyAuth 中间件已设置）
 	apiKey, ok := h.backend.Access(c)
 	if !ok {
 		h.errorResponse(c, http.StatusUnauthorized, "authentication_error", "Invalid API key")
@@ -219,7 +219,7 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 	// 绑定错误透传服务，允许 service 层在非 failover 错误场景复用规则。
 	h.backend.BindErrors(c)
 
-	// 获取订阅信息（可能为nil）- 提前获取用于后续检查
+	// 获取订阅信息（可能为 nil）- 提前获取用于后续检查
 	subscription, _ := SubscriptionFromContext(c)
 
 	// 1. 首先获取用户并发槽位
@@ -235,7 +235,7 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 		defer userReleaseFunc()
 	}
 
-	// 2. 【新增】Wait后二次检查余额/订阅
+	// 2. 【新增】Wait 后二次检查余额/订阅
 	if err := h.backend.Eligibility(c.Request.Context(), apiKey, subscription); err != nil {
 		reqLog.Info("gateway.billing_eligibility_check_failed", zap.Error(err))
 		status, code, message, retryAfter := BillingErrorDetails(err)
@@ -249,7 +249,7 @@ func (h *MessagesHandler) Messages(c *gin.Context) {
 	// 设置请求所属分组 ID（用于分组功能判断，如 WebSearch 模拟）
 	parsedReq.GroupID = apiKey.GroupID
 
-	// 计算粘性会话hash
+	// 计算粘性会话 hash
 	parsedReq.SessionContext = &requeststate.SessionContext{
 		ClientIP:  clientip.GetClientIP(c),
 		UserAgent: c.GetHeader("User-Agent"),

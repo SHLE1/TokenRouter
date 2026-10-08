@@ -198,7 +198,7 @@ func TestWriteOpenAICompactSSEBridge_RequiresMarkAndSuccessStatus(t *testing.T) 
 	require.Contains(t, rec.Body.String(), "event: response.completed")
 }
 
-// TestWriteOpenAICompactSSEFailureMessage_CarriesCreatedAt 验证issue #5601：严格的 Responses 客户端把 created_at 当必填字段，缺失即
+// TestWriteOpenAICompactSSEFailureMessage_CarriesCreatedAt 验证 issue #5601：严格的 Responses 客户端把 created_at 当必填字段，缺失即
 // `missing field 'created_at'`。writeOpenAICompactSSEFailureMessage 存在的理由就是
 // 让 Codex 能把这帧识别成合法终止事件；解析不了就退化回它想避免的盲重连。
 func TestWriteOpenAICompactSSEFailureMessage_CarriesCreatedAt(t *testing.T) {

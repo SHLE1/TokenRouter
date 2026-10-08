@@ -331,7 +331,7 @@ func TestPassthroughKeepaliveStopsBeforeHandingOverWriter(t *testing.T) {
 		"停拍后写入应当是响应体的最后一段")
 }
 
-// TestPassthroughKeepaliveDisabledKeepsWriterUntouched 验证interval<=0(配置禁用)时行为与改动前完全一致:一个字节都不写。
+// TestPassthroughKeepaliveDisabledKeepsWriterUntouched 验证 interval<=0(配置禁用)时行为与改动前完全一致:一个字节都不写。
 func TestPassthroughKeepaliveDisabledKeepsWriterUntouched(t *testing.T) {
 	c, rec := newPassthroughKeepaliveTestContext(t)
 	stop := StartOpenAISSEKeepalive(c, 0)

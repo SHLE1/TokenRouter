@@ -159,7 +159,7 @@ func (s *OAuthUsageService) GetUsageForProvider(ctx context.Context, provider *R
 		return usage, err
 	}
 
-	// 只有oauth类型提供商可以通过API获取usage（有profile scope）
+	// 只有 oauth 类型提供商可以通过 API 获取 usage（有 profile scope）
 	if provider.CanGetUsage() {
 		var apiResp *ClaudeUsageResponse
 
@@ -253,7 +253,7 @@ func (s *OAuthUsageService) GetUsageForProvider(ctx context.Context, provider *R
 		return usage, nil
 	}
 
-	// Setup Token提供商：根据session_window推算（没有profile scope，无法调用usage API）
+	// Setup Token 提供商：根据 session_window 推算（没有 profile scope，无法调用 usage API）
 	if provider.Type == ProviderTypeSetupToken {
 		usage := EstimateSetupTokenUsage(provider, s.options.Now)
 		// 添加窗口统计
@@ -261,14 +261,14 @@ func (s *OAuthUsageService) GetUsageForProvider(ctx context.Context, provider *R
 		return usage, nil
 	}
 
-	// API Key提供商不支持usage查询
+	// API Key 提供商不支持 usage 查询
 	return nil, fmt.Errorf("provider type %s does not support usage query", provider.Type)
 }
 
 // GetUsage 获取提供商使用量
 // OAuth 提供商通过 Anthropic API 查询用量（需要 profile scope），API 响应缓存十分钟，窗口统计缓存一分钟。
-// Setup Token提供商: 根据session_window推算5h窗口，7d数据不可用（没有profile scope）
-// API Key提供商: 不支持usage查询。
+// Setup Token 提供商: 根据 session_window 推算 5h 窗口，7d 数据不可用（没有 profile scope）
+// API Key 提供商: 不支持 usage 查询。
 func (s *OAuthUsageService) GetUsage(ctx context.Context, providerID int64, force ...bool) (*UsageInfo, error) {
 	ctx, finish, err := s.activity.begin(ctx, ErrOAuthUsageStopped)
 	if err != nil {

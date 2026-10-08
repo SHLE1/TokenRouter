@@ -267,7 +267,7 @@ func TestResponsesToAnthropic_AssistantMessageWithOnlyUnknownPartsIsDropped(t *t
 	require.Equal(t, "user", messages[0].Role)
 }
 
-// TestResponsesToAnthropic_BlankTextMessagesAreDropped 验证user、assistant 和未来 item 中的纯空白文本都必须丢弃；Anthropic 对字符串与
+// TestResponsesToAnthropic_BlankTextMessagesAreDropped 验证 user、assistant 和未来 item 中的纯空白文本都必须丢弃；Anthropic 对字符串与
 // text block 使用相同的非空白约束。
 func TestResponsesToAnthropic_BlankTextMessagesAreDropped(t *testing.T) {
 	tests := []struct {
@@ -374,7 +374,7 @@ func TestAnthropicContentIsOnlyBlankText(t *testing.T) {
 	}
 }
 
-// TestAnthropicPairing_DeveloperMessageBetween 验证function_call 和 output 之间插入的 developer/审批消息必须移出 tool_use→tool_result 邻接关系，
+// TestAnthropicPairing_DeveloperMessageBetween 验证 function_call 和 output 之间插入的 developer/审批消息必须移出 tool_use→tool_result 邻接关系，
 // 这是线上触发 “tool_result 必须在前一条消息有对应 tool_use” 400 的典型形态。
 func TestAnthropicPairing_DeveloperMessageBetween(t *testing.T) {
 	msgs := convertAnthropic(t, `[

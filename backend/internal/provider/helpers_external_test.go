@@ -170,7 +170,7 @@ func (s *sparkShadowRepoStub) ListSchedulableByGroupID(_ context.Context, groupI
 	return result, nil
 }
 
-// ExistsByID ── 追加 stub（ProviderRepository に必要な残りのメソッド）──────────────────。
+// ExistsByID 按 ID 判断替身里是否有该提供商。
 func (s *sparkShadowRepoStub) ExistsByID(_ context.Context, id int64) (bool, error) {
 	_, ok := s.providers[id]
 	return ok, nil

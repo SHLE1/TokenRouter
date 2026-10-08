@@ -76,7 +76,7 @@ func TestResolveMemoryStatsNoCgroupUsesHost(t *testing.T) {
 	require.InDelta(t, 66.7, *pct, 0.05)
 }
 
-// TestResolveMemoryStatsNoDataReturnsNil 检查cgroup 和宿主机数据都不可用时，所有输出均为空。
+// TestResolveMemoryStatsNoDataReturnsNil 检查 cgroup 和宿主机数据都不可用时，所有输出均为空。
 func TestResolveMemoryStatsNoDataReturnsNil(t *testing.T) {
 	usedMB, totalMB, pct := resolveMemoryStats(0, 0, false, nil)
 	require.Nil(t, usedMB)

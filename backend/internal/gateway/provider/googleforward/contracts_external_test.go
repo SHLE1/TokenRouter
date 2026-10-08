@@ -125,7 +125,7 @@ func TestObserveGeminiImageOutputs_KeepsLargestChunk(t *testing.T) {
 	require.Equal(t, 2, c.Images)
 }
 
-// TestBeginGeminiImageOutputObservation_ResetsPerForward 验证failover 会拿同一个 gin.Context 重跑 Forward，计数器必须按次重置，
+// TestBeginGeminiImageOutputObservation_ResetsPerForward 验证 failover 会拿同一个 gin.Context 重跑 Forward，计数器必须按次重置，
 // 否则失败提供商已经回吐的图会被叠加到成功提供商的账单上。
 func TestBeginGeminiImageOutputObservation_ResetsPerForward(t *testing.T) {
 	c := newGeminiImageTestContext(t)
@@ -141,7 +141,7 @@ func TestBeginGeminiImageOutputObservation_ResetsPerForward(t *testing.T) {
 	require.Equal(t, 1, c.Images)
 }
 
-// TestResolveGeminiImageCount 验证issue #5358：自定义模型名（客户端名与上游映射名都不在白名单里）走 Gemini 原生
+// TestResolveGeminiImageCount 验证 issue #5358：自定义模型名（客户端名与上游映射名都不在白名单里）走 Gemini 原生
 // generateContent 生图，改动前 ImageCount 恒为 0，calculateRecordUsageCost 的按次
 // 计费分支整条不触发，四次生图全部记 $0。
 func TestResolveGeminiImageCount(t *testing.T) {

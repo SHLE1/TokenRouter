@@ -187,7 +187,7 @@ func (s *PromoService) Create(ctx context.Context, input *CreatePromoCodeInput) 
 	return promoCode, nil
 }
 
-// GetByID 根据ID获取优惠码。
+// GetByID 根据 ID 获取优惠码。
 func (s *PromoService) GetByID(ctx context.Context, id int64) (*PromoCode, error) {
 	code, err := s.promoRepo.GetByID(ctx, id)
 	if err != nil {

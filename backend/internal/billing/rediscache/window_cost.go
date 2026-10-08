@@ -19,7 +19,7 @@ type WindowCostCache struct{ rdb *redis.Client }
 func NewWindowCostCache(rdb *redis.Client) *WindowCostCache { return &WindowCostCache{rdb: rdb} }
 func windowCostKey(id int64) string                         { return fmt.Sprintf("%s%d", windowCostKeyPrefix, id) }
 
-// ========== 5h窗口费用缓存实现 ==========
+// 5h 窗口费用缓存实现
 
 // GetWindowCost 获取缓存的窗口费用。
 func (c *WindowCostCache) GetWindowCost(ctx context.Context, providerID int64) (float64, bool, error) {

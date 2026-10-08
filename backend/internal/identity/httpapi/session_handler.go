@@ -149,12 +149,12 @@ type ResetPasswordResponse struct {
 	Message string `json:"message"`
 }
 
-// RefreshTokenRequest 刷新Token请求。
+// RefreshTokenRequest 刷新 Token 请求。
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-// RefreshTokenResponse 刷新Token响应。
+// RefreshTokenResponse 刷新 Token 响应。
 type RefreshTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -563,7 +563,7 @@ func (h *SessionHandler) ResetPassword(c *gin.Context) {
 	})
 }
 
-// RefreshToken 刷新Token
+// RefreshToken 刷新 Token
 // POST /api/v1/auth/refresh
 func (h *SessionHandler) RefreshToken(c *gin.Context) {
 	var req RefreshTokenRequest
@@ -599,7 +599,7 @@ func (h *SessionHandler) Logout(c *gin.Context) {
 	// 允许空请求体（向后兼容）
 	_ = c.ShouldBindJSON(&req)
 
-	// 如果提供了Refresh Token，撤销它
+	// 如果提供了 Refresh Token，撤销它
 	if req.RefreshToken != "" {
 		if err := h.authService.RevokeRefreshToken(c.Request.Context(), req.RefreshToken); err != nil {
 			slog.Debug("failed to revoke refresh token", "error", err)

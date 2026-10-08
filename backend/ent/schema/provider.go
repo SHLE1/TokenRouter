@@ -138,7 +138,7 @@ func (Provider) Fields() []ent.Field {
 			Default(true).
 			Comment("Auto pause scheduling when provider expires."),
 
-		// ========== 调度和速率限制相关字段 ==========
+		// 调度和速率限制相关字段
 		// 这些字段在 migrations/005_schema_parity.sql 中添加
 
 		// schedulable: 是否可被调度器选中

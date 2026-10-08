@@ -295,7 +295,7 @@ func rewriteClientToolHistory(value any, adapter *ResponsesClientToolMapping) (b
 }
 
 // normalizeLoweredFunctionItemID 将降级后的 item ID 调整为 function 协议可接受的形式。
-// ctc_/tsc_ 是由上游 fc_ ID 重typed 得到的，降级时应恢复 fc_；输出项前缀没有对应物，
+// ctc_/tsc_ 是由上游 fc_ ID 重 typed 得到的，降级时应恢复 fc_；输出项前缀没有对应物，
 // 仍然删除。call_id 始终作为独立的调用配对键保留。
 func normalizeLoweredFunctionItemID(item map[string]any) {
 	id := strings.TrimSpace(stringValue(item["id"]))

@@ -39,9 +39,9 @@ type TimeoutCounterCache interface {
 	GetTimeoutCountTTL(ctx context.Context, providerID int64) (time.Duration, error)
 }
 
-// OverloadCooldownSettings 529过载冷却配置。
+// OverloadCooldownSettings 529 过载冷却配置。
 type OverloadCooldownSettings struct {
-	// Enabled 是否在收到529时暂停提供商调度
+	// Enabled 是否在收到 529 时暂停提供商调度
 	Enabled bool `json:"enabled"`
 	// CooldownMinutes 冷却时长（分钟）
 	CooldownMinutes int `json:"cooldown_minutes"`

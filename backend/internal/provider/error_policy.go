@@ -142,7 +142,7 @@ func (s *HealthService) ApplyCustomErrorCode(ctx context.Context, provider *Reco
 	s.options.Warn("provider_disabled_custom_error", "provider_id", provider.ID, "status_code", statusCode, "error", errorMsg)
 }
 
-// ApplyOverload 处理529过载错误
+// ApplyOverload 处理 529 过载错误
 // 根据配置决定是否暂停提供商调度及冷却时长。
 func (s *HealthService) ApplyOverload(ctx context.Context, provider *Record) {
 	var settings *OverloadCooldownSettings

@@ -416,7 +416,7 @@ func TestTryCustomRules_SkipsNonMatchingRules(t *testing.T) {
 	tokens := UsageTokens{InputTokens: 100}
 	result := TryCustomRules(configPricing.ProviderStatsPricingRules, 999, 1, "claude-opus-4", tokens, 1)
 	require.NotNil(t, result)
-	// 跳过规则1（提供商不匹配），使用规则2：100*0.05 = 5.0
+	// 跳过规则 1（提供商不匹配），使用规则 2：100*0.05 = 5.0
 	require.InDelta(t, 5.0, *result, 1e-12)
 }
 

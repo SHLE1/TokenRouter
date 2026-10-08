@@ -506,9 +506,7 @@ func (s *AffiliateService) invalidateAffiliateCaches(ctx context.Context, userID
 	}
 }
 
-// =========================
 // Admin: 专属配置管理
-// =========================
 
 // validateExclusiveRate 校验用户专属比例必须是有限数值且位于允许范围内。
 // nil 表示清除专属配置并回退到全局比例。

@@ -47,7 +47,7 @@ func TestNewAESEncryptor_ValidKey32Bytes(t *testing.T) {
 	require.NotNil(t, enc)
 }
 
-// TestNewAESEncryptor_WrongKeyLength 验证16 / 24 字节密钥在 AES 体系内合法，但本实现仅接受 AES-256（32 字节）。
+// TestNewAESEncryptor_WrongKeyLength 验证 16 / 24 字节密钥在 AES 体系内合法，但本实现仅接受 AES-256（32 字节）。
 func TestNewAESEncryptor_WrongKeyLength(t *testing.T) {
 	tests := []struct {
 		name    string

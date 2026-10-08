@@ -139,7 +139,7 @@ func (s *HealthService) ResetForbiddenCounter(ctx context.Context, providerID in
 	}
 }
 
-// DefaultOpenAI403CooldownSettings 返回默认的 OpenAI OAuth 403 冷却配置（启用，10分钟，3次/180分钟转错误）。
+// DefaultOpenAI403CooldownSettings 返回默认的 OpenAI OAuth 403 冷却配置（启用，10 分钟，3 次/180 分钟转错误）。
 func DefaultOpenAI403CooldownSettings() *OpenAI403CooldownSettings {
 	return &OpenAI403CooldownSettings{
 		Enabled:                 true,

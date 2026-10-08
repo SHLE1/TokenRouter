@@ -98,7 +98,7 @@ type wsFixtureOptions struct {
 	Output  gatewayhttp.OpenAIResponseOptions
 }
 
-// wsFixtureInputs 使用实际拥有者与I/O替身，不构造旧网关应用图。
+// wsFixtureInputs 使用实际拥有者与 I/O 替身，不构造旧网关应用图。
 type wsFixtureInputs struct {
 	options   *wsFixtureOptions
 	providers gatewayadapter.ExecutionProviderStore
