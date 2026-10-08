@@ -167,7 +167,24 @@ func filterSchedulerCredentials(credentials map[string]any) map[string]any {
 	if len(credentials) == 0 {
 		return nil
 	}
-	keys := []string{"model_mapping", "compact_model_mapping", "model_whitelist", "upstream_protocols", "auth_mode", "openai_auth_mode", "provider_mode", "api_protocol", "openai_workload_capabilities", "api_key", "project_id", "oauth_type", "plan_type"}
+	keys := []string{
+		"model_mapping",
+		"compact_model_mapping",
+		"model_whitelist",
+		"upstream_protocols",
+		"auth_mode",
+		"openai_auth_mode",
+		"provider_mode",
+		"api_protocol",
+		"openai_workload_capabilities",
+		"api_key",
+		"project_id",
+		"oauth_type",
+		// Gemini 配额预检在补全凭据前执行，需要第三方来源和官方等级来选择配额策略。
+		"provider_type",
+		"tier_id",
+		"plan_type",
+	}
 	filtered := make(map[string]any)
 	for _, key := range keys {
 		if value, ok := credentials[key]; ok && value != nil {
