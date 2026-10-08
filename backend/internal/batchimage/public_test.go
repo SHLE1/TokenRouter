@@ -5,28 +5,197 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-
-	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
+	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
-	"github.com/stretchr/testify/require"
 )
+
+// TestBatchImageUnboundKeyCannotUseGlobalProviders 检查未绑定分组的 Key 提交任务时返回分组禁用错误。
+func TestBatchImageUnboundKeyCannotUseGlobalProviders(t *testing.T) {
+	svc, repo, _, platform, _, _ := newTestBatchImagePublicService(true)
+	owner := testBatchImageOwner()
+	owner.GroupID = nil
+	_, err := svc.Submit(context.Background(), owner, validBatchImageSubmitRequest(), "")
+	require.ErrorIs(t, err, batchimage.ErrBatchImageGroupDisabled)
+	require.Empty(t, repo.jobs)
+	require.Empty(t, platform.submits)
+}
+
+// TestBatchImageCatalogueResolvesBeforeModalities 覆盖通配来源、分组改写和最终输出模态。
+func TestBatchImageCatalogueResolvesBeforeModalities(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		groupMapping    map[string]string
+		providerMapping map[string]any
+		whitelist       []string
+		final           string
+		visible         bool
+	}{
+		{name: "provider wildcard", providerMapping: map[string]any{"gpt-*": "catalog-image"}, whitelist: []string{"catalog-image"}, final: "catalog-image", visible: true},
+		{name: "group wildcard", groupMapping: map[string]string{"gpt-*": "catalog-image"}, whitelist: []string{"catalog-image"}, final: "catalog-image", visible: true},
+		{name: "two mapping stages", groupMapping: map[string]string{"gpt-*": "route-model"}, providerMapping: map[string]any{"route-*": "catalog-image"}, whitelist: []string{"catalog-image"}, final: "catalog-image", visible: true},
+		{name: "unknown configured final", providerMapping: map[string]any{"gpt-*": "nano-banana-pro"}, whitelist: []string{"nano-banana-pro"}, final: "nano-banana-pro", visible: true},
+		{name: "mapped text final", providerMapping: map[string]any{"gpt-*": "catalog-text"}, whitelist: []string{"catalog-text"}, final: "catalog-text"},
+		{name: "provider restriction", providerMapping: map[string]any{"gpt-*": "catalog-image"}, whitelist: []string{"catalog-text"}, final: "catalog-image"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
+			owner := testBatchImageOwner()
+			group := *owner.GroupID
+			value := testBatchImageMappedProvider(303, "apikey", tc.providerMapping)
+			value.Credentials["model_whitelist"] = tc.whitelist
+			svc.ProviderRepo = rebindBatchFixtureProviders(svc, &publicBatchImageProviderRepo{providers: []providercore.Record{value}})
+			svc.ModelIDs = func() []string { return []string{"gpt-5.4", "catalog-image", "catalog-text", "unconfigured-unknown"} }
+			image, text := []string{"image"}, []string{"text"}
+			svc.ModelOutputModalities = func(id string) *[]string {
+				switch id {
+				case "catalog-image":
+					return &image
+				case "gpt-5.4", "catalog-text":
+					return &text
+				default:
+					return nil
+				}
+			}
+			policy := newPublicPricingConfigFixture(makePublicPricingConfigFixture(routing.PricingConfig{ID: 1, Status: "active", GroupIDs: []int64{group}, BillingModelSource: routing.BillingModelSourceUpstream}, nil, routing.GroupRoutingPolicy{Enabled: true, ModelMapping: tc.groupMapping}))
+			svc.PricingConfigService = policy
+			price := &fakeBatchImagePricingResolver{unitPrice: 0.1}
+			svc.Pricing = price
+			result, err := svc.ListModels(context.Background(), owner)
+			require.NoError(t, err)
+			ids := []string{}
+			for _, model := range result.Data {
+				ids = append(ids, model.ID)
+			}
+			if tc.visible {
+				require.Contains(t, ids, "gpt-5.4")
+				require.Contains(t, price.models, tc.final)
+			} else {
+				require.NotContains(t, ids, "gpt-5.4")
+			}
+			require.NotContains(t, ids, "unconfigured-unknown")
+			require.NotContains(t, ids, "catalog-text")
+		})
+	}
+}
+
+// TestBatchImageCatalogueUsesOnePolicySnapshot 大目录在映射后判断模态和分组限制，策略只读一次。
+func TestBatchImageCatalogueUsesOnePolicySnapshot(t *testing.T) {
+	for _, stage := range []string{routing.BillingModelSourceRequested, routing.BillingModelSourceGroupMapped, routing.BillingModelSourceUpstream} {
+		t.Run(stage, func(t *testing.T) {
+			svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
+			owner := testBatchImageOwner()
+			group := *owner.GroupID
+			allowed := map[string]string{routing.BillingModelSourceRequested: "gpt-5.4", routing.BillingModelSourceGroupMapped: "route-model", routing.BillingModelSourceUpstream: "catalog-image"}[stage]
+			policies := &batchCataloguePolicyReads{PricingConfigService: newPublicPricingConfigFixture(makePublicPricingConfigFixture(routing.PricingConfig{ID: 1, Status: "active", GroupIDs: []int64{group}, BillingModelSource: routing.BillingModelSourceUpstream}, nil, routing.GroupRoutingPolicy{Enabled: true, ModelMapping: map[string]string{"gpt-*": "route-model"}, RestrictModels: true, RestrictionModelSource: stage, AllowedModels: []string{allowed}}))}
+			svc.PricingConfigService = policies
+			value := testBatchImageMappedProvider(303, "apikey", map[string]any{"route-*": "catalog-image"})
+			value.Credentials["model_whitelist"] = []string{"catalog-image"}
+			svc.ProviderRepo = rebindBatchFixtureProviders(svc, &publicBatchImageProviderRepo{providers: []providercore.Record{value}})
+			svc.ModelIDs = func() []string {
+				ids := []string{"gpt-5.4", "catalog-image"}
+				for i := 0; i < 12000; i++ {
+					ids = append(ids, fmt.Sprintf("text-%d", i))
+				}
+				return ids
+			}
+			image, text := []string{"image"}, []string{"text"}
+			svc.ModelOutputModalities = func(id string) *[]string {
+				if id == "catalog-image" {
+					return &image
+				}
+				return &text
+			}
+			svc.Pricing = &fakeBatchImagePricingResolver{unitPrice: 0.1}
+			result, err := svc.ListModels(context.Background(), owner)
+			require.NoError(t, err)
+			ids := []string{}
+			for _, model := range result.Data {
+				ids = append(ids, model.ID)
+			}
+			require.Contains(t, ids, "gpt-5.4")
+			require.NotContains(t, ids, "text-0")
+			require.Equal(t, 1, policies.policyReads)
+			require.Equal(t, 1, policies.pricingReads)
+		})
+	}
+}
+
+// TestBatchImageCatalogueRejectsMissingPrice 模态合格的映射仍需有效图片报价。
+func TestBatchImageCatalogueRejectsMissingPrice(t *testing.T) {
+	svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
+	value := testBatchImageMappedProvider(303, "apikey", map[string]any{"gpt-*": "catalog-image"})
+	svc.ProviderRepo = rebindBatchFixtureProviders(svc, &publicBatchImageProviderRepo{providers: []providercore.Record{value}})
+	svc.ModelIDs = func() []string { return []string{"gpt-5.4"} }
+	image := []string{"image"}
+	svc.ModelOutputModalities = func(string) *[]string { return &image }
+	svc.Pricing = &fakeBatchImagePricingResolver{err: batchimage.ErrBatchImageSettlementPricingMissing}
+	result, err := svc.ListModels(context.Background(), testBatchImageOwner())
+	require.NoError(t, err)
+	require.Empty(t, result.Data)
+}
+
+// TestBatchImageAutomaticCandidates 自动候选按最终模态筛选，未配置的未知型号保持隐藏。
+func TestBatchImageAutomaticCandidates(t *testing.T) {
+	svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
+	value := testBatchImageMappedProvider(303, "apikey", map[string]any{"source-image": "final-text"})
+	svc.ProviderRepo = rebindBatchFixtureProviders(svc, &publicBatchImageProviderRepo{providers: []providercore.Record{value}})
+	svc.ModelIDs = func() []string { return []string{"catalog-image", "source-image", "final-text", "unknown"} }
+	image, text := []string{"image"}, []string{"text"}
+	svc.ModelOutputModalities = func(id string) *[]string {
+		switch id {
+		case "catalog-image", "source-image":
+			return &image
+		case "final-text":
+			return &text
+		default:
+			return nil
+		}
+	}
+	svc.Pricing = &fakeBatchImagePricingResolver{unitPrice: 0.1}
+	result, err := svc.ListModels(context.Background(), testBatchImageOwner())
+	require.NoError(t, err)
+	require.NotEmpty(t, result.Data)
+	for _, model := range result.Data {
+		require.Equal(t, "catalog-image", model.ID)
+	}
+}
+
+func TestBatchImagePricingSnapshotUsesOneGroupVersion(t *testing.T) {
+	oldGroup := &batchimage.GroupView{
+		ID: 7, AllowBatchImageGeneration: true, RateMultiplier: 10, BatchImageDiscountMultiplier: 0.5, BatchImageHoldMultiplier: 0.6,
+	}
+	newGroup := *oldGroup
+	newGroup.RateMultiplier = 1
+	groups := &changingMediaPricingGroupRepo{oldGroup: oldGroup, newGroup: &newGroup}
+	svc := newBatchPublicFixture(nil, nil, nil, groups, nil, nil, nil, &batchimage.Pricing{Resolver: billingtestkit.SharedPriceResolver(billingtestkit.Calculator(nil, nil), 7, pricing.DefaultBillingSettings(), []routing.ModelPricingEntry{{Models: []string{"gemini-3.1-flash-image"}, BillingMode: routing.BillingModeImage, PerRequestPrice: testPtrFloat64(1)}}), GroupRepo: batchGroupReader{groups}}, nil, nil, nil)
+	snapshot, err := svc.ResolvePricingSnapshot(context.Background(), batchimage.BatchImageOwner{UserID: 11, APIKeyID: 22, GroupID: &oldGroup.ID, BillingMode: apikey.APIKeyBillingModeBalance}, batchimage.BatchImageSubmitRequest{Model: "gemini-3.1-flash-image", ImageSize: "1K"}, "gemini_api", nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, groups.calls)
+	require.Equal(t, 1.0, snapshot.BaseUnitPrice)
+	require.Equal(t, 10.0, snapshot.GroupRateMultiplier)
+	require.InDelta(t, 5.0, snapshot.BillableUnitPrice, 1e-12)
+	require.InDelta(t, 6.0, snapshot.HoldUnitPrice, 1e-12)
+}
 
 func TestBatchImagePublicService_Submit(t *testing.T) {
 	ctx := context.Background()
@@ -914,6 +1083,117 @@ func TestBatchImagePublicService_StatusItemsAndCancel(t *testing.T) {
 	})
 }
 
+// TestBatchImageServiceAccountErrorCode 验证Google Service Account 是第三方凭据类型，公开错误码保持原协议名称。
+func TestBatchImageServiceAccountErrorCode(t *testing.T) {
+	err := batchimage.BatchImageProviderSubmitPublicError(batchimage.ErrBatchImageProviderMissingServiceAccount)
+	require.Equal(t, "BATCH_IMAGE_PROVIDER_MISSING_SERVICE_ACCOUNT", apperror.Reason(err))
+}
+
+// TestBatchImageConfiguredAlias 保留有价格的自定义图片型号，并检查提供商白名单。
+func TestBatchImageConfiguredAlias(t *testing.T) {
+	for _, allowed := range []bool{true, false} {
+		t.Run(fmt.Sprintf("allowed=%t", allowed), func(t *testing.T) {
+			svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
+			repo := testassert.MustType[*publicBatchImageProviderRepo](testassert.MustType[*batchProviderFixture](svc.ProviderRepo).source)
+			value := testBatchImageMappedProvider(303, capability.ProviderTypeAPIKey, map[string]any{"public-image": "nano-banana-pro"})
+			if !allowed {
+				value.Credentials["model_whitelist"] = []string{"other-model"}
+			}
+			repo.providers = []providercore.Record{value}
+			svc.Pricing = &fakeBatchImagePricingResolver{unitPrice: 0.1}
+			result, err := svc.ListModels(context.Background(), testBatchImageOwner())
+			require.NoError(t, err)
+			ids := []string{}
+			for _, model := range result.Data {
+				ids = append(ids, model.ID)
+			}
+			if allowed {
+				require.Contains(t, ids, "public-image")
+				require.Contains(t, ids, "nano-banana-pro")
+			} else {
+				require.NotContains(t, ids, "public-image")
+				require.NotContains(t, ids, "nano-banana-pro")
+			}
+		})
+	}
+}
+
+// batchCataloguePolicyReads 统计批量模型列表读取策略和计费来源的次数。
+type batchCataloguePolicyReads struct {
+	*routing.PricingConfigService
+	policyReads, pricingReads int
+}
+
+// GetGroupPolicy 统计策略读取次数。
+func (p *batchCataloguePolicyReads) GetGroupPolicy(ctx context.Context, id int64) (*routing.GroupPolicyView, error) {
+	p.policyReads++
+	return p.PricingConfigService.GetGroupPolicy(ctx, id)
+}
+
+// GetPricingConfigForGroup 统计计费来源读取次数。
+func (p *batchCataloguePolicyReads) GetPricingConfigForGroup(ctx context.Context, id int64) (*routing.PricingConfig, error) {
+	p.pricingReads++
+	return p.PricingConfigService.GetPricingConfigForGroup(ctx, id)
+}
+
+// changingMediaPricingGroupRepo 模拟两次读取之间管理员修改分组倍率，两份配置计算出的最终价格相同。
+type changingMediaPricingGroupRepo struct {
+	calls              int
+	oldGroup, newGroup *batchimage.GroupView
+}
+
+func (r *changingMediaPricingGroupRepo) GetByIDLite(context.Context, int64) (*batchimage.GroupView, error) {
+	r.calls++
+	if r.calls == 1 {
+		return r.oldGroup, nil
+	}
+	return r.newGroup, nil
+}
+
+func testPtrFloat64(value float64) *float64 { return &value }
+
+func rebindBatchFixtureProviders(core *batchimage.Public, source batchProvidersFixtureSource) batchimage.ProviderReader {
+	return &batchProviderFixture{source: source, registry: testassert.MustType[*batchProviderFixture](core.ProviderRepo).registry}
+}
+
+// publicPricingConfigFixture 提供模型配置和价卡数据，编译和报价由生产模块执行。
+type publicPricingConfigFixture struct {
+	routing.PricingConfigRepository
+	pricingConfig routing.PricingConfig
+	platforms     map[int64]string
+	policy        routing.GroupRoutingPolicy
+}
+
+func (r *publicPricingConfigFixture) ListAll(context.Context) ([]routing.PricingConfig, error) {
+	return []routing.PricingConfig{r.pricingConfig}, nil
+}
+
+func (r *publicPricingConfigFixture) GetGroupPlatforms(context.Context, []int64) (map[int64]string, error) {
+	return r.platforms, nil
+}
+
+func makePublicPricingConfigFixture(pricingConfig routing.PricingConfig, platforms map[int64]string, policies ...routing.GroupRoutingPolicy) *publicPricingConfigFixture {
+	policy := routing.GroupRoutingPolicy{}
+	if len(policies) > 0 {
+		policy = policies[0]
+	}
+	return &publicPricingConfigFixture{pricingConfig: pricingConfig, platforms: platforms, policy: policy}
+}
+
+func newPublicPricingConfigFixture(repo *publicPricingConfigFixture) *routing.PricingConfigService {
+	return routing.NewPricingConfigService(repo, nil, routing.PricingConfigOptions{Warn: slog.Warn, Now: time.Now, LoadLocation: pricingprovider.LoadPricingLocation, ReadGroup: func(_ context.Context, id int64) (*routing.Group, error) {
+		return &routing.Group{ID: id, RoutingPolicy: repo.policy.Clone()}, nil
+	}})
+}
+
+func testImageModelPricing(prices map[string]*float64) []routing.ModelPricingEntry {
+	card := routing.ModelPricingEntry{Models: []string{"*"}, BillingMode: routing.BillingModeImage}
+	for tier, price := range prices {
+		card.Intervals = append(card.Intervals, routing.PricingInterval{TierLabel: tier, PerRequestPrice: price})
+	}
+	return []routing.ModelPricingEntry{card}
+}
+
 func newTestBatchImagePublicService(enabled bool) (*batchimage.Public, *fakeBatchImageRepository, *publicBatchImageQueue, *publicBatchImageProvider, *publicBatchImageProvider, *fakeBatchImageAuthCacheInvalidator) {
 	repo := newFakeBatchImageRepository()
 	queue := &publicBatchImageQueue{}
@@ -958,180 +1238,8 @@ func (f *fakeBatchImageAuthCacheInvalidator) InvalidateAuthCacheByGroupID(_ cont
 	f.groupIDs = append(f.groupIDs, groupID)
 }
 
-func validBatchImageSubmitRequest() batchimage.BatchImageSubmitRequest {
-	return batchimage.BatchImageSubmitRequest{
-		Model:            "gemini-2.5-flash-image",
-		Platform:         batchimage.BatchImageProviderGeminiAPI,
-		ResponseMimeType: "image/png",
-		AspectRatio:      "1:1",
-		ImageSize:        "1K",
-		Metadata:         map[string]string{"project": "campaign-a", "secret": strings.Repeat("x", 300)},
-		Items: []batchimage.BatchImageSubmitItem{
-			{CustomID: "cover_001", Prompt: "hero"},
-			{CustomID: "cover_002", Prompt: "clean"},
-		},
-	}
-}
-
-func testBatchImageProvider(id int64, providerType string) providercore.Record {
-	return providercore.Record{
-		ID:            id,
-		Platform:      capability.PlatformGemini,
-		Type:          providerType,
-		Status:        billingcore.StatusActive,
-		Schedulable:   true,
-		Priority:      int(id),
-		Credentials:   map[string]any{"api_key": "test-secret"},
-		Concurrency:   1,
-		RateLimitedAt: nil,
-	}
-}
-
 func testBatchImageMappedProvider(id int64, providerType string, mapping map[string]any) providercore.Record {
 	provider := testBatchImageProvider(id, providerType)
 	provider.Credentials["model_mapping"] = mapping
 	return provider
-}
-
-type publicBatchImageProviderRepo struct {
-	providers []providercore.Record
-}
-
-func (r *publicBatchImageProviderRepo) GetByID(_ context.Context, id int64) (*providercore.Record, error) {
-	for i := range r.providers {
-		if r.providers[i].ID == id {
-			return &r.providers[i], nil
-		}
-	}
-	return nil, errors.New("provider not found")
-}
-
-func (r *publicBatchImageProviderRepo) ListSchedulableByPlatform(_ context.Context, platform string) ([]providercore.Record, error) {
-	out := make([]providercore.Record, 0, len(r.providers))
-	for _, provider := range r.providers {
-		if provider.Platform == platform {
-			out = append(out, provider)
-		}
-	}
-	return out, nil
-}
-
-func (r *publicBatchImageProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, _ int64, platform string) ([]providercore.Record, error) {
-	return r.ListSchedulableByPlatform(ctx, platform)
-}
-
-type publicBatchImageQueue struct {
-	enqueued []string
-	err      error
-}
-
-func (q *publicBatchImageQueue) Enqueue(_ context.Context, batchID string) error {
-	if q.err != nil {
-		return q.err
-	}
-	for _, existing := range q.enqueued {
-		if existing == batchID {
-			return batchimage.ErrBatchImageAlreadyQueued
-		}
-	}
-	q.enqueued = append(q.enqueued, batchID)
-	return nil
-}
-
-func (q *publicBatchImageQueue) Reserve(context.Context, time.Duration) (batchimage.ReservedBatchImageJob, error) {
-	return batchimage.ReservedBatchImageJob{}, batchimage.ErrBatchImageQueueEmpty
-}
-
-func (q *publicBatchImageQueue) RequeueAfter(context.Context, string, time.Duration) error {
-	return nil
-}
-
-func (q *publicBatchImageQueue) Ack(context.Context, string) error {
-	return nil
-}
-
-func (q *publicBatchImageQueue) Heartbeat(context.Context, string) error {
-	return nil
-}
-
-func (q *publicBatchImageQueue) MoveDueDelayedToReady(context.Context, int) (int, error) {
-	return 0, nil
-}
-
-func (q *publicBatchImageQueue) RecoverStaleActive(context.Context, time.Duration, int) (int, error) {
-	return 0, nil
-}
-
-func (q *publicBatchImageQueue) TryAcquireJobLock(context.Context, string, time.Duration) (batchimage.BatchImageJobLock, bool, error) {
-	return nil, false, nil
-}
-
-var (
-	_ batchProvidersFixtureSource           = (*publicBatchImageProviderRepo)(nil)
-	_ batchimage.BatchImageQueue            = (*publicBatchImageQueue)(nil)
-	_ batchimageprovider.BatchImageProvider = (*publicBatchImageProvider)(nil)
-)
-
-type publicBatchImageGroupRepo struct {
-	groups map[int64]*batchimage.GroupView
-}
-
-func (r *publicBatchImageGroupRepo) GetByIDLite(_ context.Context, id int64) (*batchimage.GroupView, error) {
-	if r != nil && r.groups != nil {
-		if group, ok := r.groups[id]; ok {
-			return group, nil
-		}
-	}
-	return nil, routing.ErrGroupNotFound
-}
-
-type publicBatchImageUserGroupRateRepo struct {
-	rates map[int64]*float64
-}
-
-func (r *publicBatchImageUserGroupRateRepo) GetByUserAndGroup(_ context.Context, _ int64, groupID int64) (*float64, error) {
-	if r != nil && r.rates != nil {
-		return r.rates[groupID], nil
-	}
-	return nil, nil
-}
-
-var (
-	_ batchGroupFixtureSource                      = (*publicBatchImageGroupRepo)(nil)
-	_ batchimage.BatchImageUserGroupRateRepository = (*publicBatchImageUserGroupRateRepo)(nil)
-)
-
-// TestBatchImageServiceAccountErrorCode 验证Google Service Account 是第三方凭据类型，公开错误码保持原协议名称。
-func TestBatchImageServiceAccountErrorCode(t *testing.T) {
-	err := batchimage.BatchImageProviderSubmitPublicError(batchimage.ErrBatchImageProviderMissingServiceAccount)
-	require.Equal(t, "BATCH_IMAGE_PROVIDER_MISSING_SERVICE_ACCOUNT", apperror.Reason(err))
-}
-
-// TestBatchImageConfiguredAlias 保留有价格的自定义图片型号，并检查提供商白名单。
-func TestBatchImageConfiguredAlias(t *testing.T) {
-	for _, allowed := range []bool{true, false} {
-		t.Run(fmt.Sprintf("allowed=%t", allowed), func(t *testing.T) {
-			svc, _, _, _, _, _ := newTestBatchImagePublicService(true)
-			repo := testassert.MustType[*publicBatchImageProviderRepo](testassert.MustType[*batchProviderFixture](svc.ProviderRepo).source)
-			value := testBatchImageMappedProvider(303, capability.ProviderTypeAPIKey, map[string]any{"public-image": "nano-banana-pro"})
-			if !allowed {
-				value.Credentials["model_whitelist"] = []string{"other-model"}
-			}
-			repo.providers = []providercore.Record{value}
-			svc.Pricing = &fakeBatchImagePricingResolver{unitPrice: 0.1}
-			result, err := svc.ListModels(context.Background(), testBatchImageOwner())
-			require.NoError(t, err)
-			ids := []string{}
-			for _, model := range result.Data {
-				ids = append(ids, model.ID)
-			}
-			if allowed {
-				require.Contains(t, ids, "public-image")
-				require.Contains(t, ids, "nano-banana-pro")
-			} else {
-				require.NotContains(t, ids, "public-image")
-				require.NotContains(t, ids, "nano-banana-pro")
-			}
-		})
-	}
 }

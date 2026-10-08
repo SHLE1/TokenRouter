@@ -6,19 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/batchimage"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 )
-
-type recordingBatchImageQueue struct {
-	*fakeBatchImageQueue
-	enqueued []string
-}
-
-func (q *recordingBatchImageQueue) Enqueue(_ context.Context, batchID string) error {
-	q.enqueued = append(q.enqueued, batchID)
-	return nil
-}
 
 func TestBatchImageBillingRecoveryService_ReleasesStaleUnsubmittedHold(t *testing.T) {
 	repo := newFakeBatchImageRepository()
@@ -113,4 +105,49 @@ func TestBatchImageBillingRecoveryService_EnqueuesRetryWhenReleaseFails(t *testi
 	require.Equal(t, 0, released)
 	require.Equal(t, batchimage.BatchImageJobStatusFailed, repo.jobs[stale.BatchID].Status)
 	require.Equal(t, []string{stale.BatchID}, queue.enqueued)
+}
+
+// recoveryFundsFixture 记录资金释放请求、模拟释放错误并按请求去重。
+type recoveryFundsFixture struct {
+	releases   []*billing.TaskFundsCommand
+	releaseErr error
+	seen       map[string]struct{}
+}
+
+func (r *recoveryFundsFixture) Reserve(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error) {
+	panic("unexpected Reserve")
+}
+
+func (r *recoveryFundsFixture) Capture(context.Context, *billing.TaskFundsCommand) (*billing.TaskFundsResult, error) {
+	panic("unexpected Capture")
+}
+
+func (r *recoveryFundsFixture) Release(_ context.Context, cmd *billing.TaskFundsCommand) (*billing.TaskFundsResult, error) {
+	if r.releaseErr != nil {
+		r.releases = append(r.releases, cmd)
+		return nil, r.releaseErr
+	}
+	if r.seen == nil {
+		r.seen = make(map[string]struct{})
+	}
+	if cmd != nil {
+		cmd.Normalize()
+		if _, ok := r.seen[cmd.RequestID]; ok {
+			r.releases = append(r.releases, cmd)
+			return &billing.TaskFundsResult{Applied: false}, nil
+		}
+		r.seen[cmd.RequestID] = struct{}{}
+	}
+	r.releases = append(r.releases, cmd)
+	return &billing.TaskFundsResult{Applied: true}, nil
+}
+
+type recordingBatchImageQueue struct {
+	*fakeBatchImageQueue
+	enqueued []string
+}
+
+func (q *recordingBatchImageQueue) Enqueue(_ context.Context, batchID string) error {
+	q.enqueued = append(q.enqueued, batchID)
+	return nil
 }

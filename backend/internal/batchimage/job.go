@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 

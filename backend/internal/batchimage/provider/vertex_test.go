@@ -1,4 +1,4 @@
-package provider_test
+package provider
 
 import (
 	"bytes"
@@ -10,17 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
-	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	testassert "github.com/TokenFlux/TokenRouter/internal/testutil/assertion"
-	"github.com/stretchr/testify/require"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
 func TestBatchImageProviderRegistry_ReturnsVertex(t *testing.T) {
@@ -47,7 +44,7 @@ func TestVertexProvider_MissingServiceAccountRejected(t *testing.T) {
 }
 
 func TestVertexProvider_MissingManagedGCSBucketRejected(t *testing.T) {
-	platform := batchimageprovider.NewVertexBatchImageProvider(batchimageprovider.VertexBatchImageProviderOptions{ProjectID: "proj", Environment: "test"}, &fakeVertexBatchClient{}, &fakeVertexObjectStore{}, &fakeGeminiTokenCache{token: "token"})
+	platform := NewVertexBatchImageProvider(VertexBatchImageProviderOptions{ProjectID: "proj", Environment: "test"}, &fakeVertexBatchClient{}, &fakeVertexObjectStore{}, &fakeGeminiTokenCache{token: "token"})
 	_, err := platform.Submit(context.Background(), nil, vertexServiceAccount(), validVertexBatchInput())
 	require.Error(t, err)
 	require.Equal(t, "VERTEX_MANAGED_GCS_BUCKET_MISSING", apperror.Reason(err))
@@ -57,7 +54,7 @@ func TestBuildVertexBatchJSONL_WritesValidLinesAndPreservesCustomID(t *testing.T
 	input := validVertexBatchInput()
 	input.Items = append(input.Items, batchimage.BatchImageInputItem{CustomID: "cover_002", Prompt: "Second prompt"})
 
-	jsonl, err := batchimageprovider.BuildVertexBatchJSONL(input)
+	jsonl, err := BuildVertexBatchJSONL(input)
 	require.NoError(t, err)
 	lines := strings.Split(strings.TrimSpace(string(jsonl)), "\n")
 	require.Len(t, lines, 2)
@@ -68,14 +65,14 @@ func TestBuildVertexBatchJSONL_WritesValidLinesAndPreservesCustomID(t *testing.T
 func TestBuildVertexBatchJSONL_RejectsDuplicateCustomIDs(t *testing.T) {
 	input := validVertexBatchInput()
 	input.Items = append(input.Items, batchimage.BatchImageInputItem{CustomID: "cover_001", Prompt: "Duplicate"})
-	_, err := batchimageprovider.BuildVertexBatchJSONL(input)
+	_, err := BuildVertexBatchJSONL(input)
 	require.ErrorIs(t, err, batchimage.ErrBatchImageProviderInvalidInput)
 }
 
 func TestBuildVertexBatchJSONL_RejectsEmptyPrompt(t *testing.T) {
 	input := validVertexBatchInput()
 	input.Items[0].Prompt = " "
-	_, err := batchimageprovider.BuildVertexBatchJSONL(input)
+	_, err := BuildVertexBatchJSONL(input)
 	require.ErrorIs(t, err, batchimage.ErrBatchImageProviderInvalidInput)
 }
 
@@ -86,7 +83,7 @@ func TestBuildVertexBatchJSONL_WritesReferenceImages(t *testing.T) {
 		{MimeType: "image/jpeg", FileURI: "gs://bucket/refs/style.jpg"},
 	}
 
-	jsonl, err := batchimageprovider.BuildVertexBatchJSONL(input)
+	jsonl, err := BuildVertexBatchJSONL(input)
 	require.NoError(t, err)
 	lines := strings.Split(strings.TrimSpace(string(jsonl)), "\n")
 	require.Len(t, lines, 1)
@@ -107,9 +104,9 @@ func TestBuildVertexBatchJSONL_WritesReferenceImages(t *testing.T) {
 }
 
 func TestNormalizeVertexBatchModelPath(t *testing.T) {
-	require.Equal(t, "publishers/google/models/gemini-3.1-flash-image", batchimageprovider.NormalizeVertexBatchModelPath("gemini-3.1-flash-image"))
-	require.Equal(t, "publishers/google/models/gemini-2.5-flash-image", batchimageprovider.NormalizeVertexBatchModelPath("publishers/google/models/gemini-2.5-flash-image"))
-	require.Equal(t, "projects/p/locations/global/models/m", batchimageprovider.NormalizeVertexBatchModelPath("projects/p/locations/global/models/m"))
+	require.Equal(t, "publishers/google/models/gemini-3.1-flash-image", NormalizeVertexBatchModelPath("gemini-3.1-flash-image"))
+	require.Equal(t, "publishers/google/models/gemini-2.5-flash-image", NormalizeVertexBatchModelPath("publishers/google/models/gemini-2.5-flash-image"))
+	require.Equal(t, "projects/p/locations/global/models/m", NormalizeVertexBatchModelPath("projects/p/locations/global/models/m"))
 }
 
 func TestBuildVertexBatchPredictionJobsEndpoint(t *testing.T) {
@@ -123,7 +120,7 @@ func TestBuildVertexBatchPredictionJobsEndpoint(t *testing.T) {
 }
 
 func TestVertexProvider_SubmitUploadsJSONLAndCreatesBatchPredictionJob(t *testing.T) {
-	vertexClient := &fakeVertexBatchClient{created: &batchimageprovider.VertexBatchPredictionJob{Name: "projects/proj/locations/global/batchPredictionJobs/job-1", State: "JOB_STATE_PENDING"}}
+	vertexClient := &fakeVertexBatchClient{created: &VertexBatchPredictionJob{Name: "projects/proj/locations/global/batchPredictionJobs/job-1", State: "JOB_STATE_PENDING"}}
 	store := &fakeVertexObjectStore{}
 	platform := newTestVertexProvider(vertexClient, store)
 
@@ -148,7 +145,7 @@ func TestVertexProvider_GetMapsStates(t *testing.T) {
 	tests := []struct {
 		name      string
 		state     string
-		err       *batchimageprovider.VertexBatchJobError
+		err       *VertexBatchJobError
 		wantState batchimage.BatchProviderInternalState
 		wantDone  bool
 		wantCode  string
@@ -157,18 +154,18 @@ func TestVertexProvider_GetMapsStates(t *testing.T) {
 		{name: "queued", state: "JOB_STATE_QUEUED", wantState: batchimage.BatchProviderStateQueued},
 		{name: "running", state: "JOB_STATE_RUNNING", wantState: batchimage.BatchProviderStateRunning},
 		{name: "succeeded", state: "JOB_STATE_SUCCEEDED", wantState: batchimage.BatchProviderStateSucceeded, wantDone: true},
-		{name: "failed", state: "JOB_STATE_FAILED", err: &batchimageprovider.VertexBatchJobError{Status: "INVALID_ARGUMENT", Message: "bad request"}, wantState: batchimage.BatchProviderStateFailed, wantDone: true, wantCode: "INVALID_ARGUMENT"},
+		{name: "failed", state: "JOB_STATE_FAILED", err: &VertexBatchJobError{Status: "INVALID_ARGUMENT", Message: "bad request"}, wantState: batchimage.BatchProviderStateFailed, wantDone: true, wantCode: "INVALID_ARGUMENT"},
 		{name: "cancelled", state: "JOB_STATE_CANCELLED", wantState: batchimage.BatchProviderStateCancelled, wantDone: true, wantCode: "VERTEX_BATCH_CANCELLED"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			output := "gs://managed-bucket/batch-image/test/imgbatch_abc123/output/"
-			platform := newTestVertexProvider(&fakeVertexBatchClient{got: &batchimageprovider.VertexBatchPredictionJob{
+			platform := newTestVertexProvider(&fakeVertexBatchClient{got: &VertexBatchPredictionJob{
 				Name:         "projects/proj/locations/global/batchPredictionJobs/job-1",
 				State:        tt.state,
 				Error:        tt.err,
-				OutputConfig: batchimageprovider.VertexBatchOutputConfig{GCSDestination: batchimageprovider.VertexBatchGCSDestination{OutputURIPrefix: output}},
+				OutputConfig: VertexBatchOutputConfig{GCSDestination: VertexBatchGCSDestination{OutputURIPrefix: output}},
 			}}, &fakeVertexObjectStore{})
 			got, err := platform.Get(context.Background(), vertexJobWithName("projects/proj/locations/global/batchPredictionJobs/job-1"), vertexServiceAccount())
 			require.NoError(t, err)
@@ -249,7 +246,7 @@ func TestVertexProvider_ErrorsDoNotExposeServiceAccountSecrets(t *testing.T) {
 		"private_key":  privateKey,
 		"client_email": "svc@proj.iam.gserviceaccount.com",
 	}
-	platform := newTestVertexProvider(&fakeVertexBatchClient{createErr: &batchimageprovider.VertexAPIError{StatusCode: 403, Message: "do not expose " + privateKey}}, &fakeVertexObjectStore{})
+	platform := newTestVertexProvider(&fakeVertexBatchClient{createErr: &VertexAPIError{StatusCode: 403, Message: "do not expose " + privateKey}}, &fakeVertexObjectStore{})
 
 	_, err := platform.Submit(context.Background(), nil, provider, validVertexBatchInput())
 	require.Error(t, err)
@@ -259,7 +256,7 @@ func TestVertexProvider_ErrorsDoNotExposeServiceAccountSecrets(t *testing.T) {
 }
 
 func TestVertexProvider_MetadataDoesNotStoreImageBytesOrBase64(t *testing.T) {
-	vertexClient := &fakeVertexBatchClient{created: &batchimageprovider.VertexBatchPredictionJob{Name: "projects/proj/locations/global/batchPredictionJobs/job-1", State: "JOB_STATE_PENDING"}}
+	vertexClient := &fakeVertexBatchClient{created: &VertexBatchPredictionJob{Name: "projects/proj/locations/global/batchPredictionJobs/job-1", State: "JOB_STATE_PENDING"}}
 	platform := newTestVertexProvider(vertexClient, &fakeVertexObjectStore{})
 
 	got, err := platform.Submit(context.Background(), nil, vertexServiceAccount(), validVertexBatchInput())
@@ -296,8 +293,8 @@ func requireVertexJSONLLine(t *testing.T, line, wantKey, wantPrompt string) {
 	require.Equal(t, []any{"TEXT", "IMAGE"}, config["responseModalities"])
 }
 
-func newTestVertexProvider(client *fakeVertexBatchClient, store *fakeVertexObjectStore) *batchimageprovider.VertexBatchImageProvider {
-	return batchimageprovider.NewVertexBatchImageProvider(batchimageprovider.VertexBatchImageProviderOptions{
+func newTestVertexProvider(client *fakeVertexBatchClient, store *fakeVertexObjectStore) *VertexBatchImageProvider {
+	return NewVertexBatchImageProvider(VertexBatchImageProviderOptions{
 		ProjectID:        "proj",
 		Location:         "global",
 		ManagedGCSBucket: "managed-bucket",
@@ -326,16 +323,16 @@ func vertexJobWithName(name string) *batchimage.BatchImageJob {
 }
 
 type fakeVertexBatchClient struct {
-	created       *batchimageprovider.VertexBatchPredictionJob
-	got           *batchimageprovider.VertexBatchPredictionJob
+	created       *VertexBatchPredictionJob
+	got           *VertexBatchPredictionJob
 	createErr     error
 	getErr        error
 	cancelErr     error
-	createdReq    batchimageprovider.VertexCreateBatchPredictionJobRequest
+	createdReq    VertexCreateBatchPredictionJobRequest
 	cancelledName string
 }
 
-func (f *fakeVertexBatchClient) CreateBatchPredictionJob(_ context.Context, accessToken string, req batchimageprovider.VertexCreateBatchPredictionJobRequest) (*batchimageprovider.VertexBatchPredictionJob, error) {
+func (f *fakeVertexBatchClient) CreateBatchPredictionJob(_ context.Context, accessToken string, req VertexCreateBatchPredictionJobRequest) (*VertexBatchPredictionJob, error) {
 	if strings.TrimSpace(accessToken) == "" {
 		return nil, errors.New("missing token")
 	}
@@ -346,10 +343,10 @@ func (f *fakeVertexBatchClient) CreateBatchPredictionJob(_ context.Context, acce
 	if f.created != nil {
 		return f.created, nil
 	}
-	return &batchimageprovider.VertexBatchPredictionJob{Name: "projects/proj/locations/global/batchPredictionJobs/job-1", State: "JOB_STATE_PENDING"}, nil
+	return &VertexBatchPredictionJob{Name: "projects/proj/locations/global/batchPredictionJobs/job-1", State: "JOB_STATE_PENDING"}, nil
 }
 
-func (f *fakeVertexBatchClient) GetBatchPredictionJob(_ context.Context, _ string, _ string) (*batchimageprovider.VertexBatchPredictionJob, error) {
+func (f *fakeVertexBatchClient) GetBatchPredictionJob(_ context.Context, _ string, _ string) (*VertexBatchPredictionJob, error) {
 	if f.getErr != nil {
 		return nil, f.getErr
 	}

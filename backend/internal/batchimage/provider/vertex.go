@@ -10,13 +10,10 @@ import (
 	"strings"
 	"time"
 
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-
 	core "github.com/TokenFlux/TokenRouter/internal/batchimage"
-
-	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
-
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
 const (

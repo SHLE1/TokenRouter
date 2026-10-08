@@ -984,3 +984,8 @@ type UserStatusTx interface {
 	SetDisabled(context.Context, int64) (bool, error)
 }
 type UserParticipation func(*sql.Tx) UserStatusTx
+
+// paginationResultFromTotal 根据总数和分页参数生成查询分页结果。
+func paginationResultFromTotal(total int64, params pagination.PaginationParams) *pagination.PaginationResult {
+	return pagination.ResultFromTotal(total, params)
+}

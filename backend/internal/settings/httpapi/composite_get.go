@@ -5,20 +5,18 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/payment"
-	"github.com/TokenFlux/TokenRouter/internal/site"
+	"github.com/gin-gonic/gin"
 
 	billinghttp "github.com/TokenFlux/TokenRouter/internal/billing/httpapi"
 	gatewaydto "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/dto"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitydto "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/dto"
-	settingsdto "github.com/TokenFlux/TokenRouter/internal/settings/httpapi/dto"
-	sitedto "github.com/TokenFlux/TokenRouter/internal/site/httpapi/dto"
-
+	"github.com/TokenFlux/TokenRouter/internal/payment"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
-	"github.com/gin-gonic/gin"
+	settingsdto "github.com/TokenFlux/TokenRouter/internal/settings/httpapi/dto"
+	"github.com/TokenFlux/TokenRouter/internal/site"
+	sitedto "github.com/TokenFlux/TokenRouter/internal/site/httpapi/dto"
 )
 
 func (h *Handler) GetSettings(c *gin.Context) {

@@ -221,3 +221,12 @@ func cloneBillingAllocations(values []billing.BillingAllocation) []billing.Billi
 	}
 	return out
 }
+
+// FundingScope 标识批量图片作业的资金用途。
+const FundingScope billing.TaskScope = "batchimage"
+
+// FundingReference 返回作业的资金引用和预留请求标识。
+func FundingReference(id string) billing.TaskReference {
+	id = strings.TrimSpace(id)
+	return billing.TaskReference{Scope: FundingScope, ID: id, ReserveRequestID: "batch_image_hold:" + id}
+}

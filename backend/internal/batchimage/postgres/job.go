@@ -4,16 +4,32 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/infra/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
+
+// translatePersistenceError 将数据库的缺失记录和唯一键冲突转换为应用错误。
+func translatePersistenceError(err error, notFound, conflict *apperror.ApplicationError) error {
+	if err == nil {
+		return nil
+	}
+	if notFound != nil && (errors.Is(err, sql.ErrNoRows) || ent.IsNotFound(err)) {
+		return notFound.WithCause(err)
+	}
+	if conflict != nil && postgres.IsUniqueConstraintViolation(err) {
+		return conflict.WithCause(err)
+	}
+	return err
+}
 
 type SQLExecutor interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)

@@ -4,20 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/stretchr/testify/require"
 )
-
-const batchImageTestData = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
 
 func TestParseBatchImageResultLine_SuccessShapes(t *testing.T) {
 	tests := []struct {
@@ -328,62 +324,4 @@ func newTestBatchImageProcessor(repo *fakeBatchImageRepository, platform *fakePr
 		batchimage.NewRegistry[batchimageprovider.BatchImageProvider](platform),
 		&fakeBatchImageProviderResolver{provider: &providercore.Record{}},
 		&batchimage.ResultIndexer{Repo: repo, Observe: resultObserve}, nil, nil, 0)
-}
-
-type fakeBatchImageProviderResolver struct {
-	provider *providercore.Record
-	err      error
-}
-
-func (r *fakeBatchImageProviderResolver) GetByID(context.Context, int64) (*providercore.Record, error) {
-	if r.err != nil {
-		return nil, r.err
-	}
-	return r.provider, nil
-}
-
-type fakeProcessorProvider struct {
-	status *batchimage.BatchProviderStatus
-	getErr error
-	result string
-
-	getCalled        bool
-	openResultCalled bool
-}
-
-func (p *fakeProcessorProvider) Name() string { return "fake" }
-func (p *fakeProcessorProvider) SupportsProvider(*providercore.Record) bool {
-	return true
-}
-
-func (p *fakeProcessorProvider) Submit(context.Context, *batchimage.BatchImageJob, *providercore.Record, batchimage.BatchImageInput) (*batchimage.BatchProviderJob, error) {
-	panic("Submit must not be called by PR5 processor")
-}
-
-func (p *fakeProcessorProvider) Get(context.Context, *batchimage.BatchImageJob, *providercore.Record) (*batchimage.BatchProviderStatus, error) {
-	p.getCalled = true
-	if p.getErr != nil {
-		return nil, p.getErr
-	}
-	if p.status == nil {
-		return &batchimage.BatchProviderStatus{InternalState: batchimage.BatchProviderStateQueued}, nil
-	}
-	return p.status, nil
-}
-
-func (p *fakeProcessorProvider) Cancel(context.Context, *batchimage.BatchImageJob, *providercore.Record) error {
-	return nil
-}
-
-func (p *fakeProcessorProvider) OpenResult(context.Context, *batchimage.BatchImageJob, *providercore.Record) (io.ReadCloser, string, error) {
-	p.openResultCalled = true
-	return io.NopCloser(strings.NewReader(p.result)), "application/jsonl", nil
-}
-
-func (p *fakeProcessorProvider) Cleanup(context.Context, *batchimage.BatchImageJob, *providercore.Record, batchimage.CleanupTarget) error {
-	return nil
-}
-
-func resultObserve(event string, values ...any) {
-	logging.LegacyPrintf("service.batch_image", "%s %v", event, values)
 }

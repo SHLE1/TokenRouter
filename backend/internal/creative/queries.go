@@ -7,6 +7,26 @@ import (
 	"time"
 )
 
+func (s *Public) queries() *Queries {
+	return &Queries{Now: s.Now, Repo: s.Repo, TransientStore: s.TransientStore, Enabled: s.Enabled, Observe: s.Observe}
+}
+
+func (s *Public) GetRun(ctx context.Context, scope CreativeRunScope, id string) (*CreativeRunPublic, error) {
+	return s.queries().GetRun(ctx, scope, id)
+}
+
+func (s *Public) ListRuns(ctx context.Context, scope CreativeRunScope, filter CreativeRunFilter) (*CreativeListRunsResponse, error) {
+	return s.queries().ListRuns(ctx, scope, filter)
+}
+
+func (s *Public) GetOutputContent(ctx context.Context, scope CreativeRunScope, id string, index int) (*CreativeOutputContent, error) {
+	return s.queries().GetOutputContent(ctx, scope, id, index)
+}
+
+func (s *Public) AckOutput(ctx context.Context, scope CreativeRunScope, id string, index int) error {
+	return s.queries().AckOutput(ctx, scope, id, index)
+}
+
 type Queries struct {
 	Now            func() time.Time
 	Repo           CreativeRunRepository
@@ -99,7 +119,7 @@ type CreativeOutputContent struct {
 }
 
 // GetOutputContent 校验所有权与输出状态后从临时存储读取图片字节。
-// 过期或缺失时：任务为 succeeded 则转 result_lost，并返回明确错误，绝不明示成功。
+// 输出过期或缺失时，将 succeeded 任务转为 result_lost 并返回错误。
 func (s *Queries) GetOutputContent(ctx context.Context, scope CreativeRunScope, runID string, outputIndex int) (*CreativeOutputContent, error) {
 	normalizedScope, err := NormalizeCreativeRunScope(scope)
 	if err != nil {
@@ -220,7 +240,7 @@ func (s *Queries) AckOutput(ctx context.Context, scope CreativeRunScope, runID s
 	return nil
 }
 
-// now 保持各原取时点，构造时可注入同一时钟来源。
+// now 返回注入时钟的时间，缺省时使用系统时间。
 func (s *Queries) now() time.Time {
 	if s.Now != nil {
 		return s.Now()

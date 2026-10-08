@@ -5,15 +5,40 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/config"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-	"github.com/stretchr/testify/require"
 )
+
+func TestBatchImageSettlementOutputExpiration(t *testing.T) {
+	repo := newFakeBatchImageRepository()
+	job := testSettlingBatchImageJob("imgbatch_expire")
+	repo.jobs[job.BatchID] = job
+	billing := &fakeBatchImageBillingRepo{}
+	svc := newBatchSettlementFixture(repo,
+		billing, nil, &fakeBatchImagePricingResolver{unitPrice: 0.25}, nil, &config.Config{BatchImage: config.BatchImageConfig{OutputRetentionAfterTerminalHours: 5}})
+
+	_, err := svc.Settle(context.Background(), job.BatchID)
+	require.NoError(t, err)
+	require.NotNil(t, repo.jobs[job.BatchID].OutputExpiresAt)
+	require.WithinDuration(t, time.Now().Add(5*time.Hour), *repo.jobs[job.BatchID].OutputExpiresAt, time.Minute)
+
+	existing := time.Now().Add(time.Hour)
+	second := testSettlingBatchImageJob("imgbatch_keep_expire")
+	second.OutputExpiresAt = &existing
+	repo.jobs[second.BatchID] = second
+	_, err = svc.Settle(context.Background(), second.BatchID)
+	require.NoError(t, err)
+	require.Equal(t, existing, *repo.jobs[second.BatchID].OutputExpiresAt)
+}
 
 func TestBatchImageSettlementService_SettlesAndChargesSuccessfulImagesOnly(t *testing.T) {
 	repo := newFakeBatchImageRepository()
@@ -502,115 +527,19 @@ func testSettlingBatchImageJob(batchID string) *batchimage.BatchImageJob {
 	}
 }
 
-type fakeBatchImagePricingResolver struct {
-	unitPrice     float64
-	missingModels map[string]bool
-	err           error
-	models        []string
-}
+type resultUsageRepository struct {
+	usage.UsageLogRepository
 
-func (r *fakeBatchImagePricingResolver) BatchImageUnitPrice(_ context.Context, input batchimage.BatchImagePriceInput) (float64, error) {
-	if input.Model != "" {
-		r.models = append(r.models, input.Model)
-	}
-	if r.err != nil {
-		return 0, r.err
-	}
-	if input.Model != "" && r.missingModels[input.Model] {
-		return 0, batchimage.ErrBatchImageSettlementPricingMissing
-	}
-	return r.unitPrice, nil
-}
-
-type fakeBatchImageBillingRepo struct {
-	usableSubscription *billingcore.UserSubscription
-	subscriptionErr    error
-	reserves           []*billingcore.TaskFundsCommand
-	captures           []*billingcore.TaskFundsCommand
-	releases           []*billingcore.TaskFundsCommand
-	seen               map[string]struct{}
-	alreadyApplied     map[string]bool
-
+	inserted   bool
 	err        error
-	reserveErr error
-	captureErr error
-	releaseErr error
+	calls      int
+	lastLog    *usage.UsageLog
+	lastCtxErr error
 }
 
-func (r *fakeBatchImageBillingRepo) Reserve(_ context.Context, cmd *billingcore.TaskFundsCommand) (*billingcore.TaskFundsResult, error) {
-	if r.reserveErr != nil {
-		r.reserves = append(r.reserves, cmd)
-		return nil, r.reserveErr
-	}
-	result, err := r.applyHold(cmd, &r.reserves)
-	if err == nil && result != nil {
-		result.BalanceAmountUSD = cmd.HoldAmount
-		result.HoldAmountUSD = cmd.HoldAmount
-		result.EstimatedAmountUSD = cmd.HoldAmount
-		if cmd.PricingSnapshotVersion >= 2 {
-			result.EstimatedAmountUSD = cmd.HoldAmount * cmd.SettlementRateScale
-		}
-		if cmd.HoldAmount > 0 {
-			result.BillingAllocations = []billingcore.BillingAllocation{{Type: billingcore.BillingAllocationTypeBalance, AmountUSD: cmd.HoldAmount}}
-		}
-	}
-	return result, err
-}
-
-func (r *fakeBatchImageBillingRepo) Capture(_ context.Context, cmd *billingcore.TaskFundsCommand) (*billingcore.TaskFundsResult, error) {
-	if r.captureErr != nil {
-		r.captures = append(r.captures, cmd)
-		return nil, r.captureErr
-	}
-	result, err := r.applyHold(cmd, &r.captures)
-	if err != nil || result == nil {
-		return result, err
-	}
-	plan, err := billingcore.PlanTaskCapture(cmd)
-	if err != nil {
-		return nil, err
-	}
-	cmd.ActualAmount = plan.ActualAmountUSD
-	result.SubscriptionAmountUSD = plan.SubscriptionAmountUSD
-	result.BalanceAmountUSD = plan.BalanceAmountUSD
-	result.ActualAmountUSD = plan.ActualAmountUSD
-	result.BillingAllocations = plan.BillingAllocations
-	return result, nil
-}
-
-func (r *fakeBatchImageBillingRepo) Release(_ context.Context, cmd *billingcore.TaskFundsCommand) (*billingcore.TaskFundsResult, error) {
-	if r.releaseErr != nil {
-		r.releases = append(r.releases, cmd)
-		return nil, r.releaseErr
-	}
-	return r.applyHold(cmd, &r.releases)
-}
-
-func (r *fakeBatchImageBillingRepo) applyHold(cmd *billingcore.TaskFundsCommand, calls *[]*billingcore.TaskFundsCommand) (*billingcore.TaskFundsResult, error) {
-	if r.seen == nil {
-		r.seen = make(map[string]struct{})
-	}
-	if r.err != nil {
-		*calls = append(*calls, cmd)
-		return nil, r.err
-	}
-	if cmd != nil {
-		cmd.Normalize()
-		if _, ok := r.seen[cmd.RequestID]; ok || r.alreadyApplied[cmd.RequestID] {
-			*calls = append(*calls, cmd)
-			return &billingcore.TaskFundsResult{Applied: false}, nil
-		}
-		r.seen[cmd.RequestID] = struct{}{}
-	}
-	*calls = append(*calls, cmd)
-	return &billingcore.TaskFundsResult{Applied: true}, nil
-}
-
-var (
-	_ batchimage.FundingStore = (*fakeBatchImageBillingRepo)(nil)
-	_ batchimage.ImagePricer  = (*fakeBatchImagePricingResolver)(nil)
-)
-
-func (r *fakeBatchImageBillingRepo) ResolveUsableSubscriptionForGroup(context.Context, int64, int64) (*billingcore.UserSubscription, error) {
-	return r.usableSubscription, r.subscriptionErr
+func (s *resultUsageRepository) Create(ctx context.Context, log *usage.UsageLog) (bool, error) {
+	s.calls++
+	s.lastLog = log
+	s.lastCtxErr = ctx.Err()
+	return s.inserted, s.err
 }

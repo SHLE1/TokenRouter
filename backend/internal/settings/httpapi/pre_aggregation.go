@@ -5,10 +5,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/TokenFlux/TokenRouter/internal/settings/preaggregation"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-	"github.com/gin-gonic/gin"
 )
 
 type preAggregationAvailabilityResponse struct {
