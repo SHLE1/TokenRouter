@@ -22,7 +22,7 @@ const (
 	GroupClientProtocolErrorGoogle    GroupClientProtocolErrorFormat = "google"
 )
 
-// GatewayErrorWriter 定义网关错误响应格式（不同协议使用不同格式）
+// GatewayErrorWriter 定义网关错误响应格式（不同协议使用不同格式）。
 type GatewayErrorWriter func(c *gin.Context, status int, message string)
 
 // RouteAccess 是路由门禁从当前认证请求取得的数据。
@@ -48,7 +48,7 @@ type RouteGuards struct{ options RouteMiddleware }
 
 type GroupClientProtocolErrorFormat string
 
-// AnthropicErrorWriter 按 Anthropic API 规范输出错误
+// AnthropicErrorWriter 按 Anthropic API 规范输出错误。
 func AnthropicErrorWriter(c *gin.Context, status int, message string) {
 	c.JSON(status, gin.H{
 		"type":  "error",
@@ -56,7 +56,7 @@ func AnthropicErrorWriter(c *gin.Context, status int, message string) {
 	})
 }
 
-// GoogleErrorWriter 按 Google API 规范输出错误
+// GoogleErrorWriter 按 Google API 规范输出错误。
 func GoogleErrorWriter(c *gin.Context, status int, message string) {
 	c.JSON(status, gin.H{
 		"error": gin.H{

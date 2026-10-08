@@ -40,7 +40,7 @@ type RollbackVersion struct {
 	HTMLURL     string `json:"html_url"`
 }
 
-// GitHubRelease represents GitHub API response
+// GitHubRelease represents GitHub API response.
 type GitHubRelease struct {
 	TagName     string        `json:"tag_name"`
 	Name        string        `json:"name"`
@@ -52,14 +52,14 @@ type GitHubRelease struct {
 	Assets      []GitHubAsset `json:"assets"`
 }
 
-// Asset represents a release asset
+// Asset represents a release asset.
 type Asset struct {
 	Name        string `json:"name"`
 	DownloadURL string `json:"download_url"`
 	Size        int64  `json:"size"`
 }
 
-// ReleaseInfo contains GitHub release details
+// ReleaseInfo contains GitHub release details.
 type ReleaseInfo struct {
 	Name        string  `json:"name"`
 	Body        string  `json:"body"`
@@ -68,7 +68,7 @@ type ReleaseInfo struct {
 	Assets      []Asset `json:"assets,omitempty"`
 }
 
-// UpdateInfo contains update information
+// UpdateInfo contains update information.
 type UpdateInfo struct {
 	CurrentVersion string       `json:"current_version"`
 	LatestVersion  string       `json:"latest_version"`
@@ -79,7 +79,7 @@ type UpdateInfo struct {
 	BuildType      string       `json:"build_type"` // "source" or "release"
 }
 
-// UpdateCache defines cache operations for update service
+// UpdateCache defines cache operations for update service.
 type UpdateCache interface {
 	GetUpdateInfo(ctx context.Context) (string, error)
 	SetUpdateInfo(ctx context.Context, data string, ttl time.Duration) error
@@ -105,7 +105,7 @@ func parseVersion(v string) [3]int {
 	return result
 }
 
-// compareVersions compares two semantic versions
+// compareVersions compares two semantic versions.
 func compareVersions(current, latest string) int {
 	currentParts := parseVersion(current)
 	latestParts := parseVersion(latest)
@@ -291,7 +291,7 @@ func (s *ReleaseQuery) ListRollbackVersions(ctx context.Context) ([]RollbackVers
 	return versions, nil
 }
 
-// CheckUpdate checks for available updates
+// CheckUpdate checks for available updates.
 func (s *ReleaseQuery) CheckUpdate(ctx context.Context, force bool) (*UpdateInfo, error) {
 	// Try cache first
 	if !force {

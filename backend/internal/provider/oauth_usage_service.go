@@ -268,7 +268,7 @@ func (s *OAuthUsageService) GetUsageForProvider(ctx context.Context, provider *R
 // GetUsage 获取提供商使用量
 // OAuth 提供商通过 Anthropic API 查询用量（需要 profile scope），API 响应缓存十分钟，窗口统计缓存一分钟。
 // Setup Token提供商: 根据session_window推算5h窗口，7d数据不可用（没有profile scope）
-// API Key提供商: 不支持usage查询
+// API Key提供商: 不支持usage查询。
 func (s *OAuthUsageService) GetUsage(ctx context.Context, providerID int64, force ...bool) (*UsageInfo, error) {
 	ctx, finish, err := s.activity.begin(ctx, ErrOAuthUsageStopped)
 	if err != nil {

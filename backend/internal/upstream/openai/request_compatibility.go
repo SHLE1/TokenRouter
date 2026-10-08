@@ -417,7 +417,7 @@ func NormalizeOpenAIResponseFormatSchemasBody(body []byte) ([]byte, bool, error)
 
 // NormalizeOpenAIPassthroughOAuthBody 将透传 OAuth 请求体收敛为旧链路关键行为：
 // 1) 删除 ChatGPT internal API 不支持的顶层 Responses 参数
-// 2) store=false 3) 非 compact 保持 stream=true；compact 强制 stream=false
+// 2) store=false 3) 非 compact 保持 stream=true；compact 强制 stream=false。
 func NormalizeOpenAIPassthroughOAuthBody(body []byte, compact bool) ([]byte, bool, error) {
 	if len(body) == 0 {
 		return body, false, nil

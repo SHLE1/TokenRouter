@@ -251,7 +251,7 @@ func (s *HealthService) TryTempUnschedulable(ctx context.Context, provider *Reco
 
 // HandleStreamTimeout 处理流数据超时
 // 根据系统设置决定是否标记提供商为临时不可调度或错误状态
-// 返回是否应该停止该提供商的调度
+// 返回是否应该停止该提供商的调度。
 func (s *HealthService) HandleStreamTimeout(ctx context.Context, provider *Record, model string) bool {
 	if provider == nil {
 		return false
@@ -308,7 +308,7 @@ func (s *HealthService) HandleStreamTimeout(ctx context.Context, provider *Recor
 	}
 }
 
-// TriggerStreamTimeoutTempUnsched 触发流超时临时不可调度
+// TriggerStreamTimeoutTempUnsched 触发流超时临时不可调度。
 func (s *HealthService) TriggerStreamTimeoutTempUnsched(ctx context.Context, provider *Record, settings *StreamTimeoutSettings, model string) bool {
 	now := s.options.Now()
 	until := now.Add(time.Duration(settings.TempUnschedMinutes) * time.Minute)
@@ -353,7 +353,7 @@ func (s *HealthService) TriggerStreamTimeoutTempUnsched(ctx context.Context, pro
 	return true
 }
 
-// TriggerStreamTimeoutError 触发流超时错误状态
+// TriggerStreamTimeoutError 触发流超时错误状态。
 func (s *HealthService) TriggerStreamTimeoutError(ctx context.Context, provider *Record, model string) bool {
 	errorMsg := "Stream data interval timeout (repeated failures) for model: " + model
 

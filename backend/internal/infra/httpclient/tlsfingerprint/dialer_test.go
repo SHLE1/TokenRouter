@@ -80,7 +80,7 @@ func TestDialerBasicConnection(t *testing.T) {
 
 // TestJA3Fingerprint 通过 tls.peet.ws 检查 JA3 和 JA4 指纹。
 // 预期 JA3 哈希： 44f88fca027f27bab4bb08d4af15f23e (Node.js 24.x)
-// 预期 JA4： t13d1714h1_5b57614c22b0_7baf387fc6ff
+// 预期 JA4： t13d1714h1_5b57614c22b0_7baf387fc6ff。
 func TestJA3Fingerprint(t *testing.T) {
 	skipNetworkTest(t)
 

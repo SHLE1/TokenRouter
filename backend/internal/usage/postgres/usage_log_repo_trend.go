@@ -12,13 +12,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// TrendDataPoint represents a single point in trend data
+// TrendDataPoint represents a single point in trend data.
 type TrendDataPoint = usage.TrendDataPoint
 
-// ModelStat represents usage statistics for a single model
+// ModelStat represents usage statistics for a single model.
 type ModelStat = usage.ModelStat
 
-// UserUsageTrendPoint represents user usage trend data point
+// UserUsageTrendPoint represents user usage trend data point.
 type UserUsageTrendPoint = usage.UserUsageTrendPoint
 
 // UserSpendingRankingItem represents a user spending ranking row.
@@ -27,10 +27,10 @@ type (
 	UserSpendingRankingResponse = usage.UserSpendingRankingResponse
 )
 
-// APIKeyUsageTrendPoint represents API key usage trend data point
+// APIKeyUsageTrendPoint represents API key usage trend data point.
 type APIKeyUsageTrendPoint = usage.APIKeyUsageTrendPoint
 
-// GetAPIKeyUsageTrend returns usage trend data grouped by API key and date
+// GetAPIKeyUsageTrend returns usage trend data grouped by API key and date.
 func (r *Store) GetAPIKeyUsageTrend(ctx context.Context, startTime, endTime time.Time, granularity string, limit int) (results []APIKeyUsageTrendPoint, err error) {
 	if aggregated, ok, aggregateErr := r.getAPIKeyUsageTrendFromAnalytics(ctx, startTime, endTime, granularity, limit); aggregateErr == nil && ok {
 		return aggregated, nil
@@ -243,17 +243,17 @@ func (r *Store) GetUserSpendingRanking(ctx context.Context, startTime, endTime t
 	}, nil
 }
 
-// GetUserUsageTrendByUserID 获取指定用户的使用趋势
+// GetUserUsageTrendByUserID 获取指定用户的使用趋势。
 func (r *Store) GetUserUsageTrendByUserID(ctx context.Context, userID int64, startTime, endTime time.Time, granularity string) (results []TrendDataPoint, err error) {
 	return r.getUsageTrendWithFilters(ctx, startTime, endTime, granularity, userID, 0, 0, 0, 0, "", "", nil, nil, nil, "", false, true, nil)
 }
 
-// GetUserModelStats 获取指定用户的模型统计
+// GetUserModelStats 获取指定用户的模型统计。
 func (r *Store) GetUserModelStats(ctx context.Context, userID int64, startTime, endTime time.Time) (results []ModelStat, err error) {
 	return r.getModelStatsWithFiltersBySource(ctx, startTime, endTime, userID, 0, 0, 0, 0, "", nil, nil, nil, usage.ModelSourceRequested, "", false, true, nil)
 }
 
-// GetUsageTrendWithFilters returns usage trend data with optional filters
+// GetUsageTrendWithFilters returns usage trend data with optional filters.
 func (r *Store) GetUsageTrendWithFilters(ctx context.Context, startTime, endTime time.Time, granularity string, userID, apiKeyID, providerID, groupID int64, model string, requestType *int16, stream *bool, billingType *int8) (results []TrendDataPoint, err error) {
 	return r.getUsageTrendWithFilters(ctx, startTime, endTime, granularity, userID, apiKeyID, providerID, groupID, 0, model, "", requestType, stream, billingType, "", false, false, nil)
 }
@@ -437,7 +437,7 @@ func (r *Store) getUsageTrendFromAggregates(ctx context.Context, startTime, endT
 	return results, nil
 }
 
-// GetModelStatsWithFilters returns model statistics with optional filters
+// GetModelStatsWithFilters returns model statistics with optional filters.
 func (r *Store) GetModelStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) (results []ModelStat, err error) {
 	return r.getModelStatsWithFiltersBySource(ctx, startTime, endTime, userID, apiKeyID, providerID, groupID, 0, "", requestType, stream, billingType, usage.ModelSourceRequested, "", false, false, nil)
 }
@@ -545,7 +545,7 @@ func (r *Store) getModelStatsWithFiltersBySource(ctx context.Context, startTime,
 	return results, nil
 }
 
-// GetGroupStatsWithFilters returns group usage statistics with optional filters
+// GetGroupStatsWithFilters returns group usage statistics with optional filters.
 func (r *Store) GetGroupStatsWithFilters(ctx context.Context, startTime, endTime time.Time, userID, apiKeyID, providerID, groupID int64, requestType *int16, stream *bool, billingType *int8) (results []usage.GroupStat, err error) {
 	return r.getGroupStatsWithFilters(ctx, startTime, endTime, userID, apiKeyID, providerID, groupID, 0, "", requestType, stream, billingType, "", false, false, nil)
 }

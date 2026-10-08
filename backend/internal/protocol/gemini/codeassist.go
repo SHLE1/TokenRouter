@@ -70,7 +70,7 @@ func (t *TierInfo) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// GetTier extracts tier ID, prioritizing paidTier over currentTier
+// GetTier extracts tier ID, prioritizing paidTier over currentTier.
 func (r *LoadCodeAssistResponse) GetTier() string {
 	if r.PaidTier != nil && r.PaidTier.ID != "" {
 		return r.PaidTier.ID

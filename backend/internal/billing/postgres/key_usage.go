@@ -24,7 +24,7 @@ func NewKeyUsageStore(client *dbent.Client, db KeyUsageSQL) *KeyUsageStore {
 	return &KeyUsageStore{client: client, sql: db}
 }
 
-// IncrementQuotaUsed 使用 Ent 原子递增 quota_used 字段并返回新值
+// IncrementQuotaUsed 使用 Ent 原子递增 quota_used 字段并返回新值。
 func (r *KeyUsageStore) IncrementQuotaUsed(ctx context.Context, id int64, amount float64) (float64, error) {
 	updated, err := r.client.APIKey.UpdateOneID(id).
 		Where(apikey.DeletedAtIsNil()).

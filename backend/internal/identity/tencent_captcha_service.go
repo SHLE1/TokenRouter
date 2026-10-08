@@ -55,7 +55,7 @@ type TencentCaptchaService struct {
 	verifier       TencentCaptchaVerifier
 }
 
-// TencentCaptchaEndpoint 按后台配置的地域返回服务端接入点，未知值回退中国站
+// TencentCaptchaEndpoint 按后台配置的地域返回服务端接入点，未知值回退中国站。
 func TencentCaptchaEndpoint(region string) string {
 	if region == TencentCaptchaRegionINTL {
 		return TencentCaptchaEndpointINTL
@@ -63,7 +63,7 @@ func TencentCaptchaEndpoint(region string) string {
 	return TencentCaptchaEndpointCN
 }
 
-// NormalizeTencentCaptchaRegion 非法值一律视为中国站
+// NormalizeTencentCaptchaRegion 非法值一律视为中国站。
 func NormalizeTencentCaptchaRegion(value string) string {
 	if value == TencentCaptchaRegionINTL {
 		return TencentCaptchaRegionINTL

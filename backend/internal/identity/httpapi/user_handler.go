@@ -22,13 +22,13 @@ type UserHandler struct {
 	emailCache   identity.EmailCache
 }
 
-// ChangePasswordRequest represents the change password request payload
+// ChangePasswordRequest represents the change password request payload.
 type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
-// UpdateProfileRequest represents the update profile request payload
+// UpdateProfileRequest represents the update profile request payload.
 type UpdateProfileRequest struct {
 	PreferredLocale        json.RawMessage `json:"preferred_locale"`
 	Email                  json.RawMessage `json:"email"`
@@ -76,23 +76,23 @@ type SendEmailBindingCodeRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
-// SendNotifyEmailCodeRequest represents the request to send notify email verification code
+// SendNotifyEmailCodeRequest represents the request to send notify email verification code.
 type SendNotifyEmailCodeRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
-// VerifyNotifyEmailRequest represents the request to verify and add notify email
+// VerifyNotifyEmailRequest represents the request to verify and add notify email.
 type VerifyNotifyEmailRequest struct {
 	Email string `json:"email" binding:"required,email"`
 	Code  string `json:"code" binding:"required,len=6"`
 }
 
-// RemoveNotifyEmailRequest represents the request to remove a notify email
+// RemoveNotifyEmailRequest represents the request to remove a notify email.
 type RemoveNotifyEmailRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
-// ToggleNotifyEmailRequest represents the request to toggle a notify email's disabled state
+// ToggleNotifyEmailRequest represents the request to toggle a notify email's disabled state.
 type ToggleNotifyEmailRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Disabled bool   `json:"disabled"`

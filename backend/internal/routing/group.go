@@ -83,7 +83,7 @@ func IsGroupContextValid(group *Group) bool {
 }
 
 // GetRoutingProviderIDs 根据请求模型获取路由提供商 ID 列表
-// 返回匹配的优先提供商 ID 列表，如果没有匹配规则则返回 nil
+// 返回匹配的优先提供商 ID 列表，如果没有匹配规则则返回 nil。
 func (g *Group) GetRoutingProviderIDs(requestedModel string) []int64 {
 	if !g.ModelRoutingEnabled || len(g.ModelRouting) == 0 || requestedModel == "" {
 		return nil
@@ -105,7 +105,7 @@ func (g *Group) GetRoutingProviderIDs(requestedModel string) []int64 {
 }
 
 // MatchModelPattern 检查模型是否匹配模式
-// 支持 * 通配符，如 "claude-opus-*" 匹配 "claude-opus-4-20250514"
+// 支持 * 通配符，如 "claude-opus-*" 匹配 "claude-opus-4-20250514"。
 func MatchModelPattern(pattern, model string) bool {
 	if pattern == model {
 		return true

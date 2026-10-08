@@ -25,7 +25,7 @@ import (
 )
 
 // HTTPUpstreamSuite HTTP 上游服务测试套件
-// 使用 testify/suite 组织测试，支持 SetupTest 初始化
+// 使用 testify/suite 组织测试，支持 SetupTest 初始化。
 type HTTPUpstreamSuite struct {
 	suite.Suite
 	cfg *Options // 测试用配置
@@ -539,13 +539,13 @@ func TestApplyGrokCLIProxyHeaders(t *testing.T) {
 }
 
 // SetupTest 每个测试用例执行前的初始化
-// 创建空配置，各测试用例可按需覆盖
+// 创建空配置，各测试用例可按需覆盖。
 func (s *HTTPUpstreamSuite) SetupTest() {
 	s.cfg = &Options{}
 }
 
 // newService 创建测试用的 Client 实例
-// 返回具体类型以便访问内部状态进行断言
+// 返回具体类型以便访问内部状态进行断言。
 func (s *HTTPUpstreamSuite) newService() *Client {
 	up := New(func() *Options { return s.cfg })
 	svc := up
@@ -573,7 +573,7 @@ func (s *HTTPUpstreamSuite) TestNilConfigResponseHeaderTimeoutFallback() {
 }
 
 // TestCustomResponseHeaderTimeout 测试自定义响应头超时配置
-// 验证配置值能正确应用到 Transport
+// 验证配置值能正确应用到 Transport。
 func (s *HTTPUpstreamSuite) TestCustomResponseHeaderTimeout() {
 	*s.cfg = Options{ResponseHeaderTimeout: 7}
 	svc := s.newService()
@@ -584,7 +584,7 @@ func (s *HTTPUpstreamSuite) TestCustomResponseHeaderTimeout() {
 }
 
 // TestGetOrCreateClient_InvalidURLReturnsError 测试无效代理 URL 返回错误
-// 验证解析失败时拒绝回退到直连模式
+// 验证解析失败时拒绝回退到直连模式。
 func (s *HTTPUpstreamSuite) TestGetOrCreateClient_InvalidURLReturnsError() {
 	svc := s.newService()
 	_, err := svc.getClientEntry("://bad-proxy-url", 1, 1, upstreamcore.HTTPUpstreamProfileDefault, false, false)
@@ -801,7 +801,7 @@ func (s *HTTPUpstreamSuite) TestOpenAIHTTP2ProxyCompatibilityErrorActivatesFallb
 }
 
 // TestNormalizeProxyURL_Canonicalizes 测试代理 URL 规范化
-// 验证等价地址能够映射到同一缓存键
+// 验证等价地址能够映射到同一缓存键。
 func (s *HTTPUpstreamSuite) TestNormalizeProxyURL_Canonicalizes() {
 	key1, _, err1 := normalizeProxyURL("http://proxy.local:8080")
 	require.NoError(s.T(), err1)
@@ -814,7 +814,7 @@ func (s *HTTPUpstreamSuite) TestNormalizeProxyURL_Canonicalizes() {
 // 验证超限且无可淘汰条目时返回错误
 
 // TestDo_WithoutProxy_GoesDirect 测试无代理时直连
-// 验证空代理 URL 时请求直接发送到目标服务器
+// 验证空代理 URL 时请求直接发送到目标服务器。
 func (s *HTTPUpstreamSuite) TestDo_WithoutProxy_GoesDirect() {
 	// 创建模拟上游服务器
 	upstream := newLocalTestServer(s.T(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -836,7 +836,7 @@ func (s *HTTPUpstreamSuite) TestDo_WithoutProxy_GoesDirect() {
 }
 
 // TestDo_WithHTTPProxy_UsesProxy 测试 HTTP 代理功能
-// 验证请求通过代理服务器转发，使用绝对 URI 格式
+// 验证请求通过代理服务器转发，使用绝对 URI 格式。
 func (s *HTTPUpstreamSuite) TestDo_WithHTTPProxy_UsesProxy() {
 	// 用于接收代理请求的通道
 	seen := make(chan string, 1)
@@ -871,7 +871,7 @@ func (s *HTTPUpstreamSuite) TestDo_WithHTTPProxy_UsesProxy() {
 }
 
 // TestDo_EmptyProxy_UsesDirect 测试空代理字符串
-// 验证空字符串代理等同于直连
+// 验证空字符串代理等同于直连。
 func (s *HTTPUpstreamSuite) TestDo_EmptyProxy_UsesDirect() {
 	upstream := newLocalTestServer(s.T(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "direct-empty")
@@ -891,7 +891,7 @@ func (s *HTTPUpstreamSuite) TestDo_EmptyProxy_UsesDirect() {
 }
 
 // TestProviderIsolation_DifferentProviders 测试提供商隔离模式
-// 验证不同提供商使用独立的连接池
+// 验证不同提供商使用独立的连接池。
 func (s *HTTPUpstreamSuite) TestProviderIsolation_DifferentProviders() {
 	*s.cfg = Options{ConnectionPoolIsolation: "provider"}
 	svc := s.newService()
@@ -902,7 +902,7 @@ func (s *HTTPUpstreamSuite) TestProviderIsolation_DifferentProviders() {
 }
 
 // TestProviderProxyIsolation_DifferentProxy 测试提供商+代理组合隔离模式
-// 验证同一提供商使用不同代理时创建独立连接池
+// 验证同一提供商使用不同代理时创建独立连接池。
 func (s *HTTPUpstreamSuite) TestProviderProxyIsolation_DifferentProxy() {
 	*s.cfg = Options{ConnectionPoolIsolation: "provider_proxy"}
 	svc := s.newService()
@@ -924,7 +924,7 @@ func (s *HTTPUpstreamSuite) TestProviderModeProxyChangeClearsPool() {
 }
 
 // TestProviderConcurrencyOverridesPoolSettings 测试提供商并发数覆盖连接池配置
-// 验证提供商隔离模式下，连接池大小与提供商并发数对应
+// 验证提供商隔离模式下，连接池大小与提供商并发数对应。
 func (s *HTTPUpstreamSuite) TestProviderConcurrencyOverridesPoolSettings() {
 	*s.cfg = Options{ConnectionPoolIsolation: "provider"}
 	svc := s.newService()
@@ -939,7 +939,7 @@ func (s *HTTPUpstreamSuite) TestProviderConcurrencyOverridesPoolSettings() {
 }
 
 // TestProviderConcurrencyFallbackToDefault 测试提供商并发数为 0 时回退到默认配置
-// 验证未指定并发数时使用全局配置值
+// 验证未指定并发数时使用全局配置值。
 func (s *HTTPUpstreamSuite) TestProviderConcurrencyFallbackToDefault() {
 	*s.cfg = Options{
 		ConnectionPoolIsolation: "provider",
@@ -963,7 +963,7 @@ func (s *HTTPUpstreamSuite) TestProviderConcurrencyFallbackToDefault() {
 // TestIdleTTLDoesNotEvictActive 测试活跃请求保护
 // 验证有进行中请求的客户端不会被空闲超时淘汰
 
-// TestHTTPUpstreamSuite 运行测试套件
+// TestHTTPUpstreamSuite 运行测试套件。
 func TestHTTPUpstreamSuite(t *testing.T) {
 	suite.Run(t, new(HTTPUpstreamSuite))
 }

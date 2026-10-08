@@ -104,7 +104,7 @@ func NewServiceFromSnapshot(options Options, remote RemoteClient, snapshot Snaps
 	return s
 }
 
-// Initialize 初始化价格服务
+// Initialize 初始化价格服务。
 func (s *Service) Initialize() error {
 	// 确保数据目录存在
 	if err := os.MkdirAll(s.currentOptions().DataDir, 0o755); err != nil {
@@ -120,7 +120,7 @@ func (s *Service) Initialize() error {
 	return nil
 }
 
-// Stop 停止价格服务
+// Stop 停止价格服务。
 func (s *Service) Stop() {
 	s.stopOnce.Do(func() { close(s.stopCh) })
 	s.Wait()
@@ -365,7 +365,7 @@ func (s *Service) GetModelModalities(modelName string) ([]string, []string) {
 	return query.GetModelModalities(modelName)
 }
 
-// GetStatus 获取服务状态
+// GetStatus 获取服务状态。
 func (s *Service) GetStatus() map[string]any {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

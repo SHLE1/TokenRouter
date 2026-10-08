@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	// 1M 输入 token 下，共享价格配置价与官方兜底价的期望费用（USD）
+	// 1M 输入 token 下，共享价格配置价与官方兜底价的期望费用（USD）。
 	configPricingExpectedPricingConfigCost = 0.4
-	// 用于验证「不相关的共享价格配置配置不会被误命中」的对照价
+	// 用于验证「不相关的共享价格配置配置不会被误命中」的对照价。
 	configPricingUnrelatedCost = 0.9
 )
 

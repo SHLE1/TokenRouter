@@ -44,7 +44,7 @@ func GrokStickyAffinitySeed(sessionID string, body []byte) string {
 	return "grok-affinity:v1:" + model + ":" + sessionID
 }
 
-// GenerateSessionHash 从预解析请求计算粘性会话 hash
+// GenerateSessionHash 从预解析请求计算粘性会话 hash。
 func GenerateSessionHash(parsed *requeststate.ParsedRequest, observe func(string, ...any)) string {
 	if observe == nil {
 		observe = func(string, ...any) {}

@@ -21,7 +21,7 @@ func MatchSignaturePatterns(respBody []byte, patterns []string) bool {
 }
 
 // IsThinkingBlockSignatureError 检测是否是thinking block相关错误
-// 这类错误可以通过过滤thinking blocks并重试来解决
+// 这类错误可以通过过滤thinking blocks并重试来解决。
 func IsThinkingBlockSignatureError(message string) (bool, string) {
 	msg := strings.ToLower(strings.TrimSpace(message))
 	if msg == "" {

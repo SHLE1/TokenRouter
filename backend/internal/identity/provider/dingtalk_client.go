@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
-// DingTalkClientConfig 是 DingTalkClient 需要的最小配置子集
+// DingTalkClientConfig 是 DingTalkClient 需要的最小配置子集。
 type DingTalkClientConfig struct {
 	ClientID     string
 	ClientSecret string
@@ -39,7 +39,7 @@ type DingTalkAPIError = identity.DingTalkAPIError
 
 type DingTalkStaffInfo = identity.DingTalkProfileSnapshot
 
-// DingTalkDeptInfo 部门信息（topapi/v2/department/get 返回子集）
+// DingTalkDeptInfo 部门信息（topapi/v2/department/get 返回子集）。
 type DingTalkDeptInfo struct {
 	DeptID   int64
 	Name     string
@@ -243,7 +243,7 @@ func (c *DingTalkClient) GetUserIdByUnionId(ctx context.Context, unionID string)
 }
 
 // GetDeptInfo 查询单个部门信息（用于递归拼部门路径）。
-// 调用钉钉旧版 OAPI: POST /topapi/v2/department/get?access_token=XXX
+// 调用钉钉旧版 OAPI: POST /topapi/v2/department/get?access_token=XXX。
 func (c *DingTalkClient) GetDeptInfo(ctx context.Context, deptID int64) (*DingTalkDeptInfo, error) {
 	appToken, err := c.GetAppToken(ctx)
 	if err != nil {

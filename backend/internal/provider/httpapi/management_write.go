@@ -33,7 +33,7 @@ type CreateProviderRequest struct {
 }
 
 // UpdateProviderRequest 保留编辑提供商的 HTTP 输入。
-// 使用指针类型来区分"未提供"和"设置为0"
+// 使用指针类型来区分"未提供"和"设置为0"。
 type UpdateProviderRequest struct {
 	Name               string         `json:"name"`
 	Notes              *string        `json:"notes"`

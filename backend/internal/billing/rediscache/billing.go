@@ -51,7 +51,7 @@ var (
 	// (instead of accumulated) and the window timestamp is updated, matching the DB-side
 	// IncrementRateLimitUsage semantics.
 	//
-	// ARGV: [1]=cost, [2]=ttl_seconds, [3]=now_unix, [4]=window_5h_seconds, [5]=window_1d_seconds, [6]=window_7d_seconds
+	// ARGV: [1]=cost, [2]=ttl_seconds, [3]=now_unix, [4]=window_5h_seconds, [5]=window_1d_seconds, [6]=window_7d_seconds.
 	updateRateLimitUsageScript = redis.NewScript(`
 		local exists = redis.call('EXISTS', KEYS[1])
 		if exists == 0 then
@@ -89,7 +89,7 @@ type Cache struct {
 	rdb *redis.Client
 }
 
-// jitteredTTL 返回带随机抖动的 TTL，防止缓存雪崩
+// jitteredTTL 返回带随机抖动的 TTL，防止缓存雪崩。
 func jitteredTTL() time.Duration {
 	// 只做“减法抖动”，确保实际 TTL 不会超过 billingCacheTTL（避免上界预期被打破）。
 	if billingCacheJitter <= 0 {

@@ -44,7 +44,7 @@ func cliValidateSSLMode(mode string) bool {
 	return validModes[mode]
 }
 
-// RunCLI runs the CLI setup wizard
+// RunCLI runs the CLI setup wizard.
 func RunCLI() error {
 	reader := bufio.NewReader(os.Stdin)
 

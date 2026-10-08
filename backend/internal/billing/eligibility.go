@@ -26,7 +26,7 @@ const (
 	// 1. 预创建 10 个 worker goroutine，避免频繁创建销毁
 	// 2. 使用带缓冲的 Go 通道（1000）作为任务队列，平滑写入峰值
 	// 3. 非阻塞写入，队列满时关键任务同步回退，非关键任务丢弃并告警
-	// 4. 统一超时控制，避免慢操作阻塞工作池
+	// 4. 统一超时控制，避免慢操作阻塞工作池。
 	cacheWriteWorkerCount     = 10              // 工作协程数量
 	cacheWriteBufferSize      = 1000            // 任务队列缓冲大小
 	cacheWriteTimeout         = 2 * time.Second // 单个写入操作超时
@@ -51,7 +51,7 @@ const (
 var (
 	// 错误定义
 	// 注：ErrInsufficientBalance在redeem_service.go中定义
-	// 注：ErrDailyLimitExceeded/ErrWeeklyLimitExceeded/ErrMonthlyLimitExceeded在subscription_service.go中定义
+	// 注：ErrDailyLimitExceeded/ErrWeeklyLimitExceeded/ErrMonthlyLimitExceeded在subscription_service.go中定义。
 	ErrBillingServiceUnavailable = apperror.ServiceUnavailable("BILLING_SERVICE_ERROR", "Billing service temporarily unavailable. Please retry later.")
 
 	ErrAPIKeyNotFound                    = apperror.NotFound("API_KEY_NOT_FOUND", "api key not found")
@@ -67,12 +67,12 @@ var (
 	ErrPreferredSubscriptionGroup        = apperror.Forbidden("PREFERRED_SUBSCRIPTION_GROUP_NOT_ALLOWED", "preferred subscription does not allow this group")
 )
 
-// 缓存写入任务类型
+// 缓存写入任务类型。
 type cacheWriteKind int
 
 type cacheWriteEnqueueResult int
 
-// cacheWriteTask 缓存写入任务
+// cacheWriteTask 缓存写入任务。
 type cacheWriteTask struct {
 	kind     cacheWriteKind
 	userID   int64
@@ -82,7 +82,7 @@ type cacheWriteTask struct {
 }
 
 // Eligibility 计费缓存服务
-// 负责余额与 API Key 限速缓存管理，提供高性能的计费资格检查
+// 负责余额与 API Key 限速缓存管理，提供高性能的计费资格检查。
 type Eligibility struct {
 	background            func(string, func())
 	cache                 BillingCache
@@ -143,7 +143,7 @@ func (s *Eligibility) Start() {
 	})
 }
 
-// Stop 关闭缓存写入工作池
+// Stop 关闭缓存写入工作池。
 func (s *Eligibility) Stop() {
 	s.cacheWriteStopOnce.Do(func() {
 		s.stopped.Store(true)
@@ -288,7 +288,7 @@ func (s *Eligibility) logCacheWriteDrop(task cacheWriteTask, reason string) {
 	)
 }
 
-// GetUserBalance 获取用户余额（优先从缓存读取）
+// GetUserBalance 获取用户余额（优先从缓存读取）。
 func (s *Eligibility) GetUserBalance(ctx context.Context, userID int64) (float64, error) {
 	if s == nil || s.cache == nil {
 		// Redis不可用，直接查询数据库
@@ -329,7 +329,7 @@ func (s *Eligibility) GetUserBalance(ctx context.Context, userID int64) (float64
 	return balance, nil
 }
 
-// getUserBalanceFromDB 从数据库获取用户余额
+// getUserBalanceFromDB 从数据库获取用户余额。
 func (s *Eligibility) getUserBalanceFromDB(ctx context.Context, userID int64) (float64, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -338,7 +338,7 @@ func (s *Eligibility) getUserBalanceFromDB(ctx context.Context, userID int64) (f
 	return user.Balance, nil
 }
 
-// setBalanceCache 设置余额缓存
+// setBalanceCache 设置余额缓存。
 func (s *Eligibility) setBalanceCache(ctx context.Context, userID int64, balance float64) {
 	if s == nil || s.cache == nil {
 		return
@@ -348,7 +348,7 @@ func (s *Eligibility) setBalanceCache(ctx context.Context, userID int64, balance
 	}
 }
 
-// DeductBalanceCache 扣减余额缓存（同步调用）
+// DeductBalanceCache 扣减余额缓存（同步调用）。
 func (s *Eligibility) DeductBalanceCache(ctx context.Context, userID int64, amount float64) error {
 	if s == nil || s.cache == nil {
 		return nil
@@ -356,7 +356,7 @@ func (s *Eligibility) DeductBalanceCache(ctx context.Context, userID int64, amou
 	return s.cache.DeductUserBalance(ctx, userID, amount)
 }
 
-// QueueDeductBalance 异步扣减余额缓存
+// QueueDeductBalance 异步扣减余额缓存。
 func (s *Eligibility) QueueDeductBalance(userID int64, amount float64) {
 	if s == nil || s.cache == nil {
 		return
@@ -381,7 +381,7 @@ func (s *Eligibility) QueueDeductBalance(userID int64, amount float64) {
 	}
 }
 
-// InvalidateUserBalance 失效用户余额缓存
+// InvalidateUserBalance 失效用户余额缓存。
 func (s *Eligibility) InvalidateUserBalance(ctx context.Context, userID int64) error {
 	if s == nil || s.cache == nil {
 		return nil
@@ -652,7 +652,7 @@ func (s *Eligibility) BalanceBelowEligibilityThreshold(balance float64) bool {
 	return minimumReserve > 0 && balance < minimumReserve
 }
 
-// checkBalanceEligibility 检查余额模式资格
+// checkBalanceEligibility 检查余额模式资格。
 func (s *Eligibility) checkBalanceEligibility(ctx context.Context, userID int64) error {
 	balance, err := s.GetUserBalance(ctx, userID)
 	if err != nil {

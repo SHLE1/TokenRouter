@@ -38,7 +38,7 @@ func CanRefreshClaude(provider *Record) bool {
 }
 
 // NeedsRefreshClaude 检查token是否需要刷新
-// 基于 expires_at 字段判断是否在刷新窗口内
+// 基于 expires_at 字段判断是否在刷新窗口内。
 func NeedsRefreshClaude(provider *Record, refreshWindow time.Duration) bool {
 	expiresAt := provider.GetCredentialAsTime("expires_at")
 	if expiresAt == nil {
@@ -62,7 +62,7 @@ func RefreshClaudeCredentials(ctx context.Context, provider *Record, exchange fu
 }
 
 // BuildClaudeProviderCredentials 为 Claude 平台构建 OAuth credentials map
-// 消除 Claude 平台没有 BuildProviderCredentials 方法的问题
+// 消除 Claude 平台没有 BuildProviderCredentials 方法的问题。
 func BuildClaudeProviderCredentials(tokenInfo *ClaudeTokenInfo) map[string]any {
 	creds := map[string]any{
 		"access_token": tokenInfo.AccessToken,

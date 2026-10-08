@@ -66,7 +66,7 @@ func (m *groupAwareMockProviderRepo) ListSchedulableUngroupedByPlatform(ctx cont
 	return result, nil
 }
 
-// ListSchedulableUngroupedByPlatforms 仅返回未分组提供商（多平台版本）
+// ListSchedulableUngroupedByPlatforms 仅返回未分组提供商（多平台版本）。
 func (m *groupAwareMockProviderRepo) ListSchedulableUngroupedByPlatforms(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionProvider, error) {
 	platformSet := make(map[string]bool, len(platforms))
 	for _, p := range platforms {
@@ -81,7 +81,7 @@ func (m *groupAwareMockProviderRepo) ListSchedulableUngroupedByPlatforms(ctx con
 	return result, nil
 }
 
-// ListSchedulableByGroupIDAndPlatform 返回属于指定分组的提供商
+// ListSchedulableByGroupIDAndPlatform 返回属于指定分组的提供商。
 func (m *groupAwareMockProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx context.Context, groupID int64, platform string) ([]gatewayprovider.ExecutionProvider, error) {
 	var result []gatewayprovider.ExecutionProvider
 	for _, acc := range m.allProviders {
@@ -92,7 +92,7 @@ func (m *groupAwareMockProviderRepo) ListSchedulableByGroupIDAndPlatform(ctx con
 	return result, nil
 }
 
-// ListSchedulableByGroupIDAndPlatforms 返回属于指定分组的提供商（多平台版本）
+// ListSchedulableByGroupIDAndPlatforms 返回属于指定分组的提供商（多平台版本）。
 func (m *groupAwareMockProviderRepo) ListSchedulableByGroupIDAndPlatforms(ctx context.Context, groupID int64, platforms []string) ([]gatewayprovider.ExecutionProvider, error) {
 	platformSet := make(map[string]bool, len(platforms))
 	for _, p := range platforms {
@@ -107,7 +107,7 @@ func (m *groupAwareMockProviderRepo) ListSchedulableByGroupIDAndPlatforms(ctx co
 	return result, nil
 }
 
-// providerBelongsToGroup 检查提供商是否属于指定分组
+// providerBelongsToGroup 检查提供商是否属于指定分组。
 func providerBelongsToGroup(acc gatewayprovider.ExecutionProvider, groupID int64) bool {
 	for _, ag := range acc.Record.ProviderGroups {
 		if ag.GroupID == groupID {
@@ -117,7 +117,7 @@ func providerBelongsToGroup(acc gatewayprovider.ExecutionProvider, groupID int64
 	return false
 }
 
-// newGroupAwareMockRepo 创建分组感知的 mock repo
+// newGroupAwareMockRepo 创建分组感知的 mock repo。
 func newGroupAwareMockRepo(providers []gatewayprovider.ExecutionProvider) *groupAwareMockProviderRepo {
 	byID := make(map[int64]*gatewayprovider.ExecutionProvider, len(providers))
 	for i := range providers {
@@ -308,7 +308,7 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
-// TestGatewayService_SelectProviderForModelWithPlatform_Anthropic 测试 anthropic 单平台选择
+// TestGatewayService_SelectProviderForModelWithPlatform_Anthropic 测试 anthropic 单平台选择。
 func TestGatewayService_SelectProviderForModelWithPlatform_Anthropic(t *testing.T) {
 	ctx := context.Background()
 
@@ -335,7 +335,7 @@ func TestGatewayService_SelectProviderForModelWithPlatform_Anthropic(t *testing.
 	require.Equal(t, capability.PlatformAnthropic, acc.Record.Platform, "应只返回 anthropic 平台提供商")
 }
 
-// TestGatewayService_SelectProviderForModelWithPlatform_Antigravity 测试 antigravity 单平台选择
+// TestGatewayService_SelectProviderForModelWithPlatform_Antigravity 测试 antigravity 单平台选择。
 func TestGatewayService_SelectProviderForModelWithPlatform_Antigravity(t *testing.T) {
 	ctx := context.Background()
 
@@ -361,7 +361,7 @@ func TestGatewayService_SelectProviderForModelWithPlatform_Antigravity(t *testin
 	require.Equal(t, capability.PlatformAntigravity, acc.Record.Platform, "应只返回 antigravity 平台提供商")
 }
 
-// TestGatewayService_SelectProviderForModelWithPlatform_PriorityAndLastUsed 测试优先级和最后使用时间
+// TestGatewayService_SelectProviderForModelWithPlatform_PriorityAndLastUsed 测试优先级和最后使用时间。
 func TestGatewayService_SelectProviderForModelWithPlatform_PriorityAndLastUsed(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
@@ -411,7 +411,7 @@ func TestGatewayService_SelectProviderForModelWithPlatform_GeminiOAuthPreference
 	require.Equal(t, int64(2), acc.Record.ID, "同优先级且未使用时应优先选择OAuth提供商")
 }
 
-// TestGatewayService_SelectProviderForModelWithPlatform_NoAvailableProviders 测试无可用提供商
+// TestGatewayService_SelectProviderForModelWithPlatform_NoAvailableProviders 测试无可用提供商。
 func TestGatewayService_SelectProviderForModelWithPlatform_NoAvailableProviders(t *testing.T) {
 	ctx := context.Background()
 
@@ -430,7 +430,7 @@ func TestGatewayService_SelectProviderForModelWithPlatform_NoAvailableProviders(
 	require.ErrorIs(t, err, schedulercore.ErrNoAvailableProviders)
 }
 
-// TestGatewayService_SelectProviderForModelWithPlatform_AllExcluded 测试所有提供商被排除
+// TestGatewayService_SelectProviderForModelWithPlatform_AllExcluded 测试所有提供商被排除。
 func TestGatewayService_SelectProviderForModelWithPlatform_AllExcluded(t *testing.T) {
 	ctx := context.Background()
 
@@ -455,7 +455,7 @@ func TestGatewayService_SelectProviderForModelWithPlatform_AllExcluded(t *testin
 	require.Nil(t, acc)
 }
 
-// TestGatewayService_SelectProviderForModelWithPlatform_Schedulability 测试提供商可调度性检查
+// TestGatewayService_SelectProviderForModelWithPlatform_Schedulability 测试提供商可调度性检查。
 func TestGatewayService_SelectProviderForModelWithPlatform_Schedulability(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
@@ -529,7 +529,7 @@ func TestGatewayService_SelectProviderForModelWithPlatform_Schedulability(t *tes
 	}
 }
 
-// TestGatewayService_SelectProviderForModelWithPlatform_StickySession 测试粘性会话
+// TestGatewayService_SelectProviderForModelWithPlatform_StickySession 测试粘性会话。
 func TestGatewayService_SelectProviderForModelWithPlatform_StickySession(t *testing.T) {
 	ctx := context.Background()
 

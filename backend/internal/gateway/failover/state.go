@@ -8,17 +8,17 @@ import (
 )
 
 const (
-	// FailoverContinue 继续循环（同提供商重试或切换提供商，调用方统一 continue）
+	// FailoverContinue 继续循环（同提供商重试或切换提供商，调用方统一 continue）。
 	FailoverContinue FailoverAction = iota
-	// FailoverExhausted 切换次数耗尽（调用方应返回错误响应）
+	// FailoverExhausted 切换次数耗尽（调用方应返回错误响应）。
 	FailoverExhausted
-	// FailoverCanceled context 已取消（调用方应直接 return）
+	// FailoverCanceled context 已取消（调用方应直接 return）。
 	FailoverCanceled
 
 	// MaxSameProviderRetries 是 RetryableOnSameProvider 错误的默认重试上限。
 	// 生产调用方可传入 provider.GetPoolModeRetryCount()，测试和缺省调用使用该值。
 	MaxSameProviderRetries = 3
-	// SameProviderRetryDelay 同提供商重试间隔
+	// SameProviderRetryDelay 同提供商重试间隔。
 	SameProviderRetryDelay = 500 * time.Millisecond
 	// MaxRequestScopedRetryDelay 限制请求级瞬时错误的指数退避时长，高重试次数下也按此上限等待。
 	MaxRequestScopedRetryDelay = 8 * time.Second
@@ -51,10 +51,10 @@ type TempUnscheduler[E Failure] interface {
 	TempUnscheduleRetryableError(ctx context.Context, providerID int64, failoverErr E)
 }
 
-// FailoverAction 表示 failover 错误处理后的下一步动作
+// FailoverAction 表示 failover 错误处理后的下一步动作。
 type FailoverAction int
 
-// FailoverState 跨循环迭代共享的 failover 状态
+// FailoverState 跨循环迭代共享的 failover 状态。
 type FailoverState[E Failure] struct {
 	observe                Observe
 	SwitchCount            int
@@ -115,7 +115,7 @@ func SameProviderRetryDeadlineAllows(failoverErr *FailureInfo) bool {
 	return failoverErr == nil || failoverErr.SameProviderRetryDeadline.IsZero() || time.Now().Before(failoverErr.SameProviderRetryDeadline)
 }
 
-// NewFailoverState 创建 failover 状态
+// NewFailoverState 创建 failover 状态。
 func NewFailoverState[E Failure](maxSwitches int, HasBoundSession bool, observers ...Observe) *FailoverState[E] {
 	var observe Observe
 	if len(observers) > 0 {

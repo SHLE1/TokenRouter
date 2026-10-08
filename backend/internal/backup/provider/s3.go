@@ -34,7 +34,7 @@ const (
 	backupStreamConcurrency   = 1
 )
 
-// S3BackupStore implements backup.BackupObjectStore using AWS S3 compatible storage
+// S3BackupStore implements backup.BackupObjectStore using AWS S3 compatible storage.
 type S3BackupStore struct {
 	client            *s3.Client
 	bucket            string
@@ -53,7 +53,7 @@ type s3UploadProgressListener struct {
 	onProgress func(uploadedBytes int64)
 }
 
-// NewS3BackupStoreFactory returns a BackupObjectStoreFactory that creates S3-backed stores
+// NewS3BackupStoreFactory returns a BackupObjectStoreFactory that creates S3-backed stores.
 func NewS3BackupStoreFactory() backup.BackupObjectStoreFactory {
 	return func(ctx context.Context, cfg *backup.BackupS3Config) (backup.BackupObjectStore, error) {
 		region := cfg.Region

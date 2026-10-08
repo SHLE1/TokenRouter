@@ -1490,7 +1490,7 @@ func TestValidateQuotaResetConfig_BoundaryValues(t *testing.T) {
 	assert.NoError(t, ValidateQuotaResetConfig(extra2, time.LoadLocation))
 }
 
-// TestProviderIsSchedulable_TempUnschedulable 测试临时限流提供商不可调度
+// TestProviderIsSchedulable_TempUnschedulable 测试临时限流提供商不可调度。
 func TestProviderIsSchedulable_TempUnschedulable(t *testing.T) {
 	future := time.Now().Add(10 * time.Minute)
 	past := time.Now().Add(-10 * time.Minute)
@@ -1547,7 +1547,7 @@ func TestProviderIsSchedulable_TempUnschedulable(t *testing.T) {
 	}
 }
 
-// TestProvider_IsTempUnschedulableEnabled 测试临时限流开关
+// TestProvider_IsTempUnschedulableEnabled 测试临时限流开关。
 func TestProvider_IsTempUnschedulableEnabled(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1588,7 +1588,7 @@ func TestProvider_IsTempUnschedulableEnabled(t *testing.T) {
 	}
 }
 
-// TestProvider_GetTempUnschedulableRules 测试获取临时限流规则
+// TestProvider_GetTempUnschedulableRules 测试获取临时限流规则。
 func TestProvider_GetTempUnschedulableRules(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -1640,7 +1640,7 @@ func TestProvider_GetTempUnschedulableRules(t *testing.T) {
 	}
 }
 
-// TestTempUnschedulableRule_Parse 测试规则解析
+// TestTempUnschedulableRule_Parse 测试规则解析。
 func TestTempUnschedulableRule_Parse(t *testing.T) {
 	provider := &Record{LoadLocation: time.LoadLocation, Credentials: map[string]any{
 		"temp_unschedulable_rules": []any{
@@ -1661,7 +1661,7 @@ func TestTempUnschedulableRule_Parse(t *testing.T) {
 	require.Equal(t, 5, rule.DurationMinutes)
 }
 
-// TestProvider_TempUnschedulableUntil 测试临时限流时间字段
+// TestProvider_TempUnschedulableUntil 测试临时限流时间字段。
 func TestProvider_TempUnschedulableUntil(t *testing.T) {
 	future := time.Now().Add(10 * time.Minute)
 	past := time.Now().Add(-10 * time.Minute)

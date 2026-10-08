@@ -12,7 +12,7 @@ import (
 // TestFilterCodexInput_StripsFunctionCallItemID_WhenPreservingReferences 验证续链模式下
 // 也会剥离 function_call 中非 fc 前缀（例如 item_*）的 id。OpenAI 上游要求
 // function_call id 以 "fc" 开头，否则会返回 400：
-// "Expected an ID that begins with 'fc'."（#3785）
+// "Expected an ID that begins with 'fc'."（#3785）.
 func TestFilterCodexInput_StripsFunctionCallItemID_WhenPreservingReferences(t *testing.T) {
 	input := []any{
 		map[string]any{

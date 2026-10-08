@@ -875,7 +875,7 @@ func KeyApiKeyListOrder(params pagination.PaginationParams) []func(*entsql.Selec
 	return orders
 }
 
-// SearchAPIKeys searches API keys by user ID and/or keyword (name)
+// SearchAPIKeys searches API keys by user ID and/or keyword (name).
 func (r *KeyStore) SearchAPIKeys(ctx context.Context, userID int64, keyword string, limit int) ([]keycore.APIKey, error) {
 	q := r.KeyActiveQuery()
 	if userID > 0 {
@@ -901,7 +901,7 @@ func (r *KeyStore) SearchAPIKeys(ctx context.Context, userID int64, keyword stri
 	return outKeys, nil
 }
 
-// ClearGroupIDByGroupID 将指定分组的所有 API Key 的 group_id 设为 nil
+// ClearGroupIDByGroupID 将指定分组的所有 API Key 的 group_id 设为 nil。
 func (r *KeyStore) ClearGroupIDByGroupID(ctx context.Context, groupID int64) (int64, error) {
 	client := clientFromContext(ctx, r.client)
 	n, err := client.APIKey.Update().
@@ -917,7 +917,7 @@ func (r *KeyStore) ClearGroupIDByGroupID(ctx context.Context, groupID int64) (in
 	return int64(n + deleted), err
 }
 
-// UpdateGroupIDByUserAndGroup 将用户下绑定 oldGroupID 的所有 Key 迁移到 newGroupID
+// UpdateGroupIDByUserAndGroup 将用户下绑定 oldGroupID 的所有 Key 迁移到 newGroupID。
 func (r *KeyStore) UpdateGroupIDByUserAndGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (int64, error) {
 	client := clientFromContext(ctx, r.client)
 	n, err := client.APIKey.Update().
@@ -954,7 +954,7 @@ func (r *KeyStore) UpdateGroupIDByUserAndGroup(ctx context.Context, userID, oldG
 	return int64(n + len(bindings)), nil
 }
 
-// CountByGroupID 获取分组的 API Key 数量
+// CountByGroupID 获取分组的 API Key 数量。
 func (r *KeyStore) CountByGroupID(ctx context.Context, groupID int64) (int64, error) {
 	count, err := r.KeyActiveQuery().Where(apikey.Or(
 		apikey.GroupIDEQ(groupID),

@@ -24,7 +24,7 @@ const (
 //
 // 说明：
 // - nil 表示未设置该过滤条件
-// - 过滤条件均为精确匹配
+// - 过滤条件均为精确匹配。
 type UsageCleanupFilters struct {
 	StartTime   time.Time `json:"start_time"`
 	EndTime     time.Time `json:"end_time"`
@@ -40,7 +40,7 @@ type UsageCleanupFilters struct {
 }
 
 // UsageCleanupTask 表示使用记录清理任务
-// 状态包含 pending/running/succeeded/failed/canceled
+// 状态包含 pending/running/succeeded/failed/canceled。
 type UsageCleanupTask struct {
 	ID          int64
 	Status      string
@@ -56,7 +56,7 @@ type UsageCleanupTask struct {
 	UpdatedAt   time.Time
 }
 
-// UsageCleanupRepository 定义清理任务持久层接口
+// UsageCleanupRepository 定义清理任务持久层接口。
 type UsageCleanupRepository interface {
 	CreateTask(ctx context.Context, task *UsageCleanupTask) error
 	ListTasks(ctx context.Context, params pagination.PaginationParams) ([]UsageCleanupTask, *pagination.PaginationResult, error)

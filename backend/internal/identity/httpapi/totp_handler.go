@@ -8,25 +8,25 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// TotpHandler handles TOTP-related requests
+// TotpHandler handles TOTP-related requests.
 type TotpHandler struct {
 	totpService *identity.TotpService
 }
 
-// TotpStatusResponse represents the TOTP status response
+// TotpStatusResponse represents the TOTP status response.
 type TotpStatusResponse struct {
 	Enabled        bool   `json:"enabled"`
 	EnabledAt      *int64 `json:"enabled_at,omitempty"` // Unix timestamp
 	FeatureEnabled bool   `json:"feature_enabled"`
 }
 
-// TotpSetupRequest represents the request to initiate TOTP setup
+// TotpSetupRequest represents the request to initiate TOTP setup.
 type TotpSetupRequest struct {
 	EmailCode string `json:"email_code"`
 	Password  string `json:"password"`
 }
 
-// TotpSetupResponse represents the TOTP setup response
+// TotpSetupResponse represents the TOTP setup response.
 type TotpSetupResponse struct {
 	Secret     string `json:"secret"`
 	QRCodeURL  string `json:"qr_code_url"`
@@ -34,13 +34,13 @@ type TotpSetupResponse struct {
 	Countdown  int    `json:"countdown"`
 }
 
-// TotpEnableRequest represents the request to enable TOTP
+// TotpEnableRequest represents the request to enable TOTP.
 type TotpEnableRequest struct {
 	TotpCode   string `json:"totp_code" binding:"required,len=6"`
 	SetupToken string `json:"setup_token" binding:"required"`
 }
 
-// TotpDisableRequest represents the request to disable TOTP
+// TotpDisableRequest represents the request to disable TOTP.
 type TotpDisableRequest struct {
 	EmailCode string `json:"email_code"`
 	Password  string `json:"password"`
@@ -57,7 +57,7 @@ type TotpStepUpResponse struct {
 	ExpiresIn int64 `json:"expires_in"` // 授权剩余有效期（秒）
 }
 
-// NewTotpHandler creates a new TotpHandler
+// NewTotpHandler creates a new TotpHandler.
 func NewTotpHandler(totpService *identity.TotpService) *TotpHandler {
 	return &TotpHandler{
 		totpService: totpService,

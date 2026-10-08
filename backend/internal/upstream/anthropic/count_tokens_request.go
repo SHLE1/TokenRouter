@@ -67,7 +67,7 @@ func BuildCountTokensRequestPassthrough(ctx context.Context, body []byte, token 
 	return req, nil
 }
 
-// BuildCountTokensRequest 构建 count_tokens 上游请求
+// BuildCountTokensRequest 构建 count_tokens 上游请求。
 func BuildCountTokensRequest(ctx context.Context, body []byte, token, tokenType, modelID string, mimicClaudeCode bool, options RequestOptions) (*http.Request, []byte, error) {
 	body = StripDeferredToolCacheControl(body)
 	targetURL, err := options.URL()

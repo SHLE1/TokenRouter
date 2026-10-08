@@ -21,7 +21,7 @@ const (
 // BillingMode 使用统一价卡的计费模式。
 type BillingMode = pricing.BillingMode
 
-// PricingConfig 价格配置实体
+// PricingConfig 价格配置实体。
 type PricingConfig struct {
 	pricing.BillingSettings
 	ID                 int64
@@ -57,7 +57,7 @@ type TimePricingPeriod = pricing.TimePricingPeriod
 // PricingInterval 定义上下文或媒体规格的价格区间。
 type PricingInterval = pricing.PricingInterval
 
-// PricingUsageFields 价格配置相关的使用记录字段（嵌入到各平台的 RecordUsageInput 中）
+// PricingUsageFields 价格配置相关的使用记录字段（嵌入到各平台的 RecordUsageInput 中）。
 type PricingUsageFields struct {
 	PricingConfigID    int64  // 价格配置 ID（0 = 无价格配置）
 	OriginalModel      string // Key 重定向后的请求模型（分组映射前）
@@ -66,7 +66,7 @@ type PricingUsageFields struct {
 	ModelMappingChain  string // 映射链描述，如 "a→b→c"
 }
 
-// IsActive 判断价格配置是否启用
+// IsActive 判断价格配置是否启用。
 func (c *PricingConfig) IsActive() bool {
 	return c.Status == StatusActive
 }
@@ -88,7 +88,7 @@ func (c *PricingConfig) GetModelPricing(model string) *ModelPricingEntry {
 	return nil
 }
 
-// Clone 返回 PricingConfig 的深拷贝
+// Clone 返回 PricingConfig 的深拷贝。
 func (c *PricingConfig) Clone() *PricingConfig {
 	if c == nil {
 		return nil

@@ -615,12 +615,12 @@ func parseGatewayRequestOld(body []byte, protocol string) (*ParsedRequest, error
 	return ParseGatewayRequest(parsed.Body, protocol)
 }
 
-// buildSmallJSON 构建 ~500B 的小型测试 JSON
+// buildSmallJSON 构建 ~500B 的小型测试 JSON。
 func buildSmallJSON() []byte {
 	return []byte(`{"model":"claude-sonnet-4-5","stream":true,"max_tokens":4096,"metadata":{"user_id":"user-abc123"},"thinking":{"type":"enabled","budget_tokens":2048},"system":"You are a helpful assistant.","messages":[{"role":"user","content":"What is the meaning of life?"},{"role":"assistant","content":"The meaning of life is a philosophical question."},{"role":"user","content":"Can you elaborate?"}]}`)
 }
 
-// buildLargeJSON 构建 ~50KB 的大型测试 JSON（大量 messages）
+// buildLargeJSON 构建 ~50KB 的大型测试 JSON（大量 messages）。
 func buildLargeJSON() []byte {
 	b := []byte(`{"model":"claude-sonnet-4-5","stream":true,"max_tokens":8192,"metadata":{"user_id":"user-xyz789"},"system":[{"type":"text","text":"You are a detailed assistant.","cache_control":{"type":"ephemeral"}}],"messages":[`)
 

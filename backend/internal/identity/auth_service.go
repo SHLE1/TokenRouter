@@ -59,7 +59,7 @@ type AuthSignupGrantPlan struct {
 	Subscriptions []DefaultSubscriptionSetting
 }
 
-// SendVerifyCodeResult 发送验证码返回结果
+// SendVerifyCodeResult 发送验证码返回结果。
 type SendVerifyCodeResult struct {
 	Countdown int `json:"countdown"` // 倒计时秒数
 }
@@ -180,7 +180,7 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	return token, user, nil
 }
 
-// SendVerifyCode 发送邮箱验证码（同步方式）
+// SendVerifyCode 发送邮箱验证码（同步方式）。
 func (s *AuthService) SendVerifyCode(ctx context.Context, email string, locale ...string) error {
 	// 检查是否开放注册（默认关闭）
 	if s.Settings == nil || !s.Settings.IsRegistrationEnabled(ctx) {
@@ -217,7 +217,7 @@ func (s *AuthService) SendVerifyCode(ctx context.Context, email string, locale .
 	return s.Email.SendVerifyCode(ctx, email, siteName, FirstEmailLocale(locale))
 }
 
-// SendVerifyCodeAsync 异步发送邮箱验证码并返回倒计时
+// SendVerifyCodeAsync 异步发送邮箱验证码并返回倒计时。
 func (s *AuthService) SendVerifyCodeAsync(ctx context.Context, email string, locale ...string) (*SendVerifyCodeResult, error) {
 	s.Observer.Printf("service.auth", "[Auth] SendVerifyCodeAsync called for email: %s", email)
 
@@ -324,7 +324,7 @@ func (s *AuthService) VerifyCaptcha(ctx context.Context, proof CaptchaProof, rem
 	return nil
 }
 
-// AuthCaptchaProvidersConflict 同一时间仅允许启用一家人机验证服务商
+// AuthCaptchaProvidersConflict 同一时间仅允许启用一家人机验证服务商。
 func AuthCaptchaProvidersConflict(enabled ...bool) bool {
 	count := 0
 	for _, e := range enabled {
@@ -373,7 +373,7 @@ func (s *AuthService) VerifyActionCaptchaIfEnabled(ctx context.Context, proof Ca
 	)
 }
 
-// IsTurnstileEnabled 检查是否启用Turnstile验证
+// IsTurnstileEnabled 检查是否启用Turnstile验证。
 func (s *AuthService) IsTurnstileEnabled(ctx context.Context) bool {
 	if s.Turnstile == nil {
 		return false
@@ -381,7 +381,7 @@ func (s *AuthService) IsTurnstileEnabled(ctx context.Context) bool {
 	return s.Turnstile.IsEnabled(ctx)
 }
 
-// IsRegistrationEnabled 检查是否开放注册
+// IsRegistrationEnabled 检查是否开放注册。
 func (s *AuthService) IsRegistrationEnabled(ctx context.Context) bool {
 	if s.Settings == nil {
 		return false // 安全默认：settingService 未配置时关闭注册
@@ -389,7 +389,7 @@ func (s *AuthService) IsRegistrationEnabled(ctx context.Context) bool {
 	return s.Settings.IsRegistrationEnabled(ctx)
 }
 
-// IsEmailVerifyEnabled 检查是否开启邮件验证
+// IsEmailVerifyEnabled 检查是否开启邮件验证。
 func (s *AuthService) IsEmailVerifyEnabled(ctx context.Context) bool {
 	if s.Settings == nil {
 		return false
@@ -397,7 +397,7 @@ func (s *AuthService) IsEmailVerifyEnabled(ctx context.Context) bool {
 	return s.Settings.IsEmailVerifyEnabled(ctx)
 }
 
-// Login 用户登录，返回JWT token
+// Login 用户登录，返回JWT token。
 func (s *AuthService) Login(ctx context.Context, email, password string) (string, *User, error) {
 	// 查找用户
 	user, err := s.Users.GetByEmail(ctx, email)
@@ -860,7 +860,7 @@ func AuthBuildEmailSuffixNotAllowedError(whitelist []string) error {
 }
 
 // IsPasswordResetEnabled 检查是否启用密码重置功能
-// 要求：必须同时开启邮件验证且 SMTP 配置正确
+// 要求：必须同时开启邮件验证且 SMTP 配置正确。
 func (s *AuthService) IsPasswordResetEnabled(ctx context.Context) bool {
 	if s.Settings == nil {
 		return false
@@ -874,7 +874,7 @@ func (s *AuthService) IsPasswordResetEnabled(ctx context.Context) bool {
 
 // AuthPreparePasswordReset validates the password reset request and returns necessary data
 // Returns (siteName, resetURL, shouldProceed)
-// shouldProceed is false when we should silently return success (to prevent enumeration)
+// shouldProceed is false when we should silently return success (to prevent enumeration).
 func (s *AuthService) AuthPreparePasswordReset(ctx context.Context, email, frontendBaseURL string) (string, string, bool) {
 	// Check if user exists (but don't reveal this to the caller)
 	user, err := s.Users.GetByEmail(ctx, email)
@@ -907,7 +907,7 @@ func (s *AuthService) AuthPreparePasswordReset(ctx context.Context, email, front
 }
 
 // RequestPasswordResetAsync 异步请求密码重置（队列发送）
-// Security: Returns the same response regardless of whether the email exists (prevent user enumeration)
+// Security: Returns the same response regardless of whether the email exists (prevent user enumeration).
 func (s *AuthService) RequestPasswordResetAsync(ctx context.Context, email, frontendBaseURL string, locale ...string) error {
 	if !s.IsPasswordResetEnabled(ctx) {
 		return infraerrors.Forbidden("PASSWORD_RESET_DISABLED", "password reset is not enabled")
@@ -931,7 +931,7 @@ func (s *AuthService) RequestPasswordResetAsync(ctx context.Context, email, fron
 }
 
 // ResetPassword 重置密码
-// Security: Increments TokenVersion to invalidate all existing JWT tokens
+// Security: Increments TokenVersion to invalidate all existing JWT tokens.
 func (s *AuthService) ResetPassword(ctx context.Context, email, token, newPassword string) error {
 	// Check if password reset is enabled
 	if !s.IsPasswordResetEnabled(ctx) {

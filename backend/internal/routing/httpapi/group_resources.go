@@ -14,12 +14,12 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// BatchSetGroupRateMultipliersRequest represents batch set rate multipliers request
+// BatchSetGroupRateMultipliersRequest represents batch set rate multipliers request.
 type BatchSetGroupRateMultipliersRequest struct {
 	Entries []billing.GroupRateMultiplierInput `json:"entries" binding:"required"`
 }
 
-// BatchSetGroupRPMOverridesRequest represents batch set rpm_override request
+// BatchSetGroupRPMOverridesRequest represents batch set rpm_override request.
 type BatchSetGroupRPMOverridesRequest struct {
 	Entries []billing.GroupRPMOverrideInput `json:"entries" binding:"required"`
 }

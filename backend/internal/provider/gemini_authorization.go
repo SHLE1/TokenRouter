@@ -197,7 +197,7 @@ func (s *GeminiAuthorization) GenerateAuthURL(ctx context.Context, proxyID *int6
 	}, nil
 }
 
-// ValidateTierID validates tier_id format and length
+// ValidateTierID validates tier_id format and length.
 func ValidateTierID(tierID string) error {
 	if tierID == "" {
 		return nil // Empty is allowed
@@ -213,7 +213,7 @@ func ValidateTierID(tierID string) error {
 }
 
 // ExtractTierIDFromAllowedTiers extracts tierID from LoadCodeAssist response
-// Prioritizes IsDefault tier, falls back to first non-empty tier
+// Prioritizes IsDefault tier, falls back to first non-empty tier.
 func ExtractTierIDFromAllowedTiers(allowedTiers []geminiwire.AllowedTier) string {
 	tierID := "LEGACY"
 	// First pass: look for default tier

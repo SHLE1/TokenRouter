@@ -26,7 +26,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// 编译期接口断言
+// 编译期接口断言。
 var _ gatewayprovider.ExecutionProviderStore = (*stubAntigravityProviderRepo)(nil)
 
 type rateLimitCall struct {
@@ -54,7 +54,7 @@ type stubAntigravityProviderRepo struct {
 }
 
 // stubSmartRetryCache 用于 handleSmartRetry 测试的 GatewayCache mock
-// 仅关注 DeleteSessionProviderID 的调用记录
+// 仅关注 DeleteSessionProviderID 的调用记录。
 type stubSmartRetryCache struct {
 	session.GatewayCache // 嵌入接口，未实现的方法 panic（确保只调用预期方法）
 	deleteCalls          []deleteSessionCall
@@ -312,7 +312,7 @@ func TestAntigravityGatewayService_ForwardGemini_MissingProjectReturnsLocalError
 }
 
 // TestAntigravityGatewayService_ForwardGemini_ModelRateLimitTriggersFailover
-// 验证：ForwardGemini 方法同样能正确将 AntigravityProviderSwitchError 转换为 UpstreamFailoverError
+// 验证：ForwardGemini 方法同样能正确将 AntigravityProviderSwitchError 转换为 UpstreamFailoverError。
 func TestAntigravityGatewayService_ForwardGemini_ModelRateLimitTriggersFailover(t *testing.T) {
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
@@ -532,7 +532,7 @@ func TestAntigravityGatewayService_ForwardGemini_ClearsStickySessionOnGeminiRate
 }
 
 // TestAntigravityGatewayService_ForwardGemini_BillsWithMappedModel
-// 验证：Antigravity Gemini 转发返回的计费模型使用映射后的模型
+// 验证：Antigravity Gemini 转发返回的计费模型使用映射后的模型。
 func TestAntigravityGatewayService_ForwardGemini_BillsWithMappedModel(t *testing.T) {
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)

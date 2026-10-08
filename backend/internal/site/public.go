@@ -253,7 +253,7 @@ func (s *PublicService) GetPublicSettings(ctx context.Context) (*PublicSettings,
 	}, nil
 }
 
-// getStringOrDefault 获取字符串值或默认值
+// getStringOrDefault 获取字符串值或默认值。
 func (s *PublicService) getStringOrDefault(settings map[string]string, key, defaultValue string) string {
 	if value, ok := settings[key]; ok && value != "" {
 		return value

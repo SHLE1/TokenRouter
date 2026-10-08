@@ -83,7 +83,7 @@ var (
 	_                             gatewaysession.GatewayCache           = (*comboCacheAndStore)(nil)
 	_                             gatewaysession.CyberSessionBlockStore = (*comboCacheAndStore)(nil)
 
-	// 编译期接口断言
+	// 编译期接口断言。
 	_ gatewayprovider.ExecutionProviderStore = (*stubOpenAIProviderRepo)(nil)
 	_ gatewaysession.GatewayCache            = (*sessiontestkit.StickyCache)(nil)
 

@@ -132,7 +132,7 @@ func (h *PublicUsageHandler) buildAPIKeyUsageBilling(c *gin.Context, ctx context
 	return billing, nil, &balance, nil
 }
 
-// UsageUnrestricted 处理 unrestricted 模式的响应（向后兼容）
+// UsageUnrestricted 处理 unrestricted 模式的响应（向后兼容）。
 func (h *PublicUsageHandler) UsageUnrestricted(c *gin.Context, ctx context.Context, apiKey *keycore.APIKey, subject authctx.AuthSubject, usageData gin.H, dailyUsage any, modelStats any, balanceUnitName string) {
 	billing, subscription, balance, billingErr := h.buildAPIKeyUsageBilling(c, ctx, apiKey, subject, balanceUnitName)
 	if billingErr != nil {
@@ -208,7 +208,7 @@ func (h *PublicUsageHandler) UsageUnrestricted(c *gin.Context, ctx context.Conte
 	c.JSON(http.StatusOK, resp)
 }
 
-// usageQuotaLimited 处理 quota_limited 模式的响应
+// usageQuotaLimited 处理 quota_limited 模式的响应。
 func (h *PublicUsageHandler) usageQuotaLimited(c *gin.Context, ctx context.Context, apiKey *keycore.APIKey, subject authctx.AuthSubject, usageData gin.H, dailyUsage any, modelStats any, balanceUnitName string) {
 	resp := gin.H{
 		"mode":    "quota_limited",
@@ -330,7 +330,7 @@ func (h *PublicUsageHandler) buildAPIKeyDailyUsage(c *gin.Context, apiKeyID int6
 	return stats
 }
 
-// buildUsageData 构建 today/total 用量摘要
+// buildUsageData 构建 today/total 用量摘要。
 func (h *PublicUsageHandler) buildUsageData(ctx context.Context, apiKeyID int64) gin.H {
 	if h.usageService == nil {
 		return nil

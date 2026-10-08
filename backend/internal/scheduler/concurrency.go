@@ -22,7 +22,7 @@ const (
 	openAIWSIngressLeaseRefreshInterval = 20 * time.Second
 	openAIWSIngressLeaseOperationTO     = 2 * time.Second
 
-	// 默认等待队列额外槽位
+	// 默认等待队列额外槽位。
 	defaultExtraWaitSlots = 20
 
 	defaultProviderLoadBatchCacheTTL = 200 * time.Millisecond
@@ -40,7 +40,7 @@ var (
 )
 
 // ConcurrencyCache 定义并发控制的缓存接口
-// 使用有序集合存储槽位，按时间戳清理过期条目
+// 使用有序集合存储槽位，按时间戳清理过期条目。
 type ConcurrencyCache interface {
 	// 提供商槽位管理
 	// 键格式: concurrency:provider:{providerID}（有序集合，成员为 requestID）

@@ -637,7 +637,7 @@ func NativeIsClaudeWebSearchToolMap(tool map[string]any) bool {
 	return strings.HasPrefix(toolType, "web_search") || toolType == "google_search"
 }
 
-// NativeCleanToolSchema 清理工具的 JSON Schema，移除 Gemini 不支持的字段
+// NativeCleanToolSchema 清理工具的 JSON Schema，移除 Gemini 不支持的字段。
 func NativeCleanToolSchema(schema any) any {
 	if schema == nil {
 		return nil

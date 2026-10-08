@@ -47,7 +47,7 @@ type PricingConfigValidation struct {
 	LoadLocation func(string) (*time.Location, error)
 }
 
-// PricingConfigRepository 价格配置数据访问接口
+// PricingConfigRepository 价格配置数据访问接口。
 type PricingConfigRepository interface {
 	Create(ctx context.Context, pricingConfig *PricingConfig) error
 	GetByID(ctx context.Context, id int64) (*PricingConfig, error)
@@ -78,13 +78,13 @@ type pricingModelKey struct {
 	model   string // lowercase
 }
 
-// wildcardPricingEntry 通配符定价条目
+// wildcardPricingEntry 通配符定价条目。
 type wildcardPricingEntry struct {
 	prefix  string
 	pricing *ModelPricingEntry
 }
 
-// pricingConfigCache 价格配置缓存快照（扁平化哈希结构，热路径 O(1) 查找）
+// pricingConfigCache 价格配置缓存快照（扁平化哈希结构，热路径 O(1) 查找）。
 type pricingConfigCache struct {
 	// 热路径查找
 	pricingByGroupModel map[pricingModelKey]*ModelPricingEntry // (groupID, model) → 定价
@@ -110,7 +110,7 @@ type GroupMappingResult struct {
 	APIKeyRedirected bool
 }
 
-// PricingConfigService 价格配置管理服务
+// PricingConfigService 价格配置管理服务。
 type PricingConfigService struct {
 	options              PricingConfigOptions
 	validation           PricingConfigValidation
@@ -121,20 +121,20 @@ type PricingConfigService struct {
 	cacheSF singleflight.Group
 }
 
-// pricingConfigLookup 热路径公共查找结果
+// pricingConfigLookup 热路径公共查找结果。
 type pricingConfigLookup struct {
 	cache         *pricingConfigCache
 	pricingConfig *PricingConfig
 }
 
-// modelEntry 表示一个模型模式条目（用于冲突检测）
+// modelEntry 表示一个模型模式条目（用于冲突检测）。
 type modelEntry struct {
 	pattern  string // 原始模式（如 "claude-*" 或 "claude-opus-4"）
 	prefix   string // lowercase 前缀（通配符去掉 *，精确名保持原样）
 	wildcard bool
 }
 
-// CreatePricingConfigInput 创建价格配置输入
+// CreatePricingConfigInput 创建价格配置输入。
 type CreatePricingConfigInput struct {
 	BillingSettingsPatch
 	Name         string
@@ -147,7 +147,7 @@ type CreatePricingConfigInput struct {
 	ProviderStatsPricingRules []ProviderStatsPricingRule
 }
 
-// UpdatePricingConfigInput 更新价格配置输入
+// UpdatePricingConfigInput 更新价格配置输入。
 type UpdatePricingConfigInput struct {
 	BillingSettingsPatch
 	Name         string
@@ -198,7 +198,7 @@ func (r GroupMappingResult) ToUsageFields(reqModel, upstreamModel string) Pricin
 	}
 }
 
-// NewPricingConfigService 创建价格配置服务实例
+// NewPricingConfigService 创建价格配置服务实例。
 func NewPricingConfigService(repo PricingConfigRepository, authCacheInvalidator GroupAuthInvalidator, options ...PricingConfigOptions) *PricingConfigService {
 	optionsValue := PricingConfigOptions{Now: time.Now}
 	if len(options) > 0 {
@@ -215,7 +215,7 @@ func NewPricingConfigService(repo PricingConfigRepository, authCacheInvalidator 
 	return s
 }
 
-// loadCache 加载或返回缓存的价格配置数据
+// loadCache 加载或返回缓存的价格配置数据。
 func (s *PricingConfigService) loadCache(ctx context.Context) (*pricingConfigCache, error) {
 	if cached, ok := s.cache.Load().(*pricingConfigCache); ok && cached != nil {
 		if s.options.Now().Sub(cached.loadedAt) < pricingConfigCacheTTL {
@@ -242,7 +242,7 @@ func (s *PricingConfigService) loadCache(ctx context.Context) (*pricingConfigCac
 	return cache, nil
 }
 
-// newEmptyPricingConfigCache 创建空的价格配置缓存（所有 map 已初始化）
+// newEmptyPricingConfigCache 创建空的价格配置缓存（所有 map 已初始化）。
 func newEmptyPricingConfigCache() *pricingConfigCache {
 	return &pricingConfigCache{
 		pricingByGroupModel: make(map[pricingModelKey]*ModelPricingEntry),
@@ -352,7 +352,7 @@ func lookupPricing(cache *pricingConfigCache, groupID int64, model string, effec
 	return nil
 }
 
-// GetPricingConfigForGroup 获取分组关联的价格配置（热路径 O(1)）
+// GetPricingConfigForGroup 获取分组关联的价格配置（热路径 O(1)）。
 func (s *PricingConfigService) GetPricingConfigForGroup(ctx context.Context, groupID int64) (*PricingConfig, error) {
 	cache, err := s.loadCache(ctx)
 	if err != nil {
@@ -660,7 +660,7 @@ func formatMaxTokens(max *int) string {
 	return fmt.Sprintf("%d", *max)
 }
 
-// Create 创建价格配置
+// Create 创建价格配置。
 func (s *PricingConfigService) Create(ctx context.Context, input *CreatePricingConfigInput) (*PricingConfig, error) {
 	exists, err := s.repo.ExistsByName(ctx, input.Name)
 	if err != nil {
@@ -711,12 +711,12 @@ func (s *PricingConfigService) Create(ctx context.Context, input *CreatePricingC
 	return s.repo.GetByID(ctx, pricingConfig.ID)
 }
 
-// GetByID 获取价格配置详情
+// GetByID 获取价格配置详情。
 func (s *PricingConfigService) GetByID(ctx context.Context, id int64) (*PricingConfig, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
-// Update 更新价格配置
+// Update 更新价格配置。
 func (s *PricingConfigService) Update(ctx context.Context, id int64, input *UpdatePricingConfigInput) (*PricingConfig, error) {
 	pricingConfig, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -835,7 +835,7 @@ func (s *PricingConfigService) invalidateAuthCacheForGroups(ctx context.Context,
 	}
 }
 
-// Delete 删除价格配置
+// Delete 删除价格配置。
 func (s *PricingConfigService) Delete(ctx context.Context, id int64) error {
 	groupIDs, err := s.repo.GetGroupIDs(ctx, id)
 	if err != nil {
@@ -852,12 +852,12 @@ func (s *PricingConfigService) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// List 获取价格配置列表
+// List 获取价格配置列表。
 func (s *PricingConfigService) List(ctx context.Context, params pagination.PaginationParams, status, search string) ([]PricingConfig, *pagination.PaginationResult, error) {
 	return s.repo.List(ctx, params, status, search)
 }
 
-// conflictsBetween 检查两个模型模式是否冲突
+// conflictsBetween 检查两个模型模式是否冲突。
 func conflictsBetween(a, b modelEntry) bool {
 	switch {
 	case !a.wildcard && !b.wildcard:
@@ -934,7 +934,7 @@ func validatePricingIntervals(pricingList []ModelPricingEntry) error {
 	return nil
 }
 
-// detectConflicts 在一组 modelEntry 中检测冲突，返回带有 errCode 和 label 的错误
+// detectConflicts 在一组 modelEntry 中检测冲突，返回带有 errCode 和 label 的错误。
 func detectConflicts(entries []modelEntry, errCode, label string) error {
 	for i := range entries {
 		for j := i + 1; j < len(entries); j++ {

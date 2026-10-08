@@ -15,7 +15,7 @@ import (
 
 // ---------- 辅助函数 ----------
 
-// parseResponseBody 从 httptest.ResponseRecorder 中解析 JSON 响应体
+// parseResponseBody 从 httptest.ResponseRecorder 中解析 JSON 响应体。
 func parseResponseBody(t *testing.T, w *httptest.ResponseRecorder) Response {
 	t.Helper()
 	var got Response
@@ -23,7 +23,7 @@ func parseResponseBody(t *testing.T, w *httptest.ResponseRecorder) Response {
 	return got
 }
 
-// parsePaginatedBody 从响应体中解析分页数据（Data 字段是 PaginatedData）
+// parsePaginatedBody 从响应体中解析分页数据（Data 字段是 PaginatedData）。
 func parsePaginatedBody(t *testing.T, w *httptest.ResponseRecorder) (Response, PaginatedData) {
 	t.Helper()
 	// 先用 raw json 解析，因为 Data 是 any 类型
@@ -41,7 +41,7 @@ func parsePaginatedBody(t *testing.T, w *httptest.ResponseRecorder) (Response, P
 	return Response{Code: raw.Code, Message: raw.Message, Reason: raw.Reason}, pd
 }
 
-// newContextWithQuery 创建一个带有 URL query 参数的 gin.Context 用于测试 ParsePagination
+// newContextWithQuery 创建一个带有 URL query 参数的 gin.Context 用于测试 ParsePagination。
 func newContextWithQuery(query string) (*httptest.ResponseRecorder, *gin.Context) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

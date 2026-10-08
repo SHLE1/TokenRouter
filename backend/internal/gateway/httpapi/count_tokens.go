@@ -58,7 +58,7 @@ func countMaxBytesError(err error) (*http.MaxBytesError, bool) {
 
 // CountTokens handles token counting endpoint
 // POST /v1/messages/count_tokens
-// 特点：校验订阅/余额，但不计算并发、不记录使用量
+// 特点：校验订阅/余额，但不计算并发、不记录使用量。
 func (h *CountTokensHandler) CountTokens(c *gin.Context) {
 	done, accepted := h.BeginRequest(c, "anthropic")
 	if !accepted {

@@ -239,7 +239,7 @@ func (r *ProxyStore) List(ctx context.Context, params pagination.PaginationParam
 	return r.ListWithFilters(ctx, params, "", "", "")
 }
 
-// ListWithFilters lists proxies with optional filtering by protocol, status, and search query
+// ListWithFilters lists proxies with optional filtering by protocol, status, and search query.
 func (r *ProxyStore) ListWithFilters(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]egress.Proxy, *pagination.PaginationResult, error) {
 	q := r.client.Proxy.Query()
 	if protocol != "" {
@@ -277,7 +277,7 @@ func (r *ProxyStore) ListWithFilters(ctx context.Context, params pagination.Pagi
 	return outProxies, pagination.ResultFromTotal(int64(total), params), nil
 }
 
-// ListWithFiltersAndProviderCount lists proxies with filters and includes provider count per proxy
+// ListWithFiltersAndProviderCount lists proxies with filters and includes provider count per proxy.
 func (r *ProxyStore) ListWithFiltersAndProviderCount(ctx context.Context, params pagination.PaginationParams, protocol, status, search string) ([]egress.ProxyWithProviderCount, *pagination.PaginationResult, error) {
 	q := r.client.Proxy.Query()
 	if protocol != "" {
@@ -404,7 +404,7 @@ func (r *ProxyStore) ListActive(ctx context.Context) ([]egress.Proxy, error) {
 	return outProxies, nil
 }
 
-// ExistsByHostPortAuth checks if a proxy with the same host, port, username, and password exists
+// ExistsByHostPortAuth checks if a proxy with the same host, port, username, and password exists.
 func (r *ProxyStore) ExistsByHostPortAuth(ctx context.Context, host string, port int, username, password string) (bool, error) {
 	q := r.client.Proxy.Query().
 		Where(proxy.HostEQ(host), proxy.PortEQ(port))
@@ -424,7 +424,7 @@ func (r *ProxyStore) ExistsByHostPortAuth(ctx context.Context, host string, port
 	return count > 0, err
 }
 
-// CountProvidersByProxyID returns the number of providers using a specific proxy
+// CountProvidersByProxyID returns the number of providers using a specific proxy.
 func (r *ProxyStore) CountProvidersByProxyID(ctx context.Context, proxyID int64) (int64, error) {
 	var count int64
 	if err := postgresinfra.ScanSingleRow(ctx, r.sql, "SELECT COUNT(*) FROM providers WHERE proxy_id = $1 AND deleted_at IS NULL", []any{proxyID}, &count); err != nil {
@@ -475,7 +475,7 @@ func (r *ProxyStore) ListProviderSummariesByProxyID(ctx context.Context, proxyID
 	return out, nil
 }
 
-// GetProviderCountsForProxies returns a map of proxy ID to provider count for all proxies
+// GetProviderCountsForProxies returns a map of proxy ID to provider count for all proxies.
 func (r *ProxyStore) GetProviderCountsForProxies(ctx context.Context) (counts map[int64]int64, err error) {
 	rows, err := r.sql.QueryContext(ctx, "SELECT proxy_id, COUNT(*) AS count FROM providers WHERE proxy_id IS NOT NULL AND deleted_at IS NULL GROUP BY proxy_id")
 	if err != nil {
@@ -502,7 +502,7 @@ func (r *ProxyStore) GetProviderCountsForProxies(ctx context.Context) (counts ma
 	return counts, nil
 }
 
-// ListActiveWithProviderCount returns all active proxies with provider count, sorted by creation time descending
+// ListActiveWithProviderCount returns all active proxies with provider count, sorted by creation time descending.
 func (r *ProxyStore) ListActiveWithProviderCount(ctx context.Context) ([]egress.ProxyWithProviderCount, error) {
 	proxies, err := r.client.Proxy.Query().
 		Where(proxy.StatusEQ(egress.StatusActive)).

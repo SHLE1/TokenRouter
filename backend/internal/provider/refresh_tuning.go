@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	// TokenRefreshTempUnschedDuration token 刷新重试耗尽后临时不可调度的持续时间
+	// TokenRefreshTempUnschedDuration token 刷新重试耗尽后临时不可调度的持续时间。
 	TokenRefreshTempUnschedDuration = 10 * time.Minute
 
 	DefaultTokenRefreshCandidatePageSize        = 200

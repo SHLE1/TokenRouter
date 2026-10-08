@@ -31,7 +31,7 @@ var (
 	// JA3 Hash: 44f88fca027f27bab4bb08d4af15f23e
 	// JA4:      t13d1714h1_5b57614c22b0_7baf387fc6ff
 	// defaultCipherSuites contains the 17 cipher suites from Node.js 24.x
-	// Order is critical for JA3 fingerprint matching
+	// Order is critical for JA3 fingerprint matching.
 	defaultCipherSuites = []uint16{
 		// TLS 1.3 cipher suites
 		0x1301, // TLS_AES_128_GCM_SHA256
@@ -63,19 +63,19 @@ var (
 		0x0035, // TLS_RSA_WITH_AES_256_CBC_SHA
 	}
 
-	// defaultCurves contains the 3 supported groups from Node.js 24.x
+	// defaultCurves contains the 3 supported groups from Node.js 24.x.
 	defaultCurves = []utls.CurveID{
 		utls.X25519,    // 0x001d
 		utls.CurveP256, // 0x0017 (secp256r1)
 		utls.CurveP384, // 0x0018 (secp384r1)
 	}
 
-	// defaultPointFormats contains point formats from Node.js 24.x
+	// defaultPointFormats contains point formats from Node.js 24.x.
 	defaultPointFormats = []uint16{
 		0, // uncompressed
 	}
 
-	// defaultSignatureAlgorithms contains the 9 signature algorithms from Node.js 24.x
+	// defaultSignatureAlgorithms contains the 9 signature algorithms from Node.js 24.x.
 	defaultSignatureAlgorithms = []utls.SignatureScheme{
 		0x0403, // ecdsa_secp256r1_sha256
 		0x0804, // rsa_pss_rsae_sha256
@@ -175,7 +175,7 @@ func NewSOCKS5ProxyDialer(profile *Profile, proxyURL *url.URL) *SOCKS5ProxyDiale
 }
 
 // DialTLSContext establishes a TLS connection through SOCKS5 proxy with the configured fingerprint.
-// Flow: SOCKS5 CONNECT to target -> TLS handshake with utls on the tunnel
+// Flow: SOCKS5 CONNECT to target -> TLS handshake with utls on the tunnel.
 func (d *SOCKS5ProxyDialer) DialTLSContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	slog.Debug("tls_fingerprint_socks5_connecting", "proxy", d.proxyURL.Host, "target", addr)
 
@@ -221,7 +221,7 @@ func (d *SOCKS5ProxyDialer) DialTLSContext(ctx context.Context, network, addr st
 }
 
 // DialTLSContext establishes a TLS connection through HTTP proxy with the configured fingerprint.
-// Flow: TCP connect to proxy -> CONNECT tunnel -> TLS handshake with utls
+// Flow: TCP connect to proxy -> CONNECT tunnel -> TLS handshake with utls.
 func (d *HTTPProxyDialer) DialTLSContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	if d == nil || d.proxyURL == nil {
 		return nil, errors.New("HTTP proxy dialer missing proxy URL")

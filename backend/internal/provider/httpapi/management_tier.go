@@ -8,7 +8,7 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// BatchRefreshTierRequest represents batch tier refresh request
+// BatchRefreshTierRequest represents batch tier refresh request.
 type BatchRefreshTierRequest struct {
 	ProviderIDs []int64 `json:"provider_ids"`
 }

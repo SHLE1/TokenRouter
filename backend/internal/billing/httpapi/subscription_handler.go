@@ -12,7 +12,7 @@ import (
 	middleware2 "github.com/TokenFlux/TokenRouter/internal/server/middleware"
 )
 
-// SubscriptionSummaryItem represents a subscription item in summary
+// SubscriptionSummaryItem represents a subscription item in summary.
 type SubscriptionSummaryItem struct {
 	ID              int64   `json:"id"`
 	PlanID          int64   `json:"plan_id"`
@@ -27,7 +27,7 @@ type SubscriptionSummaryItem struct {
 	ExpiresAt       *string `json:"expires_at,omitempty"`
 }
 
-// SubscriptionProgressInfo represents subscription with progress info
+// SubscriptionProgressInfo represents subscription with progress info.
 type SubscriptionProgressInfo struct {
 	Subscription *UserSubscription             `json:"subscription"`
 	Progress     *billing.SubscriptionProgress `json:"progress"`
@@ -40,12 +40,12 @@ type RevokeSubscriptionResponse struct {
 	ReboundAPIKeyCount        int    `json:"rebound_api_key_count"`
 }
 
-// SubscriptionHandler handles user subscription operations
+// SubscriptionHandler handles user subscription operations.
 type SubscriptionHandler struct {
 	subscriptionService *billing.SubscriptionService
 }
 
-// NewSubscriptionHandler creates a new user subscription handler
+// NewSubscriptionHandler creates a new user subscription handler.
 func NewSubscriptionHandler(subscriptionService *billing.SubscriptionService) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		subscriptionService: subscriptionService,

@@ -20,26 +20,26 @@ import (
 )
 
 const (
-	// proxyDialTimeout 代理 TCP 连接超时（含代理握手），代理不通时快速失败
+	// proxyDialTimeout 代理 TCP 连接超时（含代理握手），代理不通时快速失败。
 	proxyDialTimeout = 5 * time.Second
-	// proxyTLSHandshakeTimeout 代理 TLS 握手超时
+	// proxyTLSHandshakeTimeout 代理 TLS 握手超时。
 	proxyTLSHandshakeTimeout = 5 * time.Second
-	// clientTimeout 整体请求超时（含连接、发送、等待响应、读取 body）
+	// clientTimeout 整体请求超时（含连接、发送、等待响应、读取 body）。
 	clientTimeout = 10 * time.Second
 
-	// ── Privacy API ──────────────────────────────────────────────────────
+	// ── Privacy API ──────────────────────────────────────────────────────.
 
-	// privacyBaseURL 隐私设置 API 仅使用 daily 端点（与 Antigravity 客户端行为一致）
+	// privacyBaseURL 隐私设置 API 仅使用 daily 端点（与 Antigravity 客户端行为一致）。
 	privacyBaseURL = antigravityDailyBaseURL
 )
 
-// ForbiddenError 表示上游返回 403 Forbidden
+// ForbiddenError 表示上游返回 403 Forbidden。
 type ForbiddenError struct {
 	StatusCode int
 	Body       string
 }
 
-// Client Antigravity API 客户端
+// Client Antigravity API 客户端。
 type Client struct {
 	httpClient *http.Client
 }
@@ -87,7 +87,7 @@ func (e *ForbiddenError) Error() string {
 	return fmt.Sprintf("fetchAvailableModels failed (HTTP %d): %s", e.StatusCode, e.Body)
 }
 
-// NewAPIRequestWithURL 使用指定的 base URL 创建 Antigravity API 请求（v1internal 端点）
+// NewAPIRequestWithURL 使用指定的 base URL 创建 Antigravity API 请求（v1internal 端点）。
 func NewAPIRequestWithURL(ctx context.Context, baseURL, action, accessToken string, body []byte) (*http.Request, error) {
 	// 构建 URL，流式请求添加 ?alt=sse 参数
 	apiURL := fmt.Sprintf("%s/v1internal:%s", baseURL, action)
@@ -110,7 +110,7 @@ func NewAPIRequestWithURL(ctx context.Context, baseURL, action, accessToken stri
 }
 
 // NewAPIRequest 使用默认 URL 创建 Antigravity API 请求（v1internal 端点）
-// 向后兼容：仅使用默认 BaseURL
+// 向后兼容：仅使用默认 BaseURL。
 func NewAPIRequest(ctx context.Context, action, accessToken string, body []byte) (*http.Request, error) {
 	return NewAPIRequestWithURL(ctx, BaseURL, action, accessToken, body)
 }
@@ -141,7 +141,7 @@ func NewClient(proxyURL string) (*Client, error) {
 	}, nil
 }
 
-// IsConnectionError 判断是否为连接错误（网络超时、DNS 失败、连接拒绝）
+// IsConnectionError 判断是否为连接错误（网络超时、DNS 失败、连接拒绝）。
 func IsConnectionError(err error) bool {
 	if err == nil {
 		return false
@@ -165,7 +165,7 @@ func IsConnectionError(err error) bool {
 }
 
 // shouldFallbackToNextURL 判断是否应切换到下一个 URL
-// 与 Antigravity-Manager 保持一致：连接错误、429、408、404、5xx 触发 URL 降级
+// 与 Antigravity-Manager 保持一致：连接错误、429、408、404、5xx 触发 URL 降级。
 func shouldFallbackToNextURL(err error, statusCode int) bool {
 	if IsConnectionError(err) {
 		return true
@@ -188,7 +188,7 @@ func NewClientWithOptions(proxyURL string, options ClientOptions) (*Client, erro
 	return client, nil
 }
 
-// ExchangeCode 用 authorization code 交换 token
+// ExchangeCode 用 authorization code 交换 token。
 func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*TokenResponse, error) {
 	clientSecret, err := getClientSecret()
 	if err != nil {
@@ -232,7 +232,7 @@ func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*
 	return &tokenResp, nil
 }
 
-// RefreshToken 刷新 access_token
+// RefreshToken 刷新 access_token。
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenResponse, error) {
 	clientSecret, err := getClientSecret()
 	if err != nil {
@@ -274,7 +274,7 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenR
 	return &tokenResp, nil
 }
 
-// GetUserInfo 获取用户信息
+// GetUserInfo 获取用户信息。
 func (c *Client) GetUserInfo(ctx context.Context, accessToken string) (*UserInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, UserInfoURL, nil)
 	if err != nil {
@@ -306,7 +306,7 @@ func (c *Client) GetUserInfo(ctx context.Context, accessToken string) (*UserInfo
 }
 
 // LoadCodeAssist 获取提供商信息，返回解析后的结构体和原始 JSON
-// 支持 URL fallback：sandbox → daily → prod
+// 支持 URL fallback：sandbox → daily → prod。
 func (c *Client) LoadCodeAssist(ctx context.Context, accessToken string) (*LoadCodeAssistResponse, map[string]any, error) {
 	reqBody := LoadCodeAssistRequest{}
 	reqBody.Metadata.IDEType = "ANTIGRAVITY"
@@ -488,7 +488,7 @@ func extractProjectIDFromOnboardResponse(resp map[string]any) string {
 }
 
 // FetchAvailableModels 获取可用模型和配额信息，返回解析后的结构体和原始 JSON
-// 支持 URL fallback：sandbox → daily → prod
+// 支持 URL fallback：sandbox → daily → prod。
 func (c *Client) FetchAvailableModels(ctx context.Context, accessToken, projectID string, bodyLimit int64) (*FetchAvailableModelsResponse, map[string]any, error) {
 	if c == nil || c.httpClient == nil {
 		return nil, nil, errors.New("antigravity client is not configured")
@@ -608,7 +608,7 @@ func isAllowedFetchAvailableModelsRedirectHost(host string) bool {
 	return false
 }
 
-// SetUserSettings 调用 setUserSettings API 设置用户隐私，返回解析后的响应
+// SetUserSettings 调用 setUserSettings API 设置用户隐私，返回解析后的响应。
 func (c *Client) SetUserSettings(ctx context.Context, accessToken string) (*SetUserSettingsResponse, error) {
 	// 发送空 user_settings 以清除隐私设置
 	payload := SetUserSettingsRequest{UserSettings: map[string]any{}}
@@ -652,7 +652,7 @@ func (c *Client) SetUserSettings(ctx context.Context, accessToken string) (*SetU
 	return &result, nil
 }
 
-// FetchUserInfo 调用 fetchUserInfo API 获取用户隐私设置状态
+// FetchUserInfo 调用 fetchUserInfo API 获取用户隐私设置状态。
 func (c *Client) FetchUserInfo(ctx context.Context, accessToken, projectID string) (*FetchUserInfoResponse, error) {
 	reqBody := FetchUserInfoRequest{Project: projectID}
 	bodyBytes, err := json.Marshal(reqBody)

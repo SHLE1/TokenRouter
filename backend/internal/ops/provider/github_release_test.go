@@ -30,7 +30,7 @@ type GitHubReleaseServiceSuite struct {
 	tempDir string
 }
 
-// testTransport redirects requests to the test server
+// testTransport redirects requests to the test server.
 type testTransport struct {
 	testServerURL string
 }

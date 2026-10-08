@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// 基准测试用 TTL 配置
+// 基准测试用 TTL 配置。
 const benchSlotTTLMinutes = 15
 
 var benchSlotTTL = time.Duration(benchSlotTTLMinutes) * time.Minute

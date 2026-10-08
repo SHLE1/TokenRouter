@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// InvalidateAuthCacheByKey 清除指定 API Key 的认证缓存
+// InvalidateAuthCacheByKey 清除指定 API Key 的认证缓存。
 func (s *APIKeyService) InvalidateAuthCacheByKey(ctx context.Context, key string) {
 	if s == nil || !s.operations.enter() {
 		return
@@ -18,7 +18,7 @@ func (s *APIKeyService) InvalidateAuthCacheByKey(ctx context.Context, key string
 	s.KeyDeleteAuthCache(ctx, cacheKey)
 }
 
-// InvalidateAuthCacheByUserID 清除用户相关的 API Key 认证缓存
+// InvalidateAuthCacheByUserID 清除用户相关的 API Key 认证缓存。
 func (s *APIKeyService) InvalidateAuthCacheByUserID(ctx context.Context, userID int64) {
 	if s == nil || !s.operations.enter() {
 		return
@@ -35,7 +35,7 @@ func (s *APIKeyService) InvalidateAuthCacheByUserID(ctx context.Context, userID 
 	s.KeyDeleteAuthCacheByKeys(ctx, keys)
 }
 
-// InvalidateAuthCacheByGroupID 清除分组相关的 API Key 认证缓存
+// InvalidateAuthCacheByGroupID 清除分组相关的 API Key 认证缓存。
 func (s *APIKeyService) InvalidateAuthCacheByGroupID(ctx context.Context, groupID int64) {
 	if s == nil || !s.operations.enter() {
 		return

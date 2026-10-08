@@ -16,30 +16,30 @@ type ClaudeAuthorizationUseCase interface {
 	CookieAuth(context.Context, *provider.ClaudeCookieAuthInput) (*provider.ClaudeTokenInfo, error)
 }
 
-// ClaudeOAuthHandler handles OAuth-related operations for providers
+// ClaudeOAuthHandler handles OAuth-related operations for providers.
 type ClaudeOAuthHandler struct {
 	oauthService ClaudeAuthorizationUseCase
 }
 
-// ClaudeGenerateAuthURLRequest represents the request for generating auth URL
+// ClaudeGenerateAuthURLRequest represents the request for generating auth URL.
 type ClaudeGenerateAuthURLRequest struct {
 	ProxyID *int64 `json:"proxy_id"`
 }
 
-// ClaudeExchangeCodeRequest represents the request for exchanging auth code
+// ClaudeExchangeCodeRequest represents the request for exchanging auth code.
 type ClaudeExchangeCodeRequest struct {
 	SessionID string `json:"session_id" binding:"required"`
 	Code      string `json:"code" binding:"required"`
 	ProxyID   *int64 `json:"proxy_id"`
 }
 
-// ClaudeCookieAuthRequest represents the request for cookie-based authentication
+// ClaudeCookieAuthRequest represents the request for cookie-based authentication.
 type ClaudeCookieAuthRequest struct {
 	SessionKey string `json:"code" binding:"required"` // Using 'code' field as sessionKey (frontend sends it this way)
 	ProxyID    *int64 `json:"proxy_id"`
 }
 
-// NewClaudeOAuthHandler creates a new OAuth handler
+// NewClaudeOAuthHandler creates a new OAuth handler.
 func NewClaudeOAuthHandler(oauthService ClaudeAuthorizationUseCase) *ClaudeOAuthHandler {
 	return &ClaudeOAuthHandler{
 		oauthService: oauthService,

@@ -19,7 +19,7 @@ const AntigravityGemini31ProAgentModel = "gemini-pro-agent"
 
 var (
 	// AntigravityPassthroughErrorMessages 透传给客户端的错误消息白名单（小写）
-	// 匹配时使用 strings.Contains，无需完全匹配
+	// 匹配时使用 strings.Contains，无需完全匹配。
 	AntigravityPassthroughErrorMessages = []string{
 		"prompt is too long",
 	}
@@ -32,7 +32,7 @@ var (
 	}
 )
 
-// PromptTooLongError 表示上游明确返回 prompt too long
+// PromptTooLongError 表示上游明确返回 prompt too long。
 type PromptTooLongError struct {
 	StatusCode int
 	RequestID  string
@@ -44,7 +44,7 @@ func (e *PromptTooLongError) Error() string {
 }
 
 // ApplyThinkingModelSuffix 根据 thinking 配置调整模型名
-// 当映射结果是 claude-sonnet-4-5 且请求开启了 thinking 时，改为 claude-sonnet-4-5-thinking
+// 当映射结果是 claude-sonnet-4-5 且请求开启了 thinking 时，改为 claude-sonnet-4-5-thinking。
 func ApplyThinkingModelSuffix(mappedModel string, thinkingEnabled bool) string {
 	if !thinkingEnabled {
 		return mappedModel
@@ -56,7 +56,7 @@ func ApplyThinkingModelSuffix(mappedModel string, thinkingEnabled bool) string {
 }
 
 // InjectIdentityPatchToGeminiRequest 为 Gemini 格式请求注入身份提示词
-// 如果请求中已包含 "You are Antigravity" 则不重复注入
+// 如果请求中已包含 "You are Antigravity" 则不重复注入。
 func InjectIdentityPatchToGeminiRequest(body []byte) ([]byte, error) {
 	var request map[string]any
 	if err := json.Unmarshal(body, &request); err != nil {
@@ -102,7 +102,7 @@ func InjectIdentityPatchToGeminiRequest(body []byte) ([]byte, error) {
 	return json.Marshal(request)
 }
 
-// WrapV1InternalRequest 包装请求为 v1internal 格式
+// WrapV1InternalRequest 包装请求为 v1internal 格式。
 func WrapV1InternalRequest(projectID, model string, originalBody []byte) ([]byte, error) {
 	var request any
 	if err := json.Unmarshal(originalBody, &request); err != nil {
@@ -146,7 +146,7 @@ func IsSignatureRelatedError(respBody []byte) bool {
 	return false
 }
 
-// IsPromptTooLongError 检测是否为 prompt too long 错误
+// IsPromptTooLongError 检测是否为 prompt too long 错误。
 func IsPromptTooLongError(respBody []byte) bool {
 	msg := strings.ToLower(strings.TrimSpace(googlewire.ExtractPlatformMessage(respBody)))
 	if msg == "" {
@@ -158,7 +158,7 @@ func IsPromptTooLongError(respBody []byte) bool {
 		strings.Contains(msg, "max_tokens")
 }
 
-// IsPassthroughErrorMessage 检查错误消息是否在透传白名单中
+// IsPassthroughErrorMessage 检查错误消息是否在透传白名单中。
 func IsPassthroughErrorMessage(msg string) bool {
 	lower := strings.ToLower(msg)
 	for _, pattern := range AntigravityPassthroughErrorMessages {
@@ -169,7 +169,7 @@ func IsPassthroughErrorMessage(msg string) bool {
 	return false
 }
 
-// GetPassthroughOrDefault 若消息在白名单内则返回原始消息，否则返回默认消息
+// GetPassthroughOrDefault 若消息在白名单内则返回原始消息，否则返回默认消息。
 func GetPassthroughOrDefault(upstreamMsg, defaultMsg string) string {
 	if IsPassthroughErrorMessage(upstreamMsg) {
 		return upstreamMsg
@@ -177,7 +177,7 @@ func GetPassthroughOrDefault(upstreamMsg, defaultMsg string) string {
 	return defaultMsg
 }
 
-// CleanGeminiRequest 清理 Gemini 请求体中的 Schema
+// CleanGeminiRequest 清理 Gemini 请求体中的 Schema。
 func CleanGeminiRequest(body []byte) ([]byte, error) {
 	var payload map[string]any
 	if err := json.Unmarshal(body, &payload); err != nil {

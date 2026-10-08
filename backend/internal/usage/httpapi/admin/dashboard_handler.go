@@ -13,19 +13,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// DashboardHandler handles admin dashboard statistics
+// DashboardHandler handles admin dashboard statistics.
 type DashboardHandler struct {
 	calendar         timezone.Calendar
 	dashboardService *usage.DashboardService
 	startTime        time.Time // Server start time for uptime calculation
 }
 
-// BatchUsersUsageRequest represents the request body for batch user usage stats
+// BatchUsersUsageRequest represents the request body for batch user usage stats.
 type BatchUsersUsageRequest struct {
 	UserIDs []int64 `json:"user_ids" binding:"required"`
 }
 
-// BatchAPIKeysUsageRequest represents the request body for batch api key usage stats
+// BatchAPIKeysUsageRequest represents the request body for batch api key usage stats.
 type BatchAPIKeysUsageRequest struct {
 	APIKeyIDs []int64 `json:"api_key_ids" binding:"required"`
 }
@@ -43,7 +43,7 @@ func parseOptionalBoolDashboardFilter(c *gin.Context, key string) (*bool, error)
 	return &value, nil
 }
 
-// NewDashboardHandler creates a new admin dashboard handler
+// NewDashboardHandler creates a new admin dashboard handler.
 func NewDashboardHandler(dashboardService *usage.DashboardService, calendar timezone.Calendar) *DashboardHandler {
 	return &DashboardHandler{
 		calendar:         calendar,
@@ -53,7 +53,7 @@ func NewDashboardHandler(dashboardService *usage.DashboardService, calendar time
 }
 
 // parseTimeRange parses start_date, end_date query parameters
-// Uses user's timezone if provided, otherwise falls back to server timezone
+// Uses user's timezone if provided, otherwise falls back to server timezone.
 func parseTimeRange(c *gin.Context, calendar timezone.Calendar) (time.Time, time.Time) {
 	userTZ := c.Query("timezone") // Get user's timezone from request
 	now := calendar.NowInUserLocation(userTZ)
@@ -166,7 +166,7 @@ func (h *DashboardHandler) GetRealtimeMetrics(c *gin.Context) {
 
 // GetUsageTrend handles getting usage trend data
 // GET /api/v1/admin/dashboard/trend
-// Query params: start_date, end_date (YYYY-MM-DD), granularity (day/hour), user_id, api_key_id, model, provider_id, group_id, request_type, stream, billing_type
+// Query params: start_date, end_date (YYYY-MM-DD), granularity (day/hour), user_id, api_key_id, model, provider_id, group_id, request_type, stream, billing_type.
 func (h *DashboardHandler) GetUsageTrend(c *gin.Context) {
 	startTime, endTime := parseTimeRange(c, h.calendar)
 	granularity := c.DefaultQuery("granularity", "day")
@@ -256,7 +256,7 @@ func (h *DashboardHandler) GetUsageTrend(c *gin.Context) {
 
 // GetModelStats handles getting model usage statistics
 // GET /api/v1/admin/dashboard/models
-// Query params: start_date, end_date (YYYY-MM-DD), user_id, api_key_id, provider_id, group_id, request_type, stream, billing_type
+// Query params: start_date, end_date (YYYY-MM-DD), user_id, api_key_id, provider_id, group_id, request_type, stream, billing_type.
 func (h *DashboardHandler) GetModelStats(c *gin.Context) {
 	startTime, endTime := parseTimeRange(c, h.calendar)
 
@@ -348,7 +348,7 @@ func (h *DashboardHandler) GetModelStats(c *gin.Context) {
 
 // GetGroupStats handles getting group usage statistics
 // GET /api/v1/admin/dashboard/groups
-// Query params: start_date, end_date (YYYY-MM-DD), user_id, api_key_id, provider_id, group_id, request_type, stream, billing_type
+// Query params: start_date, end_date (YYYY-MM-DD), user_id, api_key_id, provider_id, group_id, request_type, stream, billing_type.
 func (h *DashboardHandler) GetGroupStats(c *gin.Context) {
 	startTime, endTime := parseTimeRange(c, h.calendar)
 
@@ -431,7 +431,7 @@ func (h *DashboardHandler) GetGroupStats(c *gin.Context) {
 
 // GetAPIKeyUsageTrend handles getting API key usage trend data
 // GET /api/v1/admin/dashboard/api-keys-trend
-// Query params: start_date, end_date (YYYY-MM-DD), granularity (day/hour), limit (default 5)
+// Query params: start_date, end_date (YYYY-MM-DD), granularity (day/hour), limit (default 5).
 func (h *DashboardHandler) GetAPIKeyUsageTrend(c *gin.Context) {
 	startTime, endTime := parseTimeRange(c, h.calendar)
 	granularity := c.DefaultQuery("granularity", "day")
@@ -458,7 +458,7 @@ func (h *DashboardHandler) GetAPIKeyUsageTrend(c *gin.Context) {
 
 // GetUserUsageTrend handles getting user usage trend data
 // GET /api/v1/admin/dashboard/users-trend
-// Query params: start_date, end_date (YYYY-MM-DD), granularity (day/hour), limit (default 12)
+// Query params: start_date, end_date (YYYY-MM-DD), granularity (day/hour), limit (default 12).
 func (h *DashboardHandler) GetUserUsageTrend(c *gin.Context) {
 	startTime, endTime := parseTimeRange(c, h.calendar)
 	granularity := c.DefaultQuery("granularity", "day")
@@ -575,7 +575,7 @@ func (h *DashboardHandler) GetBatchAPIKeysUsage(c *gin.Context) {
 
 // GetUserBreakdown handles getting per-user usage breakdown within a dimension.
 // GET /api/v1/admin/dashboard/user-breakdown
-// Query params: start_date, end_date, group_id, model, endpoint, endpoint_type, limit
+// Query params: start_date, end_date, group_id, model, endpoint, endpoint_type, limit.
 func (h *DashboardHandler) GetUserBreakdown(c *gin.Context) {
 	startTime, endTime := parseTimeRange(c, h.calendar)
 

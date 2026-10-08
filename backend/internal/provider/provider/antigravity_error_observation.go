@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// AntigravityModelLimitResult 模型级限流处理结果
+// AntigravityModelLimitResult 模型级限流处理结果。
 type AntigravityModelLimitResult struct {
 	Handled      bool                                        // 是否已处理
 	ShouldRetry  bool                                        // 是否等待后重试
@@ -51,7 +51,7 @@ type AntigravityErrorObserver struct {
 // 仅处理 429/503，解析模型名和 retryDelay
 // - MODEL_CAPACITY_EXHAUSTED: 返回 Handled=true（实际重试由 handleSmartRetry 处理）
 // - RATE_LIMIT_EXCEEDED + retryDelay < 阈值: 返回 ShouldRetry=true，由调用方等待后重试
-// - RATE_LIMIT_EXCEEDED + retryDelay >= 阈值: 设置模型限流 + 清除粘性会话 + 返回 SwitchError
+// - RATE_LIMIT_EXCEEDED + retryDelay >= 阈值: 设置模型限流 + 清除粘性会话 + 返回 SwitchError。
 func (s *AntigravityErrorObserver) handleModelRateLimit(p *AntigravityErrorInput) *AntigravityModelLimitResult {
 	if p.Status != 429 && p.Status != 503 {
 		return &AntigravityModelLimitResult{Handled: false}
@@ -96,7 +96,7 @@ func (s *AntigravityErrorObserver) handleModelRateLimit(p *AntigravityErrorInput
 	}
 }
 
-// setModelRateLimitAndClearSession 设置模型限流并清除粘性会话
+// setModelRateLimitAndClearSession 设置模型限流并清除粘性会话。
 func (s *AntigravityErrorObserver) setModelRateLimitAndClearSession(p *AntigravityErrorInput, info *antigravity.AntigravitySmartRetryInfo) {
 	resetAt := time.Now().Add(info.RetryDelay)
 	logging.LegacyPrintf("service.antigravity_gateway", "%s status=%d model_rate_limited model=%s provider=%d reset_in=%v",
@@ -181,7 +181,7 @@ func (s *AntigravityErrorObserver) Observe(p AntigravityErrorInput) *Antigravity
 	return nil
 }
 
-// resolveResetTime 根据解析的重置时间或默认时长计算重置时间点
+// resolveResetTime 根据解析的重置时间或默认时长计算重置时间点。
 func (s *AntigravityErrorObserver) resolveResetTime(resetAt *int64, defaultDur time.Duration) time.Time {
 	if resetAt != nil {
 		return time.Unix(*resetAt, 0)

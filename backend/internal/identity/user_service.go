@@ -36,7 +36,7 @@ const (
 	ProfileMaxInlineAvatarBytes = 100 * 1024
 	ProfileTargetAvatarBytes    = 20 * 1024
 
-	// User-level rate limiting for notify email verification codes
+	// User-level rate limiting for notify email verification codes.
 	ProfileNotifyCodeUserRateLimit  = 5
 	ProfileNotifyCodeUserRateWindow = 10 * time.Minute
 
@@ -83,7 +83,7 @@ type ProfileUserProfileIdentityTxRunner interface {
 	WithUserProfileIdentityTx(ctx context.Context, fn func(txCtx context.Context) error) error
 }
 
-// UserService 用户服务
+// UserService 用户服务。
 type UserService struct {
 	operationClock
 	runBackground        func(string, func()) bool
@@ -131,7 +131,7 @@ func NewUserService(users UserRepository, settings ProfileSettings, auth UserAut
 	return &UserService{operationClock: clockFromOptional(clocks), userRepo: users, settingRepo: settings, authCacheInvalidator: auth, billingCache: balance, runBackground: background}
 }
 
-// GetFirstAdmin 获取首个管理员用户（用于 Admin API Key 认证）
+// GetFirstAdmin 获取首个管理员用户（用于 Admin API Key 认证）。
 func (s *UserService) GetFirstAdmin(ctx context.Context) (*User, error) {
 	admin, err := s.userRepo.GetFirstAdmin(ctx)
 	if err != nil {
@@ -140,7 +140,7 @@ func (s *UserService) GetFirstAdmin(ctx context.Context) (*User, error) {
 	return admin, nil
 }
 
-// GetProfile 获取用户资料
+// GetProfile 获取用户资料。
 func (s *UserService) GetProfile(ctx context.Context, userID int64) (*User, error) {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -287,7 +287,7 @@ func (s *UserService) UnbindUserAuthProviderWithResult(ctx context.Context, user
 	return updatedUser, true, nil
 }
 
-// UpdateProfile 更新用户资料
+// UpdateProfile 更新用户资料。
 func (s *UserService) UpdateProfile(ctx context.Context, userID int64, req UpdateProfileRequest) (*User, error) {
 	if txRunner, ok := s.userRepo.(ProfileUserProfileIdentityTxRunner); ok {
 		var (
@@ -843,7 +843,7 @@ func ProfileMaskOpaqueIdentity(value string) string {
 }
 
 // ChangePassword 修改密码
-// Security: Increments TokenVersion to invalidate all existing JWT tokens
+// Security: Increments TokenVersion to invalidate all existing JWT tokens.
 func (s *UserService) ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -872,7 +872,7 @@ func (s *UserService) ChangePassword(ctx context.Context, userID int64, req Chan
 	return nil
 }
 
-// GetByID 根据ID获取用户（管理员功能）
+// GetByID 根据ID获取用户（管理员功能）。
 func (s *UserService) GetByID(ctx context.Context, id int64) (*User, error) {
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
@@ -966,7 +966,7 @@ func (s *UserService) ProfileHydrateUserAvatar(ctx context.Context, user *User) 
 	return nil
 }
 
-// List 获取用户列表（管理员功能）
+// List 获取用户列表（管理员功能）。
 func (s *UserService) List(ctx context.Context, params pagination.PaginationParams) ([]User, *pagination.PaginationResult, error) {
 	users, pagination, err := s.userRepo.List(ctx, params)
 	if err != nil {
@@ -975,7 +975,7 @@ func (s *UserService) List(ctx context.Context, params pagination.PaginationPara
 	return users, pagination, nil
 }
 
-// UpdateBalance 更新用户余额（管理员功能）
+// UpdateBalance 更新用户余额（管理员功能）。
 func (s *UserService) UpdateBalance(ctx context.Context, userID int64, amount float64) error {
 	if err := s.userRepo.UpdateBalance(ctx, userID, amount); err != nil {
 		return fmt.Errorf("update balance: %w", err)
@@ -1000,7 +1000,7 @@ func (s *UserService) UpdateBalance(ctx context.Context, userID int64, amount fl
 	return nil
 }
 
-// UpdateConcurrency 更新用户并发数（管理员功能）
+// UpdateConcurrency 更新用户并发数（管理员功能）。
 func (s *UserService) UpdateConcurrency(ctx context.Context, userID int64, concurrency int) error {
 	if err := s.userRepo.UpdateConcurrency(ctx, userID, concurrency); err != nil {
 		return fmt.Errorf("update concurrency: %w", err)
@@ -1011,7 +1011,7 @@ func (s *UserService) UpdateConcurrency(ctx context.Context, userID int64, concu
 	return nil
 }
 
-// UpdateStatus 更新用户状态（管理员功能）
+// UpdateStatus 更新用户状态（管理员功能）。
 func (s *UserService) UpdateStatus(ctx context.Context, userID int64, status string) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -1030,7 +1030,7 @@ func (s *UserService) UpdateStatus(ctx context.Context, userID int64, status str
 	return nil
 }
 
-// Delete 删除用户（管理员功能）
+// Delete 删除用户（管理员功能）。
 func (s *UserService) Delete(ctx context.Context, userID int64) error {
 	if s.authCacheInvalidator != nil {
 		s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)

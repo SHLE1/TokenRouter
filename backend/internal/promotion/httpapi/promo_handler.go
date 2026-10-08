@@ -12,12 +12,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// PromoHandler handles admin promo code management
+// PromoHandler handles admin promo code management.
 type PromoHandler struct {
 	promoService *promotion.PromoService
 }
 
-// CreatePromoCodeRequest represents create promo code request
+// CreatePromoCodeRequest represents create promo code request.
 type CreatePromoCodeRequest struct {
 	Code        string  `json:"code"`                                  // 可选，为空则自动生成
 	BonusAmount float64 `json:"bonus_amount" binding:"required,min=0"` // 赠送余额
@@ -26,7 +26,7 @@ type CreatePromoCodeRequest struct {
 	Notes       string  `json:"notes"`                                 // 备注
 }
 
-// UpdatePromoCodeRequest represents update promo code request
+// UpdatePromoCodeRequest represents update promo code request.
 type UpdatePromoCodeRequest struct {
 	Code        *string  `json:"code"`
 	BonusAmount *float64 `json:"bonus_amount" binding:"omitempty,min=0"`
@@ -36,7 +36,7 @@ type UpdatePromoCodeRequest struct {
 	Notes       *string  `json:"notes"`
 }
 
-// NewPromoHandler creates a new admin promo handler
+// NewPromoHandler creates a new admin promo handler.
 func NewPromoHandler(promoService *promotion.PromoService) *PromoHandler {
 	return &PromoHandler{
 		promoService: promoService,

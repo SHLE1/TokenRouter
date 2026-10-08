@@ -91,7 +91,7 @@ func TestQoderConversationStoreConcurrent(t *testing.T) {
 	}
 }
 
-// TestQoderConversationRollbackVersionControl 验证 rollback 版本控制防止并发覆盖
+// TestQoderConversationRollbackVersionControl 验证 rollback 版本控制防止并发覆盖。
 func TestQoderConversationRollbackVersionControl(t *testing.T) {
 	store := NewQoderConversationStore(5 * time.Minute)
 	key := "test_key"

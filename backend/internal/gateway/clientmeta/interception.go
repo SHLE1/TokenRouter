@@ -12,7 +12,7 @@ const (
 	InterceptTypeMaxTokensOneHaiku               // max_tokens=1 + haiku 探测请求（返回 "#"）
 )
 
-// InterceptType 表示请求拦截类型
+// InterceptType 表示请求拦截类型。
 type InterceptType int
 
 // DetectInterceptType 检测请求是否需要拦截，返回拦截类型

@@ -39,7 +39,7 @@ type qoderInvalidationCache struct {
 	deletedKeys []string
 }
 
-// TestQoderTokenProviderConcurrent 验证 token provider 在并发访问下的缓存行为
+// TestQoderTokenProviderConcurrent 验证 token provider 在并发访问下的缓存行为。
 func TestQoderTokenProviderConcurrent(t *testing.T) {
 	tokenSource := &QoderTokenProvider{Core: &qoderSessionState{Sessions: make(map[int64]qoderSessionCacheEntry)}}
 
@@ -111,7 +111,7 @@ func TestQoderTokenProviderConcurrent(t *testing.T) {
 	}
 }
 
-// TestQoderTokenProviderInvalidateRace 验证 GetSession 和 Invalidate 的竞态安全
+// TestQoderTokenProviderInvalidateRace 验证 GetSession 和 Invalidate 的竞态安全。
 func TestQoderTokenProviderInvalidateRace(t *testing.T) {
 	tokenSource := &QoderTokenProvider{Core: &qoderSessionState{Sessions: make(map[int64]qoderSessionCacheEntry)}}
 

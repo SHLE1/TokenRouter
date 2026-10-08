@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	// Claude Code 客户端相关常量
+	// Claude Code 客户端相关常量。
 
 	// Beta 值来自唯一 wire 定义，默认 Header 组合仍由平台拥有。
 	BetaOAuth                    = anthropic.BetaOAuth
@@ -26,20 +26,20 @@ const (
 	BetaFallbackCredit           = anthropic.BetaFallbackCredit
 	BetaFallbackCreditLegacy     = anthropic.BetaFallbackCreditLegacy
 
-	// DefaultBetaHeader Claude Code 客户端默认的 anthropic-beta header
+	// DefaultBetaHeader Claude Code 客户端默认的 anthropic-beta header。
 	DefaultBetaHeader = BetaClaudeCode + "," + BetaOAuth + "," + BetaInterleavedThinking + "," + BetaFineGrainedToolStreaming
 
-	// CountTokensBetaHeader count_tokens 请求使用的 anthropic-beta header
+	// CountTokensBetaHeader count_tokens 请求使用的 anthropic-beta header。
 	CountTokensBetaHeader = BetaClaudeCode + "," + BetaOAuth + "," + BetaInterleavedThinking + "," + BetaTokenCounting
 
 	// HaikuBetaHeader Haiku 模型在 OAuth 真实客户端透传路径上的默认 anthropic-beta header。
 	// OAuth mimic 路径统一使用 FullClaudeCodeMimicryBetas。
 	HaikuBetaHeader = BetaOAuth + "," + BetaInterleavedThinking
 
-	// APIKeyBetaHeader API-key 提供商建议使用的 anthropic-beta header（不包含 oauth）
+	// APIKeyBetaHeader API-key 提供商建议使用的 anthropic-beta header（不包含 oauth）。
 	APIKeyBetaHeader = BetaClaudeCode + "," + BetaInterleavedThinking + "," + BetaFineGrainedToolStreaming
 
-	// APIKeyHaikuBetaHeader Haiku 模型在 API-key 提供商下使用的 anthropic-beta header（不包含 oauth / claude-code）
+	// APIKeyHaikuBetaHeader Haiku 模型在 API-key 提供商下使用的 anthropic-beta header（不包含 oauth / claude-code）。
 	APIKeyHaikuBetaHeader = BetaInterleavedThinking
 
 	// DefaultCacheControlTTL 是网关代理为自己生成的 cache_control 块默认使用的 ttl。
@@ -55,7 +55,7 @@ const (
 	// 直接引用本常量只在"表达内置基线"时才正确（例如覆盖值的下限校验）。
 	CLICurrentVersion = "2.1.220"
 
-	// DefaultTestModel 测试时使用的默认模型
+	// DefaultTestModel 测试时使用的默认模型。
 	DefaultTestModel = "claude-sonnet-4-5-20250929"
 
 	ClaudeAPIURL                    = "https://api.anthropic.com/v1/messages?beta=true"
@@ -132,7 +132,7 @@ func FullClaudeCodeMimicryBetas() []string {
 	}
 }
 
-// IsAnthropicFableModel 判断是否为 Fable 模型家族（claude-fable-5、claude-fable-5[1m] 等变体）
+// IsAnthropicFableModel 判断是否为 Fable 模型家族（claude-fable-5、claude-fable-5[1m] 等变体）。
 func IsAnthropicFableModel(model string) bool {
 	return strings.Contains(strings.ToLower(model), "fable")
 }

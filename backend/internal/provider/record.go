@@ -48,12 +48,12 @@ const (
 	// OpenAIOAuthClientPolicyTLSRouterMatchedOnly 表示仅允许 TLS 路由器命中的 UA 访问。
 	OpenAIOAuthClientPolicyTLSRouterMatchedOnly = "tls_router_matched_only"
 
-	// Status constants
+	// Status constants.
 	StatusActive   = "active"
 	StatusDisabled = "disabled"
 	StatusError    = "error"
 
-	// Platform constants
+	// Platform constants.
 	PlatformAnthropic   = capability.PlatformAnthropic
 	PlatformOpenAI      = capability.PlatformOpenAI
 	PlatformGemini      = capability.PlatformGemini
@@ -89,7 +89,7 @@ const (
 	DefaultZhipuAnthropicBaseURL      = "https://open.bigmodel.cn/api/anthropic"
 	DefaultDeepseekAnthropicBaseURL   = "https://api.deepseek.com/anthropic"
 
-	// Provider type constants
+	// Provider type constants.
 	ProviderTypeOAuth          = capability.ProviderTypeOAuth          // OAuth类型提供商（full scope: profile + inference）
 	ProviderTypeSetupToken     = capability.ProviderTypeSetupToken     // Setup Token类型提供商（inference only scope）
 	ProviderTypeAPIKey         = capability.ProviderTypeAPIKey         // API Key类型提供商
@@ -216,7 +216,7 @@ func (a *Record) IsActive() bool {
 // BillingRateMultiplier 返回提供商计费倍率。
 // - nil 表示未配置/旧缓存缺字段，按 1.0 处理
 // - 允许 0，表示该提供商计费为 0
-// - 负数属于非法数据，出于安全考虑按 1.0 处理
+// - 负数属于非法数据，出于安全考虑按 1.0 处理。
 func (a *Record) BillingRateMultiplier() float64 {
 	if a == nil || a.RateMultiplier == nil {
 		return 1.0
@@ -296,7 +296,7 @@ func (a *Record) IsOAuth() bool {
 // IsPrivacySet 检查提供商的 privacy 是否已成功设置。
 // OpenAI: privacy_mode == "training_off"
 // Antigravity: privacy_mode == "privacy_set"
-// 其他平台: 无 privacy 概念，始终返回 true
+// 其他平台: 无 privacy 概念，始终返回 true。
 func (a *Record) IsPrivacySet() bool {
 	switch a.Platform {
 	case PlatformOpenAI:
@@ -443,7 +443,7 @@ func (a *Record) GetCredentialAsTime(key string) *time.Time {
 }
 
 // GetCredentialAsInt64 解析凭证中的 int64 字段
-// 用于读取 _token_version 等内部字段
+// 用于读取 _token_version 等内部字段。
 func (a *Record) GetCredentialAsInt64(key string) int64 {
 	if a == nil || a.Credentials == nil {
 		return 0
@@ -991,7 +991,7 @@ func (a *Record) IsBedrockAPIKey() bool {
 	return a.IsBedrock() && a.GetCredential("auth_mode") == "apikey"
 }
 
-// IsAPIKeyOrBedrock 返回提供商类型是否支持配额和池模式等特性
+// IsAPIKeyOrBedrock 返回提供商类型是否支持配额和池模式等特性。
 func (a *Record) IsAPIKeyOrBedrock() bool {
 	return a.Type == ProviderTypeAPIKey || a.Type == ProviderTypeBedrock
 }
@@ -1502,7 +1502,7 @@ func (a *Record) GetCodexCLIOnlyAllowedClients() []string {
 }
 
 // IsAnthropicOAuthOrSetupToken 判断是否为 Anthropic OAuth 或 SetupToken 类型提供商
-// 仅这两类提供商支持 5h 窗口额度控制和会话数量控制
+// 仅这两类提供商支持 5h 窗口额度控制和会话数量控制。
 func (a *Record) IsAnthropicOAuthOrSetupToken() bool {
 	if a == nil {
 		return false
@@ -1542,7 +1542,7 @@ func (a *Record) IsTLSFingerprintEnabled() bool {
 }
 
 // GetTLSFingerprintProfileID 获取提供商绑定的 TLS 指纹模板 ID
-// 返回 0 表示未绑定（使用内置默认 profile）
+// 返回 0 表示未绑定（使用内置默认 profile）。
 func (a *Record) GetTLSFingerprintProfileID() int64 {
 	if a.Extra == nil {
 		return 0
@@ -1594,7 +1594,7 @@ func (a *Record) GetTLSFingerprintRouterID() int64 {
 // IsSessionIDMaskingEnabled 检查是否启用会话ID伪装
 // 仅适用于 Anthropic OAuth/SetupToken 类型提供商
 // 启用后将在一段时间内（15分钟）固定 metadata.user_id 中的 session ID，
-// 使上游认为请求来自同一个会话
+// 使上游认为请求来自同一个会话。
 func (a *Record) IsSessionIDMaskingEnabled() bool {
 	if !a.IsAnthropicOAuthOrSetupToken() {
 		return false
@@ -1611,7 +1611,7 @@ func (a *Record) IsSessionIDMaskingEnabled() bool {
 }
 
 // IsCustomBaseURLEnabled 检查是否启用自定义 base URL 中继转发
-// 仅适用于 Anthropic OAuth/SetupToken 类型提供商
+// 仅适用于 Anthropic OAuth/SetupToken 类型提供商。
 func (a *Record) IsCustomBaseURLEnabled() bool {
 	if !a.IsAnthropicOAuthOrSetupToken() {
 		return false
@@ -1627,14 +1627,14 @@ func (a *Record) IsCustomBaseURLEnabled() bool {
 	return false
 }
 
-// GetCustomBaseURL 返回自定义中继服务的 base URL
+// GetCustomBaseURL 返回自定义中继服务的 base URL。
 func (a *Record) GetCustomBaseURL() string {
 	return a.GetExtraString("custom_base_url")
 }
 
 // IsCacheTTLOverrideEnabled 检查是否启用缓存 TTL 强制替换
 // 仅适用于 Anthropic OAuth/SetupToken 类型提供商
-// 启用后将所有 cache creation tokens 归入指定的 TTL 类型（5m 或 1h）
+// 启用后将所有 cache creation tokens 归入指定的 TTL 类型（5m 或 1h）。
 func (a *Record) IsCacheTTLOverrideEnabled() bool {
 	if !a.IsAnthropicOAuthOrSetupToken() {
 		return false
@@ -1651,7 +1651,7 @@ func (a *Record) IsCacheTTLOverrideEnabled() bool {
 }
 
 // GetCacheTTLOverrideTarget 获取缓存 TTL 强制替换的目标类型
-// 返回 "5m" 或 "1h"，默认 "5m"
+// 返回 "5m" 或 "1h"，默认 "5m"。
 func (a *Record) GetCacheTTLOverrideTarget() string {
 	if a.Extra == nil {
 		return "5m"
@@ -1665,37 +1665,37 @@ func (a *Record) GetCacheTTLOverrideTarget() string {
 }
 
 // GetQuotaLimit 获取 API Key 提供商的配额限制（美元）
-// 返回 0 表示未启用
+// 返回 0 表示未启用。
 func (a *Record) GetQuotaLimit() float64 {
 	return a.GetExtraFloat64("quota_limit")
 }
 
-// GetQuotaUsed 获取 API Key 提供商的已用配额（美元）
+// GetQuotaUsed 获取 API Key 提供商的已用配额（美元）。
 func (a *Record) GetQuotaUsed() float64 {
 	return a.GetExtraFloat64("quota_used")
 }
 
-// GetQuotaDailyLimit 获取日额度限制（美元），0 表示未启用
+// GetQuotaDailyLimit 获取日额度限制（美元），0 表示未启用。
 func (a *Record) GetQuotaDailyLimit() float64 {
 	return a.GetExtraFloat64("quota_daily_limit")
 }
 
-// GetQuotaDailyUsed 获取当日已用额度（美元）
+// GetQuotaDailyUsed 获取当日已用额度（美元）。
 func (a *Record) GetQuotaDailyUsed() float64 {
 	return a.GetExtraFloat64("quota_daily_used")
 }
 
-// GetQuotaWeeklyLimit 获取周额度限制（美元），0 表示未启用
+// GetQuotaWeeklyLimit 获取周额度限制（美元），0 表示未启用。
 func (a *Record) GetQuotaWeeklyLimit() float64 {
 	return a.GetExtraFloat64("quota_weekly_limit")
 }
 
-// GetQuotaWeeklyUsed 获取本周已用额度（美元）
+// GetQuotaWeeklyUsed 获取本周已用额度（美元）。
 func (a *Record) GetQuotaWeeklyUsed() float64 {
 	return a.GetExtraFloat64("quota_weekly_used")
 }
 
-// GetExtraFloat64 从 Extra 中读取指定 key 的 float64 值
+// GetExtraFloat64 从 Extra 中读取指定 key 的 float64 值。
 func (a *Record) GetExtraFloat64(key string) float64 {
 	if a.Extra == nil {
 		return 0
@@ -1706,7 +1706,7 @@ func (a *Record) GetExtraFloat64(key string) float64 {
 	return 0
 }
 
-// GetExtraTime 从 Extra 中读取 RFC3339 时间戳
+// GetExtraTime 从 Extra 中读取 RFC3339 时间戳。
 func (a *Record) GetExtraTime(key string) time.Time {
 	if a.Extra == nil {
 		return time.Time{}
@@ -1717,7 +1717,7 @@ func (a *Record) GetExtraTime(key string) time.Time {
 	return time.Time{}
 }
 
-// GetExtraBool 从 Extra 中读取指定 key 的 bool 值
+// GetExtraBool 从 Extra 中读取指定 key 的 bool 值。
 func (a *Record) GetExtraBool(key string) bool {
 	if a.Extra == nil {
 		return false
@@ -1738,7 +1738,7 @@ func (a *Record) GetExtraStringDefault(key, defaultVal string) string {
 	return defaultVal
 }
 
-// GetExtraInt 从 Extra 中读取指定 key 的 int 值
+// GetExtraInt 从 Extra 中读取指定 key 的 int 值。
 func (a *Record) GetExtraInt(key string) int {
 	if a.Extra == nil {
 		return 0
@@ -1749,7 +1749,7 @@ func (a *Record) GetExtraInt(key string) int {
 	return 0
 }
 
-// GetQuotaDailyResetMode 获取日额度重置模式："rolling"（默认）或 "fixed"
+// GetQuotaDailyResetMode 获取日额度重置模式："rolling"（默认）或 "fixed"。
 func (a *Record) GetQuotaDailyResetMode() string {
 	if m := a.GetExtraString("quota_daily_reset_mode"); m == "fixed" {
 		return "fixed"
@@ -1757,12 +1757,12 @@ func (a *Record) GetQuotaDailyResetMode() string {
 	return "rolling"
 }
 
-// GetQuotaDailyResetHour 获取固定重置的小时（0-23），默认 0
+// GetQuotaDailyResetHour 获取固定重置的小时（0-23），默认 0。
 func (a *Record) GetQuotaDailyResetHour() int {
 	return a.GetExtraInt("quota_daily_reset_hour")
 }
 
-// GetQuotaWeeklyResetMode 获取周额度重置模式："rolling"（默认）或 "fixed"
+// GetQuotaWeeklyResetMode 获取周额度重置模式："rolling"（默认）或 "fixed"。
 func (a *Record) GetQuotaWeeklyResetMode() string {
 	if m := a.GetExtraString("quota_weekly_reset_mode"); m == "fixed" {
 		return "fixed"
@@ -1770,7 +1770,7 @@ func (a *Record) GetQuotaWeeklyResetMode() string {
 	return "rolling"
 }
 
-// GetQuotaWeeklyResetDay 获取固定重置的星期几（0=周日, 1=周一, ..., 6=周六），默认 1（周一）
+// GetQuotaWeeklyResetDay 获取固定重置的星期几（0=周日, 1=周一, ..., 6=周六），默认 1（周一）。
 func (a *Record) GetQuotaWeeklyResetDay() int {
 	if a.Extra == nil {
 		return 1
@@ -1781,12 +1781,12 @@ func (a *Record) GetQuotaWeeklyResetDay() int {
 	return a.GetExtraInt("quota_weekly_reset_day")
 }
 
-// GetQuotaWeeklyResetHour 获取周配额固定重置的小时（0-23），默认 0
+// GetQuotaWeeklyResetHour 获取周配额固定重置的小时（0-23），默认 0。
 func (a *Record) GetQuotaWeeklyResetHour() int {
 	return a.GetExtraInt("quota_weekly_reset_hour")
 }
 
-// GetQuotaResetTimezone 获取固定重置的时区名（IANA），默认 "UTC"
+// GetQuotaResetTimezone 获取固定重置的时区名（IANA），默认 "UTC"。
 func (a *Record) GetQuotaResetTimezone() string {
 	if tz := a.GetExtraString("quota_reset_timezone"); tz != "" {
 		return tz
@@ -1856,7 +1856,7 @@ func LastFixedWeeklyReset(day, hour int, tz *time.Location, now time.Time) time.
 	return billing.LastFixedWeeklyReset(day, hour, tz, now)
 }
 
-// IsFixedDailyPeriodExpired 检查日配额是否在固定时间模式下已过期
+// IsFixedDailyPeriodExpired 检查日配额是否在固定时间模式下已过期。
 func (a *Record) IsFixedDailyPeriodExpired(periodStart time.Time) bool {
 	if periodStart.IsZero() {
 		return true
@@ -1869,7 +1869,7 @@ func (a *Record) IsFixedDailyPeriodExpired(periodStart time.Time) bool {
 	return periodStart.Before(lastReset)
 }
 
-// IsFixedWeeklyPeriodExpired 检查周配额是否在固定时间模式下已过期
+// IsFixedWeeklyPeriodExpired 检查周配额是否在固定时间模式下已过期。
 func (a *Record) IsFixedWeeklyPeriodExpired(periodStart time.Time) bool {
 	if periodStart.IsZero() {
 		return true
@@ -1882,7 +1882,7 @@ func (a *Record) IsFixedWeeklyPeriodExpired(periodStart time.Time) bool {
 	return periodStart.Before(lastReset)
 }
 
-// ValidateQuotaResetConfig 校验配额固定重置时间配置的合法性
+// ValidateQuotaResetConfig 校验配额固定重置时间配置的合法性。
 func ValidateQuotaResetConfig(extra map[string]any, loadLocation func(string) (*time.Location, error)) error {
 	if extra == nil {
 		return nil
@@ -1929,12 +1929,12 @@ func ValidateQuotaResetConfig(extra map[string]any, loadLocation func(string) (*
 	return nil
 }
 
-// HasAnyQuotaLimit 检查是否配置了任一维度的配额限制
+// HasAnyQuotaLimit 检查是否配置了任一维度的配额限制。
 func (a *Record) HasAnyQuotaLimit() bool {
 	return a.GetQuotaLimit() > 0 || a.GetQuotaDailyLimit() > 0 || a.GetQuotaWeeklyLimit() > 0
 }
 
-// IsPeriodExpired 检查指定周期（自 periodStart 起经过 dur）是否已过期
+// IsPeriodExpired 检查指定周期（自 periodStart 起经过 dur）是否已过期。
 func IsPeriodExpired(periodStart time.Time, dur time.Duration) bool {
 	if periodStart.IsZero() {
 		return true // 从未使用过，视为过期（下次 increment 会初始化）
@@ -1942,7 +1942,7 @@ func IsPeriodExpired(periodStart time.Time, dur time.Duration) bool {
 	return time.Since(periodStart) >= dur
 }
 
-// IsDailyQuotaPeriodExpired 检查日配额周期是否已过期（用于显示层判断是否需要将 used 归零）
+// IsDailyQuotaPeriodExpired 检查日配额周期是否已过期（用于显示层判断是否需要将 used 归零）。
 func (a *Record) IsDailyQuotaPeriodExpired() bool {
 	start := a.GetExtraTime("quota_daily_start")
 	if a.GetQuotaDailyResetMode() == "fixed" {
@@ -1951,7 +1951,7 @@ func (a *Record) IsDailyQuotaPeriodExpired() bool {
 	return IsPeriodExpired(start, 24*time.Hour)
 }
 
-// IsWeeklyQuotaPeriodExpired 检查周配额周期是否已过期（用于显示层判断是否需要将 used 归零）
+// IsWeeklyQuotaPeriodExpired 检查周配额周期是否已过期（用于显示层判断是否需要将 used 归零）。
 func (a *Record) IsWeeklyQuotaPeriodExpired() bool {
 	start := a.GetExtraTime("quota_weekly_start")
 	if a.GetQuotaWeeklyResetMode() == "fixed" {
@@ -1960,7 +1960,7 @@ func (a *Record) IsWeeklyQuotaPeriodExpired() bool {
 	return IsPeriodExpired(start, 7*24*time.Hour)
 }
 
-// IsQuotaExceeded 检查 API Key 提供商配额是否已超限（任一维度超限即返回 true）
+// IsQuotaExceeded 检查 API Key 提供商配额是否已超限（任一维度超限即返回 true）。
 func (a *Record) IsQuotaExceeded() bool {
 	// 总额度
 	if limit := a.GetQuotaLimit(); limit > 0 && a.GetQuotaUsed() >= limit {

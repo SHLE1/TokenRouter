@@ -15,7 +15,7 @@ const (
 // ResolvedPricing 保留旧解析结果入口，由纯定价包唯一拥有。
 type ResolvedPricing = purepricing.ResolvedPricing
 
-// PricingInput 定价解析输入
+// PricingInput 定价解析输入。
 type PricingInput struct {
 	Model   string
 	GroupID *int64 // nil 表示不检查共享价格配置

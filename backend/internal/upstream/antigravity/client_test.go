@@ -17,14 +17,14 @@ import (
 
 const defaultFetchAvailableModelsBodyLimit int64 = 8 << 20
 
-// timeoutError 实现 net.Error 接口用于测试
+// timeoutError 实现 net.Error 接口用于测试。
 type timeoutError struct{}
 
 // ===========================================================================
 // 测试调用 Client 方法，通过 RoundTripper 拦截 HTTP 请求
 // ===========================================================================
 
-// redirectRoundTripper 将请求中特定前缀的 URL 重定向到 httptest server
+// redirectRoundTripper 将请求中特定前缀的 URL 重定向到 httptest server。
 type redirectRoundTripper struct {
 	// 原始 URL 前缀 -> 替换目标 URL 的映射
 	redirects map[string]string
@@ -842,7 +842,7 @@ func (rt *redirectRoundTripper) RoundTrip(req *http.Request) (*http.Response, er
 	return rt.transport.RoundTrip(req)
 }
 
-// newTestClientWithRedirect 创建一个 Client，将指定 URL 前缀的请求重定向到 mock server
+// newTestClientWithRedirect 创建一个 Client，将指定 URL 前缀的请求重定向到 mock server。
 func newTestClientWithRedirect(redirects map[string]string) *Client {
 	return &Client{
 		httpClient: &http.Client{
@@ -1252,7 +1252,7 @@ func TestClient_GetUserInfo_ContextCanceled_RealCall(t *testing.T) {
 // Client.LoadCodeAssist 测试
 // ---------------------------------------------------------------------------
 
-// withMockBaseURLs 临时替换 BaseURLs，测试结束后恢复
+// withMockBaseURLs 临时替换 BaseURLs，测试结束后恢复。
 func withMockBaseURLs(t *testing.T, urls []string) {
 	t.Helper()
 	origBaseURLs := BaseURLs

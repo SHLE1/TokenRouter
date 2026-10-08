@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// maxRedactDepth 限制递归深度以防止栈溢出
+// maxRedactDepth 限制递归深度以防止栈溢出。
 const maxRedactDepth = 32
 
 var (

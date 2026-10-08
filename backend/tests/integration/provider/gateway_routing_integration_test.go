@@ -17,7 +17,7 @@ import (
 )
 
 // GatewayRoutingSuite 测试网关路由相关的数据库查询
-// 验证提供商选择和分流逻辑在真实数据库环境下的行为
+// 验证提供商选择和分流逻辑在真实数据库环境下的行为。
 type GatewayRoutingSuite struct {
 	suite.Suite
 	ctx          context.Context
@@ -36,7 +36,7 @@ func TestGatewayRoutingSuite(t *testing.T) {
 	suite.Run(t, new(GatewayRoutingSuite))
 }
 
-// TestListSchedulableByPlatforms_GeminiAndAntigravity 验证多平台提供商查询
+// TestListSchedulableByPlatforms_GeminiAndAntigravity 验证多平台提供商查询。
 func (s *GatewayRoutingSuite) TestListSchedulableByPlatforms_GeminiAndAntigravity() {
 	// 创建各平台提供商
 	geminiAcc := mustCreateProvider(s.T(), s.client, &providercore.Record{
@@ -99,7 +99,7 @@ func (s *GatewayRoutingSuite) TestListSchedulableByPlatforms_GeminiAndAntigravit
 	s.Require().True(ids[antigravityAcc.ID])
 }
 
-// TestListSchedulableByGroupIDAndPlatforms_WithGroupBinding 验证按分组过滤
+// TestListSchedulableByGroupIDAndPlatforms_WithGroupBinding 验证按分组过滤。
 func (s *GatewayRoutingSuite) TestListSchedulableByGroupIDAndPlatforms_WithGroupBinding() {
 	// 创建可关联不同平台提供商的分组
 	group := mustCreateGroup(s.T(), s.client, &routing.Group{
@@ -140,7 +140,7 @@ func (s *GatewayRoutingSuite) TestListSchedulableByGroupIDAndPlatforms_WithGroup
 	}
 }
 
-// TestListSchedulableByPlatform_Antigravity 验证单平台查询
+// TestListSchedulableByPlatform_Antigravity 验证单平台查询。
 func (s *GatewayRoutingSuite) TestListSchedulableByPlatform_Antigravity() {
 	// 创建多种平台提供商
 	mustCreateProvider(s.T(), s.client, &providercore.Record{
@@ -166,7 +166,7 @@ func (s *GatewayRoutingSuite) TestListSchedulableByPlatform_Antigravity() {
 	s.Require().Equal(capability.PlatformAntigravity, providers[0].Platform)
 }
 
-// TestSchedulableFilter_ExcludesInactive 验证不可调度提供商被过滤
+// TestSchedulableFilter_ExcludesInactive 验证不可调度提供商被过滤。
 func (s *GatewayRoutingSuite) TestSchedulableFilter_ExcludesInactive() {
 	// 创建可调度提供商
 	activeAcc := mustCreateProvider(s.T(), s.client, &providercore.Record{
@@ -200,7 +200,7 @@ func (s *GatewayRoutingSuite) TestSchedulableFilter_ExcludesInactive() {
 }
 
 // TestPlatformRoutingDecision 验证平台路由决策
-// 这个测试模拟 Handler 层在选择提供商后的路由决策逻辑
+// 这个测试模拟 Handler 层在选择提供商后的路由决策逻辑。
 func (s *GatewayRoutingSuite) TestPlatformRoutingDecision() {
 	// 创建两种平台的提供商
 	geminiAcc := mustCreateProvider(s.T(), s.client, &providercore.Record{

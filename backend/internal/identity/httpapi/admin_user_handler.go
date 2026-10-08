@@ -43,13 +43,13 @@ type AdminUserHandler[K any] struct {
 	stepUp       func(*gin.Context) bool
 }
 
-// UserWithConcurrency wraps AdminUser with current concurrency info
+// UserWithConcurrency wraps AdminUser with current concurrency info.
 type UserWithConcurrency[K any] struct {
 	dto.AdminUser[K]
 	CurrentConcurrency int `json:"current_concurrency"`
 }
 
-// CreateUserRequest represents admin create user request
+// CreateUserRequest represents admin create user request.
 type CreateUserRequest struct {
 	Email         string   `json:"email" binding:"required,email"`
 	Password      string   `json:"password" binding:"required,min=6"`
@@ -66,7 +66,7 @@ type CreateUserRequest struct {
 }
 
 // UpdateUserRequest represents admin update user request
-// 使用指针类型来区分"未提供"和"设置为0"
+// 使用指针类型来区分"未提供"和"设置为0"。
 type UpdateUserRequest struct {
 	Email         string   `json:"email" binding:"omitempty,email"`
 	Password      string   `json:"password" binding:"omitempty,min=6"`
@@ -86,7 +86,7 @@ type UpdateUserRequest struct {
 	GroupRates map[int64]*float64 `json:"group_rates"`
 }
 
-// UpdateBalanceRequest represents balance update request
+// UpdateBalanceRequest represents balance update request.
 type UpdateBalanceRequest struct {
 	Balance   float64 `json:"balance" binding:"required,gt=0"`
 	Operation string  `json:"operation" binding:"required,oneof=set add subtract"`
@@ -117,7 +117,7 @@ type BindUserAuthIdentityChannelRequest struct {
 	Metadata       map[string]any `json:"metadata"`
 }
 
-// ReplaceGroupRequest represents the request to replace a user's exclusive group
+// ReplaceGroupRequest represents the request to replace a user's exclusive group.
 type ReplaceGroupRequest struct {
 	OldGroupID int64 `json:"old_group_id" binding:"required,gt=0"`
 	NewGroupID int64 `json:"new_group_id" binding:"required,gt=0"`
@@ -210,7 +210,7 @@ func (h *AdminUserHandler[K]) List(c *gin.Context) {
 }
 
 // ParseAttributeFilters extracts attribute filters from query params
-// Format: attr[{attributeID}]=value, e.g. attr[1]=company&attr[2]=developer
+// Format: attr[{attributeID}]=value, e.g. attr[1]=company&attr[2]=developer.
 func ParseAttributeFilters(c *gin.Context) map[int64]string {
 	result := make(map[int64]string)
 

@@ -245,7 +245,7 @@ func TestAntigravityGatewayService_GetMappedModel_EdgeCases(t *testing.T) {
 }
 
 // TestMapAntigravityModel_WildcardTargetEqualsRequest 测试通配符映射目标恰好等于请求模型名的 edge case
-// 例如 {"claude-*": "claude-sonnet-4-5"}，请求 "claude-sonnet-4-5" 时应该通过
+// 例如 {"claude-*": "claude-sonnet-4-5"}，请求 "claude-sonnet-4-5" 时应该通过。
 func TestMapAntigravityModel_WildcardTargetEqualsRequest(t *testing.T) {
 	tests := []struct {
 		name           string

@@ -259,7 +259,7 @@ func ChatGPTAccountObjectID(acct map[string]any, fallbackID string) string {
 	return strings.TrimSpace(fallbackID)
 }
 
-// ExtractPlanType 从单个 provider 对象中提取 plan_type
+// ExtractPlanType 从单个 provider 对象中提取 plan_type。
 func ExtractPlanType(acct map[string]any) string {
 	if provider, ok := acct["account"].(map[string]any); ok {
 		if planType, ok := provider["plan_type"].(string); ok && planType != "" {

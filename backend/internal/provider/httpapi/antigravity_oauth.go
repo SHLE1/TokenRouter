@@ -24,7 +24,7 @@ type AntigravityExchangeCodeRequest struct {
 	ProxyID   *int64 `json:"proxy_id"`
 }
 
-// AntigravityRefreshTokenRequest represents the request for validating Antigravity refresh token
+// AntigravityRefreshTokenRequest represents the request for validating Antigravity refresh token.
 type AntigravityRefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 	ProxyID      *int64 `json:"proxy_id"`

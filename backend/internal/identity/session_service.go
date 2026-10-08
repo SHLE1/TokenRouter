@@ -23,7 +23,7 @@ const (
 	RefreshTokenPrefix = "rt_"
 )
 
-// JWTClaims JWT载荷数据
+// JWTClaims JWT载荷数据。
 type JWTClaims struct {
 	UserID       int64  `json:"user_id"`
 	Email        string `json:"email"`
@@ -36,14 +36,14 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-// TokenPair 包含Access Token和Refresh Token
+// TokenPair 包含Access Token和Refresh Token。
 type TokenPair struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int    `json:"expires_in"` // Access Token有效期（秒）
 }
 
-// TokenPairWithUser extends TokenPair with user role for backend mode checks
+// TokenPairWithUser extends TokenPair with user role for backend mode checks.
 type TokenPairWithUser struct {
 	TokenPair
 	UserRole string
@@ -75,7 +75,7 @@ func NewSessionService(options SessionOptions, users SessionUserReader, cache Re
 	return &SessionService{options: options, userRepo: users, refreshTokenCache: cache, settingService: settings, observer: Observer{Log: logf}}
 }
 
-// ValidateToken 验证JWT token并返回用户声明
+// ValidateToken 验证JWT token并返回用户声明。
 func (s *SessionService) ValidateToken(tokenString string) (*JWTClaims, error) {
 	// 先做长度校验，尽早拒绝异常超长 token，降低 DoS 风险。
 	if len(tokenString) > MaxTokenLength {
@@ -162,7 +162,7 @@ func (s *SessionService) GenerateAccessToken(user *User, sessionID, bindingHash 
 }
 
 // GetAccessTokenExpiresIn 返回Access Token的有效期（秒）
-// 用于前端设置刷新定时器
+// 用于前端设置刷新定时器。
 func (s *SessionService) GetAccessTokenExpiresIn() int {
 	if s.options.AccessTokenExpireMinutes > 0 {
 		return s.options.AccessTokenExpireMinutes * 60
@@ -170,7 +170,7 @@ func (s *SessionService) GetAccessTokenExpiresIn() int {
 	return s.options.ExpireHour * 3600
 }
 
-// HashPassword 使用bcrypt加密密码
+// HashPassword 使用bcrypt加密密码。
 func (s *SessionService) HashPassword(password string) (string, error) {
 	hashedBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -179,13 +179,13 @@ func (s *SessionService) HashPassword(password string) (string, error) {
 	return string(hashedBytes), nil
 }
 
-// CheckPassword 验证密码是否匹配
+// CheckPassword 验证密码是否匹配。
 func (s *SessionService) CheckPassword(password, hashedPassword string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
 }
 
-// RefreshToken 刷新token
+// RefreshToken 刷新token。
 func (s *SessionService) RefreshToken(ctx context.Context, oldTokenString string) (string, error) {
 	// 验证旧token（即使过期也允许，用于刷新）
 	claims, err := s.ValidateToken(oldTokenString)
@@ -227,7 +227,7 @@ func (s *SessionService) RefreshToken(ctx context.Context, oldTokenString string
 }
 
 // GenerateTokenPair 生成Access Token和Refresh Token对
-// familyID: 可选的Token家族ID，用于Token轮转时保持家族关系
+// familyID: 可选的Token家族ID，用于Token轮转时保持家族关系。
 func (s *SessionService) GenerateTokenPair(ctx context.Context, user *User, familyID string) (*TokenPair, error) {
 	// 检查 refreshTokenCache 是否可用
 	if s.refreshTokenCache == nil {
@@ -263,7 +263,7 @@ func (s *SessionService) GenerateTokenPair(ctx context.Context, user *User, fami
 	}, nil
 }
 
-// GenerateRefreshToken 生成并存储Refresh Token
+// GenerateRefreshToken 生成并存储Refresh Token。
 func (s *SessionService) GenerateRefreshToken(ctx context.Context, user *User, familyID string) (string, error) {
 	// 生成随机Token
 	tokenBytes := make([]byte, 32)
@@ -317,7 +317,7 @@ func (s *SessionService) GenerateRefreshToken(ctx context.Context, user *User, f
 }
 
 // RefreshTokenPair 使用Refresh Token刷新Token对
-// 实现Token轮转：每次刷新都会生成新的Refresh Token，旧Token立即失效
+// 实现Token轮转：每次刷新都会生成新的Refresh Token，旧Token立即失效。
 func (s *SessionService) RefreshTokenPair(ctx context.Context, refreshToken string) (*TokenPairWithUser, error) {
 	// 检查 refreshTokenCache 是否可用
 	if s.refreshTokenCache == nil {
@@ -407,7 +407,7 @@ func (s *SessionService) RefreshTokenPair(ctx context.Context, refreshToken stri
 	}, nil
 }
 
-// RevokeRefreshToken 撤销单个Refresh Token
+// RevokeRefreshToken 撤销单个Refresh Token。
 func (s *SessionService) RevokeRefreshToken(ctx context.Context, refreshToken string) error {
 	if s.refreshTokenCache == nil {
 		return nil // No-op if cache not configured
@@ -430,7 +430,7 @@ func (s *SessionService) RevokeSessionFamily(ctx context.Context, familyID strin
 }
 
 // RevokeAllUserSessions 撤销用户的所有会话（所有Refresh Token）
-// 用于密码更改或用户主动登出所有设备
+// 用于密码更改或用户主动登出所有设备。
 func (s *SessionService) RevokeAllUserSessions(ctx context.Context, userID int64) error {
 	if s.refreshTokenCache == nil {
 		return nil // No-op if cache not configured
@@ -456,7 +456,7 @@ func (s *SessionService) RevokeAllUserTokens(ctx context.Context, userID int64) 
 	return nil
 }
 
-// HashToken 计算Token的SHA256哈希
+// HashToken 计算Token的SHA256哈希。
 func HashToken(token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:])

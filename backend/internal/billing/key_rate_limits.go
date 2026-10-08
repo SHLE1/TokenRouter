@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// Rate limit window durations
+// Rate limit window durations.
 const (
 	RateLimitWindow5h = 5 * time.Hour
 	RateLimitWindow1d = 24 * time.Hour

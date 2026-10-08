@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockErrorPassthroughRepo 用于测试的 mock repository
+// mockErrorPassthroughRepo 用于测试的 mock repository。
 type mockErrorPassthroughRepo struct {
 	rules     []*ErrorPassthroughRule
 	listErr   error
@@ -148,7 +148,7 @@ func (m *mockErrorPassthroughRepo) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// newTestService 创建测试用的服务实例
+// newTestService 创建测试用的服务实例。
 func newTestService(rules []*ErrorPassthroughRule) *ErrorPassthroughService {
 	repo := &mockErrorPassthroughRepo{rules: rules}
 	svc := &ErrorPassthroughService{
@@ -160,7 +160,7 @@ func newTestService(rules []*ErrorPassthroughRule) *ErrorPassthroughService {
 	return svc
 }
 
-// newCachedRuleForTest 从 ErrorPassthroughRule 创建 cachedPassthroughRule（测试用）
+// newCachedRuleForTest 从 ErrorPassthroughRule 创建 cachedPassthroughRule（测试用）。
 func newCachedRuleForTest(rule *ErrorPassthroughRule) *cachedPassthroughRule {
 	cr := &cachedPassthroughRule{ErrorPassthroughRule: rule}
 	if len(rule.Keywords) > 0 {

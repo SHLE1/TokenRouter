@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/bedrock"
 )
 
-// NewBedrockSignerFromProvider 从 Provider 凭证创建 BedrockSigner
+// NewBedrockSignerFromProvider 从 Provider 凭证创建 BedrockSigner。
 func NewBedrockSignerFromProvider(value *provider.Record) (*bedrock.BedrockSigner, error) {
 	accessKeyID := value.GetCredential("aws_access_key_id")
 	if accessKeyID == "" {

@@ -95,12 +95,12 @@ func (c *ApiKeyCache) DeleteAuthCache(ctx context.Context, key string) error {
 	return c.rdb.Del(ctx, ApiKeyAuthCacheKey(key)).Err()
 }
 
-// PublishAuthCacheInvalidation publishes a cache invalidation message to all instances
+// PublishAuthCacheInvalidation publishes a cache invalidation message to all instances.
 func (c *ApiKeyCache) PublishAuthCacheInvalidation(ctx context.Context, cacheKey string) error {
 	return c.rdb.Publish(ctx, AuthCacheInvalidateChannel, cacheKey).Err()
 }
 
-// SubscribeAuthCacheInvalidation subscribes to cache invalidation messages
+// SubscribeAuthCacheInvalidation subscribes to cache invalidation messages.
 func (c *ApiKeyCache) SubscribeAuthCacheInvalidation(ctx context.Context, handler func(cacheKey string)) error {
 	pubsub := c.rdb.Subscribe(ctx, AuthCacheInvalidateChannel)
 

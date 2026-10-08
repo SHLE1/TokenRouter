@@ -12,7 +12,7 @@ import (
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 
-// TestConnectionResult 测试连接结果
+// TestConnectionResult 测试连接结果。
 type TestConnectionResult struct {
 	Text        string // 响应文本
 	MappedModel string // 实际使用的模型
@@ -70,7 +70,7 @@ func BuildClaudeTestRequest(projectID, mappedModel string, prompts ...string) ([
 	return TransformClaudeToGemini(claudeReq, projectID, mappedModel)
 }
 
-// ExtractTextFromSSEResponse 从 SSE 流式响应中提取文本
+// ExtractTextFromSSEResponse 从 SSE 流式响应中提取文本。
 func ExtractTextFromSSEResponse(respBody []byte) string {
 	var texts []string
 	lines := bytes.Split(respBody, []byte("\n"))

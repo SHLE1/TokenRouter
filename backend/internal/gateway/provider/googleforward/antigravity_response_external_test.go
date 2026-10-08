@@ -30,7 +30,7 @@ type antigravityCompatErrorReader struct {
 	err  error
 }
 
-// antigravityFailingWriter 模拟客户端断开连接的 gin.ResponseWriter
+// antigravityFailingWriter 模拟客户端断开连接的 gin.ResponseWriter。
 type antigravityFailingWriter struct {
 	gin.ResponseWriter
 	failAfter int // 允许成功写入的次数，之后所有写入返回错误
@@ -316,7 +316,7 @@ func TestHandleGeminiStreamingResponse_NormalComplete(t *testing.T) {
 }
 
 // TestHandleClaudeStreamingResponse_NormalComplete
-// 验证：正常 Claude 流式转发（Gemini→Claude 转换），数据正确转换并输出
+// 验证：正常 Claude 流式转发（Gemini→Claude 转换），数据正确转换并输出。
 func TestHandleClaudeStreamingResponse_NormalComplete(t *testing.T) {
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
@@ -356,7 +356,7 @@ func TestHandleClaudeStreamingResponse_NormalComplete(t *testing.T) {
 }
 
 // TestHandleGeminiStreamingResponse_ThoughtsTokenCount
-// 验证：Gemini 流式转发时 thoughtsTokenCount 被计入 OutputTokens
+// 验证：Gemini 流式转发时 thoughtsTokenCount 被计入 OutputTokens。
 func TestHandleGeminiStreamingResponse_ThoughtsTokenCount(t *testing.T) {
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
@@ -389,7 +389,7 @@ func TestHandleGeminiStreamingResponse_ThoughtsTokenCount(t *testing.T) {
 }
 
 // TestHandleClaudeStreamingResponse_ThoughtsTokenCount
-// 验证：Gemini→Claude 流式转换时 thoughtsTokenCount 被计入 OutputTokens
+// 验证：Gemini→Claude 流式转换时 thoughtsTokenCount 被计入 OutputTokens。
 func TestHandleClaudeStreamingResponse_ThoughtsTokenCount(t *testing.T) {
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
@@ -445,7 +445,7 @@ func TestHandleGeminiStreamingResponse_ClientDisconnect(t *testing.T) {
 }
 
 // TestHandleGeminiStreamingResponse_ContextCanceled
-// 验证：context 取消时不注入错误事件
+// 验证：context 取消时不注入错误事件。
 func TestHandleGeminiStreamingResponse_ContextCanceled(t *testing.T) {
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
@@ -466,7 +466,7 @@ func TestHandleGeminiStreamingResponse_ContextCanceled(t *testing.T) {
 }
 
 // TestHandleClaudeStreamingResponse_ClientDisconnect
-// 验证：Claude 流式转发中客户端断开后继续 drain 上游
+// 验证：Claude 流式转发中客户端断开后继续 drain 上游。
 func TestHandleClaudeStreamingResponse_ClientDisconnect(t *testing.T) {
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
@@ -531,7 +531,7 @@ func TestHandleClaudeStreamingResponse_EmptyStream(t *testing.T) {
 }
 
 // TestHandleClaudeStreamingResponse_ContextCanceled
-// 验证：context 取消时不注入错误事件
+// 验证：context 取消时不注入错误事件。
 func TestHandleClaudeStreamingResponse_ContextCanceled(t *testing.T) {
 	svc := newAntigravityStreamFixture(&googleforward.Options{MaxLineSize: 500 * 1024 * 1024})
 
@@ -590,7 +590,7 @@ func TestAntigravityClientWriter(t *testing.T) {
 	})
 }
 
-// TestUnwrapV1InternalResponse 测试 unwrapV1InternalResponse 的各种输入场景
+// TestUnwrapV1InternalResponse 测试 unwrapV1InternalResponse 的各种输入场景。
 func TestUnwrapV1InternalResponse(t *testing.T) {
 	svc := newAntigravityFixture(antigravityDependencies{})
 
@@ -705,7 +705,7 @@ func BenchmarkUnwrapV1Internal_New_Large(b *testing.B) {
 	}
 }
 
-// TestExtractImageSize_ValidSizes 测试有效尺寸解析
+// TestExtractImageSize_ValidSizes 测试有效尺寸解析。
 func TestExtractImageSize_ValidSizes(t *testing.T) {
 	svc := newAntigravityFixture(antigravityDependencies{})
 
@@ -722,7 +722,7 @@ func TestExtractImageSize_ValidSizes(t *testing.T) {
 	require.Equal(t, "4K", pricing.NormalizeImageBillingTierOrDefault(googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{}).ExtractImageInputSize(body)))
 }
 
-// TestExtractImageSize_CaseInsensitive 测试大小写不敏感
+// TestExtractImageSize_CaseInsensitive 测试大小写不敏感。
 func TestExtractImageSize_CaseInsensitive(t *testing.T) {
 	svc := newAntigravityFixture(antigravityDependencies{})
 
@@ -733,7 +733,7 @@ func TestExtractImageSize_CaseInsensitive(t *testing.T) {
 	require.Equal(t, "4K", pricing.NormalizeImageBillingTierOrDefault(googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{}).ExtractImageInputSize(body)))
 }
 
-// TestExtractImageSize_Default 测试无 imageConfig 返回默认 2K
+// TestExtractImageSize_Default 测试无 imageConfig 返回默认 2K。
 func TestExtractImageSize_Default(t *testing.T) {
 	svc := newAntigravityFixture(antigravityDependencies{})
 
@@ -750,7 +750,7 @@ func TestExtractImageSize_Default(t *testing.T) {
 	require.Equal(t, "2K", pricing.NormalizeImageBillingTierOrDefault(googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{}).ExtractImageInputSize(body)))
 }
 
-// TestExtractImageSize_InvalidJSON 测试非法 JSON 返回默认 2K
+// TestExtractImageSize_InvalidJSON 测试非法 JSON 返回默认 2K。
 func TestExtractImageSize_InvalidJSON(t *testing.T) {
 	svc := newAntigravityFixture(antigravityDependencies{})
 
@@ -761,7 +761,7 @@ func TestExtractImageSize_InvalidJSON(t *testing.T) {
 	require.Equal(t, "2K", pricing.NormalizeImageBillingTierOrDefault(googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{}).ExtractImageInputSize(body)))
 }
 
-// TestExtractImageSize_EmptySize 测试空 imageSize 返回默认 2K
+// TestExtractImageSize_EmptySize 测试空 imageSize 返回默认 2K。
 func TestExtractImageSize_EmptySize(t *testing.T) {
 	svc := newAntigravityFixture(antigravityDependencies{})
 
@@ -773,7 +773,7 @@ func TestExtractImageSize_EmptySize(t *testing.T) {
 	require.Equal(t, "2K", pricing.NormalizeImageBillingTierOrDefault(googleforward.AntigravityResponseForTest(svc, &googleforward.AttemptForTest{}).ExtractImageInputSize(body)))
 }
 
-// TestExtractImageSize_InvalidSize 测试无效尺寸返回默认 2K
+// TestExtractImageSize_InvalidSize 测试无效尺寸返回默认 2K。
 func TestExtractImageSize_InvalidSize(t *testing.T) {
 	svc := newAntigravityFixture(antigravityDependencies{})
 
@@ -806,7 +806,7 @@ func (w *antigravityFailingWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p)
 }
 
-// unwrapV1InternalResponseOld 旧实现：Unmarshal+Marshal 双重开销（仅用于 benchmark 对照）
+// unwrapV1InternalResponseOld 旧实现：Unmarshal+Marshal 双重开销（仅用于 benchmark 对照）。
 func unwrapV1InternalResponseOld(body []byte) ([]byte, error) {
 	var outer map[string]any
 	if err := json.Unmarshal(body, &outer); err != nil {
@@ -818,7 +818,7 @@ func unwrapV1InternalResponseOld(body []byte) ([]byte, error) {
 	return body, nil
 }
 
-// generateLargeUnwrapJSON 生成指定最小大小的包含 response 包装的 JSON
+// generateLargeUnwrapJSON 生成指定最小大小的包含 response 包装的 JSON。
 func generateLargeUnwrapJSON(minSize int) []byte {
 	parts := make([]map[string]string, 0)
 	current := 0

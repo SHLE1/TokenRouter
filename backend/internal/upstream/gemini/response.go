@@ -477,7 +477,7 @@ func (s *ResponseAdapter) HandleNativeStreamingResponse(c *upstream.OutputContex
 }
 
 // UnwrapGeminiResponse 解包 Gemini OAuth 响应中的 response 字段
-// 使用 gjson 零拷贝提取，避免完整 Unmarshal+Marshal
+// 使用 gjson 零拷贝提取，避免完整 Unmarshal+Marshal。
 func UnwrapGeminiResponse(raw []byte) ([]byte, error) {
 	result := gjson.GetBytes(raw, "response")
 	if result.Exists() && result.Type == gjson.JSON {

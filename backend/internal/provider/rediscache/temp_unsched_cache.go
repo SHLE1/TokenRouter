@@ -69,7 +69,7 @@ func NewTempUnschedCache(rdb *redis.Client) provider.TempUnschedCache {
 	return &tempUnschedCache{rdb: rdb}
 }
 
-// SetTempUnsched 设置临时不可调度状态（只延长不缩短）
+// SetTempUnsched 设置临时不可调度状态（只延长不缩短）。
 func (c *tempUnschedCache) SetTempUnsched(ctx context.Context, providerID int64, state *provider.TempUnschedState) error {
 	key := fmt.Sprintf("%s%d", tempUnschedPrefix, providerID)
 
@@ -92,7 +92,7 @@ func (c *tempUnschedCache) SetTempUnsched(ctx context.Context, providerID int64,
 	return err
 }
 
-// GetTempUnsched 获取临时不可调度状态
+// GetTempUnsched 获取临时不可调度状态。
 func (c *tempUnschedCache) GetTempUnsched(ctx context.Context, providerID int64) (*provider.TempUnschedState, error) {
 	key := fmt.Sprintf("%s%d", tempUnschedPrefix, providerID)
 
@@ -112,7 +112,7 @@ func (c *tempUnschedCache) GetTempUnsched(ctx context.Context, providerID int64)
 	return &state, nil
 }
 
-// DeleteTempUnsched 删除临时不可调度状态
+// DeleteTempUnsched 删除临时不可调度状态。
 func (c *tempUnschedCache) DeleteTempUnsched(ctx context.Context, providerID int64) error {
 	key := fmt.Sprintf("%s%d", tempUnschedPrefix, providerID)
 	return c.rdb.Del(ctx, key).Err()

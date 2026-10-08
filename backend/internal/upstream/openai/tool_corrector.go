@@ -14,7 +14,7 @@ import (
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
-// codexToolNameMapping 定义 Codex 原生工具名称到 OpenCode 工具名称的映射
+// codexToolNameMapping 定义 Codex 原生工具名称到 OpenCode 工具名称的映射。
 var codexToolNameMapping = map[string]string{
 	"apply_patch":  "edit",
 	"applyPatch":   "edit",
@@ -41,19 +41,19 @@ var codexToolNameMapping = map[string]string{
 	"webFetch":  "webfetch",
 }
 
-// ToolCorrectionStats 记录工具修正的统计信息（导出用于 JSON 序列化）
+// ToolCorrectionStats 记录工具修正的统计信息（导出用于 JSON 序列化）。
 type ToolCorrectionStats struct {
 	TotalCorrected    int            `json:"total_corrected"`
 	CorrectionsByTool map[string]int `json:"corrections_by_tool"`
 }
 
-// CodexToolCorrector 处理 Codex 工具调用的自动修正
+// CodexToolCorrector 处理 Codex 工具调用的自动修正。
 type CodexToolCorrector struct {
 	stats ToolCorrectionStats
 	mu    sync.RWMutex
 }
 
-// NewCodexToolCorrector 创建新的工具修正器
+// NewCodexToolCorrector 创建新的工具修正器。
 func NewCodexToolCorrector() *CodexToolCorrector {
 	return &CodexToolCorrector{
 		stats: ToolCorrectionStats{
@@ -63,7 +63,7 @@ func NewCodexToolCorrector() *CodexToolCorrector {
 }
 
 // CorrectToolCallsInSSEData 修正 SSE 数据中的工具调用
-// 返回修正后的数据和是否进行了修正
+// 返回修正后的数据和是否进行了修正。
 func (c *CodexToolCorrector) CorrectToolCallsInSSEData(data string) (string, bool) {
 	if data == "" || data == "\n" {
 		return data, false
@@ -337,7 +337,7 @@ func deleteJSONField(input, path string) (string, bool) {
 	return next, true
 }
 
-// recordCorrection 记录一次工具名称修正
+// recordCorrection 记录一次工具名称修正。
 func (c *CodexToolCorrector) recordCorrection(from, to string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -350,7 +350,7 @@ func (c *CodexToolCorrector) recordCorrection(from, to string) {
 		from, to, c.stats.TotalCorrected)
 }
 
-// GetStats 获取工具修正统计信息
+// GetStats 获取工具修正统计信息。
 func (c *CodexToolCorrector) GetStats() ToolCorrectionStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -367,7 +367,7 @@ func (c *CodexToolCorrector) GetStats() ToolCorrectionStats {
 	return statsCopy
 }
 
-// CorrectToolName 直接修正工具名称（用于非 SSE 场景）
+// CorrectToolName 直接修正工具名称（用于非 SSE 场景）。
 func CorrectToolName(name string) (string, bool) {
 	if correctName, found := codexToolNameMapping[name]; found {
 		return correctName, true
@@ -375,7 +375,7 @@ func CorrectToolName(name string) (string, bool) {
 	return name, false
 }
 
-// CorrectResponseBody 修正响应体中的工具调用
+// CorrectResponseBody 修正响应体中的工具调用。
 func (c *CodexToolCorrector) CorrectResponseBody(body []byte) []byte {
 	if len(body) == 0 {
 		return body

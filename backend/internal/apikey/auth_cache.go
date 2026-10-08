@@ -8,7 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
 
-// APIKeyAuthSnapshot API Key 认证缓存快照（仅包含认证所需字段）
+// APIKeyAuthSnapshot API Key 认证缓存快照（仅包含认证所需字段）。
 type APIKeyAuthSnapshot struct {
 	Version  int    `json:"version"`
 	APIKeyID int64  `json:"api_key_id"`
@@ -81,7 +81,7 @@ type APIKeyAuthTeamSnapshot struct {
 	Status string `json:"status"`
 }
 
-// APIKeyAuthUserSnapshot 用户快照
+// APIKeyAuthUserSnapshot 用户快照。
 type APIKeyAuthUserSnapshot struct {
 	ID            int64   `json:"id"`
 	Status        string  `json:"status"`
@@ -110,7 +110,7 @@ type APIKeyAuthUserSnapshot struct {
 	DisabledPublicGroups []int64 `json:"disabled_public_groups,omitempty"`
 }
 
-// APIKeyAuthGroupSnapshot 分组快照
+// APIKeyAuthGroupSnapshot 分组快照。
 type APIKeyAuthGroupSnapshot struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
@@ -165,7 +165,7 @@ type APIKeyAuthGroupSnapshot struct {
 	ReasoningEffortMappings []ReasoningEffortMapping `json:"reasoning_effort_mappings"`
 }
 
-// APIKeyAuthCacheEntry 缓存条目，支持负缓存
+// APIKeyAuthCacheEntry 缓存条目，支持负缓存。
 type APIKeyAuthCacheEntry struct {
 	NotFound bool                `json:"not_found"`
 	Snapshot *APIKeyAuthSnapshot `json:"snapshot,omitempty"`

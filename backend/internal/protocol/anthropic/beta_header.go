@@ -12,7 +12,7 @@ import (
 // 选型参考：与 Parrot (src/transform/cc_mimicry.py) 的 BETAS 保持一致，
 // 原因：Anthropic 上游会基于 anthropic-beta 的完整集合判定请求来源；
 // 缺少任何“官方 Claude Code 请求才会带”的 beta，都会被降级到第三方额度，
-// 对应报错：`Third-party apps now draw from your extra usage, not your plan limits.`
+// 对应报错：`Third-party apps now draw from your extra usage, not your plan limits.`。
 const (
 	BetaOAuth                    = "oauth-2025-04-20"
 	BetaClaudeCode               = "claude-code-20250219"
@@ -41,7 +41,7 @@ const (
 	BetaFallbackCreditLegacy = "fallback-credit-2026-06-01"
 )
 
-// ParseAnthropicBetaHeader 解析 anthropic-beta 头的逗号分隔字符串为 token 列表
+// ParseAnthropicBetaHeader 解析 anthropic-beta 头的逗号分隔字符串为 token 列表。
 func ParseAnthropicBetaHeader(header string) []string {
 	header = strings.TrimSpace(header)
 	if header == "" {

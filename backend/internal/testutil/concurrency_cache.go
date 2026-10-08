@@ -6,7 +6,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// 编译期接口断言
+// 编译期接口断言。
 var _ scheduler.ConcurrencyCache = StubConcurrencyCache{}
 
 // StubConcurrencyCache 是返回可用并发槽和空负载的缓存替身。

@@ -13,7 +13,7 @@ import (
 const timeoutCounterPrefix = "timeout_count:provider:"
 
 // timeoutCounterIncrScript 使用 Lua 脚本原子性地增加计数并返回当前值
-// 如果 key 不存在，则创建并设置过期时间
+// 如果 key 不存在，则创建并设置过期时间。
 var timeoutCounterIncrScript = redis.NewScript(`
 	local key = KEYS[1]
 	local ttl = tonumber(ARGV[1])
@@ -30,13 +30,13 @@ type timeoutCounterCache struct {
 	rdb *redis.Client
 }
 
-// NewTimeoutCounterCache 创建超时计数器缓存实例
+// NewTimeoutCounterCache 创建超时计数器缓存实例。
 func NewTimeoutCounterCache(rdb *redis.Client) provider.TimeoutCounterCache {
 	return &timeoutCounterCache{rdb: rdb}
 }
 
 // IncrementTimeoutCount 增加提供商的超时计数，返回当前计数值
-// windowMinutes 是计数窗口时间（分钟），超过此时间计数器会自动重置
+// windowMinutes 是计数窗口时间（分钟），超过此时间计数器会自动重置。
 func (c *timeoutCounterCache) IncrementTimeoutCount(ctx context.Context, providerID int64, windowMinutes int) (int64, error) {
 	key := fmt.Sprintf("%s%d", timeoutCounterPrefix, providerID)
 
@@ -53,7 +53,7 @@ func (c *timeoutCounterCache) IncrementTimeoutCount(ctx context.Context, provide
 	return result, nil
 }
 
-// GetTimeoutCount 获取提供商当前的超时计数
+// GetTimeoutCount 获取提供商当前的超时计数。
 func (c *timeoutCounterCache) GetTimeoutCount(ctx context.Context, providerID int64) (int64, error) {
 	key := fmt.Sprintf("%s%d", timeoutCounterPrefix, providerID)
 
@@ -68,13 +68,13 @@ func (c *timeoutCounterCache) GetTimeoutCount(ctx context.Context, providerID in
 	return val, nil
 }
 
-// ResetTimeoutCount 重置提供商的超时计数
+// ResetTimeoutCount 重置提供商的超时计数。
 func (c *timeoutCounterCache) ResetTimeoutCount(ctx context.Context, providerID int64) error {
 	key := fmt.Sprintf("%s%d", timeoutCounterPrefix, providerID)
 	return c.rdb.Del(ctx, key).Err()
 }
 
-// GetTimeoutCountTTL 获取计数器剩余过期时间
+// GetTimeoutCountTTL 获取计数器剩余过期时间。
 func (c *timeoutCounterCache) GetTimeoutCountTTL(ctx context.Context, providerID int64) (time.Duration, error) {
 	key := fmt.Sprintf("%s%d", timeoutCounterPrefix, providerID)
 	return c.rdb.TTL(ctx, key).Result()

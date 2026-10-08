@@ -17,7 +17,7 @@ import (
 const (
 	defaultClaudeUsageURL = "https://api.anthropic.com/api/oauth/usage"
 
-	// 默认 User-Agent，与用户抓包的请求一致
+	// 默认 User-Agent，与用户抓包的请求一致。
 	defaultUsageUserAgent = "claude-code/2.1.7"
 )
 
@@ -27,7 +27,7 @@ type UsageClient struct {
 	DoTLS             func(*http.Request, string, int64, int, *tlsfingerprint.Profile) (*http.Response, error)
 }
 
-// UsageFetchOptions 包含获取 Claude 用量数据所需的所有选项
+// UsageFetchOptions 包含获取 Claude 用量数据所需的所有选项。
 type UsageFetchOptions struct {
 	AccessToken string                  // OAuth access token
 	ProxyURL    string                  // 代理 URL（可选）
@@ -37,12 +37,12 @@ type UsageFetchOptions struct {
 }
 
 // NewUsageClient 创建 Claude 用量获取服务
-// httpUpstream: 可选，如果提供则支持 TLS 指纹伪装
+// httpUpstream: 可选，如果提供则支持 TLS 指纹伪装。
 func NewUsageClient(doTLS func(*http.Request, string, int64, int, *tlsfingerprint.Profile) (*http.Response, error)) *UsageClient {
 	return &UsageClient{UsageURL: defaultClaudeUsageURL, DoTLS: doTLS}
 }
 
-// FetchUsageWithOptions 完整版本，支持 TLS 指纹和自定义 User-Agent
+// FetchUsageWithOptions 完整版本，支持 TLS 指纹和自定义 User-Agent。
 func (s *UsageClient) FetchUsageWithOptions(ctx context.Context, opts *UsageFetchOptions) (*wire.ClaudeUsageResponse, error) {
 	if opts == nil {
 		return nil, fmt.Errorf("options is nil")

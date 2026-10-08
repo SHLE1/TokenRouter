@@ -25,7 +25,7 @@ type RuntimeConfig struct {
 	SessionWindowEnd   *time.Time
 }
 
-// WindowCostSchedulability 窗口费用调度状态
+// WindowCostSchedulability 窗口费用调度状态。
 type WindowCostSchedulability = billing.WindowCostSchedulability
 
 // SanitizeManagedBaseRPM 对 extra map 中的 base_rpm 值进行范围校验和归一化。
@@ -48,7 +48,7 @@ func SanitizeManagedBaseRPM(extra map[string]any) {
 }
 
 // GetMaxSessions 获取最大并发会话数
-// 返回 0 表示未启用
+// 返回 0 表示未启用。
 func (a *RuntimeConfig) GetMaxSessions() int {
 	if a.Extra == nil {
 		return 0
@@ -60,7 +60,7 @@ func (a *RuntimeConfig) GetMaxSessions() int {
 }
 
 // GetSessionIdleTimeoutMinutes 获取会话空闲超时分钟数
-// 默认值为 5 分钟
+// 默认值为 5 分钟。
 func (a *RuntimeConfig) GetSessionIdleTimeoutMinutes() int {
 	if a.Extra == nil {
 		return 5
@@ -75,7 +75,7 @@ func (a *RuntimeConfig) GetSessionIdleTimeoutMinutes() int {
 }
 
 // GetBaseRPM 获取基础 RPM 限制
-// 返回 0 表示未启用（负数视为无效配置，按 0 处理）
+// 返回 0 表示未启用（负数视为无效配置，按 0 处理）。
 func (a *RuntimeConfig) GetBaseRPM() int {
 	if a.Extra == nil {
 		return 0
@@ -90,7 +90,7 @@ func (a *RuntimeConfig) GetBaseRPM() int {
 }
 
 // GetRPMStrategy 获取 RPM 策略
-// "tiered" = 三区模型（默认）, "sticky_exempt" = 粘性豁免
+// "tiered" = 三区模型（默认）, "sticky_exempt" = 粘性豁免。
 func (a *RuntimeConfig) GetRPMStrategy() string {
 	if a.Extra == nil {
 		return "tiered"
@@ -105,7 +105,7 @@ func (a *RuntimeConfig) GetRPMStrategy() string {
 
 // GetRPMStickyBuffer 获取 RPM 粘性缓冲数量
 // Cache-driven: buffer = concurrency + maxSessions（覆盖幽灵窗口 + 稳态会话需求）
-// floor = baseRPM / 5（向后兼容 maxSessions=0 且 concurrency=0 场景）
+// floor = baseRPM / 5（向后兼容 maxSessions=0 且 concurrency=0 场景）。
 func (a *RuntimeConfig) GetRPMStickyBuffer() int {
 	if a.Extra == nil {
 		return 0
@@ -118,13 +118,13 @@ func (a *RuntimeConfig) GetRPMStickyBuffer() int {
 }
 
 // CheckRPMSchedulability 根据当前 RPM 计数检查调度状态
-// 复用 WindowCostSchedulability 三态：Schedulable / StickyOnly / NotSchedulable
+// 复用 WindowCostSchedulability 三态：Schedulable / StickyOnly / NotSchedulable。
 func (a *RuntimeConfig) CheckRPMSchedulability(current int) WindowCostSchedulability {
 	return WindowCostSchedulability(policy.CheckRPM(current, a.GetBaseRPM(), a.GetRPMStickyBuffer(), a.GetRPMStrategy()))
 }
 
 // GetWindowCostLimit 获取 5h 窗口费用阈值（美元）
-// 返回 0 表示未启用
+// 返回 0 表示未启用。
 func (a *RuntimeConfig) GetWindowCostLimit() float64 {
 	if a.Extra == nil {
 		return 0
@@ -136,7 +136,7 @@ func (a *RuntimeConfig) GetWindowCostLimit() float64 {
 }
 
 // GetWindowCostStickyReserve 获取粘性会话预留额度（美元）
-// 默认值为 10
+// 默认值为 10。
 func (a *RuntimeConfig) GetWindowCostStickyReserve() float64 {
 	if a.Extra == nil {
 		return 10.0
@@ -153,12 +153,12 @@ func (a *RuntimeConfig) GetWindowCostStickyReserve() float64 {
 // GetCurrentWindowStartTime 获取当前有效的窗口开始时间
 // 逻辑：
 // 1. 如果窗口未过期（SessionWindowEnd 存在且在当前时间之后），使用记录的 SessionWindowStart
-// 2. 否则（窗口过期或未设置），使用新的预测窗口开始时间（从当前整点开始）
+// 2. 否则（窗口过期或未设置），使用新的预测窗口开始时间（从当前整点开始）。
 func (a *RuntimeConfig) GetCurrentWindowStartTime(now time.Time) time.Time {
 	return billing.CurrentCostWindowStart(a.SessionWindowStart, a.SessionWindowEnd, now)
 }
 
-// ParseExtraFloat64 从 extra 字段解析 float64 值
+// ParseExtraFloat64 从 extra 字段解析 float64 值。
 func ParseExtraFloat64(value any) float64 {
 	switch v := value.(type) {
 	case float64:
@@ -214,7 +214,7 @@ func ParseExtraInt(value any) int {
 }
 
 // GetUserMsgQueueMode 获取用户消息队列模式
-// "serialize" = 串行队列, "throttle" = 软性限速, "" = 未设置（使用全局配置）
+// "serialize" = 串行队列, "throttle" = 软性限速, "" = 未设置（使用全局配置）。
 func (a *RuntimeConfig) GetUserMsgQueueMode() string {
 	if a.Extra == nil {
 		return ""

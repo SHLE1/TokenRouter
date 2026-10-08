@@ -250,7 +250,7 @@ func MaskedRequestCredential(c *gin.Context) string {
 }
 
 // deriveAuditAction 由 method + 路由模板自动推导动作名，
-// 例：PUT /api/v1/admin/providers/:id → admin.providers.update
+// 例：PUT /api/v1/admin/providers/:id → admin.providers.update。
 func deriveAuditAction(method, fullPath string) string {
 	path := strings.TrimPrefix(fullPath, "/api/v1/")
 	path = strings.Trim(path, "/")

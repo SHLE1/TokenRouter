@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 )
 
-// TestBuildParts_ThinkingBlockWithoutSignature 测试thinking block无signature时的处理
+// TestBuildParts_ThinkingBlockWithoutSignature 测试thinking block无signature时的处理。
 func TestBuildParts_ThinkingBlockWithoutSignature(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -151,7 +151,7 @@ func TestBuildParts_ToolUseSignatureHandling(t *testing.T) {
 	})
 }
 
-// TestBuildTools_CustomTypeTools 测试custom类型工具转换
+// TestBuildTools_CustomTypeTools 测试custom类型工具转换。
 func TestBuildTools_CustomTypeTools(t *testing.T) {
 	tests := []struct {
 		name        string

@@ -351,7 +351,7 @@ func newInternal500Health(store AntigravityHealthStore, counter Internal500Count
 	return &AntigravityHealth{Store: store, Counter: counter, Error: noop, Warn: noop, Info: noop, Logf: noop}
 }
 
-// TestSetModelRateLimitByModelName_UsesOfficialModelID 验证写入端使用官方模型 ID
+// TestSetModelRateLimitByModelName_UsesOfficialModelID 验证写入端使用官方模型 ID。
 func TestSetModelRateLimitByModelName_UsesOfficialModelID(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -418,7 +418,7 @@ func TestSetModelRateLimitByModelName_UsesOfficialModelID(t *testing.T) {
 	}
 }
 
-// TestSetModelRateLimitByModelName_NotConvertToScope 验证不会将模型名转换为 scope
+// TestSetModelRateLimitByModelName_NotConvertToScope 验证不会将模型名转换为 scope。
 func TestSetModelRateLimitByModelName_NotConvertToScope(t *testing.T) {
 	repo := &antigravityHealthStoreFixture{}
 	resetAt := time.Now().Add(30 * time.Second)
@@ -445,7 +445,7 @@ func TestSetModelRateLimitByModelName_NotConvertToScope(t *testing.T) {
 	require.NotEqual(t, "claude_sonnet", call.modelKey, "should NOT be scope")
 }
 
-// TestUpdateProviderModelRateLimitInCache_UpdatesExtraAndCallsCache 测试模型限流后更新缓存
+// TestUpdateProviderModelRateLimitInCache_UpdatesExtraAndCallsCache 测试模型限流后更新缓存。
 func TestUpdateProviderModelRateLimitInCache_UpdatesExtraAndCallsCache(t *testing.T) {
 	cache := &antigravityPublicationFixture{}
 	svc := &AntigravityHealth{Publish: cache.publish}
@@ -474,7 +474,7 @@ func TestUpdateProviderModelRateLimitInCache_UpdatesExtraAndCallsCache(t *testin
 	require.Equal(t, provider.ID, cache.setProviderCalls[0].ID)
 }
 
-// TestUpdateProviderModelRateLimitInCache_NilSchedulerSnapshot 测试 schedulerSnapshot 为 nil 时不 panic
+// TestUpdateProviderModelRateLimitInCache_NilSchedulerSnapshot 测试 schedulerSnapshot 为 nil 时不 panic。
 func TestUpdateProviderModelRateLimitInCache_NilSchedulerSnapshot(t *testing.T) {
 	svc := &AntigravityHealth{}
 
@@ -487,7 +487,7 @@ func TestUpdateProviderModelRateLimitInCache_NilSchedulerSnapshot(t *testing.T) 
 	require.Nil(t, provider.Extra)
 }
 
-// TestUpdateProviderModelRateLimitInCache_PreservesExistingExtra 测试保留已有的 Extra 数据
+// TestUpdateProviderModelRateLimitInCache_PreservesExistingExtra 测试保留已有的 Extra 数据。
 func TestUpdateProviderModelRateLimitInCache_PreservesExistingExtra(t *testing.T) {
 	cache := &antigravityPublicationFixture{}
 	svc := &AntigravityHealth{Publish: cache.publish}

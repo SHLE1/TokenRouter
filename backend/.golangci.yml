@@ -9,6 +9,7 @@ linters:
     - decorder
     - errcheck
     - funcorder
+    - godot
     - gosec
     - govet
     - ineffassign
@@ -84,6 +85,14 @@ linters:
     usestdlibvars:
       # 架构规则禁止部分核心包引用 net/http，状态码在这些包里写成数字。
       http-status-code: false
+    godot:
+      # 顶层声明的文档注释以句号结尾，中文用“。”，英文用“.”。
+      scope: declarations
+      exclude:
+        # Project Doc 锚点是路径，句号会让路径失效。
+        - '^\s*@project-doc'
+        # 路由注释写的是请求方法和路径。
+        - '^\s*(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|ANY) /'
     nolintlint:
       # 每条 nolint 写明被关闭的 linter 和原因。
       require-specific: true

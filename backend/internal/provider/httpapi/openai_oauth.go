@@ -21,7 +21,7 @@ const (
 	OpenAIQuotaResetWarningProviderRecoveryFailed = providercore.OpenAIQuotaResetWarningProviderRecoveryFailed
 )
 
-// OpenAIOAuthHandler handles OpenAI OAuth-related operations
+// OpenAIOAuthHandler handles OpenAI OAuth-related operations.
 type OpenAIOAuthHandler struct {
 	QuotaActions  *providercore.OpenAIQuotaActions
 	Import        *providercore.OpenAIProviderImport
@@ -57,13 +57,13 @@ type OpenAIQuotaRefreshResponse struct {
 	CachePersisted bool `json:"cache_persisted"`
 }
 
-// OpenAIGenerateAuthURLRequest represents the request for generating OpenAI auth URL
+// OpenAIGenerateAuthURLRequest represents the request for generating OpenAI auth URL.
 type OpenAIGenerateAuthURLRequest struct {
 	ProxyID     *int64 `json:"proxy_id"`
 	RedirectURI string `json:"redirect_uri"`
 }
 
-// OpenAIExchangeCodeRequest represents the request for exchanging OpenAI auth code
+// OpenAIExchangeCodeRequest represents the request for exchanging OpenAI auth code.
 type OpenAIExchangeCodeRequest struct {
 	SessionID              string `json:"session_id" binding:"required"`
 	Code                   string `json:"code" binding:"required"`
@@ -73,7 +73,7 @@ type OpenAIExchangeCodeRequest struct {
 	TLSFingerprintRouterID *int64 `json:"tls_fingerprint_router_id"`
 }
 
-// OpenAIRefreshTokenRequest represents the request for refreshing OpenAI token
+// OpenAIRefreshTokenRequest represents the request for refreshing OpenAI token.
 type OpenAIRefreshTokenRequest struct {
 	RefreshToken           string `json:"refresh_token"`
 	RT                     string `json:"rt"`

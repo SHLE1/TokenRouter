@@ -22,7 +22,7 @@ type antigravityErrorStoreFixture struct {
 	modelRateLimitCalls []struct{ modelKey string }
 }
 
-// TestHandleUpstreamError_429_ModelRateLimit 测试 429 模型限流场景
+// TestHandleUpstreamError_429_ModelRateLimit 测试 429 模型限流场景。
 func TestHandleUpstreamError_429_ModelRateLimit(t *testing.T) {
 	repo := &antigravityErrorStoreFixture{}
 	svc := newAntigravityErrorFixture(repo)
@@ -69,7 +69,7 @@ func TestHandleUpstreamError_429_NonModelRateLimit(t *testing.T) {
 }
 
 // TestHandleUpstreamError_429_NonModelRateLimit_UsesMappedModelKey 测试 429 非模型限流场景
-// 验证：requestedModel 会被映射到 Antigravity 最终模型（例如 claude-opus-4-6 -> claude-opus-4-6-thinking）
+// 验证：requestedModel 会被映射到 Antigravity 最终模型（例如 claude-opus-4-6 -> claude-opus-4-6-thinking）。
 func TestHandleUpstreamError_429_NonModelRateLimit_UsesMappedModelKey(t *testing.T) {
 	repo := &antigravityErrorStoreFixture{}
 	svc := newAntigravityErrorFixture(repo)
@@ -85,7 +85,7 @@ func TestHandleUpstreamError_429_NonModelRateLimit_UsesMappedModelKey(t *testing
 }
 
 // TestHandleUpstreamError_503_ModelCapacityExhausted 测试 503 模型容量不足场景
-// MODEL_CAPACITY_EXHAUSTED 时应等待重试，不切换提供商
+// MODEL_CAPACITY_EXHAUSTED 时应等待重试，不切换提供商。
 func TestHandleUpstreamError_503_ModelCapacityExhausted(t *testing.T) {
 	repo := &antigravityErrorStoreFixture{}
 	svc := newAntigravityErrorFixture(repo)
@@ -113,7 +113,7 @@ func TestHandleUpstreamError_503_ModelCapacityExhausted(t *testing.T) {
 	require.Empty(t, repo.modelRateLimitCalls, "MODEL_CAPACITY_EXHAUSTED should not set model rate limit")
 }
 
-// TestHandleUpstreamError_503_NonModelRateLimit 测试 503 非模型限流场景（不处理）
+// TestHandleUpstreamError_503_NonModelRateLimit 测试 503 非模型限流场景（不处理）。
 func TestHandleUpstreamError_503_NonModelRateLimit(t *testing.T) {
 	repo := &antigravityErrorStoreFixture{}
 	svc := newAntigravityErrorFixture(repo)
@@ -138,7 +138,7 @@ func TestHandleUpstreamError_503_NonModelRateLimit(t *testing.T) {
 	require.Empty(t, repo.rateCalls, "503 non-model rate limit should not trigger provider rate limit")
 }
 
-// TestHandleUpstreamError_503_EmptyBody 测试 503 空响应体（不处理）
+// TestHandleUpstreamError_503_EmptyBody 测试 503 空响应体（不处理）。
 func TestHandleUpstreamError_503_EmptyBody(t *testing.T) {
 	repo := &antigravityErrorStoreFixture{}
 	svc := newAntigravityErrorFixture(repo)

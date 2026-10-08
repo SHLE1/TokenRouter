@@ -13,10 +13,10 @@ const (
 	VerifyCodeCooldown    = 1 * time.Minute
 	MaxVerifyCodeAttempts = 5
 
-	// Password reset token settings
+	// Password reset token settings.
 	PasswordResetTokenTTL = 30 * time.Minute
 
-	// Password reset email cooldown (prevent email bombing)
+	// Password reset email cooldown (prevent email bombing).
 	PasswordResetEmailCooldown = 30 * time.Second
 )
 
@@ -25,11 +25,11 @@ var (
 	ErrVerifyCodeTooFrequent = infraerrors.TooManyRequests("VERIFY_CODE_TOO_FREQUENT", "please wait before requesting a new code")
 	ErrVerifyCodeMaxAttempts = infraerrors.TooManyRequests("VERIFY_CODE_MAX_ATTEMPTS", "too many failed attempts, please request a new code")
 
-	// Password reset errors
+	// Password reset errors.
 	ErrInvalidResetToken = infraerrors.BadRequest("INVALID_RESET_TOKEN", "invalid or expired password reset token")
 )
 
-// EmailCache defines cache operations for email service
+// EmailCache defines cache operations for email service.
 type EmailCache interface {
 	GetVerificationCode(ctx context.Context, email string) (*VerificationCodeData, error)
 	SetVerificationCode(ctx context.Context, email string, data *VerificationCodeData, ttl time.Duration) error
@@ -55,7 +55,7 @@ type EmailCache interface {
 	GetNotifyCodeUserRate(ctx context.Context, userID int64) (int64, error)
 }
 
-// VerificationCodeData represents verification code data
+// VerificationCodeData represents verification code data.
 type VerificationCodeData struct {
 	Code      string
 	Attempts  int
@@ -63,7 +63,7 @@ type VerificationCodeData struct {
 	ExpiresAt time.Time // absolute expiry; used to preserve remaining TTL when updating attempts
 }
 
-// PasswordResetTokenData represents password reset token data
+// PasswordResetTokenData represents password reset token data.
 type PasswordResetTokenData struct {
 	Token     string
 	CreatedAt time.Time

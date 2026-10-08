@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 )
 
-// AntigravityDegradedUsage 从 FetchQuota 错误构建降级 UsageInfo
+// AntigravityDegradedUsage 从 FetchQuota 错误构建降级 UsageInfo。
 func AntigravityDegradedUsage(err error, now time.Time) *providercore.UsageInfo {
 	errMsg := fmt.Sprintf("usage API error: %v", err)
 	slog.Warn("antigravity usage fetch failed, returning degraded response", "error", err)

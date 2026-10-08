@@ -18,7 +18,7 @@ type UsageTokens = purepricing.UsageTokens
 // CostBreakdown 保留旧用量/定价类型入口。
 type CostBreakdown = purepricing.CostBreakdown
 
-// CostInput 统一计费输入
+// CostInput 统一计费输入。
 type CostInput struct {
 	Ctx             context.Context
 	Model           string
@@ -84,7 +84,7 @@ func NewCalculator(catalog PriceCatalog, options CalculatorOptions) *Calculator 
 	return &Calculator{catalog: catalog, options: options}
 }
 
-// GetModelPricing 获取模型价格配置
+// GetModelPricing 获取模型价格配置。
 func (s *Calculator) GetModelPricing(model string) (*ModelPricing, error) {
 	model = strings.ToLower(model)
 	var raw *CatalogModelPricing
@@ -149,7 +149,7 @@ func (s *Calculator) ComputeTokenBreakdown(
 	return purepricing.ComputeTokenBreakdown(pricing, tokens, rateMultiplier, serviceTier, applyLongCtx)
 }
 
-// CalculateCost 计算使用费用
+// CalculateCost 计算使用费用。
 func (s *Calculator) CalculateCost(model string, tokens UsageTokens, rateMultiplier float64) (*CostBreakdown, error) {
 	return s.CalculateCostInternal(model, tokens, rateMultiplier, "", nil)
 }
@@ -176,7 +176,7 @@ func (s *Calculator) CalculateCostInternal(model string, tokens UsageTokens, rat
 	return s.ComputeTokenBreakdown(pricing, tokens, rateMultiplier, serviceTier, true), nil
 }
 
-// ForceUpdatePricing 强制更新价格数据
+// ForceUpdatePricing 强制更新价格数据。
 func (s *Calculator) ForceUpdatePricing() error {
 	if s.catalog != nil {
 		return s.catalog.ForceUpdate()

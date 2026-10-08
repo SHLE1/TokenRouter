@@ -2194,7 +2194,7 @@ func routeInventoryMount[T any](t *testing.T, factory any) T {
 	return result
 }
 
-// RegisterAdminRoutes 注册管理员路由
+// RegisterAdminRoutes 注册管理员路由。
 func RegisterAdminRoutes(
 	v1 *gin.RouterGroup,
 	h *routeTestHandlers,

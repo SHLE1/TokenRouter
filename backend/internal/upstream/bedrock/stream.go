@@ -210,7 +210,7 @@ func StreamResponse(
 }
 
 // ExtractBedrockChunkData 从 Bedrock EventStream payload 中提取 Claude SSE 事件数据
-// Bedrock payload 格式：{"bytes":"<base64-encoded-json>"}
+// Bedrock payload 格式：{"bytes":"<base64-encoded-json>"}。
 func ExtractBedrockChunkData(payload []byte) []byte {
 	b64 := gjson.GetBytes(payload, "bytes").String()
 	if b64 == "" {
@@ -266,7 +266,7 @@ func NewBedrockEventStreamDecoder(r io.Reader) *BedrockEventStreamDecoder {
 	}
 }
 
-// Decode 读取下一个 EventStream 帧并返回 chunk 类型事件的 payload
+// Decode 读取下一个 EventStream 帧并返回 chunk 类型事件的 payload。
 func (d *BedrockEventStreamDecoder) Decode() ([]byte, error) {
 	for {
 		// 读取 prelude: total_length(4) + headers_length(4) + prelude_crc(4) = 12 bytes
@@ -340,7 +340,7 @@ func (d *BedrockEventStreamDecoder) Decode() ([]byte, error) {
 //
 //	[name_length: 1 byte][name: variable][value_type: 1 byte][value: variable]
 //
-// value_type = 7 表示 string 类型，前 2 bytes 为长度
+// value_type = 7 表示 string 类型，前 2 bytes 为长度。
 func ExtractEventStreamHeaderValue(headers []byte, targetName string) string {
 	pos := 0
 	for pos < len(headers) {

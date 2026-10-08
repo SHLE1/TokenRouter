@@ -356,7 +356,7 @@ func NormalizeSystemParam(system any) any {
 }
 
 // SystemIncludesClaudeCodePrompt 检查 system 中是否已包含 Claude Code 提示词
-// 使用前缀匹配支持多种变体（标准版、Agent SDK 版等）
+// 使用前缀匹配支持多种变体（标准版、Agent SDK 版等）。
 func SystemIncludesClaudeCodePrompt(system any) bool {
 	system = NormalizeSystemParam(system)
 	switch v := system.(type) {
@@ -374,7 +374,7 @@ func SystemIncludesClaudeCodePrompt(system any) bool {
 	return false
 }
 
-// HasClaudeCodePrefix 检查文本是否以 Claude Code 提示词的特征前缀开头
+// HasClaudeCodePrefix 检查文本是否以 Claude Code 提示词的特征前缀开头。
 func HasClaudeCodePrefix(text string) bool {
 	for _, prefix := range ClaudeCodePromptPrefixes {
 		if strings.HasPrefix(text, prefix) {
@@ -385,7 +385,7 @@ func HasClaudeCodePrefix(text string) bool {
 }
 
 // InjectClaudeCodePrompt 在 system 开头注入 Claude Code 提示词
-// 处理 null、字符串、数组三种格式
+// 处理 null、字符串、数组三种格式。
 func InjectClaudeCodePrompt(body []byte, system any) []byte {
 	system = NormalizeSystemParam(system)
 	claudeCodeBlock, err := MarshalAnthropicSystemTextBlock(ClaudeCodeSystemPrompt, true)

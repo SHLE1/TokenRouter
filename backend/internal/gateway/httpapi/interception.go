@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
 )
 
-// WriteInterceptStream 发送流式 mock 响应（用于请求拦截）
+// WriteInterceptStream 发送流式 mock 响应（用于请求拦截）。
 func WriteInterceptStream(c *gin.Context, model string, interceptType clientmeta.InterceptType) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
@@ -82,7 +82,7 @@ func GenerateInterceptMessageID() string {
 	return "msg_01" + string(b)
 }
 
-// WriteInterceptResponse 发送非流式 mock 响应（用于请求拦截）
+// WriteInterceptResponse 发送非流式 mock 响应（用于请求拦截）。
 func WriteInterceptResponse(c *gin.Context, model string, interceptType clientmeta.InterceptType) {
 	var msgID, text, stopReason string
 	var outputTokens int

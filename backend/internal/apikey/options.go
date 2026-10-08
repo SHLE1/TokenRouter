@@ -33,7 +33,7 @@ var (
 	ErrTeamMemberMonthlyExceeded = billing.ErrTeamMemberMonthlyExceeded
 )
 
-// APIKeyAuthCacheConfig API Key 认证缓存配置
+// APIKeyAuthCacheConfig API Key 认证缓存配置。
 type APIKeyAuthCacheConfig struct {
 	L1Size             int                    `mapstructure:"l1_size"`
 	L1TTLSeconds       int                    `mapstructure:"l1_ttl_seconds"`

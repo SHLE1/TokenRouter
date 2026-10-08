@@ -59,7 +59,7 @@ type stickyGatewayCacheHotpathStub struct {
 	getCalls atomic.Int64
 }
 
-// sessionLimitReleaseCacheStub 记录 UnregisterSession 调用，用于验证释放逻辑
+// sessionLimitReleaseCacheStub 记录 UnregisterSession 调用，用于验证释放逻辑。
 type sessionLimitReleaseCacheStub struct {
 	schedulercore.SessionLimitCache
 
@@ -1222,7 +1222,7 @@ func TestGatewayService_isModelSupportedByProvider(t *testing.T) {
 	}
 }
 
-// TestGenericGroupIncludesAntigravityWithoutMixedFlag 测试混合调度
+// TestGenericGroupIncludesAntigravityWithoutMixedFlag 测试混合调度。
 func TestGenericGroupIncludesAntigravityWithoutMixedFlag(t *testing.T) {
 	groupID := int64(1)
 	values := []gatewayprovider.ExecutionProvider{
@@ -1396,7 +1396,7 @@ func TestSelectProviderWithLoadAwareness_AppliesGroupMappingOnce(t *testing.T) {
 	require.Equal(t, provider.Record.ID, result.Provider.Record.ID)
 }
 
-// TestGatewayService_SelectProviderWithLoadAwareness tests load-aware provider selection
+// TestGatewayService_SelectProviderWithLoadAwareness tests load-aware provider selection.
 func TestGatewayService_SelectProviderWithLoadAwareness(t *testing.T) {
 	ctx := context.Background()
 
@@ -2720,7 +2720,7 @@ func TestGatewayService_isModelSupportedByProvider_AntigravityNoMapping(t *testi
 }
 
 // TestGatewayService_isModelSupportedByProviderWithContext_ThinkingMode 测试 thinking 模式下的模型支持检查
-// 验证调度时使用映射后的最终模型名（包括 thinking 后缀）来检查 model_mapping 支持
+// 验证调度时使用映射后的最终模型名（包括 thinking 后缀）来检查 model_mapping 支持。
 func TestGatewayService_isModelSupportedByProviderWithContext_ThinkingMode(t *testing.T) {
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
 
@@ -2846,7 +2846,7 @@ func TestGatewayService_isModelSupportedByProviderWithContext_ThinkingMode(t *te
 }
 
 // TestGatewayService_isModelSupportedByProvider_CustomMappingNotInDefault 测试自定义模型映射中
-// 不在 DefaultAntigravityModelMapping 中的模型能通过调度
+// 不在 DefaultAntigravityModelMapping 中的模型能通过调度。
 func TestGatewayService_isModelSupportedByProvider_CustomMappingNotInDefault(t *testing.T) {
 	// 自定义映射中包含不在默认映射中的模型
 	provider := &gatewayprovider.ExecutionProvider{
@@ -2878,7 +2878,7 @@ func TestGatewayService_isModelSupportedByProvider_CustomMappingNotInDefault(t *
 }
 
 // TestGatewayService_isModelSupportedByProviderWithContext_CustomMappingThinking
-// 测试自定义映射 + thinking 模式的交互
+// 测试自定义映射 + thinking 模式的交互。
 func TestGatewayService_isModelSupportedByProviderWithContext_CustomMappingThinking(t *testing.T) {
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{}},
 

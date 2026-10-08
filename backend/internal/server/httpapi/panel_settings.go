@@ -19,7 +19,7 @@ type PanelSettingsStore interface {
 // PanelSettingsHandler 处理面板限流设置的管理请求。
 type PanelSettingsHandler struct{ settingService PanelSettingsStore }
 
-// UpdatePanelRateLimitSettingsRequest 更新面板 API 限流配置请求
+// UpdatePanelRateLimitSettingsRequest 更新面板 API 限流配置请求。
 type UpdatePanelRateLimitSettingsRequest struct {
 	Enabled     bool `json:"enabled"`
 	UserRPM     int  `json:"user_rpm"`

@@ -1244,7 +1244,7 @@ func (r *UserStore) RemoveGroupFromAllowedGroups(ctx context.Context, groupID in
 	return int64(affected), nil
 }
 
-// RemoveGroupFromUserAllowedGroups 移除单个用户的指定分组权限
+// RemoveGroupFromUserAllowedGroups 移除单个用户的指定分组权限。
 func (r *UserStore) RemoveGroupFromUserAllowedGroups(ctx context.Context, userID int64, groupID int64) error {
 	client := clientFromContext(ctx, r.client)
 	_, err := client.UserAllowedGroup.Delete().
@@ -1585,7 +1585,7 @@ func IdentityMarshalExtraEmails(entries []identitycore.NotifyEmailEntry) string 
 	return identitycore.MarshalNotifyEmails(entries)
 }
 
-// UpdateTotpSecret 更新用户的 TOTP 加密密钥
+// UpdateTotpSecret 更新用户的 TOTP 加密密钥。
 func (r *UserStore) UpdateTotpSecret(ctx context.Context, userID int64, encryptedSecret *string) error {
 	client := clientFromContext(ctx, r.client)
 	update := client.User.UpdateOneID(userID)
@@ -1601,7 +1601,7 @@ func (r *UserStore) UpdateTotpSecret(ctx context.Context, userID int64, encrypte
 	return nil
 }
 
-// EnableTotp 启用用户的 TOTP 双因素认证
+// EnableTotp 启用用户的 TOTP 双因素认证。
 func (r *UserStore) EnableTotp(ctx context.Context, userID int64) error {
 	client := clientFromContext(ctx, r.client)
 	_, err := client.User.UpdateOneID(userID).
@@ -1614,7 +1614,7 @@ func (r *UserStore) EnableTotp(ctx context.Context, userID int64) error {
 	return nil
 }
 
-// DisableTotp 禁用用户的 TOTP 双因素认证
+// DisableTotp 禁用用户的 TOTP 双因素认证。
 func (r *UserStore) DisableTotp(ctx context.Context, userID int64) error {
 	client := clientFromContext(ctx, r.client)
 	_, err := client.User.UpdateOneID(userID).

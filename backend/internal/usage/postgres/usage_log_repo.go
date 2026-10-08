@@ -48,7 +48,7 @@ var (
 		lastByOperation map[string]time.Time
 	}{lastByOperation: make(map[string]time.Time)}
 
-	// dateFormatWhitelist 将 granularity 参数映射为 PostgreSQL TO_CHAR 格式字符串，防止外部输入直接拼入 SQL
+	// dateFormatWhitelist 将 granularity 参数映射为 PostgreSQL TO_CHAR 格式字符串，防止外部输入直接拼入 SQL。
 	dateFormatWhitelist = map[string]string{
 		"hour":  "YYYY-MM-DD HH24:00",
 		"day":   "YYYY-MM-DD",
@@ -114,7 +114,7 @@ func shouldLogUsageAnalyticsFallback(operation string, now time.Time) bool {
 	return true
 }
 
-// safeDateFormat 根据白名单获取 dateFormat，未匹配时返回默认值
+// safeDateFormat 根据白名单获取 dateFormat，未匹配时返回默认值。
 func safeDateFormat(granularity string) string {
 	if f, ok := dateFormatWhitelist[granularity]; ok {
 		return f

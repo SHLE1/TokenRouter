@@ -26,7 +26,7 @@ type ApplicationError struct {
 	cause error
 }
 
-// Newf New(code fmt.Sprintf(format, a...))
+// Newf New(code fmt.Sprintf(format, a...)).
 func Newf(code Category, reason, format string, a ...any) *ApplicationError {
 	return New(code, reason, fmt.Sprintf(format, a...))
 }

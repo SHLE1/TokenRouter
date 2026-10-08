@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Affiliate rebate settings
+// Affiliate rebate settings.
 const (
 	AffiliateRebateRateDefault          = 20.0
 	AffiliateRebateRateMin              = 0.0

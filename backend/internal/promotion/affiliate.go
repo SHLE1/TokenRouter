@@ -90,14 +90,14 @@ type AffiliateRepository interface {
 	GetAffiliateUserOverview(ctx context.Context, userID int64) (*AffiliateUserOverview, error)
 }
 
-// AffiliateAdminFilter 列表筛选条件
+// AffiliateAdminFilter 列表筛选条件。
 type AffiliateAdminFilter struct {
 	Search   string
 	Page     int
 	PageSize int
 }
 
-// AffiliateAdminEntry 专属用户列表条目
+// AffiliateAdminEntry 专属用户列表条目。
 type AffiliateAdminEntry struct {
 	UserID               int64    `json:"user_id"`
 	Email                string   `json:"email"`

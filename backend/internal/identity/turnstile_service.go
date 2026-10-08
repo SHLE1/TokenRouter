@@ -13,19 +13,19 @@ var (
 	ErrTurnstileInvalidSecretKey   = infraerrors.BadRequest("TURNSTILE_INVALID_SECRET_KEY", "invalid turnstile secret key")
 )
 
-// TurnstileVerifier 验证 Turnstile token 的接口
+// TurnstileVerifier 验证 Turnstile token 的接口。
 type TurnstileVerifier interface {
 	VerifyToken(ctx context.Context, secretKey, token, remoteIP string) (*TurnstileVerifyResponse, error)
 }
 
-// TurnstileService Turnstile 验证服务
+// TurnstileService Turnstile 验证服务。
 type TurnstileService struct {
 	observer       Observer
 	settingService CaptchaSettings
 	verifier       TurnstileVerifier
 }
 
-// TurnstileVerifyResponse Cloudflare Turnstile 验证响应
+// TurnstileVerifyResponse Cloudflare Turnstile 验证响应。
 type TurnstileVerifyResponse struct {
 	Success     bool     `json:"success"`
 	ChallengeTS string   `json:"challenge_ts"`
@@ -35,7 +35,7 @@ type TurnstileVerifyResponse struct {
 	CData       string   `json:"cdata"`
 }
 
-// NewTurnstileService 创建 Turnstile 服务实例
+// NewTurnstileService 创建 Turnstile 服务实例。
 func NewTurnstileService(settingService CaptchaSettings, verifier TurnstileVerifier) *TurnstileService {
 	return &TurnstileService{
 		settingService: settingService,
@@ -74,12 +74,12 @@ func (s *TurnstileService) VerifyTokenWithSecret(ctx context.Context, secretKey,
 	return nil
 }
 
-// IsEnabled 检查 Turnstile 是否启用
+// IsEnabled 检查 Turnstile 是否启用。
 func (s *TurnstileService) IsEnabled(ctx context.Context) bool {
 	return s.settingService.IsTurnstileEnabled(ctx)
 }
 
-// ValidateSecretKey 验证 Turnstile Secret Key 是否有效
+// ValidateSecretKey 验证 Turnstile Secret Key 是否有效。
 func (s *TurnstileService) ValidateSecretKey(ctx context.Context, secretKey string) error {
 	// 发送一个测试token的验证请求来检查secret_key是否有效
 	result, err := s.verifier.VerifyToken(ctx, secretKey, "test-validation", "")

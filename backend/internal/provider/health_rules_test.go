@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMatchTempUnschedKeyword 测试关键词匹配函数
+// TestMatchTempUnschedKeyword 测试关键词匹配函数。
 func TestMatchTempUnschedKeyword(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -68,7 +68,7 @@ func TestMatchTempUnschedKeyword(t *testing.T) {
 	}
 }
 
-// TestTruncateTempUnschedMessage 测试消息截断
+// TestTruncateTempUnschedMessage 测试消息截断。
 func TestTruncateTempUnschedMessage(t *testing.T) {
 	tests := []struct {
 		name     string

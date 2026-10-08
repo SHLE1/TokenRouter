@@ -14,7 +14,7 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// ProxyHandler handles admin proxy management
+// ProxyHandler handles admin proxy management.
 type ProxyHandler struct {
 	idempotencyhttp.Executor
 
@@ -22,7 +22,7 @@ type ProxyHandler struct {
 	adminService egress.ProxyAdministrator
 }
 
-// CreateProxyRequest represents create proxy request
+// CreateProxyRequest represents create proxy request.
 type CreateProxyRequest struct {
 	Name           string `json:"name" binding:"required"`
 	Protocol       string `json:"protocol" binding:"required,oneof=http https socks5 socks5h"`
@@ -36,7 +36,7 @@ type CreateProxyRequest struct {
 	ExpiryWarnDays int    `json:"expiry_warn_days" binding:"omitempty,min=0"`
 }
 
-// UpdateProxyRequest represents update proxy request
+// UpdateProxyRequest represents update proxy request.
 type UpdateProxyRequest struct {
 	Name           string `json:"name"`
 	Protocol       string `json:"protocol" binding:"omitempty,oneof=http https socks5 socks5h"`
@@ -51,7 +51,7 @@ type UpdateProxyRequest struct {
 	ExpiryWarnDays int    `json:"expiry_warn_days" binding:"omitempty,min=0"`
 }
 
-// BatchCreateProxyItem represents a single proxy in batch create request
+// BatchCreateProxyItem represents a single proxy in batch create request.
 type BatchCreateProxyItem struct {
 	Protocol string `json:"protocol" binding:"required,oneof=http https socks5 socks5h"`
 	Host     string `json:"host" binding:"required"`
@@ -60,7 +60,7 @@ type BatchCreateProxyItem struct {
 	Password string `json:"password"`
 }
 
-// BatchCreateRequest represents batch create proxies request
+// BatchCreateRequest represents batch create proxies request.
 type BatchCreateRequest struct {
 	Proxies []BatchCreateProxyItem `json:"proxies" binding:"required,min=1"`
 }
@@ -74,7 +74,7 @@ type AdminProxyWithProviderCount = proxydto.AdminProxyWithProviderCount
 // ProxyProviderSummary 包含使用代理的提供商摘要。
 type ProxyProviderSummary = proxydto.ProxyProviderSummary
 
-// NewProxyHandler creates a new admin proxy handler
+// NewProxyHandler creates a new admin proxy handler.
 func NewProxyHandler(adminService egress.ProxyAdministrator, transfers ...*egress.ProxyTransfer) *ProxyHandler {
 	var transfer *egress.ProxyTransfer
 	if len(transfers) > 0 {
@@ -118,7 +118,7 @@ func (h *ProxyHandler) List(c *gin.Context) {
 
 // GetAll handles getting all active proxies without pagination
 // GET /api/v1/admin/proxies/all
-// Optional query param: with_count=true to include provider count per proxy
+// Optional query param: with_count=true to include provider count per proxy.
 func (h *ProxyHandler) GetAll(c *gin.Context) {
 	withCount := c.Query("with_count") == "true"
 

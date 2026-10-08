@@ -36,7 +36,7 @@ type selectionFailureDiagnosis struct {
 	Detail   string
 }
 
-// SelectProviderForModel 选择支持指定模型的提供商（粘性会话+优先级+模型映射）
+// SelectProviderForModel 选择支持指定模型的提供商（粘性会话+优先级+模型映射）。
 func (s *Generic) SelectProviderForModel(ctx context.Context, groupID *int64, sessionHash string, requestedModel string) (*gatewayprovider.ExecutionProvider, error) {
 	return s.SelectProviderForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, nil)
 }
@@ -332,7 +332,7 @@ func (s *Generic) withWindowCostPrefetch(ctx context.Context, providers []gatewa
 }
 
 // isProviderSchedulableForQuota 检查提供商是否在配额限制内
-// 适用于配置了 quota_limit 的 apikey 和 bedrock 类型提供商
+// 适用于配置了 quota_limit 的 apikey 和 bedrock 类型提供商。
 func (s *Generic) isProviderSchedulableForQuota(provider *gatewayprovider.ExecutionProvider) bool {
 	if !provider.View().IsAPIKeyOrBedrock() {
 		return true
@@ -342,12 +342,12 @@ func (s *Generic) isProviderSchedulableForQuota(provider *gatewayprovider.Execut
 
 // isProviderSchedulableForWindowCost 检查提供商是否可根据窗口费用进行调度
 // 仅适用于 Anthropic OAuth/SetupToken 提供商
-// 返回 true 表示可调度，false 表示不可调度
+// 返回 true 表示可调度，false 表示不可调度。
 func (s *Generic) isProviderSchedulableForWindowCost(ctx context.Context, provider *gatewayprovider.ExecutionProvider, sticky bool) bool {
 	return s.windowCostGuard().Allow(ctx, costWindowInput(provider), sticky)
 }
 
-// withRPMPrefetch 批量预取所有候选提供商的 RPM 计数
+// withRPMPrefetch 批量预取所有候选提供商的 RPM 计数。
 func (s *Generic) withRPMPrefetch(ctx context.Context, providers []gatewayprovider.ExecutionProvider) context.Context {
 	if s.rpmCache == nil {
 		return ctx
@@ -363,7 +363,7 @@ func (s *Generic) withRPMPrefetch(ctx context.Context, providers []gatewayprovid
 }
 
 // isProviderSchedulableForRPM 检查提供商是否可根据 RPM 进行调度
-// 仅适用于 Anthropic OAuth/SetupToken 提供商
+// 仅适用于 Anthropic OAuth/SetupToken 提供商。
 func (s *Generic) isProviderSchedulableForRPM(ctx context.Context, provider *gatewayprovider.ExecutionProvider, sticky bool) bool {
 	if !provider.View().IsAnthropicOAuthOrSetupToken() {
 		return true
@@ -382,7 +382,7 @@ func (s *Generic) IncrementProviderRPM(ctx context.Context, id int64) error {
 // checkAndRegisterSession 检查并注册会话，用于会话数量限制
 // 仅适用于 Anthropic OAuth/SetupToken 提供商
 // sessionID: 会话标识符（使用粘性会话的 hash）
-// 返回 true 表示允许（在限制内或会话已存在），false 表示拒绝（超出限制且是新会话）
+// 返回 true 表示允许（在限制内或会话已存在），false 表示拒绝（超出限制且是新会话）。
 func (s *Generic) checkAndRegisterSession(ctx context.Context, provider *gatewayprovider.ExecutionProvider, session string) bool {
 	if schedulercore.IsSelectOnly(ctx) {
 		return true

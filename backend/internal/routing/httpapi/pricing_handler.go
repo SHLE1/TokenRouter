@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// PricingHandler 处理管理员价格配置管理请求
+// PricingHandler 处理管理员价格配置管理请求。
 type PricingHandler struct {
 	pricingConfigs *routing.PricingConfigService
 	catalog        *routing.PricingCatalog

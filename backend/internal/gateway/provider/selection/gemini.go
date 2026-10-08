@@ -311,7 +311,7 @@ func (s *Gemini) buildPreCheckUsageResultMap(ctx context.Context, providers []ga
 	return result
 }
 
-// isModelSupportedByProvider 根据提供商平台检查模型支持
+// isModelSupportedByProvider 根据提供商平台检查模型支持。
 func (s *Gemini) isModelSupportedByProvider(provider *gatewayprovider.ExecutionProvider, requestedModel string) bool {
 	if provider.Record.Platform == capability.PlatformAntigravity {
 		if strings.TrimSpace(requestedModel) == "" {
@@ -374,7 +374,7 @@ func (s *Gemini) listSchedulableProvidersOnce(ctx context.Context, groupID *int6
 	return s.providerRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
 }
 
-// HasAntigravityProviders 检查是否有可用的 antigravity 提供商
+// HasAntigravityProviders 检查是否有可用的 antigravity 提供商。
 func (s *Gemini) HasAntigravityProviders(ctx context.Context, groupID *int64) (bool, error) {
 	providers, err := s.listSchedulableProvidersOnce(ctx, groupID, capability.PlatformAntigravity, false)
 	if err != nil {

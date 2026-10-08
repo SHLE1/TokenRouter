@@ -10,7 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 )
 
-// JWTAuth JWT认证中间件实现
+// JWTAuth JWT认证中间件实现。
 func JWTAuth(
 	authService SessionAuth,
 	userService UserReader,

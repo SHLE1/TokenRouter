@@ -311,7 +311,7 @@ func TestDigestSessionStore_SaveSameChainNoDelete(t *testing.T) {
 	assert.Equal(t, int64(100), providerID)
 }
 
-// TestGeminiSessionContinuousConversation 测试连续会话的摘要链匹配
+// TestGeminiSessionContinuousConversation 测试连续会话的摘要链匹配。
 func TestGeminiSessionContinuousConversation(t *testing.T) {
 	store := NewDigestSessionStore()
 	groupID := int64(1)
@@ -398,7 +398,7 @@ func TestGeminiSessionContinuousConversation(t *testing.T) {
 	}
 }
 
-// TestGeminiSessionDifferentConversations 测试不同会话不会错误匹配
+// TestGeminiSessionDifferentConversations 测试不同会话不会错误匹配。
 func TestGeminiSessionDifferentConversations(t *testing.T) {
 	store := NewDigestSessionStore()
 	groupID := int64(1)
@@ -428,7 +428,7 @@ func TestGeminiSessionDifferentConversations(t *testing.T) {
 	}
 }
 
-// TestGeminiSessionPrefixMatchingOrder 测试前缀匹配的优先级（最长匹配优先）
+// TestGeminiSessionPrefixMatchingOrder 测试前缀匹配的优先级（最长匹配优先）。
 func TestGeminiSessionPrefixMatchingOrder(t *testing.T) {
 	store := NewDigestSessionStore()
 	groupID := int64(1)

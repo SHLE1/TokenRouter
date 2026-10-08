@@ -10,14 +10,14 @@ import (
 )
 
 // UserMsgQueueHelper 用户消息串行队列 Handler 层辅助
-// 复用 ConcurrencyHelper 的退避 + SSE ping 模式
+// 复用 ConcurrencyHelper 的退避 + SSE ping 模式。
 type UserMsgQueueHelper struct {
 	queueService *scheduler.UserMessageQueueService
 	pingFormat   SSEPingFormat
 	pingInterval time.Duration
 }
 
-// NewUserMsgQueueHelper 创建用户消息串行队列辅助
+// NewUserMsgQueueHelper 创建用户消息串行队列辅助。
 func NewUserMsgQueueHelper(
 	queueService *scheduler.UserMessageQueueService,
 	pingFormat SSEPingFormat,

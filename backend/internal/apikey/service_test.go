@@ -616,12 +616,12 @@ func (s *apiKeyRepoStub) GetRateLimitData(ctx context.Context, id int64) (*APIKe
 	panic("unexpected GetRateLimitData call")
 }
 
-// GetCreateAttemptCount 返回 0，表示用户未超过创建次数限制
+// GetCreateAttemptCount 返回 0，表示用户未超过创建次数限制。
 func (s *apiKeyCacheStub) GetCreateAttemptCount(ctx context.Context, userID int64) (int, error) {
 	return 0, nil
 }
 
-// IncrementCreateAttemptCount 空实现，本测试不验证此行为
+// IncrementCreateAttemptCount 空实现，本测试不验证此行为。
 func (s *apiKeyCacheStub) IncrementCreateAttemptCount(ctx context.Context, userID int64) error {
 	return nil
 }
@@ -633,12 +633,12 @@ func (s *apiKeyCacheStub) DeleteCreateAttemptCount(ctx context.Context, userID i
 	return nil
 }
 
-// IncrementDailyUsage 空实现，本测试不验证此行为
+// IncrementDailyUsage 空实现，本测试不验证此行为。
 func (s *apiKeyCacheStub) IncrementDailyUsage(ctx context.Context, apiKey string) error {
 	return nil
 }
 
-// SetDailyUsageExpiry 空实现，本测试不验证此行为
+// SetDailyUsageExpiry 空实现，本测试不验证此行为。
 func (s *apiKeyCacheStub) SetDailyUsageExpiry(ctx context.Context, apiKey string, ttl time.Duration) error {
 	return nil
 }

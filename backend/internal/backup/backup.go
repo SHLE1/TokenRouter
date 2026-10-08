@@ -152,7 +152,7 @@ type BackupContentConfig struct {
 	ExcludedTableData   []string `json:"excluded_table_data,omitempty"`
 }
 
-// BackupS3Config S3 兼容存储配置（支持 Cloudflare R2）
+// BackupS3Config S3 兼容存储配置（支持 Cloudflare R2）。
 type BackupS3Config struct {
 	Endpoint          string `json:"endpoint"` // 例如 https://<account_id>.r2.cloudflarestorage.com
 	Region            string `json:"region"`   // R2 用 "auto"
@@ -166,7 +166,7 @@ type BackupS3Config struct {
 	UploadMode        string `json:"upload_mode"`
 }
 
-// BackupScheduleConfig 定时备份配置
+// BackupScheduleConfig 定时备份配置。
 type BackupScheduleConfig struct {
 	Enabled     bool   `json:"enabled"`
 	CronExpr    string `json:"cron_expr"`    // cron 表达式，如 "0 2 * * *" 每天凌晨2点
@@ -174,7 +174,7 @@ type BackupScheduleConfig struct {
 	RetainCount int    `json:"retain_count"` // 最多保留份数，0=不限制
 }
 
-// BackupRecord 备份记录
+// BackupRecord 备份记录。
 type BackupRecord struct {
 	ID            string       `json:"id"`
 	Status        string       `json:"status"`      // pending, running, completed, failed
@@ -209,7 +209,7 @@ type BackupDownloadResponse struct {
 	Parts []BackupDownloadPart `json:"parts,omitempty"`
 }
 
-// BackupService 数据库备份恢复服务
+// BackupService 数据库备份恢复服务。
 type BackupService struct {
 	cleanupCancels  map[uint64]context.CancelFunc
 	cleanupSequence uint64
@@ -256,7 +256,7 @@ type BackupService struct {
 	bgCancel     context.CancelFunc // 取消所有活跃后台操作
 }
 
-// IsConfigured 检查必要字段是否已配置
+// IsConfigured 检查必要字段是否已配置。
 func (c *BackupS3Config) IsConfigured() bool {
 	return c.Bucket != "" && c.AccessKeyID != "" && c.SecretAccessKey != ""
 }
@@ -605,7 +605,7 @@ func (s *BackupService) runScheduledBackup() {
 // ─── 备份/恢复核心 ───
 
 // createBackup 创建全量数据库备份并写入当前配置的存储后端（流式处理）
-// expireDays: 备份过期天数，0=永不过期，默认14天
+// expireDays: 备份过期天数，0=永不过期，默认14天。
 func (s *BackupService) createBackup(ctx context.Context, triggeredBy string, expireDays int) (*BackupRecord, error) {
 	if s.shuttingDown.Load() {
 		return nil, infraerrors.ServiceUnavailable("SERVER_SHUTTING_DOWN", "server is shutting down")
@@ -693,7 +693,7 @@ func (s *BackupService) createBackup(ctx context.Context, triggeredBy string, ex
 	return record, nil
 }
 
-// StartBackup 异步创建备份，立即返回 running 状态的记录
+// StartBackup 异步创建备份，立即返回 running 状态的记录。
 func (s *BackupService) StartBackup(ctx context.Context, triggeredBy string, expireDays int) (*BackupRecord, error) {
 	ctx, done, beginErr := s.begin(ctx)
 	if beginErr != nil {
@@ -801,7 +801,7 @@ func (s *BackupService) StartBackup(ctx context.Context, triggeredBy string, exp
 	return &result, nil
 }
 
-// executeBackup 后台执行备份（独立于 HTTP context）
+// executeBackup 后台执行备份（独立于 HTTP context）。
 func (s *BackupService) executeBackup(record *BackupRecord, objectStore BackupObjectStore, s3Cfg *BackupS3Config, dumpOptions BackupDumpOptions) {
 	ctx, cancel := context.WithTimeout(s.bgCtx, 30*time.Minute)
 	defer cancel()
@@ -950,7 +950,7 @@ func (s *BackupService) StartRestore(ctx context.Context, backupID string) (*Bac
 	return &result, nil
 }
 
-// executeRestore 后台执行恢复
+// executeRestore 后台执行恢复。
 func (s *BackupService) executeRestore(record *BackupRecord, objectStore BackupObjectStore) {
 	ctx, cancel := context.WithTimeout(s.bgCtx, 30*time.Minute)
 	defer cancel()
@@ -1372,14 +1372,14 @@ func (s *BackupService) buildStorageKey(storageType string, s3Cfg *BackupS3Confi
 	return s.buildS3Key(s3Cfg, fileName)
 }
 
-// loadRecords 加载备份记录，区分"无数据"和"数据损坏"
+// loadRecords 加载备份记录，区分"无数据"和"数据损坏"。
 func (s *BackupService) loadRecords(ctx context.Context) ([]BackupRecord, error) {
 	s.recordsMu.Lock()
 	defer s.recordsMu.Unlock()
 	return s.loadRecordsLocked(ctx)
 }
 
-// loadRecordsLocked 在已持有 recordsMu 锁的情况下加载记录
+// loadRecordsLocked 在已持有 recordsMu 锁的情况下加载记录。
 func (s *BackupService) loadRecordsLocked(ctx context.Context) ([]BackupRecord, error) {
 	raw, err := s.settingRepo.GetValue(ctx, settingKeyBackupRecords)
 	if err != nil || raw == "" {
@@ -1392,7 +1392,7 @@ func (s *BackupService) loadRecordsLocked(ctx context.Context) ([]BackupRecord, 
 	return records, nil
 }
 
-// saveRecordsLocked 在已持有 recordsMu 锁的情况下保存记录
+// saveRecordsLocked 在已持有 recordsMu 锁的情况下保存记录。
 func (s *BackupService) saveRecordsLocked(ctx context.Context, records []BackupRecord) error {
 	data, err := json.Marshal(records)
 	if err != nil {
@@ -1401,7 +1401,7 @@ func (s *BackupService) saveRecordsLocked(ctx context.Context, records []BackupR
 	return s.settingRepo.Set(ctx, settingKeyBackupRecords, string(data))
 }
 
-// saveRecord 保存单条记录（带互斥锁保护）
+// saveRecord 保存单条记录（带互斥锁保护）。
 func (s *BackupService) saveRecord(ctx context.Context, record *BackupRecord) error {
 	s.recordsMu.Lock()
 	defer s.recordsMu.Unlock()

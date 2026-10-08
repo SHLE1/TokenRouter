@@ -12,7 +12,7 @@ import (
 
 const maxBodyMatchLen = 8 << 10 // 8KB，错误信息不会在 8KB 之后才出现
 
-// ErrorPassthroughRepository 定义错误透传规则的数据访问接口
+// ErrorPassthroughRepository 定义错误透传规则的数据访问接口。
 type ErrorPassthroughRepository interface {
 	// List 获取所有规则
 	List(ctx context.Context) ([]*ErrorPassthroughRule, error)
@@ -26,7 +26,7 @@ type ErrorPassthroughRepository interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-// ErrorPassthroughCache 定义错误透传规则的缓存接口
+// ErrorPassthroughCache 定义错误透传规则的缓存接口。
 type ErrorPassthroughCache interface {
 	// Get 从缓存获取规则列表
 	Get(ctx context.Context) ([]*ErrorPassthroughRule, bool)
@@ -40,7 +40,7 @@ type ErrorPassthroughCache interface {
 	SubscribeUpdates(ctx context.Context, handler func())
 }
 
-// ErrorPassthroughService 错误透传规则服务
+// ErrorPassthroughService 错误透传规则服务。
 type ErrorPassthroughService struct {
 	observe          func(string, ...any)
 	lifecycleMu      sync.Mutex
@@ -67,7 +67,7 @@ type cachedPassthroughRule struct {
 	errorCodeSet   map[int]struct{} // 预计算的 error code set
 }
 
-// NewErrorPassthroughService 创建错误透传规则服务
+// NewErrorPassthroughService 创建错误透传规则服务。
 func NewErrorPassthroughService(
 	repo ErrorPassthroughRepository,
 	cache ErrorPassthroughCache,
@@ -195,7 +195,7 @@ func (s *ErrorPassthroughService) StopContext(ctx context.Context) error {
 	}
 }
 
-// List 获取所有规则
+// List 获取所有规则。
 func (s *ErrorPassthroughService) List(ctx context.Context) ([]*ErrorPassthroughRule, error) {
 	operation, done, err := s.beginOperation(ctx)
 	if err != nil {
@@ -206,7 +206,7 @@ func (s *ErrorPassthroughService) List(ctx context.Context) ([]*ErrorPassthrough
 	return cloneRules(rules), err
 }
 
-// GetByID 根据 ID 获取规则
+// GetByID 根据 ID 获取规则。
 func (s *ErrorPassthroughService) GetByID(ctx context.Context, id int64) (*ErrorPassthroughRule, error) {
 	operation, done, err := s.beginOperation(ctx)
 	if err != nil {
@@ -217,7 +217,7 @@ func (s *ErrorPassthroughService) GetByID(ctx context.Context, id int64) (*Error
 	return cloneRule(rule), err
 }
 
-// Create 创建规则
+// Create 创建规则。
 func (s *ErrorPassthroughService) Create(ctx context.Context, rule *ErrorPassthroughRule) (*ErrorPassthroughRule, error) {
 	rule = cloneRule(rule)
 	operation, done, err := s.beginOperation(ctx)
@@ -248,7 +248,7 @@ func (s *ErrorPassthroughService) Create(ctx context.Context, rule *ErrorPassthr
 	return cloneRule(created), nil
 }
 
-// Update 更新规则
+// Update 更新规则。
 func (s *ErrorPassthroughService) Update(ctx context.Context, rule *ErrorPassthroughRule) (*ErrorPassthroughRule, error) {
 	rule = cloneRule(rule)
 	operation, done, err := s.beginOperation(ctx)
@@ -279,7 +279,7 @@ func (s *ErrorPassthroughService) Update(ctx context.Context, rule *ErrorPassthr
 	return cloneRule(updated), nil
 }
 
-// Delete 删除规则
+// Delete 删除规则。
 func (s *ErrorPassthroughService) Delete(ctx context.Context, id int64) error {
 	operation, done, err := s.beginOperation(ctx)
 	if err != nil {
@@ -332,7 +332,7 @@ func (s *ErrorPassthroughService) MatchRule(platform string, statusCode int, bod
 	return nil
 }
 
-// getCachedRules 获取缓存的规则列表（按优先级排序）
+// getCachedRules 获取缓存的规则列表（按优先级排序）。
 func (s *ErrorPassthroughService) getCachedRules() []*cachedPassthroughRule {
 	s.localCacheMu.RLock()
 	rules := s.localCache
@@ -354,7 +354,7 @@ func (s *ErrorPassthroughService) getCachedRules() []*cachedPassthroughRule {
 	return s.localCache
 }
 
-// refreshLocalCache 刷新本地缓存
+// refreshLocalCache 刷新本地缓存。
 func (s *ErrorPassthroughService) refreshLocalCache(ctx context.Context) error {
 	operation, done, err := s.beginOperation(ctx)
 	if err != nil {
@@ -462,7 +462,7 @@ func (s *ErrorPassthroughService) newCacheRefreshContext() (context.Context, con
 	return context.WithTimeout(s.runCtx, 3*time.Second)
 }
 
-// invalidateAndNotify 使缓存失效并通知其他实例
+// invalidateAndNotify 使缓存失效并通知其他实例。
 func (s *ErrorPassthroughService) invalidateAndNotify(ctx context.Context) {
 	// 先使缓存失效，后续刷新读取数据库中的规则。
 	if s.cache != nil {
@@ -486,7 +486,7 @@ func (s *ErrorPassthroughService) invalidateAndNotify(ctx context.Context) {
 	}
 }
 
-// ensureBodyLower 延迟初始化 body 的小写版本，只做一次转换，限制 8KB
+// ensureBodyLower 延迟初始化 body 的小写版本，只做一次转换，限制 8KB。
 func ensureBodyLower(body []byte, bodyLower *string, done *bool) string {
 	if *done {
 		return *bodyLower
@@ -500,7 +500,7 @@ func ensureBodyLower(body []byte, bodyLower *string, done *bool) string {
 	return *bodyLower
 }
 
-// platformMatchesCached 使用预计算的小写平台检查是否匹配
+// platformMatchesCached 使用预计算的小写平台检查是否匹配。
 func (s *ErrorPassthroughService) platformMatchesCached(rule *cachedPassthroughRule, lowerPlatform string) bool {
 	if len(rule.lowerPlatforms) == 0 {
 		return true
@@ -513,7 +513,7 @@ func (s *ErrorPassthroughService) platformMatchesCached(rule *cachedPassthroughR
 	return false
 }
 
-// ruleMatchesOptimized 优化的规则匹配，支持短路和延迟 body 转换
+// ruleMatchesOptimized 优化的规则匹配，支持短路和延迟 body 转换。
 func (s *ErrorPassthroughService) ruleMatchesOptimized(rule *cachedPassthroughRule, statusCode int, body []byte, bodyLower *string, bodyLowerDone *bool) bool {
 	hasErrorCodes := len(rule.errorCodeSet) > 0
 	hasKeywords := len(rule.lowerKeywords) > 0
@@ -549,13 +549,13 @@ func (s *ErrorPassthroughService) ruleMatchesOptimized(rule *cachedPassthroughRu
 	return codeMatch
 }
 
-// containsIntSet 使用 map 查找替代线性扫描
+// containsIntSet 使用 map 查找替代线性扫描。
 func (s *ErrorPassthroughService) containsIntSet(set map[int]struct{}, val int) bool {
 	_, ok := set[val]
 	return ok
 }
 
-// containsAnyKeywordCached 使用预计算的小写关键词检查匹配
+// containsAnyKeywordCached 使用预计算的小写关键词检查匹配。
 func (s *ErrorPassthroughService) containsAnyKeywordCached(bodyLower string, lowerKeywords []string) bool {
 	for _, kw := range lowerKeywords {
 		if strings.Contains(bodyLower, kw) {

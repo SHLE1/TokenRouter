@@ -12,13 +12,13 @@ import (
 	middleware2 "github.com/TokenFlux/TokenRouter/internal/server/middleware"
 )
 
-// ProviderSet 提供服务器层的依赖
+// ProviderSet 提供服务器层的依赖。
 var ProviderSet = wire.NewSet(
 	ProvideRouter,
 	ProvideHTTPServer,
 )
 
-// ProvideRouter 提供路由器
+// ProvideRouter 提供路由器。
 func ProvideRouter(cfg Options, runtime *RouterRuntime) *gin.Engine {
 	if cfg.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)

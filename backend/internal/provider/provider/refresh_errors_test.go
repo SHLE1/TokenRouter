@@ -82,7 +82,7 @@ type tempUnschedCacheStub struct {
 	lastState   *providercore.TempUnschedState
 }
 
-// mockTokenCacheForRefreshAPI 用于 Path A 测试的 GeminiTokenCache mock
+// mockTokenCacheForRefreshAPI 用于 Path A 测试的 GeminiTokenCache mock。
 type mockTokenCacheForRefreshAPI struct {
 	lockResult   bool
 	lockErr      error
@@ -91,7 +91,7 @@ type mockTokenCacheForRefreshAPI struct {
 	deleteCtxErr error
 }
 
-// alwaysFreshRefresherStub 二次检查时认为不需要刷新（模拟已被其他路径刷新）
+// alwaysFreshRefresherStub 二次检查时认为不需要刷新（模拟已被其他路径刷新）。
 type alwaysFreshRefresherStub struct{}
 
 // refreshAttemptFixture 为刷新测试装配尝试、清理和熔断组件。
@@ -552,7 +552,7 @@ func TestTokenRefreshService_RefreshWithRetry_QoderInvalidatesCache(t *testing.T
 	require.Equal(t, 1, invalidator.calls)
 }
 
-// TestTokenRefreshService_RefreshWithRetry_Antigravity 测试 Antigravity 平台的缓存失效
+// TestTokenRefreshService_RefreshWithRetry_Antigravity 测试 Antigravity 平台的缓存失效。
 func TestTokenRefreshService_RefreshWithRetry_Antigravity(t *testing.T) {
 	repo := &tokenRefreshProviderRepo{}
 	invalidator := &tokenCacheInvalidatorStub{}
@@ -689,7 +689,7 @@ func TestTokenRefreshService_RefreshWithRetry_AntigravityForceRefreshInvalidGran
 	require.Contains(t, repo.lastErrorMessage, "non-retryable")
 }
 
-// TestTokenRefreshService_RefreshWithRetry_NonOAuthProvider 测试非 OAuth 提供商不触发缓存失效
+// TestTokenRefreshService_RefreshWithRetry_NonOAuthProvider 测试非 OAuth 提供商不触发缓存失效。
 func TestTokenRefreshService_RefreshWithRetry_NonOAuthProvider(t *testing.T) {
 	repo := &tokenRefreshProviderRepo{}
 	invalidator := &tokenCacheInvalidatorStub{}
@@ -715,7 +715,7 @@ func TestTokenRefreshService_RefreshWithRetry_NonOAuthProvider(t *testing.T) {
 	require.Equal(t, 0, invalidator.calls) // 非 OAuth 不触发缓存失效
 }
 
-// TestTokenRefreshService_RefreshWithRetry_OtherPlatformOAuth 测试所有 OAuth 平台都触发缓存失效
+// TestTokenRefreshService_RefreshWithRetry_OtherPlatformOAuth 测试所有 OAuth 平台都触发缓存失效。
 func TestTokenRefreshService_RefreshWithRetry_OtherPlatformOAuth(t *testing.T) {
 	repo := &tokenRefreshProviderRepo{}
 	invalidator := &tokenCacheInvalidatorStub{}
@@ -773,7 +773,7 @@ func TestTokenRefreshService_RefreshWithRetry_UsesCredentialsUpdater(t *testing.
 	require.WithinDuration(t, resetAt, *provider.RateLimitResetAt, time.Second)
 }
 
-// TestTokenRefreshService_RefreshWithRetry_UpdateFailed 测试更新失败的情况
+// TestTokenRefreshService_RefreshWithRetry_UpdateFailed 测试更新失败的情况。
 func TestTokenRefreshService_RefreshWithRetry_UpdateFailed(t *testing.T) {
 	repo := &tokenRefreshProviderRepo{updateErr: errors.New("update failed")}
 	invalidator := &tokenCacheInvalidatorStub{}
@@ -800,7 +800,7 @@ func TestTokenRefreshService_RefreshWithRetry_UpdateFailed(t *testing.T) {
 	require.Equal(t, 0, invalidator.calls) // 更新失败时不应触发缓存失效
 }
 
-// TestTokenRefreshService_RefreshWithRetry_RefreshFailed 测试可重试错误耗尽不标记 error
+// TestTokenRefreshService_RefreshWithRetry_RefreshFailed 测试可重试错误耗尽不标记 error。
 func TestTokenRefreshService_RefreshWithRetry_RefreshFailed(t *testing.T) {
 	repo := &tokenRefreshProviderRepo{}
 	invalidator := &tokenCacheInvalidatorStub{}
@@ -825,7 +825,7 @@ func TestTokenRefreshService_RefreshWithRetry_RefreshFailed(t *testing.T) {
 	require.Equal(t, 0, repo.setErrorCalls) // 可重试错误耗尽不标记 error，下个周期继续重试
 }
 
-// TestTokenRefreshService_RefreshWithRetry_AntigravityRefreshFailed 测试 Antigravity 刷新失败不设置错误状态
+// TestTokenRefreshService_RefreshWithRetry_AntigravityRefreshFailed 测试 Antigravity 刷新失败不设置错误状态。
 func TestTokenRefreshService_RefreshWithRetry_AntigravityRefreshFailed(t *testing.T) {
 	repo := &tokenRefreshProviderRepo{}
 	invalidator := &tokenCacheInvalidatorStub{}
@@ -850,7 +850,7 @@ func TestTokenRefreshService_RefreshWithRetry_AntigravityRefreshFailed(t *testin
 	require.Equal(t, 0, repo.setErrorCalls) // Antigravity 可重试错误不设置错误状态
 }
 
-// TestTokenRefreshService_RefreshWithRetry_AntigravityNonRetryableError 测试 Antigravity 不可重试错误
+// TestTokenRefreshService_RefreshWithRetry_AntigravityNonRetryableError 测试 Antigravity 不可重试错误。
 func TestTokenRefreshService_RefreshWithRetry_AntigravityNonRetryableError(t *testing.T) {
 	repo := &tokenRefreshProviderRepo{}
 	invalidator := &tokenCacheInvalidatorStub{}
@@ -875,7 +875,7 @@ func TestTokenRefreshService_RefreshWithRetry_AntigravityNonRetryableError(t *te
 	require.Equal(t, 1, repo.setErrorCalls) // 不可重试错误应设置错误状态
 }
 
-// TestTokenRefreshService_RefreshWithRetry_ClearsTempUnschedulable 测试刷新成功后清除临时不可调度（DB + Redis）
+// TestTokenRefreshService_RefreshWithRetry_ClearsTempUnschedulable 测试刷新成功后清除临时不可调度（DB + Redis）。
 func TestTokenRefreshService_RefreshWithRetry_ClearsTempUnschedulable(t *testing.T) {
 	repo := &tokenRefreshProviderRepo{}
 	invalidator := &tokenCacheInvalidatorStub{}
@@ -905,7 +905,7 @@ func TestTokenRefreshService_RefreshWithRetry_ClearsTempUnschedulable(t *testing
 	require.Equal(t, 1, tempCache.deleteCalls) // Redis 缓存也应清除
 }
 
-// TestTokenRefreshService_RefreshWithRetry_NonRetryableErrorAllPlatforms 测试所有平台不可重试错误都 SetError
+// TestTokenRefreshService_RefreshWithRetry_NonRetryableErrorAllPlatforms 测试所有平台不可重试错误都 SetError。
 func TestTokenRefreshService_RefreshWithRetry_NonRetryableErrorAllPlatforms(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -965,7 +965,7 @@ func TestTokenRefreshService_RefreshWithRetry_NoRefreshTokenDoesNotTempUnschedul
 	require.Equal(t, 1, repo.setErrorCalls, "missing refresh token should be treated as a non-retryable credential state")
 }
 
-// TestPathA_Success 统一 API 路径正常成功：刷新 + DB 更新 + postRefreshActions
+// TestPathA_Success 统一 API 路径正常成功：刷新 + DB 更新 + postRefreshActions。
 func TestPathA_Success(t *testing.T) {
 	provider := &providercore.Record{
 		ID:       100,
@@ -1182,7 +1182,7 @@ func TestPathA_ParentCancellationAfterPersistStillSynchronizesCacheState(t *test
 	require.NoError(t, scheduler.ctxErr, "scheduler sync must use bounded cleanup context")
 }
 
-// TestPathA_LockHeld 锁被其他 worker 持有 → 返回 providercore.ErrRefreshSkipped
+// TestPathA_LockHeld 锁被其他 worker 持有 → 返回 providercore.ErrRefreshSkipped。
 func TestPathA_LockHeld(t *testing.T) {
 	provider := &providercore.Record{
 		ID:       101,
@@ -1202,7 +1202,7 @@ func TestPathA_LockHeld(t *testing.T) {
 	require.Equal(t, 0, invalidator.calls) // 不应触发缓存失效
 }
 
-// TestPathA_AlreadyRefreshed 二次检查发现已被其他路径刷新 → 返回 providercore.ErrRefreshSkipped
+// TestPathA_AlreadyRefreshed 二次检查发现已被其他路径刷新 → 返回 providercore.ErrRefreshSkipped。
 func TestPathA_AlreadyRefreshed(t *testing.T) {
 	// NeedsRefresh 返回 false → RefreshIfNeeded 返回 {Refreshed: false}
 	provider := &providercore.Record{
@@ -1231,7 +1231,7 @@ func TestPathA_AlreadyRefreshed(t *testing.T) {
 	require.Equal(t, 0, invalidator.calls)
 }
 
-// TestPathA_NonRetryableError 统一 API 路径返回不可重试错误 → SetError
+// TestPathA_NonRetryableError 统一 API 路径返回不可重试错误 → SetError。
 func TestPathA_NonRetryableError(t *testing.T) {
 	provider := &providercore.Record{
 		ID:       103,
@@ -1257,7 +1257,7 @@ func TestPathA_NonRetryableError(t *testing.T) {
 	require.Equal(t, 1, invalidator.calls)  // 永久凭证失败后必须失效旧 token 缓存
 }
 
-// TestPathA_RetryableErrorExhausted 统一 API 路径可重试错误耗尽 → 不标记 error
+// TestPathA_RetryableErrorExhausted 统一 API 路径可重试错误耗尽 → 不标记 error。
 func TestPathA_RetryableErrorExhausted(t *testing.T) {
 	provider := &providercore.Record{
 		ID:       104,
@@ -1537,7 +1537,7 @@ func TestTokenRefreshService_GrokConditionalMutationErrorsContainProviderCycle(t
 	}
 }
 
-// TestPathA_DBUpdateFailed 统一 API 路径 DB 更新失败 → 返回 error，不执行 postRefreshActions
+// TestPathA_DBUpdateFailed 统一 API 路径 DB 更新失败 → 返回 error，不执行 postRefreshActions。
 func TestPathA_DBUpdateFailed(t *testing.T) {
 	provider := &providercore.Record{
 		ID:       105,
@@ -1559,7 +1559,7 @@ func TestPathA_DBUpdateFailed(t *testing.T) {
 	require.Equal(t, 0, invalidator.calls) // DB 失败时不应触发缓存失效
 }
 
-// TestIsNonRetryableRefreshError 测试不可重试错误判断
+// TestIsNonRetryableRefreshError 测试不可重试错误判断。
 func TestIsNonRetryableRefreshError(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -2778,7 +2778,7 @@ func (m *mockTokenCacheForRefreshAPI) ReleaseRefreshLock(_ context.Context, _ st
 	return nil
 }
 
-// buildPathAService 构建注入了 refreshAPI 的 service（Path A 测试辅助）
+// buildPathAService 构建注入了 refreshAPI 的 service（Path A 测试辅助）。
 func buildPathAService(repo *tokenRefreshProviderRepo, cache providercore.AccessTokenCache, invalidator providercore.TokenCacheInvalidator) (*refreshAttemptFixture, *tokenRefresherStub) {
 	for _, provider := range repo.providersByID {
 		if provider != nil && provider.Status == "" {

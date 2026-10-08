@@ -115,7 +115,7 @@ func (s *OpsService) getProvidersLoadMapBestEffort(ctx context.Context, provider
 //
 // Optional filters:
 // - platformFilter: only include providers in that platform (best-effort reduces DB load)
-// - groupIDFilter: only include providers that belong to that group
+// - groupIDFilter: only include providers that belong to that group.
 func (s *OpsService) GetConcurrencyStats(
 	ctx context.Context,
 	platformFilter string,

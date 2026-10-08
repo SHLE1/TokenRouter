@@ -118,7 +118,7 @@ func DingTalkCorpAllowed(cfg DingTalkOAuthOptions, corpID string) bool {
 	}
 }
 
-// DingTalkErrorCode 把 DingTalkAPIError 映射到 redirectOAuthError 用的字符串 code
+// DingTalkErrorCode 把 DingTalkAPIError 映射到 redirectOAuthError 用的字符串 code。
 func DingTalkErrorCode(err error) string {
 	var apiErr *DingTalkAPIError
 	if !errors.As(err, &apiErr) {

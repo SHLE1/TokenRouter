@@ -15,19 +15,19 @@ import (
 
 type DriveStorageInfo = google.DriveStorageInfo
 
-// DriveClient interface for Google Drive API operations
+// DriveClient interface for Google Drive API operations.
 type DriveClient interface {
 	GetStorageQuota(ctx context.Context, accessToken, proxyURL string) (*DriveStorageInfo, error)
 }
 
 type driveClient struct{}
 
-// NewDriveClient creates a new Drive API client
+// NewDriveClient creates a new Drive API client.
 func NewDriveClient() DriveClient {
 	return &driveClient{}
 }
 
-// GetStorageQuota fetches storage quota from Google Drive API
+// GetStorageQuota fetches storage quota from Google Drive API.
 func (c *driveClient) GetStorageQuota(ctx context.Context, accessToken, proxyURL string) (*DriveStorageInfo, error) {
 	const driveAPIURL = "https://www.googleapis.com/drive/v3/about?fields=storageQuota"
 

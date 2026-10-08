@@ -55,7 +55,7 @@ func NewClientWriter(w upstream.OutputWriter, flusher http.Flusher, prefix strin
 	return &ClientWriter{w: w, flusher: flusher, prefix: prefix}
 }
 
-// Write 写入数据到客户端，写入失败时标记断开并返回 false
+// Write 写入数据到客户端，写入失败时标记断开并返回 false。
 func (cw *ClientWriter) Write(p []byte) bool {
 	if cw.disconnected {
 		return false
@@ -69,7 +69,7 @@ func (cw *ClientWriter) Write(p []byte) bool {
 	return true
 }
 
-// Fprintf 格式化写入数据到客户端，写入失败时标记断开并返回 false
+// Fprintf 格式化写入数据到客户端，写入失败时标记断开并返回 false。
 func (cw *ClientWriter) Fprintf(format string, args ...any) bool {
 	if cw.disconnected {
 		return false
@@ -316,7 +316,7 @@ func (s *ResponseAdapter) HandleGeminiStreamingResponse(c *upstream.OutputContex
 }
 
 // HandleGeminiStreamToNonStreaming 读取上游流式响应，合并为非流式响应返回给客户端
-// Gemini 流式响应是增量的，需要累积所有 chunk 的内容
+// Gemini 流式响应是增量的，需要累积所有 chunk 的内容。
 func (s *ResponseAdapter) HandleGeminiStreamToNonStreaming(c *upstream.OutputContext, resp *http.Response, startTime time.Time) (*StreamResult, error) {
 	scanner := bufio.NewScanner(resp.Body)
 	maxLineSize := upstream.DefaultSSELineLimit
@@ -501,7 +501,7 @@ returnResponse:
 	return &StreamResult{Usage: usage, FirstTokenMs: firstTokenMs}, nil
 }
 
-// GetOrCreateGeminiParts 获取 Gemini 响应的 parts 结构，返回深拷贝和更新回调
+// GetOrCreateGeminiParts 获取 Gemini 响应的 parts 结构，返回深拷贝和更新回调。
 func GetOrCreateGeminiParts(response map[string]any) (result map[string]any, existingParts []any, setParts func([]any)) {
 	// 深拷贝 response
 	result = make(map[string]any)
@@ -546,7 +546,7 @@ func GetOrCreateGeminiParts(response map[string]any) (result map[string]any, exi
 
 // MergeCollectedPartsToResponse 将收集的所有 parts 合并到 Gemini 响应中
 // 这个函数会合并所有类型的 parts：text、thinking、functionCall、inlineData 等
-// 保持原始顺序，只合并连续的普通 text parts
+// 保持原始顺序，只合并连续的普通 text parts。
 func MergeCollectedPartsToResponse(response map[string]any, collectedParts []map[string]any) map[string]any {
 	if len(collectedParts) == 0 {
 		return response
@@ -596,7 +596,7 @@ func MergeCollectedPartsToResponse(response map[string]any, collectedParts []map
 	return result
 }
 
-// MergeImagePartsToResponse 将收集到的图片 parts 合并到 Gemini 响应中
+// MergeImagePartsToResponse 将收集到的图片 parts 合并到 Gemini 响应中。
 func MergeImagePartsToResponse(response map[string]any, imageParts []map[string]any) map[string]any {
 	if len(imageParts) == 0 {
 		return response
@@ -621,7 +621,7 @@ func MergeImagePartsToResponse(response map[string]any, imageParts []map[string]
 	return result
 }
 
-// MergeTextPartsToResponse 将收集到的文本合并到 Gemini 响应中
+// MergeTextPartsToResponse 将收集到的文本合并到 Gemini 响应中。
 func MergeTextPartsToResponse(response map[string]any, textParts []string) map[string]any {
 	if len(textParts) == 0 {
 		return response
@@ -663,7 +663,7 @@ func MergeTextPartsToResponse(response map[string]any, textParts []string) map[s
 }
 
 // CollectClaudeStreamResponse 收集上游流式响应，转换为 Claude 非流式格式返回
-// 用于处理客户端非流式请求但上游只支持流式的情况
+// 用于处理客户端非流式请求但上游只支持流式的情况。
 func (s *ResponseAdapter) CollectClaudeStreamResponse(resp *http.Response, startTime time.Time, originalModel string) ([]byte, *StreamResult, error) {
 	scanner := bufio.NewScanner(resp.Body)
 	maxLineSize := upstream.DefaultSSELineLimit
@@ -835,7 +835,7 @@ returnResponse:
 }
 
 // HandleClaudeStreamToNonStreaming 收集上游流式响应，转换为 Claude 非流式格式返回
-// 用于处理客户端非流式请求但上游只支持流式的情况
+// 用于处理客户端非流式请求但上游只支持流式的情况。
 func (s *ResponseAdapter) HandleClaudeStreamToNonStreaming(c *upstream.OutputContext, resp *http.Response, startTime time.Time, originalModel string) (*StreamResult, error) {
 	claudeResp, streamRes, err := s.CollectClaudeStreamResponse(resp, startTime, originalModel)
 	if err != nil {
@@ -863,7 +863,7 @@ func (s *ResponseAdapter) HandleClaudeStreamToNonStreaming(c *upstream.OutputCon
 	return streamRes, nil
 }
 
-// HandleClaudeStreamingResponse 处理 Claude 流式响应（Gemini SSE → Claude SSE 转换）
+// HandleClaudeStreamingResponse 处理 Claude 流式响应（Gemini SSE → Claude SSE 转换）。
 func (s *ResponseAdapter) HandleClaudeStreamingResponse(c *upstream.OutputContext, resp *http.Response, startTime time.Time, originalModel string) (*StreamResult, error) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")

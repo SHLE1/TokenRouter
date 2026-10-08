@@ -13,7 +13,7 @@ import (
 )
 
 // Redis key 使用 providerID 作为 hash tag，同一提供商的键落在同一个 Redis Cluster slot。
-// 格式: umq:{providerID}:lock / umq:{providerID}:last
+// 格式: umq:{providerID}:lock / umq:{providerID}:last。
 const (
 	umqKeyPrefix  = "umq:"
 	umqLockSuffix = ":lock" // STRING (requestID), PX lockTtlMs
@@ -90,7 +90,7 @@ type userMsgQueueCache struct {
 	rdb *redis.Client
 }
 
-// NewUserMsgQueueCache 创建用户消息队列缓存
+// NewUserMsgQueueCache 创建用户消息队列缓存。
 func NewUserMsgQueueCache(rdb *redis.Client) scheduler.UserMsgQueueCache {
 	return &userMsgQueueCache{rdb: rdb}
 }
@@ -152,7 +152,7 @@ func (c *userMsgQueueCache) ReleaseLock(ctx context.Context, providerID int64, r
 	return result == 1, nil
 }
 
-// GetLastCompletedMs 获取上次完成时间（毫秒时间戳）
+// GetLastCompletedMs 获取上次完成时间（毫秒时间戳）。
 func (c *userMsgQueueCache) GetLastCompletedMs(ctx context.Context, providerID int64) (int64, error) {
 	key := umqLastKey(providerID)
 	val, err := c.rdb.Get(ctx, key).Result()

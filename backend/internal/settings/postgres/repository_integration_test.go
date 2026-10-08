@@ -209,7 +209,7 @@ func (s *SettingRepoSuite) TestSet_EmptyValue() {
 }
 
 // TestSetMultiple_WithEmptyValues 测试批量保存包含空字符串的设置
-// 模拟用户保存站点设置时部分字段为空的场景
+// 模拟用户保存站点设置时部分字段为空的场景。
 func (s *SettingRepoSuite) TestSetMultiple_WithEmptyValues() {
 	// 模拟保存站点设置，部分字段有值，部分字段为空
 	settings := map[string]string{

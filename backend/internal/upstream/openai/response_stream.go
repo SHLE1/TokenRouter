@@ -79,7 +79,7 @@ type StreamOptions struct {
 	OpenAIStreamEventIsTerminalWithType                                  func(string, string) bool
 }
 
-// StreamingResult streaming response result
+// StreamingResult streaming response result.
 type StreamingResult struct {
 	// 分别记录内容输出、用量是否存在、HTTP 提交和重试窗口关闭状态。
 	Served, HasUsage, HttpCommitted, RetryCommitted, ClientDisconnected, ObservedOnly bool

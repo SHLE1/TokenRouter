@@ -21,7 +21,7 @@ func windowCostKey(id int64) string                         { return fmt.Sprintf
 
 // ========== 5h窗口费用缓存实现 ==========
 
-// GetWindowCost 获取缓存的窗口费用
+// GetWindowCost 获取缓存的窗口费用。
 func (c *WindowCostCache) GetWindowCost(ctx context.Context, providerID int64) (float64, bool, error) {
 	key := windowCostKey(providerID)
 	val, err := c.rdb.Get(ctx, key).Float64()
@@ -34,13 +34,13 @@ func (c *WindowCostCache) GetWindowCost(ctx context.Context, providerID int64) (
 	return val, true, nil
 }
 
-// SetWindowCost 设置窗口费用缓存
+// SetWindowCost 设置窗口费用缓存。
 func (c *WindowCostCache) SetWindowCost(ctx context.Context, providerID int64, cost float64) error {
 	key := windowCostKey(providerID)
 	return c.rdb.Set(ctx, key, cost, windowCostCacheTTL).Err()
 }
 
-// GetWindowCostBatch 批量获取窗口费用缓存
+// GetWindowCostBatch 批量获取窗口费用缓存。
 func (c *WindowCostCache) GetWindowCostBatch(ctx context.Context, providerIDs []int64) (map[int64]float64, error) {
 	if len(providerIDs) == 0 {
 		return make(map[int64]float64), nil

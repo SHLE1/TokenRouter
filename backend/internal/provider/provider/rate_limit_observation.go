@@ -24,7 +24,7 @@ type RateLimitObserver struct {
 }
 
 // Observe429 处理429限流错误
-// 解析响应头获取重置时间，标记提供商为限流状态
+// 解析响应头获取重置时间，标记提供商为限流状态。
 func (s *RateLimitObserver) Observe429(ctx context.Context, provider *providercore.Record, headers http.Header, responseBody []byte) {
 	// Spark 影子的限流状态由 /wham/usage 的 codex_bengalfox 用量驱动。
 	// /responses 429 中的 x-codex-* 和 usage_limit_reached 属于全局窗口，不能用于暂停仍有配额的影子。

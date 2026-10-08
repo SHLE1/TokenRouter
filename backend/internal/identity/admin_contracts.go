@@ -92,7 +92,7 @@ type AdminBoundAuthIdentityChannel struct {
 	UpdatedAt      time.Time      `json:"updated_at"`
 }
 
-// ReplaceUserGroupResult 分组替换操作的结果
+// ReplaceUserGroupResult 分组替换操作的结果。
 type ReplaceUserGroupResult struct {
 	MigratedKeys int64 // 迁移的 Key 数量
 }

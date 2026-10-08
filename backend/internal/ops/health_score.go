@@ -32,7 +32,7 @@ func computeDashboardHealthScore(now time.Time, overview *OpsDashboardOverview) 
 }
 
 // computeBusinessHealth calculates business health score (0-100)
-// Components: Error Rate (50%) + TTFT (50%)
+// Components: Error Rate (50%) + TTFT (50%).
 func computeBusinessHealth(overview *OpsDashboardOverview) float64 {
 	// Error rate score: 1% → 100, 10% → 0 (linear)
 	// Combines request errors and upstream errors
@@ -67,7 +67,7 @@ func computeBusinessHealth(overview *OpsDashboardOverview) float64 {
 }
 
 // computeInfraHealth calculates infrastructure health score (0-100)
-// Components: Storage (40%) + Compute Resources (30%) + Background Jobs (30%)
+// Components: Storage (40%) + Compute Resources (30%) + Background Jobs (30%).
 func computeInfraHealth(now time.Time, overview *OpsDashboardOverview) float64 {
 	// Storage score: DB critical, Redis less critical
 	storageScore := 100.0

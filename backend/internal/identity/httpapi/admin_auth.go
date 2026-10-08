@@ -14,7 +14,7 @@ import (
 // AdminAuth 管理员认证中间件实现
 // 支持两种认证方式（通过不同的 header 区分）：
 // 1. Admin API Key: x-api-key: <admin-api-key>
-// 2. JWT Token: Authorization: Bearer <jwt-token> (需要管理员角色)
+// 2. JWT Token: Authorization: Bearer <jwt-token> (需要管理员角色)。
 func AdminAuth(
 	authService SessionAuth,
 	userService AdminUserReader,
@@ -105,7 +105,7 @@ func ExtractJWTFromWebSocketSubprotocol(c *gin.Context) string {
 	return ""
 }
 
-// ValidateAdminAPIKey 验证管理员 API Key
+// ValidateAdminAPIKey 验证管理员 API Key。
 func ValidateAdminAPIKey(
 	c *gin.Context,
 	key string,
@@ -136,7 +136,7 @@ func ValidateAdminAPIKey(
 	return true
 }
 
-// ValidateJWTForAdmin 验证 JWT 并检查管理员权限
+// ValidateJWTForAdmin 验证 JWT 并检查管理员权限。
 func ValidateJWTForAdmin(
 	c *gin.Context,
 	token string,

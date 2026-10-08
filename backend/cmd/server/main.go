@@ -33,7 +33,7 @@ var (
 	//go:embed VERSION
 	embeddedVersion string
 
-	// Build-time variables (can be set by ldflags)
+	// Build-time variables (can be set by ldflags).
 	Version   = ""
 	Commit    = "unknown"
 	Date      = "unknown"

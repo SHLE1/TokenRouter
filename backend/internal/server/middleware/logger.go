@@ -12,7 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 )
 
-// Logger 请求日志中间件
+// Logger 请求日志中间件。
 func Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 开始时间

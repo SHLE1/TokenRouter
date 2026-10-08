@@ -18,7 +18,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// CreateGroupRequest represents create group request
+// CreateGroupRequest represents create group request.
 type CreateGroupRequest struct {
 	Localization               *locale.Update[routing.GroupCopy]       `json:"localization"`
 	RoutingPolicy              routing.GroupRoutingPolicy              `json:"routing_policy"`
@@ -79,7 +79,7 @@ type CreateGroupRequest struct {
 	CopyProvidersFromGroupIDs []int64 `json:"copy_providers_from_group_ids"`
 }
 
-// UpdateGroupRequest represents update group request
+// UpdateGroupRequest represents update group request.
 type UpdateGroupRequest struct {
 	Localization               *locale.Update[routing.GroupCopy]        `json:"localization"`
 	RoutingPolicy              *routing.GroupRoutingPolicy              `json:"routing_policy"`
@@ -141,7 +141,7 @@ type UpdateGroupRequest struct {
 	CopyProvidersFromGroupIDs []int64 `json:"copy_providers_from_group_ids"`
 }
 
-// UpdateSortOrderRequest represents the request to update group sort orders
+// UpdateSortOrderRequest represents the request to update group sort orders.
 type UpdateSortOrderRequest struct {
 	Updates []struct {
 		ID        int64 `json:"id" binding:"required"`

@@ -155,7 +155,7 @@ func NonStreamResponsePassthrough(
 }
 
 // ReplaceModelInResponseBody 替换响应体中的model字段
-// 使用 gjson/sjson 精确替换，避免全量 JSON 反序列化
+// 使用 gjson/sjson 精确替换，避免全量 JSON 反序列化。
 func ReplaceModelInResponseBody(body []byte, fromModel, toModel string) []byte {
 	if m := gjson.GetBytes(body, "model"); m.Exists() && m.Str == fromModel {
 		newBody, err := sjson.SetBytes(body, "model", toModel)

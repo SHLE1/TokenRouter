@@ -882,7 +882,7 @@ func (r *GroupStore) loadProviderCounts(ctx context.Context, groupIDs []int64) (
 	return counts, nil
 }
 
-// GetProviderIDsByGroupIDs 获取多个分组的所有提供商 ID（去重）
+// GetProviderIDsByGroupIDs 获取多个分组的所有提供商 ID（去重）。
 func (r *GroupStore) GetProviderIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
 	sqlq := r.sqlExecutorFromContext(ctx)
 	if len(groupIDs) == 0 {
@@ -914,7 +914,7 @@ func (r *GroupStore) GetProviderIDsByGroupIDs(ctx context.Context, groupIDs []in
 	return providerIDs, nil
 }
 
-// BindProvidersToGroup 将多个提供商绑定到指定分组（批量插入，忽略已存在的绑定）
+// BindProvidersToGroup 将多个提供商绑定到指定分组（批量插入，忽略已存在的绑定）。
 func (r *GroupStore) BindProvidersToGroup(ctx context.Context, groupID int64, providerIDs []int64) error {
 	sqlq := r.sqlExecutorFromContext(ctx)
 	if len(providerIDs) == 0 {
@@ -935,7 +935,7 @@ func (r *GroupStore) BindProvidersToGroup(ctx context.Context, groupID int64, pr
 	return nil
 }
 
-// UpdateSortOrders 批量更新分组排序
+// UpdateSortOrders 批量更新分组排序。
 func (r *GroupStore) UpdateSortOrders(ctx context.Context, updates []routing.GroupSortOrderUpdate) error {
 	sqlq := r.sqlExecutorFromContext(ctx)
 	if len(updates) == 0 {

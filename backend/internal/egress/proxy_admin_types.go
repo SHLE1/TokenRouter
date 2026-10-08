@@ -85,7 +85,7 @@ type ProxyBatchDeleteSkipped struct {
 	Reason string `json:"reason"`
 }
 
-// ProxyTestResult represents the result of testing a proxy
+// ProxyTestResult represents the result of testing a proxy.
 type ProxyTestResult struct {
 	Success     bool   `json:"success"`
 	Message     string `json:"message"`
@@ -123,7 +123,7 @@ type ProxyQualityCheckItem struct {
 	CFRay      string `json:"cf_ray,omitempty"`
 }
 
-// ProxyExitInfo represents proxy exit information from ip-api.com
+// ProxyExitInfo represents proxy exit information from ip-api.com.
 type ProxyExitInfo struct {
 	IP          string
 	City        string
@@ -132,7 +132,7 @@ type ProxyExitInfo struct {
 	CountryCode string
 }
 
-// ProxyExitInfoProber tests proxy connectivity and retrieves exit information
+// ProxyExitInfoProber tests proxy connectivity and retrieves exit information.
 type ProxyExitInfoProber interface {
 	ProbeProxy(ctx context.Context, proxyURL string) (*ProxyExitInfo, int64, error)
 }

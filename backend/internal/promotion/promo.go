@@ -21,7 +21,7 @@ var (
 	ErrPromoCodeInvalid     = infraerrors.BadRequest("PROMO_CODE_INVALID", "invalid promo code")
 )
 
-// PromoService 优惠码服务
+// PromoService 优惠码服务。
 type PromoService struct {
 	promoRepo            PromoCodeRepository
 	mutations            PromoMutations
@@ -73,7 +73,7 @@ func NewPromoService(repo PromoCodeRepository, mutations PromoMutations, auth Au
 }
 
 // ValidatePromoCode 验证优惠码（注册前调用）
-// 返回 nil, nil 表示空码（不报错）
+// 返回 nil, nil 表示空码（不报错）。
 func (s *PromoService) ValidatePromoCode(ctx context.Context, code string) (*PromoCode, error) {
 	code = strings.TrimSpace(code)
 	if code == "" {
@@ -93,7 +93,7 @@ func (s *PromoService) ValidatePromoCode(ctx context.Context, code string) (*Pro
 	return promoCode, nil
 }
 
-// validatePromoCodeStatus 验证优惠码状态
+// validatePromoCodeStatus 验证优惠码状态。
 func (s *PromoService) validatePromoCodeStatus(promoCode *PromoCode) error {
 	if !promoCode.CanUseAt(s.runtime.Now()) {
 		if promoCode.IsExpiredAt(s.runtime.Now()) {
@@ -111,7 +111,7 @@ func (s *PromoService) validatePromoCodeStatus(promoCode *PromoCode) error {
 }
 
 // ApplyPromoCode 应用优惠码（注册成功后调用）
-// 使用事务和行锁确保并发安全
+// 使用事务和行锁确保并发安全。
 func (s *PromoService) ApplyPromoCode(ctx context.Context, userID int64, code string) error {
 	code = strings.TrimSpace(code)
 	if code == "" {
@@ -149,7 +149,7 @@ func (s *PromoService) invalidatePromoCaches(ctx context.Context, userID int64, 
 	s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
 }
 
-// GenerateRandomCode 生成随机优惠码
+// GenerateRandomCode 生成随机优惠码。
 func (s *PromoService) GenerateRandomCode() (string, error) {
 	bytes := make([]byte, 8)
 	if _, err := rand.Read(bytes); err != nil {
@@ -158,7 +158,7 @@ func (s *PromoService) GenerateRandomCode() (string, error) {
 	return strings.ToUpper(hex.EncodeToString(bytes)), nil
 }
 
-// Create 创建优惠码
+// Create 创建优惠码。
 func (s *PromoService) Create(ctx context.Context, input *CreatePromoCodeInput) (*PromoCode, error) {
 	code := strings.TrimSpace(input.Code)
 	if code == "" {
@@ -187,7 +187,7 @@ func (s *PromoService) Create(ctx context.Context, input *CreatePromoCodeInput) 
 	return promoCode, nil
 }
 
-// GetByID 根据ID获取优惠码
+// GetByID 根据ID获取优惠码。
 func (s *PromoService) GetByID(ctx context.Context, id int64) (*PromoCode, error) {
 	code, err := s.promoRepo.GetByID(ctx, id)
 	if err != nil {
@@ -196,7 +196,7 @@ func (s *PromoService) GetByID(ctx context.Context, id int64) (*PromoCode, error
 	return code, nil
 }
 
-// Update 更新优惠码
+// Update 更新优惠码。
 func (s *PromoService) Update(ctx context.Context, id int64, input *UpdatePromoCodeInput) (*PromoCode, error) {
 	promoCode, err := s.promoRepo.GetByID(ctx, id)
 	if err != nil {
@@ -232,7 +232,7 @@ func (s *PromoService) Update(ctx context.Context, id int64, input *UpdatePromoC
 	return promoCode, nil
 }
 
-// Delete 删除优惠码
+// Delete 删除优惠码。
 func (s *PromoService) Delete(ctx context.Context, id int64) error {
 	if err := s.promoRepo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete promo code: %w", err)
@@ -240,12 +240,12 @@ func (s *PromoService) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// List 获取优惠码列表
+// List 获取优惠码列表。
 func (s *PromoService) List(ctx context.Context, params pagination.PaginationParams, status, search string) ([]PromoCode, *pagination.PaginationResult, error) {
 	return s.promoRepo.ListWithFilters(ctx, params, status, search)
 }
 
-// ListUsages 获取使用记录
+// ListUsages 获取使用记录。
 func (s *PromoService) ListUsages(ctx context.Context, promoCodeID int64, params pagination.PaginationParams) ([]PromoCodeUsage, *pagination.PaginationResult, error) {
 	return s.promoRepo.ListUsagesByPromoCode(ctx, promoCodeID, params)
 }

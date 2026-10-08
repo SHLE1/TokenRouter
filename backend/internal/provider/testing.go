@@ -32,7 +32,7 @@ const (
 	ProviderTestModeLegacyCompact = "legacy_compact"
 )
 
-// TestEvent represents a SSE event for provider testing
+// TestEvent represents a SSE event for provider testing.
 type TestEvent struct {
 	Type     string `json:"type"`
 	Text     string `json:"text,omitempty"`

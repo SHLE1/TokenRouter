@@ -37,7 +37,7 @@ func New() *Client { return &Client{} }
 
 func sanitizeEmailHeader(s string) string { return strings.NewReplacer("\r", "", "\n", "").Replace(s) }
 
-// Send 使用指定配置发送邮件
+// Send 使用指定配置发送邮件。
 func (s *Client) Send(ctx context.Context, config *SMTPConfig, to, subject, body string) (resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return err

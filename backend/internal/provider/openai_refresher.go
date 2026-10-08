@@ -11,12 +11,12 @@ type OpenAIRefreshTokenService interface {
 }
 type OpenAITokenRefresher struct{ Authorization OpenAIRefreshTokenService }
 
-// CacheKey 返回用于分布式锁的缓存键
+// CacheKey 返回用于分布式锁的缓存键。
 func (r *OpenAITokenRefresher) CacheKey(provider *Record) string {
 	return OpenAITokenCacheKey(provider)
 }
 
-// CanRefresh 检查是否能处理此提供商
+// CanRefresh 检查是否能处理此提供商。
 func (r *OpenAITokenRefresher) CanRefresh(provider *Record) bool {
 	if provider.IsCredentialShadow() {
 		return false
@@ -25,7 +25,7 @@ func (r *OpenAITokenRefresher) CanRefresh(provider *Record) bool {
 }
 
 // NeedsRefresh 检查token是否需要刷新
-// expires_at 缺失且处于限流状态时需要刷新，防止限流期间 token 静默过期
+// expires_at 缺失且处于限流状态时需要刷新，防止限流期间 token 静默过期。
 func (r *OpenAITokenRefresher) NeedsRefresh(provider *Record, refreshWindow time.Duration) bool {
 	if provider.IsOpenAIPersonalAccessToken() {
 		return false

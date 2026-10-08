@@ -79,7 +79,7 @@ func (m *RefreshLock) Unlock() {
 	<-m.token
 }
 
-// getLocalLock 返回指定 cacheKey 的进程内互斥锁
+// getLocalLock 返回指定 cacheKey 的进程内互斥锁。
 func (api *OAuthRefreshAPI) getLocalLock(cacheKey string) *RefreshLock {
 	actual, _ := api.localLocks.LoadOrStore(cacheKey, NewRefreshLock())
 	mu, ok := actual.(*RefreshLock)
@@ -372,7 +372,7 @@ func IsInvalidGrantError(err error) bool {
 }
 
 // tryRecoverFromRefreshRace 在 refresh token 被拒绝后尝试竞争恢复
-// 重新读取 DB，如果 refresh_token 已改变（说明另一个 worker 成功刷新），则返回更新后的 provider
+// 重新读取 DB，如果 refresh_token 已改变（说明另一个 worker 成功刷新），则返回更新后的 provider。
 func (api *OAuthRefreshAPI) tryRecoverFromRefreshRace(ctx context.Context, usedProvider *Record) (*Record, bool) {
 	if api.providerRepo == nil {
 		return nil, false
@@ -393,7 +393,7 @@ func (api *OAuthRefreshAPI) tryRecoverFromRefreshRace(ctx context.Context, usedP
 	return nil, false
 }
 
-// MergeCredentials 将旧 credentials 中不存在于新 map 的字段保留到新 map 中
+// MergeCredentials 将旧 credentials 中不存在于新 map 的字段保留到新 map 中。
 func MergeCredentials(oldCreds, newCreds map[string]any) map[string]any {
 	if newCreds == nil {
 		newCreds = make(map[string]any)

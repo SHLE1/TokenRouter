@@ -36,7 +36,7 @@ var (
 
 	// BedrockSupportedBetaTokens 是 Bedrock Invoke 支持的 beta 头白名单
 	// 参考: AWS Bedrock 官方文档 + litellm anthropic_beta_headers_config.json
-	// 更新策略: 当 AWS Bedrock 新增支持的 beta token 时需同步更新此白名单
+	// 更新策略: 当 AWS Bedrock 新增支持的 beta token 时需同步更新此白名单。
 	BedrockSupportedBetaTokens = map[string]bool{
 		"computer-use-2025-01-24":                true,
 		"computer-use-2025-11-24":                true,
@@ -50,12 +50,12 @@ var (
 	}
 
 	// BedrockBetaTokenTransforms 定义 Bedrock Invoke 特有的 beta 头转换规则
-	// Anthropic 直接 API 使用通用头，Bedrock Invoke 需要特定的替代头
+	// Anthropic 直接 API 使用通用头，Bedrock Invoke 需要特定的替代头。
 	BedrockBetaTokenTransforms = map[string]string{
 		"advanced-tool-use-2025-11-20": "tool-search-tool-2025-10-19",
 	}
 
-	// BedrockToolUseIDRe 匹配 Bedrock 允许的 tool_use ID 字符（字母、数字、下划线、连字符）
+	// BedrockToolUseIDRe 匹配 Bedrock 允许的 tool_use ID 字符（字母、数字、下划线、连字符）。
 	BedrockToolUseIDRe = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 )
 
@@ -117,7 +117,7 @@ func ResolveBedrockModelID(provider *RouteInput, requestedModel string) (string,
 
 // BuildBedrockURL 构建 Bedrock InvokeModel 的 URL
 // stream=true 时使用 invoke-with-response-stream 端点
-// modelID 中的特殊字符会被 URL 编码（与 litellm 的 urllib.parse.quote(safe="") 对齐）
+// modelID 中的特殊字符会被 URL 编码（与 litellm 的 urllib.parse.quote(safe="") 对齐）。
 func BuildBedrockURL(region, modelID string, stream bool) string {
 	if region == "" {
 		region = DefaultBedrockRegion
@@ -226,7 +226,7 @@ func ResolveBedrockBetaTokens(betaHeader string, body []byte, modelID string) []
 
 // ConvertOutputFormatToInlineSchema 将 output_format 中的 JSON schema 内联到最后一条 user message
 // Bedrock Invoke 不支持 output_format 参数，litellm 的做法是将 schema 追加到用户消息中
-// 参考: litellm AmazonAnthropicClaudeMessagesConfig._convert_output_format_to_inline_schema()
+// 参考: litellm AmazonAnthropicClaudeMessagesConfig._convert_output_format_to_inline_schema()。
 func ConvertOutputFormatToInlineSchema(body []byte) []byte {
 	outputFormat := gjson.GetBytes(body, "output_format")
 	if !outputFormat.Exists() || !outputFormat.IsObject() {
@@ -284,7 +284,7 @@ func ConvertOutputFormatToInlineSchema(body []byte) []byte {
 	return body
 }
 
-// RemoveCustomFieldFromTools 移除 tools 数组中每个工具定义的 custom 字段
+// RemoveCustomFieldFromTools 移除 tools 数组中每个工具定义的 custom 字段。
 func RemoveCustomFieldFromTools(body []byte) []byte {
 	tools := gjson.GetBytes(body, "tools")
 	if !tools.Exists() || !tools.IsArray() {
@@ -302,7 +302,7 @@ func RemoveCustomFieldFromTools(body []byte) []byte {
 }
 
 // IsBedrockClaude45OrNewer 判断 Bedrock 模型 ID 是否为 Claude 4.5 或更新版本
-// Claude 4.5+ 支持 cache_control 中的 ttl 字段（"5m" 和 "1h"）
+// Claude 4.5+ 支持 cache_control 中的 ttl 字段（"5m" 和 "1h"）。
 func IsBedrockClaude45OrNewer(modelID string) bool {
 	lower := strings.ToLower(modelID)
 	if IsBedrockFable5(lower) {
@@ -370,7 +370,7 @@ func SanitizeBedrockCacheControl(body []byte, modelID string) []byte {
 	return body
 }
 
-// DeleteCacheControlUnsupportedFields 删除给定 cache_control 路径下 Bedrock 不支持的字段
+// DeleteCacheControlUnsupportedFields 删除给定 cache_control 路径下 Bedrock 不支持的字段。
 func DeleteCacheControlUnsupportedFields(body []byte, basePath string, cc gjson.Result, isClaude45 bool) []byte {
 	// Bedrock 不支持 scope（如 "global"）
 	if cc.Get("scope").Exists() {
@@ -493,7 +493,7 @@ func ContainsStringInJSONArray(result gjson.Result, target string) bool {
 }
 
 // BedrockModelSupportsToolSearch 判断 Bedrock 模型是否支持 tool search
-// 目前仅 Claude Opus/Sonnet 4.5+ 支持，Haiku 不支持
+// 目前仅 Claude Opus/Sonnet 4.5+ 支持，Haiku 不支持。
 func BedrockModelSupportsToolSearch(modelID string) bool {
 	lower := strings.ToLower(modelID)
 	matches := ClaudeVersionRe.FindStringSubmatch(lower)
@@ -515,7 +515,7 @@ func BedrockModelSupportsToolSearch(modelID string) bool {
 // FilterBedrockBetaTokens 过滤并转换 beta token 列表，仅保留 Bedrock Invoke 支持的 token
 // 1. 应用转换规则（如 advanced-tool-use → tool-search-tool）
 // 2. 过滤掉 Bedrock 不支持的 token（如 output-128k, files-api, structured-outputs 等）
-// 3. 自动关联 tool-examples（当 tool-search-tool 存在时）
+// 3. 自动关联 tool-examples（当 tool-search-tool 存在时）。
 func FilterBedrockBetaTokens(tokens []string) []string {
 	seen := make(map[string]bool, len(tokens))
 	var result []string
@@ -576,7 +576,7 @@ func ContainsAnyBedrockBetaToken(tokens []string, targets ...string) bool {
 }
 
 // IsBedrockOpus47OrNewer 判断 Bedrock 模型 ID 是否为 Claude Opus 4.7 或更新版本
-// Opus 4.7 仅支持 thinking.type: "adaptive"，不支持 "enabled"
+// Opus 4.7 仅支持 thinking.type: "adaptive"，不支持 "enabled"。
 func IsBedrockOpus47OrNewer(modelID string) bool {
 	lower := strings.ToLower(modelID)
 	if !strings.Contains(lower, "opus") {
@@ -707,7 +707,7 @@ func SanitizeBedrockCCFields(body []byte) []byte {
 }
 
 // SanitizeBedrockCCBetaTokens 清理请求体中的 anthropic_beta 字段，只保留 Bedrock 支持的 beta token
-// CC 可能在请求体中注入了 Bedrock 不支持的 beta token（如 prompt-caching 等），导致 ValidationException
+// CC 可能在请求体中注入了 Bedrock 不支持的 beta token（如 prompt-caching 等），导致 ValidationException。
 func SanitizeBedrockCCBetaTokens(body []byte, modelID string) []byte {
 	betaField := gjson.GetBytes(body, "anthropic_beta")
 	if !betaField.Exists() {

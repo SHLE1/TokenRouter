@@ -12,7 +12,7 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// TestSMTPRequest 测试SMTP连接请求
+// TestSMTPRequest 测试SMTP连接请求。
 type TestSMTPRequest struct {
 	SMTPHost     string `json:"smtp_host"`
 	SMTPPort     int    `json:"smtp_port"`
@@ -21,7 +21,7 @@ type TestSMTPRequest struct {
 	SMTPUseTLS   *bool  `json:"smtp_use_tls"`
 }
 
-// SendTestEmailRequest 发送测试邮件请求
+// SendTestEmailRequest 发送测试邮件请求。
 type SendTestEmailRequest struct {
 	Email        string `json:"email" binding:"required,email"`
 	SMTPHost     string `json:"smtp_host"`

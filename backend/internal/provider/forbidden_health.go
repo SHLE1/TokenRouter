@@ -12,7 +12,7 @@ const (
 	OpenAI403CounterWindowMinutesDefault = 180
 )
 
-// OpenAI403CooldownSettings OpenAI OAuth 403 冷却配置
+// OpenAI403CooldownSettings OpenAI OAuth 403 冷却配置。
 type OpenAI403CooldownSettings struct {
 	// Enabled 是否在 ChatGPT 提供商收到 403 时暂停调度
 	Enabled bool `json:"enabled"`
@@ -139,7 +139,7 @@ func (s *HealthService) ResetForbiddenCounter(ctx context.Context, providerID in
 	}
 }
 
-// DefaultOpenAI403CooldownSettings 返回默认的 OpenAI OAuth 403 冷却配置（启用，10分钟，3次/180分钟转错误）
+// DefaultOpenAI403CooldownSettings 返回默认的 OpenAI OAuth 403 冷却配置（启用，10分钟，3次/180分钟转错误）。
 func DefaultOpenAI403CooldownSettings() *OpenAI403CooldownSettings {
 	return &OpenAI403CooldownSettings{
 		Enabled:                 true,

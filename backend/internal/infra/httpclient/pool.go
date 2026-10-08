@@ -16,7 +16,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/ipmatch"
 )
 
-// Transport 连接池默认配置
+// Transport 连接池默认配置。
 const (
 	defaultMaxIdleConns        = 100              // 最大空闲连接数
 	defaultMaxIdleConnsPerHost = 10               // 每个主机最大空闲连接数
@@ -27,14 +27,14 @@ const (
 )
 
 var (
-	// sharedClients 存储按配置参数缓存的 http.Client 实例
+	// sharedClients 存储按配置参数缓存的 http.Client 实例。
 	sharedClients sync.Map
 
 	// 允许测试替换校验函数，生产默认指向真实实现。
 	validateResolvedIP = ValidateResolvedIP
 )
 
-// Options 定义共享 HTTP 客户端的构建参数
+// Options 定义共享 HTTP 客户端的构建参数。
 type Options struct {
 	ProxyURL              string        // 代理 URL（支持 http/https/socks5/socks5h）
 	Timeout               time.Duration // 请求总超时时间
@@ -57,7 +57,7 @@ type validatedTransport struct {
 
 // GetClient 返回共享的 HTTP 客户端实例
 // 性能优化：相同配置复用同一客户端，避免重复创建 Transport
-// 安全说明：代理配置失败时直接返回错误，不会回退到直连，避免 IP 关联风险
+// 安全说明：代理配置失败时直接返回错误，不会回退到直连，避免 IP 关联风险。
 func GetClient(opts Options) (*http.Client, error) {
 	key := buildClientKey(opts)
 	if cached, ok := sharedClients.Load(key); ok {

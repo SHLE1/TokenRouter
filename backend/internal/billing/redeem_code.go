@@ -7,13 +7,13 @@ import (
 )
 
 const (
-	// Redeem type constants
+	// Redeem type constants.
 	RedeemTypeBalance      = "balance"
 	RedeemTypeConcurrency  = "concurrency"
 	RedeemTypeSubscription = "subscription"
 	RedeemTypeInvitation   = "invitation"
 
-	// Admin adjustment type constants
+	// Admin adjustment type constants.
 	AdjustmentTypeAdminBalance     = "admin_balance"     // 管理员调整余额
 	AdjustmentTypeAdminConcurrency = "admin_concurrency" // 管理员调整并发数
 

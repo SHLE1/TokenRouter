@@ -46,7 +46,7 @@ type mockDumper struct {
 	opts     backup.BackupDumpOptions
 }
 
-// blockingDumper 可控延迟的 dumper，用于测试异步行为
+// blockingDumper 可控延迟的 dumper，用于测试异步行为。
 type blockingDumper struct {
 	blockCh chan struct{}
 	data    []byte

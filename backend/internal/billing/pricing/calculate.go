@@ -196,7 +196,7 @@ func ApplyConfigTokenPriceOverrides(pricing *ModelPricing, ConfigPricing *ModelP
 	applyConfigImagePriceOverrides(pricing, ConfigPricing)
 }
 
-// CalculateTokenCost 按 token 区间计费
+// CalculateTokenCost 按 token 区间计费。
 func CalculateTokenCost(resolved *ResolvedPricing, input CostInput) (*CostBreakdown, error) {
 	totalContext := input.Tokens.InputTokens + input.Tokens.CacheCreationTokens + input.Tokens.CacheReadTokens
 
@@ -401,7 +401,7 @@ func NormalizeCacheCreationBreakdown(tokens UsageTokens) (int, int) {
 	return cacheCreation5mTokens, aggregate - cacheCreation5mTokens
 }
 
-// CalculatePerRequestCost 按次/图片计费
+// CalculatePerRequestCost 按次/图片计费。
 func CalculatePerRequestCost(resolved *ResolvedPricing, input CostInput) (*CostBreakdown, error) {
 	units := input.UsageUnits
 	if units <= 0 {
@@ -824,7 +824,7 @@ func UnknownDisplayPricing() ModelDisplayPricing {
 // CalculateWebSearchCost 计算 Codex alpha/search 网页搜索按次费用。
 // callCount: 搜索调用次数（每次请求为 1）
 // groupPrice: 分组配置的单次价格（nil 表示缺价；0 表示免费）
-// rateMultiplier: 分组费率倍数
+// rateMultiplier: 分组费率倍数。
 func CalculateWebSearchCost(callCount int, groupPrice *float64, rateMultiplier float64) *CostBreakdown {
 	if callCount <= 0 {
 		return &CostBreakdown{}

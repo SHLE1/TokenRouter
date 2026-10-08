@@ -99,7 +99,7 @@ func (s *HealthService) handleOpenAI403(ctx context.Context, provider *Record, o
 // handleAntigravity403 处理 Antigravity 平台的 403 错误
 // validation（需要验证）→ 永久 SetError（需人工去 Google 验证后恢复）
 // violation（违规封号）→ 永久 SetError（需人工处理）
-// generic（通用禁止）→ 永久 SetError
+// generic（通用禁止）→ 永久 SetError。
 func (s *HealthService) handleAntigravity403(ctx context.Context, provider *Record, observation ForbiddenObservation) (shouldDisable bool) {
 	fbType := observation.Kind
 

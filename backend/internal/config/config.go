@@ -24,25 +24,25 @@ import (
 )
 
 const (
-	// 使用量记录队列溢出策略
+	// 使用量记录队列溢出策略。
 	UsageRecordOverflowPolicyDrop   = "drop"
 	UsageRecordOverflowPolicySample = "sample"
 	UsageRecordOverflowPolicySync   = "sync"
 
 	// DefaultCSPPolicy is the default Content-Security-Policy with nonce support
-	// __CSP_NONCE__ will be replaced with actual nonce at request time by the SecurityHeaders middleware
+	// __CSP_NONCE__ will be replaced with actual nonce at request time by the SecurityHeaders middleware.
 	DefaultCSPPolicy = httpconfig.DefaultCSPPolicy
 
 	// 连接池隔离策略常量
 	// 用于控制上游 HTTP 连接池的隔离粒度，影响连接复用和资源消耗
 	// ConnectionPoolIsolationProxy: 按代理隔离
-	// 同一代理地址共享连接池，适合代理数量少、提供商数量多的场景
+	// 同一代理地址共享连接池，适合代理数量少、提供商数量多的场景。
 	ConnectionPoolIsolationProxy = "proxy"
 	// ConnectionPoolIsolationProvider: 按提供商隔离
-	// 每个提供商独立连接池，适合提供商数量少、需要严格隔离的场景
+	// 每个提供商独立连接池，适合提供商数量少、需要严格隔离的场景。
 	ConnectionPoolIsolationProvider = "provider"
 	// ConnectionPoolIsolationProviderProxy: 按提供商+代理组合隔离（默认）
-	// 同一提供商+代理组合共享连接池，提供最细粒度的隔离
+	// 同一提供商+代理组合共享连接池，提供最细粒度的隔离。
 	ConnectionPoolIsolationProviderProxy = "provider_proxy"
 
 	// DefaultUpstreamResponseReadMaxBytes 上游非流式响应体的默认读取上限。
@@ -298,7 +298,7 @@ type DingTalkConnectConfig = authconfig.DingTalkConnectConfig
 // EmailOAuthProviderConfig 保存 GitHub/Google 这类邮箱 OAuth 登录的配置。
 type EmailOAuthProviderConfig = authconfig.EmailOAuthProviderConfig
 
-// TokenRefreshConfig OAuth token自动刷新配置
+// TokenRefreshConfig OAuth token自动刷新配置。
 type TokenRefreshConfig struct {
 	// 是否启用自动刷新
 	Enabled bool `mapstructure:"enabled"`
@@ -362,7 +362,7 @@ type TLSFingerprintCollectorConfig struct {
 	MaxRecordsPerSession int    `mapstructure:"max_records_per_session"` // 每个会话保留的最大采集记录数
 }
 
-// H2CConfig HTTP/2 Cleartext 配置
+// H2CConfig HTTP/2 Cleartext 配置。
 type H2CConfig struct {
 	Enabled                      bool   `mapstructure:"enabled"`                          // 是否启用 H2C
 	MaxConcurrentStreams         uint32 `mapstructure:"max_concurrent_streams"`           // 最大并发流数量
@@ -474,7 +474,7 @@ type ImageConcurrencyConfig struct {
 	MaxWaitingRequests int `mapstructure:"max_waiting_requests"`
 }
 
-// GatewayConfig API网关相关配置
+// GatewayConfig API网关相关配置。
 type GatewayConfig struct {
 	// 等待上游响应头的超时时间（秒），0表示无超时
 	// 注意：这不影响流式数据传输，只控制等待响应头的时间
@@ -689,7 +689,7 @@ type GatewayOpenAIProxyStreamCircuitConfig struct {
 }
 
 // UserMessageQueueConfig 用户消息串行队列配置
-// 用于 Anthropic OAuth/SetupToken 提供商的用户消息串行化发送
+// 用于 Anthropic OAuth/SetupToken 提供商的用户消息串行化发送。
 type UserMessageQueueConfig struct {
 	// Mode: 模式选择
 	// "serialize" = 提供商级串行锁 + RPM 自适应延迟
@@ -759,7 +759,7 @@ type GatewayAdvancedSchedulerConfig struct {
 	StickyEscapeErrorRate float64 `mapstructure:"sticky_escape_error_rate"`
 }
 
-// GatewayUsageRecordConfig 使用量记录异步队列配置
+// GatewayUsageRecordConfig 使用量记录异步队列配置。
 type GatewayUsageRecordConfig struct {
 	// WorkerCount: worker 初始数量（自动扩缩容开启时作为初始并发上限）
 	WorkerCount int `mapstructure:"worker_count"`
@@ -793,7 +793,7 @@ type GatewayUsageRecordConfig struct {
 }
 
 // TLSFingerprintConfig TLS指纹伪装配置
-// 用于模拟 Claude CLI (Node.js) 的 TLS 握手特征，避免被识别为非官方客户端
+// 用于模拟 Claude CLI (Node.js) 的 TLS 握手特征，避免被识别为非官方客户端。
 type TLSFingerprintConfig struct {
 	// Enabled: 是否全局启用TLS指纹功能
 	Enabled bool `mapstructure:"enabled"`
@@ -804,7 +804,7 @@ type TLSFingerprintConfig struct {
 
 // TLSProfileConfig 单个TLS指纹模板的配置
 // 所有列表字段为空时使用内置默认值（Claude CLI 2.x / Node.js 20.x）
-// 建议通过 TLS 指纹采集工具 (tests/tls-fingerprint-web) 获取完整配置
+// 建议通过 TLS 指纹采集工具 (tests/tls-fingerprint-web) 获取完整配置。
 type TLSProfileConfig struct {
 	// Name: 模板显示名称
 	Name string `mapstructure:"name"`
@@ -886,7 +886,7 @@ type GatewaySchedulingConfig struct {
 }
 
 // DatabaseConfig 数据库连接配置
-// 性能优化：新增连接池参数，避免频繁创建/销毁连接
+// 性能优化：新增连接池参数，避免频繁创建/销毁连接。
 type DatabaseConfig struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
@@ -906,7 +906,7 @@ type DatabaseConfig struct {
 }
 
 // RedisConfig Redis 连接配置
-// 性能优化：新增连接池和超时参数，提升高并发场景下的吞吐量
+// 性能优化：新增连接池和超时参数，提升高并发场景下的吞吐量。
 type RedisConfig struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`
@@ -981,7 +981,7 @@ type JWTConfig struct {
 	RefreshWindowMinutes int `mapstructure:"refresh_window_minutes"`
 }
 
-// TotpConfig TOTP 双因素认证配置
+// TotpConfig TOTP 双因素认证配置。
 type TotpConfig struct {
 	// EncryptionKey 用于加密 TOTP 密钥的 AES-256 密钥（32 字节 hex 编码）
 	// 如果为空，将自动生成一个随机密钥（仅适用于开发环境）
@@ -1009,7 +1009,7 @@ type RateLimitConfig struct {
 	OAuth401CooldownMinutes int `mapstructure:"oauth_401_cooldown_minutes"` // OAuth 401临时不可调度冷却(分钟)
 }
 
-// APIKeyAuthCacheConfig API Key 认证缓存配置
+// APIKeyAuthCacheConfig API Key 认证缓存配置。
 type APIKeyAuthCacheConfig struct {
 	L1Size             int                    `mapstructure:"l1_size"`
 	L1TTLSeconds       int                    `mapstructure:"l1_ttl_seconds"`
@@ -1029,14 +1029,14 @@ type InvalidAuthAbuseConfig struct {
 	Capacity      int  `mapstructure:"capacity"`
 }
 
-// SubscriptionCacheConfig 订阅认证 L1 缓存配置
+// SubscriptionCacheConfig 订阅认证 L1 缓存配置。
 type SubscriptionCacheConfig struct {
 	L1Size        int `mapstructure:"l1_size"`
 	L1TTLSeconds  int `mapstructure:"l1_ttl_seconds"`
 	JitterPercent int `mapstructure:"jitter_percent"`
 }
 
-// DashboardCacheConfig 仪表盘统计缓存配置
+// DashboardCacheConfig 仪表盘统计缓存配置。
 type DashboardCacheConfig struct {
 	// Enabled: 是否启用仪表盘缓存
 	Enabled bool `mapstructure:"enabled"`
@@ -1050,7 +1050,7 @@ type DashboardCacheConfig struct {
 	StatsRefreshTimeoutSeconds int `mapstructure:"stats_refresh_timeout_seconds"`
 }
 
-// DashboardAggregationConfig 仪表盘预聚合配置
+// DashboardAggregationConfig 仪表盘预聚合配置。
 type DashboardAggregationConfig struct {
 	// Enabled: 是否启用预聚合作业
 	Enabled bool `mapstructure:"enabled"`
@@ -1068,7 +1068,7 @@ type DashboardAggregationConfig struct {
 	RecomputeDays int `mapstructure:"recompute_days"`
 }
 
-// DashboardAggregationRetentionConfig 预聚合保留窗口
+// DashboardAggregationRetentionConfig 预聚合保留窗口。
 type DashboardAggregationRetentionConfig struct {
 	UsageLogsDays         int `mapstructure:"usage_logs_days"`
 	UsageBillingDedupDays int `mapstructure:"usage_billing_dedup_days"`
@@ -1076,7 +1076,7 @@ type DashboardAggregationRetentionConfig struct {
 	DailyDays             int `mapstructure:"daily_days"`
 }
 
-// UsageCleanupConfig 使用记录清理任务配置
+// UsageCleanupConfig 使用记录清理任务配置。
 type UsageCleanupConfig struct {
 	// Enabled: 是否启用清理任务执行器
 	Enabled bool `mapstructure:"enabled"`
@@ -1391,7 +1391,7 @@ func normalizeProxyProbeURLs(targets []ProbeURLConfig) ([]ProbeURLConfig, error)
 	return normalized, nil
 }
 
-// WaitTimeout 返回等待超时的 time.Duration
+// WaitTimeout 返回等待超时的 time.Duration。
 func (c *UserMessageQueueConfig) WaitTimeout() time.Duration {
 	if c.WaitTimeoutMs <= 0 {
 		return 30 * time.Second
@@ -1400,7 +1400,7 @@ func (c *UserMessageQueueConfig) WaitTimeout() time.Duration {
 }
 
 // GetEffectiveMode 返回生效的模式
-// 注意：Mode 字段已在 load() 中做过白名单校验和规范化，此处无需重复验证
+// 注意：Mode 字段已在 load() 中做过白名单校验和规范化，此处无需重复验证。
 func (c *UserMessageQueueConfig) GetEffectiveMode() string {
 	if c.Mode == schedulerpolicy.MessageQueueSerialize || c.Mode == schedulerpolicy.MessageQueueThrottle {
 		return c.Mode
@@ -1429,7 +1429,7 @@ func (d *DatabaseConfig) DSN() string {
 	)
 }
 
-// DSNWithTimezone returns DSN with timezone setting
+// DSNWithTimezone returns DSN with timezone setting.
 func (d *DatabaseConfig) DSNWithTimezone(tz string) string {
 	if tz == "" {
 		tz = "Asia/Shanghai"
@@ -3435,10 +3435,10 @@ func GetServerAddress() string {
 	return fmt.Sprintf("%s:%d", host, port)
 }
 
-// ValidateAbsoluteHTTPURL 验证是否为有效的绝对 HTTP(S) URL
+// ValidateAbsoluteHTTPURL 验证是否为有效的绝对 HTTP(S) URL。
 func ValidateAbsoluteHTTPURL(raw string) error { return authconfig.ValidateAbsoluteHTTPURL(raw) }
 
-// ValidateFrontendRedirectURL 验证前端重定向 URL（可以是绝对 URL 或相对路径）
+// ValidateFrontendRedirectURL 验证前端重定向 URL（可以是绝对 URL 或相对路径）。
 func ValidateFrontendRedirectURL(raw string) error {
 	return authconfig.ValidateFrontendRedirectURL(raw)
 }

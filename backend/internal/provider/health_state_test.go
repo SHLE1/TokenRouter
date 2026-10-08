@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestTempUnschedState 测试临时限流状态结构
+// TestTempUnschedState 测试临时限流状态结构。
 func TestTempUnschedState(t *testing.T) {
 	now := time.Now()
 	until := now.Add(5 * time.Minute)

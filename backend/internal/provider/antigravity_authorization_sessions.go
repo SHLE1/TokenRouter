@@ -7,7 +7,7 @@ import (
 
 const AntigravitySessionTTL = 30 * time.Minute
 
-// AntigravityAuthorizationSession 保存 OAuth 授权流程的临时状态
+// AntigravityAuthorizationSession 保存 OAuth 授权流程的临时状态。
 type AntigravityAuthorizationSession struct {
 	State        string    `json:"state"`
 	CodeVerifier string    `json:"code_verifier"`
@@ -15,7 +15,7 @@ type AntigravityAuthorizationSession struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-// AntigravityAuthorizationSessions OAuth session 存储
+// AntigravityAuthorizationSessions OAuth session 存储。
 type AntigravityAuthorizationSessions struct {
 	runtimeMu      sync.Mutex
 	runtimeStarted bool

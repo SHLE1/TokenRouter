@@ -56,7 +56,7 @@ func TestConvertGeminiToClaudeMessageOmitsInlineDataForAnthropicMessages(t *test
 }
 
 // TestUnwrapGeminiResponse 测试 unwrapGeminiResponse 的各种输入场景
-// 关键区别：只有 response 为 JSON 对象/数组时才解包
+// 关键区别：只有 response 为 JSON 对象/数组时才解包。
 func TestUnwrapGeminiResponse(t *testing.T) {
 	// 构造 >50KB 的大型 JSON 对象
 	largePadding := strings.Repeat("x", 50*1024)

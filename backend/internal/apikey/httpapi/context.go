@@ -16,7 +16,7 @@ const (
 // APIKeyAuthMiddleware 是 API Key 认证的 Gin 中间件。
 type APIKeyAuthMiddleware gin.HandlerFunc
 
-// GetAPIKeyFromContext 从上下文中获取API key
+// GetAPIKeyFromContext 从上下文中获取API key。
 func GetAPIKeyFromContext(c *gin.Context) (*apikey.APIKey, bool) {
 	value, exists := c.Get(string(ContextKeyAPIKey))
 	if !exists {
@@ -47,7 +47,7 @@ func GetOpsFallbackAPIKey(c *gin.Context) (*apikey.APIKey, bool) {
 }
 
 // ForcePlatform 返回设置强制平台的中间件
-// 同时设置 request.Context（供 Service 使用）和 gin.Context（供 Handler 快速检查）
+// 同时设置 request.Context（供 Service 使用）和 gin.Context（供 Handler 快速检查）。
 func ForcePlatform(platform string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 设置到 request.Context，使用 requeststate.ForcePlatform 供 Service 层读取
@@ -59,13 +59,13 @@ func ForcePlatform(platform string) gin.HandlerFunc {
 	}
 }
 
-// HasForcePlatform 检查是否有强制平台（用于 Handler 跳过分组检查）
+// HasForcePlatform 检查是否有强制平台（用于 Handler 跳过分组检查）。
 func HasForcePlatform(c *gin.Context) bool {
 	_, exists := c.Get(string(ContextKeyForcePlatform))
 	return exists
 }
 
-// GetForcePlatformFromContext 从 gin.Context 获取强制平台
+// GetForcePlatformFromContext 从 gin.Context 获取强制平台。
 func GetForcePlatformFromContext(c *gin.Context) (string, bool) {
 	value, exists := c.Get(string(ContextKeyForcePlatform))
 	if !exists {

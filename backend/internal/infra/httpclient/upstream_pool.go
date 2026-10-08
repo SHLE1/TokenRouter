@@ -84,7 +84,7 @@ type UpstreamSettings struct {
 }
 
 // upstreamClientEntry 上游客户端缓存条目
-// 记录客户端实例及其元数据，用于连接池管理和淘汰策略
+// 记录客户端实例及其元数据，用于连接池管理和淘汰策略。
 type upstreamClientEntry struct {
 	client       *http.Client // HTTP 客户端实例
 	proxyKey     string       // 代理标识（用于检测代理变更）
@@ -109,7 +109,7 @@ type cancelOnCloseReadCloser struct {
 }
 
 // trackedBody 带跟踪功能的响应体包装器
-// 在 Close 时执行回调，用于更新请求计数
+// 在 Close 时执行回调，用于更新请求计数。
 type trackedBody struct {
 	io.ReadCloser // 原始响应体
 	once          sync.Once
@@ -257,7 +257,7 @@ func (s *UpstreamPool) acquire(opts UpstreamRequestOptions) (*upstreamClientEntr
 }
 
 // shouldReuseEntry 判断缓存条目是否可复用
-// 若代理或连接池配置发生变化，则需要重建客户端
+// 若代理或连接池配置发生变化，则需要重建客户端。
 func (s *UpstreamPool) shouldReuseEntry(entry *upstreamClientEntry, isolation, proxyKey, poolKey string) bool {
 	if entry == nil {
 		return false
@@ -314,7 +314,7 @@ func (s *UpstreamPool) evictIdleLocked(now time.Time, ttl time.Duration) {
 	}
 }
 
-// evictOldestIdleLocked 淘汰最久未使用且无活跃请求的客户端（需持有锁）
+// evictOldestIdleLocked 淘汰最久未使用且无活跃请求的客户端（需持有锁）。
 func (s *UpstreamPool) evictOldestIdleLocked() bool {
 	var (
 		oldestKey   string
@@ -343,7 +343,7 @@ func (s *UpstreamPool) evictOldestIdleLocked() bool {
 }
 
 // evictOverLimitLocked 淘汰超出数量限制的客户端（需持有锁）
-// 使用 LRU 策略，优先淘汰最久未使用且无活跃请求的客户端
+// 使用 LRU 策略，优先淘汰最久未使用且无活跃请求的客户端。
 func (s *UpstreamPool) evictOverLimitLocked(maxClients int) bool {
 	if maxClients <= 0 {
 		return false
@@ -636,7 +636,7 @@ func (r *responseHeaderTimeoutRoundTripper) CloseIdleConnections() {
 }
 
 // Close 关闭响应体并执行回调
-// 使用 sync.Once 确保回调只执行一次
+// 使用 sync.Once 确保回调只执行一次。
 func (r *cancelOnCloseReadCloser) Close() error {
 	err := r.ReadCloser.Close()
 	if r.cancel != nil {
@@ -646,7 +646,7 @@ func (r *cancelOnCloseReadCloser) Close() error {
 }
 
 // Close 关闭响应体并执行回调
-// 使用 sync.Once 确保回调只执行一次
+// 使用 sync.Once 确保回调只执行一次。
 func (b *trackedBody) Close() error {
 	err := b.ReadCloser.Close()
 	if b.onClose != nil {

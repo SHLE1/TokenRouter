@@ -22,7 +22,7 @@ type slotCleanupCache struct {
 	calls atomic.Int64
 }
 
-// stubConcurrencyCacheForTest 用于并发服务单元测试的缓存桩
+// stubConcurrencyCacheForTest 用于并发服务单元测试的缓存桩。
 type stubConcurrencyCacheForTest struct {
 	acquireResult        bool
 	acquireErr           error
@@ -583,7 +583,7 @@ func TestWaitingQueueFlow_IncrementThenDecrement(t *testing.T) {
 	allowed.Release()
 }
 
-// TestWaitingQueueFlow_ProviderLevel 测试提供商级等待队列流程
+// TestWaitingQueueFlow_ProviderLevel 测试提供商级等待队列流程。
 func TestWaitingQueueFlow_ProviderLevel(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{waitAllowed: true}
 	svc := NewConcurrencyService(cache)
@@ -595,7 +595,7 @@ func TestWaitingQueueFlow_ProviderLevel(t *testing.T) {
 	allowed.Release()
 }
 
-// TestWaitingQueueFull_Returns429Signal 测试等待队列满时返回 false
+// TestWaitingQueueFull_Returns429Signal 测试等待队列满时返回 false。
 func TestWaitingQueueFull_Returns429Signal(t *testing.T) {
 	// waitAllowed=false 模拟队列已满
 	cache := &stubConcurrencyCacheForTest{waitAllowed: false}
@@ -612,7 +612,7 @@ func TestWaitingQueueFull_Returns429Signal(t *testing.T) {
 	require.False(t, allowed.Allowed, "提供商等待队列满时应返回 false")
 }
 
-// TestWaitingQueue_FailOpen_OnCacheError 测试 Redis 故障时 fail-open
+// TestWaitingQueue_FailOpen_OnCacheError 测试 Redis 故障时 fail-open。
 func TestWaitingQueue_FailOpen_OnCacheError(t *testing.T) {
 	cache := &stubConcurrencyCacheForTest{waitErr: errors.New("redis connection refused")}
 	svc := NewConcurrencyService(cache)
@@ -628,7 +628,7 @@ func TestWaitingQueue_FailOpen_OnCacheError(t *testing.T) {
 	require.True(t, allowed.Allowed, "Redis 故障时应 fail-open 放行")
 }
 
-// TestCalculateMaxWait_Scenarios 测试最大等待队列大小计算
+// TestCalculateMaxWait_Scenarios 测试最大等待队列大小计算。
 func TestCalculateMaxWait_Scenarios(t *testing.T) {
 	tests := []struct {
 		concurrency int

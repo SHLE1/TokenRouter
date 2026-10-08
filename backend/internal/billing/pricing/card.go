@@ -15,7 +15,7 @@ const (
 	BillingModeVideo      BillingMode = "video"       // 视频生成计费（按输出秒数）
 )
 
-// BillingMode 计费模式
+// BillingMode 计费模式。
 type BillingMode string
 
 // ProviderStatsPricingRule 提供商统计定价规则
@@ -33,7 +33,7 @@ type ProviderStatsPricingRule struct {
 	UpdatedAt       time.Time
 }
 
-// ModelPricingEntry 价卡模型定价条目
+// ModelPricingEntry 价卡模型定价条目。
 type ModelPricingEntry struct {
 	ID                 int64       `json:"id,omitempty"`
 	PricingConfigID    int64       `json:"pricing_config_id,omitempty"`
@@ -76,7 +76,7 @@ type TimePricingPeriod struct {
 	Multiplier float64 `json:"multiplier"`
 }
 
-// PricingInterval 定价区间（token 区间 / 按次分层 / 图片分辨率分层）
+// PricingInterval 定价区间（token 区间 / 按次分层 / 图片分辨率分层）。
 type PricingInterval struct {
 	ID              int64    `json:"id,omitempty"`
 	PricingID       int64    `json:"pricing_id,omitempty"`
@@ -99,7 +99,7 @@ type PricingInterval struct {
 	UpdatedAt            time.Time `json:"updated_at,omitempty"`
 }
 
-// IsValid 检查 BillingMode 是否为合法值
+// IsValid 检查 BillingMode 是否为合法值。
 func (m BillingMode) IsValid() bool {
 	switch m {
 	case BillingModeToken, BillingModePerRequest, BillingModeImage, BillingModeVideo, "":
@@ -130,7 +130,7 @@ func FindMatchingInterval(intervals []PricingInterval, totalTokens int) *Pricing
 	return nil
 }
 
-// GetTierByLabel 根据标签查找层级（用于 per_request / image 模式）
+// GetTierByLabel 根据标签查找层级（用于 per_request / image 模式）。
 func (p *ModelPricingEntry) GetTierByLabel(label string) *PricingInterval {
 	labelLower := strings.ToLower(label)
 	for i := range p.Intervals {
@@ -275,7 +275,7 @@ func ValidateIntervals(intervals []PricingInterval, mode BillingMode) error {
 	return ValidateIntervalOverlap(sorted)
 }
 
-// ValidateSingleInterval 校验单个区间的字段合法性
+// ValidateSingleInterval 校验单个区间的字段合法性。
 func ValidateSingleInterval(iv *PricingInterval, idx int) error {
 	if iv.MinTokens < 0 {
 		return fmt.Errorf("interval #%d: min_tokens (%d) must be >= 0", idx+1, iv.MinTokens)
@@ -292,7 +292,7 @@ func ValidateSingleInterval(iv *PricingInterval, idx int) error {
 	return ValidateIntervalPrices(iv, idx)
 }
 
-// ValidateIntervalPrices 校验区间内所有价格字段 >= 0
+// ValidateIntervalPrices 校验区间内所有价格字段 >= 0。
 func ValidateIntervalPrices(iv *PricingInterval, idx int) error {
 	prices := []struct {
 		name string
@@ -327,7 +327,7 @@ func ValidateIntervalPrices(iv *PricingInterval, idx int) error {
 	return nil
 }
 
-// ValidateIntervalOverlap 校验排序后的区间列表无重叠，且无界区间在最后
+// ValidateIntervalOverlap 校验排序后的区间列表无重叠，且无界区间在最后。
 func ValidateIntervalOverlap(sorted []PricingInterval) error {
 	for i, iv := range sorted {
 		// 无界区间必须是最后一个

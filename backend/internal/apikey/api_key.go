@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	// API Key status constants
+	// API Key status constants.
 	StatusAPIKeyActive         = "active"
 	StatusAPIKeyDisabled       = "disabled"
 	StatusAPIKeyQuotaExhausted = "quota_exhausted"
@@ -26,7 +26,7 @@ const (
 	APIKeyBillingModeSubscription = "subscription"
 	APIKeyBillingModeBalance      = "balance"
 
-	// Rate limit window durations
+	// Rate limit window durations.
 	RateLimitWindow5h = 5 * time.Hour
 	RateLimitWindow1d = 24 * time.Hour
 	RateLimitWindow7d = 7 * 24 * time.Hour
@@ -159,12 +159,12 @@ func (k *APIKey) IsActive() bool {
 	return k.Status == StatusActive && !k.TeamOwnerDisabled
 }
 
-// HasRateLimits returns true if any rate limit window is configured
+// HasRateLimits returns true if any rate limit window is configured.
 func (k *APIKey) HasRateLimits() bool {
 	return k.RateLimit5h > 0 || k.RateLimit1d > 0 || k.RateLimit7d > 0
 }
 
-// IsExpired checks if the API key has expired
+// IsExpired checks if the API key has expired.
 func (k *APIKey) IsExpired() bool {
 	if k.ExpiresAt == nil {
 		return false
@@ -172,7 +172,7 @@ func (k *APIKey) IsExpired() bool {
 	return k.IsExpiredAt(time.Now())
 }
 
-// IsQuotaExhausted checks if the API key quota is exhausted
+// IsQuotaExhausted checks if the API key quota is exhausted.
 func (k *APIKey) IsQuotaExhausted() bool {
 	if k.Quota <= 0 {
 		return false // unlimited
@@ -180,7 +180,7 @@ func (k *APIKey) IsQuotaExhausted() bool {
 	return k.QuotaUsed >= k.Quota
 }
 
-// GetQuotaRemaining returns remaining quota (-1 for unlimited)
+// GetQuotaRemaining returns remaining quota (-1 for unlimited).
 func (k *APIKey) GetQuotaRemaining() float64 {
 	if k.Quota <= 0 {
 		return -1 // unlimited
@@ -192,7 +192,7 @@ func (k *APIKey) GetQuotaRemaining() float64 {
 	return remaining
 }
 
-// GetDaysUntilExpiry returns days until expiry (-1 for never expires)
+// GetDaysUntilExpiry returns days until expiry (-1 for never expires).
 func (k *APIKey) GetDaysUntilExpiry() int {
 	if k.ExpiresAt == nil {
 		return -1 // never expires

@@ -9,7 +9,7 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// BatchUpdateCredentialsRequest represents batch credentials update request
+// BatchUpdateCredentialsRequest represents batch credentials update request.
 type BatchUpdateCredentialsRequest struct {
 	ProviderIDs []int64 `json:"provider_ids" binding:"required,min=1"`
 	Field       string  `json:"field" binding:"required,oneof=account_uuid org_uuid intercept_warmup_requests"`

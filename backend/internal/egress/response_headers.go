@@ -35,7 +35,7 @@ var (
 		"x-reasoning-included": {},
 	}
 
-	// hopByHopHeaders 是跳过的 hop-by-hop 头部，这些头部由 HTTP 库自动处理
+	// hopByHopHeaders 是跳过的 hop-by-hop 头部，这些头部由 HTTP 库自动处理。
 	hopByHopHeaders = map[string]struct{}{
 		"content-length":    {},
 		"transfer-encoding": {},

@@ -12,7 +12,7 @@ import (
 var DefaultDroppedBetasSet = BuildBetaTokenSet(DroppedBetas)
 
 // GetBetaHeader 处理anthropic-beta header
-// 对于OAuth提供商，需要确保包含oauth-2025-04-20
+// 对于OAuth提供商，需要确保包含oauth-2025-04-20。
 func GetBetaHeader(modelID string, clientBetaHeader string) string {
 	// 如果客户端传了anthropic-beta
 	if clientBetaHeader != "" {

@@ -19,7 +19,7 @@ type NonStreamingProcessor struct {
 	*bridge.GeminiToAnthropicResponseProcessor
 }
 
-// TransformGeminiToClaude 将 Gemini 响应转换为 Claude 格式（非流式）
+// TransformGeminiToClaude 将 Gemini 响应转换为 Claude 格式（非流式）。
 func TransformGeminiToClaude(geminiResp []byte, originalModel string) ([]byte, *ClaudeUsage, error) {
 	// 解包 v1internal 响应
 	var v1Resp V1InternalResponse
@@ -56,7 +56,7 @@ func TransformGeminiToClaude(geminiResp []byte, originalModel string) ([]byte, *
 	return respBytes, &claudeResp.Usage, nil
 }
 
-// generateRandomID 生成密码学安全的随机 ID
+// generateRandomID 生成密码学安全的随机 ID。
 func generateRandomID() string {
 	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	id := make([]byte, 12)

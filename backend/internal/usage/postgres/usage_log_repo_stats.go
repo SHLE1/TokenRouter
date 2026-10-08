@@ -64,7 +64,7 @@ func (r *Store) GetProviderWindowStatsPair(ctx context.Context, id int64, firstS
 	return a, b, nil
 }
 
-// GetUserStatsAggregated returns aggregated usage statistics for a user using database-level aggregation
+// GetUserStatsAggregated returns aggregated usage statistics for a user using database-level aggregation.
 func (r *Store) GetUserStatsAggregated(ctx context.Context, userID int64, startTime, endTime time.Time) (*usage.UsageStats, error) {
 	query := `
 		SELECT
@@ -103,7 +103,7 @@ func (r *Store) GetUserStatsAggregated(ctx context.Context, userID int64, startT
 	return &stats, nil
 }
 
-// GetAPIKeyStatsAggregated returns aggregated usage statistics for an API key using database-level aggregation
+// GetAPIKeyStatsAggregated returns aggregated usage statistics for an API key using database-level aggregation.
 func (r *Store) GetAPIKeyStatsAggregated(ctx context.Context, apiKeyID int64, startTime, endTime time.Time) (*usage.UsageStats, error) {
 	query := `
 		SELECT
@@ -152,7 +152,7 @@ func (r *Store) GetAPIKeyStatsAggregated(ctx context.Context, apiKeyID int64, st
 // 新实现使用 SQL 聚合函数：
 // 1. 在数据库层完成 COUNT/SUM/AVG 计算
 // 2. 只返回单行聚合结果，大幅减少数据传输量
-// 3. 利用数据库索引优化聚合查询性能
+// 3. 利用数据库索引优化聚合查询性能。
 func (r *Store) GetProviderStatsAggregated(ctx context.Context, providerID int64, startTime, endTime time.Time) (*usage.UsageStats, error) {
 	query := `
 		SELECT
@@ -192,7 +192,7 @@ func (r *Store) GetProviderStatsAggregated(ctx context.Context, providerID int64
 }
 
 // GetModelStatsAggregated 使用 SQL 聚合统计模型使用数据
-// 性能优化：数据库层聚合计算，避免应用层循环统计
+// 性能优化：数据库层聚合计算，避免应用层循环统计。
 func (r *Store) GetModelStatsAggregated(ctx context.Context, modelName string, startTime, endTime time.Time) (*usage.UsageStats, error) {
 	query := fmt.Sprintf(`
 		SELECT
@@ -232,7 +232,7 @@ func (r *Store) GetModelStatsAggregated(ctx context.Context, modelName string, s
 }
 
 // GetDailyStatsAggregated 使用 SQL 聚合统计用户的每日使用数据
-// 性能优化：使用 GROUP BY 在数据库层按日期分组聚合，避免应用层循环分组统计
+// 性能优化：使用 GROUP BY 在数据库层按日期分组聚合，避免应用层循环分组统计。
 func (r *Store) GetDailyStatsAggregated(ctx context.Context, userID int64, startTime, endTime time.Time) (result []map[string]any, err error) {
 	tzName := r.resolveUsageStatsTimezone()
 	query := `
@@ -320,7 +320,7 @@ func (r *Store) resolveUsageStatsTimezone() string {
 	return "UTC"
 }
 
-// GetProviderTodayStats 获取提供商今日统计
+// GetProviderTodayStats 获取提供商今日统计。
 func (r *Store) GetProviderTodayStats(ctx context.Context, providerID int64) (*usage.ProviderStats, error) {
 	today := r.calendar.Today()
 
@@ -352,7 +352,7 @@ func (r *Store) GetProviderTodayStats(ctx context.Context, providerID int64) (*u
 	return stats, nil
 }
 
-// GetProviderWindowStats 获取提供商时间窗口内的统计
+// GetProviderWindowStats 获取提供商时间窗口内的统计。
 func (r *Store) GetProviderWindowStats(ctx context.Context, providerID int64, startTime time.Time) (*usage.ProviderStats, error) {
 	query := `
 		SELECT
@@ -665,7 +665,7 @@ func resolveEndpointColumn(endpointType string) string {
 	}
 }
 
-// GetGlobalStats gets usage statistics for all users within a time range
+// GetGlobalStats gets usage statistics for all users within a time range.
 func (r *Store) GetGlobalStats(ctx context.Context, startTime, endTime time.Time) (*UsageStats, error) {
 	query := `
 		SELECT

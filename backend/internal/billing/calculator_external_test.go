@@ -2253,7 +2253,7 @@ func TestCalculateAudioCost(t *testing.T) {
 	require.Equal(t, 0.0, s.CalculateAudioCost("realtime", 1, &billingpricing.AudioPriceConfig{RealtimePerMin: &zero}, 1).ActualCost)
 }
 
-// TestCalculateImageCost_DefaultPricing 测试无分组配置时使用目录的独立按张价格
+// TestCalculateImageCost_DefaultPricing 测试无分组配置时使用目录的独立按张价格。
 func TestCalculateImageCost_DefaultPricing(t *testing.T) {
 	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{}) // 使用完整型号的目录价
 
@@ -2300,7 +2300,7 @@ func TestCalculateImageCost_Explicit4KPrice(t *testing.T) {
 	require.InDelta(t, 0.268, cost.TotalCost, 0.0001)
 }
 
-// TestCalculateImageCost_RateMultiplier 测试费率倍数
+// TestCalculateImageCost_RateMultiplier 测试费率倍数。
 func TestCalculateImageCost_RateMultiplier(t *testing.T) {
 	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{})
 
@@ -2321,7 +2321,7 @@ func TestCalculateImageCost_RateMultiplier(t *testing.T) {
 	require.InDelta(t, 0.804, cost.ActualCost, 0.0001)
 }
 
-// TestCalculateImageCost_ZeroCount 测试 imageCount=0
+// TestCalculateImageCost_ZeroCount 测试 imageCount=0。
 func TestCalculateImageCost_ZeroCount(t *testing.T) {
 	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{})
 
@@ -2333,7 +2333,7 @@ func TestCalculateImageCost_ZeroCount(t *testing.T) {
 	require.Equal(t, 0.0, cost.ActualCost)
 }
 
-// TestCalculateImageCost_NegativeCount 测试 imageCount=-1
+// TestCalculateImageCost_NegativeCount 测试 imageCount=-1。
 func TestCalculateImageCost_NegativeCount(t *testing.T) {
 	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{})
 

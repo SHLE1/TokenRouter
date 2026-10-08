@@ -67,7 +67,7 @@ var (
 	settingKeyByJSONName = buildSettingKeyByJSONName()
 )
 
-// UpdateSettingsRequest 更新设置请求
+// UpdateSettingsRequest 更新设置请求。
 type UpdateSettingsRequest = settingsdto.UpdateSettingsRequest
 
 // generateMenuItemID 为自定义菜单项生成随机十六进制 ID。

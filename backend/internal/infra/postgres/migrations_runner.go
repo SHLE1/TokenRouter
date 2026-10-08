@@ -18,7 +18,7 @@ const (
 	// 该表用于跟踪已应用的迁移文件及其校验和。
 	// - filename: 迁移文件名，作为主键唯一标识每个迁移
 	// - checksum: 文件内容的 SHA256 哈希值，用于检测迁移文件是否被篡改
-	// - applied_at: 迁移应用时间戳
+	// - applied_at: 迁移应用时间戳。
 	schemaMigrationsTableDDL = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
 	filename   TEXT PRIMARY KEY,

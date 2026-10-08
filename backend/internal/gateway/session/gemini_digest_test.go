@@ -247,7 +247,7 @@ func TestFormatGeminiSessionValue(t *testing.T) {
 	}
 }
 
-// splitChain 辅助函数：按 "-" 分割摘要链
+// splitChain 辅助函数：按 "-" 分割摘要链。
 func splitChain(chain string) []string {
 	if chain == "" {
 		return nil

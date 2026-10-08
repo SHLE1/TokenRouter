@@ -19,7 +19,7 @@ import (
 	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
-// mockProviderRepoForGemini Gemini 测试用的 mock
+// mockProviderRepoForGemini Gemini 测试用的 mock。
 type mockProviderRepoForGemini struct {
 	providers          []gatewayprovider.ExecutionProvider
 	providersByID      map[int64]*gatewayprovider.ExecutionProvider
@@ -27,7 +27,7 @@ type mockProviderRepoForGemini struct {
 	listByPlatformFunc func(ctx context.Context, platforms []string) ([]gatewayprovider.ExecutionProvider, error)
 }
 
-// mockGatewayCacheForGemini Gemini 测试用的 cache mock
+// mockGatewayCacheForGemini Gemini 测试用的 cache mock。
 type mockGatewayCacheForGemini struct {
 	sessionBindings map[string]int64
 	deletedSessions map[string]int
@@ -129,7 +129,7 @@ func (m *mockGatewayCacheForGemini) DeleteSessionProviderID(ctx context.Context,
 	return nil
 }
 
-// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_GeminiPlatform 测试 Gemini 单平台选择
+// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_GeminiPlatform 测试 Gemini 单平台选择。
 func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_GeminiPlatform(t *testing.T) {
 	ctx := context.Background()
 
@@ -263,7 +263,7 @@ func TestGeminiMessagesCompatService_GroupResolution_UsesLiteFetch(t *testing.T)
 	require.Equal(t, 1, groupRepo.getByIDLiteCalls)
 }
 
-// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_GroupHasNoPlatformPreference 测试 antigravity 分组
+// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_GroupHasNoPlatformPreference 测试 antigravity 分组。
 func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_GroupHasNoPlatformPreference(t *testing.T) {
 	ctx := context.Background()
 
@@ -295,7 +295,7 @@ func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_GroupH
 	require.Equal(t, capability.PlatformGemini, acc.Record.Platform, "分组不按平台排除合格提供商")
 }
 
-// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_OAuthPreferred 测试 OAuth 优先
+// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_OAuthPreferred 测试 OAuth 优先。
 func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_OAuthPreferred(t *testing.T) {
 	ctx := context.Background()
 
@@ -322,7 +322,7 @@ func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_OAuthP
 	require.Equal(t, capability.ProviderTypeOAuth, acc.Record.Type)
 }
 
-// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_NoAvailableProviders 测试无可用提供商
+// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_NoAvailableProviders 测试无可用提供商。
 func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_NoAvailableProviders(t *testing.T) {
 	ctx := context.Background()
 
@@ -342,7 +342,7 @@ func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_NoAvai
 	require.Contains(t, err.Error(), "no available")
 }
 
-// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_StickySession 测试粘性会话
+// TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_StickySession 测试粘性会话。
 func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_StickySession(t *testing.T) {
 	ctx := context.Background()
 
@@ -721,7 +721,7 @@ func TestGeminiMessagesCompatService_SelectProviderForModelWithExclusions_Prefer
 	require.Equal(t, int64(2), acc.Record.ID)
 }
 
-// TestGeminiPlatformRouting_DocumentRouteDecision 测试平台路由决策逻辑
+// TestGeminiPlatformRouting_DocumentRouteDecision 测试平台路由决策逻辑。
 func TestGeminiPlatformRouting_DocumentRouteDecision(t *testing.T) {
 	tests := []struct {
 		name            string

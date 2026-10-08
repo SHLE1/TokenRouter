@@ -74,15 +74,15 @@ type RetryOptions struct {
 
 type RetryAdapter struct{ Options RetryOptions }
 
-// AntigravityRetryLoopResult 重试循环的结果
+// AntigravityRetryLoopResult 重试循环的结果。
 type AntigravityRetryLoopResult struct {
 	Resp *http.Response
 }
 
-// SmartRetryAction 智能重试的处理结果
+// SmartRetryAction 智能重试的处理结果。
 type SmartRetryAction int
 
-// SmartRetryResult 智能重试的结果
+// SmartRetryResult 智能重试的结果。
 type SmartRetryResult struct {
 	Action      SmartRetryAction
 	Resp        *http.Response
@@ -90,7 +90,7 @@ type SmartRetryResult struct {
 	SwitchError *AntigravityProviderSwitchError // 模型限流时返回提供商切换信号
 }
 
-// AntigravitySmartRetryInfo 智能重试所需的信息
+// AntigravitySmartRetryInfo 智能重试所需的信息。
 type AntigravitySmartRetryInfo struct {
 	RetryDelay               time.Duration // 重试延迟时间
 	ModelName                string        // 限流的模型名称（如 "claude-sonnet-4-5"）
@@ -126,7 +126,7 @@ func ResolveAntigravityForwardBaseURL(mode string, paid bool) string {
 }
 
 // HandleSmartRetry 处理 OAuth 提供商的智能重试逻辑
-// 将 429/503 限流处理逻辑抽取为独立函数，减少 AntigravityRetryLoop 的复杂度
+// 将 429/503 限流处理逻辑抽取为独立函数，减少 AntigravityRetryLoop 的复杂度。
 func (s *RetryAdapter) HandleSmartRetry(p RetryInput, resp *http.Response, respBody []byte, baseURL string, urlIdx int, availableURLs []string) *SmartRetryResult {
 	// "Resource has been exhausted" 是 URL 级别限流，切换 URL（仅 429）
 	if resp.StatusCode == http.StatusTooManyRequests && IsURLLevelRateLimit(respBody) && urlIdx < len(availableURLs)-1 {
@@ -487,7 +487,7 @@ func (s *RetryAdapter) HandleSingleProviderRetryInPlace(
 	}
 }
 
-// AntigravityRetryLoop 执行带 URL fallback 的重试循环
+// AntigravityRetryLoop 执行带 URL fallback 的重试循环。
 func (s *RetryAdapter) AntigravityRetryLoop(p RetryInput) (*AntigravityRetryLoopResult, error) {
 	// 预检查：模型限流 + overages 启用 + 积分未耗尽 → 直接注入 AI Credits
 	overagesInjected := false
@@ -736,7 +736,7 @@ urlFallbackLoop:
 	return &AntigravityRetryLoopResult{Resp: resp}, nil
 }
 
-// ShouldRetryAntigravityError 判断是否应该重试
+// ShouldRetryAntigravityError 判断是否应该重试。
 func ShouldRetryAntigravityError(statusCode int) bool {
 	switch statusCode {
 	case 429, 500, 502, 503, 504, 529:
@@ -748,7 +748,7 @@ func ShouldRetryAntigravityError(statusCode int) bool {
 
 // IsURLLevelRateLimit 判断是否为 URL 级别的限流（应切换 URL 重试）
 // "Resource has been exhausted" 是 URL/节点级别限流，切换 URL 可能成功
-// "exhausted your capacity on this model" 是提供商/模型配额限流，切换 URL 无效
+// "exhausted your capacity on this model" 是提供商/模型配额限流，切换 URL 无效。
 func IsURLLevelRateLimit(body []byte) bool {
 	// 快速检查：包含 "Resource has been exhausted" 且不包含 "capacity on this model"
 	bodyStr := string(body)
@@ -756,7 +756,7 @@ func IsURLLevelRateLimit(body []byte) bool {
 		!strings.Contains(bodyStr, "capacity on this model")
 }
 
-// IsAntigravityConnectionError 判断是否为连接错误（网络超时、DNS 失败、连接拒绝）
+// IsAntigravityConnectionError 判断是否为连接错误（网络超时、DNS 失败、连接拒绝）。
 func IsAntigravityConnectionError(err error) bool {
 	if err == nil {
 		return false
@@ -774,7 +774,7 @@ func IsAntigravityConnectionError(err error) bool {
 }
 
 // ShouldAntigravityFallbackToNextURL 判断是否应切换到下一个 URL
-// 仅连接错误和 HTTP 429 触发 URL 降级
+// 仅连接错误和 HTTP 429 触发 URL 降级。
 func ShouldAntigravityFallbackToNextURL(err error, statusCode int) bool {
 	if IsAntigravityConnectionError(err) {
 		return true
@@ -783,7 +783,7 @@ func ShouldAntigravityFallbackToNextURL(err error, statusCode int) bool {
 }
 
 // SleepAntigravityBackoffWithContext 带 context 取消检查的退避等待
-// 返回 true 表示正常完成等待，false 表示 context 已取消
+// 返回 true 表示正常完成等待，false 表示 context 已取消。
 func SleepAntigravityBackoffWithContext(ctx context.Context, attempt int) bool {
 	delay := AntigravityRetryBaseDelay * time.Duration(1<<uint(attempt-1))
 	if delay > AntigravityRetryMaxDelay {
@@ -822,7 +822,7 @@ func SleepAntigravityBackoffWithContext(ctx context.Context, attempt int) bool {
 //
 // 必须满足以下条件才会返回有效值：
 // - error.details[] 中存在 @type == "type.googleapis.com/google.rpc.RetryInfo" 的元素
-// - 该元素包含 retryDelay 字段，格式为 "数字s"（如 "0.201506475s"）
+// - 该元素包含 retryDelay 字段，格式为 "数字s"（如 "0.201506475s"）。
 func ParseAntigravitySmartRetryInfo(body []byte) *AntigravitySmartRetryInfo {
 	var parsed map[string]any
 	if err := json.Unmarshal(body, &parsed); err != nil {

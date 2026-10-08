@@ -24,13 +24,13 @@ const (
 	OpenAITTFTModeSemantic                           = "semantic"
 	OpenAITTFTModeVisible                            = "visible"
 
-	// versionBoundsCacheTTL 缓存有效期
+	// versionBoundsCacheTTL 缓存有效期。
 	versionBoundsCacheTTL = 60 * time.Second
 
-	// versionBoundsErrorTTL DB 错误时的短缓存，快速重试
+	// versionBoundsErrorTTL DB 错误时的短缓存，快速重试。
 	versionBoundsErrorTTL = 5 * time.Second
 
-	// versionBoundsDBTimeout singleflight 内 DB 查询超时，独立于请求 context
+	// versionBoundsDBTimeout singleflight 内 DB 查询超时，独立于请求 context。
 	versionBoundsDBTimeout = 5 * time.Second
 
 	gatewayForwardingCacheTTL = 60 * time.Second
@@ -41,14 +41,14 @@ const (
 	gatewayForwardingDBTimeout    = ForwardingSettingsReadTimeout
 )
 
-// cachedVersionBounds 缓存 Claude Code 版本号上下限（进程内缓存，60s TTL）
+// cachedVersionBounds 缓存 Claude Code 版本号上下限（进程内缓存，60s TTL）。
 type cachedVersionBounds struct {
 	min       string // 空字符串 = 不检查
 	max       string // 空字符串 = 不检查
 	expiresAt int64  // unix nano
 }
 
-// cachedGatewayForwardingSettings 缓存网关转发行为设置（进程内缓存，60s TTL）
+// cachedGatewayForwardingSettings 缓存网关转发行为设置（进程内缓存，60s TTL）。
 type cachedGatewayForwardingSettings struct {
 	openAITTFTMode                   string
 	fingerprintUnification           bool

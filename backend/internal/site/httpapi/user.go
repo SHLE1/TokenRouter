@@ -11,12 +11,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
-// AnnouncementHandler handles user announcement operations
+// AnnouncementHandler handles user announcement operations.
 type AnnouncementHandler struct {
 	announcementService *site.AnnouncementService
 }
 
-// NewAnnouncementHandler creates a new user announcement handler
+// NewAnnouncementHandler creates a new user announcement handler.
 func NewAnnouncementHandler(announcementService *site.AnnouncementService) *AnnouncementHandler {
 	return &AnnouncementHandler{
 		announcementService: announcementService,

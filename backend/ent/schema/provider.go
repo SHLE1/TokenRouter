@@ -37,7 +37,7 @@ func (Provider) Annotations() []schema.Annotation {
 
 // Mixin 返回该 schema 使用的混入组件。
 // - TimeMixin: 自动管理 created_at 和 updated_at 时间戳
-// - SoftDeleteMixin: 提供软删除功能（deleted_at）
+// - SoftDeleteMixin: 提供软删除功能（deleted_at）。
 func (Provider) Mixin() []ent.Mixin {
 	return []ent.Mixin{
 		mixins.TimeMixin{},

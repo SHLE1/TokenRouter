@@ -8,17 +8,17 @@ import (
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
-// RedeemHandler handles redeem code-related requests
+// RedeemHandler handles redeem code-related requests.
 type RedeemHandler struct {
 	redeemService *billing.RedeemService
 }
 
-// RedeemRequest represents the redeem code request payload
+// RedeemRequest represents the redeem code request payload.
 type RedeemRequest struct {
 	Code string `json:"code" binding:"required"`
 }
 
-// NewRedeemHandler creates a new RedeemHandler
+// NewRedeemHandler creates a new RedeemHandler.
 func NewRedeemHandler(redeemService *billing.RedeemService) *RedeemHandler {
 	return &RedeemHandler{
 		redeemService: redeemService,

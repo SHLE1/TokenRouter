@@ -37,7 +37,7 @@ func NewScheduledTestHandler(scheduledTestSvc *provider.ScheduledTestService) *S
 	return &ScheduledTestHandler{scheduledTestSvc: scheduledTestSvc}
 }
 
-// ListByProvider GET /admin/providers/:id/scheduled-test-plans
+// ListByProvider GET /admin/providers/:id/scheduled-test-plans.
 func (h *ScheduledTestHandler) ListByProvider(c *gin.Context) {
 	providerID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -53,7 +53,7 @@ func (h *ScheduledTestHandler) ListByProvider(c *gin.Context) {
 	c.JSON(http.StatusOK, plans)
 }
 
-// Create POST /admin/scheduled-test-plans
+// Create POST /admin/scheduled-test-plans.
 func (h *ScheduledTestHandler) Create(c *gin.Context) {
 	var req createScheduledTestPlanRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -83,7 +83,7 @@ func (h *ScheduledTestHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusOK, created)
 }
 
-// Update PUT /admin/scheduled-test-plans/:id
+// Update PUT /admin/scheduled-test-plans/:id.
 func (h *ScheduledTestHandler) Update(c *gin.Context) {
 	planID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -127,7 +127,7 @@ func (h *ScheduledTestHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, updated)
 }
 
-// Delete DELETE /admin/scheduled-test-plans/:id
+// Delete DELETE /admin/scheduled-test-plans/:id.
 func (h *ScheduledTestHandler) Delete(c *gin.Context) {
 	planID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -142,7 +142,7 @@ func (h *ScheduledTestHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
 
-// ListResults GET /admin/scheduled-test-plans/:id/results
+// ListResults GET /admin/scheduled-test-plans/:id/results.
 func (h *ScheduledTestHandler) ListResults(c *gin.Context) {
 	planID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

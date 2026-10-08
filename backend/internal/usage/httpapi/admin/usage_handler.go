@@ -20,7 +20,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage/httpapi/ports"
 )
 
-// UsageHandler handles admin usage-related requests
+// UsageHandler handles admin usage-related requests.
 type UsageHandler struct {
 	idemhttp.Executor
 
@@ -32,7 +32,7 @@ type UsageHandler struct {
 	opsService     ports.Timings
 }
 
-// CreateUsageCleanupTaskRequest represents cleanup task creation request
+// CreateUsageCleanupTaskRequest represents cleanup task creation request.
 type CreateUsageCleanupTaskRequest struct {
 	StartDate   string  `json:"start_date"`
 	EndDate     string  `json:"end_date"`
@@ -48,7 +48,7 @@ type CreateUsageCleanupTaskRequest struct {
 	Timezone    string  `json:"timezone"`
 }
 
-// NewUsageHandler creates a new admin usage handler
+// NewUsageHandler creates a new admin usage handler.
 func NewUsageHandler(
 	usageService *usage.UsageService,
 	apiKeyService ports.KeyReader,

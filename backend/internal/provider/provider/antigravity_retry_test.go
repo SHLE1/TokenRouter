@@ -66,7 +66,7 @@ type stubAntigravityUpstream struct {
 type recordingOKUpstream struct{ calls int }
 
 // stubSmartRetryCache 用于 handleSmartRetry 测试的 GatewayCache mock
-// 仅关注 DeleteSessionProviderID 的调用记录
+// 仅关注 DeleteSessionProviderID 的调用记录。
 type stubSmartRetryCache struct {
 	session.GatewayCache // 调用未实现的方法会 panic。
 	deleteCalls          []deleteSessionCall
@@ -77,7 +77,7 @@ type deleteSessionCall struct {
 	sessionHash string
 }
 
-// mockSmartRetryUpstream 用于 handleSmartRetry 测试的 mock upstream
+// mockSmartRetryUpstream 用于 handleSmartRetry 测试的 mock upstream。
 type mockSmartRetryUpstream struct {
 	responses      []*http.Response
 	responseBodies [][]byte // 缓存的 response body 字节（用于 repeatLast 重建）
@@ -1260,7 +1260,7 @@ func TestHandleSmartRetry_503_LongDelay_SingleProviderRetry_RetryInPlace(t *test
 
 // TestHandleSmartRetry_503_LongDelay_NoSingleProviderRetry_StillSwitches
 // 对照组：503 + retryDelay >= 7s + 无 SingleProviderRetry 标记
-// → 照常设模型限流 + 切换提供商
+// → 照常设模型限流 + 切换提供商。
 func TestHandleSmartRetry_503_LongDelay_NoSingleProviderRetry_StillSwitches(t *testing.T) {
 	repo := &antigravityRetryStoreFixture{}
 	provider := &acct.Record{
@@ -1537,7 +1537,7 @@ func TestHandleSmartRetry_503_ShortDelay_NoSingleProviderRetry_SetsRateLimit(t *
 	require.Equal(t, "antigravity:gemini", repo.modelRateLimitCalls[1].modelKey)
 }
 
-// TestHandleSingleProviderRetryInPlace_Success 原地重试成功
+// TestHandleSingleProviderRetryInPlace_Success 原地重试成功。
 func TestHandleSingleProviderRetryInPlace_Success(t *testing.T) {
 	successResp := &http.Response{
 		StatusCode: http.StatusOK,
@@ -1586,7 +1586,7 @@ func TestHandleSingleProviderRetryInPlace_Success(t *testing.T) {
 	require.Nil(t, result.Err)
 }
 
-// TestHandleSingleProviderRetryInPlace_AllRetriesFail 所有重试都失败，返回 503（不设限流）
+// TestHandleSingleProviderRetryInPlace_AllRetriesFail 所有重试都失败，返回 503（不设限流）。
 func TestHandleSingleProviderRetryInPlace_AllRetriesFail(t *testing.T) {
 	// 构造 3 个 503 响应（对应 3 次原地重试）
 	var responses []*http.Response
@@ -1656,7 +1656,7 @@ func TestHandleSingleProviderRetryInPlace_AllRetriesFail(t *testing.T) {
 		"should have made exactly maxAttempts retry calls")
 }
 
-// TestHandleSingleProviderRetryInPlace_WaitDurationClamped 等待时间被限制在 [min, max] 范围
+// TestHandleSingleProviderRetryInPlace_WaitDurationClamped 等待时间被限制在 [min, max] 范围。
 func TestHandleSingleProviderRetryInPlace_WaitDurationClamped(t *testing.T) {
 	// 用短延迟的成功响应，只验证不 panic
 	successResp := &http.Response{
@@ -1706,7 +1706,7 @@ func TestHandleSingleProviderRetryInPlace_WaitDurationClamped(t *testing.T) {
 	require.Equal(t, http.StatusOK, result.Resp.StatusCode)
 }
 
-// TestHandleSingleProviderRetryInPlace_ContextCanceled context 取消时立即返回
+// TestHandleSingleProviderRetryInPlace_ContextCanceled context 取消时立即返回。
 func TestHandleSingleProviderRetryInPlace_ContextCanceled(t *testing.T) {
 	upstream := &mockSmartRetryUpstream{
 		responses: []*http.Response{nil},
@@ -1753,7 +1753,7 @@ func TestHandleSingleProviderRetryInPlace_ContextCanceled(t *testing.T) {
 	require.Len(t, upstream.calls, 0, "should not call upstream when context is canceled")
 }
 
-// TestHandleSingleProviderRetryInPlace_NetworkError_ContinuesRetry 网络错误时继续重试
+// TestHandleSingleProviderRetryInPlace_NetworkError_ContinuesRetry 网络错误时继续重试。
 func TestHandleSingleProviderRetryInPlace_NetworkError_ContinuesRetry(t *testing.T) {
 	successResp := &http.Response{
 		StatusCode: http.StatusOK,
@@ -1803,7 +1803,7 @@ func TestHandleSingleProviderRetryInPlace_NetworkError_ContinuesRetry(t *testing
 }
 
 // TestAntigravityRetryLoop_PreCheck_SingleProviderRetry_SkipsRateLimit
-// 预检查中，如果有 SingleProviderRetry 标记，即使提供商已限流也跳过直接发请求
+// 预检查中，如果有 SingleProviderRetry 标记，即使提供商已限流也跳过直接发请求。
 func TestAntigravityRetryLoop_PreCheck_SingleProviderRetry_SkipsRateLimit(t *testing.T) {
 	// 创建一个已设模型限流的提供商
 	upstream := &recordingOKUpstream{}
@@ -1850,7 +1850,7 @@ func TestAntigravityRetryLoop_PreCheck_SingleProviderRetry_SkipsRateLimit(t *tes
 }
 
 // TestAntigravityRetryLoop_PreCheck_NoSingleProviderRetry_SwitchesOnRateLimit
-// 对照组：无 SingleProviderRetry + 已限流 → 预检查返回 switchError
+// 对照组：无 SingleProviderRetry + 已限流 → 预检查返回 switchError。
 func TestAntigravityRetryLoop_PreCheck_NoSingleProviderRetry_SwitchesOnRateLimit(t *testing.T) {
 	upstream := &recordingOKUpstream{}
 	provider := &acct.Record{
@@ -1900,7 +1900,7 @@ func TestAntigravityRetryLoop_PreCheck_NoSingleProviderRetry_SwitchesOnRateLimit
 }
 
 // TestHandleSmartRetry_503_SingleProvider_RetryInPlace_ThenSuccess_E2E
-// 端到端场景：503 + 单提供商 + 原地重试第2次成功
+// 端到端场景：503 + 单提供商 + 原地重试第2次成功。
 func TestHandleSmartRetry_503_SingleProvider_RetryInPlace_ThenSuccess_E2E(t *testing.T) {
 	// 第1次原地重试仍返回 503，第2次成功
 	fail503Body := `{
@@ -1967,7 +1967,7 @@ func TestHandleSmartRetry_503_SingleProvider_RetryInPlace_ThenSuccess_E2E(t *tes
 }
 
 // TestAntigravityRetryLoop_503_SingleProvider_InPlaceRetryUsed_E2E
-// 通过 antigravityRetryLoop → handleSmartRetry → handleSingleProviderRetryInPlace 完整链路
+// 通过 antigravityRetryLoop → handleSmartRetry → handleSingleProviderRetryInPlace 完整链路。
 func TestAntigravityRetryLoop_503_SingleProvider_InPlaceRetryUsed_E2E(t *testing.T) {
 	// 初始请求返回 503 + 长延迟
 	initial503Body := []byte(`{
@@ -2039,7 +2039,7 @@ func TestAntigravityRetryLoop_503_SingleProvider_InPlaceRetryUsed_E2E(t *testing
 		"should NOT set model rate limit in single provider retry mode")
 }
 
-// TestHandleSmartRetry_URLLevelRateLimit 测试 URL 级别限流切换
+// TestHandleSmartRetry_URLLevelRateLimit 测试 URL 级别限流切换。
 func TestHandleSmartRetry_URLLevelRateLimit(t *testing.T) {
 	provider := &acct.Record{
 		ID:       1,

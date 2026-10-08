@@ -36,7 +36,7 @@ type OAuthHTTPUpstream interface {
 	DoWithTLS(*http.Request, string, int64, int, *tlsfingerprint.Profile) (*http.Response, error)
 }
 
-// NewOAuthClient creates a new OpenAI OAuth client
+// NewOAuthClient creates a new OpenAI OAuth client.
 func NewOAuthClient(httpUpstream OAuthHTTPUpstream) *OAuthClient {
 	return &OAuthClient{tokenURL: TokenURL, httpUpstream: httpUpstream}
 }

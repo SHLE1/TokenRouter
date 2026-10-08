@@ -37,14 +37,14 @@ type AntigravityAuthorization struct {
 	activity operationActivity
 }
 
-// AntigravityAuthURLResult is the result of generating an authorization URL
+// AntigravityAuthURLResult is the result of generating an authorization URL.
 type AntigravityAuthURLResult struct {
 	AuthURL   string `json:"auth_url"`
 	SessionID string `json:"session_id"`
 	State     string `json:"state"`
 }
 
-// AntigravityExchangeCodeInput 交换 code 的输入
+// AntigravityExchangeCodeInput 交换 code 的输入。
 type AntigravityExchangeCodeInput struct {
 	SessionID string
 	State     string
@@ -52,7 +52,7 @@ type AntigravityExchangeCodeInput struct {
 	ProxyID   *int64
 }
 
-// AntigravityTokenInfo token 信息
+// AntigravityTokenInfo token 信息。
 type AntigravityTokenInfo struct {
 	AccessToken      string `json:"access_token"`
 	RefreshToken     string `json:"refresh_token"`
@@ -82,7 +82,7 @@ func (s *AntigravityAuthorization) StopContext(ctx context.Context) error {
 	return s.activity.stop(ctx, "antigravity authorization")
 }
 
-// generateAuthURL 生成 Google OAuth 授权链接
+// generateAuthURL 生成 Google OAuth 授权链接。
 func (s *AntigravityAuthorization) generateAuthURL(ctx context.Context, proxyID *int64) (*AntigravityAuthURLResult, error) {
 	state, err := s.Options.GenerateState()
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *AntigravityAuthorization) generateAuthURL(ctx context.Context, proxyID 
 	}, nil
 }
 
-// exchangeCode 用 authorization code 交换 token
+// exchangeCode 用 authorization code 交换 token。
 func (s *AntigravityAuthorization) exchangeCode(ctx context.Context, input *AntigravityExchangeCodeInput) (*AntigravityTokenInfo, error) {
 	session, ok := s.Store.Get(input.SessionID)
 	if !ok {
@@ -195,7 +195,7 @@ func (s *AntigravityAuthorization) exchangeCode(ctx context.Context, input *Anti
 	return result, nil
 }
 
-// refreshToken 刷新 token
+// refreshToken 刷新 token。
 func (s *AntigravityAuthorization) refreshToken(ctx context.Context, refreshToken, proxyURL string) (*AntigravityTokenInfo, error) {
 	var lastErr error
 
@@ -240,7 +240,7 @@ func (s *AntigravityAuthorization) refreshToken(ctx context.Context, refreshToke
 	return nil, fmt.Errorf("token 刷新失败 (重试后): %w", lastErr)
 }
 
-// validateRefreshToken 用 refresh token 验证并获取完整的 token 信息（含 email 和 project_id）
+// validateRefreshToken 用 refresh token 验证并获取完整的 token 信息（含 email 和 project_id）。
 func (s *AntigravityAuthorization) validateRefreshToken(ctx context.Context, refreshToken string, proxyID *int64) (*AntigravityTokenInfo, error) {
 	var proxyURL string
 	if proxyID != nil {
@@ -302,7 +302,7 @@ func IsNonRetryableAntigravityOAuthError(err error) bool {
 	return false
 }
 
-// refreshProviderToken 刷新提供商的 token
+// refreshProviderToken 刷新提供商的 token。
 func (s *AntigravityAuthorization) refreshProviderToken(ctx context.Context, provider *Record) (*AntigravityTokenInfo, error) {
 	if provider.Platform != PlatformAntigravity || provider.Type != ProviderTypeOAuth {
 		return nil, fmt.Errorf("非 Antigravity OAuth 提供商")
@@ -459,7 +459,7 @@ func ResolveAntigravityDefaultTierID(loadRaw map[string]any) string {
 	return ""
 }
 
-// fillProjectID 仅获取 project_id，不刷新 OAuth token
+// fillProjectID 仅获取 project_id，不刷新 OAuth token。
 func (s *AntigravityAuthorization) fillProjectID(ctx context.Context, provider *Record, accessToken string) (string, error) {
 	var proxyURL string
 	if provider.ProxyID != nil {
@@ -474,7 +474,7 @@ func (s *AntigravityAuthorization) fillProjectID(ctx context.Context, provider *
 	return "", err
 }
 
-// BuildProviderCredentials 构建提供商凭证
+// BuildProviderCredentials 构建提供商凭证。
 func (s *AntigravityAuthorization) BuildProviderCredentials(tokenInfo *AntigravityTokenInfo) map[string]any {
 	creds := map[string]any{
 		"access_token": tokenInfo.AccessToken,

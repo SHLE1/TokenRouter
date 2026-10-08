@@ -14,7 +14,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
-// AdminAnnouncementHandler handles admin announcement management
+// AdminAnnouncementHandler handles admin announcement management.
 type AdminAnnouncementHandler struct {
 	announcementService *site.AnnouncementService
 }
@@ -41,7 +41,7 @@ type UpdateAnnouncementRequest struct {
 	EndsAt       *int64                                `json:"ends_at"`   // Unix seconds, 0 = clear
 }
 
-// NewAdminAnnouncementHandler creates a new admin announcement handler
+// NewAdminAnnouncementHandler creates a new admin announcement handler.
 func NewAdminAnnouncementHandler(announcementService *site.AnnouncementService) *AdminAnnouncementHandler {
 	return &AdminAnnouncementHandler{
 		announcementService: announcementService,

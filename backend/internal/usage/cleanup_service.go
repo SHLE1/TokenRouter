@@ -18,7 +18,7 @@ const (
 	usageCleanupWorkerName = "usage_cleanup_worker"
 )
 
-// UsageCleanupService 负责创建与执行使用记录清理任务
+// UsageCleanupService 负责创建与执行使用记录清理任务。
 type UsageCleanupService struct {
 	repo        UsageCleanupRepository
 	timingWheel TimingWheel

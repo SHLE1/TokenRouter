@@ -129,7 +129,7 @@ func CodexWindowStatsStart(progress *UsageProgress, fallbackWindow time.Duration
 	return now.Add(-fallbackWindow)
 }
 
-// ParseUsageTime 尝试多种格式解析时间
+// ParseUsageTime 尝试多种格式解析时间。
 func ParseUsageTime(s string) (time.Time, error) {
 	formats := []string{
 		time.RFC3339,
@@ -145,7 +145,7 @@ func ParseUsageTime(s string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("unable to parse time: %s", s)
 }
 
-// BuildUsageInfo 构建UsageInfo
+// BuildUsageInfo 构建UsageInfo。
 func BuildUsageInfo(resp *ClaudeUsageResponse, updatedAt *time.Time, now func() time.Time, logf func(string, ...any)) *UsageInfo {
 	info := &UsageInfo{
 		UpdatedAt: updatedAt,
@@ -215,7 +215,7 @@ func BuildUsageInfo(resp *ClaudeUsageResponse, updatedAt *time.Time, now func() 
 	return info
 }
 
-// EstimateSetupTokenUsage 根据session_window推算Setup Token提供商的使用量
+// EstimateSetupTokenUsage 根据session_window推算Setup Token提供商的使用量。
 func EstimateSetupTokenUsage(provider *Record, now func() time.Time) *UsageInfo {
 	info := &UsageInfo{}
 

@@ -189,7 +189,7 @@ func (s *DashboardAggregationService) TriggerBackfill(start, end time.Time) erro
 // 与 TriggerBackfill 不同：
 // - 不依赖 backfill_enabled（这是内部一致性修复）
 // - 不受运行时开关影响，避免关闭期间删除原始记录后留下陈旧聚合
-// - 不更新 watermark（避免影响正常增量聚合游标）
+// - 不更新 watermark（避免影响正常增量聚合游标）。
 func (s *DashboardAggregationService) TriggerRecomputeRange(start, end time.Time) error {
 	if s == nil || s.repo == nil {
 		return errors.New("聚合服务未初始化")

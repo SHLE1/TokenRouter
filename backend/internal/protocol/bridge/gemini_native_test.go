@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConvertClaudeToolsToGeminiTools_CustomType 测试custom类型工具转换
+// TestConvertClaudeToolsToGeminiTools_CustomType 测试custom类型工具转换。
 func TestConvertClaudeToolsToGeminiTools_CustomType(t *testing.T) {
 	tests := []struct {
 		name        string

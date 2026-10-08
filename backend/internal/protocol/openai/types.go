@@ -456,7 +456,7 @@ func (i *ResponsesInputItem) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// UnmarshalJSON 容忍字符串形式的工具声明：codex 会以 "name" 简写声明 custom 工具，
+// UnmarshalJSON 容忍字符串形式的工具声明：codex 会以 "name" 简写声明 custom 工具。
 func (t *ResponsesTool) UnmarshalJSON(data []byte) error {
 	var name string
 	if err := json.Unmarshal(data, &name); err == nil {

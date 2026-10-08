@@ -51,7 +51,7 @@ type SessionHandler struct {
 	options       SessionHTTPOptions
 }
 
-// RegisterRequest represents the registration request payload
+// RegisterRequest represents the registration request payload.
 type RegisterRequest struct {
 	Email                 string `json:"email" binding:"required,email"`
 	Password              string `json:"password" binding:"required,min=6"`
@@ -64,7 +64,7 @@ type RegisterRequest struct {
 	AffCode               string `json:"aff_code"`        // 邀请返利码
 }
 
-// SendVerifyCodeRequest 发送验证码请求
+// SendVerifyCodeRequest 发送验证码请求。
 type SendVerifyCodeRequest struct {
 	Email                 string `json:"email" binding:"required,email"`
 	TurnstileToken        string `json:"turnstile_token"`
@@ -72,13 +72,13 @@ type SendVerifyCodeRequest struct {
 	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
 }
 
-// SendVerifyCodeResponse 发送验证码响应
+// SendVerifyCodeResponse 发送验证码响应。
 type SendVerifyCodeResponse struct {
 	Message   string `json:"message"`
 	Countdown int    `json:"countdown"` // 倒计时秒数
 }
 
-// LoginRequest represents the login request payload
+// LoginRequest represents the login request payload.
 type LoginRequest struct {
 	Email                 string `json:"email" binding:"required,email"`
 	Password              string `json:"password" binding:"required"`
@@ -87,25 +87,25 @@ type LoginRequest struct {
 	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
 }
 
-// TotpLoginResponse represents the response when 2FA is required
+// TotpLoginResponse represents the response when 2FA is required.
 type TotpLoginResponse struct {
 	Requires2FA     bool   `json:"requires_2fa"`
 	TempToken       string `json:"temp_token,omitempty"`
 	UserEmailMasked string `json:"user_email_masked,omitempty"`
 }
 
-// Login2FARequest represents the 2FA login request
+// Login2FARequest represents the 2FA login request.
 type Login2FARequest struct {
 	TempToken string `json:"temp_token" binding:"required"`
 	TotpCode  string `json:"totp_code" binding:"required,len=6"`
 }
 
-// ValidatePromoCodeRequest 验证优惠码请求
+// ValidatePromoCodeRequest 验证优惠码请求。
 type ValidatePromoCodeRequest struct {
 	Code string `json:"code" binding:"required"`
 }
 
-// ValidatePromoCodeResponse 验证优惠码响应
+// ValidatePromoCodeResponse 验证优惠码响应。
 type ValidatePromoCodeResponse struct {
 	Valid       bool    `json:"valid"`
 	BonusAmount float64 `json:"bonus_amount,omitempty"`
@@ -113,18 +113,18 @@ type ValidatePromoCodeResponse struct {
 	Message     string  `json:"message,omitempty"`
 }
 
-// ValidateInvitationCodeRequest 验证邀请码请求
+// ValidateInvitationCodeRequest 验证邀请码请求。
 type ValidateInvitationCodeRequest struct {
 	Code string `json:"code" binding:"required"`
 }
 
-// ValidateInvitationCodeResponse 验证邀请码响应
+// ValidateInvitationCodeResponse 验证邀请码响应。
 type ValidateInvitationCodeResponse struct {
 	Valid     bool   `json:"valid"`
 	ErrorCode string `json:"error_code,omitempty"`
 }
 
-// ForgotPasswordRequest 忘记密码请求
+// ForgotPasswordRequest 忘记密码请求。
 type ForgotPasswordRequest struct {
 	Email                 string `json:"email" binding:"required,email"`
 	TurnstileToken        string `json:"turnstile_token"`
@@ -132,29 +132,29 @@ type ForgotPasswordRequest struct {
 	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
 }
 
-// ForgotPasswordResponse 忘记密码响应
+// ForgotPasswordResponse 忘记密码响应。
 type ForgotPasswordResponse struct {
 	Message string `json:"message"`
 }
 
-// ResetPasswordRequest 重置密码请求
+// ResetPasswordRequest 重置密码请求。
 type ResetPasswordRequest struct {
 	Email       string `json:"email" binding:"required,email"`
 	Token       string `json:"token" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
-// ResetPasswordResponse 重置密码响应
+// ResetPasswordResponse 重置密码响应。
 type ResetPasswordResponse struct {
 	Message string `json:"message"`
 }
 
-// RefreshTokenRequest 刷新Token请求
+// RefreshTokenRequest 刷新Token请求。
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-// RefreshTokenResponse 刷新Token响应
+// RefreshTokenResponse 刷新Token响应。
 type RefreshTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -162,17 +162,17 @@ type RefreshTokenResponse struct {
 	TokenType    string `json:"token_type"`
 }
 
-// LogoutRequest 登出请求
+// LogoutRequest 登出请求。
 type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token,omitempty"` // 可选：撤销指定的Refresh Token
 }
 
-// LogoutResponse 登出响应
+// LogoutResponse 登出响应。
 type LogoutResponse struct {
 	Message string `json:"message"`
 }
 
-// RevokeAllSessionsResponse 撤销所有会话响应
+// RevokeAllSessionsResponse 撤销所有会话响应。
 type RevokeAllSessionsResponse struct {
 	Message string `json:"message"`
 }

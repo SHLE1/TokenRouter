@@ -1319,7 +1319,7 @@ func ApplyInstructions(reqBody map[string]any, isCodexCLI bool) bool {
 }
 
 // IsInstructionsEmpty 检查 instructions 字段是否为空
-// 处理以下情况：字段不存在、nil、空字符串、纯空白字符串
+// 处理以下情况：字段不存在、nil、空字符串、纯空白字符串。
 func IsInstructionsEmpty(reqBody map[string]any) bool {
 	val, exists := reqBody["instructions"]
 	if !exists {

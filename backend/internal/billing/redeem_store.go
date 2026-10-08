@@ -7,7 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-// RedeemCache defines cache operations for redeem service
+// RedeemCache defines cache operations for redeem service.
 type RedeemCache interface {
 	GetRedeemAttemptCount(ctx context.Context, userID int64) (int, error)
 	IncrementRedeemAttemptCount(ctx context.Context, userID int64) error

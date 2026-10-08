@@ -19,7 +19,7 @@ type FixedProviderWindow struct {
 	Hour, Day int
 }
 
-// NextFixedDailyReset 计算在 after 之后的下一个每日固定重置时间点
+// NextFixedDailyReset 计算在 after 之后的下一个每日固定重置时间点。
 func NextFixedDailyReset(hour int, tz *time.Location, after time.Time) time.Time {
 	t := after.In(tz)
 	today := time.Date(t.Year(), t.Month(), t.Day(), hour, 0, 0, 0, tz)
@@ -29,7 +29,7 @@ func NextFixedDailyReset(hour int, tz *time.Location, after time.Time) time.Time
 	return today
 }
 
-// LastFixedDailyReset 计算 now 之前最近一次的每日固定重置时间点
+// LastFixedDailyReset 计算 now 之前最近一次的每日固定重置时间点。
 func LastFixedDailyReset(hour int, tz *time.Location, now time.Time) time.Time {
 	t := now.In(tz)
 	today := time.Date(t.Year(), t.Month(), t.Day(), hour, 0, 0, 0, tz)
@@ -53,7 +53,7 @@ func NextFixedWeeklyReset(day, hour int, tz *time.Location, after time.Time) tim
 	return todayReset.AddDate(0, 0, daysForward)
 }
 
-// LastFixedWeeklyReset 计算 now 之前最近一次的每周固定重置时间点
+// LastFixedWeeklyReset 计算 now 之前最近一次的每周固定重置时间点。
 func LastFixedWeeklyReset(day, hour int, tz *time.Location, now time.Time) time.Time {
 	t := now.In(tz)
 	todayReset := time.Date(t.Year(), t.Month(), t.Day(), hour, 0, 0, 0, tz)

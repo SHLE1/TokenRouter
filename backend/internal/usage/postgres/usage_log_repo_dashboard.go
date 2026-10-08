@@ -13,7 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// UserStats 用户使用统计
+// UserStats 用户使用统计。
 type UserStats struct {
 	TotalRequests   int64   `json:"total_requests"`
 	TotalTokens     int64   `json:"total_tokens"`
@@ -23,10 +23,10 @@ type UserStats struct {
 	CacheReadTokens int64   `json:"cache_read_tokens"`
 }
 
-// DashboardStats 仪表盘统计
+// DashboardStats 仪表盘统计。
 type DashboardStats = usage.DashboardStats
 
-// UserDashboardStats 用户仪表盘统计
+// UserDashboardStats 用户仪表盘统计。
 type UserDashboardStats = usage.UserDashboardStats
 
 // getPerformanceStats 获取 RPM 和 TPM（近5分钟平均值，可选纳入 Owner 团队）。
@@ -371,7 +371,7 @@ func (r *Store) fillDashboardUsageStatsFromUsageLogs(ctx context.Context, stats 
 	return nil
 }
 
-// GetUserDashboardStats 获取用户专属的仪表盘统计
+// GetUserDashboardStats 获取用户专属的仪表盘统计。
 func (r *Store) GetUserDashboardStats(ctx context.Context, userID int64) (*UserDashboardStats, error) {
 	if stats, ok, err := r.getUserDashboardStatsFromAnalytics(ctx, userID); err == nil && ok {
 		return stats, nil
@@ -473,7 +473,7 @@ func (r *Store) GetUserDashboardStats(ctx context.Context, userID int64) (*UserD
 	return stats, nil
 }
 
-// getPerformanceStatsByAPIKey 获取指定 API Key 的 RPM 和 TPM（近5分钟平均值）
+// getPerformanceStatsByAPIKey 获取指定 API Key 的 RPM 和 TPM（近5分钟平均值）。
 func (r *Store) getPerformanceStatsByAPIKey(ctx context.Context, apiKeyID int64) (rpm, tpm int64, err error) {
 	fiveMinutesAgo := time.Now().Add(-5 * time.Minute)
 	query := `
@@ -492,7 +492,7 @@ func (r *Store) getPerformanceStatsByAPIKey(ctx context.Context, apiKeyID int64)
 	return requestCount / 5, tokenCount / 5, nil
 }
 
-// GetAPIKeyDashboardStats 获取指定 API Key 的仪表盘统计（按 api_key_id 过滤）
+// GetAPIKeyDashboardStats 获取指定 API Key 的仪表盘统计（按 api_key_id 过滤）。
 func (r *Store) GetAPIKeyDashboardStats(ctx context.Context, apiKeyID int64) (*UserDashboardStats, error) {
 	stats, aggregated, err := r.getAPIKeyDashboardStatsFromAnalytics(ctx, apiKeyID)
 	if err != nil {

@@ -28,10 +28,10 @@ type RateLimiter struct {
 	prefix  string
 }
 
-// RateLimitFailureMode Redis 故障策略
+// RateLimitFailureMode Redis 故障策略。
 type RateLimitFailureMode int
 
-// RateLimitOptions 限流可选配置
+// RateLimitOptions 限流可选配置。
 type RateLimitOptions struct {
 	FailureMode RateLimitFailureMode
 }
@@ -72,7 +72,7 @@ func clientIPForRateLimit(c *gin.Context) string {
 	return c.ClientIP()
 }
 
-// LimitWithOptions 返回速率限制中间件（带可选配置）
+// LimitWithOptions 返回速率限制中间件（带可选配置）。
 func (r *RateLimiter) LimitWithOptions(key string, limit int, window time.Duration, opts RateLimitOptions) gin.HandlerFunc {
 	failureMode := opts.FailureMode
 	if failureMode != RateLimitFailClose {

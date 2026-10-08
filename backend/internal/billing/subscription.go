@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	// Subscription status constants
+	// Subscription status constants.
 	SubscriptionStatusActive    = "active"
 	SubscriptionStatusPending   = "pending"
 	SubscriptionStatusExpired   = "expired"

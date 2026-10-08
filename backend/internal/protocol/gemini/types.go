@@ -1,6 +1,6 @@
 package gemini
 
-// GeminiRequest Gemini 请求内容
+// GeminiRequest Gemini 请求内容。
 type GeminiRequest struct {
 	Contents          []GeminiContent         `json:"contents"`
 	SystemInstruction *GeminiContent          `json:"systemInstruction,omitempty"`
@@ -11,13 +11,13 @@ type GeminiRequest struct {
 	SessionID         string                  `json:"sessionId,omitempty"`
 }
 
-// GeminiContent Gemini 内容
+// GeminiContent Gemini 内容。
 type GeminiContent struct {
 	Role  string       `json:"role"` // user, model
 	Parts []GeminiPart `json:"parts"`
 }
 
-// GeminiPart Gemini 内容部分
+// GeminiPart Gemini 内容部分。
 type GeminiPart struct {
 	Text             string                  `json:"text,omitempty"`
 	Thought          bool                    `json:"thought,omitempty"`
@@ -27,27 +27,27 @@ type GeminiPart struct {
 	FunctionResponse *GeminiFunctionResponse `json:"functionResponse,omitempty"`
 }
 
-// GeminiInlineData Gemini 内联数据（图片等）
+// GeminiInlineData Gemini 内联数据（图片等）。
 type GeminiInlineData struct {
 	MimeType string `json:"mimeType"`
 	Data     string `json:"data"`
 }
 
-// GeminiFunctionCall Gemini 函数调用
+// GeminiFunctionCall Gemini 函数调用。
 type GeminiFunctionCall struct {
 	Name string `json:"name"`
 	Args any    `json:"args,omitempty"`
 	ID   string `json:"id,omitempty"`
 }
 
-// GeminiFunctionResponse Gemini 函数响应
+// GeminiFunctionResponse Gemini 函数响应。
 type GeminiFunctionResponse struct {
 	Name     string         `json:"name"`
 	Response map[string]any `json:"response"`
 	ID       string         `json:"id,omitempty"`
 }
 
-// GeminiGenerationConfig Gemini 生成配置
+// GeminiGenerationConfig Gemini 生成配置。
 type GeminiGenerationConfig struct {
 	MaxOutputTokens int                   `json:"maxOutputTokens,omitempty"`
 	Temperature     *float64              `json:"temperature,omitempty"`
@@ -58,19 +58,19 @@ type GeminiGenerationConfig struct {
 	ImageConfig     *GeminiImageConfig    `json:"imageConfig,omitempty"`
 }
 
-// GeminiImageConfig Gemini 图片生成配置（gemini-3-pro-image / gemini-3.1-flash-image 等图片模型支持）
+// GeminiImageConfig Gemini 图片生成配置（gemini-3-pro-image / gemini-3.1-flash-image 等图片模型支持）。
 type GeminiImageConfig struct {
 	AspectRatio string `json:"aspectRatio,omitempty"` // "1:1", "16:9", "9:16", "4:3", "3:4"
 	ImageSize   string `json:"imageSize,omitempty"`   // "1K", "2K", "4K"
 }
 
-// GeminiThinkingConfig Gemini thinking 配置
+// GeminiThinkingConfig Gemini thinking 配置。
 type GeminiThinkingConfig struct {
 	IncludeThoughts bool `json:"includeThoughts"`
 	ThinkingBudget  int  `json:"thinkingBudget,omitempty"`
 }
 
-// GeminiToolDeclaration Gemini 工具声明
+// GeminiToolDeclaration Gemini 工具声明。
 type GeminiToolDeclaration struct {
 	FunctionDeclarations []GeminiFunctionDecl `json:"functionDeclarations,omitempty"`
 	GoogleSearch         *GeminiGoogleSearch  `json:"googleSearch,omitempty"`
@@ -80,47 +80,47 @@ type GeminiToolDeclaration struct {
 // GeminiCodeExecution 表示 Gemini 内置的代码执行工具。
 type GeminiCodeExecution struct{}
 
-// GeminiFunctionDecl Gemini 函数声明
+// GeminiFunctionDecl Gemini 函数声明。
 type GeminiFunctionDecl struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`
 	Parameters  map[string]any `json:"parameters,omitempty"`
 }
 
-// GeminiGoogleSearch Gemini Google 搜索工具
+// GeminiGoogleSearch Gemini Google 搜索工具。
 type GeminiGoogleSearch struct {
 	EnhancedContent *GeminiEnhancedContent `json:"enhancedContent,omitempty"`
 }
 
-// GeminiEnhancedContent 增强内容配置
+// GeminiEnhancedContent 增强内容配置。
 type GeminiEnhancedContent struct {
 	ImageSearch *GeminiImageSearch `json:"imageSearch,omitempty"`
 }
 
-// GeminiImageSearch 图片搜索配置
+// GeminiImageSearch 图片搜索配置。
 type GeminiImageSearch struct {
 	MaxResultCount int `json:"maxResultCount,omitempty"`
 }
 
-// GeminiToolConfig Gemini 工具配置
+// GeminiToolConfig Gemini 工具配置。
 type GeminiToolConfig struct {
 	FunctionCallingConfig *GeminiFunctionCallingConfig `json:"functionCallingConfig,omitempty"`
 	// 混合函数工具与 Google Search 时，需要开启服务端工具调用。
 	IncludeServerSideToolInvocations *bool `json:"includeServerSideToolInvocations,omitempty"`
 }
 
-// GeminiFunctionCallingConfig 函数调用配置
+// GeminiFunctionCallingConfig 函数调用配置。
 type GeminiFunctionCallingConfig struct {
 	Mode string `json:"mode,omitempty"` // VALIDATED, AUTO, NONE
 }
 
-// GeminiSafetySetting Gemini 安全设置
+// GeminiSafetySetting Gemini 安全设置。
 type GeminiSafetySetting struct {
 	Category  string `json:"category"`
 	Threshold string `json:"threshold"`
 }
 
-// GeminiResponse Gemini 响应
+// GeminiResponse Gemini 响应。
 type GeminiResponse struct {
 	Candidates    []GeminiCandidate    `json:"candidates,omitempty"`
 	UsageMetadata *GeminiUsageMetadata `json:"usageMetadata,omitempty"`
@@ -128,7 +128,7 @@ type GeminiResponse struct {
 	ModelVersion  string               `json:"modelVersion,omitempty"`
 }
 
-// GeminiCandidate Gemini 候选响应
+// GeminiCandidate Gemini 候选响应。
 type GeminiCandidate struct {
 	Content           *GeminiContent           `json:"content,omitempty"`
 	FinishReason      string                   `json:"finishReason,omitempty"`
@@ -136,13 +136,13 @@ type GeminiCandidate struct {
 	GroundingMetadata *GeminiGroundingMetadata `json:"groundingMetadata,omitempty"`
 }
 
-// GeminiTokenDetail Gemini token 详情（按模态分类）
+// GeminiTokenDetail Gemini token 详情（按模态分类）。
 type GeminiTokenDetail struct {
 	Modality   string `json:"modality"`
 	TokenCount int    `json:"tokenCount"`
 }
 
-// GeminiUsageMetadata Gemini 用量元数据
+// GeminiUsageMetadata Gemini 用量元数据。
 type GeminiUsageMetadata struct {
 	PromptTokenCount        int                 `json:"promptTokenCount,omitempty"`
 	CandidatesTokenCount    int                 `json:"candidatesTokenCount,omitempty"`
@@ -153,24 +153,24 @@ type GeminiUsageMetadata struct {
 	PromptTokensDetails     []GeminiTokenDetail `json:"promptTokensDetails,omitempty"`
 }
 
-// GeminiGroundingMetadata Gemini grounding 元数据（Web Search）
+// GeminiGroundingMetadata Gemini grounding 元数据（Web Search）。
 type GeminiGroundingMetadata struct {
 	WebSearchQueries []string               `json:"webSearchQueries,omitempty"`
 	GroundingChunks  []GeminiGroundingChunk `json:"groundingChunks,omitempty"`
 }
 
-// GeminiGroundingChunk Gemini grounding chunk
+// GeminiGroundingChunk Gemini grounding chunk.
 type GeminiGroundingChunk struct {
 	Web *GeminiGroundingWeb `json:"web,omitempty"`
 }
 
-// GeminiGroundingWeb Gemini grounding web 信息
+// GeminiGroundingWeb Gemini grounding web 信息。
 type GeminiGroundingWeb struct {
 	Title string `json:"title,omitempty"`
 	URI   string `json:"uri,omitempty"`
 }
 
-// ImageOutputTokens 从 CandidatesTokensDetails 中提取 IMAGE 模态的 token 数
+// ImageOutputTokens 从 CandidatesTokensDetails 中提取 IMAGE 模态的 token 数。
 func (m *GeminiUsageMetadata) ImageOutputTokens() int {
 	for _, d := range m.CandidatesTokensDetails {
 		if d.Modality == "IMAGE" {

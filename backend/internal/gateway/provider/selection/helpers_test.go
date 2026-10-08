@@ -41,7 +41,7 @@ type grokFreeQuotaUsageRepoStub struct {
 	start   time.Time
 }
 
-// mockProviderRepoForPlatform 单平台测试用的 mock
+// mockProviderRepoForPlatform 单平台测试用的 mock。
 type mockProviderRepoForPlatform struct {
 	providers        []gatewayprovider.ExecutionProvider
 	providersByID    map[int64]*gatewayprovider.ExecutionProvider
@@ -49,7 +49,7 @@ type mockProviderRepoForPlatform struct {
 	getByIDCalls     int
 }
 
-// mockGatewayCacheForPlatform 单平台测试用的 cache mock
+// mockGatewayCacheForPlatform 单平台测试用的 cache mock。
 type mockGatewayCacheForPlatform struct {
 	sessionBindings map[string]int64
 	deletedSessions map[string]int
@@ -71,7 +71,7 @@ type mockConcurrencyCache struct {
 	skipDefaultLoad      bool
 }
 
-// mockGroupRepoForGemini Gemini 测试用的 group repo mock
+// mockGroupRepoForGemini Gemini 测试用的 group repo mock。
 type mockGroupRepoForGemini struct {
 	groups           map[int64]*routing.Group
 	getByIDCalls     int
@@ -283,7 +283,7 @@ func freeQuotaFactoryForTest(t *testing.T, cfg *config.Config, source usage.Usag
 	return func() *providercore.FreeQuotaGate { return newGrokFreeQuotaTestGate(cfg, source, background) }
 }
 
-// testConfig 返回一个用于测试的默认配置
+// testConfig 返回一个用于测试的默认配置。
 func testConfig() *config.Config {
 	return &config.Config{}
 }

@@ -46,7 +46,7 @@ type ContextModelPrice struct {
 	Pricing   *ModelPricing
 }
 
-// UsageTokens 使用的token数量
+// UsageTokens 使用的token数量。
 type UsageTokens struct {
 	InputTokens           int
 	ImageInputTokens      int
@@ -58,7 +58,7 @@ type UsageTokens struct {
 	ImageOutputTokens     int
 }
 
-// CostBreakdown 费用明细
+// CostBreakdown 费用明细。
 type CostBreakdown struct {
 	InputCost                 float64 // 文本输入费用（不含图片输入，图片输入单独记入 ImageInputCost）
 	ImageInputCost            float64 // 图片输入 token 费用（如 gpt-image-2 图片编辑）

@@ -26,7 +26,7 @@ func CleanJSONSchema(schema map[string]any) map[string]any {
 	return result
 }
 
-// extractDefs 提取并移除定义的 helper
+// extractDefs 提取并移除定义的 helper。
 func extractDefs(schema map[string]any) map[string]any {
 	defs := make(map[string]any)
 	if d, ok := schema["$defs"].(map[string]any); ok {
@@ -44,7 +44,7 @@ func extractDefs(schema map[string]any) map[string]any {
 	return defs
 }
 
-// flattenRefs 递归展开 $ref
+// flattenRefs 递归展开 $ref。
 func flattenRefs(schema map[string]any, defs map[string]any) {
 	if len(defs) == 0 {
 		return // 无需展开
@@ -85,7 +85,7 @@ func flattenRefs(schema map[string]any, defs map[string]any) {
 	}
 }
 
-// deepCopy 深拷贝 (简单实现，仅针对 JSON 类型)
+// deepCopy 深拷贝 (简单实现，仅针对 JSON 类型)。
 func deepCopy(src any) any {
 	if src == nil {
 		return nil
@@ -109,7 +109,7 @@ func deepCopy(src any) any {
 }
 
 // cleanJSONSchemaRecursive 递归清理 JSON Schema。
-// 返回处理后的值 (通常是 input map，但可能修改内部结构)
+// 返回处理后的值 (通常是 input map，但可能修改内部结构)。
 func cleanJSONSchemaRecursive(value any) any {
 	schemaMap, ok := value.(map[string]any)
 	if !ok {
@@ -388,7 +388,7 @@ func migrateConstraints(m map[string]any) {
 	}
 }
 
-// mergeAllOf 合并 allOf
+// mergeAllOf 合并 allOf。
 func mergeAllOf(m map[string]any) {
 	allOf, ok := m["allOf"].([]any)
 	if !ok {
@@ -462,7 +462,7 @@ func mergeAllOf(m map[string]any) {
 	}
 }
 
-// extractBestSchemaFromUnion 从 anyOf/oneOf 中选取最佳分支
+// extractBestSchemaFromUnion 从 anyOf/oneOf 中选取最佳分支。
 func extractBestSchemaFromUnion(unionArray []any) any {
 	var bestOption any
 	bestScore := -1
@@ -496,7 +496,7 @@ func scoreSchemaOption(val any) int {
 	return 0
 }
 
-// DeepCleanUndefined 深度清理值为 "[undefined]" 的字段
+// DeepCleanUndefined 深度清理值为 "[undefined]" 的字段。
 func DeepCleanUndefined(value any) {
 	if value == nil {
 		return

@@ -416,7 +416,7 @@ func TestComplexSSEData(t *testing.T) {
 	}
 }
 
-// TestCorrectToolParameters 测试工具参数修正
+// TestCorrectToolParameters 测试工具参数修正。
 func TestCorrectToolParameters(t *testing.T) {
 	corrector := NewCodexToolCorrector()
 
@@ -515,7 +515,7 @@ func TestCorrectToolParameters(t *testing.T) {
 	}
 }
 
-// ResetStats 重置统计信息
+// ResetStats 重置统计信息。
 func (c *CodexToolCorrector) ResetStats() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -524,7 +524,7 @@ func (c *CodexToolCorrector) ResetStats() {
 	c.stats.CorrectionsByTool = make(map[string]int)
 }
 
-// GetToolNameMapping 获取工具名称映射表
+// GetToolNameMapping 获取工具名称映射表。
 func GetToolNameMapping() map[string]string {
 	// 返回副本以避免外部修改
 	mapping := make(map[string]string, len(codexToolNameMapping))
@@ -604,7 +604,7 @@ func TestOpenAIGatewayService_ToolCorrection(t *testing.T) {
 	}
 }
 
-// TestOpenAIGatewayService_ToolCorrectorInitialization 测试工具修正器是否正确初始化
+// TestOpenAIGatewayService_ToolCorrectorInitialization 测试工具修正器是否正确初始化。
 func TestOpenAIGatewayService_ToolCorrectorInitialization(t *testing.T) {
 	corrector := NewCodexToolCorrector()
 
@@ -625,7 +625,7 @@ func TestOpenAIGatewayService_ToolCorrectorInitialization(t *testing.T) {
 	}
 }
 
-// TestToolCorrectionStats 测试工具修正统计功能
+// TestToolCorrectionStats 测试工具修正统计功能。
 func TestToolCorrectionStats(t *testing.T) {
 	corrector := NewCodexToolCorrector()
 

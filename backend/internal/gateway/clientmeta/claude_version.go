@@ -32,7 +32,7 @@ func IsSupportedClaudeCLIVersion(version, minimum string) bool {
 }
 
 // CompareVersions 比较两个 semver 版本号
-// 返回: -1 (a < b), 0 (a == b), 1 (a > b)
+// 返回: -1 (a < b), 0 (a == b), 1 (a > b)。
 func CompareVersions(a, b string) int {
 	aParts := parseSemver(a)
 	bParts := parseSemver(b)
@@ -47,7 +47,7 @@ func CompareVersions(a, b string) int {
 	return 0
 }
 
-// parseSemver 解析 semver 版本号为 [major, minor, patch]
+// parseSemver 解析 semver 版本号为 [major, minor, patch]。
 func parseSemver(v string) [3]int {
 	v = strings.TrimPrefix(v, "v")
 	parts := strings.Split(v, ".")

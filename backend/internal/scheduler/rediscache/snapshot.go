@@ -179,7 +179,7 @@ return 0
 	// ARGV[4] = 宽限期 TTL 秒数
 	// ARGV[5]：writer epoch。
 	//
-	// 返回 1 = 已激活, 0 = 版本过旧未激活
+	// 返回 1 = 已激活, 0 = 版本过旧未激活。
 	activateSnapshotScript = redis.NewScript(`
 if redis.call('EXISTS', KEYS[6]) == 1 then
     redis.call('DEL', KEYS[4])

@@ -29,7 +29,7 @@ type RedeemAdministrator interface {
 	ExpireRedeemCode(ctx context.Context, id int64) (*billing.RedeemCode, error)
 }
 
-// AdminRedeemHandler handles admin redeem code management
+// AdminRedeemHandler handles admin redeem code management.
 type AdminRedeemHandler struct {
 	idempotencyhttp.Executor
 
@@ -37,7 +37,7 @@ type AdminRedeemHandler struct {
 	redeemService *billing.RedeemService
 }
 
-// GenerateRedeemCodesRequest represents generate redeem codes request
+// GenerateRedeemCodesRequest represents generate redeem codes request.
 type GenerateRedeemCodesRequest struct {
 	RequiresPayment bool    `json:"requires_payment"` // 默认允许所有用户领取
 	Code            string  `json:"code" binding:"omitempty,max=32"`

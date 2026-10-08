@@ -1270,7 +1270,7 @@ func shouldSkipFinalOpsFailure(c *gin.Context) bool {
 	return false
 }
 
-// isCountTokensRequest checks if the request is a count_tokens request
+// isCountTokensRequest checks if the request is a count_tokens request.
 func isCountTokensRequest(c *gin.Context) bool {
 	if c == nil || c.Request == nil || c.Request.URL == nil {
 		return false

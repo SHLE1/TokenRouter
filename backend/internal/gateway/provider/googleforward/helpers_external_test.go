@@ -123,7 +123,7 @@ func newAntigravityCompatContext(method, path string, body []byte) (*gin.Context
 	return c, recorder
 }
 
-// newAntigravityStreamFixture 创建用于流式测试的 AntigravityGatewayService
+// newAntigravityStreamFixture 创建用于流式测试的 AntigravityGatewayService。
 func newAntigravityStreamFixture(cfg *googleforward.Options) *googleforward.Antigravity {
 	return newAntigravityFixture(antigravityDependencies{
 		settingService: newExecutionReadersFixture(nil), options: fixtureOptions(cfg),

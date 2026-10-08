@@ -91,7 +91,7 @@ func newTestValidator() *ClaudeCodeValidator {
 	return NewClaudeCodeValidator()
 }
 
-// validClaudeCodeBody 构造一个完整有效的 Claude Code 请求体
+// validClaudeCodeBody 构造一个完整有效的 Claude Code 请求体。
 func validClaudeCodeBody() map[string]any {
 	return map[string]any{
 		"model": "claude-sonnet-4-20250514",

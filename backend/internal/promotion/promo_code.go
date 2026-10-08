@@ -11,7 +11,7 @@ const (
 	PromoCodeStatusDisabled = "disabled"
 )
 
-// PromoCode 注册优惠码
+// PromoCode 注册优惠码。
 type PromoCode struct {
 	ID          int64
 	Code        string
@@ -28,7 +28,7 @@ type PromoCode struct {
 	UsageRecords []PromoCodeUsage
 }
 
-// PromoCodeUsage 优惠码使用记录
+// PromoCodeUsage 优惠码使用记录。
 type PromoCodeUsage struct {
 	ID          int64
 	PromoCodeID int64
@@ -41,7 +41,7 @@ type PromoCodeUsage struct {
 	User      *UserView
 }
 
-// CreatePromoCodeInput 创建优惠码输入
+// CreatePromoCodeInput 创建优惠码输入。
 type CreatePromoCodeInput struct {
 	Code        string
 	BonusAmount float64
@@ -50,7 +50,7 @@ type CreatePromoCodeInput struct {
 	Notes       string
 }
 
-// UpdatePromoCodeInput 更新优惠码输入
+// UpdatePromoCodeInput 更新优惠码输入。
 type UpdatePromoCodeInput struct {
 	Code        *string
 	BonusAmount *float64
@@ -98,7 +98,7 @@ func (p *PromoCode) CanUseAt(now time.Time) bool {
 	return true
 }
 
-// IsExpired 检查是否已过期
+// IsExpired 检查是否已过期。
 func (p *PromoCode) IsExpired() bool { return p.IsExpiredAt(time.Now()) }
 
 func (p *PromoCode) IsExpiredAt(now time.Time) bool {

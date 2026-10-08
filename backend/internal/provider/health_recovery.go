@@ -59,7 +59,7 @@ func (s *RecoveryService) clearSchedulingBlock(id int64) {
 	}
 }
 
-// ClearRateLimit 清除提供商的限流状态
+// ClearRateLimit 清除提供商的限流状态。
 func (s *RecoveryService) ClearRateLimit(ctx context.Context, providerID int64) error {
 	if err := s.providerRepo.ClearRateLimit(ctx, providerID); err != nil {
 		return err

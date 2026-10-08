@@ -35,14 +35,14 @@ func (h MessagesErrorOutput) ConcurrencyError(c *gin.Context, err error, slotTyp
 	h.StreamErrorWithCode(c, status, errType, code, message, streamStarted)
 }
 
-// ExhaustedStatus 简化版本，用于没有响应体的情况
+// ExhaustedStatus 简化版本，用于没有响应体的情况。
 func (h MessagesErrorOutput) ExhaustedStatus(c *gin.Context, statusCode int, streamStarted bool) {
 	status, errType, errMsg := AnthropicUpstreamError(statusCode)
 	SetOpsUpstreamError(c, statusCode, errMsg, "")
 	h.StreamError(c, status, errType, errMsg, streamStarted)
 }
 
-// StreamError handles errors that may occur after streaming has started
+// StreamError handles errors that may occur after streaming has started.
 func (h MessagesErrorOutput) StreamError(c *gin.Context, status int, errType, message string, streamStarted bool) {
 	h.StreamErrorWithCode(c, status, errType, "", message, streamStarted)
 }
@@ -87,7 +87,7 @@ func ForwardErrorAlreadyCommunicated(c *gin.Context, writerSizeBeforeForward int
 	return !strings.Contains(contentType, "text/event-stream")
 }
 
-// Error 返回Claude API格式的错误响应
+// Error 返回Claude API格式的错误响应。
 func (h MessagesErrorOutput) Error(c *gin.Context, status int, errType, message string) {
 	h.ErrorWithCode(c, status, errType, "", message)
 }

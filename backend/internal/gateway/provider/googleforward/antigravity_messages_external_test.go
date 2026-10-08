@@ -108,7 +108,7 @@ func TestAntigravityGatewayService_Forward_PromptTooLong(t *testing.T) {
 
 // TestAntigravityGatewayService_Forward_ModelRateLimitTriggersFailover
 // 验证：当提供商存在模型限流且剩余时间 >= antigravityRateLimitThreshold 时，
-// Forward 方法应返回 UpstreamFailoverError，触发 Handler 切换提供商
+// Forward 方法应返回 UpstreamFailoverError，触发 Handler 切换提供商。
 func TestAntigravityGatewayService_Forward_ModelRateLimitTriggersFailover(t *testing.T) {
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
@@ -181,7 +181,7 @@ func TestAntigravityGatewayService_Forward_ModelRateLimitTriggersFailover(t *tes
 }
 
 // TestAntigravityGatewayService_Forward_StickySessionForceCacheBilling
-// 验证：粘性会话切换时，UpstreamFailoverError.ForceCacheBilling 应为 true
+// 验证：粘性会话切换时，UpstreamFailoverError.ForceCacheBilling 应为 true。
 func TestAntigravityGatewayService_Forward_StickySessionForceCacheBilling(t *testing.T) {
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)
@@ -246,7 +246,7 @@ func TestAntigravityGatewayService_Forward_StickySessionForceCacheBilling(t *tes
 }
 
 // TestAntigravityGatewayService_Forward_BillsWithMappedModel
-// 验证：Antigravity Claude 转发返回的计费模型使用映射后的模型
+// 验证：Antigravity Claude 转发返回的计费模型使用映射后的模型。
 func TestAntigravityGatewayService_Forward_BillsWithMappedModel(t *testing.T) {
 	writer := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(writer)

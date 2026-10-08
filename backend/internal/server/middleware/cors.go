@@ -13,7 +13,7 @@ import (
 
 var corsWarningOnce sync.Once
 
-// CORS 跨域中间件
+// CORS 跨域中间件。
 func CORS(cfg httpconfig.CORSConfig) gin.HandlerFunc {
 	allowedOrigins := normalizeOrigins(cfg.AllowedOrigins)
 	allowAll := false

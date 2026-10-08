@@ -16,15 +16,15 @@ const (
 	maxConcurrencyWait             = 30 * time.Second
 	DefaultPingInterval            = 10 * time.Second
 
-	// SSEPingFormatClaude is the Claude/Anthropic SSE ping format
+	// SSEPingFormatClaude is the Claude/Anthropic SSE ping format.
 	SSEPingFormatClaude SSEPingFormat = "data: {\"type\": \"ping\"}\n\n"
-	// SSEPingFormatNone indicates no ping should be sent (e.g., OpenAI has no ping spec)
+	// SSEPingFormatNone indicates no ping should be sent (e.g., OpenAI has no ping spec).
 	SSEPingFormatNone SSEPingFormat = ""
-	// SSEPingFormatComment is an SSE comment ping for OpenAI/Codex CLI clients
+	// SSEPingFormatComment is an SSE comment ping for OpenAI/Codex CLI clients.
 	SSEPingFormatComment SSEPingFormat = ":\n\n"
 )
 
-// SSEPingFormat defines the format of SSE ping events for different platforms
+// SSEPingFormat defines the format of SSE ping events for different platforms.
 type SSEPingFormat string
 
 // 旧 HTTP 错误入口使用相同核心类型，保留 errors.As 与字段访问。
@@ -32,7 +32,7 @@ type ConcurrencyError = scheduler.ConcurrencyError
 
 type WaitQueueFullError = scheduler.WaitQueueFullError
 
-// ConcurrencyHelper provides common concurrency slot management for gateway handlers
+// ConcurrencyHelper provides common concurrency slot management for gateway handlers.
 type ConcurrencyHelper struct {
 	concurrencyService *scheduler.ConcurrencyService
 	keyID              func(*gin.Context) int64
@@ -61,7 +61,7 @@ func StreamHasOnlyHeartbeats(c *gin.Context) bool {
 	return heartbeatBytes > 0 && c.Writer.Size() == heartbeatBytes
 }
 
-// NewConcurrencyHelper creates a new ConcurrencyHelper
+// NewConcurrencyHelper creates a new ConcurrencyHelper.
 func NewConcurrencyHelper(concurrencyService *scheduler.ConcurrencyService, pingFormat SSEPingFormat, pingInterval time.Duration, keyID ...func(*gin.Context) int64) *ConcurrencyHelper {
 	if pingInterval <= 0 {
 		pingInterval = DefaultPingInterval
@@ -93,7 +93,7 @@ func (h *ConcurrencyHelper) EnterProviderWait(ctx context.Context, id int64, lim
 }
 
 // TryAcquireUserSlot 尝试立即获取用户并发槽位。
-// 返回值: (releaseFunc, acquired, error)
+// 返回值: (releaseFunc, acquired, error)。
 func (h *ConcurrencyHelper) TryAcquireUserSlot(ctx context.Context, userID int64, maxConcurrency int) (func(), bool, error) {
 	result, err := h.concurrencyService.AcquireUserSlot(ctx, userID, maxConcurrency)
 	if err != nil {
@@ -123,7 +123,7 @@ func (h *ConcurrencyHelper) AcquireOpenAIWSIngressLease(ctx context.Context, api
 }
 
 // TryAcquireProviderSlot 尝试立即获取提供商并发槽位。
-// 返回值: (releaseFunc, acquired, error)
+// 返回值: (releaseFunc, acquired, error)。
 func (h *ConcurrencyHelper) TryAcquireProviderSlot(ctx context.Context, providerID int64, maxConcurrency int) (func(), bool, error) {
 	result, err := h.concurrencyService.AcquireProviderSlot(ctx, providerID, maxConcurrency)
 	if err != nil {

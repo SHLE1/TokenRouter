@@ -298,7 +298,7 @@ func (s *SnapshotService) GetProvider(ctx context.Context, providerID int64) (Sn
 	return s.providerRepo.GetByID(fallbackCtx, providerID)
 }
 
-// UpdateProviderInCache 立即更新 Redis 中单个提供商的数据（用于模型限流后立即生效）
+// UpdateProviderInCache 立即更新 Redis 中单个提供商的数据（用于模型限流后立即生效）。
 func (s *SnapshotService) UpdateProviderInCache(ctx context.Context, provider SnapshotProvider) error {
 	if s.cache == nil || provider == nil {
 		return nil

@@ -8,7 +8,7 @@ const (
 	ModelSourceMapping   = "mapping"
 )
 
-// DashboardStats 仪表盘统计
+// DashboardStats 仪表盘统计。
 type DashboardStats struct {
 	// 用户统计
 	TotalUsers    int64 `json:"total_users"`
@@ -62,7 +62,7 @@ type DashboardStats struct {
 	Tpm int64 `json:"tpm"` // 近5分钟平均每分钟Token数
 }
 
-// TrendDataPoint represents a single point in trend data
+// TrendDataPoint represents a single point in trend data.
 type TrendDataPoint struct {
 	Date                string  `json:"date"`
 	Requests            int64   `json:"requests"`
@@ -75,7 +75,7 @@ type TrendDataPoint struct {
 	ActualCost          float64 `json:"actual_cost"` // 实际扣除
 }
 
-// ModelStat represents usage statistics for a single model
+// ModelStat represents usage statistics for a single model.
 type ModelStat struct {
 	Model               string  `json:"model"`
 	Requests            int64   `json:"requests"`
@@ -106,7 +106,7 @@ type GroupUsageSummary struct {
 	TotalCost     float64 `json:"total_cost"`
 }
 
-// GroupStat represents usage statistics for a single group
+// GroupStat represents usage statistics for a single group.
 type GroupStat struct {
 	GroupID      int64   `json:"group_id"`
 	GroupName    string  `json:"group_name"`
@@ -117,7 +117,7 @@ type GroupStat struct {
 	ProviderCost float64 `json:"provider_cost"` // 提供商成本
 }
 
-// UserUsageTrendPoint represents user usage trend data point
+// UserUsageTrendPoint represents user usage trend data point.
 type UserUsageTrendPoint struct {
 	Date       string  `json:"date"`
 	UserID     int64   `json:"user_id"`
@@ -204,7 +204,7 @@ type UserBreakdownDimension struct {
 	SortBy string
 }
 
-// APIKeyUsageTrendPoint represents API key usage trend data point
+// APIKeyUsageTrendPoint represents API key usage trend data point.
 type APIKeyUsageTrendPoint struct {
 	Date     string `json:"date"`
 	APIKeyID int64  `json:"api_key_id"`
@@ -226,7 +226,7 @@ type APIKeyDailyUsagePoint struct {
 	ActualCost       float64 `json:"actual_cost"` // 实际扣除
 }
 
-// UserDashboardStats 用户仪表盘统计
+// UserDashboardStats 用户仪表盘统计。
 type UserDashboardStats struct {
 	// API Key 统计
 	TotalAPIKeys  int64 `json:"total_api_keys"`
@@ -338,7 +338,7 @@ type BatchUserUsageStats struct {
 	ByPlatform      []PlatformUsage `json:"by_platform,omitempty"`
 }
 
-// BatchAPIKeyUsageStats represents usage stats for a single API key
+// BatchAPIKeyUsageStats represents usage stats for a single API key.
 type BatchAPIKeyUsageStats struct {
 	APIKeyID        int64   `json:"api_key_id"`
 	TodayActualCost float64 `json:"today_actual_cost"`

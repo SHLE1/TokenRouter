@@ -18,14 +18,14 @@ const (
 	AliyunCaptchaEndpointCN  = "captcha.cn-shanghai.aliyuncs.com"
 	AliyunCaptchaEndpointSGP = "captcha.ap-southeast-1.aliyuncs.com"
 
-	// AliyunCredentialValidationParam 用于后台保存时探测凭证有效性的假验证参数
+	// AliyunCredentialValidationParam 用于后台保存时探测凭证有效性的假验证参数。
 	AliyunCredentialValidationParam = "tokenrouter-credential-validation"
 )
 
 var (
 	ErrAliyunCaptchaVerificationFailed = infraerrors.BadRequest("ALIYUN_CAPTCHA_VERIFICATION_FAILED", "aliyun captcha verification failed")
 	ErrAliyunCaptchaNotConfigured      = infraerrors.ServiceUnavailable("ALIYUN_CAPTCHA_NOT_CONFIGURED", "aliyun captcha not configured")
-	// ErrCaptchaInvalidCredentials 阿里云验证码凭证无效（仅后台保存校验时返回，公开接口错误码不变）
+	// ErrCaptchaInvalidCredentials 阿里云验证码凭证无效（仅后台保存校验时返回，公开接口错误码不变）。
 	ErrCaptchaInvalidCredentials = infraerrors.BadRequest("CAPTCHA_INVALID_CREDENTIALS", "invalid aliyun captcha credentials")
 
 	// AliyunInvalidCredentialCodes 表示 AK/SK 本身无效的阿里云错误码；
@@ -40,7 +40,7 @@ var (
 	}
 )
 
-// AliyunCaptchaCredentials 阿里云验证码 2.0 服务端校验所需的完整凭证
+// AliyunCaptchaCredentials 阿里云验证码 2.0 服务端校验所需的完整凭证。
 type AliyunCaptchaCredentials struct {
 	AccessKeyID     string
 	AccessKeySecret string
@@ -48,7 +48,7 @@ type AliyunCaptchaCredentials struct {
 	Endpoint        string
 }
 
-// AliyunCaptchaVerifyResult VerifyIntelligentCaptcha 的归一化结果
+// AliyunCaptchaVerifyResult VerifyIntelligentCaptcha 的归一化结果。
 type AliyunCaptchaVerifyResult struct {
 	VerifyResult bool
 	VerifyCode   string // 阿里云细分结果码，仅用于日志
@@ -61,12 +61,12 @@ type AliyunCaptchaAPIError struct {
 	Message string
 }
 
-// AliyunCaptchaVerifier 调用阿里云验证码 2.0 服务端校验的端口
+// AliyunCaptchaVerifier 调用阿里云验证码 2.0 服务端校验的端口。
 type AliyunCaptchaVerifier interface {
 	VerifyCaptcha(ctx context.Context, cred AliyunCaptchaCredentials, captchaVerifyParam string) (*AliyunCaptchaVerifyResult, error)
 }
 
-// AliyunCaptchaService 阿里云验证码 2.0 服务端校验
+// AliyunCaptchaService 阿里云验证码 2.0 服务端校验。
 type AliyunCaptchaService struct {
 	observer       Observer
 	settingService CaptchaSettings
@@ -77,7 +77,7 @@ func (e *AliyunCaptchaAPIError) Error() string {
 	return fmt.Sprintf("aliyun captcha api error: %s: %s", e.Code, e.Message)
 }
 
-// AliyunCaptchaEndpoint 按后台配置的地域返回服务端接入点，未知值回退中国内地
+// AliyunCaptchaEndpoint 按后台配置的地域返回服务端接入点，未知值回退中国内地。
 func AliyunCaptchaEndpoint(region string) string {
 	if region == AliyunCaptchaRegionSGP {
 		return AliyunCaptchaEndpointSGP
@@ -85,7 +85,7 @@ func AliyunCaptchaEndpoint(region string) string {
 	return AliyunCaptchaEndpointCN
 }
 
-// NormalizeAliyunCaptchaRegion 非法值一律视为中国内地
+// NormalizeAliyunCaptchaRegion 非法值一律视为中国内地。
 func NormalizeAliyunCaptchaRegion(value string) string {
 	if value == AliyunCaptchaRegionSGP {
 		return AliyunCaptchaRegionSGP

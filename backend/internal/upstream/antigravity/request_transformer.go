@@ -20,17 +20,17 @@ import (
 
 const (
 	// MaxTokensBudgetPadding max_tokens 自动调整时在 budget_tokens 基础上增加的额度
-	// Claude API 要求 max_tokens > thinking.budget_tokens，否则返回 400 错误
+	// Claude API 要求 max_tokens > thinking.budget_tokens，否则返回 400 错误。
 	MaxTokensBudgetPadding = 1000
 
-	// Gemini 2.5 Flash thinking budget 上限
+	// Gemini 2.5 Flash thinking budget 上限。
 	Gemini25FlashThinkingBudgetLimit = 24576
 
 	// 对于 Antigravity 的 Claude（budget-only）模型，该语义最终等价为 thinkingBudget=24576。
 	// 这里复用相同数值以保持行为一致。
 	ClaudeAdaptiveHighThinkingBudgetTokens = Gemini25FlashThinkingBudgetLimit
 
-	// antigravityIdentity Antigravity identity 提示词
+	// antigravityIdentity Antigravity identity 提示词。
 	antigravityIdentity = `<identity>
 You are Antigravity, a powerful agentic AI coding assistant designed by the Google Deepmind team working on Advanced Agentic Coding.
 You are pair programming with a USER to solve their coding task. The task may require creating a new codebase, modifying or debugging an existing codebase, or simply answering a question.
@@ -40,7 +40,7 @@ This information may or may not be relevant to the coding task, it is up for you
 <communication_style>
 - **Proactiveness**. As an agent, you are allowed to be proactive, but only in the course of completing the user's task. For example, if the user asks you to add a new component, you can edit the code, verify build and test statuses, and take any other obvious follow-up actions, such as performing additional research. However, avoid surprising the user. For example, if the user asks HOW to approach something, you should answer their question and instead of jumping into editing a file.</communication_style>`
 
-	// mcpXMLProtocol MCP XML 工具调用协议（与 Antigravity-Manager 保持一致）
+	// mcpXMLProtocol MCP XML 工具调用协议（与 Antigravity-Manager 保持一致）。
 	mcpXMLProtocol = `
 ==== MCP XML 工具调用协议 (Workaround) ====
 当你需要调用名称以 ` + "`mcp__`" + ` 开头的 MCP 工具时：
@@ -52,7 +52,7 @@ This information may or may not be relevant to the coding task, it is up for you
 	// DummyThoughtSignature 是协议包定义的占位思考签名。
 	DummyThoughtSignature = bridge.DummyThoughtSignature
 
-	// buildGenerationConfig 构建 generationConfig
+	// buildGenerationConfig 构建 generationConfig。
 	defaultMaxOutputTokens    = 64000
 	maxOutputTokensUpperBound = 65000
 	maxOutputTokensClaude     = 64000
@@ -90,7 +90,7 @@ type ClaudeUsage = anthropic.ClaudeUsage
 
 type ClaudeError = anthropic.ClaudeError
 
-// generateStableSessionID 基于用户消息内容生成稳定的 session ID
+// generateStableSessionID 基于用户消息内容生成稳定的 session ID。
 func generateStableSessionID(contents []GeminiContent) string {
 	// 查找第一个 user 消息的文本
 	for _, content := range contents {
@@ -116,12 +116,12 @@ func DefaultTransformOptions() TransformOptions {
 	}
 }
 
-// TransformClaudeToGemini 将 Claude 请求转换为 v1internal Gemini 格式
+// TransformClaudeToGemini 将 Claude 请求转换为 v1internal Gemini 格式。
 func TransformClaudeToGemini(claudeReq *ClaudeRequest, projectID, mappedModel string) ([]byte, error) {
 	return TransformClaudeToGeminiWithOptions(claudeReq, projectID, mappedModel, DefaultTransformOptions())
 }
 
-// TransformClaudeToGeminiWithOptions 将 Claude 请求转换为 v1internal Gemini 格式（可配置身份补丁等行为）
+// TransformClaudeToGeminiWithOptions 将 Claude 请求转换为 v1internal Gemini 格式（可配置身份补丁等行为）。
 func TransformClaudeToGeminiWithOptions(claudeReq *ClaudeRequest, projectID, mappedModel string, opts TransformOptions) ([]byte, error) {
 	// 用于存储 tool_use id -> name 映射
 	toolIDToName := make(map[string]string)
@@ -230,12 +230,12 @@ func defaultIdentityPatch(_ string) string {
 	return antigravityIdentity
 }
 
-// GetDefaultIdentityPatch 返回默认的 Antigravity 身份提示词
+// GetDefaultIdentityPatch 返回默认的 Antigravity 身份提示词。
 func GetDefaultIdentityPatch() string {
 	return antigravityIdentity
 }
 
-// hasMCPTools 检测是否有 mcp__ 前缀的工具
+// hasMCPTools 检测是否有 mcp__ 前缀的工具。
 func hasMCPTools(tools []ClaudeTool) bool {
 	for _, tool := range tools {
 		if strings.HasPrefix(tool.Name, "mcp__") {
@@ -245,7 +245,7 @@ func hasMCPTools(tools []ClaudeTool) bool {
 	return false
 }
 
-// filterOpenCodePrompt 过滤 OpenCode 默认提示词，只保留用户自定义指令
+// filterOpenCodePrompt 过滤 OpenCode 默认提示词，只保留用户自定义指令。
 func filterOpenCodePrompt(text string) string {
 	if !strings.Contains(text, "You are an interactive CLI tool") {
 		return text
@@ -258,7 +258,7 @@ func filterOpenCodePrompt(text string) string {
 	return ""
 }
 
-// buildSystemInstruction 构建 systemInstruction（与 Antigravity-Manager 保持一致）
+// buildSystemInstruction 构建 systemInstruction（与 Antigravity-Manager 保持一致）。
 func buildSystemInstruction(system json.RawMessage, modelName string, opts TransformOptions, tools []ClaudeTool) *GeminiContent {
 	var parts []GeminiPart
 

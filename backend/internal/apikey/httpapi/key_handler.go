@@ -32,7 +32,7 @@ type GroupCapacityReader interface {
 	GetGroupCapacityByIDs(context.Context, []int64) (map[int64]accessview.GroupCapacitySummary, error)
 }
 
-// CreateAPIKeyRequest represents the create API key request payload
+// CreateAPIKeyRequest represents the create API key request payload.
 type CreateAPIKeyRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Scope       string `json:"scope" binding:"omitempty,oneof=personal team"`
@@ -62,7 +62,7 @@ type CreateAPIKeyRequest struct {
 	FallbackWhenGroupUnavailable *bool `json:"fallback_when_group_unavailable"`
 }
 
-// UpdateAPIKeyRequest represents the update API key request payload
+// UpdateAPIKeyRequest represents the update API key request payload.
 type UpdateAPIKeyRequest struct {
 	Name        string `json:"name"`
 	GroupID     *int64 `json:"group_id"`
