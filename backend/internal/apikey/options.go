@@ -42,6 +42,7 @@ type Options struct {
 	Team            struct{ Enabled bool }
 	GroupFastPolicy func(string, bool) string
 }
+
 type (
 	User                       = identity.User
 	NotifyEmailEntry           = contact.Entry
@@ -66,9 +67,11 @@ type GroupRepository interface {
 	GetByIDLite(context.Context, int64) (*routing.Group, error)
 	ListActive(context.Context) ([]routing.Group, error)
 }
+
 type TeamRepository interface {
 	GetContextByUserID(context.Context, int64) (*team.TeamContext, error)
 }
+
 type ConcurrencyReader interface {
 	GetAPIKeyConcurrencyBatch(context.Context, []int64) (map[int64]int, error)
 }

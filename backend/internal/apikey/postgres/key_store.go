@@ -9,31 +9,22 @@ import (
 	"strings"
 	"time"
 
-	usagequery "github.com/TokenFlux/TokenRouter/internal/usage/postgres/query"
-
 	"entgo.io/ent/dialect"
-
 	entsql "entgo.io/ent/dialect/sql"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
-
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
-
 	"github.com/TokenFlux/TokenRouter/ent/apikeycompositegroup"
-
 	"github.com/TokenFlux/TokenRouter/ent/group"
-
 	"github.com/TokenFlux/TokenRouter/ent/schema/mixins"
-
 	"github.com/TokenFlux/TokenRouter/ent/user"
-
 	keycore "github.com/TokenFlux/TokenRouter/internal/apikey"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
 	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
-
+	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
+	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
+	usagequery "github.com/TokenFlux/TokenRouter/internal/usage/postgres/query"
 )
 
 type KeyStore struct {
@@ -1135,4 +1126,44 @@ func (r *KeyStore) KeyLoadAPIKeyUsageTotals(ctx context.Context, ids []int64) (m
 		return nil, fmt.Errorf("API key usage totals reader is not configured")
 	}
 	return r.usageTotals(ctx, ids)
+}
+
+// clientFromContext 返回上下文中的事务 client，未开启事务时返回默认 client。
+func clientFromContext(ctx context.Context, defaultClient *dbent.Client) *dbent.Client {
+	if tx := dbent.TxFromContext(ctx); tx != nil {
+		return tx.Client()
+	}
+	return defaultClient
+}
+
+// translatePersistenceError 把记录缺失和唯一约束冲突转换成调用方指定的业务错误。
+func translatePersistenceError(err error, notFound, conflict *infraerrors.ApplicationError) error {
+	if err == nil {
+		return nil
+	}
+
+	// 兼容 Ent ORM 和标准 database/sql 的 NotFound 行为。
+	// Ent 使用自定义的 NotFoundError，而标准库使用 sql.ErrNoRows。
+	// 这里同时处理两种情况，保持业务错误映射一致。
+	if notFound != nil && (errors.Is(err, sql.ErrNoRows) || dbent.IsNotFound(err)) {
+		return notFound.WithCause(err)
+	}
+
+	// 处理唯一约束冲突（如邮箱已存在、名称重复等）
+	if conflict != nil && isUniqueConstraintViolation(err) {
+		return conflict.WithCause(err)
+	}
+
+	// 未匹配任何规则，返回原始错误
+	return err
+}
+
+// isUniqueConstraintViolation 调用 PostgreSQL 错误检测函数判断唯一约束冲突。
+func isUniqueConstraintViolation(err error) bool {
+	return postgresinfra.IsUniqueConstraintViolation(err)
+}
+
+// scanSingleRow 查询一行数据，并在扫描后关闭结果集。
+func scanSingleRow(ctx context.Context, q SQLExecutor, query string, args []any, dest ...any) error {
+	return postgresinfra.ScanSingleRow(ctx, q, query, args, dest...)
 }

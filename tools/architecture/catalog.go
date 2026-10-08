@@ -410,7 +410,7 @@ var filePermissions = []filePermission{
 	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_integration_test.go"},
 	{Scope: "internal/provider", Imports: "internal/provider/provider", Files: `admin_editor_fixture_test.go admin_legacy_extra_test.go
 admin_shadow_test.go`},
-	{Scope: "internal/apikey", Imports: "internal/apikey/postgres", Files: "admin_group_test.go"},
+	{Scope: "internal/apikey", Imports: "internal/apikey/postgres", Files: "admin_external_test.go"},
 	{Scope: "internal/apikey/postgres", Imports: "internal/billing/postgres internal/usage/postgres/query", Files: "key_store.go"},
 	{Scope: "internal/backup", Imports: "internal/backup/provider internal/infra/postgres", Files: "backup_test.go"},
 	{Scope: "internal/batchimage", Imports: "internal/batchimage/provider", Files: `cleanup_test.go download_test.go mvp_test.go pipeline_fixture_test.go

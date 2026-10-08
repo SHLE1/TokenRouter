@@ -27,6 +27,7 @@ type Admin struct {
 		InvalidateAPIKeyRateLimit(context.Context, int64) error
 	}
 }
+
 type GroupGrantMutations interface {
 	GrantGroupAndUpdateFields(context.Context, *APIKey, APIKeyUpdateFields, int64) error
 }
@@ -128,6 +129,15 @@ func (s *Admin) updateManagedFields(ctx context.Context, id int64, gid *int64, r
 func (s *Admin) GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error) {
 	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	keys, result, err := s.Keys.ListByUserID(ctx, userID, params, APIKeyListFilters{})
+	if err != nil {
+		return nil, 0, err
+	}
+	return keys, result.Total, nil
+}
+
+func (s *Admin) GetGroupAPIKeys(ctx context.Context, groupID int64, page, pageSize int) ([]APIKey, int64, error) {
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+	keys, result, err := s.Keys.ListByGroupID(ctx, groupID, params)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -31,6 +31,7 @@ type AuthenticationInput struct {
 	ClientIP          string
 	CheckMemberLimits bool
 }
+
 type AuthenticationFailureKind string
 
 const (
@@ -56,6 +57,7 @@ func (e *AuthenticationFailure) Error() string {
 	}
 	return string(e.Kind)
 }
+
 func (e *AuthenticationFailure) Unwrap() error { return e.Cause }
 
 // Authenticate 保留 Key/团队/成员限额/IP/付款用户的既有检查顺序。

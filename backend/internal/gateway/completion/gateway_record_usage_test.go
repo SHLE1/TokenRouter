@@ -3,34 +3,29 @@ package completion_test
 import (
 	"context"
 	"errors"
-	"sort"
 	"strings"
 	"testing"
 	"time"
 
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
-	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	completiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
-
-	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	identity "github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
-	usagecore "github.com/TokenFlux/TokenRouter/internal/usage"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
+	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	completiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	identity "github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/stretchr/testify/require"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
+	usagecore "github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
 func requireGatewayRecordUsageBillingRepoStub(t *testing.T, svc *completiontestkit.Recording) *completiontestkit.SettlementStore {
@@ -491,11 +486,7 @@ func TestGatewayServiceRecordUsage_QoderRequestedImageDoesNotUseGlobalFallback(t
 }
 
 func TestGatewayServiceRecordUsage_QoderAliasesInheritAvailableBuiltinPrices(t *testing.T) {
-	aliases := make([]string, 0, len(qoder.DefaultQoderModelAliases))
-	for alias := range qoder.DefaultQoderModelAliases {
-		aliases = append(aliases, alias)
-	}
-	sort.Strings(aliases)
+	aliases := qoder.DefaultRequestModelIDs()
 
 	for _, alias := range aliases {
 		t.Run(alias, func(t *testing.T) {
@@ -1293,7 +1284,7 @@ func TestGatewayServiceRecordUsage_QoderManualConfigPricingOverridesDefaultAlias
 }
 
 func lookupQoderAliasKeyForTest(alias string) string {
-	if info, ok := qoder.DefaultQoderModelAliases[alias]; ok {
+	if info, ok := qoder.LookupQoderModelAlias(alias); ok {
 		return info.Key
 	}
 	return alias
