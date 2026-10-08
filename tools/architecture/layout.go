@@ -1,0 +1,244 @@
+package architecture
+
+import (
+	"fmt"
+	"go/ast"
+	"go/build/constraint"
+	"go/parser"
+	"go/token"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+)
+
+// layoutViolation 记录一条文件组织规则及其定位。
+type layoutViolation struct{ Rule, Path, Reason string }
+
+// layoutFile 保存跨构建集合的语法树，生成文件也参与同名源文件匹配。
+type layoutFile struct {
+	path, name string
+	tree       *ast.File
+	generated  bool
+}
+
+var (
+	layoutTestSuffixes = []string{"_external_integration_test.go", "_integration_test.go", "_external_test.go", "_test.go"}
+	layoutDocFile      = regexp.MustCompile(`[a-z0-9_]+\.go`)
+)
+
+// scanLayout 检查所有构建集合的文件名、标签和包说明。
+func scanLayout(root string) ([]layoutViolation, error) {
+	packages := map[string][]layoutFile{}
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if path != root && (strings.HasPrefix(entry.Name(), ".") || entry.Name() == "testdata" || entry.Name() == "vendor" || entry.Name() == "node_modules") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		tree, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ParseComments)
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		dir := filepath.ToSlash(filepath.Dir(rel))
+		packages[dir] = append(packages[dir], layoutFile{rel, entry.Name(), tree, ast.IsGenerated(tree)})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	var violations []layoutViolation
+	add := func(rule, path, reason string) { violations = append(violations, layoutViolation{rule, path, reason}) }
+	for dir, files := range packages {
+		names := map[string]bool{}
+		count := 0
+		packageName := ""
+		var doc *layoutFile
+		for i := range files {
+			file := &files[i]
+			names[file.name] = true
+			if file.generated {
+				continue
+			}
+			if file.name == "doc.go" {
+				doc = file
+			} else if !strings.HasSuffix(file.name, "_test.go") {
+				count++
+				packageName = file.tree.Name.Name
+			}
+		}
+		for _, file := range files {
+			if file.generated {
+				continue
+			}
+			test := strings.HasSuffix(file.name, "_test.go")
+			exempt := dir == "tests" || strings.HasPrefix(dir, "tests/") || dir == "migrations" || strings.HasPrefix(dir, "migrations/")
+			if test && !exempt {
+				if !layoutTestName(file.name, names) {
+					add("test-name", file.path, "测试文件需要按被测源文件或场景命名")
+				}
+				expr, err := layoutBuildConstraint(file.tree)
+				if err != nil {
+					return nil, fmt.Errorf("%s: %w", file.path, err)
+				}
+				eval := func(integration bool) bool {
+					if expr == nil {
+						return true
+					}
+					return expr.Eval(func(tag string) bool { return tag != "integration" || integration })
+				}
+				if strings.HasSuffix(file.name, "_integration_test.go") {
+					if eval(false) || !eval(true) {
+						add("test-tag", file.path, "集成测试需要 integration 构建约束")
+					}
+				} else if !eval(false) {
+					add("test-tag", file.path, "单元测试需要在 integration=false 时参与构建")
+				}
+				if strings.Contains(file.name, "_external_") && !strings.HasSuffix(file.tree.Name.Name, "_test") {
+					add("test-external", file.path, "external 测试文件需要使用外部测试包")
+				}
+				for _, decl := range file.tree.Decls {
+					if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv == nil && fn.Name.Name == "TestMain" && file.name != "main_test.go" && file.name != "main_integration_test.go" {
+						add("test-main", file.path, "TestMain 需要放在 main 测试文件")
+					}
+				}
+			}
+			stem := strings.TrimSuffix(file.name, ".go")
+			if test {
+				for _, suffix := range layoutTestSuffixes {
+					if strings.HasSuffix(file.name, suffix) {
+						stem = strings.TrimSuffix(file.name, suffix)
+						break
+					}
+				}
+			}
+			parts := strings.Split(stem, "_")
+			for k := 1; k < len(parts); k++ {
+				if strings.Join(parts[:k], "") == filepath.Base(dir) {
+					add("file-stutter", file.path, "文件名需要去掉重复的包名前缀")
+					break
+				}
+			}
+			if !test {
+				switch file.name {
+				case "helper.go", "helpers.go", "util.go", "utils.go", "common.go", "misc.go", "shared.go", "other.go":
+					add("file-vague", file.path, "源文件名需要说明具体主题")
+				}
+			}
+			if file.name != "doc.go" && file.tree.Doc != nil {
+				add("package-comment", file.path, "包注释需要放在 doc.go")
+			}
+		}
+		if count >= 15 && doc == nil {
+			add("package-doc", filepath.ToSlash(filepath.Join(dir, "doc.go")), "手写源文件达到 15 个，需要 doc.go")
+		}
+		if doc != nil {
+			valid := doc.tree.Doc != nil && len(doc.tree.Doc.List) > 0 && strings.HasPrefix(doc.tree.Doc.List[0].Text, "// Package "+doc.tree.Name.Name+" ") && len(doc.tree.Decls) == 0
+			if packageName != "" && doc.tree.Name.Name != packageName {
+				valid = false
+			}
+			if doc.tree.Doc != nil {
+				for _, name := range layoutDocFile.FindAllString(doc.tree.Doc.Text(), -1) {
+					if !names[name] {
+						valid = false
+					}
+				}
+			}
+			if !valid {
+				add("package-doc", doc.path, "doc.go 需要包注释、有效文件引用以及独立的 package 子句")
+			}
+		}
+	}
+	sort.Slice(violations, func(i, j int) bool {
+		a, b := violations[i], violations[j]
+		return a.Rule+"\t"+a.Path < b.Rule+"\t"+b.Path
+	})
+	return violations, nil
+}
+
+// layoutTestName 允许一个文件名按任一有效后缀匹配源文件。
+func layoutTestName(name string, sources map[string]bool) bool {
+	switch name {
+	case "main_test.go", "main_integration_test.go", "helpers_test.go", "helpers_integration_test.go":
+		return true
+	}
+	if strings.HasSuffix(name, "_scenario_test.go") || strings.HasSuffix(name, "_scenario_integration_test.go") {
+		return true
+	}
+	for _, suffix := range layoutTestSuffixes {
+		if strings.HasSuffix(name, suffix) && sources[strings.TrimSuffix(name, suffix)+".go"] {
+			return true
+		}
+	}
+	return false
+}
+
+// layoutBuildConstraint 解析 package 子句之前的构建约束。
+func layoutBuildConstraint(file *ast.File) (constraint.Expr, error) {
+	for _, group := range file.Comments {
+		if group.Pos() > file.Package {
+			break
+		}
+		for _, comment := range group.List {
+			if constraint.IsGoBuild(comment.Text) {
+				return constraint.Parse(comment.Text)
+			}
+		}
+	}
+	return nil, nil
+}
+
+// compareLayoutBaseline 同时拒绝新增违规和已经失效的基线条目。
+func compareLayoutBaseline(violations []layoutViolation, baseline string) []string {
+	current := map[string]layoutViolation{}
+	old := map[string]bool{}
+	for _, v := range violations {
+		current[v.Rule+"\t"+v.Path] = v
+	}
+	for _, line := range strings.Split(strings.TrimSpace(baseline), "\n") {
+		if line != "" {
+			old[line] = true
+		}
+	}
+	var failures []string
+	for key, v := range current {
+		if !old[key] {
+			failures = append(failures, key+"\t"+v.Reason+"：新增的文件不符合后端文件组织规则")
+		}
+	}
+	for key := range old {
+		if _, ok := current[key]; !ok {
+			failures = append(failures, key+"\t这一项已经修好，请从 layout_baseline.txt 删除")
+		}
+	}
+	sort.Strings(failures)
+	return failures
+}
+
+// writeLayoutBaseline 按规则名和路径排序保存迁移期间的违规。
+func writeLayoutBaseline(path string, violations []layoutViolation) error {
+	var lines []string
+	for _, v := range violations {
+		lines = append(lines, v.Rule+"\t"+v.Path)
+	}
+	sort.Strings(lines)
+	content := strings.Join(lines, "\n")
+	if content != "" {
+		content += "\n"
+	}
+	return os.WriteFile(path, []byte(content), 0o644)
+}

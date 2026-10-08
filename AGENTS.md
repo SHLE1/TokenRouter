@@ -52,7 +52,7 @@
 ## Go 格式化
 
 - 每次提交前，在仓库根目录运行 `make fmt`。它用 `golangci-lint fmt` 格式化本次改动的手写 Go 文件，并跳过生成文件。
-- 格式规则维护在 `backend/.golangci.yml`：启用 `gofumpt` 默认规则，同时保留现有的 `gofmt` 重写规则。工具版本以 `.golangci-version` 为准，本地和 CI 使用同一版本；`gofumpt` 使用 golangci-lint 内置的版本。
+- 格式规则维护在 `backend/.golangci.yml`：启用 `gofumpt` 默认规则，同时保留现有的 `gofmt` 重写规则。import 由 gci 按标准库、第三方、本仓库分三组。工具版本以 `.golangci-version` 为准，本地和 CI 使用同一版本；`gofumpt` 使用 golangci-lint 内置的版本。
 - 命令处理暂存、未暂存和未跟踪的 Go 文件。生成文件按 `package` 声明前的 `// Code generated ... DO NOT EDIT.` 标记识别，格式化工具只对手写文件运行。
 - 格式化以整个改动文件为单位。执行后检查 diff，把属于本次提交的格式化结果重新暂存。暂存需要手动 `git add`，部分暂存的文件要逐块确认。
 - 提交前运行 `make fmt-check`，确认格式差异已经清零。没有 Go 文件改动时，命令直接通过。

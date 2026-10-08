@@ -69,6 +69,8 @@ HTTP、用例、存储和后台资源，由 app 装配各模块的实现。业�
 
 `make lint-go` 的第一步用固定版本 arch-go 的 Go API 检查规则，并运行正反例、扫描覆盖和文件许可的使用方测试。工具要读取独立模块之外的源码，所以入口使用 `-count=1` 关闭测试缓存。CI 的 go-lint job 和推送前快检都运行这一步，CI 的 lint 缓存组同时包含后端和架构工具的 Go 依赖。修改角色和模块关系时，维护规则表，不另外引入生成配置的流程。golangci-lint 负责通用的代码质量检查，架构白名单不放在它里面。
 
+同一测试模块还运行[后端文件布局检查](#backend_file_layout)。
+
 ### 通用规则
 
 - 核心不依赖旧的业务实现，也不依赖框架和存储的实现；HTTP 适配层通过用例访问数据，不直接访问数据库。
@@ -178,6 +180,8 @@ GoLand 把 `X_test.go` 折叠在 `X.go` 下面，读者也靠这个名字从源�
 `backend/tests/` 存放跨模块测试，`backend/migrations/` 的测试检查 SQL 文件，这两个目录的测试按场景命名。
 
 `X_integration_test.go` 等三种带后缀的测试文件，需要在 GoLand 里加一条折叠规则：打开 Project 视图选项菜单里的 Appearance → File Nesting，找到父文件后缀为 `.go` 的规则（没有就新建一条），把子文件后缀改成 `_test.go; _integration_test.go; _external_test.go; _external_integration_test.go`。
+
+布局检查在 `tools/architecture/layout.go`，由 `make lint-go`、推送前快检和 CI 运行。检查规则为 `test-name`、`test-tag`、`test-external`、`test-main`、`file-stutter`、`file-vague`、`package-doc` 和 `package-comment`，分别检查测试命名、构建标签、外部测试包、TestMain 位置、重复包名前缀、模糊源文件名、包说明及包注释位置。迁移基线 `tools/architecture/layout_baseline.txt` 只能变短，修好的条目需要删除。
 
 ## 生成代码与迁移
 
@@ -329,7 +333,7 @@ Vue 的最低版本为 `3.5.42`，该版本修复了 `@vue/server-renderer` 属�
 
 ### Go 格式化
 
-每次提交代码之前，在仓库根目录运行 `make fmt`，再运行 `make fmt-check`。这两个入口需要 Python 3 和指定版本的 golangci-lint。`tools/format_go.py` 筛选文件后，调用 `golangci-lint fmt --config backend/.golangci.yml`，检查模式加上 `--diff`。配置启用 gofumpt 的默认规则，并保留 gofmt 的 `interface{}` → `any`、`a[b:len(a)]` → `a[b:]` 两条重写规则；gofumpt 不单独维护版本。
+每次提交代码之前，在仓库根目录运行 `make fmt`，再运行 `make fmt-check`。这两个入口需要 Python 3 和指定版本的 golangci-lint。`tools/format_go.py` 筛选文件后，调用 `golangci-lint fmt --config backend/.golangci.yml`，检查模式加上 `--diff`。配置启用 gofumpt 的默认规则，gci 按标准库、第三方、本仓库的顺序分组 import，并保留 gofmt 的 `interface{}` → `any`、`a[b:len(a)]` → `a[b:]` 两条重写规则；gofumpt 不单独维护版本。
 
 命令处理暂存、未暂存和未跟踪的 Go 文件，按整个文件格式化，覆盖后端和仓库的工具模块；删除的文件、符号链接、vendor 和 node_modules，以及带标准生成标记的文件会被跳过。生成标记是 `package` 声明之前的 `// Code generated ... DO NOT EDIT.`，Ent schema 等手写的源文件照常参与格式化。脚本会预先排除生成文件，格式化配置也使用严格的生成文件识别。
 

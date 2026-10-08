@@ -109,7 +109,7 @@ internal/upstream/anthropic/oauth internal/upstream/antigravity internal/upstrea
 internal/upstream/deepseek internal/upstream/gemini internal/upstream/gemini/codeassist
 internal/upstream/grok internal/upstream/kimi internal/upstream/ollama internal/upstream/openai
 internal/upstream/qoder internal/upstream/usagecontract internal/upstream/usageprovider
-internal/upstream/usageview internal/upstream/vertex internal/upstream/zhipu internal/usage`, Tests: `internal/config internal/gateway internal/gateway/forward internal/gateway/media
+internal/upstream/usageview internal/upstream/vertex internal/upstream/zhipu internal/usage`, Tests: `internal/modelcatalog/testkit internal/config internal/gateway internal/gateway/forward internal/gateway/media
 internal/gateway/provider/modelidentity internal/gateway/requeststate internal/gateway/session
 internal/idempotency/testkit internal/identity/httpapi/authctx internal/infra/timingwheel/...
 internal/ops internal/routing/provider internal/testutil/assertion internal/testutil/rediscontainer internal/testutil/postgrescontainer`},
@@ -152,7 +152,7 @@ internal/testutil/assertion`},
 	"internal/egress": {Production: `ent/... internal/provider/transfer internal/egress/... internal/idempotency/httpapi
 internal/infra/httpclient/... internal/infra/postgres/... internal/infra/telemetry/... internal/pkg/
 internal/server/httpx`, Tests: "internal/billing"},
-	"internal/gateway": {Production: `ent/... internal/provider internal/provider/provider internal/apikey internal/apikey/httpapi
+	"internal/gateway": {Production: `internal/modelcatalog ent/... internal/provider internal/provider/provider internal/apikey internal/apikey/httpapi
 internal/billing internal/billing/pricing internal/billing/testkit internal/creative
 internal/creative/provider internal/egress internal/egress/provider internal/gateway/...
 internal/identity internal/identity/httpapi/authctx internal/infra/httpclient/...
@@ -208,7 +208,7 @@ internal/protocol/openai internal/routing/... internal/scheduler/policy internal
 internal/settings internal/upstream/anthropic internal/upstream/antigravity
 internal/upstream/deepseek internal/upstream/kimi internal/upstream/zhipu
 internal/upstream/gemini/codeassist internal/upstream/grok internal/upstream/openai
-internal/upstream/qoder`, Tests: `internal/provider/provider internal/apikey internal/billing/testkit internal/gateway/media
+internal/upstream/qoder`, Tests: `internal/modelcatalog/testkit internal/provider/provider internal/apikey internal/billing/testkit internal/gateway/media
 internal/gateway/provider internal/gateway/provider/modelidentity internal/idempotency/testkit
 internal/identity/httpapi/authctx internal/scheduler internal/testutil/postgrescontainer migrations internal/modelcatalog/provider`},
 	"internal/scheduler": {Production: `internal/provider internal/egress internal/infra/postgres/... internal/infra/telemetry/...
@@ -393,6 +393,9 @@ var ioFileExceptions = map[string]string{
 
 // 窄权限属于指定文件，不能由相邻文件或目标子包继承。
 var filePermissions = []filePermission{
+	// 目录读取与测试数据构造按实际调用文件登记。
+	{Scope: "internal/gateway/provider", Imports: "internal/modelcatalog", Files: "model_catalogue.go model_display.go"},
+	{Scope: "internal/provider/httpapi", Imports: "internal/modelcatalog/testkit", Files: "management_models_contract_test.go"},
 	// 容器启动等待由共用测试入口提供，许可限定到接入该入口的文件。
 	{Scope: "internal/infra/redis", Imports: "internal/testutil/rediscontainer", Files: "fixed_window_integration_test.go"},
 	{Scope: "internal/ops/postgres", Imports: "internal/testutil/rediscontainer", Files: "integration_harness_test.go"},
@@ -438,8 +441,7 @@ subscription_fixture_test.go`},
 	{Scope: "internal/moderation", Imports: "internal/moderation/provider", Files: "legacy_fixture_test.go"},
 	{Scope: "internal/moderation/postgres", Imports: "internal/identity/postgres", Files: "fixture_test.go"},
 	{Scope: "internal/payment/postgres", Imports: "internal/billing/postgres", Files: "consumer_order_snapshot_test.go"},
-	{Scope: "internal/routing", Imports: "internal/routing/provider", Files: `group_admin_fixture_test.go
-marketplace_fixture_test.go`},
+	{Scope: "internal/routing", Imports: "internal/modelcatalog/testkit", Files: "catalogue_policy_snapshot_test.go"},
 	{Scope: "internal/routing", Imports: "internal/modelcatalog/provider", Files: `marketplace_catalog_fixture_test.go marketplace_fixture_test.go`},
 	{Scope: "internal/routing", Imports: "internal/provider/provider", Files: "group_management_ports_test.go"},
 	{Scope: "internal/routing", Imports: "internal/gateway/provider/modelidentity", Files: "marketplace_catalog_fixture_test.go marketplace_fixture_test.go marketplace_quote_fixture_test.go"},
@@ -480,6 +482,7 @@ internal/routing/testkit`,
 }
 
 var permissionChildImports = map[string]string{
+	"internal/gateway/provider":        "internal/modelcatalog/provider",
 	"internal/testutil/rediscontainer": "github.com/testcontainers/testcontainers-go/modules/redis github.com/testcontainers/testcontainers-go/wait",
 	"internal/gateway/clientmeta":      "net/http/httptest",
 	"internal/gateway/completion":      "internal/gateway/provider/modelidentity",

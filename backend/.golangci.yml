@@ -14,9 +14,10 @@ linters:
 
   exclusions:
     rules:
-      # gofumpt 由改动文件格式检查负责，避免全量 lint 要求历史文件重新排版。
+      # gofumpt 和 gci 由改动文件格式检查负责，历史文件在修改时整理。
       - linters:
           - gofumpt
+          - gci
         path: '.*'
 
   settings:
@@ -107,9 +108,15 @@ formatters:
     - gofmt
     # 使用内置 gofumpt 默认规则，不开启 extra；版本随 golangci-lint 固定。
     - gofumpt
+    - gci
   exclusions:
     generated: strict
   settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/TokenFlux/TokenRouter)
     gofmt:
       # Simplify code: gofmt with `-s` option.
       # Default: true
