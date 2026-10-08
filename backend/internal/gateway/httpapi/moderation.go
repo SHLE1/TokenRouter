@@ -5,21 +5,24 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 	"github.com/TokenFlux/TokenRouter/internal/moderation"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 type ModerationEndpoints interface {
 	Inbound(*gin.Context) string
 	Forced(*gin.Context) (string, bool)
 }
+
 type ModerationPort interface {
 	Check(context.Context, moderation.ContentModerationCheckInput) (*moderation.ContentModerationDecision, error)
 	RecordCyberWarning(context.Context, moderation.ContentModerationCyberWarningInput) (*moderation.ContentModerationCyberWarning, error)
@@ -288,4 +291,13 @@ func ContentModerationRequestID(ctx context.Context) string {
 		return strings.TrimSpace(requestID)
 	}
 	return ""
+}
+
+// GatewayModerationEndpoints 读取请求路由和强制平台。
+type GatewayModerationEndpoints struct{}
+
+func (GatewayModerationEndpoints) Inbound(c *gin.Context) string { return GetInboundEndpoint(c) }
+
+func (GatewayModerationEndpoints) Forced(c *gin.Context) (string, bool) {
+	return keyhttp.GetForcePlatformFromContext(c)
 }

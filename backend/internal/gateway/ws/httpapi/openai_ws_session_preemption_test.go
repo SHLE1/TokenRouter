@@ -9,39 +9,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
 )
-
-func TestOpenAIWSSessionPreemptRegistryCancelsSameScopedSessionOnly(t *testing.T) {
-	var registry openAIWSSessionPreemptRegistry
-	key := openAIWSSessionPreemptKey{groupID: 7, apiKeyID: 11, sessionHash: "sess"}
-	other := openAIWSSessionPreemptKey{groupID: 7, apiKeyID: 12, sessionHash: "sess"}
-	firstCtx, firstCancel := context.WithCancel(context.Background())
-	firstCleanup, replaced := registry.Begin(key, firstCancel)
-	require.False(t, replaced)
-	otherCtx, otherCancel := context.WithCancel(context.Background())
-	otherCleanup, replaced := registry.Begin(other, otherCancel)
-	require.False(t, replaced)
-	secondCtx, secondCancel := context.WithCancel(context.Background())
-	secondCleanup, replaced := registry.Begin(key, secondCancel)
-	require.True(t, replaced)
-
-	require.ErrorIs(t, firstCtx.Err(), context.Canceled)
-	require.NoError(t, otherCtx.Err())
-	require.NoError(t, secondCtx.Err())
-	firstCleanup()
-	require.NoError(t, secondCtx.Err(), "stale cleanup must not remove the replacement")
-
-	secondCleanup()
-	otherCleanup()
-}
 
 type openAIWSSessionPreemptCacheStub struct {
 	session.GatewayCache
@@ -80,6 +58,34 @@ func (c *openAIWSSessionPreemptCacheStub) CompareAndDeleteOpenAIResponsesSession
 	}
 	delete(c.owners, key)
 	return true, nil
+}
+
+func openAIWSSessionPreemptCacheHash(apiKeyID int64, sessionHash string) string {
+	return gatewayws.CacheHash(apiKeyID, sessionHash)
+}
+
+func TestOpenAIWSSessionPreemptRegistryCancelsSameScopedSessionOnly(t *testing.T) {
+	var registry openAIWSSessionPreemptRegistry
+	key := openAIWSSessionPreemptKey{groupID: 7, apiKeyID: 11, sessionHash: "sess"}
+	other := openAIWSSessionPreemptKey{groupID: 7, apiKeyID: 12, sessionHash: "sess"}
+	firstCtx, firstCancel := context.WithCancel(context.Background())
+	firstCleanup, replaced := registry.Begin(key, firstCancel)
+	require.False(t, replaced)
+	otherCtx, otherCancel := context.WithCancel(context.Background())
+	otherCleanup, replaced := registry.Begin(other, otherCancel)
+	require.False(t, replaced)
+	secondCtx, secondCancel := context.WithCancel(context.Background())
+	secondCleanup, replaced := registry.Begin(key, secondCancel)
+	require.True(t, replaced)
+
+	require.ErrorIs(t, firstCtx.Err(), context.Canceled)
+	require.NoError(t, otherCtx.Err())
+	require.NoError(t, secondCtx.Err())
+	firstCleanup()
+	require.NoError(t, secondCtx.Err(), "stale cleanup must not remove the replacement")
+
+	secondCleanup()
+	otherCleanup()
 }
 
 func TestOpenAIWSSessionPreemptContextEligibilityAndLocalCancellation(t *testing.T) {

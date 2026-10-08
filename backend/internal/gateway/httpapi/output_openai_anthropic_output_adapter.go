@@ -7,17 +7,16 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
-	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
-
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
 func (p *OpenAIResponseOutput) AnthropicOptions(c *gin.Context, writeError func(*gin.Context, int, string, string)) forward.AnthropicOutputOptions {

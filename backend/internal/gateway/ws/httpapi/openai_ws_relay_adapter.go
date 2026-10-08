@@ -3,10 +3,11 @@ package httpapi
 import (
 	"context"
 
+	coderws "github.com/coder/websocket"
+
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	openaiwsv2 "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws/relay"
-	coderws "github.com/coder/websocket"
 )
 
 // wsPlatformFrames 在网关与供应商 relay 之间转换帧枚举。

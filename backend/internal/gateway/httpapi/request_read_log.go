@@ -9,10 +9,13 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
-// LogRequestBodyReadFailure 只记录有界、无报文的读取错误分类；客户端保持原安全消息。
+// LogRequestBodyReadFailure 记录请求体读取错误的类别、长度和编码。
 func LogRequestBodyReadFailure(reqLog *zap.Logger, req *http.Request, err error) {
 	if reqLog == nil || err == nil {
 		return
@@ -73,4 +76,17 @@ func requestBodyReadErrorKind(err error) string {
 		return "transport"
 	}
 	return "io_read"
+}
+
+// RequestLogger 按请求上下文和组件名构造日志记录器。
+func RequestLogger(c *gin.Context, component string, fields ...zap.Field) *zap.Logger {
+	base := logger.L()
+	if c != nil && c.Request != nil {
+		base = logger.FromContext(c.Request.Context())
+	}
+
+	if component != "" {
+		fields = append([]zap.Field{zap.String("component", component)}, fields...)
+	}
+	return base.With(fields...)
 }

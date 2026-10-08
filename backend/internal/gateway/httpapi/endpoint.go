@@ -3,10 +3,11 @@ package httpapi
 import (
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	providererrors "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/gin-gonic/gin"
 )
 
 // 入站和上游端点路径常量，供路径规范化与推导使用。新增 API 路径时在此登记。

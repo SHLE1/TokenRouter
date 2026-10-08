@@ -4,14 +4,13 @@ import (
 	"context"
 	"time"
 
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
-	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
 // openAIWSImageIntentForRoutingModel 按分组映射模型 G 构造生图判定请求体。

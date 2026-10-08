@@ -6,16 +6,15 @@ import (
 	"errors"
 	"time"
 
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-
-	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
+	coderws "github.com/coder/websocket"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	coderws "github.com/coder/websocket"
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 )
 
 // wsIngressAdapter 绑定单个技术操作，不拥有会话循环或恢复决策。

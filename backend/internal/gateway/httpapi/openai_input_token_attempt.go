@@ -6,16 +6,14 @@ import (
 	"net/http"
 	"time"
 
-	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
-
-	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-
-	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
+	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 )
 
 func (p OpenAITokenPorts) InputTokensExecution(c *gin.Context, call InputTokensCall) textflow.InputTokensPorts {

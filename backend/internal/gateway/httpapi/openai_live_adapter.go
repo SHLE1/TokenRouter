@@ -3,19 +3,16 @@ package httpapi
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	coderws "github.com/coder/websocket"
 
 	gatewaylive "github.com/TokenFlux/TokenRouter/internal/gateway/live"
-
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-
-	coderws "github.com/coder/websocket"
 )
 
 // livePorts 为 Live 请求流程提供依赖和展示值。

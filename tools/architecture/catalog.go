@@ -383,12 +383,12 @@ var pureFileStandard = map[string]string{
 }
 
 var ioFileExceptions = map[string]string{
-	"internal/provider/health_spark.go":                        "net/http",
-	"internal/backup/backup_external_test.go":                  "database/sql",
-	"internal/gateway/httpapi/live_moderation_fixture_test.go": "database/sql",
-	"internal/moderation/helpers_test.go":                      "database/sql",
-	"internal/moderation/service_test.go":                      "database/sql",
-	"internal/usage/httpapi/admin/usage_handler_test.go":       "database/sql",
+	"internal/provider/health_spark.go":                  "net/http",
+	"internal/backup/backup_external_test.go":            "database/sql",
+	"internal/gateway/httpapi/live_test.go":              "database/sql",
+	"internal/moderation/helpers_test.go":                "database/sql",
+	"internal/moderation/service_test.go":                "database/sql",
+	"internal/usage/httpapi/admin/usage_handler_test.go": "database/sql",
 }
 
 // 窄权限属于指定文件，不能由相邻文件或目标子包继承。

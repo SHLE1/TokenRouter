@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
 )
 
 // WriteInterceptStream 发送流式 mock 响应（用于请求拦截）

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
-
 	coderws "github.com/coder/websocket"
+
+	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 )
 
 func SummarizeWSCloseErrorForLog(err error) (string, string) {

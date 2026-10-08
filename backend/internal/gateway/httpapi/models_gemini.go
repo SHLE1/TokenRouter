@@ -6,12 +6,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/gin-gonic/gin"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/gin-gonic/gin"
 )
 
 // @project-doc docs/domains/api_key_model_redirects.md#model_list_projection

@@ -9,24 +9,21 @@ import (
 	"slices"
 	"strings"
 
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-
-	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
+	coderws "github.com/coder/websocket"
+	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
-	coderws "github.com/coder/websocket"
-	"github.com/gin-gonic/gin"
-	"github.com/tidwall/gjson"
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 )
 
 // executeWSIngressAdapter 处理客户端入站 WebSocket（OpenAI Responses WS Mode）并转发到上游。
@@ -63,9 +60,8 @@ func (s *OpenAIWebSocketExecutor) executeWSIngressAdapter(
 
 	tlsRouterMatch := s.Requests.MatchTLS(c, provider)
 
-	// 预取一次 OpenAI Fast Policy settings，绑定到 ctx，让该 WS session
-	// 内所有帧的 evaluateOpenAIFastPolicy 调用复用同一份快照，避免每帧
-	// 进入 DB / settingRepo。Trade-off 见 gatewayprovider.WithFastPolicyContext 注释。
+	// 会话开始时读取 OpenAI Fast Policy 并绑定到上下文，后续帧共享这份配置。
+	// 配置读取时机见 gatewayprovider.WithFastPolicyContext。
 	if s.Requests.Readers != nil {
 		if settings, err := s.Requests.Readers.Gateway.GetOpenAIFastPolicySettings(ctx); err == nil && settings != nil {
 			ctx = gatewayprovider.WithFastPolicyContext(ctx, settings)
@@ -430,4 +426,23 @@ func responsesWSHTTPBridgeAllowed(c *gin.Context, provider *gatewayprovider.Exec
 	}
 	target, ok := capability.ResolveRoute(value, capability.ProtocolResponsesWebSocket, fallbacks)
 	return ok && target == capability.ProtocolOpenAIResponses
+}
+
+// activeCodexFingerprintMode 返回具有指纹种子的提供商所配置的 Codex 指纹模式。
+func activeCodexFingerprintMode(provider *gatewayprovider.ExecutionProvider) providercore.CodexFingerprintMode {
+	if provider == nil || gatewayprovider.ExecutionProtocolRecord(provider).GetCodexFingerprintMode() == providercore.CodexFingerprintOff {
+		return providercore.CodexFingerprintOff
+	}
+	if _, ok := providercore.CodexFingerprintSeed(provider.Record.Extra); !ok {
+		return providercore.CodexFingerprintOff
+	}
+	return gatewayprovider.ExecutionProtocolRecord(provider).GetCodexFingerprintMode()
+}
+
+// openAIWSPoolProviderView 构造连接池使用的提供商标识、并发额度和指纹模式。
+func openAIWSPoolProviderView(provider *gatewayprovider.ExecutionProvider) *openaiws.WSPoolProvider {
+	if provider == nil {
+		return nil
+	}
+	return &openaiws.WSPoolProvider{ID: provider.Record.ID, Concurrency: provider.Record.Concurrency, Type: provider.Record.Type, FingerprintMode: string(activeCodexFingerprintMode(provider))}
 }

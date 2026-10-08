@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -47,4 +48,20 @@ func TestVoiceMissingBodyPreservesMethodDifference(t *testing.T) {
 	c.Request.Method = http.MethodPost
 	_, err = ReadGrokVoiceBody(c)
 	require.ErrorContains(t, err, "request body is required")
+}
+
+func TestIsExpectedGrokRealtimeClose(t *testing.T) {
+	for _, status := range []coderws.StatusCode{
+		coderws.StatusNormalClosure,
+		coderws.StatusGoingAway,
+		coderws.StatusNoStatusRcvd,
+		coderws.StatusAbnormalClosure,
+	} {
+		if !IsExpectedGrokRealtimeClose(coderws.CloseError{Code: status}) {
+			t.Fatalf("status %v should be treated as an expected session close", status)
+		}
+	}
+	if IsExpectedGrokRealtimeClose(coderws.CloseError{Code: coderws.StatusPolicyViolation}) {
+		t.Fatal("policy violations must not be treated as billable normal closes")
+	}
 }

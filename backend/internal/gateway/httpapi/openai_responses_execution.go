@@ -6,19 +6,15 @@ import (
 	"net/http"
 	"time"
 
-	openaiexecution "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/gin-gonic/gin"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
+	openaiexecution "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/gin-gonic/gin"
 )
 
 // Forward 保持单次 Responses 的准备、协议分派和执行顺序。
@@ -205,4 +201,14 @@ func (s *OpenAIResponsesExecutor) Forward(ctx context.Context, c *gin.Context, p
 
 func shouldForwardOpenAIResponsesViaRawChatCompletions(provider *gatewayprovider.ExecutionProvider) bool {
 	return gatewayprovider.ExecutionModelPolicy(provider).RawChat()
+}
+
+// OpenAIResponsesExecutor 绑定 Responses 请求构造、协议执行和响应输出。
+type OpenAIResponsesExecutor struct {
+	Requests    *OpenAIRequests
+	Output      *OpenAIResponseOutput
+	Text        *OpenAITextExecutor
+	Grok        *GrokExecutor
+	Lineage     *OpenAIEncryptedLineage
+	ImageBridge *gatewayprovider.ResponseImagePolicy
 }

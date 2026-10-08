@@ -8,21 +8,18 @@ import (
 	"net/url"
 	"strings"
 
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-
-	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
-
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/egress"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/egress"
+	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	forward "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 )
 
 func validateOpenAIWSBearerToken(provider *gatewayprovider.ExecutionProvider, token string) error {

@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	gatewaytelemetry "github.com/TokenFlux/TokenRouter/internal/gateway/telemetry"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 )
 
 func newUsageRecordTestPool(t *testing.T) *completion.UsageRecordWorkerPool {

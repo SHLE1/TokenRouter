@@ -3,11 +3,12 @@ package httpapi
 import (
 	"context"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/googleforward"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-	"github.com/gin-gonic/gin"
 )
 
 // GeminiExecutor 为每个 HTTP 请求创建同步输出，各协议入口共用 Gemini 请求准备器。

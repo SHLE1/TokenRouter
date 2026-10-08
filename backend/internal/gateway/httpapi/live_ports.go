@@ -6,23 +6,19 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-
-	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
-
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/moderation"
-	"github.com/TokenFlux/TokenRouter/internal/usage"
-
-	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-
-	gatewaylive "github.com/TokenFlux/TokenRouter/internal/gateway/live"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
-
 	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
+	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	gatewaylive "github.com/TokenFlux/TokenRouter/internal/gateway/live"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/moderation"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
+	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
 // LiveExecution 提供已装配的 Live 用例。

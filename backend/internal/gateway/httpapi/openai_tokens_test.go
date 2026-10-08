@@ -9,30 +9,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
-
-	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
-)
 
-func assertOpenAITextEventBefore(t *testing.T, events []string, a, b string) {
-	t.Helper()
-	ai, bi := -1, -1
-	for i, event := range events {
-		if event == a {
-			ai = i
-		}
-		if event == b {
-			bi = i
-		}
-	}
-	require.GreaterOrEqual(t, ai, 0, events)
-	require.Greater(t, bi, ai, events)
-}
+	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	textflow "github.com/TokenFlux/TokenRouter/internal/gateway/text"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+)
 
 // CountExecution 为计数测试提供执行接口，调用槽位或完成提交时测试失败。
 func (p *tokenEntryProbeForTest) CountExecution(_ *gin.Context, call OpenAICountCall) textflow.SingleCountPorts {
@@ -108,6 +93,7 @@ type tokenEntryProbeForTest struct {
 }
 
 func (p *tokenEntryProbeForTest) mark(value string) { p.events = append(p.events, value) }
+
 func (p *tokenEntryProbeForTest) Access(*gin.Context) (*apikey.APIKey, bool) {
 	p.mark("access")
 	return p.key, p.key != nil

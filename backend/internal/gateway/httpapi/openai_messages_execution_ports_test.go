@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
 )
 
 // TestOpenAIMessagesExecutionAdapterPreservesNilFailover 验证指针错误转接口后仍为 nil，确定性 400 据此写出响应。

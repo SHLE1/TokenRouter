@@ -13,18 +13,38 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+	"github.com/gin-gonic/gin"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
 	opscore "github.com/TokenFlux/TokenRouter/internal/ops"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
-
-	"github.com/gin-gonic/gin"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
+
+// OpsErrorLogQueue 将已冻结的请求观测值加入日志队列，app 管理队列的启停。
+type OpsErrorLogQueue interface {
+	Enqueue(*opscore.OpsService, *opscore.OpsInsertErrorLogInput)
+}
+
+// OpsObservationAccess 为错误日志提供身份数据和准入拒绝信息。
+type OpsObservationAccess struct {
+	APIKey   func(*gin.Context) *apikey.APIKey
+	Rejected func(*gin.Context) bool
+}
+
+func (a OpsObservationAccess) key(c *gin.Context) *apikey.APIKey {
+	if a.APIKey == nil {
+		return nil
+	}
+	return a.APIKey(c)
+}
+
+func (a OpsObservationAccess) rejected(c *gin.Context) bool {
+	return a.Rejected != nil && a.Rejected(c)
+}
 
 const (
 	OpsModelKey                  = "ops_model"
@@ -1672,11 +1692,6 @@ func inferStreamFailureStatus(_ *gin.Context, parsed parsedOpsError) int {
 
 	return http.StatusBadGateway
 }
-
-// getOpsAPIKey 返回用于 Ops 错误日志的 API Key：优先取已鉴权写入的正式 key；
-// 鉴权早退（分组停用/删除、Key 停用/过期/额度、用户停用、IP 限制等）时，
-// 正式 key 尚未写入，回退到 middleware 写入的 ops fallback key
-// （含 User/Group/Platform），从而让日志能展示 用户/分组/平台。
 
 // selectedOpsPlatform 只使用已选提供商的快照，尚未选号的错误保留 unknown。
 func selectedOpsPlatform(c *gin.Context) string {

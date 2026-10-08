@@ -3,9 +3,10 @@ package httpapi
 import (
 	"context"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
-	"github.com/gin-gonic/gin"
 )
 
 type cyberHTTPBackend struct{ core *session.CyberBlocks }

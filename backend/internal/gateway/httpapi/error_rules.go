@@ -3,9 +3,10 @@ package httpapi
 import (
 	"strconv"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/errorpolicy"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
 )
 
 // ErrorPassthroughHandler 处理错误透传规则的 HTTP 请求
@@ -278,4 +279,16 @@ func (h *ErrorPassthroughHandler) Delete(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": "Rule deleted successfully"})
+}
+
+// RegisterErrorPassthroughRoutes 注册所属管理路由；组鉴权、限流和审计由 app 预先安装。
+func RegisterErrorPassthroughRoutes(admin *gin.RouterGroup, endpoint *ErrorPassthroughHandler) {
+	rules := admin.Group("/error-passthrough-rules")
+	{
+		rules.GET("", endpoint.List)
+		rules.GET("/:id", endpoint.GetByID)
+		rules.POST("", endpoint.Create)
+		rules.PUT("/:id", endpoint.Update)
+		rules.DELETE("/:id", endpoint.Delete)
+	}
 }

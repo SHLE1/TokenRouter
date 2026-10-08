@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeldisplay"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/gin-gonic/gin"
 )
 
 // WriteGroupSelectionBusinessError 在原失败时点读取 Key 展示限制，不执行额外选号。

@@ -4,12 +4,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	"github.com/gin-gonic/gin"
 
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
-	"github.com/gin-gonic/gin"
 )
 
 // OpenAIEncryptedLineage 通过 HTTP 与 WS 共用的会话存储读写失效密文。

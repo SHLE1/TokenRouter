@@ -1,22 +1,36 @@
 package httpapi
 
 import (
+	"context"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
-	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-
-	gatewaysession "github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-
+	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	gatewaysession "github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
+
+// WithOpenAIGuardianParentAffinity 从 HTTP 头和报文提取父会话，再通过 scheduler 生成亲和性散列。
+func WithOpenAIGuardianParentAffinity(ctx context.Context, c *gin.Context, body []byte, model string) context.Context {
+	if ctx == nil || c == nil || !clientmeta.IsCodexReviewModel(model) {
+		return ctx
+	}
+	parent := clientmeta.CodexReviewParent(clientmeta.CodexReviewInput{Model: model, Body: body, Subagent: c.GetHeader(clientmeta.OpenAISubagentHeader), ParentThreadID: c.GetHeader(clientmeta.CodexParentThreadIDHeader), TurnMetadata: c.GetHeader(clientmeta.CodexTurnMetadataHeader)})
+	if parent == "" {
+		return ctx
+	}
+	current, legacy := scheduler.DeriveSessionHashes(parent)
+	if current == "" {
+		return ctx
+	}
+	return requeststate.WithGuardianParentAffinity(ctx, requeststate.GuardianParentAffinity{CurrentSessionHash: current, LegacySessionHash: legacy})
+}
 
 const (
 	OpenCodeSessionAffinityHeader = "X-Session-Affinity"

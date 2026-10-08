@@ -148,3 +148,22 @@ func optimizedParseWSIngressPayload(raw []byte) (eventType, model, promptCacheKe
 	previousResponseID = WSPayloadString(payload, "previous_response_id")
 	return eventType, model, promptCacheKey, previousResponseID, payload, nil
 }
+
+func BenchmarkOpenAIWSEventEnvelopeParse(b *testing.B) {
+	event := []byte(`{"type":"response.completed","response":{"id":"resp_bench_1","model":"gpt-5.1","usage":{"input_tokens":12,"output_tokens":8}}}`)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		eventType, responseID, response := ParseWSEventEnvelope(event)
+		benchmarkOpenAIWSStringSink = eventType
+		benchmarkOpenAIWSStringSink = responseID
+		benchmarkOpenAIWSBoolSink = response.Exists()
+	}
+}
+
+// 基准结果保存在包变量中，防止编译器消除解析结果。
+var (
+	benchmarkOpenAIWSStringSink string
+	benchmarkOpenAIWSBoolSink   bool
+)

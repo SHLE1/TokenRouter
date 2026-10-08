@@ -6,20 +6,19 @@ import (
 	"net/http"
 	"strings"
 
+	coderws "github.com/coder/websocket"
+	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
+
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	coderws "github.com/coder/websocket"
-	"github.com/gin-gonic/gin"
-	"github.com/tidwall/gjson"
 )
 
 func normalizeOpenAIWSTerminalEvent(eventType string) string {

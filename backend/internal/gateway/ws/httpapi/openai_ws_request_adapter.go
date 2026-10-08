@@ -6,26 +6,19 @@ import (
 	"fmt"
 	"strings"
 
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing"
-
-	providerconfig "github.com/TokenFlux/TokenRouter/internal/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
-	gatewaymedia "github.com/TokenFlux/TokenRouter/internal/gateway/media"
-
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
-	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
-
-	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
 	coderws "github.com/coder/websocket"
 	"github.com/tidwall/sjson"
+
+	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
+	gatewaymedia "github.com/TokenFlux/TokenRouter/internal/gateway/media"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
+	providerconfig "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
 // wsRequestAdapter 提供提供商和分组资格数据，并调用平台 codec。

@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -73,4 +74,15 @@ func TestDecryptAgentTaskIDSupportsCodexSealedBoxResponse(t *testing.T) {
 	got, err := DecryptAgentTaskID(key, base64.StdEncoding.EncodeToString(ciphertext))
 	require.NoError(t, err)
 	require.Equal(t, "task-sealed", got)
+}
+
+func TestOpenAIWSAgentIdentityRecoveryRequiresTaskInvalidBody(t *testing.T) {
+	require.False(t, IsAgentTaskInvalidWSDialError(&WSDialError{
+		StatusCode:   http.StatusUnauthorized,
+		ResponseBody: []byte(`{"error":{"code":"invalid_signature"}}`),
+	}))
+	require.True(t, IsAgentTaskInvalidWSDialError(&WSDialError{
+		StatusCode:   http.StatusUnauthorized,
+		ResponseBody: []byte(`{"error":{"code":"invalid_task_id"}}`),
+	}))
 }

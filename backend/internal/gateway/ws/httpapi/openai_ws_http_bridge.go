@@ -12,33 +12,29 @@ import (
 	"strings"
 	"time"
 
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/tidwall/gjson"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
+	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-
+	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
-
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
-
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/gin-gonic/gin"
-	"github.com/tidwall/gjson"
 )
 
 const (
@@ -1129,4 +1125,23 @@ func resolveGrokWSModels(provider *gatewayprovider.ExecutionProvider, body []byt
 		upstreamModel = grok.DefaultResponsesModel
 	}
 	return billingModel, upstreamModel
+}
+
+// completeHTTPBridgeWarmup 在本地完成预热，入站会话继续保存输入供下一轮重放。
+func completeHTTPBridgeWarmup(model string, write func([]byte) error) (*forward.OpenAIResult, error) {
+	started := time.Now()
+	responseID := "resp_ws_warmup_" + uuid.NewString()
+	events, err := openai.WSWarmupEvents(responseID, model, started.Unix())
+	if err != nil {
+		return nil, err
+	}
+	for _, event := range events {
+		if err := write(event); err != nil {
+			return nil, err
+		}
+	}
+	return &forward.OpenAIResult{
+		LocalWarmup: true, RequestID: responseID, ResponseID: responseID, Model: model,
+		Stream: true, OpenAIWSMode: true, UpstreamTerminalEvent: "response.completed", Duration: time.Since(started),
+	}, nil
 }

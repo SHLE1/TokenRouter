@@ -2,24 +2,17 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
-)
 
-// 回归覆盖 2026-05-24 09:13 CST 左右的生产问题：
-// 用户通过 Codex CLI 以 stream:true 请求 /v1/responses，用户并发槽等待期间先写出 SSE ping comment，
-// 导致 HTTP 200 与响应头被 flush；30 秒超时后 handler 写出 `event: error\ndata: {...}`。
-// Codex CLI 不把它当作 Responses 终止事件，于是报 "stream closed before response.completed"。
-// 修复要求 /v1/responses 入站流在这种场景写出合成的 response.failed 事件。
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+)
 
 func newGinContextForEndpoint(t *testing.T, endpoint string) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
@@ -28,37 +21,6 @@ func newGinContextForEndpoint(t *testing.T, endpoint string) (*gin.Context, *htt
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodPost, endpoint, nil)
 	return c, w
-}
-
-// parseResponsesFailedSSE 抽出 SSE 中 data 行的 JSON，返回 (response 对象, error 对象)。
-func parseResponsesFailedSSE(t *testing.T, body string) (map[string]any, map[string]any) {
-	t.Helper()
-	require.True(t, strings.HasPrefix(body, "event: response.failed\n"),
-		"expect event: response.failed prefix, got: %q", body)
-	require.True(t, strings.HasSuffix(body, "\n\n"))
-
-	lines := strings.SplitN(strings.TrimSuffix(body, "\n\n"), "\n", 2)
-	require.Len(t, lines, 2)
-	require.True(t, strings.HasPrefix(lines[1], "data: "))
-	jsonStr := strings.TrimPrefix(lines[1], "data: ")
-
-	var parsed map[string]any
-	require.NoError(t, json.Unmarshal([]byte(jsonStr), &parsed), "data must be valid JSON: %s", jsonStr)
-
-	assert.Equal(t, "response.failed", parsed["type"])
-	// 合成事件省略 sequence_number，序号由后续协议事件提供。
-	_, hasSeq := parsed["sequence_number"]
-	assert.False(t, hasSeq, "synthetic event must not emit sequence_number")
-
-	resp, ok := parsed["response"].(map[string]any)
-	require.True(t, ok, "response object missing")
-	assert.Equal(t, "response", resp["object"])
-	assert.Equal(t, "failed", resp["status"])
-
-	errObj, ok := resp["error"].(map[string]any)
-	require.True(t, ok, "error object missing")
-
-	return resp, errObj
 }
 
 // TestOpenAIHandleStreamingAwareError_ResponsesStreamingEmitsResponseFailed 验证 OpenAI 的 /v1/responses 流开始后，错误写为 response.failed。

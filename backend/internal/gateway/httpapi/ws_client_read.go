@@ -5,14 +5,16 @@ import (
 	"errors"
 	"time"
 
-	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	coderws "github.com/coder/websocket"
+
+	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 )
 
 // ReadOpenAIWSClientMessage 将实际连接交给网关读循环，并转换客户端关闭帧错误。
 func ReadOpenAIWSClientMessage(ctx context.Context, conn *coderws.Conn, timeout time.Duration, status coderws.StatusCode, reason string) (coderws.MessageType, []byte, error) {
 	return ReadOpenAIWSClientMessageWithTimeoutStart(ctx, conn, timeout, status, reason, nil, nil)
 }
+
 func ReadOpenAIWSClientMessageWithTimeoutStart(ctx context.Context, conn *coderws.Conn, timeout time.Duration, status coderws.StatusCode, reason string, start <-chan struct{}, active func() bool) (coderws.MessageType, []byte, error) {
 	var input gatewayws.ClientConn
 	if conn != nil {

@@ -3,17 +3,19 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"time"
 
-	openaiexecution "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
+	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
+	openaiexecution "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-	"github.com/gin-gonic/gin"
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/sjson"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
 // Chat 接收 Chat Completions 请求，按客户端首选协议、提供商协议配置和 Responses 探测结果选择上游协议。
@@ -75,4 +77,19 @@ func (s *OpenAITextExecutor) chatError(
 	requestedModel ...string,
 ) (*forwardcore.OpenAIResult, error) {
 	return s.Output.CompatError(resp, c, provider, WriteForwardChatError, WriteForwardChatErrorBody, requestedModel...)
+}
+
+// OpenAITextExecutor 绑定文本协议执行、请求构造和会话状态。
+type OpenAITextExecutor struct {
+	Compact        *CompactExecutor
+	Requests       *OpenAIRequests
+	Output         *OpenAIResponseOutput
+	Grok           *GrokExecutor
+	Credentials    *gatewayprovider.RequestCredentials
+	FastPolicy     *gatewayprovider.ExecutionFastPolicy
+	Continuation   *session.CompatResponses
+	PromptCache    *session.AnthropicPromptCache
+	CodexUsage     *provideradapter.CodexUsageObserver
+	ForcedTemplate string
+	ResponseTTL    func() time.Duration
 }

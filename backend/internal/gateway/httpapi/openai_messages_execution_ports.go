@@ -6,39 +6,63 @@ import (
 	"net/http"
 	"strings"
 
-	openaiexecution "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	protocolforward "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	openaiexecution "github.com/TokenFlux/TokenRouter/internal/gateway/provider/openaiforward"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
+	protocolbridge "github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
+	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
-	protocolforward "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
-
-	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
-
-	protocolbridge "github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
-
-	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
+
+func compatResponseKey(c *gin.Context, provider *gatewayprovider.ExecutionProvider, promptCacheKey string) string {
+	key := strings.TrimSpace(promptCacheKey)
+	if provider == nil || key == "" {
+		return ""
+	}
+	apiKeyID := int64(0)
+	if c != nil {
+		apiKeyID = APIKeyIDFromContext(c)
+	}
+	return session.CompatResponseKey(provider.Record.ID, apiKeyID, key)
+}
+
+const OpenAICompatMessagesBridgeContextKey = "openai_compat_messages_bridge"
+
+func SetOpenAICompatMessagesBridgeContext(c *gin.Context, enabled bool) {
+	if c == nil || !enabled {
+		return
+	}
+	c.Set(OpenAICompatMessagesBridgeContextKey, true)
+}
+
+func IsOpenAICompatMessagesBridgeContext(c *gin.Context) bool {
+	if c == nil {
+		return false
+	}
+	value, ok := c.Get(OpenAICompatMessagesBridgeContextKey)
+	if !ok {
+		return false
+	}
+	enabled, ok := value.(bool)
+	return ok && enabled
+}
 
 type openAIMessagesExecutionAdapter struct {
 	proxyURL string

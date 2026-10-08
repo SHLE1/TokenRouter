@@ -112,3 +112,26 @@ func TestIsOpenAIWSTokenEvent_DisjointWithTerminal(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkReplaceOpenAIWSMessageModel_NoMatchFastPath(b *testing.B) {
+	event := []byte(`{"type":"response.output_text.delta","delta":"hello world"}`)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		benchmarkOpenAIWSBytesSink = ReplaceWSMessageModel(event, "gpt-5.1", "custom-model")
+	}
+}
+
+func BenchmarkReplaceOpenAIWSMessageModel_DualReplace(b *testing.B) {
+	event := []byte(`{"type":"response.completed","model":"gpt-5.1","response":{"id":"resp_1","model":"gpt-5.1"}}`)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		benchmarkOpenAIWSBytesSink = ReplaceWSMessageModel(event, "gpt-5.1", "custom-model")
+	}
+}
+
+// benchmarkOpenAIWSBytesSink 保存模型替换基准的结果。
+var benchmarkOpenAIWSBytesSink []byte

@@ -3,10 +3,10 @@ package httpapi
 import (
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 // UserMsgQueueHelper 用户消息串行队列 Handler 层辅助

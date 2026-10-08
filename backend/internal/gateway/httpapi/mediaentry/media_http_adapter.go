@@ -5,6 +5,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -18,8 +21,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 type mediaHTTPAdapter struct{ h *Runtime }

@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	wireprotocol "github.com/TokenFlux/TokenRouter/internal/protocol"
-	"github.com/gin-gonic/gin"
 )
 
 // RouteEndpoints 汇总网关 HTTP 处理器和外部处理接口。
@@ -84,7 +85,7 @@ func RegisterGatewayRoutes(engine *gin.Engine, endpoints RouteEndpoints, options
 	}
 	// /responses/*subpath 的子路径会被转发到上游同名端点之后，因此在入口就拒掉
 	// 不可转发的子路径，不让它进入调度与转发流程。可转发的判定见
-	// IsForwardableOpenAIResponsesRequestPath 及 upstream_path_guard.go。
+	// IsForwardableOpenAIResponsesRequestPath 及 responses_path.go。
 	guardResponsesSubpath := func(next gin.HandlerFunc) gin.HandlerFunc {
 		return func(c *gin.Context) {
 			if !IsForwardableOpenAIResponsesRequestPath(c) {

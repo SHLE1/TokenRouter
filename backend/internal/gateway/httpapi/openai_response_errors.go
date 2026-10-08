@@ -1,30 +1,29 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
+	"go.uber.org/zap"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-
+	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/gin-gonic/gin"
-	"github.com/tidwall/gjson"
-	"go.uber.org/zap"
 )
 
 func LogOpenAIInstructionsRequiredDebug(
@@ -593,4 +592,24 @@ func (p *OpenAIResponseOutput) errorBodyReadLimit() int64 {
 		limit = int64(p.Options.LogUpstreamErrorBodyMaxBytes)
 	}
 	return limit
+}
+
+// ApplyHTTPFailure 使用传入的首个模型处理 HTTP 失败。
+func (p *OpenAIResponseOutput) ApplyHTTPFailure(ctx context.Context, resp *http.Response, target *gatewayprovider.ExecutionProvider, body []byte, models ...string) providercore.UpstreamErrorDecision {
+	if len(models) > 0 {
+		return gatewayprovider.ApplyOpenAIResponseHealth(ctx, p.Health, target, resp.StatusCode, resp.Header, body, false, models[0])
+	}
+	return gatewayprovider.ApplyOpenAIResponseHealth(ctx, p.Health, target, resp.StatusCode, resp.Header, body, false)
+}
+
+// ReadReplayableError 读取并关闭上游错误体，再把 resp.Body 回卷为可重读的副本。
+// 返回值包含原始错误体和脱敏后的错误消息。
+func (s *OpenAIResponseOutput) ReadReplayableError(resp *http.Response) ([]byte, string) {
+	respBody := s.ReadErrorBody(resp)
+	_ = resp.Body.Close()
+	resp.Body = io.NopCloser(bytes.NewReader(respBody))
+
+	upstreamMsg := strings.TrimSpace(upstream.ExtractErrorMessage(respBody))
+	upstreamMsg = logredact.SanitizeUpstreamQueries(upstreamMsg)
+	return respBody, upstreamMsg
 }

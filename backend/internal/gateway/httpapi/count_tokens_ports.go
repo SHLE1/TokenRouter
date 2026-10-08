@@ -5,6 +5,9 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
@@ -16,9 +19,25 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
+
+// FailoverClientGone 判断请求 context 是否因下游断开而取消，已断开时结束换号。
+// 取消后重新选择提供商会返回 context.Canceled，容易误报为提供商耗尽的 502。在途的 detach 请求照常计费。
+// 响应尚未提交时标记 499（client closed request），供访问日志归类。
+func FailoverClientGone(c *gin.Context) bool {
+	if c == nil || c.Request == nil || c.Request.Context().Err() == nil {
+		return false
+	}
+	// 先停止 compact 心跳，在互斥锁下等待心跳写入结束，再标记响应状态。
+	// 心跳已提交 200 时保留该状态码。
+	if StopOpenAICompactSSEKeepaliveCommitted(c) {
+		return true
+	}
+	if !c.Writer.Written() {
+		c.Status(StatusClientClosedRequest)
+	}
+	return true
+}
 
 // CountTarget 保存所选计数目标，HTTP 读取其摘要数据。
 type CountTarget interface {
@@ -56,7 +75,9 @@ func (p CountHTTPPorts) Access(c *gin.Context) (*apikey.APIKey, bool) {
 	key, ok := p.ReadAccess(c)
 	return apikey.CopyAPIKey(key), ok
 }
+
 func (p CountHTTPPorts) CompatibilityMetrics(log *zap.Logger) { p.ObserveCompatibility(log) }
+
 func (p CountHTTPPorts) ObserveRequest(c *gin.Context, model string, stream bool) {
 	SetOpsRequestContext(c, model, stream)
 }
@@ -127,6 +148,7 @@ type countAttempt struct {
 }
 
 func (b *countAttempt) Context() context.Context { return b.c.Request.Context() }
+
 func (b *countAttempt) Select(excluded map[int64]struct{}) (textflow.Selection, error) {
 	target, err := b.ports.Executor.SelectCountTarget(b.Context(), b.key.GroupID, b.hash, b.parsed.Model, excluded)
 	if err != nil {
@@ -185,7 +207,9 @@ func (b *countAttempt) ForwardFailed(selected textflow.Selection, err error) {
 func (b *countAttempt) ReleaseSession(_ textflow.Selection) {
 	b.target.ReleaseSession(context.Background(), b.hash)
 }
+
 func (b *countAttempt) Canceled() { FailoverClientGone(b.c) }
+
 func (b *countAttempt) Exhausted(selected textflow.Selection, last *textflow.AttemptFailure) {
 	b.exhausted(last, selected.Provider.Platform)
 }

@@ -10,29 +10,34 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-
-	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
+	gatewaymedia "github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	mediaprovider "github.com/TokenFlux/TokenRouter/internal/gateway/media/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
-	gatewaymedia "github.com/TokenFlux/TokenRouter/internal/gateway/media"
-
+	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
-	"github.com/gin-gonic/gin"
-	"github.com/tidwall/gjson"
 )
+
+// OpenAIAuxiliary 绑定搜索、嵌入和计数请求的出站能力。
+type OpenAIAuxiliary struct {
+	Requests      *OpenAIRequests
+	Output        *OpenAIResponseOutput
+	CodexUsage    *provideradapter.CodexUsageObserver
+	Authorization *providercore.OpenAIAuthorization
+	Enter         func() (func(), error)
+}
 
 const (
 	chatgptCodexAlphaSearchURL   = "https://chatgpt.com/backend-api/codex/alpha/search"

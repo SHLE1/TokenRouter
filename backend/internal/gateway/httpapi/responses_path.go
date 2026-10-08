@@ -3,8 +3,9 @@ package httpapi
 import (
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // OpenAIResponsesRequestPathSuffix 提取 Responses 路径后缀并检查协议白名单。

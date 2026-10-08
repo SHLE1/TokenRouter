@@ -9,10 +9,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress"
-	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/egress"
+	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 )
 
 func WriteEmbeddingsUpstreamResponse(c *gin.Context, resp *http.Response, body []byte, filter *egress.CompiledHeaderFilter) {

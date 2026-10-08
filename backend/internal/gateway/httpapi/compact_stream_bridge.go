@@ -7,11 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/compact"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 // openAICompactClientStreamKey 标记 body-signal Compact 原始正文中的 stream:true（Codex remote compact v2，#3777）。

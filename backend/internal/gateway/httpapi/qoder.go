@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
+	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
-	"github.com/tidwall/gjson"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // ParsedRequest 是读取 HTTP 正文并校验字段后得到的只读请求数据。

@@ -4,19 +4,18 @@ import (
 	"context"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-
 	gatewaylive "github.com/TokenFlux/TokenRouter/internal/gateway/live"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 // liveCreatePorts 只连接原生选择器、模型轨迹和供应商单次创建能力。

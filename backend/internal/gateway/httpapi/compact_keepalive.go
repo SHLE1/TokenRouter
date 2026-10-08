@@ -81,8 +81,7 @@ func StartOpenAISSEKeepalive(c *gin.Context, interval time.Duration) func() {
 	}()
 	return func() {
 		k.Stop()
-		// 请求结束后恢复原 writer，避免 compact wrapper 继续引用已回收到池中的
-		// 中间件 writer。
+		// 请求结束后恢复中间件 writer，compact 包装器随请求释放。
 		if current, ok := c.Writer.(*compactKeepaliveWriter); ok && current == wrappedWriter {
 			c.Writer = originalWriter
 		}
@@ -299,4 +298,28 @@ func (w *compactKeepaliveWriter) Written() bool {
 	w.k.mu.Lock()
 	defer w.k.mu.Unlock()
 	return w.ResponseWriter.Written()
+}
+
+// RecordOpenAIStreamKeepaliveBytes 单独记录流心跳字节数。
+func RecordOpenAIStreamKeepaliveBytes(c *gin.Context, written int) {
+	if c == nil || written <= 0 {
+		return
+	}
+	current := 0
+	if value, ok := c.Get(openAIStreamKeepaliveBytesContextKey); ok {
+		current, _ = value.(int)
+	}
+	c.Set(openAIStreamKeepaliveBytesContextKey, current+written)
+}
+
+// OpenAIStreamClientOutputStarted 优先读取本地输出标记，再检查扣除心跳后的字节数。
+func OpenAIStreamClientOutputStarted(c *gin.Context, localStarted bool) bool {
+	if localStarted {
+		return true
+	}
+	if c == nil || c.Writer == nil {
+		return false
+	}
+	// compact 心跳会提交 HTTP 200，但不属于模型业务输出，不应阻止安全重试。
+	return OpenAICompactKeepaliveAdjustedWrittenSize(c) >= 0
 }

@@ -12,17 +12,16 @@ import (
 	"testing"
 	"time"
 
-	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
 
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
 )
 
 // openAITransportProviderRepoStub 记录临时不可调度调用，调用其他仓储方法会使测试失败。

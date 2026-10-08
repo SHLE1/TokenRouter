@@ -3,8 +3,9 @@ package httpapi
 import (
 	"context"
 
-	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	coderws "github.com/coder/websocket"
+
+	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 )
 
 // WSClientFrames 转换网络库的帧和关闭枚举。

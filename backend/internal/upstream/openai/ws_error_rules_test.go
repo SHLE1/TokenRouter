@@ -90,3 +90,8 @@ func TestOpenAIWSErrorEventHelpers_ConsistentWithWrapper(t *testing.T) {
 	require.Equal(t, wrappedStatus, rawStatus)
 	require.Equal(t, http.StatusBadRequest, rawStatus)
 }
+
+func TestOpenAIWSErrorHTTPStatusFromRaw_UsageLimitReachedIs429(t *testing.T) {
+	require.Equal(t, http.StatusTooManyRequests, WSErrorHTTPStatusFromRaw("", "usage_limit_reached"))
+	require.Equal(t, http.StatusTooManyRequests, WSErrorHTTPStatusFromRaw("rate_limit_exceeded", ""))
+}

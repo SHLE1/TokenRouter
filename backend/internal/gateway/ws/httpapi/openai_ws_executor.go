@@ -4,16 +4,14 @@ import (
 	"context"
 	"time"
 
-	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
-	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
-
-	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 )
 
 // OpenAIWSOptions 保存 WS 执行的静态参数，nil 表示使用默认配置。

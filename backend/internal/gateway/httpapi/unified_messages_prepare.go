@@ -3,14 +3,15 @@ package httpapi
 import (
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 // NativeMessageQueue 连接既有消息队列服务，统一执行器不另建锁或等待循环。

@@ -7,18 +7,15 @@ import (
 	"net/http"
 	"strings"
 
-	responseprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
 	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
-
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	responseprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/gin-gonic/gin"
 )
 
 func (p *OpenAIResponseOutput) failedResponseTerminal(ctx context.Context, c *gin.Context, provider *gatewayprovider.ExecutionProvider, resp *http.Response, mappedModel string, terminalPayload []byte, msg string) error {

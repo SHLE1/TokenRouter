@@ -10,16 +10,16 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
-
-	gatewaylive "github.com/TokenFlux/TokenRouter/internal/gateway/live"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
-	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	gatewaylive "github.com/TokenFlux/TokenRouter/internal/gateway/live"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/modeltrace"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/server/clientip"
 )
 
 // Live 创建 ChatGPT Frameless Live 会话并返回 SDP 应答。
