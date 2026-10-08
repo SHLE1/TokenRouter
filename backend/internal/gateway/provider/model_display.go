@@ -3,10 +3,11 @@ package provider
 import (
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/modeldisplay"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
-	"github.com/google/uuid"
 )
 
 // ModelDisplayCatalogue 将统一目录条目转换为客户端展示字段。

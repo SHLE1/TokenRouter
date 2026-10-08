@@ -11,13 +11,18 @@ import (
 	"sort"
 	"strings"
 
+	coderws "github.com/coder/websocket"
+	"go.uber.org/zap"
+
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
-	coderws "github.com/coder/websocket"
-	"go.uber.org/zap"
 )
+
+// WarnReasoningCacheFailure 记录推理缓存失败的诊断字段。
+func WarnReasoningCacheFailure(itemID string, err error) {
+	logging.L().Warn("openai responses chat fallback: cache reasoning content failed", zap.Error(err), zap.String("item_id", itemID))
+}
 
 func NormalizeOpenAIWSLogValue(value string) string {
 	trimmed := strings.TrimSpace(value)

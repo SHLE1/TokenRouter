@@ -4,14 +4,20 @@ import (
 	"context"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
 	protocolcore "github.com/TokenFlux/TokenRouter/internal/protocol"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
+
+// ProviderExtraImagesURLToB64JSON 保留既有提供商设置键。
+const ProviderExtraImagesURLToB64JSON = "images_url_to_b64_json"
+
+// ImagesURLToB64JSONEnabled 返回提供商是否开启 URL 到 base64 的图片回填。
+func ImagesURLToB64JSONEnabled(provider *ExecutionProvider) bool {
+	return provider != nil && provider.Record.Platform == capability.PlatformOpenAI && provider.Record.Type == capability.ProviderTypeAPIKey && ExecutionProtocolRecord(provider).GetExtraBool(ProviderExtraImagesURLToB64JSON)
+}
 
 func GroupResponsesExplicitToolPolicy(group *routing.Group, inherited string) string {
 	if group == nil {
@@ -42,7 +48,7 @@ func APIKeyGroup(apiKey *apikey.APIKey) *routing.Group {
 	return apiKey.Group
 }
 
-// ResponseImagePolicy 按分组显式协议策略、提供商覆盖和全局默认值的优先级读取图片桥接设置。
+// ResponseImagePolicy 按分组协议策略、提供商覆盖和全局默认值的优先级读取图片桥接设置。
 type ResponseImagePolicy struct {
 	DefaultEnabled bool
 }

@@ -1,6 +1,6 @@
 package httpapi
 
-// Grok 执行场景覆盖 gateway/provider/model_policy.go 的模型解析、gateway/provider/grok_health.go 的健康处理和 gateway/httpapi/openai_response_output.go 的错误输出。
+// Grok 执行场景覆盖 gateway/provider/model_policy.go 的模型解析、gateway/provider/health_observation.go 的健康处理和 gateway/httpapi/openai_response_output.go 的错误输出。
 
 import (
 	"context"

@@ -3,8 +3,9 @@ package provider
 import (
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 )
 
 // 本地预热标记经过双向结果转换后仍阻止上游成功反馈。

@@ -7,21 +7,18 @@ import (
 	"testing"
 	"time"
 
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
-	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
-	"github.com/stretchr/testify/require"
 )
 
-// sparkShadowRepoStub 是 ProviderRepository 的内存测试桩，
-// 专为 CreateShadow 单元测试设计。
-// 嵌入 mockProviderRepoForGemini（由 gemini_multiplatform_test.go 提供所有 stub 方法），
-// 并覆盖测试所需的核心方法。
+// sparkShadowRepoStub 为 CreateShadow 测试保存提供商、分组和递增 ID。
+// 它嵌入 AdminStore 接口，提供本测试使用的存取方法。
 type sparkShadowRepoStub struct {
 	providercore.AdminStore
 	providersByID map[int64]*providercore.Record

@@ -6,16 +6,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/TokenFlux/TokenRouter/internal/creative"
+	creativeprovider "github.com/TokenFlux/TokenRouter/internal/creative/provider"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
-
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-
-	creativeprovider "github.com/TokenFlux/TokenRouter/internal/creative/provider"
 	gemininative "github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
 	geminicli "github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"

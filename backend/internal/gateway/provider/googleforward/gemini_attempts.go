@@ -718,3 +718,12 @@ func (s *Gemini) extractImageInputSize(body []byte) string {
 
 	return ""
 }
+
+// observeHealth 执行健康观测并将凭据和附加状态写回执行提供商。
+func (s *Gemini) observeHealth(ctx context.Context, target *gatewayprovider.ExecutionProvider, status int, headers http.Header, body []byte) {
+	record := gatewayprovider.ExecutionRecord(target)
+	updated := s.Errors.Observe(ctx, record, status, headers, body, gatewayprovider.HealthObservationFromContext(ctx, status, headers, body, nil))
+	if target != nil && updated != nil {
+		target.Record.Credentials, target.Record.Extra = updated.Credentials, updated.Extra
+	}
+}

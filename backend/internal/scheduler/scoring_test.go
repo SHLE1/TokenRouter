@@ -476,3 +476,16 @@ func TestOpenAIProviderRuntimeStats_ReportConcurrent(t *testing.T) {
 		require.Greater(t, ttft, 0.0)
 	}
 }
+
+func TestClamp01_AllBranches(t *testing.T) {
+	require.Equal(t, 0.0, Clamp01(-0.2))
+	require.Equal(t, 1.0, Clamp01(1.3))
+	require.Equal(t, 0.5, Clamp01(0.5))
+}
+
+func TestCalcLoadSkewByMoments_Branches(t *testing.T) {
+	require.Equal(t, 0.0, LoadSkewByMoments(1, 1, 1))
+	// variance < 0 分支：sumSquares/count - mean^2 为负值时应钳制为 0。
+	require.Equal(t, 0.0, LoadSkewByMoments(1, 0, 2))
+	require.GreaterOrEqual(t, LoadSkewByMoments(6, 20, 3), 0.0)
+}

@@ -6,18 +6,16 @@ import (
 	"strings"
 	"time"
 
-	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
-	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
-
-	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
 // SelectProviderForModel 选择支持指定模型的提供商（粘性会话+优先级+模型映射）
@@ -702,4 +700,20 @@ func (s *Generic) NewSessionAttempts() *schedulercore.SessionAttempts {
 // TrackSessionAttempt 根据提供商和会话参数登记本次尝试。
 func (s *Generic) TrackSessionAttempt(attempts *schedulercore.SessionAttempts, provider *gatewayprovider.ExecutionProvider, session string) {
 	attempts.Track(schedulerSessionBinding(provider, session))
+}
+
+// costWindowInput 将提供商的会话窗口和额度上限转换为计费检查输入。
+func costWindowInput(a *gatewayprovider.ExecutionProvider) billing.CostWindowInput {
+	if a == nil {
+		return billing.CostWindowInput{}
+	}
+	return billing.CostWindowInput{ID: a.Record.ID, Enabled: a.View().IsAnthropicOAuthOrSetupToken(), Limit: gatewayprovider.ExecutionRuntimeConfig(a).GetWindowCostLimit(), Reserve: gatewayprovider.ExecutionRuntimeConfig(a).GetWindowCostStickyReserve(), Start: a.Record.SessionWindowStart, End: a.Record.SessionWindowEnd}
+}
+
+// readSchedulingGroup 从通用选择器的分组仓库读取调度配置。
+func (s *Generic) readSchedulingGroup(ctx context.Context, id int64) (*routing.Group, error) {
+	if s.groupRepo == nil {
+		return nil, nil
+	}
+	return s.groupRepo.GetByID(ctx, id)
 }

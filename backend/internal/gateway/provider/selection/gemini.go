@@ -7,18 +7,15 @@ import (
 	"strings"
 	"time"
 
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
-	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
 const geminiStickySessionTTL = time.Hour
@@ -389,7 +386,7 @@ func (s *Gemini) HasAntigravityProviders(ctx context.Context, groupID *int64) (b
 // SelectProviderForAIStudioEndpoints 为 generativelanguage.googleapis.com
 // （如 GET /v1beta/models）选择适合的提供商。
 // 优先使用 AI Studio API Key，然后依次尝试无 project_id 的 OAuth、
-// 显式标记 ai_studio 的 OAuth 和其余 Gemini 提供商。
+// 将 ai_studio OAuth 与其余 Gemini 提供商分开。
 func (s *Gemini) SelectProviderForAIStudioEndpoints(ctx context.Context, groupID *int64) (*gatewayprovider.ExecutionProvider, error) {
 	var read func(context.Context, int64) (*routing.Group, error)
 	if s.groupRepo != nil {
@@ -524,4 +521,12 @@ func (s *Gemini) resolveAdvancedSchedulerGroup(ctx context.Context, groupID *int
 	}
 	group, err := s.groupRepo.GetByIDLite(ctx, *groupID)
 	return group, err == nil && group != nil
+}
+
+// readSchedulingGroup 从 Gemini 分组仓库读取调度配置。
+func (s *Gemini) readSchedulingGroup(ctx context.Context, id int64) (*routing.Group, error) {
+	if s.groupRepo == nil {
+		return nil, nil
+	}
+	return s.groupRepo.GetByID(ctx, id)
 }

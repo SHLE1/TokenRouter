@@ -3,10 +3,11 @@ package provider
 import (
 	"testing"
 
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 func TestOpenAIResponsesToolSchemaCapabilities_PlatformBoundary(t *testing.T) {

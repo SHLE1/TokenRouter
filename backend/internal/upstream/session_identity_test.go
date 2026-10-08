@@ -48,3 +48,14 @@ func TestIsolateOpenAISessionID(t *testing.T) {
 		assert.NotEqual(t, result, other)
 	})
 }
+
+func TestGenerateAnthropicMsgID_FormatAndUniqueness(t *testing.T) {
+	seen := make(map[string]struct{}, 100)
+	for i := 0; i < 100; i++ {
+		id := GenerateAnthropicMsgID()
+		require.Regexp(t, `^msg_01[0-9A-Za-z]{22}$`, id)
+		_, duplicate := seen[id]
+		require.False(t, duplicate, "第 %d 次调用生成了重复 ID: %s", i, id)
+		seen[id] = struct{}{}
+	}
+}

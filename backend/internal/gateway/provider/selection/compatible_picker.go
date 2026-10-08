@@ -5,24 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/protocol"
-
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
-
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-	"github.com/TokenFlux/TokenRouter/internal/routing"
-
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
+	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
 
@@ -822,4 +819,26 @@ func (s *compatiblePicker) selectBySessionHash(ctx context.Context, req schedule
 // openAIQuotaHeadroomFactor 旧候选只转换额度观测；评分信号使用提供商模块唯一实现。
 func openAIQuotaHeadroomFactor(value *gatewayprovider.ExecutionProvider, now time.Time) float64 {
 	return providercore.OpenAIQuotaHeadroomFactor(gatewayprovider.ExecutionRecord(value), now)
+}
+
+// pickerEngine 包含候选评分、计数和反馈操作。
+type pickerEngine interface {
+	Select(context.Context, schedulercore.PlatformSelectionInput) (*gatewayprovider.SelectionResult, schedulercore.PlatformDecision, error)
+	ReportResult(int64, bool, *int, ...policy.FeedbackConfig)
+	ReportSwitch()
+	SnapshotMetrics() schedulercore.PlatformMetricsSnapshot
+}
+
+// requestRoutingModel 返回提供商层模型，未提供时使用客户端模型。
+func requestRoutingModel(input schedulercore.PlatformSelectionInput) string {
+	if model := strings.TrimSpace(input.RoutingModel); model != "" {
+		return model
+	}
+	return input.RequestedModel
+}
+
+// cloneSelectionInput 复制本次选择输入和排除集合。
+func cloneSelectionInput(input schedulercore.PlatformSelectionInput) schedulercore.PlatformSelectionInput {
+	input.ExcludedIDs = maps.Clone(input.ExcludedIDs)
+	return input
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -636,4 +637,82 @@ func buildLargeJSON() []byte {
 	}
 
 	return append(b, ']', '}')
+}
+
+func BenchmarkParseGatewayRequest_LargeAnthropicMessages(b *testing.B) {
+	for _, size := range benchmarkBodySizes() {
+		b.Run(size.name, func(b *testing.B) {
+			body := buildLargeAnthropicMessagesBody(size.bytes, false)
+
+			b.SetBytes(int64(len(body)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				parsed, err := ParseGatewayRequest(NewRequestBodyRef(body), capability.PlatformAnthropic)
+				if err != nil {
+					b.Fatalf("解析 Anthropic 请求失败: %v", err)
+				}
+				benchmarkIntSink = len(parsed.MessagesRaw())
+			}
+		})
+	}
+}
+
+func BenchmarkParseGatewayRequest_LargeGeminiContents(b *testing.B) {
+	for _, size := range benchmarkBodySizes() {
+		b.Run(size.name, func(b *testing.B) {
+			body := buildLargeGeminiContentsBody(size.bytes)
+
+			b.SetBytes(int64(len(body)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				parsed, err := ParseGatewayRequest(NewRequestBodyRef(body), capability.PlatformGemini)
+				if err != nil {
+					b.Fatalf("解析 Gemini 请求失败: %v", err)
+				}
+				benchmarkIntSink = len(parsed.MessagesRaw())
+			}
+		})
+	}
+}
+
+// buildLargeAnthropicMessagesBody 构造重复文本的 Messages 请求，并按参数添加缓存标记。
+func buildLargeAnthropicMessagesBody(targetBytes int, includeCacheControl bool) []byte {
+	var builder strings.Builder
+	builder.Grow(targetBytes + 1024)
+	_, _ = builder.WriteString(`{"model":"claude-sonnet-4-5","stream":true,"system":[{"type":"text","text":"system seed"}],"messages":[`)
+	for i := 0; builder.Len() < targetBytes; i++ {
+		if i > 0 {
+			_ = builder.WriteByte(',')
+		}
+		_, _ = builder.WriteString(`{"role":"user","content":[{"type":"text","text":"`)
+		_, _ = builder.WriteString(strings.Repeat("anthropic payload ", 64))
+		_, _ = builder.WriteString(strconv.Itoa(i))
+		_ = builder.WriteByte('"')
+		if includeCacheControl && i%32 == 0 {
+			_, _ = builder.WriteString(`,"cache_control":{"type":"ephemeral"}`)
+		}
+		_, _ = builder.WriteString(`}]}`)
+	}
+	_, _ = builder.WriteString(`]}`)
+	return []byte(builder.String())
+}
+
+// buildLargeGeminiContentsBody 构造达到目标大小的 Gemini 文本内容请求。
+func buildLargeGeminiContentsBody(targetBytes int) []byte {
+	var builder strings.Builder
+	builder.Grow(targetBytes + 1024)
+	_, _ = builder.WriteString(`{"model":"gemini-2.5-pro","systemInstruction":{"parts":[{"text":"system seed"}]},"contents":[`)
+	for i := 0; builder.Len() < targetBytes; i++ {
+		if i > 0 {
+			_ = builder.WriteByte(',')
+		}
+		_, _ = builder.WriteString(`{"role":"user","parts":[{"text":"`)
+		_, _ = builder.WriteString(strings.Repeat("gemini payload ", 64))
+		_, _ = builder.WriteString(strconv.Itoa(i))
+		_, _ = builder.WriteString(`"}]}`)
+	}
+	_, _ = builder.WriteString(`]}`)
+	return []byte(builder.String())
 }

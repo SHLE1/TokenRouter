@@ -3,9 +3,10 @@ package provider
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/stretchr/testify/require"
 )
 
 func TestResponsesWSTransportUsesNativeProtocols(t *testing.T) {

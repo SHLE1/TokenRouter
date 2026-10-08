@@ -5,10 +5,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/search"
-	"github.com/google/uuid"
 )
 
 // searchSource 引用配置运行时拥有的同一个注册表，避免另建全局 Manager 指针。

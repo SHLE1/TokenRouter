@@ -10,6 +10,7 @@ import (
 type providerCredentialsUpdater interface {
 	UpdateCredentials(context.Context, int64, map[string]any) error
 }
+
 type executionCredentialStore struct {
 	source   ExecutionProviderStore
 	original *ExecutionProvider
@@ -45,4 +46,19 @@ func PersistExecutionCredentials(ctx context.Context, repo ExecutionProviderStor
 		value.Record.Credentials = view.Credentials
 	}
 	return err
+}
+
+// ExecutionTokenSource 定义执行请求读取提供商凭据的接口。
+type ExecutionTokenSource interface {
+	GetAccessToken(context.Context, *provider.Record) (string, error)
+}
+
+// ExecutionToken 读取令牌后，将 Gemini/Antigravity 回填的 project 凭据写入执行目标。
+func ExecutionToken(ctx context.Context, source ExecutionTokenSource, value *ExecutionProvider) (string, error) {
+	record := ExecutionRecord(value)
+	token, err := source.GetAccessToken(ctx, record)
+	if value != nil && record != nil {
+		value.Record.Credentials = record.Credentials
+	}
+	return token, err
 }

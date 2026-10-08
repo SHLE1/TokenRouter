@@ -3,10 +3,9 @@ package provider
 import (
 	"net/http"
 
-	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
-
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 )
 
 // ProjectWSResult 整理本次 WS turn 的观测结果和恢复输入。

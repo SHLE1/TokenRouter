@@ -4,11 +4,9 @@ import (
 	"context"
 	"time"
 
-	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
-
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
+	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 const stickySessionTTL = time.Hour // 粘性会话TTL

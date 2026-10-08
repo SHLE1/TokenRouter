@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	"github.com/tidwall/gjson"
 )
 
 func ApplyCodexOAuthTransform(reqBody map[string]any, isCodexCLI bool, isCompact bool) openai.CodexTransformResult {

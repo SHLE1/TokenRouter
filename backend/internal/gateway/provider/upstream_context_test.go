@@ -9,10 +9,10 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
-	"github.com/stretchr/testify/require"
 )
 
 // TestDetachedUpstreamReceivesInternalAbort 覆盖图片和流式上游的取消隔离入口。

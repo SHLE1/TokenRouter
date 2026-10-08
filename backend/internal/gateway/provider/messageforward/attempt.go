@@ -11,24 +11,18 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
-	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
+	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/searchtools"
-
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
-
-	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
 	protocolcore "github.com/TokenFlux/TokenRouter/internal/protocol"
+	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 

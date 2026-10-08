@@ -525,3 +525,64 @@ func legacyHasItemReferenceForCallIDs(reqBody map[string]any, callIDs []string) 
 	}
 	return true
 }
+
+func BenchmarkOpenAIResponses_LargeInputFunctionCallValidation(b *testing.B) {
+	for _, size := range benchmarkBodySizes() {
+		b.Run(size.name, func(b *testing.B) {
+			body := buildLargeOpenAIResponsesToolContinuationBody(size.bytes)
+
+			b.SetBytes(int64(len(body)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				validation := ValidateFunctionCallOutputContextBytes(body)
+				if !validation.HasFunctionCallOutput || !validation.HasItemReferenceForAllCallIDs {
+					b.Fatalf("工具续链校验结果异常: %+v", validation)
+				}
+				benchmarkIntSink++
+			}
+		})
+	}
+}
+
+// benchmarkBodySizes 指定工具调用上下文校验基准的目标输入大小。
+func benchmarkBodySizes() []struct {
+	name  string
+	bytes int
+} {
+	return []struct {
+		name  string
+		bytes int
+	}{
+		{name: "4MB", bytes: 4 << 20},
+		{name: "8MB", bytes: 8 << 20},
+		{name: "16MB", bytes: 16 << 20},
+		{name: "32MB", bytes: 32 << 20},
+	}
+}
+
+// buildLargeOpenAIResponsesToolContinuationBody 构造同时包含 item_reference 和 function_call_output 的请求。
+func buildLargeOpenAIResponsesToolContinuationBody(targetBytes int) []byte {
+	var builder strings.Builder
+	builder.Grow(targetBytes + 1024)
+	_, _ = builder.WriteString(`{"model":"gpt-5.4","stream":true,"previous_response_id":"resp_benchmark","input":[`)
+	for i := 0; builder.Len() < targetBytes; i++ {
+		if i > 0 {
+			_ = builder.WriteByte(',')
+		}
+		callID := "call_" + strconv.Itoa(i)
+		_, _ = builder.WriteString(`{"type":"item_reference","id":"`)
+		_, _ = builder.WriteString(callID)
+		_, _ = builder.WriteString(`"},{"type":"function_call_output","call_id":"`)
+		_, _ = builder.WriteString(callID)
+		_, _ = builder.WriteString(`","output":"`)
+		_, _ = builder.WriteString(strings.Repeat("tool output payload ", 48))
+		_, _ = builder.WriteString(strconv.Itoa(i))
+		_, _ = builder.WriteString(`"}`)
+	}
+	_, _ = builder.WriteString(`]}`)
+	return []byte(builder.String())
+}
+
+// benchmarkIntSink 记录工具续链校验的执行次数。
+var benchmarkIntSink int

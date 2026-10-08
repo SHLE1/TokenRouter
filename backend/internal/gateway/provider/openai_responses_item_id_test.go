@@ -4,9 +4,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
 func TestOpenAIResponsesInputItemIDPrefixUsesObservedOutputContracts(t *testing.T) {

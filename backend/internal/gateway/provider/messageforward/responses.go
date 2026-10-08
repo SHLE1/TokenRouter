@@ -6,12 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
-
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
+	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 

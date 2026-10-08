@@ -7,13 +7,14 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/tidwall/gjson"
+
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
-	"github.com/tidwall/gjson"
 )
 
 // buildRequest 根据已选提供商类型调用请求构造器。

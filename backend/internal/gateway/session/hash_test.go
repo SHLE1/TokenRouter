@@ -2,6 +2,9 @@ package session
 
 import (
 	"encoding/json"
+	"log/slog"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -666,3 +669,107 @@ func ParseGatewayRequest(body *requeststate.RequestBodyRef, protocol string) (*P
 func NewRequestBodyRef(body []byte) *requeststate.RequestBodyRef {
 	return requeststate.NewRequestBodyRef(body)
 }
+
+// BenchmarkGenerateSessionHash_Metadata 关注 JSON 解析与正则匹配开销。
+func BenchmarkGenerateSessionHash_Metadata(b *testing.B) {
+	body := []byte(`{"metadata":{"user_id":"session_123e4567-e89b-12d3-a456-426614174000"},"messages":[{"content":"hello"}]}`)
+
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		parsed, err := requeststate.ParseGatewayRequest(requeststate.NewRequestBodyRef(body), "")
+		if err != nil {
+			b.Fatalf("解析请求失败: %v", err)
+		}
+		benchmarkStringSink = GenerateSessionHash(parsed, slog.Info)
+	}
+}
+
+func BenchmarkGenerateSessionHash_LargeAnthropicMessages(b *testing.B) {
+	for _, size := range benchmarkBodySizes() {
+		b.Run(size.name, func(b *testing.B) {
+			body := buildLargeAnthropicMessagesBody(size.bytes, true)
+			parsed, err := requeststate.ParseGatewayRequest(requeststate.NewRequestBodyRef(body), capability.PlatformAnthropic)
+			if err != nil {
+				b.Fatalf("解析请求失败: %v", err)
+			}
+
+			b.SetBytes(int64(len(body)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				benchmarkStringSink = GenerateSessionHash(parsed, slog.Info)
+			}
+		})
+	}
+}
+
+// BenchmarkExtractCacheableContent_System 关注字符串拼接路径的性能。
+func BenchmarkExtractCacheableContent_System(b *testing.B) {
+	req := buildSystemCacheableRequest(12)
+
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		benchmarkStringSink = ExtractCacheableContent(req)
+	}
+}
+
+// benchmarkBodySizes 指定会话散列基准的目标输入大小。
+func benchmarkBodySizes() []struct {
+	name  string
+	bytes int
+} {
+	return []struct {
+		name  string
+		bytes int
+	}{
+		{name: "4MB", bytes: 4 << 20},
+		{name: "8MB", bytes: 8 << 20},
+		{name: "16MB", bytes: 16 << 20},
+		{name: "32MB", bytes: 32 << 20},
+	}
+}
+
+// buildLargeAnthropicMessagesBody 构造重复文本的 Messages 请求，并按参数添加缓存标记。
+func buildLargeAnthropicMessagesBody(targetBytes int, includeCacheControl bool) []byte {
+	var builder strings.Builder
+	builder.Grow(targetBytes + 1024)
+	_, _ = builder.WriteString(`{"model":"claude-sonnet-4-5","stream":true,"system":[{"type":"text","text":"system seed"}],"messages":[`)
+	for i := 0; builder.Len() < targetBytes; i++ {
+		if i > 0 {
+			_ = builder.WriteByte(',')
+		}
+		_, _ = builder.WriteString(`{"role":"user","content":[{"type":"text","text":"`)
+		_, _ = builder.WriteString(strings.Repeat("anthropic payload ", 64))
+		_, _ = builder.WriteString(strconv.Itoa(i))
+		_ = builder.WriteByte('"')
+		if includeCacheControl && i%32 == 0 {
+			_, _ = builder.WriteString(`,"cache_control":{"type":"ephemeral"}`)
+		}
+		_, _ = builder.WriteString(`}]}`)
+	}
+	_, _ = builder.WriteString(`]}`)
+	return []byte(builder.String())
+}
+
+// buildSystemCacheableRequest 构造每段都带缓存标记的系统消息请求。
+func buildSystemCacheableRequest(parts int) *requeststate.ParsedRequest {
+	var builder strings.Builder
+	_, _ = builder.WriteString(`{"system":[`)
+	for i := 0; i < parts; i++ {
+		if i > 0 {
+			_ = builder.WriteByte(',')
+		}
+		_, _ = builder.WriteString(`{"text":"system_part_`)
+		_, _ = builder.WriteString(strconv.Itoa(i))
+		_, _ = builder.WriteString(`","cache_control":{"type":"ephemeral"}}`)
+	}
+	_, _ = builder.WriteString(`]}`)
+	parsed, err := requeststate.ParseGatewayRequest(requeststate.NewRequestBodyRef([]byte(builder.String())), "")
+	if err != nil {
+		panic(err)
+	}
+	return parsed
+}
+
+// benchmarkStringSink 保存会话散列和缓存内容基准的结果。
+var benchmarkStringSink string

@@ -7,16 +7,13 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
-
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	schedulercore "github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 // BindStickySession 使用调度器默认期限绑定提供商会话。
@@ -454,4 +451,12 @@ func (s *Compatible) StickyProviderID(ctx context.Context, groupID *int64, sessi
 		return 0
 	}
 	return id
+}
+
+// readSchedulingGroup 通过配置的读取函数获取兼容请求的调度分组。
+func (s *Compatible) readSchedulingGroup(ctx context.Context, id int64) (*routing.Group, error) {
+	if s.schedulingGroups == nil {
+		return nil, nil
+	}
+	return s.schedulingGroups(ctx, id)
 }

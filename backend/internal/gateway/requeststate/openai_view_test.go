@@ -1,6 +1,7 @@
 package requeststate
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -171,3 +172,84 @@ func TestOpenAIViewDisabledPatches(t *testing.T) {
 	_, err := view.ApplyPatches()
 	require.Error(t, err)
 }
+
+func BenchmarkOpenAIResponses_LargeInputMeta(b *testing.B) {
+	for _, size := range benchmarkBodySizes() {
+		b.Run(size.name, func(b *testing.B) {
+			body := buildLargeOpenAIResponsesBody(size.bytes)
+
+			b.SetBytes(int64(len(body)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				model, stream, promptCacheKey := OpenAIRequestMetaFromBody(body)
+				benchmarkStringSink = model + promptCacheKey
+				if stream {
+					benchmarkIntSink++
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkOpenAIResponses_LargeInputDecodeMap(b *testing.B) {
+	for _, size := range benchmarkBodySizes() {
+		b.Run(size.name, func(b *testing.B) {
+			body := buildLargeOpenAIResponsesBody(size.bytes)
+
+			b.SetBytes(int64(len(body)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				reqBody, err := DecodeOpenAIRequestBody(body)
+				if err != nil {
+					b.Fatalf("解析 OpenAI 请求失败: %v", err)
+				}
+				benchmarkIntSink = len(reqBody)
+			}
+		})
+	}
+}
+
+func BenchmarkOpenAIResponses_LargeInputRawPatch(b *testing.B) {
+	for _, size := range benchmarkBodySizes() {
+		b.Run(size.name, func(b *testing.B) {
+			body := buildLargeOpenAIResponsesBody(size.bytes)
+
+			b.SetBytes(int64(len(body)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				view := NewOpenAIRequestView(body)
+				view.MarkPatchSet("instructions", "You are a helpful coding assistant.")
+				view.MarkPatchSet("reasoning.effort", "none")
+				patched, err := view.ApplyPatches()
+				if err != nil {
+					b.Fatalf("应用 OpenAI raw patch 失败: %v", err)
+				}
+				benchmarkIntSink = len(patched)
+			}
+		})
+	}
+}
+
+// buildLargeOpenAIResponsesBody 构造带函数工具定义的 Responses 文本请求。
+func buildLargeOpenAIResponsesBody(targetBytes int) []byte {
+	var builder strings.Builder
+	builder.Grow(targetBytes + 1024)
+	_, _ = builder.WriteString(`{"model":"gpt-5.4","stream":true,"prompt_cache_key":"session-benchmark","input":[`)
+	for i := 0; builder.Len() < targetBytes; i++ {
+		if i > 0 {
+			_ = builder.WriteByte(',')
+		}
+		_, _ = builder.WriteString(`{"type":"message","role":"user","content":[{"type":"input_text","text":"`)
+		_, _ = builder.WriteString(strings.Repeat("openai responses payload ", 48))
+		_, _ = builder.WriteString(strconv.Itoa(i))
+		_, _ = builder.WriteString(`"}]}`)
+	}
+	_, _ = builder.WriteString(`],"tools":[{"type":"function","name":"lookup","parameters":{"type":"object","properties":{"query":{"type":"string"}}}}]}`)
+	return []byte(builder.String())
+}
+
+// benchmarkStringSink 保存模型名与缓存键读取基准的结果。
+var benchmarkStringSink string

@@ -4,9 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
-
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 )
 
 func CredentialProvider(ctx context.Context, repo ExecutionProviderReader, value *ExecutionProvider) (*ExecutionProvider, error) {

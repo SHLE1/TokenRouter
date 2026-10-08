@@ -1,6 +1,8 @@
 package openai
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -205,3 +207,57 @@ func TestNormalizeOpenAIResponsesReasoningContentReplayKeepsPortableShapes(t *te
 		require.JSONEq(t, body, string(normalized))
 	}
 }
+
+func BenchmarkOpenAIResponses_LargeInputEmptyBase64Guard(b *testing.B) {
+	for _, size := range benchmarkBodySizes() {
+		b.Run(size.name, func(b *testing.B) {
+			body := buildLargeOpenAIResponsesBody(size.bytes)
+
+			b.SetBytes(int64(len(body)))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				if OpenAIRequestBodyMayContainEmptyBase64InputImage(body) {
+					benchmarkIntSink++
+				}
+			}
+		})
+	}
+}
+
+// benchmarkBodySizes 指定图片字段预检基准的目标输入大小。
+func benchmarkBodySizes() []struct {
+	name  string
+	bytes int
+} {
+	return []struct {
+		name  string
+		bytes int
+	}{
+		{name: "4MB", bytes: 4 << 20},
+		{name: "8MB", bytes: 8 << 20},
+		{name: "16MB", bytes: 16 << 20},
+		{name: "32MB", bytes: 32 << 20},
+	}
+}
+
+// buildLargeOpenAIResponsesBody 构造带函数工具定义的 Responses 文本请求。
+func buildLargeOpenAIResponsesBody(targetBytes int) []byte {
+	var builder strings.Builder
+	builder.Grow(targetBytes + 1024)
+	_, _ = builder.WriteString(`{"model":"gpt-5.4","stream":true,"prompt_cache_key":"session-benchmark","input":[`)
+	for i := 0; builder.Len() < targetBytes; i++ {
+		if i > 0 {
+			_ = builder.WriteByte(',')
+		}
+		_, _ = builder.WriteString(`{"type":"message","role":"user","content":[{"type":"input_text","text":"`)
+		_, _ = builder.WriteString(strings.Repeat("openai responses payload ", 48))
+		_, _ = builder.WriteString(strconv.Itoa(i))
+		_, _ = builder.WriteString(`"}]}`)
+	}
+	_, _ = builder.WriteString(`],"tools":[{"type":"function","name":"lookup","parameters":{"type":"object","properties":{"query":{"type":"string"}}}}]}`)
+	return []byte(builder.String())
+}
+
+// benchmarkIntSink 记录空Base64图片候选的命中次数。
+var benchmarkIntSink int

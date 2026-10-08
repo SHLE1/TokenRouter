@@ -1,12 +1,29 @@
 package provider
 
 import (
+	"net/http"
 	"time"
 
+	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
+	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
+
+// BindExecutionHeaders 返回绑定提供商的 Header 设置函数，调用时读取最新字段。
+func BindExecutionHeaders(value *ExecutionProvider) func(http.Header) {
+	return func(headers http.Header) {
+		provideradapter.ApplyProviderHeaderOverrides(ExecutionProtocolRecord(value), headers)
+	}
+}
+
+// BindExecutionHeaderValue 返回绑定提供商的 Header 查询函数，调用时读取字段值。
+func BindExecutionHeaderValue(value *ExecutionProvider) func(string) (string, bool) {
+	return func(name string) (string, bool) {
+		return provideradapter.HeaderOverrideValue(ExecutionProtocolRecord(value), name)
+	}
+}
 
 // ExecutionProvider 保存提供商记录和本次请求的路线。
 // Route 用于本次请求，provider.Record 提供提供商规则。
@@ -159,4 +176,19 @@ func ExecutionCompletionRecord(value *ExecutionProvider) *provider.Record {
 	}
 	v := &value.Record
 	return &provider.Record{ID: v.ID, Name: v.Name, Platform: v.Platform, Type: v.Type, Credentials: v.Credentials, Extra: v.Extra, RateMultiplier: v.RateMultiplier, ParentProviderID: v.ParentProviderID}
+}
+
+// ExecutionTLSSelection 提取 TLS 资格与配置 ID，供 egress 选择策略。
+func ExecutionTLSSelection(value *ExecutionProvider, routerMatch []egress.TLSFingerprintRouterMatchResult) egress.TLSSelection {
+	selection := egress.TLSSelection{}
+	if value != nil {
+		selection.Enabled = value.View().IsTLSFingerprintEnabled()
+		selection.DirectProfileID = value.View().GetTLSFingerprintProfileID()
+	}
+	if len(routerMatch) > 0 {
+		selection.RouterMatched = routerMatch[0].Matched
+		selection.RouterID = routerMatch[0].RouterID
+		selection.RouterProfileID = routerMatch[0].TLSFingerprintProfileID
+	}
+	return selection
 }
