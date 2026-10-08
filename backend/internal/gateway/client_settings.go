@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ type ClientSettingsOptions struct {
 	NormalizeUserAgentVersion func(string) string
 	DefaultUserAgentVersion   func() string
 }
+
 type cachedAntigravityUserAgentVersion struct {
 	version   string
 	expiresAt int64 // unix nano
@@ -216,4 +218,31 @@ func (s *RuntimeSettings) PublishCodexPlugin(enabled bool) {
 		value:     enabled,
 		expiresAt: time.Now().Add(openAIAllowCodexPluginCacheTTL).UnixNano(),
 	})
+}
+
+// MigrateGrokDefaultTextModel 将数据库中的 grok-4.5 默认模型升级为 grok-4.6。
+func (s *RuntimeSettings) MigrateGrokDefaultTextModel(ctx context.Context) error {
+	if s == nil || s.settingRepo == nil {
+		return nil
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	dbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), ForwardingSettingsReadTimeout)
+	defer cancel()
+
+	value, err := s.settingRepo.GetValue(dbCtx, SettingKeyGrokDefaultTextModel)
+	if err != nil {
+		if errors.Is(err, s.notFound) {
+			return nil
+		}
+		return fmt.Errorf("get %s setting: %w", SettingKeyGrokDefaultTextModel, err)
+	}
+	if strings.TrimSpace(value) != "grok-4.5" {
+		return nil
+	}
+	if err := s.settingRepo.Set(dbCtx, SettingKeyGrokDefaultTextModel, "grok-4.6"); err != nil {
+		return fmt.Errorf("set %s setting: %w", SettingKeyGrokDefaultTextModel, err)
+	}
+	return nil
 }

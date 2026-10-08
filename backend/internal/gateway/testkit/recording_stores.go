@@ -3,15 +3,37 @@ package testkit
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
+	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	usagecore "github.com/TokenFlux/TokenRouter/internal/usage"
 )
+
+type BestEffortUsageLogStore struct {
+	usagecore.UsageLogRepository
+
+	BestEffortErr   error
+	CreateErr       error
+	BestEffortCalls int
+	CreateCalls     int
+	LastLog         *usagecore.UsageLog
+	LastCtxErr      error
+}
+
+func (s *BestEffortUsageLogStore) CreateBestEffort(ctx context.Context, log *usagecore.UsageLog) error {
+	s.BestEffortCalls++
+	s.LastLog = log
+	s.LastCtxErr = ctx.Err()
+	return s.BestEffortErr
+}
+
+func (s *BestEffortUsageLogStore) Create(ctx context.Context, log *usagecore.UsageLog) (bool, error) {
+	s.CreateCalls++
+	s.LastLog = log
+	s.LastCtxErr = ctx.Err()
+	return false, s.CreateErr
+}
 
 type UsageLogStore struct {
 	usagecore.UsageLogRepository

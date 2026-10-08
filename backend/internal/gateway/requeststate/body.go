@@ -10,17 +10,13 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 var (
-	// 预先保存快速判断使用的字节模式，省去每次将字符串转换为字节切片的分配。
-
-	// Fast-path patterns for empty text blocks: {"type":"text","text":""}
-
 	sessionUserAgentProductPattern = regexp.MustCompile(`([A-Za-z0-9._-]+)/[A-Za-z0-9._-]+`)
 	sessionUserAgentVersionPattern = regexp.MustCompile(`\bv?\d+(?:\.\d+){1,3}\b`)
 )
@@ -383,4 +379,14 @@ func (p *ParsedRequest) ReplaceBody(data []byte) error {
 		return err
 	}
 	return nil
+}
+
+// FirstNonEmpty 返回去除两侧空白后的首个非空字符串。
+func FirstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }

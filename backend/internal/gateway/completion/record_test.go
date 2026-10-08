@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-	"github.com/stretchr/testify/require"
 )
 
 // recordStore 记录结算调用次数，用于检查日志重试时结算仍仅执行一次。
@@ -64,6 +65,7 @@ func (e recordEffects) Settled(SettlementInput, *billing.UsageBillingApplyResult
 type recordModels struct{}
 
 func (recordModels) Candidates(model string, _ ...string) []string { return []string{model} }
+
 func recordFixture() (*Recorder, *recordStore, *recordWriter, *Input, *[]string) {
 	events := []string{}
 	funds := &recordStore{events: &events}
@@ -153,4 +155,40 @@ func (recordPriceCatalog) GetModelPricing(model string) *pricing.CatalogModelPri
 	}
 	return &pricing.CatalogModelPricing{InputCostPerToken: 3e-6, OutputCostPerToken: 15e-6}
 }
+
 func (recordPriceCatalog) ForceUpdate() error { return nil }
+
+// TestRecordCyberRetainsFailureFactAndDoesNotResettleLogFailure 检查 Cyber 记录分类和结算失败后的日志。
+func TestRecordCyberRetainsFailureFactAndDoesNotResettleLogFailure(t *testing.T) {
+	for _, failed := range []bool{false, true} {
+		core, funds, logs, in, _ := recordFixture()
+		if failed {
+			funds.err = errors.New("settlement failed")
+		} else {
+			logs.bestErr = errors.New("queue full")
+			logs.errorSync = errors.New("write failed")
+		}
+		core.RecordCyber(context.Background(), in)
+		require.Equal(t, 1, funds.calls)
+		require.NotEmpty(t, logs.rows)
+		for _, row := range logs.rows {
+			require.Equal(t, RequestTypeCyberBlocked, row.RequestType)
+			if failed {
+				require.Zero(t, row.ActualCost)
+			}
+		}
+		require.False(t, in.CyberBlocked)
+	}
+}
+
+// TestRecordCyberPreservesZeroUsage 验证零用量审核记录也进入结算，金额保持为零。
+func TestRecordCyberPreservesZeroUsage(t *testing.T) {
+	core, funds, logs, in, _ := recordFixture()
+	in.Result.Usage = TokenUsage{}
+	core.RecordCyber(context.Background(), in)
+	require.Equal(t, 1, funds.calls)
+	require.Zero(t, funds.command.BillableAmountUSD)
+	require.NotEmpty(t, logs.rows)
+	require.Zero(t, logs.rows[0].ActualCost)
+	require.Equal(t, RequestTypeCyberBlocked, logs.rows[0].RequestType)
+}

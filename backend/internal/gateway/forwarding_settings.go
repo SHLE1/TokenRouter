@@ -7,6 +7,20 @@ import (
 	"time"
 )
 
+// GetGrokDefaultBaseURLMode 在读取预算内查询 Grok Base URL 模式，缺省使用 CLI。
+func (s *RuntimeSettings) GetGrokDefaultBaseURLMode(ctx context.Context) string {
+	if s == nil || s.settingRepo == nil {
+		return "cli"
+	}
+	dbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), gatewayForwardingDBTimeout)
+	defer cancel()
+	raw, err := s.settingRepo.GetValue(dbCtx, SettingKeyGrokDefaultBaseURLMode)
+	if err != nil {
+		return "cli"
+	}
+	return NormalizeGrokDefaultBaseURLMode(raw)
+}
+
 // 转发设置的持久化键和 TTFT 模式值如下。
 const (
 	SettingKeyClaudeOAuthSystemPrompt                = "claude_oauth_system_prompt"
@@ -330,4 +344,22 @@ func (s *RuntimeSettings) PublishForwarding(minVersion, maxVersion string, value
 func (s *RuntimeSettings) InvalidateForwarding() {
 	s.gatewayForwardingSF.Forget("gateway_forwarding")
 	s.gatewayForwardingCache.Store(&cachedGatewayForwardingSettings{})
+}
+
+// IsIdentityPatchEnabled 在请求时读取身份修补开关，读取失败时返回 true。
+func (s *RuntimeSettings) IsIdentityPatchEnabled(ctx context.Context) bool {
+	value, err := s.settingRepo.GetValue(ctx, SettingKeyEnableIdentityPatch)
+	if err != nil {
+		return true
+	}
+	return value == "true"
+}
+
+// GetIdentityPatchPrompt 读取身份修补提示词，读取失败时返回空字符串。
+func (s *RuntimeSettings) GetIdentityPatchPrompt(ctx context.Context) string {
+	value, err := s.settingRepo.GetValue(ctx, SettingKeyIdentityPatchPrompt)
+	if err != nil {
+		return ""
+	}
+	return value
 }

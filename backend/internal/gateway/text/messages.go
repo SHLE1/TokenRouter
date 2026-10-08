@@ -3,12 +3,10 @@ package text
 import (
 	"context"
 
-	"github.com/TokenFlux/TokenRouter/internal/routing"
-
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
-
 	"github.com/TokenFlux/TokenRouter/internal/gateway/failover"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // AttemptFailure 传递原始错误和重试参数，供应商报文由平台适配器解析。

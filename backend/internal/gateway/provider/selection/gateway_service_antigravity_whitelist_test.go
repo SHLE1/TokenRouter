@@ -6,11 +6,12 @@ import (
 	"testing"
 	time "time"
 
+	"github.com/stretchr/testify/require"
+
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGatewayService_isModelSupportedByProvider_AntigravityModelMapping(t *testing.T) {
@@ -49,8 +50,7 @@ func TestGatewayService_isModelSupportedByProvider_AntigravityModelMapping(t *te
 }
 
 func TestGatewayService_isModelSupportedByProvider_AntigravityNoMapping(t *testing.T) {
-	// 未配置 model_mapping 时，使用默认映射（domain.DefaultAntigravityModelMapping）
-	// 只有默认映射中的模型才被支持
+	// 未配置白名单时，默认映射中的模型和未命中映射的模型均可通过。
 	provider := &gatewayprovider.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity,
@@ -62,14 +62,14 @@ func TestGatewayService_isModelSupportedByProvider_AntigravityNoMapping(t *testi
 	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-sonnet-4-5"))
 	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gemini-3-flash"))
 	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gemini-2.5-pro"))
-	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-haiku-4-5"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-haiku-4-5"))
 
-	// 不在默认映射中的模型不被支持
-	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-3-5-sonnet-20241022"))
-	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-unknown-model"))
+	// 未命中默认映射的模型按请求名称通过。
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-3-5-sonnet-20241022"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-unknown-model"))
 
-	// 非 claude-/gemini- 前缀仍然不支持
-	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gpt-4"))
+	// 空白名单也允许其他平台风格的模型名。
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gpt-4"))
 }
 
 // TestGatewayService_isModelSupportedByProviderWithContext_ThinkingMode 测试 thinking 模式下的模型支持检查
@@ -222,9 +222,9 @@ func TestGatewayService_isModelSupportedByProvider_CustomMappingNotInDefault(t *
 	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "llama-3-70b"))
 	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "claude-sonnet-4-5"))
 
-	// 不在自定义映射中的模型不通过
-	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gpt-3.5-turbo"))
-	require.False(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "unknown-model"))
+	// 未命中自定义映射的模型按请求名称通过。
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "gpt-3.5-turbo"))
+	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), "unknown-model"))
 
 	// 空模型允许
 	require.True(t, gatewayprovider.ExecutionModelPolicy(provider).Supports(context.Background(), ""))

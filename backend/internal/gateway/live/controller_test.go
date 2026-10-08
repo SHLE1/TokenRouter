@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-	"github.com/stretchr/testify/require"
 )
 
 // cancelClaimStore 在取得控制权时取消请求，检查流程随后结束。

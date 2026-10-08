@@ -47,3 +47,21 @@ func TestOpenAIResultReplayStaysOutsideJSON(t *testing.T) {
 	require.NotContains(t, string(raw), "failover-private")
 	require.NotContains(t, string(raw), "LocalWarmup")
 }
+
+func TestOpenAIForwardSucceededForScheduling(t *testing.T) {
+	require.True(t, schedulingSucceeded(nil))
+	require.True(t, schedulingSucceeded(&OpenAIResult{}))
+	require.True(t, schedulingSucceeded(&OpenAIResult{
+		OpenAIWSMode:          true,
+		UpstreamTerminalEvent: "response.completed",
+	}))
+	require.False(t, schedulingSucceeded(&OpenAIResult{
+		OpenAIWSMode:          true,
+		UpstreamTerminalEvent: "response.failed",
+	}))
+}
+
+// schedulingSucceeded 读取结果的调度成功判定。
+func schedulingSucceeded(result *OpenAIResult) bool {
+	return result.SucceededForScheduling()
+}

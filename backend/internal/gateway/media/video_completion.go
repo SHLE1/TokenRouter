@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
 // VideoCompletion 保存视频完成计费所需的观测值。

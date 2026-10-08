@@ -6,20 +6,19 @@ import (
 	"testing"
 	"time"
 
-	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/config"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	logging "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/config"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-	"github.com/stretchr/testify/require"
 )
 
 // testConfig 返回一个用于测试的默认配置
@@ -945,10 +944,10 @@ func TestGatewayService_isModelSupportedByProvider(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "Antigravity平台-不支持非默认映射中的claude模型",
+			name:     "Antigravity平台-空白名单允许未命中映射的claude模型",
 			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
 			model:    "claude-3-5-sonnet-20241022",
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "Antigravity平台-支持gemini模型",
@@ -957,16 +956,16 @@ func TestGatewayService_isModelSupportedByProvider(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "Antigravity平台-不支持gpt模型",
+			name:     "Antigravity平台-空白名单允许gpt模型",
 			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
 			model:    "gpt-4",
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "Anthropic平台-无映射配置-支持所有模型",
 			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAnthropic}},
 			model:    "claude-3-5-sonnet-20241022",
-			expected: false,
+			expected: true,
 		},
 		{
 			name: "Anthropic平台-有映射配置-未命中映射时按透传支持模型",
@@ -977,7 +976,7 @@ func TestGatewayService_isModelSupportedByProvider(t *testing.T) {
 				},
 			},
 			model:    "claude-3-5-sonnet-20241022",
-			expected: false,
+			expected: true,
 		},
 		{
 			name: "Anthropic平台-有映射配置-支持配置的模型",

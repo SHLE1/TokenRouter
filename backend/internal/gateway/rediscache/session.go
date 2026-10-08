@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	schedulerredis "github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
-	"github.com/redis/go-redis/v9"
+	schedulerredis "github.com/TokenFlux/TokenRouter/internal/scheduler/rediscache"
 )
 
 const (

@@ -8,10 +8,8 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
-
 	protocolgemini "github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // BuildGeminiDigestChain 根据 Gemini 请求生成摘要链

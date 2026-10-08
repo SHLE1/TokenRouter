@@ -4,9 +4,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 )
 
 func firstModel(first, fallback string) string {

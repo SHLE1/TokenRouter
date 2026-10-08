@@ -235,3 +235,16 @@ func Gemini(ctx context.Context, p GeminiPorts, in GeminiInput) (*Result, error)
 		ImageInputSize:        imageInputSize,
 	}, nil
 }
+
+// GeminiSession 保存执行入口提供的分组与会话标识。
+type GeminiSession struct {
+	GroupID     int64
+	SessionHash string
+}
+
+// GeminiSessionOption 可省略或传 nil，多个选项按顺序覆盖。
+type GeminiSessionOption func(*GeminiSession)
+
+func WithGeminiSession(groupID int64, sessionHash string) GeminiSessionOption {
+	return func(options *GeminiSession) { options.GroupID = groupID; options.SessionHash = sessionHash }
+}

@@ -6,9 +6,10 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/tidwall/gjson"
 )
 
 // Failure 携带尚未提交的压缩失败，HTTP 与恢复用例使用同一错误值。

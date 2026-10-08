@@ -6,6 +6,8 @@ import (
 	"testing"
 	time "time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -14,7 +16,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
-	"github.com/stretchr/testify/require"
 )
 
 // --- billingModelForRestriction ---
@@ -57,7 +58,7 @@ func TestResolveProviderUpstreamModel_Antigravity_Unsupported(t *testing.T) {
 	t.Parallel()
 	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
 	got := resolveProviderUpstreamModel(context.Background(), provider, "totally-unknown-model")
-	require.Equal(t, "", got, "unsupported model should return empty")
+	require.Equal(t, "totally-unknown-model", got, "空白名单允许未命中映射的模型按请求名称通过")
 }
 
 func TestResolveProviderUpstreamModel_NonAntigravity(t *testing.T) {
@@ -445,10 +446,8 @@ func TestIsUpstreamModelRestrictedByGroup_UnsupportedModel(t *testing.T) {
 	pricingConfigSvc := routingtestkit.NewConfigServiceFixture(routingtestkit.StandardPricingConfigRepository(ch, map[int64]string{10: "anthropic"}))
 	svc := newGenericSelectionForTest(GenericDependencies{Reads: Reads{}, Shared: Shared{GroupPolicies: pricingConfigSvc}}, nil)
 
-	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.
-		// totally-unknown-model 不在 DefaultAntigravityModelMapping 中 → 映射结果为空
-		LoadLocation, Platform: capability.PlatformAntigravity}}
+	provider := &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}}
 
-	require.False(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, provider, "totally-unknown-model"),
-		"unmappable model → upstream model empty → not restricted (provider filter handles this)")
+	require.True(t, svc.isUpstreamModelRestrictedByGroup(context.Background(), 10, provider, "totally-unknown-model"),
+		"未命中提供商映射的模型继续接受分组模型限制")
 }

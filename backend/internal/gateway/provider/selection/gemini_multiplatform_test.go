@@ -6,18 +6,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/scheduler"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/stretchr/testify/require"
+	"github.com/TokenFlux/TokenRouter/internal/scheduler"
 )
 
 // mockProviderRepoForGemini Gemini 测试用的 mock
@@ -820,10 +819,10 @@ func TestGeminiMessagesCompatService_isModelSupportedByProvider(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "Antigravity平台-不支持gpt模型",
+			name:     "Antigravity平台-空白名单允许gpt模型",
 			provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: capability.PlatformAntigravity}},
 			model:    "gpt-4",
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "Antigravity平台-空模型允许",

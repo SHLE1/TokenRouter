@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
 	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
 // contentSessionSeedPrefix 为内容派生种子添加前缀，与 sess-xxx 等指定会话 ID 区分。

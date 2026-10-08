@@ -9,10 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
-	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
 // Created 保存公共响应和选中提供商的标识。

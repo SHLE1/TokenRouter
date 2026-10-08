@@ -1,6 +1,36 @@
 package requeststate
 
-import "context"
+import (
+	"context"
+	"strings"
+)
+
+type agentTaskRecoveryKey struct{}
+
+// WithAgentTaskRecovery 标记当前尝试序列已使用恢复机会。
+func WithAgentTaskRecovery(ctx context.Context) context.Context {
+	return context.WithValue(ctx, agentTaskRecoveryKey{}, true)
+}
+
+// AgentTaskRecoveryTried 返回当前尝试序列是否已使用恢复机会。
+func AgentTaskRecoveryTried(ctx context.Context) bool {
+	value, _ := ctx.Value(agentTaskRecoveryKey{}).(bool)
+	return value
+}
+
+// cacheBillingKey 标识当前尝试的强制缓存计费状态。
+type cacheBillingKey struct{}
+
+// IsForceCacheBilling 读取强制缓存计费标记，缺失或类型错误时返回 false。
+func IsForceCacheBilling(ctx context.Context) bool {
+	value, _ := ctx.Value(cacheBillingKey{}).(bool)
+	return value
+}
+
+// WithForceCacheBilling 在派生的尝试 context 中设置强制缓存计费标记。
+func WithForceCacheBilling(ctx context.Context) context.Context {
+	return context.WithValue(ctx, cacheBillingKey{}, true)
+}
 
 // Hint 通过设置标记区分未提供与零值，保存传入数据的值副本。
 type Hint[T bool | int | int64] struct {
@@ -152,3 +182,28 @@ func ProviderSwitchCountFromContext(ctx context.Context) (int, bool) {
 func WithSessionIsolation(ctx context.Context, source, hash string) context.Context {
 	return updateHints(ctx, func(h *ExecutionHints) { h.SessionIsolationSource, h.SessionIsolationHash = source, hash })
 }
+
+// WithOpenAILegacySessionHash 在派生 context 中保存去除两侧空白的旧会话散列。
+func WithOpenAILegacySessionHash(ctx context.Context, legacyHash string) context.Context {
+	if ctx == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(legacyHash)
+	if trimmed == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, openAILegacySessionHashKey, trimmed)
+}
+
+// OpenAILegacySessionHashFromContext 返回上下文中的旧会话散列。
+func OpenAILegacySessionHashFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	value, _ := ctx.Value(openAILegacySessionHashKey).(string)
+	return strings.TrimSpace(value)
+}
+
+type openAILegacySessionHashContextKey struct{}
+
+var openAILegacySessionHashKey = openAILegacySessionHashContextKey{}

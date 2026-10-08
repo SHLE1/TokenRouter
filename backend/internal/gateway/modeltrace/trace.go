@@ -4,12 +4,58 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+	"github.com/TokenFlux/TokenRouter/internal/routing/modelmap"
 )
+
+// WithGroupRedirect 组合 Key 和分组的模型映射，记录本次请求恢复响应模型时所需的名称。
+func WithGroupRedirect(result routing.GroupMappingResult, ctx context.Context, requestedModel string) routing.GroupMappingResult {
+	trace, ok := FromContext(ctx)
+	if !ok {
+		return result
+	}
+	result.ClientModel = trace.ClientModel
+	result.APIKeyRedirected = true
+	RegisterStage(ctx, requestedModel)
+	RegisterStage(ctx, result.MappedModel)
+	return result
+}
+
+// RegisterStage 登记当前请求已使用的内部模型，供响应元数据恢复。
+func RegisterStage(ctx context.Context, model string) {
+	if trace, ok := FromContext(ctx); ok {
+		trace.RegisterModel(model)
+	}
+}
+
+// RewriteAPIKeyAdditionalModels 重定向 Responses 工具声明中的附加模型。
+func RewriteAPIKeyAdditionalModels(body []byte, mapping map[string]string) ([]byte, error) {
+	if len(body) == 0 || len(mapping) == 0 || !gjson.ValidBytes(body) {
+		return body, nil
+	}
+	rewritten := body
+	for index, tool := range gjson.GetBytes(body, "tools").Array() {
+		model := strings.TrimSpace(tool.Get("model").String())
+		mappedModel, matched := modelmap.Resolve(mapping, model)
+		if !matched {
+			continue
+		}
+		var err error
+		rewritten, err = sjson.SetBytes(rewritten, fmt.Sprintf("tools.%d.model", index), mappedModel)
+		if err != nil {
+			return body, err
+		}
+	}
+	return rewritten, nil
+}
 
 // APIKeyModelRedirectTrace 保存一次请求中的客户端模型与内部模型阶段。
 type APIKeyModelRedirectTrace struct {

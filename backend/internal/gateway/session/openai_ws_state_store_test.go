@@ -10,6 +10,58 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestOpenAIWSStateStoreInvalidEncryptedContentLineage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("mark_get_roundtrip_with_merge", func(t *testing.T) {
+		t.Parallel()
+		store := NewOpenAIWSStateStore(nil)
+		require.False(t, store.HasAnySessionInvalidEncryptedContent())
+		require.Nil(t, store.GetSessionInvalidEncryptedContentDigests(1, "session-a"))
+
+		store.MarkSessionInvalidEncryptedContent(1, "session-a", []string{"d1", "d2"}, time.Minute)
+		store.MarkSessionInvalidEncryptedContent(1, "session-a", []string{"d2", "d3"}, time.Minute)
+		require.True(t, store.HasAnySessionInvalidEncryptedContent())
+
+		digests := store.GetSessionInvalidEncryptedContentDigests(1, "session-a")
+		require.Len(t, digests, 3)
+		for _, digest := range []string{"d1", "d2", "d3"} {
+			require.Contains(t, digests, digest)
+		}
+		// 组隔离：另一组同名会话不可见。
+		require.Nil(t, store.GetSessionInvalidEncryptedContentDigests(2, "session-a"))
+		// 返回值是拷贝，修改后重新读取应得到存储中的值。
+		digests["d4"] = struct{}{}
+		require.Len(t, store.GetSessionInvalidEncryptedContentDigests(1, "session-a"), 3)
+	})
+
+	t.Run("expired_binding_not_returned", func(t *testing.T) {
+		t.Parallel()
+		raw := NewOpenAIWSStateStore(nil)
+		raw.MarkSessionInvalidEncryptedContent(1, "session-b", []string{"d1"}, time.Minute)
+		store, ok := raw.(*defaultOpenAIWSStateStore)
+		require.True(t, ok)
+		store.sessionInvalidEncryptedMu.Lock()
+		binding := store.sessionInvalidEncrypted["1:session-b"]
+		binding.expiresAt = time.Now().Add(-time.Second)
+		store.sessionInvalidEncrypted["1:session-b"] = binding
+		store.sessionInvalidEncryptedMu.Unlock()
+		require.Nil(t, store.GetSessionInvalidEncryptedContentDigests(1, "session-b"))
+	})
+
+	t.Run("per_session_capacity_degrades_gracefully", func(t *testing.T) {
+		t.Parallel()
+		store := NewOpenAIWSStateStore(nil)
+		oversized := make([]string, 0, openAIWSInvalidEncryptedDigestsPerSession+10)
+		for i := range openAIWSInvalidEncryptedDigestsPerSession + 10 {
+			oversized = append(oversized, fmt.Sprintf("digest-%d", i))
+		}
+		store.MarkSessionInvalidEncryptedContent(1, "session-c", oversized, time.Minute)
+		digests := store.GetSessionInvalidEncryptedContentDigests(1, "session-c")
+		require.Len(t, digests, openAIWSInvalidEncryptedDigestsPerSession)
+	})
+}
+
 func TestOpenAIWSStateStore_BindGetDeleteResponseProvider(t *testing.T) {
 	cache := &stubGatewayCache{}
 	store := NewOpenAIWSStateStore(cache)
@@ -202,6 +254,47 @@ func TestEnsureBindingCapacity_DoesNotEvictWhenUpdatingExistingKey(t *testing.T)
 	require.Equal(t, 9, bindings["a"])
 }
 
+func TestOpenAIWSStateStore_RedisOpsUseShortTimeout(t *testing.T) {
+	probe := &openAIWSStateStoreTimeoutProbeCache{}
+	store := NewOpenAIWSStateStore(probe)
+	ctx := context.Background()
+	groupID := int64(5)
+
+	err := store.BindResponseProvider(ctx, groupID, "resp_timeout_probe", 11, time.Minute)
+	require.Error(t, err)
+
+	providerID, getErr := store.GetResponseProvider(ctx, groupID, "resp_timeout_probe")
+	require.NoError(t, getErr)
+	require.Equal(t, int64(11), providerID, "本地缓存命中应优先返回已绑定提供商")
+
+	require.NoError(t, store.DeleteResponseProvider(ctx, groupID, "resp_timeout_probe"))
+
+	require.True(t, probe.setHasDeadline, "SetSessionProviderID 应携带独立超时上下文")
+	require.True(t, probe.deleteHasDeadline, "DeleteSessionProviderID 应携带独立超时上下文")
+	require.False(t, probe.getHasDeadline, "GetSessionProviderID 本用例应由本地缓存命中，不触发 Redis 读取")
+	require.Greater(t, probe.setDeadlineDelta, 2*time.Second)
+	require.LessOrEqual(t, probe.setDeadlineDelta, 3*time.Second)
+	require.Greater(t, probe.delDeadlineDelta, 2*time.Second)
+	require.LessOrEqual(t, probe.delDeadlineDelta, 3*time.Second)
+
+	probe2 := &openAIWSStateStoreTimeoutProbeCache{}
+	store2 := NewOpenAIWSStateStore(probe2)
+	providerID2, err2 := store2.GetResponseProvider(ctx, groupID, "resp_cache_only")
+	require.NoError(t, err2)
+	require.Equal(t, int64(123), providerID2)
+	require.True(t, probe2.getHasDeadline, "GetSessionProviderID 在缓存未命中时应携带独立超时上下文")
+	require.Greater(t, probe2.getDeadlineDelta, 2*time.Second)
+	require.LessOrEqual(t, probe2.getDeadlineDelta, 3*time.Second)
+}
+
+func TestWithOpenAIWSStateStoreRedisTimeout_WithParentContext(t *testing.T) {
+	ctx, cancel := withOpenAIWSStateStoreRedisTimeout(context.Background())
+	defer cancel()
+	require.NotNil(t, ctx)
+	_, ok := ctx.Deadline()
+	require.True(t, ok, "应附加短超时")
+}
+
 type openAIWSStateStoreTimeoutProbeCache struct {
 	setHasDeadline    bool
 	getHasDeadline    bool
@@ -251,43 +344,50 @@ func (c *openAIWSStateStoreTimeoutProbeCache) RefreshSessionOwnerTTL(context.Con
 	return nil
 }
 
-func TestOpenAIWSStateStore_RedisOpsUseShortTimeout(t *testing.T) {
-	probe := &openAIWSStateStoreTimeoutProbeCache{}
-	store := NewOpenAIWSStateStore(probe)
-	ctx := context.Background()
-	groupID := int64(5)
-
-	err := store.BindResponseProvider(ctx, groupID, "resp_timeout_probe", 11, time.Minute)
-	require.Error(t, err)
-
-	providerID, getErr := store.GetResponseProvider(ctx, groupID, "resp_timeout_probe")
-	require.NoError(t, getErr)
-	require.Equal(t, int64(11), providerID, "本地缓存命中应优先返回已绑定提供商")
-
-	require.NoError(t, store.DeleteResponseProvider(ctx, groupID, "resp_timeout_probe"))
-
-	require.True(t, probe.setHasDeadline, "SetSessionProviderID 应携带独立超时上下文")
-	require.True(t, probe.deleteHasDeadline, "DeleteSessionProviderID 应携带独立超时上下文")
-	require.False(t, probe.getHasDeadline, "GetSessionProviderID 本用例应由本地缓存命中，不触发 Redis 读取")
-	require.Greater(t, probe.setDeadlineDelta, 2*time.Second)
-	require.LessOrEqual(t, probe.setDeadlineDelta, 3*time.Second)
-	require.Greater(t, probe.delDeadlineDelta, 2*time.Second)
-	require.LessOrEqual(t, probe.delDeadlineDelta, 3*time.Second)
-
-	probe2 := &openAIWSStateStoreTimeoutProbeCache{}
-	store2 := NewOpenAIWSStateStore(probe2)
-	providerID2, err2 := store2.GetResponseProvider(ctx, groupID, "resp_cache_only")
-	require.NoError(t, err2)
-	require.Equal(t, int64(123), providerID2)
-	require.True(t, probe2.getHasDeadline, "GetSessionProviderID 在缓存未命中时应携带独立超时上下文")
-	require.Greater(t, probe2.getDeadlineDelta, 2*time.Second)
-	require.LessOrEqual(t, probe2.getDeadlineDelta, 3*time.Second)
+type stubGatewayCache struct {
+	sessionBindings map[string]int64
+	deletedSessions map[string]int
 }
 
-func TestWithOpenAIWSStateStoreRedisTimeout_WithParentContext(t *testing.T) {
-	ctx, cancel := withOpenAIWSStateStoreRedisTimeout(context.Background())
-	defer cancel()
-	require.NotNil(t, ctx)
-	_, ok := ctx.Deadline()
-	require.True(t, ok, "应附加短超时")
+func (c *stubGatewayCache) GetSessionProviderID(ctx context.Context, groupID int64, sessionHash string) (int64, error) {
+	if id, ok := c.sessionBindings[sessionHash]; ok {
+		return id, nil
+	}
+	return 0, errors.New("not found")
+}
+
+func (c *stubGatewayCache) SetSessionProviderID(ctx context.Context, groupID int64, sessionHash string, providerID int64, ttl time.Duration) error {
+	if c.sessionBindings == nil {
+		c.sessionBindings = make(map[string]int64)
+	}
+	c.sessionBindings[sessionHash] = providerID
+	return nil
+}
+
+func (c *stubGatewayCache) RefreshSessionTTL(ctx context.Context, groupID int64, sessionHash string, ttl time.Duration) error {
+	return nil
+}
+
+func (c *stubGatewayCache) DeleteSessionProviderID(ctx context.Context, groupID int64, sessionHash string) error {
+	if c.sessionBindings == nil {
+		return nil
+	}
+	if c.deletedSessions == nil {
+		c.deletedSessions = make(map[string]int)
+	}
+	c.deletedSessions[sessionHash]++
+	delete(c.sessionBindings, sessionHash)
+	return nil
+}
+
+func (c *stubGatewayCache) SetSessionOwnerGroupID(ctx context.Context, userID int64, source, sessionHash string, groupID int64, ttl time.Duration) (bool, error) {
+	return true, nil
+}
+
+func (c *stubGatewayCache) GetSessionOwnerGroupID(ctx context.Context, userID int64, source, sessionHash string) (int64, error) {
+	return 0, errors.New("not found")
+}
+
+func (c *stubGatewayCache) RefreshSessionOwnerTTL(ctx context.Context, userID int64, source, sessionHash string, ttl time.Duration) error {
+	return nil
 }

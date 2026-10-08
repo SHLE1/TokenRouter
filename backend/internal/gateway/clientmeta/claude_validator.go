@@ -360,3 +360,8 @@ const ClaudeCodeSystemPromptThreshold = 0.5
 
 // ClaudeCodeSecurityMonitorPrefix 供兼容测试与请求识别复用同一协议文本。
 const ClaudeCodeSecurityMonitorPrefix = claudeCodeSecurityMonitorPromptPrefix
+
+// IsHaikuProbe 检查 Haiku 模型的单 token 连通性探测。
+func IsHaikuProbe(model string, maxTokens int) bool {
+	return maxTokens == 1 && strings.Contains(strings.ToLower(model), "haiku")
+}

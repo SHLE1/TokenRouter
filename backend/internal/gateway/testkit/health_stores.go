@@ -2,13 +2,47 @@ package testkit
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 )
 
-// ErrorPolicyStore 记录错误策略的实际写入，不代替策略决策。
+// HealthStoreBase 提供缺失提供商和空写入的测试结果，其余方法由测试按需配置。
+type HealthStoreBase struct {
+	gatewayadapter.ExecutionProviderStore
+}
+
+func (*HealthStoreBase) GetByID(context.Context, int64) (*gatewayadapter.ExecutionProvider, error) {
+	return nil, errors.New("provider not found")
+}
+func (*HealthStoreBase) SetError(context.Context, int64, string) error          { return nil }
+func (*HealthStoreBase) SetRateLimited(context.Context, int64, time.Time) error { return nil }
+func (*HealthStoreBase) SetModelRateLimit(context.Context, int64, string, time.Time, ...string) error {
+	return nil
+}
+func (*HealthStoreBase) SetOverloaded(context.Context, int64, time.Time) error { return nil }
+func (*HealthStoreBase) SetTempUnschedulable(context.Context, int64, time.Time, string) error {
+	return nil
+}
+
+func (*HealthStoreBase) ClearTempUnschedulable(context.Context, int64) error { return nil }
+
+func (*HealthStoreBase) ClearRateLimit(context.Context, int64) error { return nil }
+
+func (*HealthStoreBase) ClearError(context.Context, int64) error { return nil }
+
+func (*HealthStoreBase) UpdateCredentials(context.Context, int64, map[string]any) error { return nil }
+
+func (*HealthStoreBase) UpdateExtra(context.Context, int64, map[string]any) error { return nil }
+
+func (*HealthStoreBase) UpdateSessionWindow(context.Context, int64, *time.Time, *time.Time, string) error {
+	return nil
+}
+
+// ErrorPolicyStore 记录错误策略触发的存储写入。
 type ErrorPolicyStore struct {
 	HealthStoreBase
 	TempCalls           int
@@ -81,7 +115,7 @@ func (r *HealthStoreRecorder) UpdateExtra(ctx context.Context, id int64, updates
 	return nil
 }
 
-// ForbiddenCounter 保留预设计数序列与重置记录。
+// ForbiddenCounter 返回预设计数序列并记录重置操作。
 type ForbiddenCounter struct {
 	Counts     []int64
 	ResetCalls []int64
@@ -105,7 +139,7 @@ func (s *ForbiddenCounter) ResetOpenAI403Count(_ context.Context, providerID int
 	return nil
 }
 
-// RuntimeBlockRecorder 记录运行时阻断和清理，不创建另一份健康状态。
+// RuntimeBlockRecorder 记录运行时阻断和清理操作。
 type RuntimeBlockRecorder struct {
 	Providers  []*gatewayprovider.ExecutionProvider
 	Until      []time.Time
@@ -123,7 +157,7 @@ func (r *RuntimeBlockRecorder) ClearProviderSchedulingBlock(providerID int64) {
 	r.ClearedIDs = append(r.ClearedIDs, providerID)
 }
 
-// ModelLimitCall 记录模型窗口写入的原字段。
+// ModelLimitCall 记录模型窗口写入参数。
 type ModelLimitCall struct {
 	ProviderID int64
 	Scope      string
