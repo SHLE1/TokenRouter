@@ -8,11 +8,20 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+
 	protocolbridge "github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/sjson"
+)
+
+// BodyCodec 调整 Grok 请求体，并通过 NewID 为工具调用生成标识符。
+type BodyCodec struct{ NewID func() string }
+
+const (
+	ComposerImageBridgeVisionModel     = "grok-build-0.1"
+	ComposerImageBridgeMaxOutputTokens = 512
 )
 
 func (m BodyCodec) IsGrokInvalidEncryptedContentResponse(statusCode int, body []byte) bool {

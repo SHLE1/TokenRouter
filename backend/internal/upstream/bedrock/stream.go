@@ -12,12 +12,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // StreamResponse 处理 Bedrock InvokeModelWithResponseStream 的 EventStream 响应

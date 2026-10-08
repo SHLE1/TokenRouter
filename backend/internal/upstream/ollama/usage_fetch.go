@@ -5,6 +5,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
@@ -24,7 +27,7 @@ type FetchOptions struct {
 	Unavailable error
 }
 
-// FetchUsage 只执行既定 URL、会话和响应解析，不写健康或持久化状态。
+// FetchUsage 使用给定会话读取 Ollama 设置页并解析用量。
 func FetchUsage(ctx context.Context, input FetchInput, options FetchOptions) (*usageview.OllamaUsageObservation, error) {
 	if options.Do == nil {
 		return nil, options.Unavailable
@@ -75,4 +78,32 @@ func FetchUsage(ctx context.Context, input FetchInput, options FetchOptions) (*u
 	}
 
 	return &usageview.OllamaUsageObservation{Data: data, HTTPStatus: resp.StatusCode}, nil
+}
+
+const (
+	SettingsURL    = "https://ollama.com/settings"
+	RequestTimeout = 15 * time.Second
+	MaxBodyBytes   = 512 * 1024
+)
+
+func IsExactSettingsURL(parsed *url.URL) bool {
+	return parsed != nil && parsed.Scheme == "https" && parsed.Host == "ollama.com" && parsed.Path == "/settings" &&
+		parsed.User == nil && parsed.RawQuery == "" && parsed.Fragment == "" && parsed.RawPath == ""
+}
+
+// RetryAfter 解析上游限流响应要求的最短重试间隔。
+func RetryAfter(header http.Header, now time.Time) time.Duration {
+	value := strings.TrimSpace(header.Get("Retry-After"))
+	if value == "" {
+		return 0
+	}
+	if seconds, err := strconv.Atoi(value); err == nil && seconds > 0 {
+		return time.Duration(seconds) * time.Second
+	}
+	if at, err := http.ParseTime(value); err == nil {
+		if delay := at.Sub(now); delay > 0 {
+			return delay
+		}
+	}
+	return 0
 }

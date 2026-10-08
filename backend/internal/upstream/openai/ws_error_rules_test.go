@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/stretchr/testify/require"
+
+	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
 func TestClassifyOpenAIWSAcquireError(t *testing.T) {

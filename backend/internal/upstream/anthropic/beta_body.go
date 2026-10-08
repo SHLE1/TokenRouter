@@ -3,9 +3,10 @@ package anthropic
 import (
 	"strings"
 
-	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
 // AnthropicBetaContextManagementToken 是 context_management 字段受的 beta token。

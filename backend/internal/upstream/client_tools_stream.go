@@ -7,10 +7,11 @@ import (
 	"io"
 	"strings"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-	"github.com/tidwall/gjson"
 )
 
 type responsesClientToolStreamBody struct {
@@ -183,3 +184,6 @@ func transformResponsesClientToolStream(
 	}
 	_ = destination.Close()
 }
+
+// DefaultSSELineLimit 是 SSE 单行数据的默认字节上限。
+const DefaultSSELineLimit = 500 * 1024 * 1024

@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
+	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	googlewire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-	"github.com/google/uuid"
 )
 
 // AntigravityPassthroughErrorMessages 透传给客户端的错误消息白名单（小写）
@@ -17,6 +19,7 @@ import (
 var AntigravityPassthroughErrorMessages = []string{
 	"prompt is too long",
 }
+
 var ErrProjectIDRequired = errors.New("this standard-tier Antigravity provider requires project_id")
 
 // PromptTooLongError 表示上游明确返回 prompt too long
@@ -260,3 +263,17 @@ func EnableMixedGeminiToolInvocations(body []byte) ([]byte, error) {
 	toolConfig["includeServerSideToolInvocations"] = true
 	return json.Marshal(request)
 }
+
+// AntigravityGemini31ProAgentModel 是 Gemini 3.1 Pro High 的上游路由键。
+const AntigravityGemini31ProAgentModel = "gemini-pro-agent"
+
+// DefaultAntigravityModelMapping 将公开请求型号转换为平台内部路由键。
+var DefaultAntigravityModelMapping = map[string]string{
+	"gemini-3.1-pro-high": AntigravityGemini31ProAgentModel,
+}
+
+// CleanJSONSchema 将 JSON Schema 转换为 Gemini 支持的格式。
+func CleanJSONSchema(schema map[string]any) map[string]any { return bridge.CleanJSONSchema(schema) }
+
+// DeepCleanUndefined 递归删除值为 "[undefined]" 的对象字段。
+func DeepCleanUndefined(value any) { bridge.DeepCleanUndefined(value) }

@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-	claude "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	claude "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 
 const DefaultBedrockRegion = "us-east-1"

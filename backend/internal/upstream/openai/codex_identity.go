@@ -6,8 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
 	"github.com/google/uuid"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
 )
 
 // CodexUpstreamMinVersion 上游 /backend-api/codex 接受的最低 version 头：
@@ -199,3 +200,54 @@ const (
 	CodexCLIVersion   = "0.144.1"
 	CodexCLIUserAgent = CodexDefaultOriginator + "/" + CodexCLIVersion + " (Ubuntu 22.4.0; x86_64) xterm-256color"
 )
+
+// ResolveUpstreamOriginator 按路由覆盖、客户端原值、官方默认值和兼容默认值的顺序选择 originator。
+func ResolveUpstreamOriginator(read func() string, official, matched bool, routed string) string {
+	if matched {
+		if value := strings.TrimSpace(routed); value != "" {
+			return value
+		}
+	}
+	if value := strings.TrimSpace(read()); value != "" {
+		return value
+	}
+	if official {
+		return ResolveCodexOutboundIdentity("").Originator
+	}
+	return "opencode"
+}
+
+// IsBrowserUserAgent 判断 User-Agent 是否属于浏览器。
+func IsBrowserUserAgent(userAgent string) bool { return clientmeta.IsBrowserUserAgent(userAgent) }
+
+// IsCodexOfficialClientRequest 判断请求是否来自官方 Codex 客户端。
+func IsCodexOfficialClientRequest(userAgent string) bool {
+	return clientmeta.IsCodexOfficialClientRequest(userAgent)
+}
+
+// IsCodexOfficialClientRequestStrict 按完整身份格式识别官方 Codex 客户端。
+func IsCodexOfficialClientRequestStrict(userAgent string) bool {
+	return clientmeta.IsCodexOfficialClientRequestStrict(userAgent)
+}
+
+// IsCodexOfficialClientOriginator 识别官方 Codex originator。
+func IsCodexOfficialClientOriginator(originator string) bool {
+	return clientmeta.IsCodexOfficialClientOriginator(originator)
+}
+
+// IsCodexOfficialClientByHeaders 根据 User-Agent 和 originator 识别官方客户端。
+func IsCodexOfficialClientByHeaders(userAgent, originator string) bool {
+	return clientmeta.IsCodexOfficialClientByHeaders(userAgent, originator)
+}
+
+// PairCodexClientIdentity 配对 User-Agent 与 originator。
+func PairCodexClientIdentity(userAgent string) (originator string, pairedUA string, ok bool) {
+	return clientmeta.PairCodexClientIdentity(userAgent)
+}
+
+const CodexDefaultOriginator = clientmeta.CodexDefaultOriginator
+
+// normalizeCodexClientHeader 归一化客户端许可策略使用的请求头。
+func normalizeCodexClientHeader(value string) string {
+	return clientmeta.NormalizeCodexClientHeader(value)
+}

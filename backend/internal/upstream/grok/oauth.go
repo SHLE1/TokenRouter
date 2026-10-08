@@ -8,11 +8,10 @@ import (
 	"os"
 	"strings"
 
-	wiregrok "github.com/TokenFlux/TokenRouter/internal/protocol/grok"
-
 	urlvalidator "github.com/TokenFlux/TokenRouter/internal/egress/urlpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/oauthpkce"
+	wiregrok "github.com/TokenFlux/TokenRouter/internal/protocol/grok"
 )
 
 const (

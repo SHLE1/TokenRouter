@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 const (
@@ -25,8 +26,10 @@ type ProviderIdentityInput struct {
 	SetupToken                            string `json:"-"`
 }
 
-func (ProviderIdentityInput) String() string     { return "openai provider identity input" }
+func (ProviderIdentityInput) String() string { return "openai provider identity input" }
+
 func (v ProviderIdentityInput) GoString() string { return v.String() }
+
 func CodexProviderNamespace(input ProviderIdentityInput) string {
 	if input.ChatGPTAccountID != "" {
 		if input.ChatGPTUserID != "" {
@@ -258,4 +261,19 @@ func DeriveStableUUIDv4(seed string) string {
 		binary.BigEndian.Uint16(b[6:8]),
 		binary.BigEndian.Uint16(b[8:10]),
 		b[10:16])
+}
+
+// SetChatGPTAccountHeaders 设置 ChatGPT 账户 ID 和 FedRAMP 请求头。
+func SetChatGPTAccountHeaders(headers http.Header, id string, fedRAMP bool) {
+	if headers == nil {
+		return
+	}
+	if id != "" {
+		headers.Set("chatgpt-account-id", id)
+	}
+	if fedRAMP {
+		headers.Set("x-openai-fedramp", "true")
+	} else {
+		headers.Del("x-openai-fedramp")
+	}
 }

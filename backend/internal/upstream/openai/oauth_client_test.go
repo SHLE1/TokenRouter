@@ -11,13 +11,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
-
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
-	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 type OpenAIOAuthServiceSuite struct {
@@ -502,4 +503,11 @@ func newOAuthLocalTestServer(t testing.TB, handler http.Handler) *httptest.Serve
 		t.Skipf("local listeners are not permitted in this environment: %v", oauthTestListenerCheck.err)
 	}
 	return httptest.NewServer(handler)
+}
+
+// TestCreateOpenAIReqClient_Timeout120Seconds 检查 OAuth 客户端超时为 120 秒。
+func TestCreateOpenAIReqClient_Timeout120Seconds(t *testing.T) {
+	client, err := CreateOAuthReqClient("http://proxy.local:8080")
+	require.NoError(t, err)
+	require.Equal(t, 120*time.Second, client.GetClient().Timeout)
 }

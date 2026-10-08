@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/tidwall/gjson"
+
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
-	"github.com/google/uuid"
-	"github.com/tidwall/gjson"
 )
 
 var QoderClaudeBillingCCHRe = regexp.MustCompile(`(x-anthropic-billing-header:[^\n\r;]*?(?:;[^\n\r;]*?)*\bcch=)[0-9a-fA-F]{5}(;)`)

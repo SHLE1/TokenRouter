@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
-	wiregrok "github.com/TokenFlux/TokenRouter/internal/protocol/grok"
+	"github.com/imroc/req/v3"
 
 	sharedhttp "github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
-	"github.com/imroc/req/v3"
+	wiregrok "github.com/TokenFlux/TokenRouter/internal/protocol/grok"
 )
 
 type OAuthClient struct {

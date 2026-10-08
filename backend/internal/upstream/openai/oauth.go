@@ -9,9 +9,8 @@ import (
 	"strings"
 	"time"
 
-	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
 	"github.com/TokenFlux/TokenRouter/internal/pkg/oauthpkce"
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
 // OpenAI OAuth Constants (from CRS project - Codex CLI client)

@@ -10,11 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	geminiwire "github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/tidwall/gjson"
 )
 
 type ResponseOptions struct {

@@ -307,3 +307,40 @@ var BedrockModelRegionRules = map[string]BedrockModelRegionRule{
 		SourceURL: "https://platform.claude.com/docs/en/build-with-claude/claude-on-amazon-bedrock-legacy",
 	},
 }
+
+// RouteInput 提供 Bedrock 模型路由所需的来源区域、推理范围和模型名。
+type RouteInput struct {
+	Region      string
+	ForceGlobal bool
+	Model       string
+}
+
+// DefaultBedrockModelMapping 将 Anthropic 模型名映射为 Bedrock 默认模型 ID。
+// ResolveBedrockModelRoute 根据来源区域和推理规则选择最终 ID。
+var DefaultBedrockModelMapping = map[string]string{
+	// Claude Fable
+	"claude-fable-5-1": "anthropic.claude-fable-5-1",
+	"claude-fable-5":   "anthropic.claude-fable-5",
+	// Claude Opus
+	// Opus 5、4.8 和 4.7 使用无版本后缀的 Bedrock ID。
+	"claude-opus-5":            "us.anthropic.claude-opus-5",
+	"claude-opus-4-8":          "us.anthropic.claude-opus-4-8",
+	"claude-opus-4-7":          "us.anthropic.claude-opus-4-7",
+	"claude-opus-4-6-thinking": "us.anthropic.claude-opus-4-6-v1",
+	"claude-opus-4-6":          "us.anthropic.claude-opus-4-6-v1",
+	"claude-opus-4-5-thinking": "us.anthropic.claude-opus-4-5-20251101-v1:0",
+	"claude-opus-4-5-20251101": "us.anthropic.claude-opus-4-5-20251101-v1:0",
+	"claude-opus-4-1":          "us.anthropic.claude-opus-4-1-20250805-v1:0",
+	"claude-opus-4-20250514":   "us.anthropic.claude-opus-4-20250514-v1:0",
+	// Claude Sonnet
+	"claude-sonnet-5":            "us.anthropic.claude-sonnet-5",
+	"claude-sonnet-4-6-thinking": "us.anthropic.claude-sonnet-4-6",
+	"claude-sonnet-4-6":          "us.anthropic.claude-sonnet-4-6",
+	"claude-sonnet-4-5":          "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+	"claude-sonnet-4-5-thinking": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+	"claude-sonnet-4-5-20250929": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+	"claude-sonnet-4-20250514":   "us.anthropic.claude-sonnet-4-20250514-v1:0",
+	// Claude Haiku
+	"claude-haiku-4-5":          "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+	"claude-haiku-4-5-20251001": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+}

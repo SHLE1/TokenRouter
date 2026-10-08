@@ -7,9 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
 // codexToolNameMapping 定义 Codex 原生工具名称到 OpenCode 工具名称的映射
@@ -371,4 +373,22 @@ func CorrectToolName(name string) (string, bool) {
 		return correctName, true
 	}
 	return name, false
+}
+
+// CorrectResponseBody 修正响应体中的工具调用
+func (c *CodexToolCorrector) CorrectResponseBody(body []byte) []byte {
+	if len(body) == 0 {
+		return body
+	}
+
+	updated := body
+	if c != nil {
+		if corrected, changed := c.CorrectToolCallsInSSEBytes(updated); changed {
+			updated = corrected
+		}
+	}
+	if normalized, changed := protocolopenai.NormalizeOpenAIResponsesFunctionCallArguments(updated); changed {
+		updated = normalized
+	}
+	return updated
 }

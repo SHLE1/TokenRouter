@@ -4,10 +4,11 @@ import (
 	"context"
 	"strings"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/TokenFlux/TokenRouter/internal/upstream/internal/usageclient"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usagecontract"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
-	"github.com/tidwall/gjson"
 )
 
 type DeepseekBalanceUsageAdapter struct{}
@@ -64,3 +65,6 @@ func (*DeepseekBalanceUsageAdapter) Query(ctx context.Context, input *usagecontr
 		Available: &available,
 	}, nil
 }
+
+// DefaultTestModel 是 DeepSeek 提供商的默认探测模型。
+const DefaultTestModel = "deepseek-chat"

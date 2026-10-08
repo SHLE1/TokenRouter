@@ -9,10 +9,11 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/protocol"
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // 捕获同步输出，不另建队列或输出协程。

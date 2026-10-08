@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
@@ -505,3 +507,26 @@ func StreamResponse(ctx context.Context, resp *http.Response, c *upstream.Output
 		}
 	}
 }
+
+// StreamEventIsTerminal 根据 SSE 事件名和数据判断响应是否结束。
+func StreamEventIsTerminal(eventName, data string) bool {
+	if strings.EqualFold(strings.TrimSpace(eventName), "message_stop") {
+		return true
+	}
+	trimmed := strings.TrimSpace(data)
+	if trimmed == "" {
+		return false
+	}
+	if trimmed == "[DONE]" {
+		return true
+	}
+	return gjson.Get(trimmed, "type").String() == "message_stop"
+}
+
+// StreamErrorEventError 表示上游 SSE 流体内出现 event:error 帧。
+// RawData 保留该事件 data: 行的原始内容，供上层写入 failover body 和 Ops 日志。
+type StreamErrorEventError struct {
+	RawData string
+}
+
+func (e *StreamErrorEventError) Error() string { return "have error in stream" }

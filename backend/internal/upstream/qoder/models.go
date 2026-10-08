@@ -5,6 +5,18 @@ import (
 	"strings"
 )
 
+// NormalizeModelForWhitelist 将已知别名转换成模型白名单使用的路由键。
+func NormalizeModelForWhitelist(model string) string {
+	trimmed := strings.TrimSpace(model)
+	if trimmed == "" {
+		return ""
+	}
+	if info, ok := LookupQoderModelAlias(trimmed); ok {
+		return strings.TrimSpace(info.Key)
+	}
+	return trimmed
+}
+
 // globalAliases 与 cnAliases 固化公开模型 ID 到内部 route key 的站点映射。
 var globalAliases = map[string]string{
 	"claude-opus-4-6":   "ultimate",

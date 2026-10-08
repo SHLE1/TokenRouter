@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 	googlewire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
@@ -44,6 +46,7 @@ type RetryObservation struct {
 	UpstreamStatusCode                                    int
 	UpstreamRequestID, UpstreamURL, Kind, Message, Detail string
 }
+
 type RetryOptions struct {
 	BaseURL              func() string
 	Do                   func(*http.Request) (*http.Response, error)
@@ -66,6 +69,7 @@ type RetryOptions struct {
 	Internal500Exhausted func()
 	ResetInternal500     func()
 }
+
 type RetryAdapter struct{ Options RetryOptions }
 
 // AntigravityRetryLoopResult 重试循环的结果
@@ -959,4 +963,31 @@ func ShouldTriggerAntigravitySmartRetry(native bool, respBody []byte) (shouldRet
 	}
 
 	return true, false, waitDuration, info.ModelName, false
+}
+
+// NormalizeAntigravityModelName 去掉资源路径前缀并返回小写模型名。
+func NormalizeAntigravityModelName(model string) string {
+	normalized := strings.ToLower(strings.TrimSpace(model))
+	if idx := strings.LastIndex(normalized, "/publishers/google/models/"); idx != -1 {
+		normalized = normalized[idx+len("/publishers/google/models/"):]
+	} else if idx := strings.LastIndex(normalized, "/publishers/anthropic/models/"); idx != -1 {
+		normalized = normalized[idx+len("/publishers/anthropic/models/"):]
+	} else if idx := strings.LastIndex(normalized, "/models/"); idx != -1 {
+		normalized = normalized[idx+len("/models/"):]
+	} else {
+		normalized = strings.TrimPrefix(normalized, "publishers/google/models/")
+		normalized = strings.TrimPrefix(normalized, "publishers/anthropic/models/")
+		normalized = strings.TrimPrefix(normalized, "models/")
+	}
+	return normalized
+}
+
+// IsAntigravityInternalServerError 检查 HTTP 500 响应是否包含匹配的错误代码、消息和 INTERNAL 状态。
+func IsAntigravityInternalServerError(statusCode int, body []byte) bool {
+	if statusCode != http.StatusInternalServerError {
+		return false
+	}
+	return gjson.GetBytes(body, "error.code").Int() == 500 &&
+		gjson.GetBytes(body, "error.message").String() == "Internal error encountered." &&
+		gjson.GetBytes(body, "error.status").String() == "INTERNAL"
 }

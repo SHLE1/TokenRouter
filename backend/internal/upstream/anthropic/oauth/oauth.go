@@ -6,9 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	wire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
-
 	"github.com/TokenFlux/TokenRouter/internal/pkg/oauthpkce"
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 
 // Claude OAuth Constants

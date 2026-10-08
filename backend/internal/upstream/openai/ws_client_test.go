@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 )
 
 func TestCoderOpenAIWSClientDialer_ProxyHTTPClientReuse(t *testing.T) {

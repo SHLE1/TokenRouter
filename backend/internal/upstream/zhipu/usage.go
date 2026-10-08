@@ -6,12 +6,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream/internal/usageclient" // CnZhipuWindow 标识智谱 TOKENS_LIMIT 条目所属窗口。
+	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/upstream/internal/usageclient"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usagecontract"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
-	"github.com/tidwall/gjson"
 )
 
+// CnZhipuWindow 标识智谱 TOKENS_LIMIT 条目所属窗口。
 type CnZhipuWindow int
 
 const (
@@ -193,3 +195,6 @@ func (*ZhipuCodingUsageAdapter) Query(ctx context.Context, input *usagecontract.
 	tiers := ParseZhipuTokenTiers(gjson.GetBytes(body, "data"))
 	return usageclient.CnUsageLimits("zhipu", tiers)
 }
+
+// DefaultTestModel 是智谱提供商的默认探测型号。
+const DefaultTestModel = "glm-4.7"

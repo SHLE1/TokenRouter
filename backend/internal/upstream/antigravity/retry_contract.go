@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"sync"
 	"time" // 限流相关常量
-	// AntigravityRateLimitThreshold 限流等待/切换阈值
-	// - 智能重试：retryDelay < 此阈值时等待后重试，>= 此阈值时直接限流模型
-	// - 预检查：剩余限流时间 < 此阈值时等待，>= 此阈值时切换提供商
 )
 
 const (

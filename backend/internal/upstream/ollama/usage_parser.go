@@ -1,6 +1,7 @@
 package ollama
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -8,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
-
 	"golang.org/x/net/html"
+
+	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 )
 
 var (
@@ -179,7 +180,7 @@ func parseOllamaModels(root *html.Node) []usageview.OllamaCloudUsageModel {
 		}
 	})
 
-	// 旧版设置页可能不带 segment 标记但仍暴露这些精确属性；不要从百分比或限额推算请求数。
+	// 设置页缺少 segment 标记时，从模型名和请求数属性读取明细。
 	if len(models) == 0 {
 		walkHTML(root, func(node *html.Node) {
 			if node.Type != html.ElementNode {
@@ -455,3 +456,6 @@ func containsAny(value string, candidates ...string) bool {
 	}
 	return false
 }
+
+// ErrUnauthorizedHTML 表示用量页面返回了登录表单。
+var ErrUnauthorizedHTML = errors.New("settings HTML is a sign-in page")

@@ -14,9 +14,7 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
-
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
-
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/gemini"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
 )

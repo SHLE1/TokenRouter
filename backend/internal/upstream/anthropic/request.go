@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/tidwall/gjson"
+
+	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
 type RequestOptions struct {

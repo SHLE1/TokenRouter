@@ -10,11 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/imroc/req/v3"
+
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/imroc/req/v3"
 )
 
 // NewOAuthClient creates a new OpenAI OAuth client

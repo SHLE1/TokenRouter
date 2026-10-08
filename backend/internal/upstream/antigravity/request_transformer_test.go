@@ -5,8 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 )
 
 // TestBuildParts_ThinkingBlockWithoutSignature 测试thinking block无signature时的处理
@@ -691,4 +692,16 @@ func TestIdentityPatchOmitsModelDeclaration(t *testing.T) {
 	require.Contains(t, string(body), "You are Antigravity")
 	require.NotContains(t, string(body), "You are Model")
 	require.NotContains(t, string(body), "ModelId is")
+}
+
+// TestReasoningRequestRules 覆盖需要特殊参数处理的完整型号。
+func TestReasoningRequestRules(t *testing.T) {
+	for _, id := range []string{"gemini-2.5-flash-thinking", "gemini-3-pro-high", "gemini-3.1-pro-high", "gemini-3.6-flash-high", "gemini-3.6-flash-low", "gemini-3.6-flash-medium", "gemini-3.6-flash-tiered"} {
+		if !IsGeminiReasoningModel(id) {
+			t.Errorf("missing request rule for %s", id)
+		}
+	}
+	if IsGeminiReasoningModel("unknown-model") {
+		t.Fatal("unknown model acquired reasoning rules")
+	}
 }

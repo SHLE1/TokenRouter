@@ -3,11 +3,15 @@ package kimi
 import (
 	"context"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/TokenFlux/TokenRouter/internal/upstream/internal/usageclient"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usagecontract"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
-	"github.com/tidwall/gjson"
 )
+
+// DefaultTestModel 是 Kimi 提供商的默认探测模型。
+const DefaultTestModel = "kimi-k2.5"
 
 // ParseKimiUsageTiers 解析 Kimi For Coding 的 /usages 响应。
 //

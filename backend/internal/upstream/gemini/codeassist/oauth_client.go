@@ -6,8 +6,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/imroc/req/v3"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
 )
 
 type OAuthClient struct {
@@ -110,3 +112,6 @@ func CreateOAuthReqClient(proxyURL string) (*req.Client, error) {
 		Timeout:  60 * time.Second,
 	})
 }
+
+// TokenResponse 是 Google OAuth 令牌响应。
+type TokenResponse = wire.TokenResponse

@@ -1,6 +1,8 @@
 package usageview
 
-import "time"
+import (
+	"time"
+)
 
 // UpstreamUsageAmount 表示余额或累计限额的三个可选维度。
 type UpstreamUsageAmount struct {
@@ -45,4 +47,21 @@ type UpstreamUsageInfo struct {
 	Limits       []UpstreamUsageLimit        `json:"limits,omitempty"`
 	Subscription *UpstreamUsageSubscription  `json:"subscription,omitempty"`
 	ExpiresAt    *time.Time                  `json:"expires_at,omitempty"`
+}
+
+const (
+	UpstreamUsageAdapterSub2API         = "sub2api"
+	UpstreamUsageAdapterNewAPI          = "new_api"
+	UpstreamUsageAdapterZivv            = "zivv"
+	UpstreamUsageAdapterKimiCoding      = "kimi_coding"
+	UpstreamUsageAdapterZhipuCoding     = "zhipu_coding"
+	UpstreamUsageAdapterKimiBalance     = "kimi_balance"
+	UpstreamUsageAdapterDeepseekBalance = "deepseek_balance"
+)
+
+// CNQuotaTier 表示 Coding Plan 的滚动用量窗口。
+type CNQuotaTier struct {
+	Window      string  `json:"window"`
+	UsedPercent float64 `json:"used_percent"`
+	ResetAt     string  `json:"reset_at,omitempty"`
 }

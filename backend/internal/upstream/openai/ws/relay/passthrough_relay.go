@@ -17,12 +17,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 )
 
+var passthroughUsageParseFailureTotal atomic.Int64
+
+func recordUsageParseFailure() {
+	passthroughUsageParseFailureTotal.Add(1)
+}
+
 type FrameConn interface {
 	ReadFrame(ctx context.Context) (coderws.MessageType, []byte, error)
 	WriteFrame(ctx context.Context, msgType coderws.MessageType, payload []byte) error
 	Close() error
 }
-
 type Usage struct {
 	InputTokens              int
 	OutputTokens             int
@@ -30,7 +35,6 @@ type Usage struct {
 	CacheReadInputTokens     int
 	ImageOutputTokens        int
 }
-
 type RelayResult struct {
 	RequestModel string
 	// ResponseServiceTier 是终止响应声明的上游实际服务档位。
@@ -45,7 +49,6 @@ type RelayResult struct {
 	UpstreamToClientFrames  int64
 	DroppedDownstreamFrames int64
 }
-
 type RelayTurnResult struct {
 	RequestModel          string
 	ResponseServiceTier   string
@@ -57,14 +60,12 @@ type RelayTurnResult struct {
 	Duration              time.Duration
 	FirstTokenMs          *int
 }
-
 type RelayExit struct {
 	Stage           string
 	Err             error
 	Graceful        bool
 	WroteDownstream bool
 }
-
 type RelayOptions struct {
 	WriteTimeout                    time.Duration
 	WriteTimeoutForTurn             func() time.Duration
@@ -87,7 +88,6 @@ type RelayOptions struct {
 	OnTrace           func(event RelayTraceEvent)
 	Now               func() time.Time
 }
-
 type RelayTraceEvent struct {
 	Stage           string
 	Direction       string
@@ -97,7 +97,6 @@ type RelayTraceEvent struct {
 	WroteDownstream bool
 	Error           string
 }
-
 type relayState struct {
 	usage                   Usage
 	turnUsage               Usage
@@ -112,14 +111,12 @@ type relayState struct {
 	activeTurn              *relayTurnTiming
 	pendingBareError        *observedUpstreamEvent
 }
-
 type relayExitSignal struct {
 	stage           string
 	err             error
 	graceful        bool
 	wroteDownstream bool
 }
-
 type observedUpstreamEvent struct {
 	terminal            bool
 	eventType           string
@@ -131,7 +128,6 @@ type observedUpstreamEvent struct {
 	duration            time.Duration
 	firstToken          *int
 }
-
 type relayTurnTiming struct {
 	startAt                     time.Time
 	firstTokenMs                *int
@@ -209,7 +205,7 @@ func Relay(
 		// 的回调），外部取消若落在一次已成功写入的解除武装窗口内，会连同尚未
 		// 发出的 close 帧一起冲掉，客户端只能看到裸 EOF 而收不到关闭码。与读
 		// 侧 conn.Read(context.Background()) 同理，取消路径的连接回收由各退出
-		// 分支的显式 Close/CloseNow 兜底。
+		// 分支调用 Close/CloseNow 完成。
 		writeCtx, cancel := context.WithTimeout(context.Background(), getWriteTimeout())
 		defer cancel()
 		return clientConn.WriteFrame(writeCtx, msgType, payload)
@@ -528,7 +524,7 @@ func runUpstreamToClient(
 			graceful := isDisconnectError(err)
 			// WebSocket 正常关闭只表示传输握手完成；上游一旦开始 Responses 回合，
 			// 仍必须收到终态协议事件才算成功。1000/EOF 若发生在终态前，应视为
-			// relay 失败，避免适配器在回合仍活跃时错误报告 relay_completed。
+			// relay 失败，适配器据此报告尚未完成的回合。
 			if graceful && openAIWSRelayActiveTurnID(state) != "" {
 				graceful = false
 				err = errors.New("upstream websocket closed before terminal event: " + err.Error())
@@ -724,8 +720,7 @@ func firstRelayResponseServiceTier(message []byte) string {
 	return ""
 }
 
-// observeRelayTurnResponseServiceTier 只记录终止事件的 tier，避免把早期回显的
-// 请求档位误认为实际处理档位。
+// observeRelayTurnResponseServiceTier 记录终止事件声明的处理档位。
 func observeRelayTurnResponseServiceTier(turn *relayTurnTiming, tier string) {
 	if turn == nil {
 		return
@@ -759,7 +754,7 @@ func observeUpstreamMessage(
 	if responseID == "" {
 		responseID = strings.TrimSpace(values[2].String())
 	}
-	// 仅 terminal 事件兜底读取顶层 id，避免把 event_id 当成 response_id 关联到 turn。
+	// terminal 事件缺少响应标识时，从顶层 id 读取。
 	if responseID == "" && isTerminalEvent(eventType) {
 		responseID = strings.TrimSpace(values[3].String())
 	}
@@ -1055,7 +1050,7 @@ func parseUsageAndAccumulate(
 		if onParseFailure != nil {
 			onParseFailure(eventType, usageRaw)
 		}
-		// 解析失败时不做部分字段累加，避免计费 usage 出现“半有效”状态。
+		// 任一字段解析失败时，返回空用量。
 		return Usage{}
 	}
 	reasoningTokens := usageResult.Get("output_tokens_details.reasoning_tokens").Int()

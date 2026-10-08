@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	protocolanthropic "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
@@ -29,6 +31,7 @@ type ResponseOptions struct {
 	IsFailover                                                      func(error) bool
 	MarkCommitted                                                   func()
 }
+
 type (
 	ResponseAdapter struct{ Options ResponseOptions }
 	StreamResult    struct {
@@ -79,7 +82,9 @@ func (cw *ClientWriter) Fprintf(format string, args ...any) bool {
 	cw.flusher.Flush()
 	return true
 }
+
 func (cw *ClientWriter) Disconnected() bool { return cw.disconnected }
+
 func (cw *ClientWriter) prepareFirstWrite() {
 	if cw.beforeFirstWrite == nil {
 		return
@@ -1067,4 +1072,13 @@ func (s *ResponseAdapter) observeRaw(data []byte) {
 	if s.Options.ObserveRaw != nil {
 		s.Options.ObserveRaw(data)
 	}
+}
+
+// UnwrapV1InternalResponse 提取 v1internal 的 response JSON 字段，缺失时返回传入的响应体。
+func (s *ResponseAdapter) UnwrapV1InternalResponse(body []byte) ([]byte, error) {
+	result := gjson.GetBytes(body, "response")
+	if result.Exists() {
+		return []byte(result.Raw), nil
+	}
+	return body, nil
 }

@@ -10,10 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/coder/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // testWSFrames 将本地 WebSocket 连接适配为帧读写接口。

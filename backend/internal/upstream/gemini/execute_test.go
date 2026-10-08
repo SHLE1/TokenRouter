@@ -13,9 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/stretchr/testify/require"
 )
 
 type executeSink struct {
@@ -28,6 +29,7 @@ type executeSink struct {
 }
 
 func (s *executeSink) Begin(upstream.OutputHead) error { return nil }
+
 func (s *executeSink) Emit(event upstream.OutputEvent) error {
 	if len(event.Data) > 0 && s.first != nil && s.once.CompareAndSwap(false, true) {
 		close(s.first)
@@ -42,12 +44,6 @@ func (s *executeSink) Emit(event upstream.OutputEvent) error {
 	return nil
 }
 
-type executeBody struct {
-	io.ReadCloser
-	closes *atomic.Int32
-}
-
-func (b *executeBody) Close() error { b.closes.Add(1); return b.ReadCloser.Close() }
 func localTarget(server *httptest.Server, mode ResponseMode, stream bool, closes *atomic.Int32) *Target {
 	return &Target{ProviderID: 41, Model: "gemini-fixture", Mode: mode, Exchange: ExchangeOptions{MaxRetries: 1, RequestIDHeader: "x-request-id", Build: func(ctx context.Context) (*http.Request, string, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, server.URL, strings.NewReader(`{"contents":[]}`))

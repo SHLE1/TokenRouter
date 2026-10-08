@@ -14,10 +14,9 @@ import (
 	"strings"
 	"time"
 
-	googlewire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
-
 	proxyurl "github.com/TokenFlux/TokenRouter/internal/infra/httpclient/proxy"
 	servertiming "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
+	googlewire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
 )
 
 // ForbiddenError 表示上游返回 403 Forbidden

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,33 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
 )
+
+// MayRefreshAttempt 允许刷新 401 和 403 认证错误，额度和权益拒绝返回 false。
+func MayRefreshAttempt(err error) bool {
+	var failure *APIError
+	if !errors.As(err, &failure) || failure.IsAgentLimit() || failure.IsEntitlementDenied() {
+		return false
+	}
+	return failure.StatusCode == 401 || failure.StatusCode == 403
+}
+
+// MaySwitchAttempt 判断 Qoder 错误是否支持切换提供商，重试窗口和次数由调用方决定。
+func MaySwitchAttempt(err error) bool {
+	return maySwitchAttempt(err, true)
+}
+
+// MaySwitchCompatibleAttempt 判断 Messages/Responses 是否可切换提供商，非 APIError 返回 false。
+func MaySwitchCompatibleAttempt(err error) bool {
+	return maySwitchAttempt(err, false)
+}
+
+func maySwitchAttempt(err error, unknown bool) bool {
+	var failure *APIError
+	if !errors.As(err, &failure) {
+		return unknown
+	}
+	return failure.IsAgentLimit() || failure.IsEntitlementDenied() || failure.StatusCode == 429 || failure.StatusCode >= 500
+}
 
 // GenerationPath 是 Qoder LLM 推理的 SSE 流式端点。
 const GenerationPath = "/algo/api/v2/service/pro/sse/agent_chat_generation?FetchKeys=llm_model_result&AgentId=agent_common&Encode=1"

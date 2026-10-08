@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
+	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
 )
 
 // SanitizeOpenAICrossModeFailoverReasoning 从 canonical 请求体派生跨模式重试请求，

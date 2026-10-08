@@ -11,9 +11,11 @@ const (
 	HTTPUpstreamProfileGrok    HTTPUpstreamProfile = "grok"
 )
 
-type httpUpstreamProfileContextKey struct{}
-type httpUpstreamDisableRedirectsContextKey struct{}
-type httpUpstreamPublicHostsOnlyContextKey struct{}
+type (
+	httpUpstreamProfileContextKey          struct{}
+	httpUpstreamDisableRedirectsContextKey struct{}
+	httpUpstreamPublicHostsOnlyContextKey  struct{}
+)
 
 // WithHTTPUpstreamProfile 将上游传输 profile 写入 context。
 func WithHTTPUpstreamProfile(ctx context.Context, profile HTTPUpstreamProfile) context.Context {

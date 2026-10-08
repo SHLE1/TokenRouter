@@ -11,10 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress/urlpolicy"
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/egress/urlpolicy"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 const openAIImageURLDownloadTimeout = 60 * time.Second

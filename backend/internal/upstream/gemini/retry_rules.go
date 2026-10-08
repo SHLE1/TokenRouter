@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
-	googlewire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
 	"github.com/tidwall/gjson"
+
+	googlewire "github.com/TokenFlux/TokenRouter/internal/protocol/google"
 )
 
 const (

@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson" // sanitizeGrokResponsesModelInput converts replay items from OpenAI and Chat
-	// shapes into the subset accepted by xAI's ModelInput decoder. Call IDs are
-	// assigned in a separate pass so an output can safely appear before its call.
+
+	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
 func (m BodyCodec) SanitizeGrokResponsesModelInput(body []byte) ([]byte, error) {

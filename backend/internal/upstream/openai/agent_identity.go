@@ -16,9 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/nacl/box"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 )
 
 const agentIdentityTaskRegistrationTimeout = 30 * time.Second

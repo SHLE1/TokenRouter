@@ -4,8 +4,9 @@ import (
 	"net/url"
 	"testing"
 
-	urlvalidator "github.com/TokenFlux/TokenRouter/internal/egress/urlpolicy"
 	"github.com/stretchr/testify/require"
+
+	urlvalidator "github.com/TokenFlux/TokenRouter/internal/egress/urlpolicy"
 )
 
 func TestParseAuthorizationInput(t *testing.T) {

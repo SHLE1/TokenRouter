@@ -21,6 +21,7 @@ type ModelGetOptions struct {
 	FilterHeaders func(http.Header) http.Header
 	Enter         func() (func(), error)
 }
+
 type HTTPResult struct {
 	StatusCode int
 	Headers    http.Header
@@ -36,7 +37,7 @@ func ReadAIStudioModel(ctx context.Context, path string, options ModelGetOptions
 		defer done()
 	}
 	// path 会被直接拼到上游 base URL 后面，因此按路径护栏逐片段校验，
-	// 见 upstream_path_guard.go。
+	// 见 upstream/path_segment.go。
 	sanitizedPath, ok := upstream.SanitizedUpstreamPathSuffix(path)
 	if !ok || sanitizedPath == "" {
 		return nil, errors.New("invalid path")
@@ -92,4 +93,17 @@ func ReadAIStudioModel(ctx context.Context, path string, options ModelGetOptions
 		Headers:    filteredHeaders,
 		Body:       body,
 	}, nil
+}
+
+// Model 保存模型名称及支持的生成方法。
+type Model struct {
+	Name                       string   `json:"name"`
+	DisplayName                string   `json:"displayName,omitempty"`
+	Description                string   `json:"description,omitempty"`
+	SupportedGenerationMethods []string `json:"supportedGenerationMethods,omitempty"`
+}
+
+// ModelsListResponse 是模型列表接口的响应体。
+type ModelsListResponse struct {
+	Models []Model `json:"models"`
 }

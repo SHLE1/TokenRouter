@@ -9,7 +9,6 @@ import (
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson" // StaticToolNameRewrites 是"静态前缀映射"，与 Parrot src/transform/cc_mimicry.py
-	// TOOL_NAME_REWRITES 完全一致。只有以这些前缀开头的工具会被重写。
 )
 
 var StaticToolNameRewrites = map[string]string{"sessions_": "cc_sess_", "session_": "cc_ses_"}

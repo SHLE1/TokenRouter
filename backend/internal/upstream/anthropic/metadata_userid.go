@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/TokenFlux/TokenRouter/internal/gateway/clientmeta"
-
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/anthropic"
 )
 

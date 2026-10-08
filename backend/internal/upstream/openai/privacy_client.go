@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/imroc/req/v3"
+
+	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 )
 
 type (

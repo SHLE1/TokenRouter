@@ -13,9 +13,10 @@ import (
 	"strings"
 	"time"
 
-	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	logger "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
 // 预编译正则表达式（避免每次调用重新编译）

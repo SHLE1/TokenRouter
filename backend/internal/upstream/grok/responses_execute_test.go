@@ -11,11 +11,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/protocol"
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/stretchr/testify/require"
 )
+
+// TestResolveGrokStreamIdleTimeout 验证 Grok 流空闲超时的选择规则。
+func TestResolveGrokStreamIdleTimeout(t *testing.T) {
+	require.Equal(t, 90*time.Second, ResolveStreamIdleTimeout(90))
+	require.Equal(t, DefaultStreamIdleTimeout, ResolveStreamIdleTimeout(0))
+	require.Equal(t, DefaultStreamIdleTimeout, ResolveStreamIdleTimeout(-1))
+}
 
 // TestGrokResponsesExecuteReplayAndResourceOwnership 验证本地 HTTP 验证原生恢复只重放一次，关闭前一响应后才读取后一响应。
 func TestGrokResponsesExecuteReplayAndResourceOwnership(t *testing.T) {

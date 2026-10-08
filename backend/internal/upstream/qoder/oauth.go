@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/oauthpkce"
-
 	"github.com/google/uuid"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/oauthpkce"
 )
 
 const (

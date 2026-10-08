@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 )
 
 // Anthropic 会话 Fallback 相关常量
@@ -27,7 +28,6 @@ func AnthropicSessionTTL() time.Duration {
 // 格式: s:<hash>-u:<hash>-a:<hash>-u:<hash>-...
 // s = system, u = user, a = assistant
 func BuildAnthropicDigestChain(systemRaw, messages []byte) string {
-
 	var parts []string
 
 	if len(systemRaw) > 0 && string(systemRaw) != "null" {

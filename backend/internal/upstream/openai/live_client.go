@@ -12,11 +12,12 @@ import (
 	"path"
 	"strings"
 
+	coderws "github.com/coder/websocket"
+	"github.com/google/uuid"
+
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	wire "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	coderws "github.com/coder/websocket"
-	"github.com/google/uuid"
 )
 
 const (

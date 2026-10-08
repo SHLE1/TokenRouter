@@ -13,13 +13,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
+	coderws "github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 
 	proxyurl "github.com/TokenFlux/TokenRouter/internal/infra/httpclient/proxy"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	openaiwsv2 "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws/relay"
-	coderws "github.com/coder/websocket"
-	"github.com/coder/websocket/wsjson"
 )
 
 const WSMessageReadLimitBytes int64 = 16 * 1024 * 1024
