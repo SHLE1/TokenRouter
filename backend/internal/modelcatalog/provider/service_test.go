@@ -13,9 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
@@ -86,7 +84,7 @@ func TestCatalogLookupGeminiThinkingTiers(t *testing.T) {
 	} {
 		t.Run(base, func(t *testing.T) {
 			pricing := catalogLookupTestPricing(2e-6, "text", "image", "audio", "video")
-			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{base: pricing}})
+			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{base: pricing}})
 			for _, suffix := range []string{"", "-high", "-low", "-medium", "-tiered"} {
 				for _, prefix := range []string{"", "models/", "publishers/google/models/", "projects/demo/locations/global/publishers/google/models/"} {
 					model := " " + strings.ToUpper(prefix+base+suffix) + " "
@@ -111,8 +109,8 @@ func TestCatalogLookupExactEntryWinsWithoutMerging(t *testing.T) {
 	for _, base := range []string{"gemini-3.1-pro", "gemini-3.8-flash", "gpt-5.6-terra"} {
 		t.Run(base, func(t *testing.T) {
 			basePricing := catalogLookupTestPricing(1e-6, "text", "image", "audio", "video")
-			tierPricing := &purepricing.CatalogModelPricing{InputCostPerToken: 9e-6, Mode: "chat"}
-			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{
+			tierPricing := &billingpricing.CatalogModelPricing{InputCostPerToken: 9e-6, Mode: "chat"}
+			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 				base: basePricing, base + "-high": tierPricing,
 			}})
 			for _, model := range []string{base + "-high", "models/" + base + "-high"} {
@@ -126,7 +124,7 @@ func TestCatalogLookupExactEntryWinsWithoutMerging(t *testing.T) {
 }
 
 func TestCatalogLookupGeminiRejectsUnknownAliases(t *testing.T) {
-	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gemini-3.8-flash":       catalogLookupTestPricing(1e-6, "text", "video"),
 		"gemini-3.8-flash-image": catalogLookupTestPricing(2e-6, "image"),
 		"gemini-3.8-flash-lite":  catalogLookupTestPricing(3e-6, "text"),
@@ -152,20 +150,20 @@ func TestCatalogLookupClaudeEquivalentVersions(t *testing.T) {
 	} {
 		for i := range names {
 			pricing := catalogLookupTestPricing(3e-6, "text", "image")
-			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{names[i]: pricing}})
+			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{names[i]: pricing}})
 			model := "models/" + names[1-i]
 			require.Nil(t, svc.GetModelPricing(model))
 			input, _ := svc.GetModelModalities(model)
 			require.Nil(t, input)
 			exact := catalogLookupTestPricing(9e-6, "text")
-			mutatePricingFixture(svc, func(data map[string]*purepricing.CatalogModelPricing) { data[names[1-i]] = exact })
+			mutatePricingFixture(svc, func(data map[string]*billingpricing.CatalogModelPricing) { data[names[1-i]] = exact })
 			require.Same(t, exact, svc.GetModelPricing(model))
 			input, _ = svc.GetModelModalities(model)
 			require.Equal(t, []string{"text"}, input)
 		}
 	}
 	// 日期后缀代表独立型号，价格和能力按完整版本查询。
-	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"claude-sonnet-4.20250514": catalogLookupTestPricing(1e-6, "video"),
 		"claude-opus-4-6":          catalogLookupTestPricing(2e-6, "image"),
 	}})
@@ -183,12 +181,12 @@ func TestCatalogLookupOpenAIProductIdentity(t *testing.T) {
 	} {
 		t.Run(model, func(t *testing.T) {
 			own := catalogLookupTestPricing(7e-6, "text", "image")
-			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{
+			svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 				"gpt-5.4":       catalogLookupTestPricing(1e-6, "text"),
 				"gpt-5.6":       catalogLookupTestPricing(2e-6, "text"),
 				"gpt-5.1-codex": catalogLookupTestPricing(3e-6, "text"),
 			}})
-			mutatePricingFixture(svc, func(data map[string]*purepricing.CatalogModelPricing) { data[model] = own })
+			mutatePricingFixture(svc, func(data map[string]*billingpricing.CatalogModelPricing) { data[model] = own })
 			for _, effort := range []string{"none", "minimal", "low", "medium", "high", "xhigh", "max"} {
 				if !capability.OpenAIModelSupportsReasoningEffort(model, effort) {
 					continue
@@ -209,7 +207,7 @@ func TestCatalogLookupOpenAIProductIdentity(t *testing.T) {
 }
 
 func TestCatalogLookupOpenAIDedicatedFallbackBeforeGenericBase(t *testing.T) {
-	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-5.4": catalogLookupTestPricing(99e-6, "text"),
 		"gpt-5.5": catalogLookupTestPricing(99e-6, "text"),
 		"gpt-5.6": catalogLookupTestPricing(99e-6, "text"),
@@ -233,7 +231,7 @@ func TestCatalogLookupOpenAIDedicatedFallbackBeforeGenericBase(t *testing.T) {
 func TestCatalogLookupOpenAIPriceFallbackKeepsDynamicProduct(t *testing.T) {
 	for _, model := range []string{"gpt-5.4", "gpt-5.5", "gpt-5.5-pro", "gpt-5.6-terra", "gpt-6-astra"} {
 		pricing := catalogLookupTestPricing(17e-6, "text", "image")
-		svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{model: pricing}})
+		svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{model: pricing}})
 		for _, suffix := range []string{"-preview", "-chat-latest"} {
 			require.Nil(t, svc.GetModelPricing(model+suffix), model+suffix)
 			input, output := svc.GetModelModalities(model + suffix)
@@ -244,7 +242,7 @@ func TestCatalogLookupOpenAIPriceFallbackKeepsDynamicProduct(t *testing.T) {
 }
 
 func TestCatalogLookupBareGPT56DoesNotBorrowOtherPrices(t *testing.T) {
-	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-5.6-sol":   catalogLookupTestPricing(5e-6, "text", "image"),
 		"gpt-5.4":       catalogLookupTestPricing(2.5e-6, "text"),
 		"gpt-5.1-codex": catalogLookupTestPricing(1.25e-6, "text"),
@@ -253,7 +251,7 @@ func TestCatalogLookupBareGPT56DoesNotBorrowOtherPrices(t *testing.T) {
 		billing := newBillingFixture(pricingSvc)
 		for _, model := range []string{"gpt-5.6", "gpt5.6", "openai/gpt-5.6-high", "gpt-5.6-max", "gpt-5.6-20260905", "gpt-5.6-2026-09-05", "gpt-5.6-openai-compact"} {
 			price, err := billing.GetModelPricing(model)
-			require.ErrorIs(t, err, purepricing.ErrModelPricingUnavailable, model)
+			require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable, model)
 			require.Nil(t, price)
 		}
 	}
@@ -265,7 +263,7 @@ func TestCatalogLookupBareGPT56DoesNotBorrowOtherPrices(t *testing.T) {
 func TestCatalogLookupSparkBillingPolicyDoesNotSupplyCapabilities(t *testing.T) {
 	legacy := catalogLookupTestPricing(1e-6, "audio")
 	spark := catalogLookupTestPricing(9e-6, "text")
-	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gpt-5.1-codex": legacy, "gpt-5.3-codex-spark": spark,
 	}})
 	require.Same(t, spark, svc.GetModelPricing("gpt-5.3-codex-spark"))
@@ -280,7 +278,7 @@ func TestCatalogLookupGrokUsesKnownRuntimeAliases(t *testing.T) {
 	t.Cleanup(func() { xai.SetRuntimeDefaultTextModel(previous) })
 	text := catalogLookupTestPricing(1e-6, "text")
 	vision := catalogLookupTestPricing(2e-6, "text", "image")
-	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"grok-4.5": text, "grok-4.6": vision, "grok-4.20-0309-reasoning": vision,
 	}})
 	require.Nil(t, svc.GetModelPricing("x-ai/grok-latest"))
@@ -300,7 +298,7 @@ func TestCatalogLookupGrokUsesKnownRuntimeAliases(t *testing.T) {
 		}
 	}
 	// 完整别名条目仍可独立配价，未知模型和跨客户端名称不会继承 Grok 能力。
-	mutatePricingFixture(svc, func(data map[string]*purepricing.CatalogModelPricing) { data["grok-latest"] = text })
+	mutatePricingFixture(svc, func(data map[string]*billingpricing.CatalogModelPricing) { data["grok-latest"] = text })
 	require.Same(t, text, svc.GetModelPricing("grok-latest"))
 	for _, model := range []string{"grok-unknown", "gpt-5.4", "claude-sonnet-4"} {
 		input, output := svc.GetModelModalities(model)
@@ -313,7 +311,7 @@ func TestCatalogLookupGrokUsesKnownRuntimeAliases(t *testing.T) {
 func TestCatalogLookupGrokDefaultAliasCycle(t *testing.T) {
 	previous := xai.RuntimeDefaultTextModel()
 	t.Cleanup(func() { xai.SetRuntimeDefaultTextModel(previous) })
-	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*purepricing.CatalogModelPricing{}})
+	svc := newModelCatalogFixture(modelCatalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{}})
 	for _, target := range []string{"grok", "grok-latest", "xai/grok-latest"} {
 		xai.SetRuntimeDefaultTextModel(target)
 		require.Nil(t, svc.GetModelPricing("grok"))
@@ -391,8 +389,8 @@ func TestPricingHotReload_DownloadRefreshesFingerprint(t *testing.T) {
 	require.Nil(t, svc.Snapshot().Data["custom-a"])
 	require.Equal(t, svc.customPricingFilesFingerprint(), svc.Snapshot().CustomFilesHash)
 
-	mutatePricingFixture(svc, func(data map[string]*pricing.CatalogModelPricing) {
-		data["sentinel"] = &pricing.CatalogModelPricing{}
+	mutatePricingFixture(svc, func(data map[string]*billingpricing.CatalogModelPricing) {
+		data["sentinel"] = &billingpricing.CatalogModelPricing{}
 	})
 	svc.reloadIfCustomFilesChanged()
 	require.Contains(t, svc.Snapshot().Data, "sentinel", "下载已消化文件变化，不得再次重建")
@@ -1333,7 +1331,7 @@ func TestSupplementRejectsInvalidOperationAndRule(t *testing.T) {
 	}
 }
 
-func mutatePricingFixture(service *Service, change func(map[string]*pricing.CatalogModelPricing)) {
+func mutatePricingFixture(service *Service, change func(map[string]*billingpricing.CatalogModelPricing)) {
 	data := service.Snapshot().Data
 	change(data)
 	setPricingFixtureData(service, data)
@@ -1418,8 +1416,8 @@ func captureStructuredLog(t *testing.T) (*inMemoryLogSink, func()) {
 }
 
 // catalogLookupTestPricing 为不同型号设置不同单价，供测试识别命中的条目。
-func catalogLookupTestPricing(input float64, modalities ...string) *purepricing.CatalogModelPricing {
-	return &purepricing.CatalogModelPricing{
+func catalogLookupTestPricing(input float64, modalities ...string) *billingpricing.CatalogModelPricing {
+	return &billingpricing.CatalogModelPricing{
 		InputCostPerToken: input, OutputCostPerToken: input * 5,
 		CacheCreationInputTokenCost: input * 1.25, CacheReadInputTokenCost: input / 10,
 		LongContextInputTokenThreshold: 200000, LongContextInputCostMultiplier: 2,

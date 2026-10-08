@@ -19,9 +19,7 @@ import (
 	keypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
-	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	routing "github.com/TokenFlux/TokenRouter/internal/routing"
@@ -47,7 +45,7 @@ func newGroupStoreFixture(client *dbent.Client, db postgresinfra.Executor) *rout
 			return providerpostgres.GroupLinksInTx(exec)
 		},
 		Users: func(exec postgresinfra.Executor) routingpostgres.GroupAccessParticipant {
-			return identitypostgres.GroupAccessDeletionInTx(exec)
+			return postgres.GroupAccessDeletionInTx(exec)
 		},
 		Enqueue: func(ctx context.Context, exec postgresinfra.Executor, id *int64) error {
 			return schedulerpostgres.EnqueueSchedulerChange(ctx, exec, scheduler.SchedulerOutboxEventGroupChanged, nil, id, nil)
@@ -263,7 +261,7 @@ func (s *UserRepoSuite) SetupTest() {
 }
 
 // mustCreateUser 为用户存储测试补齐默认字段并创建用户。
-func (s *UserRepoSuite) mustCreateUser(u *identitycore.User) *identitycore.User {
+func (s *UserRepoSuite) mustCreateUser(u *identity.User) *identity.User {
 	s.T().Helper()
 
 	if u.Email == "" {
@@ -273,7 +271,7 @@ func (s *UserRepoSuite) mustCreateUser(u *identitycore.User) *identitycore.User 
 		u.PasswordHash = "test-password-hash"
 	}
 	if u.Role == "" {
-		u.Role = identitycore.RoleUser
+		u.Role = identity.RoleUser
 	}
 	if u.Status == "" {
 		u.Status = billing.StatusActive

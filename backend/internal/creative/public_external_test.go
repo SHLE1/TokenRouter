@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
@@ -258,7 +257,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	providerRepo.byGroup[21] = []providercore.Record{{
 		ID:          61,
 		Platform:    capability.PlatformOpenAI,
-		Status:      billingcore.StatusActive,
+		Status:      billing.StatusActive,
 		Schedulable: true,
 		Credentials: map[string]any{
 			"model_whitelist": []string{"gpt-image-1", "gpt-image-2"},
@@ -274,7 +273,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	providerRepo.byGroup[22] = []providercore.Record{{
 		ID:          62,
 		Platform:    capability.PlatformGemini,
-		Status:      billingcore.StatusActive,
+		Status:      billing.StatusActive,
 		Schedulable: true,
 		Credentials: map[string]any{
 			"model_whitelist": []string{"gemini-2.5-flash-image", "gemini-3-pro-image", "gemini-3.1-flash-image"},
@@ -291,7 +290,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	providerRepo.byGroup[23] = []providercore.Record{{
 		ID:          63,
 		Platform:    capability.PlatformGrok,
-		Status:      billingcore.StatusActive,
+		Status:      billing.StatusActive,
 		Schedulable: true,
 		Credentials: map[string]any{
 			"model_whitelist": []string{"grok-imagine-image-1.0", "grok-imagine-image-2.0"},
@@ -310,7 +309,7 @@ func TestCreativeListModelsFallbacks(t *testing.T) {
 	providerRepo.byGroup[24] = []providercore.Record{{
 		ID:          64,
 		Platform:    capability.PlatformOpenAI,
-		Status:      billingcore.StatusActive,
+		Status:      billing.StatusActive,
 		Schedulable: true,
 		Credentials: map[string]any{
 			"model_mapping": map[string]any{"gpt-image-2": "gpt-image-2"},

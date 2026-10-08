@@ -1,1 +1,0 @@
-test-name	ent/migrate/auth_identity_fk_ondelete_test.go

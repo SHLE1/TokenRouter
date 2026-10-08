@@ -6,7 +6,6 @@ import (
 	"time"
 
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 )
 
@@ -141,13 +140,13 @@ func (s *ForbiddenCounter) ResetOpenAI403Count(_ context.Context, providerID int
 
 // RuntimeBlockRecorder 记录运行时阻断和清理操作。
 type RuntimeBlockRecorder struct {
-	Providers  []*gatewayprovider.ExecutionProvider
+	Providers  []*gatewayadapter.ExecutionProvider
 	Until      []time.Time
 	Reasons    []string
 	ClearedIDs []int64
 }
 
-func (r *RuntimeBlockRecorder) BlockProviderScheduling(provider *gatewayprovider.ExecutionProvider, until time.Time, reason string) {
+func (r *RuntimeBlockRecorder) BlockProviderScheduling(provider *gatewayadapter.ExecutionProvider, until time.Time, reason string) {
 	r.Providers = append(r.Providers, provider)
 	r.Until = append(r.Until, until)
 	r.Reasons = append(r.Reasons, reason)

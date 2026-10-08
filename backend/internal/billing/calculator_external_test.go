@@ -9,10 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -23,7 +21,7 @@ import (
 // TestCalculateCost_RateMultiplier_NegativeClampedToZero 检查负数倍率按零价计费。
 func TestCalculateCost_RateMultiplier_NegativeClampedToZero(t *testing.T) {
 	svc := newTestCalculator()
-	tokens := pricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}
+	tokens := billingpricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}
 
 	tests := []struct {
 		name       string
@@ -414,7 +412,7 @@ func TestApplyLongContextDisplayMultipliersScalesAllCachePrices(t *testing.T) {
 
 func TestCalculateCostUnified_ExplicitIntervalsDoNotReapplyLongContextMultiplier(t *testing.T) {
 	svc := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, svc)
+	resolver := testkit.PriceResolver(nil, svc)
 	basePricing, err := svc.GetModelPricing("gpt-5.6-sol")
 	require.NoError(t, err)
 
@@ -913,13 +911,13 @@ func TestCalculateCostUnified_ConfigLongContextToggleUsesPresetLadder(t *testing
 	tokens := billingpricing.UsageTokens{InputTokens: 250000, OutputTokens: 1000}
 
 	disabled, err := svc.CalculateCostUnified(billing.CostInput{
-		Model: "grok-4.5", GroupID: billingtestkit.GroupID(), Tokens: tokens, RateMultiplier: 1, Resolver: resolver,
+		Model: "grok-4.5", GroupID: testkit.GroupID(), Tokens: tokens, RateMultiplier: 1, Resolver: resolver,
 	})
 	require.NoError(t, err)
 
 	source.settings.LongContextPricingEnabled = true
 	enabled, err := svc.CalculateCostUnified(billing.CostInput{
-		Model: "grok-4.5", GroupID: billingtestkit.GroupID(), Tokens: tokens, RateMultiplier: 1, Resolver: resolver,
+		Model: "grok-4.5", GroupID: testkit.GroupID(), Tokens: tokens, RateMultiplier: 1, Resolver: resolver,
 	})
 	require.NoError(t, err)
 
@@ -1722,7 +1720,7 @@ func TestComputeTokenBreakdown_NonExplicitZeroImagePrice_FallsBackToOutput(t *te
 // TestCalculateCostUnified_LongContextContract 覆盖当前入口的整段计价及实际扣费标记。
 func TestCalculateCostUnified_LongContextContract(t *testing.T) {
 	svc := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, svc)
+	resolver := testkit.PriceResolver(nil, svc)
 	cases := []struct {
 		name                            string
 		input, cacheRead, cacheWrite    int
@@ -1771,7 +1769,7 @@ func TestCalculateCostUnified_LongContextContract(t *testing.T) {
 func TestCalculateCostUnified_NilResolver_FallsBackToOldPath(t *testing.T) {
 	svc := newTestCalculator()
 
-	tokens := pricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}
+	tokens := billingpricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}
 	input := billing.CostInput{
 		Model:          "claude-sonnet-4",
 		Tokens:         tokens,
@@ -1792,9 +1790,9 @@ func TestCalculateCostUnified_NilResolver_FallsBackToOldPath(t *testing.T) {
 
 func TestCalculateCostUnified_TokenMode(t *testing.T) {
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, bs)
+	resolver := testkit.PriceResolver(nil, bs)
 
-	tokens := pricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}
+	tokens := billingpricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}
 	input := billing.CostInput{
 		Ctx:            context.Background(),
 		Model:          "claude-sonnet-4",
@@ -1815,8 +1813,8 @@ func TestCalculateCostUnified_TokenMode(t *testing.T) {
 
 func TestCalculateCostUnified_Fable51MaxReasoningMultiplier(t *testing.T) {
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, bs)
-	tokens := pricing.UsageTokens{InputTokens: 1000, OutputTokens: 100}
+	resolver := testkit.PriceResolver(nil, bs)
+	tokens := billingpricing.UsageTokens{InputTokens: 1000, OutputTokens: 100}
 
 	standard, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx: context.Background(), Model: "claude-fable-5-1", Tokens: tokens,
@@ -1851,10 +1849,10 @@ func TestCalculateCostUnified_PricingConfigOverridesFable51MaxReasoningMultiplie
 		ByID:          map[int64]*routingtestkit.Configuration{},
 	})
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(cs, bs)
+	resolver := testkit.PriceResolver(cs, bs)
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx: context.Background(), Model: "claude-fable-5-1", GroupID: &groupID,
-		Tokens: pricing.UsageTokens{InputTokens: 1000}, RateMultiplier: 1, ReasoningEffort: "max", Resolver: resolver,
+		Tokens: billingpricing.UsageTokens{InputTokens: 1000}, RateMultiplier: 1, ReasoningEffort: "max", Resolver: resolver,
 	})
 	require.NoError(t, err)
 	require.InDelta(t, 1000*10e-6*configured, cost.TotalCost, 1e-12)
@@ -1880,13 +1878,13 @@ func TestCalculateCostUnified_AppliesPricingConfigPriceMultiplierBeforeRateMulti
 	})
 
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(cs, bs)
+	resolver := testkit.PriceResolver(cs, bs)
 	groupID := int64(2)
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx:            context.Background(),
 		Model:          "claude-sonnet-4",
 		GroupID:        &groupID,
-		Tokens:         pricing.UsageTokens{InputTokens: 100, OutputTokens: 10},
+		Tokens:         billingpricing.UsageTokens{InputTokens: 100, OutputTokens: 10},
 		RateMultiplier: 3,
 		Resolver:       resolver,
 	})
@@ -1900,9 +1898,9 @@ func TestCalculateCostUnified_AppliesPricingConfigPriceMultiplierBeforeRateMulti
 
 func TestCalculateCostUnified_TokenModeAppliesRateMultiplierToImageTokens(t *testing.T) {
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, bs)
+	resolver := testkit.PriceResolver(nil, bs)
 
-	tokens := pricing.UsageTokens{InputTokens: 1000, OutputTokens: 600, ImageOutputTokens: 100}
+	tokens := billingpricing.UsageTokens{InputTokens: 1000, OutputTokens: 600, ImageOutputTokens: 100}
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx:            context.Background(),
 		Model:          "claude-sonnet-4",
@@ -1940,14 +1938,14 @@ func TestCalculateCostUnified_PerRequestMode(t *testing.T) {
 	})
 
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(cs, bs)
+	resolver := testkit.PriceResolver(cs, bs)
 	groupID := int64(1)
 
 	input := billing.CostInput{
 		Ctx:            context.Background(),
 		Model:          "claude-sonnet-4",
 		GroupID:        &groupID,
-		Tokens:         pricing.UsageTokens{InputTokens: 100, OutputTokens: 50},
+		Tokens:         billingpricing.UsageTokens{InputTokens: 100, OutputTokens: 50},
 		RequestCount:   3,
 		RateMultiplier: 2.0,
 		Resolver:       resolver,
@@ -1987,7 +1985,7 @@ func TestCalculateCostUnified_PerRequestTierExplicitZeroDoesNotFallbackToDefault
 	})
 
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(cs, bs)
+	resolver := testkit.PriceResolver(cs, bs)
 	groupID := int64(3)
 
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
@@ -2031,14 +2029,14 @@ func TestCalculateCostUnified_PerRequestContextTierExplicitZeroDoesNotFallbackTo
 	})
 
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(cs, bs)
+	resolver := testkit.PriceResolver(cs, bs)
 	groupID := int64(4)
 
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx:            context.Background(),
 		Model:          "qoder-request",
 		GroupID:        &groupID,
-		Tokens:         pricing.UsageTokens{InputTokens: 500},
+		Tokens:         billingpricing.UsageTokens{InputTokens: 500},
 		RequestCount:   3,
 		RateMultiplier: 1.0,
 		Resolver:       resolver,
@@ -2068,15 +2066,15 @@ func TestCalculateCostUnified_ImageMode(t *testing.T) {
 		ByID:          map[int64]*routingtestkit.Configuration{},
 	})
 
-	bs := newCalculatorWithPrices(nil, map[string]*pricing.ModelPricing{})
-	resolver := billingtestkit.PriceResolver(cs, bs)
+	bs := newCalculatorWithPrices(nil, map[string]*billingpricing.ModelPricing{})
+	resolver := testkit.PriceResolver(cs, bs)
 	groupID := int64(2)
 
 	input := billing.CostInput{
 		Ctx:            context.Background(),
 		Model:          "gemini-image",
 		GroupID:        &groupID,
-		Tokens:         pricing.UsageTokens{},
+		Tokens:         billingpricing.UsageTokens{},
 		RequestCount:   2,
 		RateMultiplier: 1.0,
 		Resolver:       resolver,
@@ -2095,9 +2093,9 @@ func TestCalculateCostUnified_ImageMode(t *testing.T) {
 // 保存时要求倍率大于 0，计费层收到 0 时按零价计费。
 func TestCalculateCostUnified_RateMultiplierZeroProducesZero(t *testing.T) {
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, bs)
+	resolver := testkit.PriceResolver(nil, bs)
 
-	tokens := pricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}
+	tokens := billingpricing.UsageTokens{InputTokens: 1000, OutputTokens: 500}
 
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx:            context.Background(),
@@ -2114,9 +2112,9 @@ func TestCalculateCostUnified_RateMultiplierZeroProducesZero(t *testing.T) {
 // TestCalculateCostUnified_NegativeRateMultiplierClampedToZero 检查统一计费把负数倍率限制为零。
 func TestCalculateCostUnified_NegativeRateMultiplierClampedToZero(t *testing.T) {
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, bs)
+	resolver := testkit.PriceResolver(nil, bs)
 
-	tokens := pricing.UsageTokens{InputTokens: 1000}
+	tokens := billingpricing.UsageTokens{InputTokens: 1000}
 
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx:            context.Background(),
@@ -2132,12 +2130,12 @@ func TestCalculateCostUnified_NegativeRateMultiplierClampedToZero(t *testing.T) 
 
 func TestCalculateCostUnified_BillingModeFieldFilled(t *testing.T) {
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, bs)
+	resolver := testkit.PriceResolver(nil, bs)
 
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx:            context.Background(),
 		Model:          "claude-sonnet-4",
-		Tokens:         pricing.UsageTokens{InputTokens: 100},
+		Tokens:         billingpricing.UsageTokens{InputTokens: 100},
 		RateMultiplier: 1.0,
 		Resolver:       resolver,
 	})
@@ -2147,10 +2145,10 @@ func TestCalculateCostUnified_BillingModeFieldFilled(t *testing.T) {
 
 func TestCalculateCostUnified_UsesPreResolvedPricing(t *testing.T) {
 	bs := newTestCalculator()
-	resolver := billingtestkit.PriceResolver(nil, bs)
+	resolver := testkit.PriceResolver(nil, bs)
 
 	// Pre-resolve with per_request mode to verify it's used instead of re-resolving
-	preResolved := &pricing.ResolvedPricing{
+	preResolved := &billingpricing.ResolvedPricing{
 		Mode:                   routing.BillingModePerRequest,
 		DefaultPerRequestPrice: 0.07,
 	}
@@ -2158,7 +2156,7 @@ func TestCalculateCostUnified_UsesPreResolvedPricing(t *testing.T) {
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
 		Ctx:            context.Background(),
 		Model:          "claude-sonnet-4",
-		Tokens:         pricing.UsageTokens{InputTokens: 100},
+		Tokens:         billingpricing.UsageTokens{InputTokens: 100},
 		RequestCount:   2,
 		RateMultiplier: 1.0,
 		Resolver:       resolver,
@@ -2177,7 +2175,7 @@ func TestEmptyCatalogNeverRecreatesHistoricalPrices(t *testing.T) {
 	calculator := billing.NewCalculator(nil, billing.CalculatorOptions{})
 	for model := range testkit.HistoricalPrices() {
 		price, err := calculator.GetModelPricing(model)
-		require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable, model)
+		require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable, model)
 		require.Nil(t, price, model)
 		require.Equal(t, "unpriced", calculator.DefaultModelPrice(model, "", "token").PriceStatus, model)
 	}
@@ -2185,7 +2183,7 @@ func TestEmptyCatalogNeverRecreatesHistoricalPrices(t *testing.T) {
 
 func TestCalculateSearchCost(t *testing.T) {
 	t.Parallel()
-	s := billingtestkit.Calculator(nil, map[string]*pricing.ModelPricing{})
+	s := testkit.Calculator(nil, map[string]*billingpricing.ModelPricing{})
 	require.Equal(t, 0.0, s.CalculateSearchCost(0, floatPtr(10), 1).ActualCost)
 	// 配置和目录均缺价时，费用记为零。
 	require.Zero(t, s.CalculateSearchCost(5, nil, 1).ActualCost)
@@ -2200,9 +2198,9 @@ func TestCalculateSearchCost(t *testing.T) {
 
 func TestCalculateAudioCost(t *testing.T) {
 	t.Parallel()
-	s := billingtestkit.Calculator(nil, map[string]*pricing.ModelPricing{})
+	s := testkit.Calculator(nil, map[string]*billingpricing.ModelPricing{})
 	rt, tts, stt := 0.10, 15.0, 0.50
-	cfg := &pricing.AudioPriceConfig{RealtimePerMin: &rt, TTSPerMChars: &tts, STTPerHour: &stt}
+	cfg := &billingpricing.AudioPriceConfig{RealtimePerMin: &rt, TTSPerMChars: &tts, STTPerHour: &stt}
 	require.InDelta(t, 0.20, s.CalculateAudioCost("realtime", 2, cfg, 1).ActualCost, 1e-9)
 	require.InDelta(t, 1.5, s.CalculateAudioCost("tts", 0.1, cfg, 1).ActualCost, 1e-9)
 	require.InDelta(t, 0.25, s.CalculateAudioCost("stt", 0.5, cfg, 1).ActualCost, 1e-9)
@@ -2213,12 +2211,12 @@ func TestCalculateAudioCost(t *testing.T) {
 	require.Zero(t, s.CalculateAudioCost("stt", 1, nil, 1).ActualCost)
 	// 配置值为零表示免费。
 	zero := 0.0
-	require.Equal(t, 0.0, s.CalculateAudioCost("realtime", 1, &pricing.AudioPriceConfig{RealtimePerMin: &zero}, 1).ActualCost)
+	require.Equal(t, 0.0, s.CalculateAudioCost("realtime", 1, &billingpricing.AudioPriceConfig{RealtimePerMin: &zero}, 1).ActualCost)
 }
 
 // TestCalculateImageCost_DefaultPricing 测试无分组配置时使用目录的独立按张价格
 func TestCalculateImageCost_DefaultPricing(t *testing.T) {
-	svc := billingtestkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: pricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*pricing.ModelPricing{}) // 使用完整型号的目录价
+	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{}) // 使用完整型号的目录价
 
 	// 目录的 2K 单张价格为 $0.201。
 	cost, mediaErr := svc.CalculateImageCost("gemini-3-pro-image", "2K", 1, 1.0)
@@ -2237,7 +2235,7 @@ func TestCalculateImageCost_DefaultPricing(t *testing.T) {
 }
 
 func TestCalculateImageCost_NormalizesInvalidSizeTo2K(t *testing.T) {
-	svc := billingtestkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: pricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*pricing.ModelPricing{})
+	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{})
 
 	for _, imageSize := range []string{"", "auto", "not-a-size"} {
 		t.Run(imageSize, func(t *testing.T) {
@@ -2253,7 +2251,7 @@ func TestCalculateImageCost_NormalizesInvalidSizeTo2K(t *testing.T) {
 
 // TestCalculateImageCost_Explicit4KPrice 检查目录的 4K 单张价格。
 func TestCalculateImageCost_Explicit4KPrice(t *testing.T) {
-	svc := billingtestkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: pricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*pricing.ModelPricing{})
+	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{})
 
 	// 目录的 4K 单张价格为 $0.268。
 	cost, mediaErr := svc.CalculateImageCost("gemini-3-pro-image", "4K", 1, 1.0)
@@ -2265,7 +2263,7 @@ func TestCalculateImageCost_Explicit4KPrice(t *testing.T) {
 
 // TestCalculateImageCost_RateMultiplier 测试费率倍数
 func TestCalculateImageCost_RateMultiplier(t *testing.T) {
-	svc := billingtestkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: pricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*pricing.ModelPricing{})
+	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{})
 
 	// 费率倍数 1.5x
 	cost, mediaErr := svc.CalculateImageCost("gemini-3-pro-image", "2K", 1, 1.5)
@@ -2286,7 +2284,7 @@ func TestCalculateImageCost_RateMultiplier(t *testing.T) {
 
 // TestCalculateImageCost_ZeroCount 测试 imageCount=0
 func TestCalculateImageCost_ZeroCount(t *testing.T) {
-	svc := billingtestkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: pricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*pricing.ModelPricing{})
+	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{})
 
 	cost, mediaErr := svc.CalculateImageCost("gemini-3-pro-image", "2K", 0, 1.0)
 	if mediaErr != nil {
@@ -2298,7 +2296,7 @@ func TestCalculateImageCost_ZeroCount(t *testing.T) {
 
 // TestCalculateImageCost_NegativeCount 测试 imageCount=-1
 func TestCalculateImageCost_NegativeCount(t *testing.T) {
-	svc := billingtestkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: pricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*pricing.ModelPricing{})
+	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{})
 
 	cost, mediaErr := svc.CalculateImageCost("gemini-3-pro-image", "2K", -1, 1.0)
 	if mediaErr != nil {
@@ -2310,7 +2308,7 @@ func TestCalculateImageCost_NegativeCount(t *testing.T) {
 
 // TestCalculateImageCost_ZeroRateMultiplier 检查图片计费收到零倍率时返回零费用。
 func TestCalculateImageCost_ZeroRateMultiplier(t *testing.T) {
-	svc := billingtestkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: pricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*pricing.ModelPricing{})
+	svc := testkit.Calculator(newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{"gemini-3-pro-image": {CatalogRules: billingpricing.CatalogRules{ImagePrices: map[string]float64{"1K": 0.134, "2K": 0.201, "4K": 0.268}}, OutputCostPerImage: 0.134, ImagePricePresent: true, Mode: "image_generation", TokenPricingAbsent: true}}}), map[string]*billingpricing.ModelPricing{})
 
 	cost, mediaErr := svc.CalculateImageCost("gemini-3-pro-image", "2K", 1, 0)
 	if mediaErr != nil {
@@ -2322,10 +2320,10 @@ func TestCalculateImageCost_ZeroRateMultiplier(t *testing.T) {
 
 // TestGetDefaultImagePrice_UnknownModel 验证缺少目录报价时返回缺价错误。
 func TestGetDefaultImagePrice_UnknownModel(t *testing.T) {
-	svc := billingtestkit.Calculator(nil, nil)
+	svc := testkit.Calculator(nil, nil)
 	for _, size := range []string{"1K", "2K", "4K"} {
 		cost, err := svc.CalculateImageCost("gemini-3-pro-image", size, 1, 1)
-		require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable)
+		require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable)
 		require.Nil(t, cost)
 	}
 }
@@ -2346,7 +2344,7 @@ func TestCalculateCostUnifiedAppliesPricingTimeMultiplierToTokenBuckets(t *testi
 		BasePricing:   &billingpricing.ModelPricing{InputPricePerToken: 5e-6, OutputPricePerToken: 15e-6},
 		ConfigPricing: pricing,
 	}
-	service := billingtestkit.Calculator(nil, nil)
+	service := testkit.Calculator(nil, nil)
 	resolver := billing.NewPriceResolver(nil, service, modelidentity.Identity, nil)
 
 	cost, err := service.CalculateCostUnified(billing.CostInput{
@@ -2376,7 +2374,7 @@ func TestCalculateCostUnifiedDoesNotApplyConfigTimeMultiplierToPerRequest(t *tes
 		},
 	}
 	resolved := &billingpricing.ResolvedPricing{Mode: routing.BillingModePerRequest, Source: billingpricing.PricingSourceConfig, ConfigPricing: pricing, DefaultPerRequestPrice: 0.05}
-	service := billingtestkit.Calculator(nil, nil)
+	service := testkit.Calculator(nil, nil)
 	resolver := billing.NewPriceResolver(nil, service, modelidentity.Identity, nil)
 
 	cost, err := service.CalculateCostUnified(billing.CostInput{
@@ -2415,7 +2413,7 @@ func TestDisplayPricingCarriesConfigTimePricingAndMaxReasoningMultiplier(t *test
 		},
 		ConfigPricing: pricing,
 	}
-	service := billingtestkit.Calculator(nil, nil)
+	service := testkit.Calculator(nil, nil)
 
 	display := service.DisplayPricingWithResolvedMultipliers("claude-sonnet-4", 2, resolved)
 
@@ -2449,7 +2447,7 @@ func TestDisplayPricingOmitsNeutralModifiers(t *testing.T) {
 			},
 		},
 	}
-	service := billingtestkit.Calculator(nil, nil)
+	service := testkit.Calculator(nil, nil)
 
 	display := service.DisplayPricingWithResolvedMultipliers("claude-sonnet-4", 1, resolved)
 
@@ -2458,7 +2456,7 @@ func TestDisplayPricingOmitsNeutralModifiers(t *testing.T) {
 }
 
 func TestCalculateCostUnified_UsesContinuousMediaUnits(t *testing.T) {
-	bs := billingtestkit.ResolverCalculator()
+	bs := testkit.ResolverCalculator()
 	price := 0.08
 	cards := []routing.ModelPricingEntry{{
 		Models: []string{"grok-voice-think-fast-2.0"}, BillingMode: routing.BillingModePerRequest,
@@ -2466,7 +2464,7 @@ func TestCalculateCostUnified_UsesContinuousMediaUnits(t *testing.T) {
 	}}
 	r, _ := settingsResolver(bs, billingpricing.DefaultBillingSettings(), cards)
 	cost, err := bs.CalculateCostUnified(billing.CostInput{
-		Ctx: context.Background(), Model: "grok-voice-think-fast-2.0", GroupID: billingtestkit.GroupID(),
+		Ctx: context.Background(), Model: "grok-voice-think-fast-2.0", GroupID: testkit.GroupID(),
 		UsageUnits: 1.5, RateMultiplier: 1, Resolver: r,
 	})
 	require.NoError(t, err)
@@ -2534,9 +2532,9 @@ const openAILadderCatalogJSON = `{
 // newStubCatalogFromJSON 通过与生产相同的解析路径创建价格目录 stub。
 func newStubCatalogFromJSON(t *testing.T, body string) *provider.Service {
 	t.Helper()
-	raw, err := pricing.DecodeCatalogEntries([]byte(body))
+	raw, err := billingpricing.DecodeCatalogEntries([]byte(body))
 	require.NoError(t, err)
-	data, diagnostics, err := pricing.ParsePricingEntries(raw)
+	data, diagnostics, err := billingpricing.ParsePricingEntries(raw)
 	require.NoError(t, diagnostics.ValidationError())
 	require.NoError(t, err)
 	service := newCatalogFixture(catalogFixture{pricingData: data})

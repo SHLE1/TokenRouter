@@ -8,8 +8,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
-	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
@@ -64,7 +63,7 @@ func TestBuildUsageBillingCommand_BillableAmountTracksActualCost(t *testing.T) {
 				Cost:         &pricing.CostBreakdown{TotalCost: tt.totalCost, ActualCost: tt.actualCost},
 				User:         &identity.User{ID: 1},
 				APIKey:       &apikey.APIKey{ID: 2, GroupID: &groupID},
-				Provider:     &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}},
+				Provider:     &provider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}},
 				Subscription: &billing.UserSubscription{ID: subID},
 			}
 
@@ -128,7 +127,7 @@ func TestBuildUsageBillingCommand_ProviderQuotaUsesProviderStatsCost(t *testing.
 				},
 				User:                   &identity.User{ID: 1},
 				APIKey:                 &apikey.APIKey{ID: 2},
-				Provider:               &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3, Type: capability.ProviderTypeAPIKey, Extra: map[string]any{"quota_limit": 100}}},
+				Provider:               &provider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3, Type: capability.ProviderTypeAPIKey, Extra: map[string]any{"quota_limit": 100}}},
 				ProviderRateMultiplier: tt.providerRateMultiplier,
 			}
 
@@ -157,7 +156,7 @@ func TestBuildUsageBillingCommand_IncludesRequestGroupID(t *testing.T) {
 			ID:      20,
 			GroupID: &groupID,
 		},
-		Provider: &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 30, Type: capability.ProviderTypeAPIKey}},
+		Provider: &provider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 30, Type: capability.ProviderTypeAPIKey}},
 	}
 
 	cmd := buildContractBillingCommand("req-group", nil, p)
@@ -199,7 +198,7 @@ func TestBuildUsageBillingCommand_NonTokenModesKeepAllocationRates(t *testing.T)
 				},
 				User:                            &identity.User{ID: 1},
 				APIKey:                          &apikey.APIKey{ID: 2},
-				Provider:                        &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}},
+				Provider:                        &provider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}},
 				SubscriptionRateMultiplier:      0.15,
 				SubscriptionRateMultiplierScale: 1,
 				BalanceRateMultiplier:           2,
@@ -234,7 +233,7 @@ func TestBuildUsageBillingCommand_TokenModeKeepsAllocationRates(t *testing.T) {
 		},
 		User:                            &identity.User{ID: 1},
 		APIKey:                          &apikey.APIKey{ID: 2},
-		Provider:                        &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}},
+		Provider:                        &provider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3}},
 		SubscriptionRateMultiplier:      0.8,
 		SubscriptionRateMultiplierScale: 1.5,
 		BalanceRateMultiplier:           0.3,
@@ -273,7 +272,7 @@ func TestBuildUsageBillingCommand_UsesOverrideBaseAmountForFreeFast(t *testing.T
 		BillingBaseAmountUSD:   &standardBase,
 		User:                   &identity.User{ID: 1},
 		APIKey:                 &apikey.APIKey{ID: 2, GroupID: &groupID},
-		Provider:               &gatewayprovider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3, Type: capability.ProviderTypeAPIKey, Extra: map[string]any{"quota_limit": 100}}},
+		Provider:               &provider.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, ID: 3, Type: capability.ProviderTypeAPIKey, Extra: map[string]any{"quota_limit": 100}}},
 		ProviderRateMultiplier: providerRate,
 	})
 
@@ -300,14 +299,14 @@ type contractSettlementInput struct {
 	Cost                            *pricing.CostBreakdown
 	User                            *identity.User
 	APIKey                          *apikey.APIKey
-	Provider                        *gatewaycapture.ExecutionProvider
+	Provider                        *provider.ExecutionProvider
 	Subscription                    *billing.UserSubscription
 	RequestPayloadHash              string
 	ProviderRateMultiplier          float64
 	SubscriptionRateMultiplier      float64
 	SubscriptionRateMultiplierScale float64
 	BalanceRateMultiplier           float64
-	APIKeyService                   gatewaycapture.QuotaUpdater
+	APIKeyService                   provider.QuotaUpdater
 	Platform                        string // 来自 APIKey 关联 Group 的平台标识
 	// BillingBaseAmountUSD 是分配用户资金前的基础金额，nil 时使用 Cost.TotalCost。
 	// 免费 Fast 使用 Standard 用户基础价和 Fast 提供商统计基础成本。
@@ -320,9 +319,9 @@ func projectContractSettlement(p *contractSettlementInput) *completion.Settlemen
 	}
 	return &completion.SettlementInput{
 		Cost:                            p.Cost,
-		User:                            gatewaycapture.ProjectCompletionPayer(p.User),
-		APIKey:                          gatewaycapture.ProjectCompletionKey(p.APIKey),
-		Provider:                        gatewaycapture.ProjectCompletionProvider(gatewaycapture.ExecutionCompletionRecord(p.Provider)),
+		User:                            provider.ProjectCompletionPayer(p.User),
+		APIKey:                          provider.ProjectCompletionKey(p.APIKey),
+		Provider:                        provider.ProjectCompletionProvider(provider.ExecutionCompletionRecord(p.Provider)),
 		Subscription:                    p.Subscription,
 		RequestPayloadHash:              p.RequestPayloadHash,
 		ProviderRateMultiplier:          p.ProviderRateMultiplier,

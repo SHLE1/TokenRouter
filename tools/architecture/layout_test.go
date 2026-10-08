@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -14,19 +13,8 @@ func TestBackendFileLayout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const baseline = "layout_baseline.txt"
-	if os.Getenv("LAYOUT_BASELINE_UPDATE") == "1" {
-		if err := writeLayoutBaseline(baseline, violations); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	data, err := os.ReadFile(baseline)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, failure := range compareLayoutBaseline(violations, string(data)) {
-		t.Error(failure)
+	for _, violation := range violations {
+		t.Errorf("%s\t%s\t%s", violation.Rule, violation.Path, violation.Reason)
 	}
 }
 
@@ -121,34 +109,6 @@ func TestLayoutPackageThreshold(t *testing.T) {
 				t.Fatalf("添加包说明后：%v, %v", got, err)
 			}
 		})
-	}
-}
-
-// TestLayoutBaseline 核对基线同时检测新增违规和已经修好的条目。
-func TestLayoutBaseline(t *testing.T) {
-	violations := []layoutViolation{{"test-name", "p/a_test.go", "需要同名源文件"}}
-	for _, tc := range []struct{ name, baseline, want string }{
-		{"matched", "test-name\tp/a_test.go\n", ""},
-		{"new", "", "新增的文件不符合后端文件组织规则"},
-		{"stale", "test-name\tp/a_test.go\nfile-vague\tp/helpers.go\n", "这一项已经修好，请从 layout_baseline.txt 删除"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := strings.Join(compareLayoutBaseline(violations, tc.baseline), "\n")
-			if tc.want == "" && got != "" || tc.want != "" && !strings.Contains(got, tc.want) {
-				t.Fatalf("%q 不符合 %q", got, tc.want)
-			}
-		})
-	}
-	path := filepath.Join(t.TempDir(), "baseline.txt")
-	if err := writeLayoutBaseline(path, violations); err != nil {
-		t.Fatal(err)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(data) != "test-name\tp/a_test.go\n" {
-		t.Fatalf("基线内容：%q", data)
 	}
 }
 

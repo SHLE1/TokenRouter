@@ -3,7 +3,6 @@ package httpapi
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -12,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
-// WriteGroupSelectionBusinessError 在原失败时点读取 Key 展示限制，不执行额外选号。
+// WriteGroupSelectionBusinessError 输出分组选择错误，并按 Key 配置筛选可展示型号。
 func WriteGroupSelectionBusinessError(c *gin.Context, err error, streamStarted bool, readAccess func(*gin.Context) (*apikey.APIKey, bool), catalogue modeldisplay.Catalog, writeError func(int, string, string, bool)) bool {
 	if errors.Is(err, routing.ErrClaudeCodeOnly) {
 		MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalFeatureGate)
@@ -25,10 +24,6 @@ func WriteGroupSelectionBusinessError(c *gin.Context, err error, streamStarted b
 		MarkOpsClientBusinessLimited(c, OpsClientBusinessLimitedReasonLocalFeatureGate)
 		message := modelErr.Error()
 		if apiKey, ok := readAccess(c); ok && apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
-			platform := strings.TrimSpace(modelErr.Platform)
-			if platform == "" {
-				platform = ""
-			}
 			availableModels := FilterModelsByCustomList(modelErr.AvailableModels, catalogue.ModelIDs(), apiKey.Group.ModelsListConfig.Models)
 			message = (&routing.GroupModelUnsupportedError{
 				RequestedModel:  modelErr.RequestedModel,

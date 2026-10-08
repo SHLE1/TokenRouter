@@ -15,7 +15,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
-	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
@@ -28,7 +27,7 @@ func TestResponseModelBatchRoundTrip(t *testing.T) {
 	suffix := uuid.NewString()
 	user := mustCreateUser(t, client, &identity.User{Email: suffix + "@response-model.test"})
 	key := mustCreateApiKey(t, client, &apikey.APIKey{UserID: user.ID, Key: suffix, Name: "model"})
-	upstream := mustCreateProvider(t, client, &provider.Record{Name: suffix})
+	upstream := mustCreateProvider(t, client, &providercore.Record{Name: suffix})
 	repo := &Store{}
 	keys := []string{}
 	prepared := map[string]usageLogInsertPrepared{}

@@ -10,13 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/modelidentity"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
-	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
@@ -733,7 +731,7 @@ func TestModelMarketplaceGeminiTierModalitiesPreservePublicIDs(t *testing.T) {
 
 // modelCatalogFixture 保存测试提供的模型价格目录。
 type modelCatalogFixture struct {
-	pricingData map[string]*pricing.CatalogModelPricing
+	pricingData map[string]*billingpricing.CatalogModelPricing
 }
 
 func newModelCatalogFixture(fixture modelCatalogFixture) *provider.Service {
@@ -751,7 +749,7 @@ func newMarketplaceFixture(groups routing.MarketplaceGroups, settings routing.Ma
 	return routing.NewMarketplace(groups, settings, nil, routing.RequestableResolver{}, prices, nil, nil, routing.MarketplaceOptions{Now: time.Now, Warn: slog.Warn})
 }
 
-func newMarketplaceCalculator(catalog *catalogprovider.Service, prices map[string]*pricing.ModelPricing) *billing.Calculator {
+func newMarketplaceCalculator(catalog *provider.Service, prices map[string]*billingpricing.ModelPricing) *billing.Calculator {
 	return billingtestkit.Calculator(catalog, prices)
 }
 
@@ -806,9 +804,9 @@ type marketplaceLoadingPrices struct {
 	modalityCalls int
 }
 
-func (p *marketplaceLoadingPrices) Quote(_ context.Context, request routing.MarketplaceQuoteRequest) pricing.ModelDisplayPricing {
+func (p *marketplaceLoadingPrices) Quote(_ context.Context, request routing.MarketplaceQuoteRequest) billingpricing.ModelDisplayPricing {
 	p.requests = append(p.requests, request)
-	return pricing.ModelDisplayPricing{PriceStatus: "priced", InputPricePerToken: request.RateMultiplier}
+	return billingpricing.ModelDisplayPricing{PriceStatus: "priced", InputPricePerToken: request.RateMultiplier}
 }
 
 func (p *marketplaceLoadingPrices) GetModelModalities(string) ([]string, []string) {
@@ -834,7 +832,7 @@ type marketplaceQuoteFixture struct {
 	resolver   *billing.PriceResolver
 }
 
-func (p marketplaceQuoteFixture) Quote(ctx context.Context, req routing.MarketplaceQuoteRequest) pricing.ModelDisplayPricing {
+func (p marketplaceQuoteFixture) Quote(ctx context.Context, req routing.MarketplaceQuoteRequest) billingpricing.ModelDisplayPricing {
 	resolver := p.resolver
 	if resolver == nil {
 		resolver = billing.NewPriceResolver(nil, p.calculator, modelidentity.Identity, func(model string, err error) {
@@ -849,7 +847,7 @@ func (p marketplaceQuoteFixture) GetModelModalities(model string) ([]string, []s
 }
 
 // marketplaceWithConfig 将市场报价连接到共享价格配置解析器。
-func marketplaceWithConfig(calculator *billing.Calculator, groupID int64, settings pricing.BillingSettings, cards []routing.ModelPricingEntry) *routing.Marketplace {
+func marketplaceWithConfig(calculator *billing.Calculator, groupID int64, settings billingpricing.BillingSettings, cards []routing.ModelPricingEntry) *routing.Marketplace {
 	configs := routingtestkit.ModelConfigFromData(routingtestkit.ModelConfigDataFromRows([]routingtestkit.Configuration{{ID: 1, Status: routing.StatusActive, GroupIDs: []int64{groupID}, BillingSettings: &settings, ModelPricing: cards}}, nil))
 	return newMarketplaceFixture(nil, nil, calculator, NewModelPricingResolver(configs, calculator))
 }

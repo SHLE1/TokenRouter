@@ -9,8 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 )
 
@@ -46,7 +45,7 @@ func TestValidateTimePricingConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := (routing.PricingConfigValidation{LoadLocation: pricingprovider.LoadPricingLocation}).TimePricing(tt.config)
+			err := (routing.PricingConfigValidation{LoadLocation: provider.LoadPricingLocation}).TimePricing(tt.config)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 				return
@@ -111,7 +110,7 @@ func TestTimePricingConfigMultiplierAtDegradesForInvalidConfiguration(t *testing
 	require.Equal(t, 1.0, (&routing.TimePricingConfig{Periods: []routing.TimePricingPeriod{{StartTime: "09:00", EndTime: "12:00", Multiplier: 2}}}).MultiplierAt(validAt, contractTimeLocation(&routing.TimePricingConfig{Periods: []routing.TimePricingPeriod{{StartTime: "09:00", EndTime: "12:00", Multiplier: 2}}})))
 	require.Equal(t, 1.0, (&routing.TimePricingConfig{Timezone: "UTC+8", Periods: []routing.TimePricingPeriod{{StartTime: "09:00", EndTime: "12:00", Multiplier: 2}}}).MultiplierAt(validAt, contractTimeLocation(&routing.TimePricingConfig{Timezone: "UTC+8", Periods: []routing.TimePricingPeriod{{StartTime: "09:00", EndTime: "12:00", Multiplier: 2}}})))
 
-	err := (routing.PricingConfigValidation{LoadLocation: pricingprovider.LoadPricingLocation}).TimePricing(&routing.TimePricingConfig{Timezone: "Local", Periods: []routing.TimePricingPeriod{{StartTime: "09:00", EndTime: "12:00", Multiplier: 2}}})
+	err := (routing.PricingConfigValidation{LoadLocation: provider.LoadPricingLocation}).TimePricing(&routing.TimePricingConfig{Timezone: "Local", Periods: []routing.TimePricingPeriod{{StartTime: "09:00", EndTime: "12:00", Multiplier: 2}}})
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "timezone"))
 }
@@ -125,6 +124,6 @@ func contractTimeLocation(value *pricing.TimePricingConfig) *time.Location {
 	if value == nil {
 		return nil
 	}
-	location, _ := billingadapter.LoadPricingLocation(value.Timezone)
+	location, _ := provider.LoadPricingLocation(value.Timezone)
 	return location
 }

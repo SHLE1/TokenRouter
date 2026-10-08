@@ -11,15 +11,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
 	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
-	completiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
-	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
@@ -31,8 +28,8 @@ import (
 func TestGroupPricingFreeFastWithIntervalsAndTurnTime(t *testing.T) {
 	for _, free := range []bool{false, true} {
 		t.Run(fmt.Sprint(free), func(t *testing.T) {
-			usageRepo := &gatewaytestkit.UsageLogStore{Inserted: true}
-			svc := newOpenAIRecordUsageServiceForTest(usageRepo, &gatewaytestkit.UserStore{}, &gatewaytestkit.SubscriptionStore{}, nil)
+			usageRepo := &testkit.UsageLogStore{Inserted: true}
+			svc := newOpenAIRecordUsageServiceForTest(usageRepo, &testkit.UserStore{}, &testkit.SubscriptionStore{}, nil)
 			svc.Dependencies.Prices = billingtestkit.PriceResolver(nil, svc.Dependencies.Calculator)
 			groupID := int64(88)
 			tier := "priority"
@@ -41,7 +38,7 @@ func TestGroupPricingFreeFastWithIntervalsAndTurnTime(t *testing.T) {
 				Hydrated:       true,
 				Status:         billing.StatusActive,
 				RateMultiplier: 0.5,
-			}, purepricing.BillingSettings{
+			}, pricing.BillingSettings{
 				FreeOpenAIFast:               free,
 				LongContextPricingEnabled:    true,
 				PeakRateMultiplier:           1,
@@ -94,7 +91,7 @@ func TestGroupPricingFreeFastWithIntervalsAndTurnTime(t *testing.T) {
 // TestConfigPricingFreeFastDisplayRespectsModelSupport 检查市场按模型支持的服务档位展示价格。
 func TestConfigPricingFreeFastDisplayRespectsModelSupport(t *testing.T) {
 	bs := billingtestkit.ResolverCalculator()
-	settings := purepricing.DefaultBillingSettings()
+	settings := pricing.DefaultBillingSettings()
 	settings.FreeOpenAIFast = true
 	group := &routing.Group{ID: 100, RateMultiplier: 1}
 	for _, factor := range []*float64{nil, testPtrFloat64(0)} {
@@ -140,7 +137,7 @@ func TestConfiguredIntervalsPreserveDefaultPrices(t *testing.T) {
 					for _, tier := range []string{"default", "priority"} {
 						cost, err := rCalculator.CalculateCostUnified(billing.CostInput{
 							Ctx: context.Background(), Model: model, GroupID: &group.ID,
-							Tokens:         purepricing.UsageTokens{InputTokens: tc.input, OutputTokens: 5, CacheCreationTokens: 20, CacheCreation5mTokens: 10, CacheCreation1hTokens: 10, CacheReadTokens: 20},
+							Tokens:         pricing.UsageTokens{InputTokens: tc.input, OutputTokens: 5, CacheCreationTokens: 20, CacheCreation5mTokens: 10, CacheCreation1hTokens: 10, CacheReadTokens: 20},
 							RateMultiplier: 0.7, ServiceTier: tier, Resolver: r,
 						})
 						require.NoError(t, err)
@@ -179,7 +176,7 @@ func TestFreeFastIntervalOnlyDisplayMatchesStandard(t *testing.T) {
 						RateMultiplier: 0.5,
 					}
 					rCalculator := billingtestkit.ResolverCalculator()
-					settings := purepricing.DefaultBillingSettings()
+					settings := pricing.DefaultBillingSettings()
 					settings.FreeOpenAIFast = free
 					r := billingtestkit.SharedPriceResolver(rCalculator, group.ID, settings, []routing.ModelPricingEntry{card})
 					svc := newPricingMarketplaceFixture(nil, nil, r, rCalculator, nil, nil, nil)
@@ -205,7 +202,7 @@ func TestFreeFastIntervalOnlyDisplayMatchesStandard(t *testing.T) {
 					// 展示计算后的结算继续使用 Fast 成本。
 					cost, err := rCalculator.CalculateCostUnified(billing.CostInput{
 						Ctx: context.Background(), Model: "custom-priced", GroupID: &group.ID,
-						Tokens: purepricing.UsageTokens{InputTokens: 50}, RateMultiplier: group.RateMultiplier, ServiceTier: "priority", Resolver: r,
+						Tokens: pricing.UsageTokens{InputTokens: 50}, RateMultiplier: group.RateMultiplier, ServiceTier: "priority", Resolver: r,
 					})
 					require.NoError(t, err)
 					require.InDelta(t, 50*0.001*3, cost.TotalCost, 1e-12)
@@ -233,7 +230,7 @@ func TestTimeOnlyPricingGroupPricingConfigParity(t *testing.T) {
 		}
 		cost, err := rCalculator.CalculateCostUnified(billing.CostInput{
 			Ctx: context.Background(), Model: "claude-sonnet-4", GroupID: &group.ID,
-			Tokens: purepricing.UsageTokens{InputTokens: 100}, RateMultiplier: 1, PricingAt: time.Date(2026, 9, 9, 9, 30, 0, 0, time.UTC), Resolver: r,
+			Tokens: pricing.UsageTokens{InputTokens: 100}, RateMultiplier: 1, PricingAt: time.Date(2026, 9, 9, 9, 30, 0, 0, time.UTC), Resolver: r,
 		})
 		require.NoError(t, err)
 		costs = append(costs, cost.ActualCost)
@@ -259,7 +256,7 @@ func TestTierOnlyPricingPreservesImagePricesEqually(t *testing.T) {
 		}
 		cost, err := bs.CalculateCostUnified(billing.CostInput{
 			Ctx: context.Background(), Model: "claude-sonnet-4", GroupID: &group.ID,
-			Tokens: purepricing.UsageTokens{InputTokens: 200, ImageInputTokens: 100, OutputTokens: 50, ImageOutputTokens: 50}, RateMultiplier: 1, ServiceTier: "priority", Resolver: r,
+			Tokens: pricing.UsageTokens{InputTokens: 200, ImageInputTokens: 100, OutputTokens: 50, ImageOutputTokens: 50}, RateMultiplier: 1, ServiceTier: "priority", Resolver: r,
 		})
 		require.NoError(t, err)
 		costs = append(costs, cost.ActualCost)
@@ -282,7 +279,7 @@ func TestQoderGroupPricingConfigBlankPricesParity(t *testing.T) {
 
 		resolved, model := gateway.ResolveConfigPricing(context.Background(), "claude-opus-4-6", gatewaycapture.ProjectCompletionKey(&apikey.APIKey{Group: group, GroupID: &group.ID})), "claude-opus-4-6"
 		require.NotNil(t, resolved)
-		cost, err := bs.CalculateCostUnified(billing.CostInput{Ctx: context.Background(), Model: model, GroupID: &group.ID, Tokens: purepricing.UsageTokens{OutputTokens: 100}, RateMultiplier: 1, Resolver: r, Resolved: resolved})
+		cost, err := bs.CalculateCostUnified(billing.CostInput{Ctx: context.Background(), Model: model, GroupID: &group.ID, Tokens: pricing.UsageTokens{OutputTokens: 100}, RateMultiplier: 1, Resolver: r, Resolved: resolved})
 		require.NoError(t, err)
 		costs = append(costs, cost.ActualCost)
 	}
@@ -307,10 +304,10 @@ func TestModifierCardsPreserveBuiltinPricingPolicy(t *testing.T) {
 			for _, hour := range []int{0, 1, 3, 4} {
 				at := time.Date(2026, 9, 9, hour, 0, 0, 0, time.UTC)
 				resolved := r.Resolve(context.Background(), billing.PricingInput{Model: model, GroupID: &group.ID})
-				require.Equal(t, purepricing.PricingSourceCatalog, resolved.Source)
+				require.Equal(t, pricing.PricingSourceCatalog, resolved.Source)
 				cost, err := bs.CalculateCostUnified(billing.CostInput{
 					Model: model, GroupID: &group.ID, Resolver: r,
-					Tokens: purepricing.UsageTokens{InputTokens: 100}, RateMultiplier: 1, PricingAt: at, ServiceTier: "priority",
+					Tokens: pricing.UsageTokens{InputTokens: 100}, RateMultiplier: 1, PricingAt: at, ServiceTier: "priority",
 				})
 				require.NoError(t, err)
 				expected := 100 * 2.2e-7 * 3
@@ -329,8 +326,8 @@ func TestQoderPricingMatchesOtherPlatforms(t *testing.T) {
 	for _, model := range []string{"claude-opus-4-6", "gpt-image-1", "custom-image", "qmodel"} {
 		for _, kind := range []string{"default", "modifiers", "free"} {
 			t.Run(model+"/"+kind, func(t *testing.T) {
-				var prices []purepricing.ModelDisplayPricing
-				var costs []*purepricing.CostBreakdown
+				var prices []pricing.ModelDisplayPricing
+				var costs []*pricing.CostBreakdown
 				for _, platform := range []string{capability.PlatformQoder, capability.PlatformOpenAI} {
 					group := &routing.Group{ID: 100, RateMultiplier: 1}
 					card := routing.ModelPricingEntry{Models: []string{model}}
@@ -348,7 +345,7 @@ func TestQoderPricingMatchesOtherPlatforms(t *testing.T) {
 					market := newPricingMarketplaceFixture(nil, nil, r, bs, nil, nil, nil)
 					prices = append(prices, market.RequestableModelPricing(context.Background(), group, routing.MarketplaceModelDef{ID: model, PricingModel: model}))
 					result := &forwardcore.MessagesResult{Usage: upstream.TokenUsage{InputTokens: 100, OutputTokens: 10}, ServiceTier: testPtrString("priority")}
-					if purepricing.LooksLikeImageModel(model) {
+					if pricing.LooksLikeImageModel(model) {
 						result.ImageCount = 1
 					}
 					costs = append(costs, gateway.CalculateRecordUsageCost(context.Background(), gatewaycapture.ProjectMessagesCompletionResult(result, gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), gatewaycapture.ProjectCompletionKey(&apikey.APIKey{Group: group}), gatewaycapture.ProjectCompletionProvider(gatewaycapture.ExecutionCompletionRecord(&gatewaycapture.ExecutionProvider{Record: providercore.Record{LoadLocation: time.LoadLocation, Platform: platform}})), model, model, routing.BillingModelSourceRequested, model, 1, 1, &completion.PricingOptions{PricingAt: time.Date(2026, 9, 9, 9, 0, 0, 0, time.UTC)}))
@@ -368,10 +365,10 @@ func TestQoderPricingMatchesOtherPlatforms(t *testing.T) {
 	}
 }
 
-func requireOpenAIRecordUsageBillingRepoStub(t *testing.T, svc *completiontestkit.Recording) *completiontestkit.SettlementStore {
+func requireOpenAIRecordUsageBillingRepoStub(t *testing.T, svc *testkit.Recording) *testkit.SettlementStore {
 	t.Helper()
 
-	billingRepo, ok := svc.Dependencies.Funds.(*completiontestkit.SettlementStore)
+	billingRepo, ok := svc.Dependencies.Funds.(*testkit.SettlementStore)
 	require.True(t, ok)
 	return billingRepo
 }

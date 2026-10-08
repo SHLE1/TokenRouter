@@ -7,7 +7,6 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -258,45 +257,4 @@ func layoutBuildConstraint(file *ast.File) (constraint.Expr, error) {
 		}
 	}
 	return nil, nil
-}
-
-// compareLayoutBaseline 同时拒绝新增违规和已经失效的基线条目。
-func compareLayoutBaseline(violations []layoutViolation, baseline string) []string {
-	current := map[string]layoutViolation{}
-	old := map[string]bool{}
-	for _, v := range violations {
-		current[v.Rule+"\t"+v.Path] = v
-	}
-	for _, line := range strings.Split(strings.TrimSpace(baseline), "\n") {
-		if line != "" {
-			old[line] = true
-		}
-	}
-	var failures []string
-	for key, v := range current {
-		if !old[key] {
-			failures = append(failures, key+"\t"+v.Reason+"：新增的文件不符合后端文件组织规则")
-		}
-	}
-	for key := range old {
-		if _, ok := current[key]; !ok {
-			failures = append(failures, key+"\t这一项已经修好，请从 layout_baseline.txt 删除")
-		}
-	}
-	sort.Strings(failures)
-	return failures
-}
-
-// writeLayoutBaseline 按规则名和路径排序保存迁移期间的违规。
-func writeLayoutBaseline(path string, violations []layoutViolation) error {
-	var lines []string
-	for _, v := range violations {
-		lines = append(lines, v.Rule+"\t"+v.Path)
-	}
-	sort.Strings(lines)
-	content := strings.Join(lines, "\n")
-	if content != "" {
-		content += "\n"
-	}
-	return os.WriteFile(path, []byte(content), 0o644)
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
-	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
@@ -80,8 +79,8 @@ func TestUsageBatchQueryShape(t *testing.T) {
 func (s *UsageLogRepoSuite) TestProviderWindowPairMatchesSingles() {
 	u := mustCreateUser(s.T(), s.client, &identity.User{Email: "window-pair@test.local"})
 	k := mustCreateApiKey(s.T(), s.client, &apikey.APIKey{UserID: u.ID, Key: "window-pair"})
-	p := mustCreateProvider(s.T(), s.client, &provider.Record{Name: "window-pair"})
-	empty := mustCreateProvider(s.T(), s.client, &provider.Record{Name: "empty-window-pair"})
+	p := mustCreateProvider(s.T(), s.client, &providercore.Record{Name: "window-pair"})
+	empty := mustCreateProvider(s.T(), s.client, &providercore.Record{Name: "empty-window-pair"})
 	now := time.Date(2026, 10, 4, 0, 0, 0, 0, time.UTC)
 	for i, at := range []time.Time{now.Add(-8 * 24 * time.Hour), now.Add(-7 * 24 * time.Hour), now.Add(-6 * 24 * time.Hour), now.Add(-5 * time.Hour), now.Add(-4 * time.Hour), now.Add(time.Hour)} {
 		log := s.createUsageLog(u, k, p, 10+i, 20+i, float64(i), at)
@@ -110,7 +109,7 @@ func TestProviderReportRestoresConnectionJIT(t *testing.T) {
 	t.Cleanup(func() { integrationDB.SetMaxOpenConns(limit) })
 	client := testEntClient(t)
 	ctx := context.Background()
-	p := mustCreateProvider(t, client, &provider.Record{Name: "report-jit"})
+	p := mustCreateProvider(t, client, &providercore.Record{Name: "report-jit"})
 	var before, after string
 	require.NoError(t, integrationDB.QueryRowContext(ctx, "SHOW jit").Scan(&before))
 	repo := NewUsageLogRepositoryWithSQL(client, integrationDB, timezone.NewCalendar(time.UTC))
@@ -125,7 +124,7 @@ func TestProviderReportRestoresConnectionJIT(t *testing.T) {
 func (s *UsageLogRepoSuite) TestProviderReportCombinedResults() {
 	u := mustCreateUser(s.T(), s.client, &identity.User{Email: "provider-report@test.local"})
 	k := mustCreateApiKey(s.T(), s.client, &apikey.APIKey{UserID: u.ID, Key: "provider-report"})
-	p := mustCreateProvider(s.T(), s.client, &provider.Record{Name: "provider-report"})
+	p := mustCreateProvider(s.T(), s.client, &providercore.Record{Name: "provider-report"})
 	start := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	end := start.Add(72 * time.Hour)
 	for i := range 4 {

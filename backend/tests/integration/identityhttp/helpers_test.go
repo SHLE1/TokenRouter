@@ -33,12 +33,10 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/gateway"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
-	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
 	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/identity/provider"
-	identityprovider "github.com/TokenFlux/TokenRouter/internal/identity/provider"
 	identitytestkit "github.com/TokenFlux/TokenRouter/internal/identity/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/notification"
 	"github.com/TokenFlux/TokenRouter/internal/notification/smtp"
@@ -1202,7 +1200,7 @@ func (r *oauthPendingFlowAffiliateRepo) WithLockedInviter(ctx context.Context, _
 
 func buildEncodedOAuthBindUserCookie(t *testing.T, userID int64, secret string) string {
 	t.Helper()
-	value, err := identity.BuildOAuthBindUserCookieValue(userID, secret)
+	value, err := identitycore.BuildOAuthBindUserCookieValue(userID, secret)
 	require.NoError(t, err)
 	return value
 }
@@ -1427,13 +1425,13 @@ type authHTTPFixture struct {
 	*paymenthttp.WeChatPaymentHandler
 	cfg                   *config.Config
 	authDB                *dbent.Client
-	authService           *identity.AuthService
-	userService           *identity.UserService
+	authService           *identitycore.AuthService
+	userService           *identitycore.UserService
 	settingSvc            *authSettingsFixture
 	promoService          *promotion.PromoService
 	redeemService         *billing.RedeemService
-	totpService           *identity.TotpService
-	userAttributeService  *identity.UserAttributeService
+	totpService           *identitycore.TotpService
+	userAttributeService  *identitycore.UserAttributeService
 	googleIDTokenVerifier provider.GoogleIDTokenVerifier
 }
 
@@ -1470,7 +1468,7 @@ func bindAuthHTTPFixture(t *testing.T, h *authHTTPFixture) {
 	if h.authService != nil {
 		client = h.authDB
 	}
-	flow := &identity.PendingFlow{Store: identitypostgres.NewPendingRepository(client), Database: &identitypostgres.PendingFlowDatabase{Client: client, Auth: h.authService, Profiles: h.userService}, Auth: h.authService, Profiles: h.userService}
+	flow := &identitycore.PendingFlow{Store: identitypostgres.NewPendingRepository(client), Database: &identitypostgres.PendingFlowDatabase{Client: client, Auth: h.authService, Profiles: h.userService}, Auth: h.authService, Profiles: h.userService}
 	var sessionSettings identityhttp.SessionHTTPSettings
 	if h.settingSvc != nil {
 		sessionSettings = h.settingSvc
@@ -1501,68 +1499,72 @@ func bindAuthHTTPFixture(t *testing.T, h *authHTTPFixture) {
 		v := h.promoService.PreviewRegistrationPromotion(ctx, code)
 		return identityhttp.PromotionPreview{Valid: v.Valid, BonusAmount: v.BonusAmount, ErrorCode: v.ErrorCode}
 	}})
-	bind := identityhttp.NewOAuthBindHandler(session, identity.NewOAuthBindingSigner(secret))
-	linux := func(ctx context.Context) (identity.LinuxDoOAuthOptions, error) {
+	bind := identityhttp.NewOAuthBindHandler(session, identitycore.NewOAuthBindingSigner(secret))
+	linux := func(ctx context.Context) (identitycore.LinuxDoOAuthOptions, error) {
 		if h.settingSvc != nil {
 			v, e := h.settingSvc.oauth.GetLinuxDoConnectOAuthConfig(ctx)
-			return identity.LinuxDoOAuthOptions(v), e
+			return identitycore.LinuxDoOAuthOptions(v), e
 		}
 		if h.cfg == nil {
-			return identity.LinuxDoOAuthOptions{}, apperror.ServiceUnavailable("CONFIG_NOT_READY", "config not loaded")
+			return identitycore.LinuxDoOAuthOptions{}, apperror.ServiceUnavailable("CONFIG_NOT_READY", "config not loaded")
 		}
 		if !h.cfg.LinuxDo.Enabled {
-			return identity.LinuxDoOAuthOptions{}, apperror.NotFound("OAUTH_DISABLED", "oauth login is disabled")
+			return identitycore.LinuxDoOAuthOptions{}, apperror.NotFound("OAUTH_DISABLED", "oauth login is disabled")
 		}
-		return identity.LinuxDoOAuthOptions(h.cfg.LinuxDo), nil
+		return identitycore.LinuxDoOAuthOptions(h.cfg.LinuxDo), nil
 	}
-	oidc := func(ctx context.Context) (identity.OIDCOAuthOptions, error) {
+	oidc := func(ctx context.Context) (identitycore.OIDCOAuthOptions, error) {
 		if h.settingSvc != nil {
 			v, e := h.settingSvc.oauth.GetOIDCConnectOAuthConfig(ctx)
-			return identity.OIDCOAuthOptions(v), e
+			return identitycore.OIDCOAuthOptions(v), e
 		}
 		if h.cfg == nil {
-			return identity.OIDCOAuthOptions{}, apperror.ServiceUnavailable("CONFIG_NOT_READY", "config not loaded")
+			return identitycore.OIDCOAuthOptions{}, apperror.ServiceUnavailable("CONFIG_NOT_READY", "config not loaded")
 		}
 		if !h.cfg.OIDC.Enabled {
-			return identity.OIDCOAuthOptions{}, apperror.NotFound("OAUTH_DISABLED", "oauth login is disabled")
+			return identitycore.OIDCOAuthOptions{}, apperror.NotFound("OAUTH_DISABLED", "oauth login is disabled")
 		}
-		return identity.OIDCOAuthOptions(h.cfg.OIDC), nil
+		return identitycore.OIDCOAuthOptions(h.cfg.OIDC), nil
 	}
-	dingConfig := func(ctx context.Context) (identity.DingTalkOAuthOptions, error) {
+	dingConfig := func(ctx context.Context) (identitycore.DingTalkOAuthOptions, error) {
 		if h.settingSvc != nil {
 			v, e := h.settingSvc.oauth.GetDingTalkConnectOAuthConfig(ctx)
-			return identity.DingTalkOAuthOptions(v), e
+			return identitycore.DingTalkOAuthOptions(v), e
 		}
 		if h.cfg == nil {
-			return identity.DingTalkOAuthOptions{}, apperror.ServiceUnavailable("CONFIG_NOT_READY", "config not loaded")
+			return identitycore.DingTalkOAuthOptions{}, apperror.ServiceUnavailable("CONFIG_NOT_READY", "config not loaded")
 		}
 		if !h.cfg.DingTalk.Enabled {
-			return identity.DingTalkOAuthOptions{}, apperror.NotFound("OAUTH_DISABLED", "dingtalk oauth login is disabled")
+			return identitycore.DingTalkOAuthOptions{}, apperror.NotFound("OAUTH_DISABLED", "dingtalk oauth login is disabled")
 		}
-		return identity.DingTalkOAuthOptions(h.cfg.DingTalk), nil
+		return identitycore.DingTalkOAuthOptions(h.cfg.DingTalk), nil
 	}
 	clients := &provider.DingTalkClients{}
-	syncer := &identity.DingTalkSyncRuntime{LoadConfig: dingConfig, Client: func(v identity.DingTalkOAuthOptions) identity.DingTalkOAuthClient {
+	syncer := &identitycore.DingTalkSyncRuntime{LoadConfig: dingConfig, Client: func(v identitycore.DingTalkOAuthOptions) identitycore.DingTalkOAuthClient {
 		return clients.ForConfig(provider.DingTalkClientConfig{ClientID: v.ClientID, ClientSecret: v.ClientSecret, TokenURL: v.TokenURL, UserInfoURL: v.UserInfoURL})
-	}, Profiles: &identity.DingTalkProfileSync{Users: h.userService, Attributes: h.userAttributeService}, Run: authBackgroundFixture(t)}
+	}, Profiles: &identitycore.DingTalkProfileSync{Users: h.userService, Attributes: h.userAttributeService}, Run: authBackgroundFixture(t)}
 	pending = identityhttp.NewPendingHandler(session, flow, identityhttp.PendingHTTPOptions{ForceEmailOnSignup: func(ctx context.Context) bool {
 		if h.settingSvc == nil {
 			return false
 		}
 		v, e := h.settingSvc.GetAuthSourceDefaultSettings(ctx)
 		return e == nil && v != nil && v.ForceEmailOnThirdPartySignup
-	}, AfterLogin: func(ctx context.Context, p *identity.PendingAuthSession, id int64) { syncer.Pending(ctx, p, id, false) }, AfterRegistration: func(ctx context.Context, p *identity.PendingAuthSession, id int64) { syncer.Pending(ctx, p, id, true) }, BeforeAccountCommit: func(ctx context.Context, p *identity.PendingAuthSession) error {
+	}, AfterLogin: func(ctx context.Context, p *identitycore.PendingAuthSession, id int64) {
+		syncer.Pending(ctx, p, id, false)
+	}, AfterRegistration: func(ctx context.Context, p *identitycore.PendingAuthSession, id int64) {
+		syncer.Pending(ctx, p, id, true)
+	}, BeforeAccountCommit: func(ctx context.Context, p *identitycore.PendingAuthSession) error {
 		if pendingOAuthCreateAccountPreCommitHook == nil {
 			return nil
 		}
 		return pendingOAuthCreateAccountPreCommitHook(ctx, identitypostgres.PendingAuthSessionToEntity(p))
 	}})
-	email := identityhttp.NewEmailOAuthHandler(pending, provider.EmailOAuthClientAdapter{}, func(ctx context.Context, name string) (identity.EmailOAuthOptions, error) {
+	email := identityhttp.NewEmailOAuthHandler(pending, provider.EmailOAuthClientAdapter{}, func(ctx context.Context, name string) (identitycore.EmailOAuthOptions, error) {
 		if h.settingSvc == nil {
-			return identity.EmailOAuthOptions{}, apperror.ServiceUnavailable("CONFIG_NOT_READY", "config not loaded")
+			return identitycore.EmailOAuthOptions{}, apperror.ServiceUnavailable("CONFIG_NOT_READY", "config not loaded")
 		}
 		v, e := h.settingSvc.oauth.GetEmailOAuthProviderConfig(ctx, name)
-		return identity.EmailOAuthOptions(v), e
+		return identitycore.EmailOAuthOptions(v), e
 	})
 	var registration func(context.Context) bool
 	if h.settingSvc != nil {
@@ -1595,20 +1597,20 @@ func bindAuthHTTPFixture(t *testing.T, h *authHTTPFixture) {
 		return identityhttp.WechatOAuthDefaultFrontendCB
 	}}
 	if h.settingSvc != nil {
-		wechatOptions.LoadConfig = func(ctx context.Context, mode string) (identity.WeChatOAuthOptions, error) {
+		wechatOptions.LoadConfig = func(ctx context.Context, mode string) (identitycore.WeChatOAuthOptions, error) {
 			base := apiBase(ctx)
 			v, e := h.settingSvc.oauth.GetWeChatConnectOAuthConfig(ctx)
 			if e != nil {
-				return identity.WeChatOAuthOptions{}, e
+				return identitycore.WeChatOAuthOptions{}, e
 			}
-			return identity.WeChatOAuthOptions{Mode: mode, AppID: v.AppIDForMode(mode), AppSecret: v.AppSecretForMode(mode), Scope: v.ScopeForMode(mode), RedirectURI: v.RedirectURL, FrontendCallback: v.FrontendRedirectURL, APIBaseURL: base, OpenEnabled: v.OpenEnabled, MPEnabled: v.MPEnabled}, nil
+			return identitycore.WeChatOAuthOptions{Mode: mode, AppID: v.AppIDForMode(mode), AppSecret: v.AppSecretForMode(mode), Scope: v.ScopeForMode(mode), RedirectURI: v.RedirectURL, FrontendCallback: v.FrontendRedirectURL, APIBaseURL: base, OpenEnabled: v.OpenEnabled, MPEnabled: v.MPEnabled}, nil
 		}
 	}
 	wechat := identityhttp.NewWeChatHandler(pending, bind, provider.WeChatClient{TokenURL: wechatOAuthAccessTokenURL, UserInfoURL: wechatOAuthUserInfoURL}, wechatOptions)
 	h.AuthenticationHandler = &identityhttp.AuthenticationHandler{Session: session, Pending: pending, Bind: bind, LinuxDo: identityhttp.NewLinuxDoHandler(pending, bind, provider.LinuxDoClient{}, linux), OIDC: identityhttp.NewOIDCHandler(pending, bind, provider.OIDCClient{}, oidc), Email: email, Google: google, WeChat: wechat, DingTalk: identityhttp.NewDingTalkHandler(pending, bind, syncer, identityhttp.DingTalkHTTPOptions{LoadConfig: dingConfig, RegistrationEnabled: registration})}
 	h.WeChatPaymentHandler = paymenthttp.NewWeChatPaymentHandler(paymenthttp.WeChatPaymentHTTPOptions{Config: wechat.GetConfig, CallbackURL: func(ctx context.Context, c *gin.Context) string {
 		return identityhttp.ResolveWeChatOAuthAbsoluteURL(apiBase(ctx), c, "/api/v1/auth/oauth/wechat/payment/callback")
-	}, Resume: h.paymentResume, Exchange: func(ctx context.Context, v identity.WeChatOAuthOptions, code string) (paymenthttp.WeChatPaymentToken, error) {
+	}, Resume: h.paymentResume, Exchange: func(ctx context.Context, v identitycore.WeChatOAuthOptions, code string) (paymenthttp.WeChatPaymentToken, error) {
 		value, err := provider.ExchangeWeChatOAuthCode(ctx, provider.WeChatOptions{AppID: v.AppID, AppSecret: v.AppSecret, TokenURL: wechatOAuthAccessTokenURL}, code)
 		if err != nil {
 			return paymenthttp.WeChatPaymentToken{}, err
@@ -1650,10 +1652,10 @@ func (h *authHTTPFixture) paymentResume() *payment.PaymentResumeService {
 
 // authSettingsFixture 组合认证设置读取器，共用同一个测试存储。
 type authSettingsFixture struct {
-	*identity.RuntimeSettings
-	*identity.GrantSettings
+	*identitycore.RuntimeSettings
+	*identitycore.GrantSettings
 	*site.DisplaySettings
-	oauth     *identity.OAuthSettings
+	oauth     *identitycore.OAuthSettings
 	promotion *promotion.RuntimeSettings
 	backend   *admission.BackendMode
 	public    *site.PublicService
@@ -1665,9 +1667,9 @@ func newAuthSettingsFixture(repo settings.Repository, cfg *config.Config) *authS
 		cfg = &config.Config{}
 	}
 	store := settings.New(repo)
-	oauth := identity.NewOAuthSettings(store, &identity.OAuthSettingsDefaults{LinuxDo: cfg.LinuxDo, DingTalk: cfg.DingTalk, OIDC: cfg.OIDC, WeChat: cfg.WeChat, GitHubOAuth: cfg.GitHubOAuth, GoogleOAuth: cfg.GoogleOAuth}, identityprovider.ResolveSettingsOIDCMetadata)
-	grants := identity.NewGrantSettings(store, identity.GrantSettingsOptions{DefaultBalance: cfg.Default.UserBalance, DefaultConcurrency: cfg.Default.UserConcurrency})
-	value := &authSettingsFixture{RuntimeSettings: identity.NewRuntimeSettings(store, settings.ErrSettingNotFound), GrantSettings: grants, DisplaySettings: site.NewDisplaySettings(store, func() string { return cfg.Server.FrontendURL }), oauth: oauth, promotion: promotion.NewRuntimeSettings(store), backend: admission.NewBackendMode(store, nil)}
+	oauth := identitycore.NewOAuthSettings(store, &identitycore.OAuthSettingsDefaults{LinuxDo: cfg.LinuxDo, DingTalk: cfg.DingTalk, OIDC: cfg.OIDC, WeChat: cfg.WeChat, GitHubOAuth: cfg.GitHubOAuth, GoogleOAuth: cfg.GoogleOAuth}, provider.ResolveSettingsOIDCMetadata)
+	grants := identitycore.NewGrantSettings(store, identitycore.GrantSettingsOptions{DefaultBalance: cfg.Default.UserBalance, DefaultConcurrency: cfg.Default.UserConcurrency})
+	value := &authSettingsFixture{RuntimeSettings: identitycore.NewRuntimeSettings(store, settings.ErrSettingNotFound), GrantSettings: grants, DisplaySettings: site.NewDisplaySettings(store, func() string { return cfg.Server.FrontendURL }), oauth: oauth, promotion: promotion.NewRuntimeSettings(store), backend: admission.NewBackendMode(store, nil)}
 	value.public = site.NewPublicService(site.NewInputSource(store, site.PublicInputOptions{Auth: func(raw map[string]string) site.PublicAuth {
 		v := oauth.PublicSettingsFromValues(raw)
 		enabled, selfService := team.PublicSettings(raw, cfg.Team.Enabled, cfg.Team.SelfServiceEnabled)
@@ -1686,9 +1688,9 @@ func newAuthSettingsFixture(repo settings.Repository, cfg *config.Config) *authS
 	return value
 }
 
-func (s *authSettingsFixture) GetDingTalkConnectOAuthConfig(ctx context.Context) (identity.DingTalkRegistrationPolicy, error) {
+func (s *authSettingsFixture) GetDingTalkConnectOAuthConfig(ctx context.Context) (identitycore.DingTalkRegistrationPolicy, error) {
 	v, e := s.oauth.GetDingTalkConnectOAuthConfig(ctx)
-	return identity.DingTalkRegistrationPolicy{Enabled: v.Enabled, BypassRegistration: v.BypassRegistration, CorpRestrictionPolicy: v.CorpRestrictionPolicy}, e
+	return identitycore.DingTalkRegistrationPolicy{Enabled: v.Enabled, BypassRegistration: v.BypassRegistration, CorpRestrictionPolicy: v.CorpRestrictionPolicy}, e
 }
 
 func (s *authSettingsFixture) IsInvitationCodeEnabled(ctx context.Context) bool {
@@ -1703,7 +1705,7 @@ func (s *authSettingsFixture) IsBackendModeEnabled(ctx context.Context) bool {
 	return s.backend.Enabled(ctx)
 }
 
-func authContractSettings(s *authSettingsFixture) identity.AuthSettings {
+func authContractSettings(s *authSettingsFixture) identitycore.AuthSettings {
 	if s == nil {
 		return nil
 	}

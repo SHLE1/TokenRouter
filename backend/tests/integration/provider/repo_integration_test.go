@@ -18,7 +18,6 @@ import (
 	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/infra/postgres"
-	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
@@ -1716,7 +1715,7 @@ func idsOfProviders(providers []providercore.Record) []int64 {
 }
 
 // newProviderUsageContract 为用量存储绑定提供商事件写入和调度快照发布。
-func newProviderUsageContract(exec postgresinfra.Executor, store *providerpostgres.ProviderStore, cache scheduler.SnapshotPublicationCache) *billingpostgres.ProviderUsageStore {
+func newProviderUsageContract(exec postgres.Executor, store *providerpostgres.ProviderStore, cache scheduler.SnapshotPublicationCache) *billingpostgres.ProviderUsageStore {
 	events := providerPublicationEvents(store, cache)
 	return billingpostgres.NewProviderUsageStore(exec, billingpostgres.ProviderUsageOptions{
 		Changed: func(ctx context.Context, id int64) error {

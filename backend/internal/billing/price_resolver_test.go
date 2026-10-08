@@ -10,10 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
-	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	"github.com/TokenFlux/TokenRouter/internal/billing/provider"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
@@ -43,10 +41,10 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 					Models: []string{tc.base}, BillingMode: routing.BillingModeToken, InputPrice: &pricingConfigPrice,
 				}}}
 				repository := &routingtestkit.ConfigRows{Values: []routingtestkit.Configuration{configPricing}, Platforms: map[int64]string{groupID: tc.platform}}
-				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: billingadapter.LoadPricingLocation})
+				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: provider.LoadPricingLocation})
 				var catalog *catalogprovider.Service
 				if hasCatalog {
-					catalog = newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
+					catalog = newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 						tc.base: {Mode: "chat", InputCostPerToken: 1e-6, OutputCostPerToken: 2e-6},
 					}})
 				}
@@ -55,7 +53,7 @@ func TestResolveCatalogAliasesPreserveConfigPricing(t *testing.T) {
 				resolved := resolver.Resolve(context.Background(), input)
 				require.True(t, resolved.IsUnpriced(), "catalog=%v", hasCatalog)
 				// 完整型号可以分别配置独立价卡。
-				if pricing.NormalizePriceModelName(tc.base) == pricing.NormalizePriceModelName(tc.alias) {
+				if billingpricing.NormalizePriceModelName(tc.base) == billingpricing.NormalizePriceModelName(tc.alias) {
 					continue
 				}
 
@@ -87,7 +85,7 @@ func TestResolveCatalogAliasesUseUnifiedPricingConfig(t *testing.T) {
 			{Models: []string{"gemini-3.7-flash"}, BillingMode: routing.BillingModeToken, InputPrice: &price},
 		},
 	}}, map[int64]string{groupID: capability.PlatformGemini}))
-	catalog := newCatalogFixture(catalogFixture{pricingData: map[string]*pricing.CatalogModelPricing{
+	catalog := newCatalogFixture(catalogFixture{pricingData: map[string]*billingpricing.CatalogModelPricing{
 		"gemini-3.8-flash": {Mode: "chat", InputCostPerToken: 1e-6},
 	}})
 	resolver := billingtestkit.PriceResolver(pricingConfigs, newCalculator(catalog))
@@ -106,13 +104,13 @@ func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 		t.Run(tc.alias, func(t *testing.T) {
 			price, zero := 9e-6, 0.0
 			card := routing.ModelPricingEntry{Models: []string{tc.base}, InputPrice: &price}
-			for range []string{pricing.PricingSourceConfig} {
+			for range []string{billingpricing.PricingSourceConfig} {
 				group := &routing.Group{ID: 990}
 
 				repository := &routingtestkit.ConfigRows{Platforms: map[int64]string{group.ID: tc.platform}}
-				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: billingadapter.LoadPricingLocation})
+				pricingConfigs := routingtestkit.NewPricingConfigService(repository, nil, routing.PricingConfigOptions{Now: time.Now, LoadLocation: provider.LoadPricingLocation})
 				resolver := billingtestkit.PriceResolver(pricingConfigs, newCalculator(nil))
-				resolve := func(cards []routing.ModelPricingEntry) *pricing.ResolvedPricing {
+				resolve := func(cards []routing.ModelPricingEntry) *billingpricing.ResolvedPricing {
 					configPricing := routingtestkit.Configuration{ID: 990, Status: billing.StatusActive, GroupIDs: []int64{group.ID}}
 					configPricing.ModelPricing = cards
 					repository.Values = []routingtestkit.Configuration{configPricing}
@@ -121,7 +119,7 @@ func TestGroupAndPricingCatalogAliasPrecedence(t *testing.T) {
 				}
 				base := resolve([]routing.ModelPricingEntry{card})
 				require.True(t, base.IsUnpriced())
-				if pricing.NormalizePriceModelName(tc.base) == pricing.NormalizePriceModelName(tc.alias) {
+				if billingpricing.NormalizePriceModelName(tc.base) == billingpricing.NormalizePriceModelName(tc.alias) {
 					continue
 				}
 				exact := routing.ModelPricingEntry{Models: []string{tc.alias}}
@@ -141,7 +139,7 @@ func TestResolve_NoGroupID(t *testing.T) {
 		Warn: slog.
 			Warn,
 		Now: time.
-			Now, LoadLocation: pricingprovider.
+			Now, LoadLocation: provider.
 			LoadPricingLocation,
 	}),
 
@@ -167,7 +165,7 @@ func TestResolve_UnknownModel(t *testing.T) {
 		Warn: slog.
 			Warn,
 		Now: time.
-			Now, LoadLocation: pricingprovider.
+			Now, LoadLocation: provider.
 			LoadPricingLocation,
 	}),
 
@@ -1066,7 +1064,7 @@ func TestResolve_WithPricingConfigOverride_CacheError(t *testing.T) {
 		Warn: slog.
 			Warn,
 		Now: time.
-			Now, LoadLocation: pricingprovider.
+			Now, LoadLocation: provider.
 			LoadPricingLocation,
 	},
 	)

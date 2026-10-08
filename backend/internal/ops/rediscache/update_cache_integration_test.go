@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	redisclient "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -68,7 +67,7 @@ func TestUpdateCacheSuite(t *testing.T) {
 	suite.Run(t, new(UpdateCacheSuite))
 }
 
-func testRedis(t *testing.T) *redisclient.Client {
+func testRedis(t *testing.T) *redis.Client {
 	t.Helper()
 
 	prefix := fmt.Sprintf(
@@ -79,7 +78,7 @@ func testRedis(t *testing.T) *redisclient.Client {
 	)
 
 	opts := *integrationRedis.Options()
-	rdb := redisclient.NewClient(&opts)
+	rdb := redis.NewClient(&opts)
 	rdb.AddHook(prefixHook{prefix: prefix})
 
 	t.Cleanup(func() {
@@ -121,17 +120,17 @@ type prefixHook struct {
 	prefix string
 }
 
-func (h prefixHook) DialHook(next redisclient.DialHook) redisclient.DialHook { return next }
+func (h prefixHook) DialHook(next redis.DialHook) redis.DialHook { return next }
 
-func (h prefixHook) ProcessHook(next redisclient.ProcessHook) redisclient.ProcessHook {
-	return func(ctx context.Context, cmd redisclient.Cmder) error {
+func (h prefixHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
 		h.prefixCmd(cmd)
 		return next(ctx, cmd)
 	}
 }
 
-func (h prefixHook) ProcessPipelineHook(next redisclient.ProcessPipelineHook) redisclient.ProcessPipelineHook {
-	return func(ctx context.Context, cmds []redisclient.Cmder) error {
+func (h prefixHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return func(ctx context.Context, cmds []redis.Cmder) error {
 		for _, cmd := range cmds {
 			h.prefixCmd(cmd)
 		}
@@ -139,7 +138,7 @@ func (h prefixHook) ProcessPipelineHook(next redisclient.ProcessPipelineHook) re
 	}
 }
 
-func (h prefixHook) prefixCmd(cmd redisclient.Cmder) {
+func (h prefixHook) prefixCmd(cmd redis.Cmder) {
 	args := cmd.Args()
 	if len(args) < 2 {
 		return
@@ -202,7 +201,7 @@ func (h prefixHook) prefixCmd(cmd redisclient.Cmder) {
 type IntegrationRedisSuite struct {
 	suite.Suite
 	ctx context.Context
-	rdb *redisclient.Client
+	rdb *redis.Client
 }
 
 // SetupTest 为每个测试方法初始化上下文和 Redis 客户端。

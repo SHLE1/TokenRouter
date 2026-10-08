@@ -20,7 +20,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/apikey/testkit"
-	"github.com/TokenFlux/TokenRouter/internal/billing"
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
 	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -3037,11 +3036,11 @@ func TestGoogleAPIKeyAuthInvalidAbuseReturnsProtocol429(t *testing.T) {
 }
 
 func TestInvalidAuthAbuseDoesNotCountValidOrOperationalFailures(t *testing.T) {
-	user := &identity.User{ID: 1, Status: billing.StatusActive, Role: identity.RoleUser, Balance: 1}
+	user := &identity.User{ID: 1, Status: billingcore.StatusActive, Role: identity.RoleUser, Balance: 1}
 	repo := &stubApiKeyRepo{getByKey: func(_ context.Context, key string) (*apikey.APIKey, error) {
 		switch key {
 		case "valid-key":
-			return bindAuthTestGroup(&apikey.APIKey{ID: 1, UserID: 1, Key: key, Status: billing.StatusActive, User: user}), nil
+			return bindAuthTestGroup(&apikey.APIKey{ID: 1, UserID: 1, Key: key, Status: billingcore.StatusActive, User: user}), nil
 		case "db-error":
 			return nil, errors.New("database unavailable")
 		default:
@@ -3076,7 +3075,7 @@ func APIKeyAuthGoogle(apiKeyService *apikey.APIKeyService, cfg *config.Config) g
 	return APIKeyAuthWithSubscriptionGoogle(apiKeyService, nil, cfg)
 }
 
-func APIKeyAuthWithSubscriptionGoogle(apiKeyService *apikey.APIKeyService, subscriptionService *billing.SubscriptionService, cfg *config.Config) gin.HandlerFunc {
+func APIKeyAuthWithSubscriptionGoogle(apiKeyService *apikey.APIKeyService, subscriptionService *billingcore.SubscriptionService, cfg *config.Config) gin.HandlerFunc {
 	return newGatewayAuthorization(apiKeyService, subscriptionService, cfg, true)
 }
 
@@ -3762,11 +3761,11 @@ func httpRequest(t *testing.T, path, authorization, apiKey string) *http.Request
 // subscriptionAuthGroups 为未配置分组来源的测试返回空查询结果。
 type subscriptionAuthGroups struct{}
 
-func (subscriptionAuthGroups) GetByIDLite(context.Context, int64) (*billing.SubscriptionPlanGroup, error) {
+func (subscriptionAuthGroups) GetByIDLite(context.Context, int64) (*billingcore.SubscriptionPlanGroup, error) {
 	return nil, nil
 }
 
 // newSubscriptionAuthFixture 为认证测试构造订阅服务。
-func newSubscriptionAuthFixture(repo billing.UserSubscriptionRepository) *billing.SubscriptionService {
-	return billing.NewSubscriptionService(subscriptionAuthGroups{}, repo, billingpostgres.NewSubscriptionMutations(nil))
+func newSubscriptionAuthFixture(repo billingcore.UserSubscriptionRepository) *billingcore.SubscriptionService {
+	return billingcore.NewSubscriptionService(subscriptionAuthGroups{}, repo, billingpostgres.NewSubscriptionMutations(nil))
 }

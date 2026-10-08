@@ -16,7 +16,6 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
-	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
@@ -61,7 +60,7 @@ func (c *openAIWSSessionPreemptCacheStub) CompareAndDeleteOpenAIResponsesSession
 }
 
 func openAIWSSessionPreemptCacheHash(apiKeyID int64, sessionHash string) string {
-	return gatewayws.CacheHash(apiKeyID, sessionHash)
+	return ws.CacheHash(apiKeyID, sessionHash)
 }
 
 func TestOpenAIWSSessionPreemptRegistryCancelsSameScopedSessionOnly(t *testing.T) {

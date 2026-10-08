@@ -14,7 +14,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
-	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 	"github.com/TokenFlux/TokenRouter/migrations"
@@ -24,7 +23,7 @@ import (
 func (s *UsageLogRepoSuite) TestResponseModelMigrationPreservesHistory() {
 	user := mustCreateUser(s.T(), s.client, &identity.User{Email: "response-history@test.local"})
 	key := mustCreateApiKey(s.T(), s.client, &apikey.APIKey{UserID: user.ID, Key: "response-history", Name: "history"})
-	upstream := mustCreateProvider(s.T(), s.client, &provider.Record{Name: "response-history"})
+	upstream := mustCreateProvider(s.T(), s.client, &providercore.Record{Name: "response-history"})
 	log := s.createUsageLog(user, key, upstream, 1, 1, 0, time.Now())
 	_, err := s.tx.ExecContext(s.ctx, "ALTER TABLE usage_logs DROP COLUMN upstream_response_model, DROP COLUMN upstream_model_mismatch")
 	s.Require().NoError(err)

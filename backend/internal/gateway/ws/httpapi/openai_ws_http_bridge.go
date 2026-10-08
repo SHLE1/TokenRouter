@@ -18,7 +18,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/forward"
-	forwardcore "github.com/TokenFlux/TokenRouter/internal/gateway/forward"
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/media"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
@@ -421,7 +420,7 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 	payloadBytes int,
 	originalModel string,
 	args ...any,
-) (*forwardcore.OpenAIResult, error) {
+) (*forward.OpenAIResult, error) {
 	responseModelObserver := gatewayhttp.BeginUpstreamResponseModelObservation(c)
 	var routingModel, imageBillingModel, imageSizeTier, imageInputSize, grokCacheIdentity string
 	var turn int
@@ -702,9 +701,9 @@ func (s *OpenAIWebSocketExecutor) proxyOpenAIWSHTTPBridgeTurn(
 	var bareErrorPayload []byte
 	bareErrorMessage := ""
 	failureProviderSideEffectsApplied := false
-	resultWithUsage := func() *forwardcore.OpenAIResult {
+	resultWithUsage := func() *forward.OpenAIResult {
 		imageCount := imageCounter.Count()
-		result := &forwardcore.OpenAIResult{
+		result := &forward.OpenAIResult{
 			RequestID:                   responseID,
 			ResponseID:                  responseID,
 			Usage:                       usage,

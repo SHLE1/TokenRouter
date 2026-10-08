@@ -16,7 +16,6 @@ import (
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	_ "github.com/TokenFlux/TokenRouter/ent/runtime"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-	"github.com/TokenFlux/TokenRouter/internal/settings"
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/testutil/postgrescontainer"
 )
@@ -34,18 +33,18 @@ func TestSettingsAtomicFailure(t *testing.T) {
 	})
 	repo := NewSettingRepository(integrationEntClient)
 	require.NoError(t, repo.Set(ctx, "test_atomic_site", "before"))
-	update, err := settings.New(repo).Updates().Begin(ctx)
+	update, err := settingscore.New(repo).Updates().Begin(ctx)
 	require.NoError(t, err)
 	defer update.Close()
 	applied := false
-	err = update.Commit(settings.PreparedChange{Module: "site", Values: map[string]string{"test_atomic_site": "after"}, Apply: func(context.Context) error { applied = true; return nil }}, settings.PreparedChange{Module: "payment", Values: map[string]string{"test_atomic_failure": "true"}})
+	err = update.Commit(settingscore.PreparedChange{Module: "site", Values: map[string]string{"test_atomic_site": "after"}, Apply: func(context.Context) error { applied = true; return nil }}, settingscore.PreparedChange{Module: "payment", Values: map[string]string{"test_atomic_failure": "true"}})
 	require.Error(t, err)
 	require.False(t, applied)
 	actual, err := repo.GetValue(ctx, "test_atomic_site")
 	require.NoError(t, err)
 	require.Equal(t, "before", actual)
 	_, err = repo.GetValue(ctx, "test_atomic_failure")
-	require.ErrorIs(t, err, settings.ErrSettingNotFound)
+	require.ErrorIs(t, err, settingscore.ErrSettingNotFound)
 }
 
 // settingsDatabase 创建隔离数据库客户端，连接由数据库夹具关闭。
@@ -71,7 +70,7 @@ func TestLocalizedSettingsConcurrentWrite(t *testing.T) {
 	start := make(chan struct{})
 	for _, value := range []string{"first", "second"} {
 		go func(value string) {
-			store := settings.New(repo)
+			store := settingscore.New(repo)
 			session, err := store.Updates().Begin(ctx)
 			if err != nil {
 				ready.Done()
@@ -81,7 +80,7 @@ func TestLocalizedSettingsConcurrentWrite(t *testing.T) {
 			defer session.Close()
 			ready.Done()
 			<-start
-			results <- session.Commit(settings.PreparedChange{Module: "site", Values: map[string]string{key: value, sibling: value}, Expected: map[string]*string{key: &before}})
+			results <- session.Commit(settingscore.PreparedChange{Module: "site", Values: map[string]string{key: value, sibling: value}, Expected: map[string]*string{key: &before}})
 		}(value)
 	}
 	ready.Wait()

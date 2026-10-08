@@ -19,8 +19,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	keypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	billingpg "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
-	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/billing/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	infra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
@@ -519,7 +518,7 @@ func runUsageBillingConcurrentUsageLogInsert(t *testing.T, teamRequest bool) {
 	actor := owner
 	var teamID *int64
 	if teamRequest {
-		teamRepo := teampostgres.NewTeamRepository(integrationDB, keypostgres.NewTeamKeys(integrationDB), billingpostgres.NewMemberUsageStore(integrationDB, nil))
+		teamRepo := teampostgres.NewTeamRepository(integrationDB, keypostgres.NewTeamKeys(integrationDB), postgres.NewMemberUsageStore(integrationDB, nil))
 		member := mustCreateUser(t, client, &identity.User{Email: uniqueTeamTestEmail("usage-billing-lock-member")})
 		teamCtx, err := teamRepo.Create(ctx, "计费锁序团队", owner.ID, 5)
 		require.NoError(t, err)
@@ -1394,6 +1393,6 @@ type directUsageExecutor struct{ infra.Executor }
 // newAggregationFixture 为聚合存储配置资金去重记录的归档回调。
 func newAggregationFixture(q infra.Executor) *usagepg.AggregationStore {
 	return usagepg.NewAggregationStoreWithSQL(q, timezone.NewCalendar(time.Local), func(ctx context.Context, t time.Time) error {
-		return billingpg.ArchiveUsageDedup(ctx, q, t)
+		return postgres.ArchiveUsageDedup(ctx, q, t)
 	})
 }

@@ -22,7 +22,6 @@ import (
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/grok"
-	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 
 func TestGrokFinalUpstreamModelNormalization(t *testing.T) {
@@ -111,7 +110,7 @@ func TestGrokRuntimeModelKeysUseFinalUpstreamID(t *testing.T) {
 	require.Equal(t, []string{"grok"}, gatewayprovider.ExecutionModelPolicy(provider).LimitKeys(context.Background(), "grok"))
 	require.Equal(t, "grok", (&provideradapter.ModelHealth{}).LimitKey(gatewayprovider.ExecutionRecord(provider), "grok", nil))
 	// 状态处理接收最终上游模型后不得再次命中 grok-4.5 -> grok-4.3。
-	require.Equal(t, xai.DefaultResponsesModel, (&provideradapter.ModelHealth{}).LimitKey(gatewayprovider.ExecutionRecord(provider), xai.DefaultResponsesModel, nil))
+	require.Equal(t, grok.DefaultResponsesModel, (&provideradapter.ModelHealth{}).LimitKey(gatewayprovider.ExecutionRecord(provider), grok.DefaultResponsesModel, nil))
 }
 
 // TestGrokModelNotFoundWritesFinalUpstreamID 验证 Grok 默认错误处理写入最终上游模型键。

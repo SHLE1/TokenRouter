@@ -20,7 +20,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/coder/websocket"
-	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -34,32 +33,25 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/gateway/moderationflow"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
-	sessiontestkit "github.com/TokenFlux/TokenRouter/internal/gateway/session/testkit"
 	gatewaytestkit "github.com/TokenFlux/TokenRouter/internal/gateway/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/tierpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
-	gatewayws "github.com/TokenFlux/TokenRouter/internal/gateway/ws"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	protocolopenai "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/scheduler"
-	"github.com/TokenFlux/TokenRouter/internal/settings"
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	openaicore "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
 type stagedPassthroughFrame struct {
-	messageType coderws.MessageType
+	messageType websocket.MessageType
 	payload     []byte
 	err         error
 }
@@ -72,7 +64,7 @@ type stagedPassthroughConn struct {
 }
 
 func (c *stagedPassthroughConn) Send(payload string) {
-	c.frames <- stagedPassthroughFrame{messageType: coderws.MessageText, payload: []byte(payload)}
+	c.frames <- stagedPassthroughFrame{messageType: websocket.MessageText, payload: []byte(payload)}
 }
 
 func (c *stagedPassthroughConn) Fail(err error) {
@@ -88,21 +80,21 @@ func (c *stagedPassthroughConn) ReadMessage(ctx context.Context) ([]byte, error)
 
 func (c *stagedPassthroughConn) Ping(context.Context) error { return nil }
 
-func (c *stagedPassthroughConn) ReadFrame(ctx context.Context) (coderws.MessageType, []byte, error) {
+func (c *stagedPassthroughConn) ReadFrame(ctx context.Context) (websocket.MessageType, []byte, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	select {
 	case <-ctx.Done():
-		return coderws.MessageText, nil, ctx.Err()
+		return websocket.MessageText, nil, ctx.Err()
 	case <-c.closed:
-		return coderws.MessageText, nil, openai.ErrWSConnClosed
+		return websocket.MessageText, nil, openai.ErrWSConnClosed
 	case frame := <-c.frames:
 		return frame.messageType, append([]byte(nil), frame.payload...), frame.err
 	}
 }
 
-func (c *stagedPassthroughConn) WriteFrame(ctx context.Context, _ coderws.MessageType, payload []byte) error {
+func (c *stagedPassthroughConn) WriteFrame(ctx context.Context, _ websocket.MessageType, payload []byte) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -235,9 +227,9 @@ func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) 
 	require.NoError(t, err)
 	repo.Values[gateway.SettingKeyOpenAIFastPolicySettings] = string(filterPolicyJSON)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool, readers: newExecutionReadersFixture(repo, options)})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool, readers: newExecutionReadersFixture(repo, options)})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 901,
 			Name:        "openai-ws-filter",
@@ -255,8 +247,8 @@ func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) 
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -283,13 +275,13 @@ func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) 
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.5","stream":false,"service_tier":"fast"}`)))
+	require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.5","stream":false,"service_tier":"fast"}`)))
 	cancelWrite()
 
 	readCtx, cancelRead := context.WithTimeout(context.Background(), 3*time.Second)
@@ -298,7 +290,7 @@ func TestWSResponseCreate_IngressFiltersServiceTierBeforeUpstream(t *testing.T) 
 	require.NoError(t, readErr)
 	require.Equal(t, "response.completed", gjson.GetBytes(event, "type").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 
 	select {
 	case serverErr := <-serverErrCh:
@@ -354,9 +346,9 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 	require.NoError(t, err)
 	repo.Values[gateway.SettingKeyOpenAIFastPolicySettings] = string(raw)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool, readers: newExecutionReadersFixture(repo, options)})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool, readers: newExecutionReadersFixture(repo, options)})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 902,
 			Name:        "openai-ws-block",
@@ -374,8 +366,8 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -414,13 +406,13 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.5","stream":false,"service_tier":"priority"}`)))
+	require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.5","stream":false,"service_tier":"priority"}`)))
 	cancelWrite()
 
 	// 客户端先读取 error 事件。coder/websocket@v1.8.14 的 Conn.Write 在 write.go:307-311 同步 Flush，
@@ -441,7 +433,7 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 	_, _, secondReadErr := clientConn.Read(readCtx2)
 	cancelRead2()
 	require.Error(t, secondReadErr, "after the error event the connection must surface a close")
-	require.Equal(t, coderws.StatusPolicyViolation, coderws.CloseStatus(secondReadErr),
+	require.Equal(t, websocket.StatusPolicyViolation, websocket.CloseStatus(secondReadErr),
 		"close status must be PolicyViolation; got %v", secondReadErr)
 
 	select {
@@ -450,7 +442,7 @@ func TestWSResponseCreate_IngressBlockSendsErrorEventAndSkipsUpstream(t *testing
 		require.Error(t, serverErr)
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.True(t, errors.As(serverErr, &closeErr), "block 应返回 OpenAIWSClientCloseError，得到 %T: %v", serverErr, serverErr)
-		require.Equal(t, coderws.StatusPolicyViolation, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusPolicyViolation, closeErr.StatusCode())
 	case <-time.After(5 * time.Second):
 		t.Fatal("等待 ingress 关闭超时")
 	}
@@ -528,7 +520,7 @@ func TestOpenAIWSDownstreamWriteContext_CancellationOwnership(t *testing.T) {
 	t.Run("租约丢失时当前写入继续", func(t *testing.T) {
 		lifecycleCtx, cancelLifecycle := context.WithCancelCause(context.Background())
 		controlCtx, cancelControl := context.WithCancelCause(lifecycleCtx)
-		hooks := &gatewayws.OpenAIIngressHooks{ClientLifecycleContext: lifecycleCtx}
+		hooks := &ws.OpenAIIngressHooks{ClientLifecycleContext: lifecycleCtx}
 		writeCtx, cancelWrite := newOpenAIWSDownstreamWriteContext(controlCtx, hooks, time.Second)
 		defer cancelWrite()
 
@@ -549,7 +541,7 @@ func TestOpenAIWSDownstreamWriteContext_CancellationOwnership(t *testing.T) {
 		lifecycleCtx, cancelLifecycle := context.WithCancelCause(context.Background())
 		controlCtx, cancelControl := context.WithCancelCause(lifecycleCtx)
 		defer cancelControl(context.Canceled)
-		hooks := &gatewayws.OpenAIIngressHooks{ClientLifecycleContext: lifecycleCtx}
+		hooks := &ws.OpenAIIngressHooks{ClientLifecycleContext: lifecycleCtx}
 		writeCtx, cancelWrite := newOpenAIWSDownstreamWriteContext(controlCtx, hooks, time.Second)
 		defer cancelWrite()
 
@@ -623,9 +615,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 114,
 			Name:        "openai-ingress-session-lease",
@@ -652,7 +644,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 	turnTerminalCh := make(chan string, 2)
 	turnEffortCh := make(chan string, 1)
 	routingCalls := make([]string, 0, 2)
-	hooks := &gatewayws.OpenAIIngressHooks{
+	hooks := &ws.OpenAIIngressHooks{
 		ResolveRoutingModel: func(turn int, requestedModel string, _ []byte) (string, error) {
 			routingCalls = append(routingCalls, fmt.Sprintf("%d:%s", turn, requestedModel))
 			switch requestedModel {
@@ -664,7 +656,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 				return "", fmt.Errorf("unexpected requested model: %s", requestedModel)
 			}
 		},
-		AfterTurn: func(capture gatewayws.OpenAITurnCapture) {
+		AfterTurn: func(capture ws.OpenAITurnCapture) {
 			result := capture.Result
 			turnErr := capture.Err
 			if turnErr == nil && result != nil {
@@ -676,8 +668,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 		},
 	}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -701,7 +693,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -711,7 +703,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -721,14 +713,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -751,7 +743,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_KeepLeaseAcrossT
 	require.Equal(t, "response.completed", <-turnTerminalCh, "第二轮 turn 应保留成功终态")
 	require.Equal(t, "max", <-turnEffortCh, "WS v2 应记录第三方模型显式 max")
 
-	_ = clientConn.Close(coderws.StatusNormalClosure, "done")
+	_ = clientConn.Close(websocket.StatusNormalClosure, "done")
 
 	select {
 	case serverErr := <-serverErrCh:
@@ -797,8 +789,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_LeaseLossSendsRe
 	pool.SetClientDialerForTest(&openAIWSSingleConnDialer{conn: upstreamConn})
 	defer pool.Close()
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	provider := &gatewayprovider.ExecutionProvider{
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 118,
 			Name:        "openai-ingress-lease-loss",
@@ -814,7 +806,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_LeaseLossSendsRe
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{CompressionMode: coderws.CompressionContextTakeover})
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover})
 		if err != nil {
 			serverErrCh <- err
 			return
@@ -835,7 +827,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_LeaseLossSendsRe
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -847,19 +839,19 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_LeaseLossSendsRe
 			provider,
 			"sk-test",
 			firstMessage,
-			&gatewayws.OpenAIIngressHooks{ClientLifecycleContext: lifecycleCtx},
+			&ws.OpenAIIngressHooks{ClientLifecycleContext: lifecycleCtx},
 		)
 	}))
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -867,22 +859,22 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_LeaseLossSendsRe
 	msgType, event, err := clientConn.Read(readCtx)
 	cancelRead()
 	require.NoError(t, err)
-	require.Equal(t, coderws.MessageText, msgType)
+	require.Equal(t, websocket.MessageText, msgType)
 	require.Equal(t, "response.completed", gjson.GetBytes(event, "type").String())
 
 	closeReadCtx, cancelCloseRead := context.WithTimeout(context.Background(), 3*time.Second)
 	_, _, err = clientConn.Read(closeReadCtx)
 	cancelCloseRead()
-	var closeErr coderws.CloseError
+	var closeErr websocket.CloseError
 	require.ErrorAs(t, err, &closeErr)
-	require.Equal(t, coderws.StatusTryAgainLater, closeErr.Code)
+	require.Equal(t, websocket.StatusTryAgainLater, closeErr.Code)
 	require.Equal(t, "websocket ingress capacity lease lost; please reconnect", closeErr.Reason)
 
 	select {
 	case serverErr := <-serverErrCh:
 		var clientCloseErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, serverErr, &clientCloseErr)
-		require.Equal(t, coderws.StatusTryAgainLater, clientCloseErr.StatusCode())
+		require.Equal(t, websocket.StatusTryAgainLater, clientCloseErr.StatusCode())
 		require.ErrorIs(t, serverErr, scheduler.ErrOpenAIWSIngressLeaseLost)
 	case <-time.After(3 * time.Second):
 		t.Fatal("等待 ingress 租约丢失读协程退出超时")
@@ -910,8 +902,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_IdleTimeoutRelea
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 	defer pool.Close()
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	provider := &gatewayprovider.ExecutionProvider{
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 116,
 			Name:        "openai-ingress-idle-timeout",
@@ -927,7 +919,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_IdleTimeoutRelea
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{CompressionMode: coderws.CompressionContextTakeover})
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover})
 		if err != nil {
 			serverErrCh <- err
 			return
@@ -949,13 +941,13 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_IdleTimeoutRelea
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false,"store":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false,"store":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -968,16 +960,16 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_IdleTimeoutRelea
 	closeReadCtx, cancelCloseRead := context.WithTimeout(context.Background(), 3*time.Second)
 	_, _, err = clientConn.Read(closeReadCtx)
 	cancelCloseRead()
-	var clientClose coderws.CloseError
+	var clientClose websocket.CloseError
 	require.ErrorAs(t, err, &clientClose)
-	require.Equal(t, coderws.StatusNormalClosure, clientClose.Code)
+	require.Equal(t, websocket.StatusNormalClosure, clientClose.Code)
 	require.Equal(t, "websocket idle timeout", clientClose.Reason)
 
 	select {
 	case proxyErr := <-serverErrCh:
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, proxyErr, &closeErr)
-		require.Equal(t, coderws.StatusNormalClosure, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusNormalClosure, closeErr.StatusCode())
 		require.Equal(t, "websocket idle timeout", closeErr.Reason())
 	case <-time.After(4 * time.Second):
 		t.Fatal("timed out waiting for idle ingress session to close")
@@ -1011,8 +1003,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 	captureDialer := &openAIWSCaptureDialer{conn: captureConn}
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	provider := &gatewayprovider.ExecutionProvider{
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 115,
 			Name:        "openai-ingress-omit-model",
@@ -1035,8 +1027,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -1060,7 +1052,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -1070,7 +1062,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -1078,7 +1070,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 	}()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"client-model","stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"client-model","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -1089,7 +1081,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 	require.Equal(t, "resp_omit_model_1", gjson.GetBytes(firstEvent, "response.id").String())
 
 	writeCtx, cancelWrite = context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","stream":false,"previous_response_id":"resp_omit_model_1"}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","stream":false,"previous_response_id":"resp_omit_model_1"}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -1098,7 +1090,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_FollowupCreateCa
 	cancelRead()
 	require.NoError(t, readErr)
 	require.Equal(t, "resp_omit_model_2", gjson.GetBytes(secondEvent, "response.id").String())
-	_ = clientConn.Close(coderws.StatusNormalClosure, "done")
+	_ = clientConn.Close(websocket.StatusNormalClosure, "done")
 
 	select {
 	case serverErr := <-serverErrCh:
@@ -1145,8 +1137,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 	captureDialer := &openAIWSCaptureDialer{conn: captureConn}
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, readers: settingService, prompts: promptpolicy.New(settingService.Scheduler, settings.ErrSettingNotFound, slog.Warn), corrector: openai.NewCodexToolCorrector(), pool: pool})
-	provider := &gatewayprovider.ExecutionProvider{
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, readers: settingService, prompts: promptpolicy.New(settingService.Scheduler, settingscore.ErrSettingNotFound, slog.Warn), corrector: openai.NewCodexToolCorrector(), pool: pool})
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 116,
 			Name:        "openai-ingress-user-prompt-replacement",
@@ -1166,8 +1158,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -1191,7 +1183,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -1201,7 +1193,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -1209,7 +1201,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 	}()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -1220,7 +1212,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 	require.Equal(t, "resp_replace_followup_1", gjson.GetBytes(firstEvent, "response.id").String())
 
 	writeCtx, cancelWrite = context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false,"previous_response_id":"resp_replace_followup_1","input":[{"role":"user","content":[{"type":"input_text","text":"timezone is Asia/Shanghai"}]}]}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false,"previous_response_id":"resp_replace_followup_1","input":[{"role":"user","content":[{"type":"input_text","text":"timezone is Asia/Shanghai"}]}]}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -1229,7 +1221,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReplacesFollowup
 	cancelRead()
 	require.NoError(t, readErr)
 	require.Equal(t, "resp_replace_followup_2", gjson.GetBytes(secondEvent, "response.id").String())
-	_ = clientConn.Close(coderws.StatusNormalClosure, "done")
+	_ = clientConn.Close(websocket.StatusNormalClosure, "done")
 
 	select {
 	case serverErr := <-serverErrCh:
@@ -1269,7 +1261,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
 	groupID := int64(3)
 	apiKey := &apikey.APIKey{
@@ -1281,7 +1273,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 			AllowImageGeneration: true,
 		},
 	}
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 31,
 			Name:        "openai-codex-image-ws",
@@ -1302,8 +1294,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -1328,7 +1320,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -1338,7 +1330,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -1346,7 +1338,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 	}()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.5","stream":false,"parallel_tool_calls":true,"input":"draw a cat","sequence":900719925474099312345}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.5","stream":false,"parallel_tool_calls":true,"input":"draw a cat","sequence":900719925474099312345}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -1354,11 +1346,11 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 	msgType, message, err := clientConn.Read(readCtx)
 	cancelRead()
 	require.NoError(t, err)
-	require.Equal(t, coderws.MessageText, msgType)
+	require.Equal(t, websocket.MessageText, msgType)
 	require.Equal(t, "resp_codex_image_bridge", gjson.GetBytes(message, "response.id").String())
 
 	writeCtx, cancelWrite = context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{
 		"type":"response.create",
 		"model":"gpt-5.5",
 		"stream":false,
@@ -1380,11 +1372,11 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 	msgType, message, err = clientConn.Read(readCtx)
 	cancelRead()
 	require.NoError(t, err)
-	require.Equal(t, coderws.MessageText, msgType)
+	require.Equal(t, websocket.MessageText, msgType)
 	require.Equal(t, "resp_codex_image_lite", gjson.GetBytes(message, "response.id").String())
 
 	writeCtx, cancelWrite = context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{
 		"type":"response.create",
 		"model":"gpt-5.5",
 		"stream":false,
@@ -1399,11 +1391,11 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 	msgType, message, err = clientConn.Read(readCtx)
 	cancelRead()
 	require.NoError(t, err)
-	require.Equal(t, coderws.MessageText, msgType)
+	require.Equal(t, websocket.MessageText, msgType)
 	require.Equal(t, "resp_codex_image_function", gjson.GetBytes(message, "response.id").String())
 
 	writeCtx, cancelWrite = context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{
 		"type":"response.create",
 		"model":"gpt-5.5",
 		"parallel_tool_calls":"false",
@@ -1417,7 +1409,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_CodexImageBridge
 	case serverErr := <-serverErrCh:
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, serverErr, &closeErr)
-		require.Equal(t, coderws.StatusPolicyViolation, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusPolicyViolation, closeErr.StatusCode())
 		require.Contains(t, closeErr.Reason(), "parallel_tool_calls to be a boolean")
 	case <-time.After(5 * time.Second):
 		t.Fatal("等待 ingress websocket 结束超时")
@@ -1486,9 +1478,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 441,
 			Name:        "openai-ingress-dedicated",
@@ -1508,8 +1500,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 
 	serverErrCh := make(chan error, 2)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -1533,7 +1525,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -1544,7 +1536,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 
 	runSingleTurnSession := func(expectedResponseID string) {
 		dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-		clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+		clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 		cancelDial()
 		require.NoError(t, err)
 		defer func() {
@@ -1552,7 +1544,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 		}()
 
 		writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-		err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+		err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 		cancelWrite()
 		require.NoError(t, err)
 
@@ -1560,10 +1552,10 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_DedicatedModeDoe
 		msgType, event, readErr := clientConn.Read(readCtx)
 		cancelRead()
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		require.Equal(t, expectedResponseID, gjson.GetBytes(event, "response.id").String())
 
-		require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+		require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 
 		select {
 		case serverErr := <-serverErrCh:
@@ -1598,9 +1590,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 		},
 	}
 	captureDialer := &openAIWSCaptureDialer{conn: upstreamConn}
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: captureDialer})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: captureDialer})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 452,
 			Name:        "openai-ingress-passthrough",
@@ -1626,7 +1618,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	resultCh := make(chan *forwardcore.OpenAIResult, 2)
 	routingCalls := make(chan string, 3)
 	beforeTurnCalls := make(chan int, 1)
-	hooks := &gatewayws.OpenAIIngressHooks{
+	hooks := &ws.OpenAIIngressHooks{
 		ResolveRoutingModel: func(turn int, requestedModel string, _ []byte) (string, error) {
 			routingCalls <- fmt.Sprintf("%d:%s", turn, requestedModel)
 			switch requestedModel {
@@ -1642,7 +1634,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 			beforeTurnCalls <- turn
 			return nil
 		},
-		AfterTurn: func(capture gatewayws.OpenAITurnCapture) {
+		AfterTurn: func(capture ws.OpenAITurnCapture) {
 			result := capture.Result
 			turnErr := capture.Err
 			if turnErr == nil && result != nil {
@@ -1652,8 +1644,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	}
 
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -1677,7 +1669,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -1687,7 +1679,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -1695,7 +1687,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	}()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"client-turn-1","stream":false,"service_tier":"fast","reasoning":{"effort":"max"},"parallel_tool_calls":true,"client_metadata":{"ws_request_header_x_openai_internal_codex_responses_lite":"true"}}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"client-turn-1","stream":false,"service_tier":"fast","reasoning":{"effort":"max"},"parallel_tool_calls":true,"client_metadata":{"ws_request_header_x_openai_internal_codex_responses_lite":"true"}}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -1709,7 +1701,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 
 	// 首轮流式输出期间更新下一轮模型，首轮终态使用首轮的 R/C/U 快照。
 	sessionWriteCtx, cancelSessionWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(sessionWriteCtx, coderws.MessageText, []byte(`{"type":"session.update","session":{"model":"client-turn-2"}}`))
+	err = clientConn.Write(sessionWriteCtx, websocket.MessageText, []byte(`{"type":"session.update","session":{"model":"client-turn-2"}}`))
 	cancelSessionWrite()
 	require.NoError(t, err)
 	firstTerminalReadCtx, cancelFirstTerminalRead := context.WithTimeout(context.Background(), 3*time.Second)
@@ -1722,7 +1714,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	require.Equal(t, "completed", gjson.GetBytes(firstTerminal, "response.output.0.status").String())
 
 	writeCtx2, cancelWrite2 := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx2, coderws.MessageText, []byte(`{"type":"response.create","model":"client-turn-2","stream":false,"previous_response_id":"resp_passthrough_turn_1","parallel_tool_calls":true,"client_metadata":{"ws_request_header_x_openai_internal_codex_responses_lite":"true"}}`))
+	err = clientConn.Write(writeCtx2, websocket.MessageText, []byte(`{"type":"response.create","model":"client-turn-2","stream":false,"previous_response_id":"resp_passthrough_turn_1","parallel_tool_calls":true,"client_metadata":{"ws_request_header_x_openai_internal_codex_responses_lite":"true"}}`))
 	cancelWrite2()
 	require.NoError(t, err)
 	readCtx2, cancelRead2 := context.WithTimeout(context.Background(), 3*time.Second)
@@ -1732,7 +1724,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughModeR
 	require.Equal(t, "response.completed", gjson.GetBytes(event2, "type").String())
 	require.Equal(t, "resp_passthrough_turn_2", gjson.GetBytes(event2, "response.id").String())
 	require.Equal(t, "client-turn-2", gjson.GetBytes(event2, "response.model").String())
-	_ = clientConn.Close(coderws.StatusNormalClosure, "done")
+	_ = clientConn.Close(websocket.StatusNormalClosure, "done")
 
 	select {
 	case serverErr := <-serverErrCh:
@@ -1804,9 +1796,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 			)),
 		},
 	}
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: upstream, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 552,
 			Name:        "openai-ingress-http-bridge",
@@ -1830,7 +1822,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 	serverErrCh := make(chan error, 1)
 	resultCh := make(chan *forwardcore.OpenAIResult, 1)
 	routingCallCh := make(chan string, 1)
-	hooks := &gatewayws.OpenAIIngressHooks{
+	hooks := &ws.OpenAIIngressHooks{
 		ResolveRoutingModel: func(turn int, requestedModel string, _ []byte) (string, error) {
 			routingCallCh <- fmt.Sprintf("%d:%s", turn, requestedModel)
 			if turn != 1 || requestedModel != "client-bridge-model" {
@@ -1838,7 +1830,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 			}
 			return "channel-bridge-model", nil
 		},
-		AfterTurn: func(capture gatewayws.OpenAITurnCapture) {
+		AfterTurn: func(capture ws.OpenAITurnCapture) {
 			if capture.Err == nil && capture.Result != nil {
 				resultCh <- capture.Result
 			}
@@ -1846,8 +1838,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 	}
 
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -1871,7 +1863,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -1881,7 +1873,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -1889,7 +1881,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 	}()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"client-bridge-model","reasoning":{"effort":"max"},"stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"client-bridge-model","reasoning":{"effort":"max"},"stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -1907,7 +1899,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_HTTPBridgeModeRe
 	require.Equal(t, "response.done", gjson.GetBytes(event2, "type").String())
 	require.Equal(t, "resp_http_bridge_1", gjson.GetBytes(event2, "response.id").String())
 	require.Equal(t, "completed", gjson.GetBytes(event2, "response.output.0.status").String())
-	_ = clientConn.Close(coderws.StatusNormalClosure, "done")
+	_ = clientConn.Close(websocket.StatusNormalClosure, "done")
 
 	select {
 	case serverErr := <-serverErrCh:
@@ -2001,8 +1993,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughBridg
 			}}
 			dialer := &openAIWSCaptureDialer{conn: upstreamConn}
 			httpUpstream := &auxiliaryHTTPRecorder{}
-			svc := newWSFixture(wsFixtureInputs{options: options, transport: httpUpstream, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: dialer})
-			provider := &gatewayprovider.ExecutionProvider{
+			svc := newWSFixture(wsFixtureInputs{options: options, transport: httpUpstream, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: dialer})
+			provider := &gatewayadapter.ExecutionProvider{
 				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 453,
 					Platform:    capability.PlatformOpenAI,
@@ -2019,7 +2011,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughBridg
 
 			errCh := make(chan error, 1)
 			wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				conn, err := coderws.Accept(w, r, nil)
+				conn, err := websocket.Accept(w, r, nil)
 				if err != nil {
 					errCh <- err
 					return
@@ -2037,17 +2029,17 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughBridg
 			}))
 			defer wsServer.Close()
 
-			clientConn, _, err := coderws.Dial(context.Background(), "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+			clientConn, _, err := websocket.Dial(context.Background(), "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 			require.NoError(t, err)
 			defer func() { _ = clientConn.CloseNow() }()
-			require.NoError(t, clientConn.Write(context.Background(), coderws.MessageText, []byte(tt.payload)))
+			require.NoError(t, clientConn.Write(context.Background(), websocket.MessageText, []byte(tt.payload)))
 			_, event, err := clientConn.Read(context.Background())
 			if tt.wantRelayReject {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, "resp_duplicate_keys", gjson.GetBytes(event, "response.id").String())
-				require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+				require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 			}
 
 			select {
@@ -2087,8 +2079,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 		},
 	}
 	captureDialer := &openAIWSCaptureDialer{conn: upstreamConn}
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: captureDialer})
-	provider := &gatewayprovider.ExecutionProvider{
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: captureDialer})
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 453,
 			Name:        "openai-ingress-passthrough-headers",
@@ -2108,8 +2100,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -2135,7 +2127,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -2145,7 +2137,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -2153,7 +2145,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 	}()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{
 		"type":"response.create",
 		"model":"gpt-5.1",
 		"stream":false,
@@ -2173,7 +2165,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PassthroughHeade
 	cancelRead()
 	require.NoError(t, readErr)
 	require.Equal(t, "resp_passthrough_headers", gjson.GetBytes(event, "response.id").String())
-	_ = clientConn.Close(coderws.StatusNormalClosure, "done")
+	_ = clientConn.Close(websocket.StatusNormalClosure, "done")
 
 	select {
 	case serverErr := <-serverErrCh:
@@ -2222,9 +2214,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 140,
 			Name:        "openai-ingress-prev-preflight-rewrite",
@@ -2244,8 +2236,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -2269,7 +2261,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -2279,7 +2271,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -2289,14 +2281,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -2308,7 +2300,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	secondTurn := readMessage()
 	require.Equal(t, "resp_preflight_rewrite_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -2360,9 +2352,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 142,
 			Name:        "openai-ingress-prev-strict-drop-before-ping",
@@ -2382,8 +2374,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -2407,7 +2399,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -2417,7 +2409,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -2427,14 +2419,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -2446,7 +2438,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	secondTurn := readMessage()
 	require.Equal(t, "resp_turn_ping_drop_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -2491,9 +2483,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreEnabledSkip
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 143,
 			Name:        "openai-ingress-store-enabled-skip-strict",
@@ -2513,8 +2505,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreEnabledSkip
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -2538,7 +2530,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreEnabledSkip
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -2548,7 +2540,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreEnabledSkip
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -2558,14 +2550,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreEnabledSkip
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -2577,7 +2569,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreEnabledSkip
 	secondTurn := readMessage()
 	require.Equal(t, "resp_store_enabled_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -2613,9 +2605,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 141,
 			Name:        "openai-ingress-prev-preflight-skip-fco",
@@ -2635,8 +2627,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -2660,7 +2652,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -2670,7 +2662,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -2680,14 +2672,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -2699,7 +2691,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	secondTurn := readMessage()
 	require.Equal(t, "resp_preflight_skip_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -2735,9 +2727,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 143,
 			Name:        "openai-ingress-fco-auto-prev",
@@ -2757,8 +2749,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -2782,7 +2774,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -2792,7 +2784,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -2802,14 +2794,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -2821,7 +2813,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	secondTurn := readMessage()
 	require.Equal(t, "resp_auto_prev_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -2857,9 +2849,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledToo
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 145,
 			Name:        "openai-ingress-tool-search-output-auto-prev",
@@ -2879,8 +2871,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledToo
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -2904,7 +2896,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledToo
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -2914,7 +2906,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledToo
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -2924,14 +2916,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledToo
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -2943,7 +2935,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledToo
 	secondTurn := readMessage()
 	require.Equal(t, "resp_tool_search_prev_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -2982,9 +2974,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 144,
 			Name:        "openai-ingress-fco-auto-prev-skip",
@@ -3004,8 +2996,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -3029,7 +3021,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -3039,7 +3031,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -3049,14 +3041,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -3069,7 +3061,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	secondTurn := readMessage()
 	require.Equal(t, "resp_auto_prev_skip_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -3107,9 +3099,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 114,
 			Name:        "openai-ingress-tool-context",
@@ -3129,8 +3121,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -3154,7 +3146,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -3164,7 +3156,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -3174,14 +3166,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -3193,7 +3185,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	secondTurn := readMessage()
 	require.Equal(t, "resp_auto_prev_ctx_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -3231,9 +3223,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 115,
 			Name:        "openai-ingress-item-reference",
@@ -3253,8 +3245,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -3278,7 +3270,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -3288,7 +3280,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -3298,14 +3290,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -3317,7 +3309,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledFun
 	secondTurn := readMessage()
 	require.Equal(t, "resp_auto_prev_ref_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -3365,9 +3357,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreflightPingFai
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 116,
 			Name:        "openai-ingress-preflight-ping",
@@ -3387,8 +3379,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreflightPingFai
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -3412,7 +3404,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreflightPingFai
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -3422,7 +3414,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreflightPingFai
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -3432,14 +3424,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreflightPingFai
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -3451,7 +3443,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreflightPingFai
 	secondTurn := readMessage()
 	require.Equal(t, "resp_turn_ping_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -3498,9 +3490,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 121,
 			Name:        "openai-ingress-preflight-ping-strict-affinity",
@@ -3520,8 +3512,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -3545,7 +3537,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -3555,7 +3547,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -3565,14 +3557,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -3584,7 +3576,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	secondTurn := readMessage()
 	require.Equal(t, "resp_turn_ping_strict_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -3641,9 +3633,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 128,
 			Name:        "openai-ingress-preflight-replay-function-output-with-context",
@@ -3663,8 +3655,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -3688,7 +3680,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -3698,7 +3690,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -3708,14 +3700,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -3727,7 +3719,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	secondTurn := readMessage()
 	require.Equal(t, "resp_turn_ping_replay_ctx_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -3787,9 +3779,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 129,
 			Name:        "openai-ingress-preflight-replay-function-output",
@@ -3809,8 +3801,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -3834,7 +3826,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -3844,7 +3836,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -3854,14 +3846,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -3876,7 +3868,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 		require.Error(t, serverErr)
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, serverErr, &closeErr)
-		require.Equal(t, coderws.StatusPolicyViolation, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusPolicyViolation, closeErr.StatusCode())
 		require.Contains(t, closeErr.Reason(), "upstream continuation connection is unavailable")
 	case <-time.After(5 * time.Second):
 		t.Fatal("等待 ingress websocket 结束超时")
@@ -3924,9 +3916,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 130,
 			Name:        "openai-ingress-preflight-replay-only-function-output",
@@ -3946,8 +3938,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -3971,7 +3963,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -3981,7 +3973,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -3991,14 +3983,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -4013,7 +4005,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledPre
 		require.Error(t, serverErr)
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, serverErr, &closeErr)
-		require.Equal(t, coderws.StatusPolicyViolation, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusPolicyViolation, closeErr.StatusCode())
 		require.Contains(t, closeErr.Reason(), "upstream continuation connection is unavailable")
 	case <-time.After(5 * time.Second):
 		t.Fatal("等待 ingress websocket 结束超时")
@@ -4055,9 +4047,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 117,
 			Name:        "openai-ingress-write-retry",
@@ -4078,14 +4070,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 	beforeTurnCalls := make(map[int]int)
 	afterTurnCalls := make(map[int]int)
 	afterTurnRequestBodies := make(map[int][]byte)
-	hooks := &gatewayws.OpenAIIngressHooks{
+	hooks := &ws.OpenAIIngressHooks{
 		BeforeTurn: func(turn int) error {
 			hooksMu.Lock()
 			beforeTurnCalls[turn]++
 			hooksMu.Unlock()
 			return nil
 		},
-		AfterTurn: func(capture gatewayws.OpenAITurnCapture) {
+		AfterTurn: func(capture ws.OpenAITurnCapture) {
 			hooksMu.Lock()
 			afterTurnCalls[capture.Turn]++
 			afterTurnRequestBodies[capture.Turn] = append([]byte(nil), capture.RequestBody...)
@@ -4095,8 +4087,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -4120,7 +4112,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -4130,7 +4122,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -4140,14 +4132,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -4159,7 +4151,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_WriteFailBeforeD
 	secondTurn := readMessage()
 	require.Equal(t, "resp_turn_write_retry_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -4214,9 +4206,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 118,
 			Name:        "openai-ingress-prev-recovery",
@@ -4236,8 +4228,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -4261,7 +4253,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -4271,7 +4263,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -4281,14 +4273,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -4301,7 +4293,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	require.Equal(t, "response.completed", gjson.GetBytes(secondTurn, "type").String())
 	require.Equal(t, "resp_turn_prev_recover_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -4355,9 +4347,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 122,
 			Name:        "openai-ingress-prev-strict-layer2",
@@ -4377,8 +4369,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -4402,7 +4394,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -4412,7 +4404,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -4422,14 +4414,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -4441,7 +4433,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_StoreDisabledStr
 	secondTurn := readMessage()
 	require.Equal(t, "resp_turn_prev_strict_recover_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -4501,9 +4493,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 120,
 			Name:        "openai-ingress-prev-recovery-once",
@@ -4523,8 +4515,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -4548,7 +4540,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -4558,7 +4550,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -4568,14 +4560,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -4588,7 +4580,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_PreviousResponse
 	secondTurn := readMessage()
 	require.Equal(t, "resp_turn_prev_once_2", gjson.GetBytes(secondTurn, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -4616,9 +4608,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_RejectsMessageID
 	options.Request.URLPolicy.Enabled = false
 	options.Request.URLPolicy.AllowInsecureHTTP = true
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector()})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 119,
 			Name:        "openai-ingress-prev-validation",
@@ -4638,8 +4630,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_RejectsMessageID
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -4663,7 +4655,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_RejectsMessageID
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -4673,7 +4665,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_RejectsMessageID
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -4681,7 +4673,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_RejectsMessageID
 	}()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false,"previous_response_id":"msg_123456"}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false,"previous_response_id":"msg_123456"}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -4690,7 +4682,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_RejectsMessageID
 		require.Error(t, serverErr)
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, serverErr, &closeErr)
-		require.Equal(t, coderws.StatusPolicyViolation, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusPolicyViolation, closeErr.StatusCode())
 		require.Contains(t, closeErr.Reason(), "previous_response_id must be a response.id")
 	case <-time.After(5 * time.Second):
 		t.Fatal("等待 ingress websocket 结束超时")
@@ -4853,9 +4845,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 115,
 			Name:        "openai-ingress-client-disconnect",
@@ -4878,8 +4870,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 
 	serverErrCh := make(chan error, 1)
 	resultCh := make(chan *forwardcore.OpenAIResult, 1)
-	hooks := &gatewayws.OpenAIIngressHooks{
-		AfterTurn: func(capture gatewayws.OpenAITurnCapture) {
+	hooks := &ws.OpenAIIngressHooks{
+		AfterTurn: func(capture ws.OpenAITurnCapture) {
 			result := capture.Result
 			turnErr := capture.Err
 			if turnErr == nil && result != nil {
@@ -4888,8 +4880,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 		},
 	}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -4913,7 +4905,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -4923,12 +4915,12 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ClientDisconnect
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"custom-original-model","stream":false,"service_tier":"flex"}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"custom-original-model","stream":false,"service_tier":"flex"}`))
 	cancelWrite()
 	require.NoError(t, err)
 	// 立即关闭客户端，模拟客户端在 relay 期间断连。
@@ -4972,8 +4964,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberErro
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	provider := &gatewayprovider.ExecutionProvider{
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 119,
 			Name:        "openai-ingress-cyber-error",
@@ -5000,7 +4992,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberErro
 		message    string
 	}
 	upstreamErrCh := make(chan upstreamErrorRecord, 1)
-	hooks := &gatewayws.OpenAIIngressHooks{
+	hooks := &ws.OpenAIIngressHooks{
 		OnUpstreamError: func(turn int, originalModel string, statusCode int, responseBody []byte, message string) {
 			upstreamErrCh <- upstreamErrorRecord{
 				turn:       turn,
@@ -5012,8 +5004,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberErro
 		},
 	}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -5032,7 +5024,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberErro
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -5042,13 +5034,13 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberErro
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -5096,8 +5088,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberFail
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-	provider := &gatewayprovider.ExecutionProvider{
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 120,
 			Name:        "openai-ingress-cyber-failed",
@@ -5121,7 +5113,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberFail
 		statusCode int
 	}
 	upstreamErrCh := make(chan failedUpstreamErrorRecord, 1)
-	hooks := &gatewayws.OpenAIIngressHooks{
+	hooks := &ws.OpenAIIngressHooks{
 		OnUpstreamError: func(_ int, originalModel string, statusCode int, responseBody []byte, message string) {
 			require.JSONEq(t, string(failedEvent), string(responseBody))
 			require.Contains(t, message, "cybersecurity risk")
@@ -5132,8 +5124,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberFail
 		},
 	}
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -5152,7 +5144,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberFail
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -5162,13 +5154,13 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberFail
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -5177,7 +5169,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ReportsCyberFail
 	cancelRead()
 	require.NoError(t, readErr)
 	require.JSONEq(t, string(failedEvent), string(event))
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 
 	select {
 	case got := <-upstreamErrCh:
@@ -5221,9 +5213,9 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncrypted
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(dialer)
 
-	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
-	provider := &gatewayprovider.ExecutionProvider{
+	provider := &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 119,
 			Name:        "openai-ingress-enc-lineage",
@@ -5243,8 +5235,8 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncrypted
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{
-			CompressionMode: coderws.CompressionContextTakeover,
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+			CompressionMode: websocket.CompressionContextTakeover,
 		})
 		if err != nil {
 			serverErrCh <- err
@@ -5268,7 +5260,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncrypted
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- errors.New("unsupported websocket client message type")
 			return
 		}
@@ -5278,7 +5270,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncrypted
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() {
@@ -5288,14 +5280,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncrypted
 	writeMessage := func(payload string) {
 		writeCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
-		require.NoError(t, clientConn.Write(writeCtx, coderws.MessageText, []byte(payload)))
+		require.NoError(t, clientConn.Write(writeCtx, websocket.MessageText, []byte(payload)))
 	}
 	readMessage := func() []byte {
 		readCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		msgType, message, readErr := clientConn.Read(readCtx)
 		require.NoError(t, readErr)
-		require.Equal(t, coderws.MessageText, msgType)
+		require.Equal(t, websocket.MessageText, msgType)
 		return message
 	}
 
@@ -5313,7 +5305,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_InvalidEncrypted
 	require.Equal(t, "response.completed", gjson.GetBytes(thirdEvent, "type").String())
 	require.Equal(t, "resp_enc_lineage_2", gjson.GetBytes(thirdEvent, "response.id").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case serverErr := <-serverErrCh:
 		require.NoError(t, serverErr)
@@ -5351,11 +5343,11 @@ func TestIsOpenAIWSClientDisconnectError(t *testing.T) {
 		{name: "io_eof", err: io.EOF, want: true},
 		{name: "net_closed", err: net.ErrClosed, want: true},
 		{name: "context_canceled", err: context.Canceled, want: true},
-		{name: "ws_normal_closure", err: coderws.CloseError{Code: coderws.StatusNormalClosure}, want: true},
-		{name: "ws_going_away", err: coderws.CloseError{Code: coderws.StatusGoingAway}, want: true},
-		{name: "ws_no_status", err: coderws.CloseError{Code: coderws.StatusNoStatusRcvd}, want: true},
-		{name: "ws_abnormal_1006", err: coderws.CloseError{Code: coderws.StatusAbnormalClosure}, want: true},
-		{name: "ws_policy_violation", err: coderws.CloseError{Code: coderws.StatusPolicyViolation}, want: false},
+		{name: "ws_normal_closure", err: websocket.CloseError{Code: websocket.StatusNormalClosure}, want: true},
+		{name: "ws_going_away", err: websocket.CloseError{Code: websocket.StatusGoingAway}, want: true},
+		{name: "ws_no_status", err: websocket.CloseError{Code: websocket.StatusNoStatusRcvd}, want: true},
+		{name: "ws_abnormal_1006", err: websocket.CloseError{Code: websocket.StatusAbnormalClosure}, want: true},
+		{name: "ws_policy_violation", err: websocket.CloseError{Code: websocket.StatusPolicyViolation}, want: false},
 		{name: "wrapped_eof_message", err: errors.New("failed to get reader: failed to read frame header: EOF"), want: true},
 		{name: "connection_reset_by_peer", err: errors.New("failed to read frame header: read tcp 127.0.0.1:1234->127.0.0.1:5678: read: connection reset by peer"), want: true},
 		{name: "windows_connection_reset", err: errors.New("failed to get reader: failed to read frame header: read tcp 127.0.0.1:1234->127.0.0.1:5678: wsarecv: An existing connection was forcibly closed by the remote host."), want: true},
@@ -5366,7 +5358,7 @@ func TestIsOpenAIWSClientDisconnectError(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tt.want, gatewayprovider.IsOpenAIWSClientDisconnectError(tt.err))
+			require.Equal(t, tt.want, gatewayadapter.IsOpenAIWSClientDisconnectError(tt.err))
 		})
 	}
 }
@@ -5424,7 +5416,7 @@ func TestDropPreviousResponseIDFromRawPayload(t *testing.T) {
 	t.Parallel()
 
 	t.Run("empty_payload", func(t *testing.T) {
-		updated, removed, err := openaicore.DropPreviousResponseIDFromRawPayload(nil)
+		updated, removed, err := openai.DropPreviousResponseIDFromRawPayload(nil)
 		require.NoError(t, err)
 		require.False(t, removed)
 		require.Empty(t, updated)
@@ -5432,7 +5424,7 @@ func TestDropPreviousResponseIDFromRawPayload(t *testing.T) {
 
 	t.Run("payload_without_previous_response_id", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.1"}`)
-		updated, removed, err := openaicore.DropPreviousResponseIDFromRawPayload(payload)
+		updated, removed, err := openai.DropPreviousResponseIDFromRawPayload(payload)
 		require.NoError(t, err)
 		require.False(t, removed)
 		require.Equal(t, string(payload), string(updated))
@@ -5440,7 +5432,7 @@ func TestDropPreviousResponseIDFromRawPayload(t *testing.T) {
 
 	t.Run("normal_delete_success", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.1","previous_response_id":"resp_abc"}`)
-		updated, removed, err := openaicore.DropPreviousResponseIDFromRawPayload(payload)
+		updated, removed, err := openai.DropPreviousResponseIDFromRawPayload(payload)
 		require.NoError(t, err)
 		require.True(t, removed)
 		require.False(t, gjson.GetBytes(updated, "previous_response_id").Exists())
@@ -5448,7 +5440,7 @@ func TestDropPreviousResponseIDFromRawPayload(t *testing.T) {
 
 	t.Run("duplicate_keys_are_removed", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","previous_response_id":"resp_a","input":[],"previous_response_id":"resp_b"}`)
-		updated, removed, err := openaicore.DropPreviousResponseIDFromRawPayload(payload)
+		updated, removed, err := openai.DropPreviousResponseIDFromRawPayload(payload)
 		require.NoError(t, err)
 		require.True(t, removed)
 		require.False(t, gjson.GetBytes(updated, "previous_response_id").Exists())
@@ -5456,7 +5448,7 @@ func TestDropPreviousResponseIDFromRawPayload(t *testing.T) {
 
 	t.Run("nil_delete_fn_uses_default_delete_logic", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.1","previous_response_id":"resp_abc"}`)
-		updated, removed, err := openaicore.DropPreviousResponseIDFromRawPayloadWithDeleteFn(payload, nil)
+		updated, removed, err := openai.DropPreviousResponseIDFromRawPayloadWithDeleteFn(payload, nil)
 		require.NoError(t, err)
 		require.True(t, removed)
 		require.False(t, gjson.GetBytes(updated, "previous_response_id").Exists())
@@ -5464,7 +5456,7 @@ func TestDropPreviousResponseIDFromRawPayload(t *testing.T) {
 
 	t.Run("delete_error", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.1","previous_response_id":"resp_abc"}`)
-		updated, removed, err := openaicore.DropPreviousResponseIDFromRawPayloadWithDeleteFn(payload, func(_ []byte, _ string) ([]byte, error) {
+		updated, removed, err := openai.DropPreviousResponseIDFromRawPayloadWithDeleteFn(payload, func(_ []byte, _ string) ([]byte, error) {
 			return nil, errors.New("delete failed")
 		})
 		require.Error(t, err)
@@ -5476,7 +5468,7 @@ func TestDropPreviousResponseIDFromRawPayload(t *testing.T) {
 		payload := []byte(`{"type":"response.create","previous_response_id":"resp_abc"`)
 		require.True(t, gjson.GetBytes(payload, "previous_response_id").Exists())
 
-		updated, removed, err := openaicore.DropPreviousResponseIDFromRawPayload(payload)
+		updated, removed, err := openai.DropPreviousResponseIDFromRawPayload(payload)
 		require.NoError(t, err)
 		require.True(t, removed)
 		require.False(t, gjson.GetBytes(updated, "previous_response_id").Exists())
@@ -5506,7 +5498,7 @@ func TestStripCodexSparkImageGenerationToolFromRawPayload(t *testing.T) {
 		updated, changed, err := stripCodexSparkImageGenerationToolFromRawPayload(payload, "gpt-5.3-codex-spark")
 		require.NoError(t, err)
 		require.True(t, changed)
-		require.False(t, gatewayprovider.ImageIntent().IsImageGenerationIntent(media.OpenAIResponsesEndpoint, "gpt-5.3-codex-spark", updated))
+		require.False(t, gatewayadapter.ImageIntent().IsImageGenerationIntent(media.OpenAIResponsesEndpoint, "gpt-5.3-codex-spark", updated))
 		require.Equal(t, "hello", gjson.GetBytes(updated, "input.0.content").String())
 		require.False(t, gjson.GetBytes(updated, "tool_choice").Exists())
 	})
@@ -5540,7 +5532,7 @@ func TestStripOpenAIImageGenerationToolsFromRawPayload(t *testing.T) {
 			"tool_choice":{"type":"image_generation"}
 		}`)
 
-		updated, changed, err := gatewayprovider.StripOpenAIImageGenerationToolsFromRawPayload(payload)
+		updated, changed, err := gatewayadapter.StripOpenAIImageGenerationToolsFromRawPayload(payload)
 
 		require.NoError(t, err)
 		require.True(t, changed)
@@ -5564,11 +5556,11 @@ func TestStripOpenAIImageGenerationToolsFromRawPayload(t *testing.T) {
 			"tool_choice":{"type":"namespace","name":"image_gen"}
 		}`)
 
-		updated, changed, err := gatewayprovider.StripOpenAIImageGenerationToolsFromRawPayload(payload)
+		updated, changed, err := gatewayadapter.StripOpenAIImageGenerationToolsFromRawPayload(payload)
 
 		require.NoError(t, err)
 		require.True(t, changed)
-		require.False(t, gatewayprovider.ImageIntent().IsImageGenerationIntent(media.OpenAIResponsesEndpoint, "gpt-5.5", updated))
+		require.False(t, gatewayadapter.ImageIntent().IsImageGenerationIntent(media.OpenAIResponsesEndpoint, "gpt-5.5", updated))
 		require.True(t, gjson.GetBytes(updated, `tools.#(name=="code_tools")`).Exists())
 		require.Equal(t, "hello", gjson.GetBytes(updated, "input.0.content").String())
 		require.False(t, gjson.GetBytes(updated, "tool_choice").Exists())
@@ -5577,7 +5569,7 @@ func TestStripOpenAIImageGenerationToolsFromRawPayload(t *testing.T) {
 	t.Run("non-image namespace is unchanged", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.5","tools":[{"type":"namespace","name":"code_tools"}]}`)
 
-		updated, changed, err := gatewayprovider.StripOpenAIImageGenerationToolsFromRawPayload(payload)
+		updated, changed, err := gatewayadapter.StripOpenAIImageGenerationToolsFromRawPayload(payload)
 
 		require.NoError(t, err)
 		require.False(t, changed)
@@ -5589,7 +5581,7 @@ func TestAlignStoreDisabledPreviousResponseID(t *testing.T) {
 	t.Parallel()
 
 	t.Run("empty_payload", func(t *testing.T) {
-		updated, changed, err := openaicore.AlignStoreDisabledPreviousResponseID(nil, "resp_target")
+		updated, changed, err := openai.AlignStoreDisabledPreviousResponseID(nil, "resp_target")
 		require.NoError(t, err)
 		require.False(t, changed)
 		require.Empty(t, updated)
@@ -5597,7 +5589,7 @@ func TestAlignStoreDisabledPreviousResponseID(t *testing.T) {
 
 	t.Run("empty_expected", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","previous_response_id":"resp_old"}`)
-		updated, changed, err := openaicore.AlignStoreDisabledPreviousResponseID(payload, "")
+		updated, changed, err := openai.AlignStoreDisabledPreviousResponseID(payload, "")
 		require.NoError(t, err)
 		require.False(t, changed)
 		require.Equal(t, string(payload), string(updated))
@@ -5605,7 +5597,7 @@ func TestAlignStoreDisabledPreviousResponseID(t *testing.T) {
 
 	t.Run("missing_previous_response_id", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.1"}`)
-		updated, changed, err := openaicore.AlignStoreDisabledPreviousResponseID(payload, "resp_target")
+		updated, changed, err := openai.AlignStoreDisabledPreviousResponseID(payload, "resp_target")
 		require.NoError(t, err)
 		require.False(t, changed)
 		require.Equal(t, string(payload), string(updated))
@@ -5613,7 +5605,7 @@ func TestAlignStoreDisabledPreviousResponseID(t *testing.T) {
 
 	t.Run("already_aligned", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","previous_response_id":"resp_target"}`)
-		updated, changed, err := openaicore.AlignStoreDisabledPreviousResponseID(payload, "resp_target")
+		updated, changed, err := openai.AlignStoreDisabledPreviousResponseID(payload, "resp_target")
 		require.NoError(t, err)
 		require.False(t, changed)
 		require.Equal(t, "resp_target", gjson.GetBytes(updated, "previous_response_id").String())
@@ -5621,7 +5613,7 @@ func TestAlignStoreDisabledPreviousResponseID(t *testing.T) {
 
 	t.Run("mismatch_rewrites_to_expected", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","previous_response_id":"resp_old","input":[]}`)
-		updated, changed, err := openaicore.AlignStoreDisabledPreviousResponseID(payload, "resp_target")
+		updated, changed, err := openai.AlignStoreDisabledPreviousResponseID(payload, "resp_target")
 		require.NoError(t, err)
 		require.True(t, changed)
 		require.Equal(t, "resp_target", gjson.GetBytes(updated, "previous_response_id").String())
@@ -5629,7 +5621,7 @@ func TestAlignStoreDisabledPreviousResponseID(t *testing.T) {
 
 	t.Run("duplicate_keys_rewrites_to_single_expected", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","previous_response_id":"resp_old_1","input":[],"previous_response_id":"resp_old_2"}`)
-		updated, changed, err := openaicore.AlignStoreDisabledPreviousResponseID(payload, "resp_target")
+		updated, changed, err := openai.AlignStoreDisabledPreviousResponseID(payload, "resp_target")
 		require.NoError(t, err)
 		require.True(t, changed)
 		require.Equal(t, "resp_target", gjson.GetBytes(updated, "previous_response_id").String())
@@ -5640,21 +5632,21 @@ func TestSetPreviousResponseIDToRawPayload(t *testing.T) {
 	t.Parallel()
 
 	t.Run("empty_payload", func(t *testing.T) {
-		updated, err := openaicore.SetPreviousResponseIDToRawPayload(nil, "resp_target")
+		updated, err := openai.SetPreviousResponseIDToRawPayload(nil, "resp_target")
 		require.NoError(t, err)
 		require.Empty(t, updated)
 	})
 
 	t.Run("empty_previous_response_id", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.1"}`)
-		updated, err := openaicore.SetPreviousResponseIDToRawPayload(payload, "")
+		updated, err := openai.SetPreviousResponseIDToRawPayload(payload, "")
 		require.NoError(t, err)
 		require.Equal(t, string(payload), string(updated))
 	})
 
 	t.Run("set_previous_response_id_when_missing", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.1"}`)
-		updated, err := openaicore.SetPreviousResponseIDToRawPayload(payload, "resp_target")
+		updated, err := openai.SetPreviousResponseIDToRawPayload(payload, "resp_target")
 		require.NoError(t, err)
 		require.Equal(t, "resp_target", gjson.GetBytes(updated, "previous_response_id").String())
 		require.Equal(t, "gpt-5.1", gjson.GetBytes(updated, "model").String())
@@ -5662,7 +5654,7 @@ func TestSetPreviousResponseIDToRawPayload(t *testing.T) {
 
 	t.Run("overwrite_existing_previous_response_id", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.1","previous_response_id":"resp_old"}`)
-		updated, err := openaicore.SetPreviousResponseIDToRawPayload(payload, "resp_new")
+		updated, err := openai.SetPreviousResponseIDToRawPayload(payload, "resp_new")
 		require.NoError(t, err)
 		require.Equal(t, "resp_new", gjson.GetBytes(updated, "previous_response_id").String())
 	})
@@ -5767,7 +5759,7 @@ func TestShouldInferIngressFunctionCallOutputPreviousResponseID(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := openaicore.ShouldInferIngressFunctionCallOutputPreviousResponseID(
+			got := openai.ShouldInferIngressFunctionCallOutputPreviousResponseID(
 				tt.storeDisabled,
 				tt.turn,
 				tt.signals,
@@ -5855,7 +5847,7 @@ func TestOpenAIWSInputIsPrefixExtended(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := openaicore.OpenAIWSInputIsPrefixExtended(tt.previous, tt.current)
+			got, err := openai.OpenAIWSInputIsPrefixExtended(tt.previous, tt.current)
 			if tt.expectErr {
 				require.Error(t, err)
 				return
@@ -5869,28 +5861,28 @@ func TestOpenAIWSInputIsPrefixExtended(t *testing.T) {
 func TestNormalizeOpenAIWSJSONForCompare(t *testing.T) {
 	t.Parallel()
 
-	normalized, err := openaicore.NormalizeOpenAIWSJSONForCompare([]byte(`{"b":2,"a":1}`))
+	normalized, err := openai.NormalizeOpenAIWSJSONForCompare([]byte(`{"b":2,"a":1}`))
 	require.NoError(t, err)
 	require.Equal(t, `{"a":1,"b":2}`, string(normalized))
 
-	_, err = openaicore.NormalizeOpenAIWSJSONForCompare([]byte("   "))
+	_, err = openai.NormalizeOpenAIWSJSONForCompare([]byte("   "))
 	require.Error(t, err)
 
-	_, err = openaicore.NormalizeOpenAIWSJSONForCompare([]byte(`{"a":`))
+	_, err = openai.NormalizeOpenAIWSJSONForCompare([]byte(`{"a":`))
 	require.Error(t, err)
 }
 
 func TestNormalizeOpenAIWSJSONForCompareOrRaw(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, `{"a":1,"b":2}`, string(openaicore.NormalizeOpenAIWSJSONForCompareOrRaw([]byte(`{"b":2,"a":1}`))))
-	require.Equal(t, `{"a":`, string(openaicore.NormalizeOpenAIWSJSONForCompareOrRaw([]byte(`{"a":`))))
+	require.Equal(t, `{"a":1,"b":2}`, string(openai.NormalizeOpenAIWSJSONForCompareOrRaw([]byte(`{"b":2,"a":1}`))))
+	require.Equal(t, `{"a":`, string(openai.NormalizeOpenAIWSJSONForCompareOrRaw([]byte(`{"a":`))))
 }
 
 func TestNormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID(t *testing.T) {
 	t.Parallel()
 
-	normalized, err := openaicore.NormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID(
+	normalized, err := openai.NormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID(
 		[]byte(`{"model":"gpt-5.1","input":[1],"previous_response_id":"resp_x","client_metadata":{"request_start_ms":"1"},"stream_options":{"include_usage":true},"generate":false,"metadata":{"b":2,"a":1}}`),
 	)
 	require.NoError(t, err)
@@ -5901,16 +5893,16 @@ func TestNormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID(t *testing.T)
 	require.False(t, gjson.GetBytes(normalized, "generate").Exists())
 	require.Equal(t, float64(1), gjson.GetBytes(normalized, "metadata.a").Float())
 
-	normalized, err = openaicore.NormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID(
+	normalized, err = openai.NormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID(
 		[]byte(`{"model":"gpt-5.1","generate":true}`),
 	)
 	require.NoError(t, err)
 	require.True(t, gjson.GetBytes(normalized, "generate").Bool())
 
-	_, err = openaicore.NormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID(nil)
+	_, err = openai.NormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID(nil)
 	require.Error(t, err)
 
-	_, err = openaicore.NormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID([]byte(`[]`))
+	_, err = openai.NormalizeOpenAIWSPayloadWithoutInputAndPreviousResponseID([]byte(`[]`))
 	require.Error(t, err)
 }
 
@@ -5918,35 +5910,35 @@ func TestOpenAIWSExtractNormalizedInputSequence(t *testing.T) {
 	t.Parallel()
 
 	t.Run("empty_payload", func(t *testing.T) {
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence(nil)
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence(nil)
 		require.NoError(t, err)
 		require.False(t, exists)
 		require.Nil(t, items)
 	})
 
 	t.Run("input_missing", func(t *testing.T) {
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence([]byte(`{"type":"response.create"}`))
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence([]byte(`{"type":"response.create"}`))
 		require.NoError(t, err)
 		require.False(t, exists)
 		require.Nil(t, items)
 	})
 
 	t.Run("input_array", func(t *testing.T) {
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":[{"type":"input_text","text":"hello"}]}`))
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":[{"type":"input_text","text":"hello"}]}`))
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, items, 1)
 	})
 
 	t.Run("input_object", func(t *testing.T) {
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":{"type":"input_text","text":"hello"}}`))
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":{"type":"input_text","text":"hello"}}`))
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, items, 1)
 	})
 
 	t.Run("input_string", func(t *testing.T) {
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":"hello"}`))
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":"hello"}`))
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, items, 1)
@@ -5954,7 +5946,7 @@ func TestOpenAIWSExtractNormalizedInputSequence(t *testing.T) {
 	})
 
 	t.Run("input_number", func(t *testing.T) {
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":42}`))
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":42}`))
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, items, 1)
@@ -5962,7 +5954,7 @@ func TestOpenAIWSExtractNormalizedInputSequence(t *testing.T) {
 	})
 
 	t.Run("input_bool", func(t *testing.T) {
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":true}`))
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":true}`))
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, items, 1)
@@ -5970,7 +5962,7 @@ func TestOpenAIWSExtractNormalizedInputSequence(t *testing.T) {
 	})
 
 	t.Run("input_null", func(t *testing.T) {
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":null}`))
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":null}`))
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, items, 1)
@@ -5978,7 +5970,7 @@ func TestOpenAIWSExtractNormalizedInputSequence(t *testing.T) {
 	})
 
 	t.Run("input_invalid_array_json", func(t *testing.T) {
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":[}`))
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence([]byte(`{"input":[}`))
 		require.Error(t, err)
 		require.True(t, exists)
 		require.Nil(t, items)
@@ -6005,7 +5997,7 @@ func TestShouldKeepIngressPreviousResponseID(t *testing.T) {
 	}`)
 
 	t.Run("strict_incremental_keep", func(t *testing.T) {
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(previousPayload, currentStrictPayload, "resp_turn_1", false)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(previousPayload, currentStrictPayload, "resp_turn_1", false)
 		require.NoError(t, err)
 		require.True(t, keep)
 		require.Equal(t, "strict_incremental_ok", reason)
@@ -6030,7 +6022,7 @@ func TestShouldKeepIngressPreviousResponseID(t *testing.T) {
 			"input":[{"type":"input_text","text":"hello"}]
 		}`)
 
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(
 			prewarmPayload,
 			businessPayload,
 			"resp_prewarm",
@@ -6043,28 +6035,28 @@ func TestShouldKeepIngressPreviousResponseID(t *testing.T) {
 
 	t.Run("missing_previous_response_id", func(t *testing.T) {
 		payload := []byte(`{"type":"response.create","model":"gpt-5.1","input":[]}`)
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(previousPayload, payload, "resp_turn_1", false)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(previousPayload, payload, "resp_turn_1", false)
 		require.NoError(t, err)
 		require.False(t, keep)
 		require.Equal(t, "missing_previous_response_id", reason)
 	})
 
 	t.Run("missing_last_turn_response_id", func(t *testing.T) {
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(previousPayload, currentStrictPayload, "", false)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(previousPayload, currentStrictPayload, "", false)
 		require.NoError(t, err)
 		require.False(t, keep)
 		require.Equal(t, "missing_last_turn_response_id", reason)
 	})
 
 	t.Run("previous_response_id_mismatch", func(t *testing.T) {
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(previousPayload, currentStrictPayload, "resp_turn_other", false)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(previousPayload, currentStrictPayload, "resp_turn_other", false)
 		require.NoError(t, err)
 		require.False(t, keep)
 		require.Equal(t, "previous_response_id_mismatch", reason)
 	})
 
 	t.Run("missing_previous_turn_payload", func(t *testing.T) {
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(nil, currentStrictPayload, "resp_turn_1", false)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(nil, currentStrictPayload, "resp_turn_1", false)
 		require.NoError(t, err)
 		require.False(t, keep)
 		require.Equal(t, "missing_previous_turn_payload", reason)
@@ -6079,7 +6071,7 @@ func TestShouldKeepIngressPreviousResponseID(t *testing.T) {
 			"previous_response_id":"resp_turn_1",
 			"input":[{"type":"input_text","text":"hello"},{"type":"input_text","text":"world"}]
 		}`)
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(previousPayload, payload, "resp_turn_1", false)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(previousPayload, payload, "resp_turn_1", false)
 		require.NoError(t, err)
 		require.False(t, keep)
 		require.Equal(t, "non_input_changed", reason)
@@ -6094,7 +6086,7 @@ func TestShouldKeepIngressPreviousResponseID(t *testing.T) {
 			"previous_response_id":"resp_turn_1",
 			"input":[{"type":"input_text","text":"different"}]
 		}`)
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(previousPayload, payload, "resp_turn_1", false)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(previousPayload, payload, "resp_turn_1", false)
 		require.NoError(t, err)
 		require.True(t, keep)
 		require.Equal(t, "strict_incremental_ok", reason)
@@ -6108,21 +6100,21 @@ func TestShouldKeepIngressPreviousResponseID(t *testing.T) {
 			"previous_response_id":"resp_external",
 			"input":[{"type":"function_call_output","call_id":"call_1","output":"ok"}]
 		}`)
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(previousPayload, payload, "resp_turn_1", true)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(previousPayload, payload, "resp_turn_1", true)
 		require.NoError(t, err)
 		require.True(t, keep)
 		require.Equal(t, "has_function_call_output", reason)
 	})
 
 	t.Run("non_input_compare_error", func(t *testing.T) {
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID([]byte(`[]`), currentStrictPayload, "resp_turn_1", false)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID([]byte(`[]`), currentStrictPayload, "resp_turn_1", false)
 		require.Error(t, err)
 		require.False(t, keep)
 		require.Equal(t, "non_input_compare_error", reason)
 	})
 
 	t.Run("current_payload_compare_error", func(t *testing.T) {
-		keep, reason, err := openaicore.ShouldKeepIngressPreviousResponseID(previousPayload, []byte(`{"previous_response_id":"resp_turn_1","input":[}`), "resp_turn_1", false)
+		keep, reason, err := openai.ShouldKeepIngressPreviousResponseID(previousPayload, []byte(`{"previous_response_id":"resp_turn_1","input":[}`), "resp_turn_1", false)
 		require.Error(t, err)
 		require.False(t, keep)
 		require.Equal(t, "non_input_compare_error", reason)
@@ -6137,7 +6129,7 @@ func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 	}
 
 	t.Run("no_previous_response_id_use_current", func(t *testing.T) {
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 			lastFull,
 			true,
 			[]byte(`{"input":[{"type":"input_text","text":"new"}]}`),
@@ -6161,7 +6153,7 @@ func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 		]}`)
 
 		for range 3 {
-			items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+			items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 				previousFull,
 				true,
 				currentPayload,
@@ -6179,7 +6171,7 @@ func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 	})
 
 	t.Run("previous_response_id_delta_append", func(t *testing.T) {
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 			lastFull,
 			true,
 			[]byte(`{"previous_response_id":"resp_1","input":[{"type":"input_text","text":"world"}]}`),
@@ -6197,7 +6189,7 @@ func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 			json.RawMessage(`{"type":"input_text","text":"hello"}`),
 			json.RawMessage(`{"type":"custom_tool_call","id":"item_orphan","call_id":"call_orphan","name":"exec","input":"pwd"}`),
 		}
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 			previousFull,
 			true,
 			[]byte(`{"previous_response_id":"resp_1","input":[{"role":"user","content":"continue"}]}`),
@@ -6215,7 +6207,7 @@ func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 			json.RawMessage(`{"type":"function_call","id":"item_1","call_id":"call_1","name":"lookup","arguments":"{}"}`),
 			json.RawMessage(`{"type":"function_call_output","call_id":"call_1","output":"ok"}`),
 		}
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 			previousFull,
 			true,
 			[]byte(`{"previous_response_id":"resp_1","input":[{"role":"user","content":"continue"}]}`),
@@ -6233,7 +6225,7 @@ func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 			json.RawMessage(`{"type":"custom_tool_call","id":"item_1","call_id":"call_1","name":"exec","input":"pwd"}`),
 			json.RawMessage(`{"type":"custom_tool_call_output","call_id":"call_1","output":"/tmp"}`),
 		}
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 			previousFull,
 			true,
 			[]byte(`{"previous_response_id":"resp_1","input":[{"role":"user","content":"continue"}]}`),
@@ -6250,7 +6242,7 @@ func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 		previousFull := []json.RawMessage{
 			json.RawMessage(`{"type":"custom_tool_call","id":"item_1","call_id":"call_1","name":"exec","input":"pwd"}`),
 		}
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 			previousFull,
 			true,
 			[]byte(`{"previous_response_id":"resp_1","input":[{"type":"item_reference","id":"call_1"},{"role":"user","content":"continue"}]}`),
@@ -6264,7 +6256,7 @@ func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 	})
 
 	t.Run("previous_response_id_preserves_current_orphan_custom_tool_call", func(t *testing.T) {
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 			lastFull,
 			true,
 			[]byte(`{"previous_response_id":"resp_1","input":[{"type":"custom_tool_call","id":"item_live","call_id":"call_live","name":"exec","input":"pwd"}]}`),
@@ -6278,7 +6270,7 @@ func TestBuildOpenAIWSReplayInputSequence(t *testing.T) {
 	})
 
 	t.Run("previous_response_id_full_input_replace", func(t *testing.T) {
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 			lastFull,
 			true,
 			[]byte(`{"previous_response_id":"resp_1","input":[{"type":"input_text","text":"hello"},{"type":"input_text","text":"world"}]}`),
@@ -6305,20 +6297,20 @@ func TestOpenAIWSRawPayloadHasToolCallOutput(t *testing.T) {
 		t.Run(typ, func(t *testing.T) {
 			t.Parallel()
 			payload := []byte(`{"input":[{"type":"` + typ + `","call_id":"call_1","output":"ok"}]}`)
-			require.True(t, openaicore.OpenAIWSRawPayloadHasToolCallOutput(payload))
+			require.True(t, openai.OpenAIWSRawPayloadHasToolCallOutput(payload))
 		})
 	}
 
 	t.Run("object_input", func(t *testing.T) {
 		t.Parallel()
 		payload := []byte(`{"input":{"type":"tool_search_output","call_id":"call_1","output":"ok"}}`)
-		require.True(t, openaicore.OpenAIWSRawPayloadHasToolCallOutput(payload))
+		require.True(t, openai.OpenAIWSRawPayloadHasToolCallOutput(payload))
 	})
 
 	t.Run("non_tool_output", func(t *testing.T) {
 		t.Parallel()
 		payload := []byte(`{"input":[{"type":"input_text","text":"hello"}]}`)
-		require.False(t, openaicore.OpenAIWSRawPayloadHasToolCallOutput(payload))
+		require.False(t, openai.OpenAIWSRawPayloadHasToolCallOutput(payload))
 	})
 }
 
@@ -6331,7 +6323,7 @@ func TestSetOpenAIWSPayloadInputSequence(t *testing.T) {
 			json.RawMessage(`{"type":"input_text","text":"hello"}`),
 			json.RawMessage(`{"type":"input_text","text":"world"}`),
 		}
-		updated, err := openaicore.SetOpenAIWSPayloadInputSequence(original, items, true)
+		updated, err := openai.SetOpenAIWSPayloadInputSequence(original, items, true)
 		require.NoError(t, err)
 		require.Equal(t, "hello", gjson.GetBytes(updated, "input.0.text").String())
 		require.Equal(t, "world", gjson.GetBytes(updated, "input.1.text").String())
@@ -6339,7 +6331,7 @@ func TestSetOpenAIWSPayloadInputSequence(t *testing.T) {
 
 	t.Run("preserve_empty_array_not_null", func(t *testing.T) {
 		original := []byte(`{"type":"response.create","previous_response_id":"resp_1"}`)
-		updated, err := openaicore.SetOpenAIWSPayloadInputSequence(original, nil, true)
+		updated, err := openai.SetOpenAIWSPayloadInputSequence(original, nil, true)
 		require.NoError(t, err)
 		require.True(t, gjson.GetBytes(updated, "input").IsArray())
 		require.Len(t, gjson.GetBytes(updated, "input").Array(), 0)
@@ -6352,15 +6344,15 @@ func TestCombineOpenAIWSReplayItems(t *testing.T) {
 
 	t.Run("empty_delta_returns_history", func(t *testing.T) {
 		history := []json.RawMessage{json.RawMessage(`{"a":1}`)}
-		require.Nil(t, openaicore.CombineOpenAIWSReplayItems(nil, nil))
-		combined := openaicore.CombineOpenAIWSReplayItems(history, nil)
+		require.Nil(t, openai.CombineOpenAIWSReplayItems(nil, nil))
+		combined := openai.CombineOpenAIWSReplayItems(history, nil)
 		require.Len(t, combined, 1)
 	})
 
 	t.Run("new_header_shares_bodies", func(t *testing.T) {
 		history := []json.RawMessage{json.RawMessage(`{"a":1}`)}
 		delta := []json.RawMessage{json.RawMessage(`{"b":2}`)}
-		combined := openaicore.CombineOpenAIWSReplayItems(history, delta)
+		combined := openai.CombineOpenAIWSReplayItems(history, delta)
 		require.Len(t, combined, 2)
 		// combined 使用独立的数组，追加元素后 history 保持原样。
 		require.NotSame(t, &history[0], &combined[0])
@@ -6375,7 +6367,7 @@ func TestOpenAIWSReplaySequenceSharesBodies(t *testing.T) {
 
 	t.Run("extract_shares_payload_backing_array", func(t *testing.T) {
 		payload := []byte(`{"input":[{"type":"input_text","text":"hello"},{"type":"input_text","text":"world"}]}`)
-		items, exists, err := openaicore.OpenAIWSExtractNormalizedInputSequence(payload)
+		items, exists, err := openai.OpenAIWSExtractNormalizedInputSequence(payload)
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, items, 2)
@@ -6388,7 +6380,7 @@ func TestOpenAIWSReplaySequenceSharesBodies(t *testing.T) {
 
 	t.Run("build_transfers_current_items_ownership", func(t *testing.T) {
 		payload := []byte(`{"input":[{"type":"input_text","text":"hello"}]}`)
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(nil, false, payload, false)
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(nil, false, payload, false)
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, items, 1)
@@ -6399,7 +6391,7 @@ func TestOpenAIWSReplaySequenceSharesBodies(t *testing.T) {
 
 	t.Run("build_merge_shares_history_bodies", func(t *testing.T) {
 		history := []json.RawMessage{json.RawMessage(`{"type":"input_text","text":"hello"}`)}
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(
 			history,
 			true,
 			[]byte(`{"previous_response_id":"resp_1","input":[{"type":"input_text","text":"world"}]}`),
@@ -6414,7 +6406,7 @@ func TestOpenAIWSReplaySequenceSharesBodies(t *testing.T) {
 	t.Run("build_prefix_hit_transfers_current_items", func(t *testing.T) {
 		history := []json.RawMessage{json.RawMessage(`{"type":"input_text","text":"hello"}`)}
 		payload := []byte(`{"previous_response_id":"resp_1","input":[{"type":"input_text","text":"hello"},{"type":"input_text","text":"world"}]}`)
-		items, exists, err := openaicore.BuildOpenAIWSReplayInputSequence(history, true, payload, true)
+		items, exists, err := openai.BuildOpenAIWSReplayInputSequence(history, true, payload, true)
 		require.NoError(t, err)
 		require.True(t, exists)
 		require.Len(t, items, 2)
@@ -6507,7 +6499,7 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 			pool := newOpenAIWSConnPool(options)
 			pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
 
-			provider := gatewayprovider.ExecutionProvider{
+			provider := gatewayadapter.ExecutionProvider{
 				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 5401,
 					Name:        "openai-ingress-capacity-shed",
@@ -6520,13 +6512,13 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 					Extra:       map[string]any{"responses_websockets_v2_enabled": true},
 				},
 			}
-			repo := &openAIWSIngressCapacityShedRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayprovider.ExecutionProvider{provider}}}
-			svc := newWSFixture(wsFixtureInputs{providers: repo, health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, options: options, corrector: openai.NewCodexToolCorrector(), pool: pool})
+			repo := &openAIWSIngressCapacityShedRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayadapter.ExecutionProvider{provider}}}
+			svc := newWSFixture(wsFixtureInputs{providers: repo, health: newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{}, nil), transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, options: options, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
 			serverDone := make(chan struct{})
 			wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				defer close(serverDone)
-				conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{CompressionMode: coderws.CompressionContextTakeover})
+				conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover})
 				if err != nil {
 					return
 				}
@@ -6542,7 +6534,7 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 				readCtx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 				msgType, firstMessage, readErr := conn.Read(readCtx)
 				cancel()
-				if readErr != nil || (msgType != coderws.MessageText && msgType != coderws.MessageBinary) {
+				if readErr != nil || (msgType != websocket.MessageText && msgType != websocket.MessageBinary) {
 					return
 				}
 				_ = svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, &provider, "sk-test", firstMessage, nil)
@@ -6550,13 +6542,13 @@ func TestProxyResponsesWebSocketFromClient_RewritesCapacityShedCodeForClient(t *
 			defer wsServer.Close()
 
 			dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-			clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+			clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 			cancelDial()
 			require.NoError(t, err)
 			defer func() { _ = clientConn.CloseNow() }()
 
 			writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-			err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+			err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 			cancelWrite()
 			require.NoError(t, err)
 
@@ -6629,8 +6621,8 @@ func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *
 			pool := newOpenAIWSConnPool(options)
 			t.Cleanup(pool.Close)
 			pool.SetClientDialerForTest(&openAIWSCaptureDialer{conn: captureConn})
-			svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
-			provider := &gatewayprovider.ExecutionProvider{
+			svc := newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), pool: pool})
+			provider := &gatewayadapter.ExecutionProvider{
 				Record: providercore.Record{
 					LoadLocation: time.LoadLocation, ID: 5402, Name: "openai-ingress-cyber", Platform: capability.PlatformOpenAI,
 					Type: capability.ProviderTypeAPIKey, Status: billing.StatusActive, Schedulable: true, Concurrency: 1,
@@ -6644,7 +6636,7 @@ func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *
 			markCh := make(chan *moderationflow.Mark, 1)
 			serverErrCh := make(chan error, 1)
 			wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{CompressionMode: coderws.CompressionContextTakeover})
+				conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover})
 				if err != nil {
 					serverErrCh <- err
 					return
@@ -6662,7 +6654,7 @@ func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *
 				recorder := httptest.NewRecorder()
 				ginCtx, _ := gin.CreateTestContext(recorder)
 				ginCtx.Request = r.Clone(r.Context())
-				hooks := &gatewayws.OpenAIIngressHooks{AfterTurn: func(_ gatewayws.OpenAITurnCapture) {
+				hooks := &ws.OpenAIIngressHooks{AfterTurn: func(_ ws.OpenAITurnCapture) {
 					markCh <- gatewayhttp.GetOpsCyberPolicy(ginCtx)
 				}}
 				serverErrCh <- svc.ProxyResponsesWebSocketFromClient(r.Context(), ginCtx, conn, provider, "sk-test", firstMessage, hooks)
@@ -6670,13 +6662,13 @@ func TestProxyResponsesWebSocketFromClient_MarksCyberPolicyBeforeEarlyReturn(t *
 			defer wsServer.Close()
 
 			dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-			clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+			clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 			cancelDial()
 			require.NoError(t, err)
 			defer func() { _ = clientConn.CloseNow() }()
 
 			writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-			err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+			err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 			cancelWrite()
 			require.NoError(t, err)
 
@@ -6767,7 +6759,7 @@ type openAIWSStatusErrorDialer struct {
 	err    error
 }
 
-func (d *openAIWSStatusErrorDialer) Dial(context.Context, string, http.Header, string, *tlsfingerprint.Profile) (upstreamopenai.WSClientConn, int, http.Header, error) {
+func (d *openAIWSStatusErrorDialer) Dial(context.Context, string, http.Header, string, *tlsfingerprint.Profile) (openai.WSClientConn, int, http.Header, error) {
 	err := d.err
 	if err == nil {
 		err = errors.New("openai ws dial failed")
@@ -6798,7 +6790,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ErrorEventUsageL
 	pool := newOpenAIWSConnPool(options)
 	pool.SetClientDialerForTest(captureDialer)
 
-	provider := gatewayprovider.ExecutionProvider{
+	provider := gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 503,
 			Name:        "openai-ingress-rate-limit",
@@ -6815,14 +6807,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ErrorEventUsageL
 			},
 		},
 	}
-	repo := &openAIWSRateLimitSignalRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayprovider.ExecutionProvider{provider}}}
+	repo := &openAIWSRateLimitSignalRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayadapter.ExecutionProvider{provider}}}
 	rateSvc := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{ForbiddenCounter: &openAIWS403CounterCacheStub{counts: []int64{1}}}, nil)
 
-	svc := newWSFixture(wsFixtureInputs{providers: repo, health: rateSvc, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, options: options, corrector: upstreamopenai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{providers: repo, health: rateSvc, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, options: options, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{CompressionMode: coderws.CompressionContextTakeover})
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover})
 		if err != nil {
 			serverErrCh <- err
 			return
@@ -6843,7 +6835,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ErrorEventUsageL
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- io.ErrUnexpectedEOF
 			return
 		}
@@ -6853,13 +6845,13 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ErrorEventUsageL
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -6893,7 +6885,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_Handshake403Pers
 		err:    errors.New("temporary forbidden"),
 	})
 
-	provider := gatewayprovider.ExecutionProvider{
+	provider := gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 505,
 			Name:        "openai-ingress-forbidden-handshake",
@@ -6910,14 +6902,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_Handshake403Pers
 			},
 		},
 	}
-	repo := &openAIWSRateLimitSignalRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayprovider.ExecutionProvider{provider}}}
+	repo := &openAIWSRateLimitSignalRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayadapter.ExecutionProvider{provider}}}
 	rateSvc := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{ForbiddenCounter: &openAIWS403CounterCacheStub{counts: []int64{1}}}, nil)
 
-	svc := newWSFixture(wsFixtureInputs{providers: repo, health: rateSvc, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, options: options, corrector: upstreamopenai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{providers: repo, health: rateSvc, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, options: options, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{CompressionMode: coderws.CompressionContextTakeover})
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover})
 		if err != nil {
 			serverErrCh <- err
 			return
@@ -6938,7 +6930,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_Handshake403Pers
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- io.ErrUnexpectedEOF
 			return
 		}
@@ -6948,14 +6940,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_Handshake403Pers
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
 	before := time.Now()
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -6989,7 +6981,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ErrorEventForbid
 		},
 	})
 
-	provider := gatewayprovider.ExecutionProvider{
+	provider := gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 507,
 			Name:        "openai-ingress-forbidden-event",
@@ -7006,14 +6998,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ErrorEventForbid
 			},
 		},
 	}
-	repo := &openAIWSRateLimitSignalRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayprovider.ExecutionProvider{provider}}}
+	repo := &openAIWSRateLimitSignalRepo{wsFixtureProviderStore: wsFixtureProviderStore{providers: []gatewayadapter.ExecutionProvider{provider}}}
 	rateSvc := newUpstreamHealthForTest(repo, nil, nil, providercore.HealthOptions{ForbiddenCounter: &openAIWS403CounterCacheStub{counts: []int64{1}}}, nil)
 
-	svc := newWSFixture(wsFixtureInputs{providers: repo, health: rateSvc, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, options: options, corrector: upstreamopenai.NewCodexToolCorrector(), pool: pool})
+	svc := newWSFixture(wsFixtureInputs{providers: repo, health: rateSvc, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, options: options, corrector: openai.NewCodexToolCorrector(), pool: pool})
 
 	serverErrCh := make(chan error, 1)
 	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{CompressionMode: coderws.CompressionContextTakeover})
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover})
 		if err != nil {
 			serverErrCh <- err
 			return
@@ -7034,7 +7026,7 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ErrorEventForbid
 			serverErrCh <- readErr
 			return
 		}
-		if msgType != coderws.MessageText && msgType != coderws.MessageBinary {
+		if msgType != websocket.MessageText && msgType != websocket.MessageBinary {
 			serverErrCh <- io.ErrUnexpectedEOF
 			return
 		}
@@ -7044,14 +7036,14 @@ func TestOpenAIGatewayService_ProxyResponsesWebSocketFromClient_ErrorEventForbid
 	defer wsServer.Close()
 
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	defer func() { _ = clientConn.CloseNow() }()
 
 	before := time.Now()
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 
@@ -7128,7 +7120,7 @@ func TestWSRuntimeAcrossTurns(t *testing.T) {
 				updated.DialTimeoutSeconds = value.DialTimeoutSeconds
 				return pool.UpdateOptions(updated)
 			})
-			provider := &gatewayprovider.ExecutionProvider{Record: provider.Record{
+			provider := &gatewayadapter.ExecutionProvider{Record: providercore.Record{
 				LoadLocation: time.LoadLocation, ID: 119, Platform: capability.PlatformOpenAI,
 				Type: capability.ProviderTypeAPIKey, Concurrency: 1,
 				Credentials: map[string]any{"api_key": "test"},
@@ -7198,7 +7190,7 @@ func (d *stagedPassthroughDialer) Dial(context.Context, string, http.Header, str
 }
 
 func newPassthroughLifecycleService(options *wsFixtureOptions, upstream *stagedPassthroughConn) *wsExecutionFixture {
-	return newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &sessiontestkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: &stagedPassthroughDialer{conn: upstream}})
+	return newWSFixture(wsFixtureInputs{options: options, transport: &auxiliaryHTTPRecorder{}, cache: &testkit.StickyCache{}, corrector: openai.NewCodexToolCorrector(), dialer: &stagedPassthroughDialer{conn: upstream}})
 }
 
 func passthroughLifecycleConfig() *wsFixtureOptions {
@@ -7214,8 +7206,8 @@ func passthroughLifecycleConfig() *wsFixtureOptions {
 	return options
 }
 
-func passthroughLifecycleProvider() *gatewayprovider.ExecutionProvider {
-	return &gatewayprovider.ExecutionProvider{
+func passthroughLifecycleProvider() *gatewayadapter.ExecutionProvider {
+	return &gatewayadapter.ExecutionProvider{
 		Record: providercore.Record{
 			LoadLocation: time.LoadLocation, ID: 901,
 			Name:        "passthrough-lifecycle",
@@ -7236,7 +7228,7 @@ func startPassthroughLifecycleServer(
 	t *testing.T,
 	controlCtx context.Context,
 	svc *wsExecutionFixture,
-	provider *gatewayprovider.ExecutionProvider,
+	provider *gatewayadapter.ExecutionProvider,
 ) (*httptest.Server, <-chan error) {
 	return startPassthroughLifecycleServerWithHooks(t, controlCtx, svc, provider, nil)
 }
@@ -7245,13 +7237,13 @@ func startPassthroughLifecycleServerWithHooks(
 	t *testing.T,
 	controlCtx context.Context,
 	svc *wsExecutionFixture,
-	provider *gatewayprovider.ExecutionProvider,
-	hooksFactory func(*gin.Context) *gatewayws.OpenAIIngressHooks,
+	provider *gatewayadapter.ExecutionProvider,
+	hooksFactory func(*gin.Context) *ws.OpenAIIngressHooks,
 ) (*httptest.Server, <-chan error) {
 	t.Helper()
 	serverErr := make(chan error, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := coderws.Accept(w, r, &coderws.AcceptOptions{CompressionMode: coderws.CompressionContextTakeover})
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{CompressionMode: websocket.CompressionContextTakeover})
 		if err != nil {
 			serverErr <- err
 			return
@@ -7262,14 +7254,14 @@ func startPassthroughLifecycleServerWithHooks(
 			controlCtx,
 			conn,
 			3*time.Second,
-			coderws.StatusPolicyViolation,
+			websocket.StatusPolicyViolation,
 			"missing first response.create message",
 		)
 		if err != nil {
 			serverErr <- err
 			return
 		}
-		if msgType != coderws.MessageText {
+		if msgType != websocket.MessageText {
 			serverErr <- errors.New("first message was not text")
 			return
 		}
@@ -7279,7 +7271,7 @@ func startPassthroughLifecycleServerWithHooks(
 		req := r.Clone(controlCtx)
 		req.Header = req.Header.Clone()
 		ginCtx.Request = req
-		var hooks *gatewayws.OpenAIIngressHooks
+		var hooks *ws.OpenAIIngressHooks
 		if hooksFactory != nil {
 			hooks = hooksFactory(ginCtx)
 		}
@@ -7336,8 +7328,8 @@ func TestPassthroughLifecycle_CyberTerminalEventsMarkBeforeAfterTurn(t *testing.
 				controlCtx,
 				newPassthroughLifecycleService(passthroughLifecycleConfig(), upstream),
 				passthroughLifecycleProvider(),
-				func(c *gin.Context) *gatewayws.OpenAIIngressHooks {
-					return &gatewayws.OpenAIIngressHooks{AfterTurn: func(_ gatewayws.OpenAITurnCapture) {
+				func(c *gin.Context) *ws.OpenAIIngressHooks {
+					return &ws.OpenAIIngressHooks{AfterTurn: func(_ ws.OpenAITurnCapture) {
 						afterTurnCalls.Add(1)
 						if mark := gatewayhttp.GetOpsCyberPolicy(c); mark != nil {
 							select {
@@ -7368,7 +7360,7 @@ func TestPassthroughLifecycle_CyberTerminalEventsMarkBeforeAfterTurn(t *testing.
 			case <-time.After(3 * time.Second):
 				t.Fatal("cyber mark was not visible to AfterTurn")
 			}
-			require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+			require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 			select {
 			case <-serverErr:
 			case <-time.After(3 * time.Second):
@@ -7396,8 +7388,8 @@ func TestPassthroughLifecycle_NonCyberFailureKeepsProviderSideEffects(t *testing
 		controlCtx,
 		svc,
 		provider,
-		func(c *gin.Context) *gatewayws.OpenAIIngressHooks {
-			return &gatewayws.OpenAIIngressHooks{AfterTurn: func(_ gatewayws.OpenAITurnCapture) {
+		func(c *gin.Context) *ws.OpenAIIngressHooks {
+			return &ws.OpenAIIngressHooks{AfterTurn: func(_ ws.OpenAITurnCapture) {
 				markSeen <- gatewayhttp.GetOpsCyberPolicy(c)
 			}}
 		},
@@ -7417,7 +7409,7 @@ func TestPassthroughLifecycle_NonCyberFailureKeepsProviderSideEffects(t *testing
 	}
 	require.Equal(t, 1, repo.setErrorCalls, "non-cyber credential failure must retain provider failure side effects")
 	require.True(t, wsFixtureProviderBlocked(svc, provider))
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case <-serverErr:
 	case <-time.After(3 * time.Second):
@@ -7447,7 +7439,7 @@ func TestPassthroughLifecycle_CyberSkipsFailureProviderSideEffects(t *testing.T)
 	require.Zero(t, repo.setErrorCalls, "cyber_policy is request-scoped and must not cool down the provider")
 	require.False(t, wsFixtureProviderBlocked(svc, provider))
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case <-serverErr:
 	case <-time.After(3 * time.Second):
@@ -7460,7 +7452,7 @@ func TestPassthroughLifecycle_CloseReasonTruncationPreservesUTF8(t *testing.T) {
 	defer cancelControl(context.Canceled)
 	upstream := newStagedPassthroughConn()
 	originalReason := strings.Repeat("a", 119) + "界"
-	upstream.Fail(gatewayhttp.NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, originalReason, errors.New("policy rejected")))
+	upstream.Fail(gatewayhttp.NewOpenAIWSClientCloseError(websocket.StatusPolicyViolation, originalReason, errors.New("policy rejected")))
 
 	server, serverErr := startPassthroughLifecycleServer(
 		t,
@@ -7473,9 +7465,9 @@ func TestPassthroughLifecycle_CloseReasonTruncationPreservesUTF8(t *testing.T) {
 	defer func() { _ = clientConn.CloseNow() }()
 
 	_, err := readPassthroughLifecycleFrame(t, clientConn, 3*time.Second)
-	var closeErr coderws.CloseError
+	var closeErr websocket.CloseError
 	require.ErrorAs(t, err, &closeErr)
-	require.Equal(t, coderws.StatusPolicyViolation, closeErr.Code)
+	require.Equal(t, websocket.StatusPolicyViolation, closeErr.Code)
 	require.True(t, utf8.ValidString(closeErr.Reason))
 	require.LessOrEqual(t, len(closeErr.Reason), 120)
 	require.Equal(t, strings.Repeat("a", 119), closeErr.Reason)
@@ -7487,20 +7479,20 @@ func TestPassthroughLifecycle_CloseReasonTruncationPreservesUTF8(t *testing.T) {
 	}
 }
 
-func dialPassthroughLifecycleClient(t *testing.T, server *httptest.Server) *coderws.Conn {
+func dialPassthroughLifecycleClient(t *testing.T, server *httptest.Server) *websocket.Conn {
 	t.Helper()
 	dialCtx, cancelDial := context.WithTimeout(context.Background(), 3*time.Second)
-	clientConn, _, err := coderws.Dial(dialCtx, "ws"+strings.TrimPrefix(server.URL, "http"), nil)
+	clientConn, _, err := websocket.Dial(dialCtx, "ws"+strings.TrimPrefix(server.URL, "http"), nil)
 	cancelDial()
 	require.NoError(t, err)
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","stream":false}`))
 	cancelWrite()
 	require.NoError(t, err)
 	return clientConn
 }
 
-func readPassthroughLifecycleFrame(t *testing.T, clientConn *coderws.Conn, timeout time.Duration) ([]byte, error) {
+func readPassthroughLifecycleFrame(t *testing.T, clientConn *websocket.Conn, timeout time.Duration) ([]byte, error) {
 	t.Helper()
 	readCtx, cancelRead := context.WithTimeout(context.Background(), timeout)
 	_, payload, err := clientConn.Read(readCtx)
@@ -7534,9 +7526,9 @@ func TestPassthroughLifecycle_LeaseLossSendsRetryClose(t *testing.T) {
 	cancelControl(scheduler.ErrOpenAIWSIngressLeaseLost)
 
 	_, err = readPassthroughLifecycleFrame(t, clientConn, 3*time.Second)
-	var closeErr coderws.CloseError
+	var closeErr websocket.CloseError
 	require.ErrorAs(t, err, &closeErr)
-	require.Equal(t, coderws.StatusTryAgainLater, closeErr.Code)
+	require.Equal(t, websocket.StatusTryAgainLater, closeErr.Code)
 	require.Equal(t, "websocket ingress capacity lease lost; please reconnect", closeErr.Reason)
 	select {
 	case <-serverErr:
@@ -7559,9 +7551,9 @@ func TestPassthroughLifecycle_CompletedTurnStartsInterTurnIdle(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "response.completed", gjson.GetBytes(event, "type").String())
 	_, err = readPassthroughLifecycleFrame(t, clientConn, 3*time.Second)
-	var closeErr coderws.CloseError
+	var closeErr websocket.CloseError
 	require.ErrorAs(t, err, &closeErr)
-	require.Equal(t, coderws.StatusNormalClosure, closeErr.Code)
+	require.Equal(t, websocket.StatusNormalClosure, closeErr.Code)
 	require.Equal(t, "websocket idle timeout", closeErr.Reason)
 	select {
 	case <-serverErr:
@@ -7584,15 +7576,15 @@ func TestPassthroughLifecycle_ActiveTurnInactivityUsesReadTimeout(t *testing.T) 
 	require.NoError(t, err)
 	require.Equal(t, "response.output_text.delta", gjson.GetBytes(delta, "type").String())
 	_, err = readPassthroughLifecycleFrame(t, clientConn, 2500*time.Millisecond)
-	var websocketCloseErr coderws.CloseError
+	var websocketCloseErr websocket.CloseError
 	require.ErrorAs(t, err, &websocketCloseErr)
-	require.Equal(t, coderws.StatusGoingAway, websocketCloseErr.Code)
+	require.Equal(t, websocket.StatusGoingAway, websocketCloseErr.Code)
 	require.Equal(t, "upstream websocket read timeout; please reconnect", websocketCloseErr.Reason)
 	select {
 	case err := <-serverErr:
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, err, &closeErr)
-		require.Equal(t, coderws.StatusGoingAway, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusGoingAway, closeErr.StatusCode())
 		require.Equal(t, "upstream websocket read timeout; please reconnect", closeErr.Reason())
 	case <-time.After(2500 * time.Millisecond):
 		t.Fatal("passthrough active turn remained unbounded after upstream activity stopped")
@@ -7616,13 +7608,13 @@ func TestPassthroughLifecycle_PreambleAllowsPromptClientCancel(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "response.created", gjson.GetBytes(created, "type").String())
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.cancel","response_id":"resp_cancel"}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.cancel","response_id":"resp_cancel"}`))
 	cancelWrite()
 	require.NoError(t, err)
 	cancelFrame := requirePassthroughUpstreamWrite(t, upstream, 500*time.Millisecond)
 	require.Equal(t, "response.cancel", gjson.GetBytes(cancelFrame, "type").String())
 
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case <-serverErr:
 	case <-time.After(3 * time.Second):
@@ -7647,20 +7639,20 @@ func TestPassthroughLifecycle_RejectsOverlappingResponseCreate(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "response.created", gjson.GetBytes(created, "type").String())
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1"}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1"}`))
 	cancelWrite()
 	require.NoError(t, err)
 
 	_, err = readPassthroughLifecycleFrame(t, clientConn, time.Second)
-	var websocketCloseErr coderws.CloseError
+	var websocketCloseErr websocket.CloseError
 	require.ErrorAs(t, err, &websocketCloseErr)
-	require.Equal(t, coderws.StatusPolicyViolation, websocketCloseErr.Code)
+	require.Equal(t, websocket.StatusPolicyViolation, websocketCloseErr.Code)
 	require.Equal(t, "overlapping response.create is not supported", websocketCloseErr.Reason)
 	select {
 	case err := <-serverErr:
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, err, &closeErr)
-		require.Equal(t, coderws.StatusPolicyViolation, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusPolicyViolation, closeErr.StatusCode())
 		require.Equal(t, "overlapping response.create is not supported", closeErr.Reason())
 	case <-time.After(3 * time.Second):
 		t.Fatal("overlapping response.create did not terminate passthrough")
@@ -7699,7 +7691,7 @@ func TestPassthroughLifecycle_ActiveTurnActivityRefreshesReadTimeout(t *testing.
 		require.NoError(t, err)
 		require.Equal(t, wantType, gjson.GetBytes(frame, "type").String())
 	}
-	require.NoError(t, clientConn.Close(coderws.StatusNormalClosure, "done"))
+	require.NoError(t, clientConn.Close(websocket.StatusNormalClosure, "done"))
 	select {
 	case <-serverErr:
 	case <-time.After(3 * time.Second):
@@ -7726,7 +7718,7 @@ func TestPassthroughLifecycle_TerminalSwitchesToInterTurnIdleTimeout(t *testing.
 	require.Equal(t, "resp_idle_first", gjson.GetBytes(completed, "response.id").String())
 	time.Sleep(1300 * time.Millisecond)
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","previous_response_id":"resp_idle_first"}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","previous_response_id":"resp_idle_first"}`))
 	cancelWrite()
 	require.NoError(t, err)
 	require.Equal(t, "response.create", gjson.GetBytes(requirePassthroughUpstreamWrite(t, upstream, 3*time.Second), "type").String())
@@ -7735,16 +7727,16 @@ func TestPassthroughLifecycle_TerminalSwitchesToInterTurnIdleTimeout(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, "resp_idle_second", gjson.GetBytes(completed, "response.id").String())
 	_, err = readPassthroughLifecycleFrame(t, clientConn, 3*time.Second)
-	var websocketCloseErr coderws.CloseError
+	var websocketCloseErr websocket.CloseError
 	require.ErrorAs(t, err, &websocketCloseErr)
-	require.Equal(t, coderws.StatusNormalClosure, websocketCloseErr.Code)
+	require.Equal(t, websocket.StatusNormalClosure, websocketCloseErr.Code)
 	require.Equal(t, "websocket idle timeout", websocketCloseErr.Reason)
 
 	select {
 	case err := <-serverErr:
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, err, &closeErr)
-		require.Equal(t, coderws.StatusNormalClosure, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusNormalClosure, closeErr.StatusCode())
 		require.Equal(t, "websocket idle timeout", closeErr.Reason())
 	case <-time.After(3 * time.Second):
 		t.Fatal("passthrough terminal turn did not use inter-turn idle timeout")
@@ -7785,9 +7777,9 @@ func TestPassthroughLifecycle_ResponseCreatedTimeoutClosesWithoutFailover(t *tes
 	require.NoError(t, err)
 	require.Equal(t, "response.created", gjson.GetBytes(created, "type").String())
 	_, err = readPassthroughLifecycleFrame(t, clientConn, 2500*time.Millisecond)
-	var websocketCloseErr coderws.CloseError
+	var websocketCloseErr websocket.CloseError
 	require.ErrorAs(t, err, &websocketCloseErr)
-	require.Equal(t, coderws.StatusGoingAway, websocketCloseErr.Code)
+	require.Equal(t, websocket.StatusGoingAway, websocketCloseErr.Code)
 	require.Equal(t, "upstream produced no semantic output; please reconnect", websocketCloseErr.Reason)
 	select {
 	case err := <-serverErr:
@@ -7795,7 +7787,7 @@ func TestPassthroughLifecycle_ResponseCreatedTimeoutClosesWithoutFailover(t *tes
 		require.NotErrorAs(t, err, &failoverErr)
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, err, &closeErr)
-		require.Equal(t, coderws.StatusGoingAway, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusGoingAway, closeErr.StatusCode())
 		require.Equal(t, "upstream produced no semantic output; please reconnect", closeErr.Reason())
 	case <-time.After(2500 * time.Millisecond):
 		t.Fatal("response.created timeout did not close the passthrough connection")
@@ -7816,7 +7808,7 @@ func TestPassthroughLifecycle_SecondTurnTimeoutIsNotFailoverSafe(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "response.completed", gjson.GetBytes(completed, "type").String())
 	writeCtx, cancelWrite := context.WithTimeout(context.Background(), 3*time.Second)
-	err = clientConn.Write(writeCtx, coderws.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","previous_response_id":"resp_first"}`))
+	err = clientConn.Write(writeCtx, websocket.MessageText, []byte(`{"type":"response.create","model":"gpt-5.1","previous_response_id":"resp_first"}`))
 	cancelWrite()
 	require.NoError(t, err)
 	upstream.Send(`{"type":"response.created","response":{"id":"resp_second","model":"gpt-5.1"}}`)
@@ -7825,9 +7817,9 @@ func TestPassthroughLifecycle_SecondTurnTimeoutIsNotFailoverSafe(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "response.created", gjson.GetBytes(created, "type").String())
 	_, err = readPassthroughLifecycleFrame(t, clientConn, 2500*time.Millisecond)
-	var websocketCloseErr coderws.CloseError
+	var websocketCloseErr websocket.CloseError
 	require.ErrorAs(t, err, &websocketCloseErr)
-	require.Equal(t, coderws.StatusGoingAway, websocketCloseErr.Code)
+	require.Equal(t, websocket.StatusGoingAway, websocketCloseErr.Code)
 	require.Equal(t, "upstream produced no semantic output; please reconnect", websocketCloseErr.Reason)
 	select {
 	case err := <-serverErr:
@@ -7835,7 +7827,7 @@ func TestPassthroughLifecycle_SecondTurnTimeoutIsNotFailoverSafe(t *testing.T) {
 		require.NotErrorAs(t, err, &failoverErr, "handler must not replay the initial request on another provider for a later-turn timeout")
 		var closeErr *gatewayhttp.OpenAIWSClientCloseError
 		require.ErrorAs(t, err, &closeErr)
-		require.Equal(t, coderws.StatusGoingAway, closeErr.StatusCode())
+		require.Equal(t, websocket.StatusGoingAway, closeErr.StatusCode())
 	case <-time.After(2500 * time.Millisecond):
 		t.Fatal("second turn first semantic output was left unbounded")
 	}

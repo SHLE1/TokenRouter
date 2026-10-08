@@ -30,7 +30,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-	upstreamopenai "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 	openaiwsv2 "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws/relay"
 )
 
@@ -827,14 +826,14 @@ func (c *openAIWSPolicyEnforcingFrameConn) runtime() gatewayws.FrameConn {
 		}
 		c.core = gatewayws.NewPolicyFrames(openAIWSCoreFrames{c.inner}, filter, writeFilter, block, func(status int, reason string, err error) error {
 			return gatewayhttp.NewOpenAIWSClientCloseError(coderws.StatusCode(status), reason, err)
-		}, upstreamopenai.ErrWSConnClosed)
+		}, openai.ErrWSConnClosed)
 	})
 	return c.core
 }
 
 func (c *openAIWSPolicyEnforcingFrameConn) ReadFrame(ctx context.Context) (coderws.MessageType, []byte, error) {
 	if c == nil || c.inner == nil {
-		return coderws.MessageText, nil, upstreamopenai.ErrWSConnClosed
+		return coderws.MessageText, nil, openai.ErrWSConnClosed
 	}
 	typ, body, err := c.runtime().ReadFrame(ctx)
 	return coderws.MessageType(typ), body, err
@@ -842,7 +841,7 @@ func (c *openAIWSPolicyEnforcingFrameConn) ReadFrame(ctx context.Context) (coder
 
 func (c *openAIWSPolicyEnforcingFrameConn) WriteFrame(ctx context.Context, typ coderws.MessageType, body []byte) error {
 	if c == nil || c.inner == nil {
-		return upstreamopenai.ErrWSConnClosed
+		return openai.ErrWSConnClosed
 	}
 	return c.runtime().WriteFrame(ctx, int(typ), body)
 }

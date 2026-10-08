@@ -20,7 +20,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	upstreamcore "github.com/TokenFlux/TokenRouter/internal/upstream"
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
@@ -1080,7 +1079,7 @@ type upstreamClientView struct {
 	protocolMode string
 }
 
-func (s *Client) getClientEntry(proxyURL string, providerID int64, concurrency int, profile upstream.HTTPUpstreamProfile, _, _ bool) (*upstreamClientView, error) {
+func (s *Client) getClientEntry(proxyURL string, providerID int64, concurrency int, profile upstreamcore.HTTPUpstreamProfile, _, _ bool) (*upstreamClientView, error) {
 	return s.inspectClient(proxyURL, providerID, concurrency, profile, nil)
 }
 
@@ -1089,7 +1088,7 @@ func (s *Client) getClientEntryWithTLS(
 	providerID int64,
 	concurrency int,
 	tlsProfile *tlsfingerprint.Profile,
-	profile upstream.HTTPUpstreamProfile,
+	profile upstreamcore.HTTPUpstreamProfile,
 	_, _ bool,
 ) (*upstreamClientView, error) {
 	return s.inspectClient(proxyURL, providerID, concurrency, profile, tlsProfile)
@@ -1099,11 +1098,11 @@ func (s *Client) inspectClient(
 	proxyURL string,
 	providerID int64,
 	concurrency int,
-	profile upstream.HTTPUpstreamProfile,
+	profile upstreamcore.HTTPUpstreamProfile,
 	tlsProfile *tlsfingerprint.Profile,
 ) (*upstreamClientView, error) {
 	req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
-	req = req.WithContext(upstream.WithHTTPUpstreamProfile(req.Context(), profile))
+	req = req.WithContext(upstreamcore.WithHTTPUpstreamProfile(req.Context(), profile))
 	opts, err := s.transportOptions(req, proxyURL, providerID, concurrency, tlsProfile)
 	if err != nil {
 		return nil, err
@@ -1133,7 +1132,7 @@ func (s *Client) inspectClient(
 
 func mustGetOrCreateClient(t *testing.T, svc *Client, proxyURL string, providerID int64, concurrency int) *upstreamClientView {
 	t.Helper()
-	entry, err := svc.inspectClient(proxyURL, providerID, concurrency, upstream.HTTPUpstreamProfileDefault, nil)
+	entry, err := svc.inspectClient(proxyURL, providerID, concurrency, upstreamcore.HTTPUpstreamProfileDefault, nil)
 	require.NoError(t, err)
 	return entry
 }

@@ -29,7 +29,6 @@ import (
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/TokenFlux/TokenRouter/internal/settings"
 	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 	gemininative "github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
@@ -297,9 +296,9 @@ func newAntigravityFixture(d antigravityDependencies) *googleforward.Antigravity
 }
 
 // newExecutionReadersFixture 将测试替身绑定到执行时的设置读取接口。
-func newExecutionReadersFixture(repo settings.Repository) *gatewayprovider.RuntimeReaders {
+func newExecutionReadersFixture(repo settingscore.Repository) *gatewayprovider.RuntimeReaders {
 	if repo != nil {
-		repo = settings.New(repo)
+		repo = settingscore.New(repo)
 	}
 	value := gatewaytestkit.RuntimeReaders(repo)
 	return value

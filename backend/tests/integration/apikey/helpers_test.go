@@ -13,8 +13,7 @@ import (
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/enttest"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	apikeypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
-	keypostgres "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
+	"github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
@@ -23,7 +22,7 @@ import (
 )
 
 // newAPIKeyRepoSQLite 创建使用 SQLite 的 API Key 测试存储。
-func newAPIKeyRepoSQLite(t *testing.T) (*apikeypostgres.KeyStore, *dbent.Client) {
+func newAPIKeyRepoSQLite(t *testing.T) (*postgres.KeyStore, *dbent.Client) {
 	t.Helper()
 
 	db, err := sql.Open("sqlite", "file:api_key_repo_last_used?mode=memory&cache=shared")
@@ -64,8 +63,8 @@ func newLimitedAPIKey(userID int64, key, status string) *apikey.APIKey {
 }
 
 // newKeyStoreFixture 使用传入的 SQL 连接和 Ent 客户端构造 Key 存储与批量用量查询。
-func newKeyStoreFixture(client *dbent.Client, exec postgresinfra.Executor) *keypostgres.KeyStore {
-	return keypostgres.NewKeyStoreWithSQL(client, exec, func(ctx context.Context, ids []int64) (map[int64]float64, error) {
+func newKeyStoreFixture(client *dbent.Client, exec postgresinfra.Executor) *postgres.KeyStore {
+	return postgres.NewKeyStoreWithSQL(client, exec, func(ctx context.Context, ids []int64) (map[int64]float64, error) {
 		return usagepostgres.ReadAPIKeyUsageTotals(ctx, exec, nil, ids)
 	})
 }

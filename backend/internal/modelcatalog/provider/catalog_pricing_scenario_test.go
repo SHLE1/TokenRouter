@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingpricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 )
@@ -532,7 +531,7 @@ func TestModelsCatalogEmbeddingDefaultPricing(t *testing.T) {
 	} {
 		t.Run(tc.model, func(t *testing.T) {
 			value := catalogPriceForTest(t, service, tc.model)
-			cost := pricing.ComputeTokenBreakdown(value, pricing.UsageTokens{InputTokens: 1000000}, 1, "", true)
+			cost := billingpricing.ComputeTokenBreakdown(value, billingpricing.UsageTokens{InputTokens: 1000000}, 1, "", true)
 			require.InDelta(t, tc.price, cost.TotalCost, 1e-12)
 		})
 	}
@@ -546,7 +545,7 @@ func TestModelsCatalogMediaSupplementAliases(t *testing.T) {
 	require.NoError(t, service.ForceUpdate())
 	for _, model := range []string{"gpt-image-2", "openai/gpt-image-2"} {
 		value := catalogPriceForTest(t, service, model)
-		cost := pricing.ComputeTokenBreakdown(value, pricing.UsageTokens{InputTokens: 1000, ImageInputTokens: 1000}, 1, "", true)
+		cost := billingpricing.ComputeTokenBreakdown(value, billingpricing.UsageTokens{InputTokens: 1000, ImageInputTokens: 1000}, 1, "", true)
 		require.InDelta(t, 0.008, cost.TotalCost, 1e-12, model)
 		require.Equal(t, "local_supplement", service.GetModelPricing(model).PriceSources["image_input"])
 	}
@@ -573,10 +572,10 @@ func TestModelsCatalogGeminiImageTextPricing(t *testing.T) {
 		for _, model := range []string{tc.model, "google/" + tc.model} {
 			t.Run(model, func(t *testing.T) {
 				value := catalogPriceForTest(t, service, model)
-				cost := pricing.ComputeTokenBreakdown(value, pricing.UsageTokens{OutputTokens: 2000, ImageOutputTokens: 1000}, 1, "", true)
+				cost := billingpricing.ComputeTokenBreakdown(value, billingpricing.UsageTokens{OutputTokens: 2000, ImageOutputTokens: 1000}, 1, "", true)
 				require.InDelta(t, 1000*tc.textPrice, cost.OutputCost, 1e-12)
 				require.InDelta(t, 1000*tc.imagePrice, cost.ImageOutputCost, 1e-12)
-				display := pricing.BuildTokenDisplayPricing(value, 1)
+				display := billingpricing.BuildTokenDisplayPricing(value, 1)
 				require.InDelta(t, tc.textPrice, display.OutputPricePerToken, 1e-12)
 				require.InDelta(t, tc.imagePrice, display.ImageOutputPricePerToken, 1e-12)
 				require.Equal(t, "local_supplement", service.GetModelPricing(model).PriceSources["output"])
@@ -599,8 +598,8 @@ func TestModelsCatalogGeminiImageSupplementPrecedence(t *testing.T) {
 	}, &catalogRemoteFixture{body: []byte(fixture)})
 	require.NoError(t, service.ForceUpdate())
 	// 缺少文本费率时，文本报价为未定价。
-	_, err := pricing.ResolveModelPricing("gemini-image-test", service.GetModelPricing("gemini-image-test"))
-	require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable)
+	_, err := billingpricing.ResolveModelPricing("gemini-image-test", service.GetModelPricing("gemini-image-test"))
+	require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable)
 	require.InDelta(t, 150e-6, service.GetModelPricing("gemini-image-test").OutputCostPerImageToken, 1e-12)
 	require.NoError(t, os.WriteFile(supplement, []byte(`{"gemini-image-test":{"output_cost_per_token":0,"output_cost_per_image_token":0.00012}}`), 0o600))
 	require.NoError(t, service.ForceUpdate())
@@ -619,11 +618,11 @@ func TestModelsCatalogImagePriceOverrideAcrossContextTiers(t *testing.T) {
 	base := catalogPriceForTest(t, service, "gpt-5.4")
 	require.NotEmpty(t, base.ContextPrices)
 	imagePrice := 1e-6
-	resolved := pricing.ResolvePriceCards(&pricing.ModelPricingEntry{ImageInputPrice: &imagePrice}, base, pricing.PricingSourceCatalog, true)
+	resolved := billingpricing.ResolvePriceCards(&billingpricing.ModelPricingEntry{ImageInputPrice: &imagePrice}, base, billingpricing.PricingSourceCatalog, true)
 	for _, input := range []int{10000, 272000, 272001, 300000} {
-		cost, err := pricing.CalculateTokenCost(resolved, pricing.CostInput{
+		cost, err := billingpricing.CalculateTokenCost(resolved, billingpricing.CostInput{
 			Model:          "gpt-5.4",
-			Tokens:         pricing.UsageTokens{InputTokens: input, ImageInputTokens: 1000},
+			Tokens:         billingpricing.UsageTokens{InputTokens: input, ImageInputTokens: 1000},
 			RateMultiplier: 1,
 		})
 		require.NoError(t, err)
@@ -639,24 +638,24 @@ func TestModelsCatalogGrokInclusiveContextBoundary(t *testing.T) {
 		t.Run(model, func(t *testing.T) {
 			base := catalogPriceForTest(t, service, model)
 			for _, tc := range []struct {
-				tokens pricing.UsageTokens
+				tokens billingpricing.UsageTokens
 				want   float64
 				long   bool
 			}{
-				{pricing.UsageTokens{InputTokens: 199999, OutputTokens: 1000}, 0.405998, false},
-				{pricing.UsageTokens{InputTokens: 200000, OutputTokens: 1000}, 0.812, true},
-				{pricing.UsageTokens{InputTokens: 200001, OutputTokens: 1000}, 0.812004, true},
-				{pricing.UsageTokens{InputTokens: 100000, CacheReadTokens: 100000, OutputTokens: 1000}, 0.512, true},
+				{billingpricing.UsageTokens{InputTokens: 199999, OutputTokens: 1000}, 0.405998, false},
+				{billingpricing.UsageTokens{InputTokens: 200000, OutputTokens: 1000}, 0.812, true},
+				{billingpricing.UsageTokens{InputTokens: 200001, OutputTokens: 1000}, 0.812004, true},
+				{billingpricing.UsageTokens{InputTokens: 100000, CacheReadTokens: 100000, OutputTokens: 1000}, 0.512, true},
 			} {
-				cost := pricing.ComputeTokenBreakdown(base, tc.tokens, 1, "", true)
+				cost := billingpricing.ComputeTokenBreakdown(base, tc.tokens, 1, "", true)
 				require.InDelta(t, tc.want, cost.TotalCost, 1e-12)
 				require.Equal(t, tc.long, cost.LongContextBillingApplied)
 			}
-			intervals := pricing.LongContextDisplayPricingIntervals(base, 1)
+			intervals := billingpricing.LongContextDisplayPricingIntervals(base, 1)
 			require.Len(t, intervals, 2)
 			require.Equal(t, 199999, *intervals[0].MaxTokens)
 			require.Equal(t, 199999, intervals[1].MinTokens)
-			cost := pricing.ComputeTokenBreakdown(base, pricing.UsageTokens{InputTokens: 200000, OutputTokens: 1000}, 1, "", false)
+			cost := billingpricing.ComputeTokenBreakdown(base, billingpricing.UsageTokens{InputTokens: 200000, OutputTokens: 1000}, 1, "", false)
 			require.InDelta(t, 0.406, cost.TotalCost, 1e-12)
 		})
 	}
@@ -674,7 +673,7 @@ func TestModelsCatalogExplicitZeroImageOutput(t *testing.T) {
 	}, remote)
 	require.NoError(t, service.ForceUpdate())
 	base := catalogPriceForTest(t, service, "gemini-image-test")
-	cost := pricing.ComputeTokenBreakdown(base, pricing.UsageTokens{OutputTokens: 2000, ImageOutputTokens: 1000}, 1, "", true)
+	cost := billingpricing.ComputeTokenBreakdown(base, billingpricing.UsageTokens{OutputTokens: 2000, ImageOutputTokens: 1000}, 1, "", true)
 	require.InDelta(t, 0.012, cost.OutputCost, 1e-12)
 	require.Zero(t, cost.ImageOutputCost)
 	require.True(t, base.ImageOutputPriceExplicit)
@@ -695,16 +694,16 @@ func TestSupplementRulesPublishAtomically(t *testing.T) {
 	require.InDelta(t, 12e-6, raw.ContextPrices[0].Pricing.CacheCreationInputTokenCostAbove1hr, 1e-12)
 	require.Equal(t, "rule_supplement", raw.PriceSources["cache_write_1h"])
 	require.Equal(t, "local_supplement", raw.PriceSources["image_prices"])
-	require.Nil(t, service.GetModelPricing(pricing.BillingDefaultsKey))
-	require.NotContains(t, service.Snapshot().Data, pricing.BillingDefaultsKey)
-	require.NotContains(t, service.ListModelNamesByProvider(""), pricing.BillingDefaultsKey)
+	require.Nil(t, service.GetModelPricing(billingpricing.BillingDefaultsKey))
+	require.NotContains(t, service.Snapshot().Data, billingpricing.BillingDefaultsKey)
+	require.NotContains(t, service.ListModelNamesByProvider(""), billingpricing.BillingDefaultsKey)
 	require.Equal(t, service.GetModelPricing("anthropic/claude-test").ImagePrices, raw.ImagePrices)
 	calc := billing.NewCalculator(service, billing.CalculatorOptions{Now: func() time.Time { return time.Date(2026, 10, 1, 2, 0, 0, 0, time.UTC) }})
 	unit, err := calc.DefaultImagePrice("claude-test", "1K")
 	require.NoError(t, err)
 	require.Zero(t, unit)
 	_, err = calc.DefaultImagePrice("claude-test", "4K")
-	require.ErrorIs(t, err, pricing.ErrModelPricingUnavailable)
+	require.ErrorIs(t, err, billingpricing.ErrModelPricingUnavailable)
 	unit, err = calc.DefaultVideoPrice("claude-test", "720p")
 	require.NoError(t, err)
 	require.Equal(t, 0.2, unit)
@@ -717,7 +716,7 @@ func TestSupplementRulesPublishAtomically(t *testing.T) {
 	require.Zero(t, calc.CalculateWebSearchCost(2, &zero, 1).ActualCost)
 	// 无长上下文和自定义价卡时，时段与推理倍率取自同一目录数据。
 	resolver := billing.NewPriceResolver(nil, calc, nil, nil)
-	cost, err := calc.CalculateCostUnified(billing.CostInput{Ctx: context.Background(), Model: "claude-test", Tokens: pricing.UsageTokens{InputTokens: 10}, RateMultiplier: 1, ServiceTier: "priority", ReasoningEffort: "max", Resolver: resolver})
+	cost, err := calc.CalculateCostUnified(billing.CostInput{Ctx: context.Background(), Model: "claude-test", Tokens: billingpricing.UsageTokens{InputTokens: 10}, RateMultiplier: 1, ServiceTier: "priority", ReasoningEffort: "max", Resolver: resolver})
 	require.NoError(t, err)
 	require.InDelta(t, 10*3e-6*3*4*2, cost.ActualCost, 1e-12)
 	before := service.Snapshot()
@@ -750,7 +749,7 @@ func TestShippedSupplementsAreMinimalAndDocumented(t *testing.T) {
 	var records map[string]map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(body, &records))
 	for model, fields := range records {
-		if model == pricing.BillingDefaultsKey {
+		if model == billingpricing.BillingDefaultsKey {
 			require.Contains(t, fields, "sources")
 			continue
 		}
@@ -764,7 +763,7 @@ func TestShippedSupplementsAreMinimalAndDocumented(t *testing.T) {
 
 // TestModelRulesReturnIndependentValues 防止调用方修改可空倍率或分时数组污染已发布目录。
 func TestModelRulesReturnIndependentValues(t *testing.T) {
-	entries, diagnostics, err := pricing.ParsePricingEntries(map[string]json.RawMessage{"model": json.RawMessage(`{"input_cost_per_token":0.000001,"output_cost_per_token":0.000002,"cache_write_multiplier":1.25,"cache_write_1h_multiplier":2,"fast_multiplier":3,"flex_multiplier":0.5,"max_reasoning_effort_multiplier":4,"time_pricing":{"timezone":"UTC","periods":[{"start_time":"01:00","end_time":"03:00","multiplier":2}]}}`)})
+	entries, diagnostics, err := billingpricing.ParsePricingEntries(map[string]json.RawMessage{"model": json.RawMessage(`{"input_cost_per_token":0.000001,"output_cost_per_token":0.000002,"cache_write_multiplier":1.25,"cache_write_1h_multiplier":2,"fast_multiplier":3,"flex_multiplier":0.5,"max_reasoning_effort_multiplier":4,"time_pricing":{"timezone":"UTC","periods":[{"start_time":"01:00","end_time":"03:00","multiplier":2}]}}`)})
 	require.NoError(t, err)
 	require.NoError(t, diagnostics.ValidationError())
 	service := NewServiceFromSnapshot(Options{}, nil, Snapshot{Data: entries})

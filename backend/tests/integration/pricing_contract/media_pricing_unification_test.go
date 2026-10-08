@@ -10,7 +10,6 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
-	"github.com/TokenFlux/TokenRouter/internal/billing"
 	billingcore "github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
@@ -114,18 +113,18 @@ func creativeGroupProjection(value *routing.Group) *creative.GroupView {
 }
 
 // creativePriceFixture 将目录和解析器接入测试，使用 billing 计算价格并处理缺价回退。
-func creativePriceFixture(calculator *billing.Calculator, resolver *billing.PriceResolver) func(context.Context, *creative.GroupView, string, string) (float64, bool) {
+func creativePriceFixture(calculator *billingcore.Calculator, resolver *billingcore.PriceResolver) func(context.Context, *creative.GroupView, string, string) (float64, bool) {
 	return func(ctx context.Context, group *creative.GroupView, model, size string) (float64, bool) {
 		if group == nil {
 			return 0, false
 		}
 		selected := resolver
 		if selected == nil && calculator != nil {
-			selected = billing.NewPriceResolver(nil, calculator, modelidentity.Identity, func(model string, err error) {
+			selected = billingcore.NewPriceResolver(nil, calculator, modelidentity.Identity, func(model string, err error) {
 				slog.Debug("failed to get model pricing from model catalog, using fallback", "model", model, "error", err)
 			})
 		}
-		value, err := selected.ResolveImageUnitPrice(ctx, billing.PricingInput{Model: model, GroupID: &group.ID}, size)
+		value, err := selected.ResolveImageUnitPrice(ctx, billingcore.PricingInput{Model: model, GroupID: &group.ID}, size)
 		return value, err == nil
 	}
 }

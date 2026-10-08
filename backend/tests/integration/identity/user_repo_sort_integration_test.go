@@ -14,7 +14,6 @@ import (
 	apikey "github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
-	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
@@ -110,7 +109,7 @@ func mustCreateProvider(t *testing.T, client *dbent.Client, a *providercore.Reco
 func (s *UserRepoSuite) mustInsertUsageLog(userID int64, createdAt time.Time) {
 	s.T().Helper()
 
-	provider := mustCreateProvider(s.T(), s.client, &provider.Record{Name: "usage-log-provider"})
+	provider := mustCreateProvider(s.T(), s.client, &providercore.Record{Name: "usage-log-provider"})
 	apiKey := mustCreateApiKey(s.T(), s.client, &apikey.APIKey{UserID: userID})
 
 	_, err := s.db.ExecContext(

@@ -117,7 +117,7 @@ HTTP、用例、存储和后台资源，由 app 装配各模块的实现。业�
 <a id="backend_file_layout"></a>
 ## 后端文件组织
 
-本节规定 `backend/` 下手写 Go 文件的拆分和命名。带生成标记的文件（`ent/` 的生成代码、`wire_gen.go` 等）由生成命令决定。仓库里还有很多文件不符合本节，修改某个包时，把这次碰到的文件一起按本节改名或合并。
+本节规定 `backend/` 下手写 Go 文件的拆分和命名。带生成标记的文件（`ent/` 的生成代码、`wire_gen.go` 等）由生成命令决定。
 
 ### 源文件
 
@@ -183,7 +183,7 @@ GoLand 把 `X_test.go` 折叠在 `X.go` 下面，读者也靠这个名字从源�
 
 `X_integration_test.go` 等三种带后缀的测试文件，需要在 GoLand 里加一条折叠规则：打开 Project 视图选项菜单里的 Appearance → File Nesting，找到父文件后缀为 `.go` 的规则（没有就新建一条），把子文件后缀改成 `_test.go; _integration_test.go; _external_test.go; _external_integration_test.go`。
 
-布局检查在 `tools/architecture/layout.go`，由 `make lint-go`、推送前快检和 CI 运行。检查规则为 `test-name`、`test-tag`、`test-external`、`test-main`、`file-stutter`、`file-vague`、`package-doc` 和 `package-comment`，分别检查测试命名、构建标签、外部测试包、TestMain 位置、重复包名前缀、模糊源文件名、包说明及包注释位置。迁移基线 `tools/architecture/layout_baseline.txt` 只能变短，修好的条目需要删除。 构建标签检查固定 `integration` 的取值，再检查其他标签是否存在可满足的组合，因此支持 `!windows` 等平台约束。集成文件在关闭 `integration` 时的所有组合都需要排除，启用时至少有一种组合能参与构建。
+布局检查在 `tools/architecture/layout.go`，由 `make lint-go`、推送前快检和 CI 运行。检查规则为 `test-name`、`test-tag`、`test-external`、`test-main`、`file-stutter`、`file-vague`、`package-doc` 和 `package-comment`，分别检查测试命名、构建标签、外部测试包、TestMain 位置、重复包名前缀、模糊源文件名、包说明及包注释位置。构建标签检查固定 `integration` 的取值，再检查其他标签是否存在可满足的组合，因此支持 `!windows` 等平台约束。集成文件在关闭 `integration` 时的所有组合都需要排除，启用时至少有一种组合能参与构建。
 
 ## 生成代码与迁移
 

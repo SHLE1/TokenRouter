@@ -24,7 +24,6 @@ import (
 	gatewayhttp "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	gatewayadapter "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/provider/selection"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/session"
@@ -95,7 +94,7 @@ func (u *auxiliaryHTTPRecorder) DoWithTLS(req *http.Request, proxyURL string, pr
 
 // grokModelStateProviderRepo 在测试中记录 Grok 模型级状态。
 type grokModelStateProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
+	gatewayadapter.ExecutionProviderStore
 
 	modelRateLimitCalls []grokModelRateLimitCall
 }
@@ -121,13 +120,13 @@ func (r *grokModelStateProviderRepo) SetModelRateLimit(_ context.Context, id int
 // handleGrokProviderUpstreamError 保留测试中的布尔断言写法；生产代码统一使用完整决策。
 func (s *wsExecutionFixture) handleGrokProviderUpstreamError(
 	ctx context.Context,
-	provider *gatewayprovider.ExecutionProvider,
+	provider *gatewayadapter.ExecutionProvider,
 	statusCode int,
 	headers http.Header,
 	responseBody []byte,
 	requestedModel ...string,
 ) bool {
-	return gatewayprovider.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, statusCode, headers, responseBody, "", requestedModel...).StopScheduling
+	return gatewayadapter.ApplyGrokExecutionHealth(ctx, s.Output.GrokHealth, provider, statusCode, headers, responseBody, "", requestedModel...).StopScheduling
 }
 
 // auxiliaryFixtureInputs 提供辅助请求测试所需的依赖。
@@ -653,11 +652,11 @@ func (s *handlerInMemoryLogSink) ContainsMessage(substr string) bool {
 
 type grokFixtureProviders struct {
 	gatewaytestkit.HealthStoreBase
-	providersByID map[int64]*gatewayprovider.ExecutionProvider
+	providersByID map[int64]*gatewayadapter.ExecutionProvider
 	getByIDCalls  int
 }
 
-func (r *grokFixtureProviders) GetByID(_ context.Context, id int64) (*gatewayprovider.ExecutionProvider, error) {
+func (r *grokFixtureProviders) GetByID(_ context.Context, id int64) (*gatewayadapter.ExecutionProvider, error) {
 	r.getByIDCalls++
 	if value, ok := r.providersByID[id]; ok {
 		return value, nil
@@ -755,7 +754,7 @@ func (r *grokQuotaProviderRepo) SetTempUnschedulable(_ context.Context, id int64
 }
 
 type openAIStream403ProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
+	gatewayadapter.ExecutionProviderStore
 
 	setErrorCalls int
 }
@@ -766,7 +765,7 @@ func (r *openAIStream403ProviderRepo) SetError(context.Context, int64, string) e
 }
 
 type transientCooldownProviderRepo struct {
-	gatewayprovider.ExecutionProviderStore
+	gatewayadapter.ExecutionProviderStore
 }
 
 func (transientCooldownProviderRepo) SetOverloaded(context.Context, int64, time.Time) error {

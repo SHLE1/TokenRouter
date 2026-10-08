@@ -155,14 +155,13 @@ func BenchmarkOpenAIWSEventEnvelopeParse(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		eventType, responseID, response := ParseWSEventEnvelope(event)
-		benchmarkOpenAIWSStringSink = eventType
+		_, responseID, response := ParseWSEventEnvelope(event)
 		benchmarkOpenAIWSStringSink = responseID
 		benchmarkOpenAIWSBoolSink = response.Exists()
 	}
 }
 
-// 基准结果保存在包变量中，防止编译器消除解析结果。
+// 基准保留响应 ID 和响应对象的存在状态。
 var (
 	benchmarkOpenAIWSStringSink string
 	benchmarkOpenAIWSBoolSink   bool
