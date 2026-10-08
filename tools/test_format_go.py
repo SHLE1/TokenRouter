@@ -145,8 +145,7 @@ var second = 2
 const limit = 1
 
 var (
-	first = 1
-
+	first  = 1
 	second = 2
 )
 

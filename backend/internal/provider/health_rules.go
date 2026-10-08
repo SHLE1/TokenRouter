@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	TempUnschedBodyMaxBytes = 64 << 10
-
+	TempUnschedBodyMaxBytes    = 64 << 10
 	TempUnschedMessageMaxBytes = 2048
 )
 

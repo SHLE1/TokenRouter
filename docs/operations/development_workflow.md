@@ -137,7 +137,7 @@ HTTP、用例、存储和后台资源，由 app 装配各模块的实现。业�
 - type 可以分开声明，也可以写成块。
 - func 里 init 排在最前，构造函数（以 `New` 或 `Must` 开头、返回 `T` 或 `*T` 的导出函数）排在 `T` 的第一个方法前面。其余函数按调用关系排列，调用方在前。
 
-`make fmt` 对改动的文件运行 `tools/declorder`，按上面的规则移动声明、合并 const 和 var，再交给 gofumpt 和 gci 格式化。它保持同类声明的相对顺序，var 的初始化顺序随之不变。和下一条声明隔着空行的注释会跟着那条声明移动，工具在 stderr 里列出这些位置，需要人工确认注释仍然放在对的地方。`make lint-go` 用 golangci-lint 的 decorder 检查声明顺序和块数，用 funcorder 检查构造函数的位置。
+`make fmt` 对改动的文件运行 `tools/declorder`，按上面的规则移动声明、合并 const 和 var，再交给 gofumpt 和 gci 格式化。它保持同类声明的相对顺序，var 的初始化顺序随之不变。合并时每条原声明在块内自成一组，组之间空一行。相邻的两条都是没有注释的单行声明时连写，由 gofmt 对齐。和下一条声明隔着空行的注释会跟着那条声明移动，工具在 stderr 里列出这些位置，需要人工确认注释仍然放在对的地方。`make lint-go` 用 golangci-lint 的 decorder 检查声明顺序和块数，用 funcorder 检查构造函数的位置。
 
 decorder 把初始化表达式里函数字面量内的 `var` 当成顶层声明计数，`var x = func() T { var y T; ... }()` 会被误报。这种初始化写成具名函数，例如 `var catalog = loadCatalog()`。
 
@@ -363,7 +363,7 @@ Vue 的最低版本为 `3.5.42`，该版本修复了 `@vue/server-renderer` 属�
 
 `make lint-go` 对全部手写文件运行格式检查、声明顺序检查和静态分析，带 integration 标签覆盖无标签和集成文件，`make test-embed` 检查 embed 文件。除了 errcheck、gosec、govet、staticcheck 这类错误检查，lint 还启用 whitespace、unconvert、copyloopvar、usestdlibvars、intrange 和 nolintlint。nolintlint 要求每条 `//nolint` 写出 linter 名和原因。
 
-`tools/test_format_go.py` 在临时 Git 仓库里验证文件筛选、生成代码排除、暂存区保护、干净工作区下的提交差异、声明重排，以及两种格式化规则同时生效。`tools/declorder` 的 Go 测试覆盖合并、iota、构造函数和单行方法的间距。CI 的 go-lint job 通过 `make test-tools` 运行这两组测试。
+`tools/test_format_go.py` 在临时 Git 仓库里验证文件筛选、生成代码排除、暂存区保护、干净工作区下的提交差异、声明重排，以及两种格式化规则同时生效。`tools/declorder` 的 Go 测试覆盖合并、无注释单行声明的连写、iota、构造函数和单行方法的间距。CI 的 go-lint job 通过 `make test-tools` 运行这两组测试。
 
 ### 本地文件和文档
 

@@ -15,10 +15,8 @@ import (
 )
 
 var (
-	imageGenerationIntentBenchmarkResult bool
-
-	passthroughImageIntentBenchmarkSink bool
-
+	imageGenerationIntentBenchmarkResult           bool
+	passthroughImageIntentBenchmarkSink            bool
 	openAIResponsesImageIntentRoutingBenchmarkSink provider.OpenAIEndpointCapability
 
 	// benchmarkStringSink 保存图片计费基准的解析结果。

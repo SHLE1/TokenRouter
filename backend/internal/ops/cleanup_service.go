@@ -31,8 +31,7 @@ const (
 
 var (
 	ErrDatabaseMaintenanceBusy = infraerrors.Conflict("MAINTENANCE_BUSY", "another database maintenance task is running")
-
-	opsCleanupCronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	opsCleanupCronParser       = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 )
 
 // CleanupBackend 提供维护锁和分批清理操作。

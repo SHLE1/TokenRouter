@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	StatusTimeout = 2 * time.Second
-
+	StatusTimeout             = 2 * time.Second
 	newAPIDefaultQuotaPerUnit = 500000.0
 )
 

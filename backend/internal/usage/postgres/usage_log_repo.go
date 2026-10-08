@@ -20,8 +20,7 @@ import (
 )
 
 const (
-	rawUsageLogModelColumn = "model"
-
+	rawUsageLogModelColumn            = "model"
 	usageAnalyticsFallbackLogInterval = time.Minute
 
 	// rawUsageLogModelColumn preserves the exact stored usage_logs.model semantics for direct filters.

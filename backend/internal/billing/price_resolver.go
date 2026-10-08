@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	PricingSourceCatalog = purepricing.PricingSourceCatalog
-
+	PricingSourceCatalog  = purepricing.PricingSourceCatalog
 	PricingSourceUnpriced = purepricing.PricingSourceUnpriced
 )
 

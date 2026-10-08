@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	tempUnschedPrefix = "temp_unsched:provider:"
-
+	tempUnschedPrefix               = "temp_unsched:provider:"
 	openAIAPIKeyHealthFailurePrefix = "openai_apikey_health:"
 )
 

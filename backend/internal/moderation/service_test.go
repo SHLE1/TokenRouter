@@ -31,8 +31,7 @@ import (
 
 const (
 	RoleAdmin = "admin"
-
-	RoleUser = "user"
+	RoleUser  = "user"
 )
 
 // contentModerationTestProxyRepo 记录审核服务查询代理的次数。

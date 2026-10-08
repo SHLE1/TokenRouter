@@ -48,23 +48,15 @@ const (
 	ProfileUserIdentityNoteCanUnbind               = "profile.authBindings.notes.canUnbind"
 	ProfileUserIdentityNoteBindAnotherBeforeUnbind = "profile.authBindings.notes.bindAnotherBeforeUnbind"
 
-	SettingKeyDingTalkConnectEnabled = "dingtalk_connect_enabled"
-
-	SettingKeyLinuxDoConnectEnabled = "linuxdo_connect_enabled"
-
-	SettingKeyOIDCConnectEnabled = "oidc_connect_enabled"
-
-	SettingKeySiteName = "site_name"
-
-	SettingKeyWeChatConnectEnabled = "wechat_connect_enabled"
-
-	SettingKeyWeChatConnectMPEnabled = "wechat_connect_mp_enabled"
-
+	SettingKeyDingTalkConnectEnabled     = "dingtalk_connect_enabled"
+	SettingKeyLinuxDoConnectEnabled      = "linuxdo_connect_enabled"
+	SettingKeyOIDCConnectEnabled         = "oidc_connect_enabled"
+	SettingKeySiteName                   = "site_name"
+	SettingKeyWeChatConnectEnabled       = "wechat_connect_enabled"
+	SettingKeyWeChatConnectMPEnabled     = "wechat_connect_mp_enabled"
 	SettingKeyWeChatConnectMobileEnabled = "wechat_connect_mobile_enabled"
-
-	SettingKeyWeChatConnectMode = "wechat_connect_mode"
-
-	SettingKeyWeChatConnectOpenEnabled = "wechat_connect_open_enabled"
+	SettingKeyWeChatConnectMode          = "wechat_connect_mode"
+	SettingKeyWeChatConnectOpenEnabled   = "wechat_connect_open_enabled"
 )
 
 var (

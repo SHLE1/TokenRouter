@@ -8,13 +8,10 @@ import (
 )
 
 const (
-	BillingModeToken = pricing.BillingModeToken
-
+	BillingModeToken      = pricing.BillingModeToken
 	BillingModePerRequest = pricing.BillingModePerRequest
-
-	BillingModeImage = pricing.BillingModeImage
-
-	BillingModeVideo = pricing.BillingModeVideo
+	BillingModeImage      = pricing.BillingModeImage
+	BillingModeVideo      = pricing.BillingModeVideo
 
 	BillingModelSourceRequested   = "requested"
 	BillingModelSourceUpstream    = "upstream"

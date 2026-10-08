@@ -22,10 +22,8 @@ const (
 	FeatureKeyBedrockCCCompat = "bedrock_cc_compat"
 
 	BedrockContextManagementBetaToken = "context-management-2025-06-27"
-
-	DefaultThinkingBudgetTokens = 10000
-
-	DefaultCCMaxTokens = 81920
+	DefaultThinkingBudgetTokens       = 10000
+	DefaultCCMaxTokens                = 81920
 )
 
 var (

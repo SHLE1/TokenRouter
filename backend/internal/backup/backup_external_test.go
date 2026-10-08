@@ -24,8 +24,7 @@ import (
 )
 
 var (
-	ErrSettingNotFound = errors.New("setting not found")
-
+	ErrSettingNotFound             = errors.New("setting not found")
 	databaseHeavyMaintenanceLockID = pg.HashAdvisoryLockID("maintenance:database-heavy")
 )
 

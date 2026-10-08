@@ -12,8 +12,7 @@ import (
 
 const (
 	GeminiQuotaPolicySettingKey = "gemini_quota_policy"
-
-	geminiQuotaCacheTTL = time.Minute
+	geminiQuotaCacheTTL         = time.Minute
 )
 
 type GeminiTierQuotaOverride struct {

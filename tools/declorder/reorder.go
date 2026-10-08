@@ -21,7 +21,9 @@ const iotaNolint = "//nolint:decorder // iota 按块内序号计数，每个枚�
 // 排在最前，构造函数移到同一类型的第一个方法前面，规则和 golangci-lint 的
 // decorder、funcorder 一致。返回值 notes 列出需要人工看一眼的位置。
 func reorder(src []byte) (out []byte, notes []string, err error) {
-	file, err := decorator.Parse(src)
+	fset := token.NewFileSet()
+	dec := decorator.NewDecorator(fset)
+	file, err := dec.Parse(src)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -49,7 +51,8 @@ func reorder(src []byte) (out []byte, notes []string, err error) {
 	notes = append(notes, detachedComments(consts)...)
 	notes = append(notes, detachedComments(vars)...)
 
-	constDecls := mergeConsts(consts)
+	bare := bareDecls(append(append([]*dst.GenDecl{}, consts...), vars...), dec, fset)
+	constDecls := mergeConsts(consts, bare)
 
 	decls := make([]dst.Decl, 0, len(file.Decls))
 	for _, d := range imports {
@@ -59,7 +62,7 @@ func reorder(src []byte) (out []byte, notes []string, err error) {
 		decls = append(decls, d)
 	}
 	if len(vars) > 0 {
-		decls = append(decls, mergeGenDecls(vars))
+		decls = append(decls, mergeGenDecls(vars, bare))
 	}
 	for _, d := range types {
 		decls = append(decls, d)
@@ -96,7 +99,7 @@ func reorder(src []byte) (out []byte, notes []string, err error) {
 //
 // iota 的值等于它在块内的序号，含 iota 的块放在合并结果的最前面，取值不变。
 // 一个文件有多个含 iota 的块时，第二个起保持独立，并加上 iotaNolint。
-func mergeConsts(decls []*dst.GenDecl) []*dst.GenDecl {
+func mergeConsts(decls []*dst.GenDecl, bare map[*dst.GenDecl]bool) []*dst.GenDecl {
 	if len(decls) == 0 {
 		return nil
 	}
@@ -109,10 +112,10 @@ func mergeConsts(decls []*dst.GenDecl) []*dst.GenDecl {
 		}
 	}
 	if len(iotaDecls) == 0 {
-		return []*dst.GenDecl{mergeGenDecls(plainDecls)}
+		return []*dst.GenDecl{mergeGenDecls(plainDecls, bare)}
 	}
 
-	merged := mergeGenDecls(append([]*dst.GenDecl{iotaDecls[0]}, plainDecls...))
+	merged := mergeGenDecls(append([]*dst.GenDecl{iotaDecls[0]}, plainDecls...), bare)
 	for _, d := range iotaDecls[1:] {
 		if !slices.Contains(d.Decs.Start, iotaNolint) {
 			d.Decs.Start.Append(iotaNolint)
@@ -122,7 +125,10 @@ func mergeConsts(decls []*dst.GenDecl) []*dst.GenDecl {
 }
 
 // mergeGenDecls 把同一种 GenDecl 合并成一个括号块，只有一个声明时原样返回。
-func mergeGenDecls(decls []*dst.GenDecl) *dst.GenDecl {
+//
+// 原来的每个声明在块内自成一组，组之间空一行。相邻两组都在 bare 里时连写，
+// 一串没有注释的单行声明合并后排在一起，由 gofmt 对齐。
+func mergeGenDecls(decls []*dst.GenDecl, bare map[*dst.GenDecl]bool) *dst.GenDecl {
 	if len(decls) == 1 {
 		return decls[0]
 	}
@@ -144,8 +150,7 @@ func mergeGenDecls(decls []*dst.GenDecl) *dst.GenDecl {
 		// 单行声明的行尾注释挂在 GenDecl 上，移到最后一条声明，仍然留在同一行。
 		last.Decs.End = append(last.Decs.End, d.Decs.End...)
 
-		// 原来的每个声明在块内自成一组，组之间空一行。
-		if i == 0 {
+		if i == 0 || bare[d] && bare[decls[i-1]] {
 			first.Decs.Before = dst.NewLine
 		} else {
 			first.Decs.Before = dst.EmptyLine
@@ -154,6 +159,24 @@ func mergeGenDecls(decls []*dst.GenDecl) *dst.GenDecl {
 		merged.Specs = append(merged.Specs, specs...)
 	}
 	return merged
+}
+
+// bareDecls 找出没有注释、不带括号、只占一行的单条 const 或 var 声明。
+func bareDecls(decls []*dst.GenDecl, dec *decorator.Decorator, fset *token.FileSet) map[*dst.GenDecl]bool {
+	bare := make(map[*dst.GenDecl]bool)
+	for _, d := range decls {
+		if d.Lparen || len(d.Specs) != 1 || len(d.Decs.Start) > 0 || len(d.Decs.Tok) > 0 {
+			continue
+		}
+		if len(d.Specs[0].(*dst.ValueSpec).Decs.Start) > 0 {
+			continue
+		}
+		node := dec.Ast.Nodes[d]
+		if fset.Position(node.Pos()).Line == fset.Position(node.End()).Line {
+			bare[d] = true
+		}
+	}
+	return bare
 }
 
 // orderFuncs 把 init 排在最前，再把构造函数移到所属类型的第一个方法前面。

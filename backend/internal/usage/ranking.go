@@ -11,8 +11,7 @@ const (
 	UsageRankingSortByActualCost  UsageRankingSortBy = "actual_cost"
 
 	DefaultUsageRankingLimit = 20
-
-	MaxUsageRankingLimit = 100
+	MaxUsageRankingLimit     = 100
 )
 
 // UsageRankingSortBy 表示用户侧用量排行的排名指标。

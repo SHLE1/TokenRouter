@@ -13,10 +13,8 @@ import (
 )
 
 const (
-	cyberSessionBlockRuntimeCacheTTL = 60 * time.Second
-
-	cyberSessionBlockRuntimeErrorTTL = 5 * time.Second
-
+	cyberSessionBlockRuntimeCacheTTL  = 60 * time.Second
+	cyberSessionBlockRuntimeErrorTTL  = 5 * time.Second
 	cyberSessionBlockRuntimeDBTimeout = 5 * time.Second
 )
 

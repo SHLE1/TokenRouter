@@ -16,8 +16,7 @@ import (
 
 const (
 	codexFingerprintSeedCanonicalPattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-
-	codexFingerprintNilSeed = "00000000-0000-0000-0000-000000000000"
+	codexFingerprintNilSeed              = "00000000-0000-0000-0000-000000000000"
 )
 
 var (

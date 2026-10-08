@@ -18,11 +18,9 @@ const (
 )
 
 var (
-	ErrRedeemCodeExists = apperror.Conflict("REDEEM_CODE_EXISTS", "redeem code already exists")
-
+	ErrRedeemCodeExists   = apperror.Conflict("REDEEM_CODE_EXISTS", "redeem code already exists")
 	ErrRedeemCodeNotFound = apperror.NotFound("REDEEM_CODE_NOT_FOUND", "redeem code not found")
-
-	ErrRedeemCodeUsed = apperror.Conflict("REDEEM_CODE_USED", "redeem code already used")
+	ErrRedeemCodeUsed     = apperror.Conflict("REDEEM_CODE_USED", "redeem code already used")
 
 	ErrRedeemPaymentRequired               = apperror.Forbidden("REDEEM_PAYMENT_REQUIRED", "a successful payment is required to redeem this code")
 	ErrRedeemPaymentRequirementUnsupported = apperror.BadRequest("REDEEM_PAYMENT_REQUIREMENT_UNSUPPORTED", "invitation codes cannot require a payment")

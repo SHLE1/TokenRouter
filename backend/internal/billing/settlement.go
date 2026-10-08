@@ -23,13 +23,10 @@ const (
 )
 
 var (
-	ErrTaskInsufficientBalance = apperror.New(apperror.Category(402), "BATCH_IMAGE_INSUFFICIENT_BALANCE", "insufficient balance for batch image hold")
-
-	ErrTaskNotFound = apperror.New(apperror.CategoryNotFound, "BATCH_IMAGE_JOB_NOT_FOUND", "batch image job not found")
-
+	ErrTaskInsufficientBalance       = apperror.New(apperror.Category(402), "BATCH_IMAGE_INSUFFICIENT_BALANCE", "insufficient balance for batch image hold")
+	ErrTaskNotFound                  = apperror.New(apperror.CategoryNotFound, "BATCH_IMAGE_JOB_NOT_FOUND", "batch image job not found")
 	ErrUsageBillingRequestIDRequired = errors.New("usage billing request_id is required")
-
-	ErrUsageBillingRequestConflict = errors.New("usage billing request fingerprint conflict")
+	ErrUsageBillingRequestConflict   = errors.New("usage billing request fingerprint conflict")
 
 	// ErrTaskSettlementCostExceedsHold 沿用历史错误 reason 与消息。
 	ErrTaskSettlementCostExceedsHold = apperror.Conflict("BATCH_IMAGE_SETTLEMENT_COST_EXCEEDS_HOLD", "batch image settlement cost exceeds held balance")

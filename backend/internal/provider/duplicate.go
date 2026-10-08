@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	maxProviderNameRunes = 100
-
+	maxProviderNameRunes                 = 100
 	duplicateProviderOperationIDExtraKey = "duplicate_operation_id"
 )
 

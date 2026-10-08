@@ -10,8 +10,7 @@ import (
 
 const (
 	auditRedactedPlaceholder = "***"
-
-	auditRedactMaxDepth = 24
+	auditRedactMaxDepth      = 24
 )
 
 // auditBodySensitiveSubstrings 请求体脱敏的包含匹配子串（对归一化后的键名比对）。

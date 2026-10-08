@@ -71,12 +71,10 @@ return 1
 `)
 
 	_ session.OpenAIWSSessionPreemptionCache = (*gatewayCache)(nil)
-
-	_ session.GrokVideoBillingCache = (*gatewayCache)(nil)
-	_ session.ReasoningContentCache = (*gatewayCache)(nil)
-
-	_ session.CyberSessionBlockStore = (*gatewayCache)(nil)
-	_ session.LiveCallStore          = (*gatewayCache)(nil)
+	_ session.GrokVideoBillingCache          = (*gatewayCache)(nil)
+	_ session.ReasoningContentCache          = (*gatewayCache)(nil)
+	_ session.CyberSessionBlockStore         = (*gatewayCache)(nil)
+	_ session.LiveCallStore                  = (*gatewayCache)(nil)
 
 	claimLiveControllerScript = redis.NewScript(`
 	local key = KEYS[1]

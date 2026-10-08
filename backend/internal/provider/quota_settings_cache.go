@@ -13,12 +13,9 @@ const (
 	// SettingKeyOpsAdvancedSettings 是提供商缓存读取 Ops 设置时使用的键。
 	SettingKeyOpsAdvancedSettings = "ops_advanced_settings"
 
-	openAIQuotaAutoPauseSettingsCacheTTL = 60 * time.Second
-
-	openAIQuotaAutoPauseSettingsErrorTTL = 5 * time.Second
-
-	openAIQuotaAutoPauseSettingsDBTimeout = 5 * time.Second
-
+	openAIQuotaAutoPauseSettingsCacheTTL   = 60 * time.Second
+	openAIQuotaAutoPauseSettingsErrorTTL   = 5 * time.Second
+	openAIQuotaAutoPauseSettingsDBTimeout  = 5 * time.Second
 	openAIQuotaAutoPauseSettingsRefreshKey = "openai_quota_auto_pause_settings"
 )
 

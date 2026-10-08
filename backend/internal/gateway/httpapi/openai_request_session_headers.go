@@ -21,8 +21,7 @@ import (
 )
 
 const (
-	openCodeSessionHeader = "X-OpenCode-Session"
-
+	openCodeSessionHeader        = "X-OpenCode-Session"
 	OpenAICodexRoutingHintHeader = "x-codex-routing-hint"
 )
 

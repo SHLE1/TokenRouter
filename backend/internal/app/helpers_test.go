@@ -118,8 +118,7 @@ var (
 	_ moderationflow.Tasks = fixtureCyberTasks{}
 
 	handlerStructuredLogCaptureMu sync.Mutex
-
-	handlerRefresherStarted sync.Map
+	handlerRefresherStarted       sync.Map
 )
 
 // 夹具保存各模块的依赖，规则和状态由模块管理。

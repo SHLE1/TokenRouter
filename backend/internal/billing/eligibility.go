@@ -54,27 +54,17 @@ var (
 	// 注：ErrDailyLimitExceeded/ErrWeeklyLimitExceeded/ErrMonthlyLimitExceeded在subscription_service.go中定义
 	ErrBillingServiceUnavailable = apperror.ServiceUnavailable("BILLING_SERVICE_ERROR", "Billing service temporarily unavailable. Please retry later.")
 
-	ErrAPIKeyNotFound = apperror.NotFound("API_KEY_NOT_FOUND", "api key not found")
-
-	ErrAPIKeyQuotaExhausted = apperror.TooManyRequests("API_KEY_QUOTA_EXHAUSTED", "api key quota exhausted")
-
-	ErrAPIKeyRateLimit1dExceeded = apperror.TooManyRequests("API_KEY_RATE_1D_EXCEEDED", "The API key daily limit has been reached")
-
-	ErrAPIKeyRateLimit5hExceeded = apperror.TooManyRequests("API_KEY_RATE_5H_EXCEEDED", "The API key five-hour limit has been reached")
-
-	ErrAPIKeyRateLimit7dExceeded = apperror.TooManyRequests("API_KEY_RATE_7D_EXCEEDED", "The API key seven-day limit has been reached")
-
-	ErrProviderNotFound = apperror.NotFound("PROVIDER_NOT_FOUND", "provider not found")
-
+	ErrAPIKeyNotFound                    = apperror.NotFound("API_KEY_NOT_FOUND", "api key not found")
+	ErrAPIKeyQuotaExhausted              = apperror.TooManyRequests("API_KEY_QUOTA_EXHAUSTED", "api key quota exhausted")
+	ErrAPIKeyRateLimit1dExceeded         = apperror.TooManyRequests("API_KEY_RATE_1D_EXCEEDED", "The API key daily limit has been reached")
+	ErrAPIKeyRateLimit5hExceeded         = apperror.TooManyRequests("API_KEY_RATE_5H_EXCEEDED", "The API key five-hour limit has been reached")
+	ErrAPIKeyRateLimit7dExceeded         = apperror.TooManyRequests("API_KEY_RATE_7D_EXCEEDED", "The API key seven-day limit has been reached")
+	ErrProviderNotFound                  = apperror.NotFound("PROVIDER_NOT_FOUND", "provider not found")
 	ErrPreferredSubscriptionInsufficient = apperror.TooManyRequests("PREFERRED_SUBSCRIPTION_EXHAUSTED", "preferred subscription has insufficient remaining quota")
-
-	ErrPreferredSubscriptionInvalid = apperror.Forbidden("PREFERRED_SUBSCRIPTION_INVALID", "preferred subscription is unavailable")
-
-	ErrUserNotFound = apperror.NotFound("USER_NOT_FOUND", "user not found")
-
-	ErrInsufficientBalance = apperror.BadRequest("INSUFFICIENT_BALANCE", "insufficient balance")
-
-	ErrPreferredSubscriptionGroup = apperror.Forbidden("PREFERRED_SUBSCRIPTION_GROUP_NOT_ALLOWED", "preferred subscription does not allow this group")
+	ErrPreferredSubscriptionInvalid      = apperror.Forbidden("PREFERRED_SUBSCRIPTION_INVALID", "preferred subscription is unavailable")
+	ErrUserNotFound                      = apperror.NotFound("USER_NOT_FOUND", "user not found")
+	ErrInsufficientBalance               = apperror.BadRequest("INSUFFICIENT_BALANCE", "insufficient balance")
+	ErrPreferredSubscriptionGroup        = apperror.Forbidden("PREFERRED_SUBSCRIPTION_GROUP_NOT_ALLOWED", "preferred subscription does not allow this group")
 )
 
 // 缓存写入任务类型

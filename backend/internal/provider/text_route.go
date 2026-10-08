@@ -13,8 +13,7 @@ const (
 	TextRouteModeForceChatCompletions TextRouteMode = "force_chat_completions"
 
 	TextProtocolChatCompletions = openai.TextProtocolChatCompletions
-
-	TextProtocolResponses = openai.TextProtocolResponses
+	TextProtocolResponses       = openai.TextProtocolResponses
 
 	// ExtraKeyTextRouteMode 是管理员控制的文本协议路由配置。
 	ExtraKeyTextRouteMode = "openai_text_route_mode"

@@ -1,9 +1,8 @@
 package provider
 
 const (
-	ProviderListGroupUngrouped int64 = -1
-
-	ProviderPrivacyModeUnsetFilter = "__unset__"
+	ProviderListGroupUngrouped     int64 = -1
+	ProviderPrivacyModeUnsetFilter       = "__unset__"
 )
 
 // OAuthRefreshPageOptions 描述一次有界且游标稳定的 OAuth 提供商扫描。

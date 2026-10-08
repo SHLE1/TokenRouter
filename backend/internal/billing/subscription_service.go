@@ -17,12 +17,9 @@ const MaxValidityDays = 36500
 
 var (
 	ErrSubscriptionAlreadyExists = apperror.Conflict("SUBSCRIPTION_ALREADY_EXISTS", "subscription already exists")
-
-	ErrSubscriptionNilInput = apperror.BadRequest("SUBSCRIPTION_NIL_INPUT", "subscription input cannot be nil")
-
-	ErrSubscriptionNotFound = apperror.NotFound("SUBSCRIPTION_NOT_FOUND", "subscription not found")
-
-	MaxExpiresAt = time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
+	ErrSubscriptionNilInput      = apperror.BadRequest("SUBSCRIPTION_NIL_INPUT", "subscription input cannot be nil")
+	ErrSubscriptionNotFound      = apperror.NotFound("SUBSCRIPTION_NOT_FOUND", "subscription not found")
+	MaxExpiresAt                 = time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
 
 	ErrSubscriptionExpired         = apperror.Forbidden("SUBSCRIPTION_EXPIRED", "subscription has expired")
 	ErrSubscriptionSuspended       = apperror.Forbidden("SUBSCRIPTION_SUSPENDED", "subscription is suspended")

@@ -73,19 +73,15 @@ import (
 
 const (
 	testCodexFingerprintSeed = "11111111-1111-4111-8111-111111111111"
-
-	keepaliveTestInterval = 10 * time.Millisecond
+	keepaliveTestInterval    = 10 * time.Millisecond
 )
 
 var (
 	handlerStructuredLogCaptureMu sync.Mutex
-
-	_ gatewaysession.CyberSessionBlockStore = (*fakeCyberBlockStore)(nil)
-
-	_ settings.Repository = (*fakeSettingRepo)(nil)
-
-	_ gatewaysession.GatewayCache           = (*comboCacheAndStore)(nil)
-	_ gatewaysession.CyberSessionBlockStore = (*comboCacheAndStore)(nil)
+	_                             gatewaysession.CyberSessionBlockStore = (*fakeCyberBlockStore)(nil)
+	_                             settings.Repository                   = (*fakeSettingRepo)(nil)
+	_                             gatewaysession.GatewayCache           = (*comboCacheAndStore)(nil)
+	_                             gatewaysession.CyberSessionBlockStore = (*comboCacheAndStore)(nil)
 
 	// 编译期接口断言
 	_ gatewayprovider.ExecutionProviderStore = (*stubOpenAIProviderRepo)(nil)

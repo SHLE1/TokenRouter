@@ -31,9 +31,8 @@ import (
 )
 
 var (
-	errCooldownSettingMissing = errors.New("setting missing")
-
-	_ providercore.SessionWindowStore = (*sessionWindowMockRepo)(nil)
+	errCooldownSettingMissing                                 = errors.New("setting missing")
+	_                         providercore.SessionWindowStore = (*sessionWindowMockRepo)(nil)
 )
 
 type codexInviteResetAdminServiceStub struct {

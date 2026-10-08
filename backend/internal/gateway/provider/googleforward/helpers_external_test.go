@@ -36,8 +36,7 @@ import (
 
 const (
 	geminiSkippedTestUpstreamMsg = "antigravity executor: invalid Gemini function call history"
-
-	geminiTestPNG = "iVBORw0KGgoAAAANSUhEUg=="
+	geminiTestPNG                = "iVBORw0KGgoAAAANSUhEUg=="
 )
 
 type antigravityCompatTokenCache struct {

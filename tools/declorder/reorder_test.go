@@ -59,6 +59,44 @@ func Use() error { return ErrB }
 	assertReorder(t, src, want)
 }
 
+func TestReorder_JoinsBareDeclarations(t *testing.T) {
+	src := `package sample
+
+import "errors"
+
+var ErrA = errors.New("a")
+
+var ErrLonger = errors.New("longer")
+
+// ErrC 有文档注释。
+var ErrC = errors.New("c")
+var ErrD = errors.New("d")
+
+var table = map[string]int{
+	"a": 1,
+}
+`
+	want := `package sample
+
+import "errors"
+
+var (
+	ErrA      = errors.New("a")
+	ErrLonger = errors.New("longer")
+
+	// ErrC 有文档注释。
+	ErrC = errors.New("c")
+
+	ErrD = errors.New("d")
+
+	table = map[string]int{
+		"a": 1,
+	}
+)
+`
+	assertReorder(t, src, want)
+}
+
 func TestReorder_KeepsIotaBlockFirst(t *testing.T) {
 	src := `package sample
 

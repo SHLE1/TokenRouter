@@ -7,53 +7,30 @@ import (
 )
 
 const (
-	ProtocolAnthropicMessages = protocol.ProtocolAnthropicMessages
-
-	ProtocolOpenAIResponses = protocol.ProtocolOpenAIResponses
-
+	ProtocolAnthropicMessages     = protocol.ProtocolAnthropicMessages
+	ProtocolOpenAIResponses       = protocol.ProtocolOpenAIResponses
 	ProtocolOpenAIChatCompletions = protocol.ProtocolOpenAIChatCompletions
-
 	ProtocolGeminiGenerateContent = protocol.ProtocolGeminiGenerateContent
-
-	ProtocolEmbeddings = protocol.ProtocolEmbeddings
-
-	ProtocolImagesGenerations = protocol.ProtocolImagesGenerations
-
-	ProtocolImagesEdits = protocol.ProtocolImagesEdits
-
-	ProtocolImageBatches = protocol.ProtocolImageBatches
-
-	ProtocolVideosGenerations = protocol.ProtocolVideosGenerations
-
-	ProtocolVideosEdits = protocol.ProtocolVideosEdits
-
-	ProtocolVideosExtensions = protocol.ProtocolVideosExtensions
-
-	ProtocolTTS = protocol.ProtocolTTS
-
-	ProtocolSTT = protocol.ProtocolSTT
-
-	ProtocolCustomVoices = protocol.ProtocolCustomVoices
-
-	ProtocolVoiceRealtime = protocol.ProtocolVoiceRealtime
-
-	ProtocolResponsesWebSocket = protocol.ProtocolResponsesWebSocket
-
-	ProtocolLive = protocol.ProtocolLive
-
-	ProtocolResponsesCompact = protocol.ProtocolResponsesCompact
-
-	ProtocolAlphaSearch = protocol.ProtocolAlphaSearch
-
-	ProtocolWebSearch = protocol.ProtocolWebSearch
-
-	ProtocolXSearch = protocol.ProtocolXSearch
-
-	ProtocolQoderChat = protocol.ProtocolQoderChat
-
-	ProtocolGeminiBatch = protocol.ProtocolGeminiBatch
-
-	ProtocolVertexBatch = protocol.ProtocolVertexBatch
+	ProtocolEmbeddings            = protocol.ProtocolEmbeddings
+	ProtocolImagesGenerations     = protocol.ProtocolImagesGenerations
+	ProtocolImagesEdits           = protocol.ProtocolImagesEdits
+	ProtocolImageBatches          = protocol.ProtocolImageBatches
+	ProtocolVideosGenerations     = protocol.ProtocolVideosGenerations
+	ProtocolVideosEdits           = protocol.ProtocolVideosEdits
+	ProtocolVideosExtensions      = protocol.ProtocolVideosExtensions
+	ProtocolTTS                   = protocol.ProtocolTTS
+	ProtocolSTT                   = protocol.ProtocolSTT
+	ProtocolCustomVoices          = protocol.ProtocolCustomVoices
+	ProtocolVoiceRealtime         = protocol.ProtocolVoiceRealtime
+	ProtocolResponsesWebSocket    = protocol.ProtocolResponsesWebSocket
+	ProtocolLive                  = protocol.ProtocolLive
+	ProtocolResponsesCompact      = protocol.ProtocolResponsesCompact
+	ProtocolAlphaSearch           = protocol.ProtocolAlphaSearch
+	ProtocolWebSearch             = protocol.ProtocolWebSearch
+	ProtocolXSearch               = protocol.ProtocolXSearch
+	ProtocolQoderChat             = protocol.ProtocolQoderChat
+	ProtocolGeminiBatch           = protocol.ProtocolGeminiBatch
+	ProtocolVertexBatch           = protocol.ProtocolVertexBatch
 )
 
 var protocolCatalog = buildProtocolCatalog()

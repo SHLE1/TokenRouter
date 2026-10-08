@@ -12,21 +12,14 @@ const (
 	opsAlertEvaluatorLeaderLockKeyDefault = "ops:alert:evaluator:leader"
 	opsAlertEvaluatorLeaderLockTTLDefault = 30 * time.Second
 
-	SettingKeyOpsMetricThresholds = "ops_metric_thresholds"
-
+	SettingKeyOpsMetricThresholds          = "ops_metric_thresholds"
 	SettingKeyOpsRealtimeMonitoringEnabled = "ops_realtime_monitoring_enabled"
-
-	SettingKeyOpsMonitoringEnabled = "ops_monitoring_enabled"
-
-	SettingKeyOpsRuntimeLogConfig = "ops_runtime_log_config"
-
-	SettingKeyOpsAlertRuntimeSettings = "ops_alert_runtime_settings"
-
-	SettingKeyOpsEmailNotificationConfig = "ops_email_notification_config"
-
-	SettingKeyOpsAdvancedSettings = "ops_advanced_settings"
-
-	SettingKeyOpsMetricsIntervalSeconds = "ops_metrics_interval_seconds"
+	SettingKeyOpsMonitoringEnabled         = "ops_monitoring_enabled"
+	SettingKeyOpsRuntimeLogConfig          = "ops_runtime_log_config"
+	SettingKeyOpsAlertRuntimeSettings      = "ops_alert_runtime_settings"
+	SettingKeyOpsEmailNotificationConfig   = "ops_email_notification_config"
+	SettingKeyOpsAdvancedSettings          = "ops_advanced_settings"
+	SettingKeyOpsMetricsIntervalSeconds    = "ops_metrics_interval_seconds"
 )
 
 // IsRealtimeMonitoringEnabled returns true when realtime ops features are enabled.

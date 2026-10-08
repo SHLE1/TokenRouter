@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	openAINativeCompactionV2Key = "openai_native_compaction_v2"
-
+	openAINativeCompactionV2Key     = "openai_native_compaction_v2"
 	openAIRemoteCompactionV2Feature = "remote_compaction_v2"
 )
 

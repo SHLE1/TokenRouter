@@ -11,8 +11,7 @@ import (
 
 const (
 	automationBootstrapPrompt = "Review the project and report any important changes."
-
-	delegationEnvelope = `<codex_delegation><source_thread_id>thread-1</source_thread_id><input>do the work</input></codex_delegation>`
+	delegationEnvelope        = `<codex_delegation><source_thread_id>thread-1</source_thread_id><input>do the work</input></codex_delegation>`
 )
 
 func TestNormalizeCodexAutomationBootstrapSupportedLastRunValues(t *testing.T) {

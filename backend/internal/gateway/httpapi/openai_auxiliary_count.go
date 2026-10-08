@@ -24,8 +24,7 @@ import (
 )
 
 const (
-	openaiPlatformAPIInputTokensURL = "https://api.openai.com/v1/responses/input_tokens"
-
+	openaiPlatformAPIInputTokensURL  = "https://api.openai.com/v1/responses/input_tokens"
 	openAIInputTokensFallbackMinimum = 1
 )
 

@@ -11,8 +11,7 @@ import (
 
 var (
 	benchmarkWSParseStringSink string
-
-	benchmarkWSParseMapSink map[string]any
+	benchmarkWSParseMapSink    map[string]any
 
 	// 基准保留响应 ID 和响应对象的存在状态。
 	benchmarkOpenAIWSStringSink string
