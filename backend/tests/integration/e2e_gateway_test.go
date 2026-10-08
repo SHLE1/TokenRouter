@@ -24,21 +24,11 @@ var (
 	testInterval   = 1 * time.Second // 测试间隔，防止限流
 )
 
-const (
-	// 注意：E2E 测试请使用环境变量注入密钥，避免任何凭证进入仓库历史。
-	// 例如：
-	//   export CLAUDE_API_KEY="sk-..."
-	//   export GEMINI_API_KEY="sk-..."
-	claudeAPIKeyEnv = "CLAUDE_API_KEY"
-	geminiAPIKeyEnv = "GEMINI_API_KEY"
-)
+// claudeAPIKeyEnv 指定 Claude E2E 测试读取密钥的环境变量。
+const claudeAPIKeyEnv = "CLAUDE_API_KEY"
 
-func getEnv(key, defaultVal string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultVal
-}
+// geminiAPIKeyEnv 指定 Gemini E2E 测试读取密钥的环境变量。
+const geminiAPIKeyEnv = "GEMINI_API_KEY"
 
 // Claude 模型列表
 var claudeModels = []string{
@@ -65,25 +55,6 @@ var geminiModels = []string{
 	"gemini-3-flash",
 	"gemini-3-pro-low",
 	"gemini-3-pro-high",
-}
-
-func TestMain(m *testing.M) {
-	mode := "混合模式"
-	if endpointPrefix != "" {
-		mode = "Antigravity 模式"
-	}
-	claudeKeySet := strings.TrimSpace(os.Getenv(claudeAPIKeyEnv)) != ""
-	geminiKeySet := strings.TrimSpace(os.Getenv(geminiAPIKeyEnv)) != ""
-	fmt.Printf("\n🚀 E2E Gateway Tests - %s (prefix=%q, %s, %s=%v, %s=%v)\n\n",
-		baseURL,
-		endpointPrefix,
-		mode,
-		claudeAPIKeyEnv,
-		claudeKeySet,
-		geminiAPIKeyEnv,
-		geminiKeySet,
-	)
-	os.Exit(m.Run())
 }
 
 func requireClaudeAPIKey(t *testing.T) string {
@@ -530,7 +501,7 @@ func testClaudeMessageWithTools(t *testing.T, claudeKey string, model string) {
 		t.Fatalf("Schema 清理失败，收到 400 错误: %s", string(respBody))
 	}
 
-	// 503 可能是提供商限流，不算测试失败
+	// 此测试将 503 作为可重试的服务不可用结果。
 	if resp.StatusCode == 503 {
 		t.Skipf("提供商暂时不可用 (503): %s", string(respBody))
 	}
@@ -557,7 +528,7 @@ func testClaudeMessageWithTools(t *testing.T, claudeKey string, model string) {
 
 // TestClaudeMessagesWithThinkingAndTools 测试 thinking 模式下带工具调用的场景
 // 验证：当历史 assistant 消息包含 tool_use 但没有 signature 时，
-// 系统应自动添加 dummy thought_signature 避免 Gemini 400 错误
+// 系统应补充 dummy thought_signature，使 Gemini 接受工具调用。
 func TestClaudeMessagesWithThinkingAndTools(t *testing.T) {
 	claudeKey := requireClaudeAPIKey(t)
 	models := []string{
@@ -577,7 +548,7 @@ func testClaudeThinkingWithToolHistory(t *testing.T, claudeKey string, model str
 	url := baseURL + endpointPrefix + "/v1/messages"
 
 	// 模拟历史对话：用户请求 → assistant 调用工具 → 工具返回 → 继续对话
-	// 注意：tool_use 块故意不包含 signature，测试系统是否能正确添加 dummy signature
+	// tool_use 块省略 signature，检查系统补充的 dummy signature。
 	payload := map[string]any{
 		"model":      model,
 		"max_tokens": 200,
@@ -658,7 +629,7 @@ func testClaudeThinkingWithToolHistory(t *testing.T, claudeKey string, model str
 		t.Fatalf("thought_signature 处理失败，收到 400 错误: %s", string(respBody))
 	}
 
-	// 503 可能是提供商限流，不算测试失败
+	// 此测试将 503 作为可重试的服务不可用结果。
 	if resp.StatusCode == 503 {
 		t.Skipf("提供商暂时不可用 (503): %s", string(respBody))
 	}

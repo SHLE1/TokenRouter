@@ -2,21 +2,23 @@ package pricingcontract
 
 import (
 	"testing"
-	time "time"
+	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/completion"
+	gatewaycapture "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	identity "github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// TestBuildUsageBillingCommand_BillableAmountTracksActualCost locks in the fix
-// that usage billing always uses ActualCost as the user-facing billable amount.
+// TestBuildUsageBillingCommand_BillableAmountTracksActualCost 检查用户计费金额使用 ActualCost。
 func TestBuildUsageBillingCommand_BillableAmountTracksActualCost(t *testing.T) {
 	t.Parallel()
 
@@ -138,7 +140,7 @@ func TestBuildUsageBillingCommand_ProviderQuotaUsesProviderStatsCost(t *testing.
 			if cmd.ProviderQuotaCost != tt.wantProviderQuota {
 				t.Errorf("ProviderQuotaCost = %v, want %v", cmd.ProviderQuotaCost, tt.wantProviderQuota)
 			}
-			// 用户余额、订阅和 API Key 配额仍必须使用 ActualCost，不能被提供商成本口径影响。
+			// 用户余额、订阅和 API Key 配额使用 ActualCost。
 			if cmd.BillableAmountUSD != tt.actualCost {
 				t.Errorf("BillableAmountUSD = %v, want %v", cmd.BillableAmountUSD, tt.actualCost)
 			}
@@ -254,8 +256,7 @@ func TestBuildUsageBillingCommand_TokenModeKeepsAllocationRates(t *testing.T) {
 	}
 }
 
-// TestBuildUsageBillingCommand_UsesOverrideBaseAmountForFreeFast 验证免费 Fast
-// 可以替换用户资金分配的基础价，同时保留提供商统计成本对应的额度口径。
+// TestBuildUsageBillingCommand_UsesOverrideBaseAmountForFreeFast 检查免费 Fast 使用指定基础价分配用户资金，提供商额度使用 Fast 成本。
 func TestBuildUsageBillingCommand_UsesOverrideBaseAmountForFreeFast(t *testing.T) {
 	standardBase := 0.4
 	fastTotal := 1.2
@@ -287,5 +288,48 @@ func TestBuildUsageBillingCommand_UsesOverrideBaseAmountForFreeFast(t *testing.T
 	}
 	if diff := cmd.ProviderQuotaCost - fastTotal*providerRate; diff > 1e-12 || diff < -1e-12 {
 		t.Fatalf("ProviderQuotaCost = %v, want %v", cmd.ProviderQuotaCost, fastTotal*providerRate)
+	}
+}
+
+func buildContractBillingCommand(requestID string, usageLog *usage.UsageLog, p *contractSettlementInput) *billing.UsageBillingCommand {
+	return completion.BuildCommand(requestID, querycache.Clone(usageLog), projectContractSettlement(p))
+}
+
+// contractSettlementInput 包含结算金额、付款方和倍率参数。
+type contractSettlementInput struct {
+	Cost                            *pricing.CostBreakdown
+	User                            *identity.User
+	APIKey                          *apikey.APIKey
+	Provider                        *gatewaycapture.ExecutionProvider
+	Subscription                    *billing.UserSubscription
+	RequestPayloadHash              string
+	ProviderRateMultiplier          float64
+	SubscriptionRateMultiplier      float64
+	SubscriptionRateMultiplierScale float64
+	BalanceRateMultiplier           float64
+	APIKeyService                   gatewaycapture.QuotaUpdater
+	Platform                        string // 来自 APIKey 关联 Group 的平台标识
+	// BillingBaseAmountUSD 是分配用户资金前的基础金额，nil 时使用 Cost.TotalCost。
+	// 免费 Fast 使用 Standard 用户基础价和 Fast 提供商统计基础成本。
+	BillingBaseAmountUSD *float64
+}
+
+func projectContractSettlement(p *contractSettlementInput) *completion.SettlementInput {
+	if p == nil {
+		return nil
+	}
+	return &completion.SettlementInput{
+		Cost:                            p.Cost,
+		User:                            gatewaycapture.ProjectCompletionPayer(p.User),
+		APIKey:                          gatewaycapture.ProjectCompletionKey(p.APIKey),
+		Provider:                        gatewaycapture.ProjectCompletionProvider(gatewaycapture.ExecutionCompletionRecord(p.Provider)),
+		Subscription:                    p.Subscription,
+		RequestPayloadHash:              p.RequestPayloadHash,
+		ProviderRateMultiplier:          p.ProviderRateMultiplier,
+		SubscriptionRateMultiplier:      p.SubscriptionRateMultiplier,
+		SubscriptionRateMultiplierScale: p.SubscriptionRateMultiplierScale,
+		BalanceRateMultiplier:           p.BalanceRateMultiplier,
+		QuotaUpdates:                    p.APIKeyService != nil,
+		BillingBaseAmountUSD:            p.BillingBaseAmountUSD,
 	}
 }

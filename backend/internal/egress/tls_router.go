@@ -101,3 +101,14 @@ func NormalizeTLSRouterMatchType(matchType string) string {
 		return TLSRouterMatchContains
 	}
 }
+
+// ValidationError 包含校验失败的字段和原因。
+type ValidationError struct {
+	Field   string
+	Message string
+}
+
+// Error 返回字段名和失败原因。
+func (e *ValidationError) Error() string {
+	return e.Field + ": " + e.Message
+}

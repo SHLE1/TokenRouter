@@ -8,14 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-)
 
-func init() {
-}
+	"github.com/TokenFlux/TokenRouter/internal/config"
+)
 
 func TestGenerateNonce(t *testing.T) {
 	t.Run("generates_valid_base64_string", func(t *testing.T) {
@@ -423,23 +421,6 @@ func TestEnhanceCSPPolicy(t *testing.T) {
 	})
 }
 
-func countDirectiveValue(policy, directive, value string) int {
-	for _, rawDirective := range strings.Split(policy, ";") {
-		fields := strings.Fields(strings.TrimSpace(rawDirective))
-		if len(fields) == 0 || fields[0] != directive {
-			continue
-		}
-		count := 0
-		for _, field := range fields[1:] {
-			if field == value {
-				count++
-			}
-		}
-		return count
-	}
-	return 0
-}
-
 func TestAddToDirective(t *testing.T) {
 	t.Run("adds_to_existing_directive", func(t *testing.T) {
 		policy := "script-src 'self'; style-src 'self'"
@@ -516,4 +497,21 @@ func TestGoogleIdentityCSPPreservesOfficialAccountsOrigins(t *testing.T) {
 		}
 		require.NotContains(t, policy, "providers.google.com")
 	}
+}
+
+func countDirectiveValue(policy, directive, value string) int {
+	for _, rawDirective := range strings.Split(policy, ";") {
+		fields := strings.Fields(strings.TrimSpace(rawDirective))
+		if len(fields) == 0 || fields[0] != directive {
+			continue
+		}
+		count := 0
+		for _, field := range fields[1:] {
+			if field == value {
+				count++
+			}
+		}
+		return count
+	}
+	return 0
 }

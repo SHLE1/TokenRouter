@@ -39,3 +39,24 @@ func ToHTTP(err error) (statusCode int, body apperror.Status) {
 func ErrorCode(err error) int {
 	return int(apperror.CategoryOf(err))
 }
+
+// HTTPStatusToGoogleStatus 将 HTTP 状态码转换为 Google 错误状态。
+func HTTPStatusToGoogleStatus(status int) string {
+	switch status {
+	case http.StatusBadRequest:
+		return "INVALID_ARGUMENT"
+	case http.StatusUnauthorized:
+		return "UNAUTHENTICATED"
+	case http.StatusForbidden:
+		return "PERMISSION_DENIED"
+	case http.StatusNotFound:
+		return "NOT_FOUND"
+	case http.StatusTooManyRequests:
+		return "RESOURCE_EXHAUSTED"
+	default:
+		if status >= 500 {
+			return "INTERNAL"
+		}
+		return "UNKNOWN"
+	}
+}

@@ -6,8 +6,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/TokenFlux/TokenRouter/internal/server/httpconfig"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/server/httpconfig"
 )
 
 var corsWarningOnce sync.Once

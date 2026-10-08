@@ -5,9 +5,10 @@ import (
 	"io"
 	"strings"
 
-	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+
+	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
 // ProviderTerminology 拒绝管理契约中的旧上游账号字段；凭据与第三方导入载荷交给所属适配器。

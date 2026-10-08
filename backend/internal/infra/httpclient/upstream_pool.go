@@ -18,13 +18,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/proxy"
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
-	servertiming "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
-
 	"github.com/andybalholm/brotli"
 	"github.com/klauspost/compress/zstd"
 	"golang.org/x/net/http2"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/proxy"
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	servertiming "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
 )
 
 const (
@@ -555,7 +555,7 @@ type responseHeaderTimeoutRoundTripper struct {
 	timeout time.Duration
 }
 
-// RoundTrip 只接受官方 CLI 身份、OAuth Bearer 和明确 Access denied 响应作为回退候选。
+// RoundTrip 在等待响应头超时后取消请求，收到响应头后停止计时。
 func (r *responseHeaderTimeoutRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	if r == nil || r.base == nil {
 		return nil, errors.New("response header timeout round tripper missing base")
@@ -597,7 +597,7 @@ func (r *responseHeaderTimeoutRoundTripper) RoundTrip(req *http.Request) (*http.
 	return resp, nil
 }
 
-// CloseIdleConnections 透传底层连接池关闭能力，避免包装后空闲 h2 连接无法被回收。
+// CloseIdleConnections 关闭底层传输的空闲连接。
 func (r *responseHeaderTimeoutRoundTripper) CloseIdleConnections() {
 	if r == nil || r.base == nil {
 		return
@@ -741,4 +741,16 @@ func (d *decompressedBody) Close() error {
 		_ = rc.Close()
 	}
 	return d.closer.Close()
+}
+
+// CloseIdleConnections 在请求与后台任务完成后释放本池的空闲连接。
+// 缓存条目继续复用，调用方仍需关闭使用中的响应体。
+func (s *UpstreamPool) CloseIdleConnections() {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, entry := range s.clients {
+		if entry != nil && entry.client != nil {
+			entry.client.CloseIdleConnections()
+		}
+	}
 }

@@ -6,10 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	proxydto "github.com/TokenFlux/TokenRouter/internal/egress/httpapi/dto"
 	idempotencyhttp "github.com/TokenFlux/TokenRouter/internal/idempotency/httpapi"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
 )
 
 // ProxyHandler handles admin proxy management
@@ -402,4 +404,26 @@ func (h *ProxyHandler) BatchCreate(c *gin.Context) {
 		"created": created,
 		"skipped": skipped,
 	})
+}
+
+// AdminProxy 是代理管理接口返回的数据。
+type AdminProxy = proxydto.AdminProxy
+
+// AdminProxyWithProviderCount 包含代理数据及提供商数量。
+type AdminProxyWithProviderCount = proxydto.AdminProxyWithProviderCount
+
+// ProxyProviderSummary 包含使用代理的提供商摘要。
+type ProxyProviderSummary = proxydto.ProxyProviderSummary
+
+// ProxyFromServiceAdmin 将代理转为包含管理字段的响应。
+func ProxyFromServiceAdmin(p *egress.Proxy) *AdminProxy { return proxydto.ProxyFromEgressAdmin(p) }
+
+// ProxyWithProviderCountFromServiceAdmin 转换代理数据及提供商统计。
+func ProxyWithProviderCountFromServiceAdmin(p *egress.ProxyWithProviderCount) *AdminProxyWithProviderCount {
+	return proxydto.ProxyWithProviderCountFromEgressAdmin(p)
+}
+
+// ProxyProviderSummaryFromService 转换代理所绑定提供商的摘要。
+func ProxyProviderSummaryFromService(a *egress.ProxyProviderSummary) *ProxyProviderSummary {
+	return proxydto.ProxyProviderSummaryFromEgress(a)
 }

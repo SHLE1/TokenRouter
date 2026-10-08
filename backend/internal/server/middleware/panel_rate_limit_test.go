@@ -9,15 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
-
-	"github.com/TokenFlux/TokenRouter/internal/server/runtimeconfig"
-
-	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
-
-	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+
+	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/server/runtimeconfig"
+	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
 // panelRateLimitStubRepo 内存版 SettingRepository，仅覆盖本测试用到的方法。
@@ -137,7 +135,6 @@ type panelTestIdentity struct {
 }
 
 func newPanelTestRouter(limiter gin.HandlerFunc, identity *panelTestIdentity) *gin.Engine {
-
 	router := gin.New()
 	if identity != nil {
 		router.Use(func(c *gin.Context) {

@@ -6,15 +6,13 @@ import (
 	"testing"
 	"time"
 
-	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/stretchr/testify/require"
-)
 
-func pricingTimePricingTestConfig(periods ...routing.TimePricingPeriod) *routing.TimePricingConfig {
-	return &routing.TimePricingConfig{Timezone: "Asia/Shanghai", Periods: periods}
-}
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	billingadapter "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing"
+)
 
 func TestValidateTimePricingConfig(t *testing.T) {
 	tests := []struct {
@@ -116,4 +114,17 @@ func TestTimePricingConfigMultiplierAtDegradesForInvalidConfiguration(t *testing
 	err := (routing.PricingConfigValidation{LoadLocation: pricingprovider.LoadPricingLocation}).TimePricing(&routing.TimePricingConfig{Timezone: "Local", Periods: []routing.TimePricingPeriod{{StartTime: "09:00", EndTime: "12:00", Multiplier: 2}}})
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), "timezone"))
+}
+
+func pricingTimePricingTestConfig(periods ...routing.TimePricingPeriod) *routing.TimePricingConfig {
+	return &routing.TimePricingConfig{Timezone: "Asia/Shanghai", Periods: periods}
+}
+
+// contractTimeLocation 为定价接口测试加载时区，配置校验和倍率计算由生产实现执行。
+func contractTimeLocation(value *pricing.TimePricingConfig) *time.Location {
+	if value == nil {
+		return nil
+	}
+	location, _ := billingadapter.LoadPricingLocation(value.Timezone)
+	return location
 }

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// HTTP2Options 保留上游 HTTP/2 代理回退的原技术配置。
+// HTTP2Options 配置上游 HTTP/2 及代理回退的阈值和持续时间。
 type HTTP2Options struct {
 	Enabled                   bool
 	AllowProxyFallbackToHTTP1 bool
@@ -25,17 +25,6 @@ const (
 	TransportOpenAIH1Fallback                = "openai_h1_fallback"
 	TransportGrok                            = "grok"
 )
-
-// EgressPolicy 是本次执行的出站策略，敏感代理信息不参与 JSON 或普通日志。
-type EgressPolicy struct {
-	ProxyURL           string                 `json:"-"`
-	TLSProfile         *TLSFingerprintProfile `json:"-"`
-	Headers            map[string]string      `json:"-"`
-	TransportMode      string
-	ValidateResolvedIP bool
-	PublicHostsOnly    bool
-	DisableRedirects   bool
-}
 
 // TransportPolicy 在同一生产上游池的所有调用方之间共享回退状态。
 type TransportPolicy struct{ fallbacks sync.Map }

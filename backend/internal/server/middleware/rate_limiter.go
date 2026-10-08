@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	ippkg "github.com/TokenFlux/TokenRouter/internal/server/clientip"
-
 	"github.com/gin-gonic/gin"
+
+	ippkg "github.com/TokenFlux/TokenRouter/internal/server/clientip"
 )
 
 const (

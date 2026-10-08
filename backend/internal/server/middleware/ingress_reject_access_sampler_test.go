@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
 func TestIngressRejectAccessSamplerConcurrentGlobalLimit(t *testing.T) {
@@ -32,7 +33,6 @@ func TestIngressRejectAccessSamplerConcurrentGlobalLimit(t *testing.T) {
 }
 
 func TestLoggerIngressRejectSamplingIsBoundedAndSummarySkipsOpsSink(t *testing.T) {
-
 	original := globalIngressRejectAccessSampler
 	globalIngressRejectAccessSampler = newIngressRejectAccessSampler(2, time.Hour, time.Hour)
 	t.Cleanup(func() { globalIngressRejectAccessSampler = original })

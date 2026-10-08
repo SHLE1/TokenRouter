@@ -15,15 +15,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/server/httpconfig"
-
-	schedulerpolicy "github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
-
-	ippolicy "github.com/TokenFlux/TokenRouter/internal/server/clientip/policy"
+	"github.com/spf13/viper"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity/authconfig"
-
-	"github.com/spf13/viper"
+	schedulerpolicy "github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
+	ippolicy "github.com/TokenFlux/TokenRouter/internal/server/clientip/policy"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpconfig"
 )
 
 // 使用量记录队列溢出策略
@@ -3483,4 +3480,15 @@ func (c *Config) normalizePricingCatalogSource() {
 	if _, err := os.Stat(fallback); os.IsNotExist(err) {
 		c.Pricing.FallbackFile = filepath.Join(filepath.Dir(fallback), "model_pricing_supplements.json")
 	}
+}
+
+// ErrDingTalkV1AppTypeMismatch 表示钉钉应用类型与企业限制策略冲突。
+var ErrDingTalkV1AppTypeMismatch = authconfig.ErrDingTalkV1AppTypeMismatch
+
+// ErrDingTalkV4InvalidAppKind 表示钉钉应用种类无效。
+var ErrDingTalkV4InvalidAppKind = authconfig.ErrDingTalkV4InvalidAppKind
+
+// ValidateDingTalkConfig 使用身份配置的规则校验钉钉登录参数。
+func ValidateDingTalkConfig(value DingTalkConnectConfig) error {
+	return authconfig.ValidateDingTalkConfig(value)
 }

@@ -7,20 +7,21 @@ import (
 	"testing"
 	"time"
 
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
-	catalogtest "github.com/TokenFlux/TokenRouter/internal/modelcatalog/testkit"
-
-	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
-
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	pricingprovider "github.com/TokenFlux/TokenRouter/internal/billing/provider"
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
+	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
+	catalogtest "github.com/TokenFlux/TokenRouter/internal/modelcatalog/testkit"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	"github.com/stretchr/testify/require"
+	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 )
+
+// modelRateLimitsKey 是模型限流快照的字段名。
+const modelRateLimitsKey = "model_rate_limits"
 
 // TestResolveRequestableModels_RequiresModelLevelSchedulability 验证可见模型至少存在一个未被模型级限流的提供商。
 func TestResolveRequestableModels_RequiresModelLevelSchedulability(t *testing.T) {
@@ -368,7 +369,7 @@ func TestResolveRequestableModels_UpstreamNormalizesAnthropicOAuthMapping(t *tes
 	require.False(t, model.PricingAmbiguous)
 }
 
-// TestResolveRequestableModels_OpenAIUsesActualForwardedModel 验证 OpenAI OAuth 与自动透传提供商使用真实上游模型定价。
+// TestResolveRequestableModels_OpenAIUsesActualForwardedModel 检查 OpenAI OAuth 与自动透传提供商按最终转发模型定价。
 func TestResolveRequestableModels_OpenAIUsesActualForwardedModel(t *testing.T) {
 	price := 0.09
 	tests := []struct {

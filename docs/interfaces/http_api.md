@@ -50,7 +50,7 @@ RequestLogger
 
 | 路由族 | 认证 | 负责的模块和用途 |
 | --- | --- | --- |
-| `/health`、`/setup/status` | 无 | `server/common.go`；进程健康检查和正常模式下的 setup 状态 |
+| `/health`、`/setup/status` | 无 | `server/router.go`；进程健康检查和正常模式下的 setup 状态 |
 | `/api/event_logging/batch` | 无 | 兼容 Claude Code 遥测的空接收端，固定返回成功 |
 | `/api/v1/auth/*` | 大多公开，账户管理的子流程按路由加 JWT 或短期状态 | `app/http_routes_auth.go`；注册、登录、刷新、找回密码、OAuth、Passkey 登录和身份补全 |
 | `/api/v1/user/*`、`/keys`、`/team`、`/groups`、`/subscriptions`、`/redeem` 等 | 用户 JWT | `app/http_routes_user.go`；用户面板的资源、团队、Key、用量和权益查询 |

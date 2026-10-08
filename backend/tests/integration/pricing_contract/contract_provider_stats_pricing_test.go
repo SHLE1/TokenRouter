@@ -3,46 +3,17 @@ package pricingcontract
 import (
 	"context"
 	"testing"
-	"time"
 
-	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	purepricing "github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	routingtestkit "github.com/TokenFlux/TokenRouter/internal/routing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
-	"github.com/stretchr/testify/require"
 )
-
-// ---------------------------------------------------------------------------
-// matchProviderStatsRule
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// findPricingForModel
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// calculateStatsCost
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// tryCustomRules — 多规则顺序测试
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// tryModelFilePricing
-// ---------------------------------------------------------------------------
-
-// newTestBillingServiceWithPrices creates a BillingService with pre-populated
-// fallback prices for testing. No config or pricing service is needed.
-// The key must match what getFallbackPricing resolves to for a given model name.
-// E.g., model "claude-sonnet-4" resolves to key "claude-sonnet-4".
-func newTestBillingServiceWithPrices(prices map[string]*purepricing.ModelPricing) *billing.Calculator {
-	return newCalculatorWithPrices(nil, prices)
-}
 
 func TestTryModelFilePricing_Success(t *testing.T) {
 	bs := newTestBillingServiceWithPrices(map[string]*purepricing.ModelPricing{
@@ -220,10 +191,6 @@ func TestTryModelFilePricing_WithCacheTokens(t *testing.T) {
 	// = 0.1 + 0.1 + 0.6 + 0.15 = 0.95
 	require.InDelta(t, 0.95, *result, 1e-12)
 }
-
-// ---------------------------------------------------------------------------
-// contractProviderStatsCost — integration tests covering the 4-level priority chain
-// ---------------------------------------------------------------------------
 
 func TestResolveProviderStatsCost_NilPricingConfigService(t *testing.T) {
 	result := contractProviderStatsCost(
@@ -723,7 +690,7 @@ func TestResolveProviderStatsCost_CustomRuleDoesNotUseUserPrice(t *testing.T) {
 		tokens, 1, 99.0, "", // 用户售价不参与提供商成本规则
 	)
 	require.NotNil(t, result)
-	// Custom rule: 100*0.05 = 5.0 (NOT 99.0 from totalCost)
+	// 自定义成本规则按 100*0.05 得到 5.0。
 	require.InDelta(t, 5.0, *result, 1e-12)
 }
 
@@ -754,19 +721,46 @@ func TestApplyProviderStatsCost_UsesUsageLogServiceTier(t *testing.T) {
 	require.InDelta(t, 0.4, *usageLog.ProviderStatsCost, 1e-12)
 }
 
-// ---------------------------------------------------------------------------
-// helpers for contractProviderStatsCost tests
-// ---------------------------------------------------------------------------
+// applyContractProviderStatsCost 为用量日志计算提供商成本。
+// 上游模型为空时使用请求模型，再通过定价解析器匹配成本规则。
+func applyContractProviderStatsCost(
+	ctx context.Context,
+	usageLog *usage.UsageLog,
+	cs *routing.PricingConfigService, bs *billing.Calculator,
+	providerID int64, groupID int64,
+	upstreamModel, requestedModel, groupMappedModel string,
+	tokens pricing.UsageTokens,
+	totalCost float64,
+	resolvers ...*billing.PriceResolver,
+) {
+	model := upstreamModel
+	if model == "" {
+		model = requestedModel
+	}
+	requestCount := 1
+	if usageLog != nil && usageLog.ImageCount > 0 {
+		requestCount = usageLog.ImageCount
+	}
+	serviceTier := ""
+	reasoningEffort := ""
+	if usageLog != nil && usageLog.ServiceTier != nil {
+		serviceTier = *usageLog.ServiceTier
+	}
+	if usageLog != nil && usageLog.ReasoningEffort != nil {
+		reasoningEffort = *usageLog.ReasoningEffort
+	}
+	if len(resolvers) > 0 && resolvers[0] != nil {
+		usageLog.ProviderStatsCost = resolvers[0].ResolveProviderStats(ctx, billing.ProviderStatsCostInput{PreferRequestedModel: usageLog.Platform == "qoder", ProviderID: providerID, GroupID: groupID, UpstreamModel: model, RequestedModel: requestedModel, MappedModel: groupMappedModel, Tokens: tokens, RequestCount: requestCount, ServiceTier: serviceTier, ReasoningEffort: reasoningEffort})
+		return
+	}
+	usageLog.ProviderStatsCost = contractProviderStatsWithMapping(
+		ctx, cs, bs, usageLog.Platform, providerID, groupID, model, requestedModel, groupMappedModel, tokens, requestCount, totalCost, serviceTier,
+		reasoningEffort,
+	)
+}
 
-// newTestPricingConfigServiceForStats creates a PricingConfigService with a single channel
-// mapped to the given groupID, suitable for contractProviderStatsCost tests.
-func newTestPricingConfigServiceForStats(t *testing.T, pricingConfig *routingtestkit.Configuration, groupID int64, platform string) *routing.PricingConfigService {
-	t.Helper()
-	cache := routingtestkit.NewModelConfigData()
-	cache.ByGroup[groupID] = pricingConfig
-	cache.Platforms[groupID] = platform
-
-	cache.LoadedAt = time.Now()
-	cs := routingtestkit.ModelConfigFromData(cache)
-	return cs
+// newTestBillingServiceWithPrices 使用给定的回退价格构造计价器。
+// 价格表的键使用模型匹配后的名称，例如 claude-sonnet-4。
+func newTestBillingServiceWithPrices(prices map[string]*purepricing.ModelPricing) *billing.Calculator {
+	return newCalculatorWithPrices(nil, prices)
 }

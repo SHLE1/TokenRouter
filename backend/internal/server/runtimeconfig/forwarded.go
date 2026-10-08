@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
@@ -172,4 +173,25 @@ func (s *ForwardedSettings) LoadForwardedClientIPSettings(ctx context.Context) e
 
 	s.options.Publish(enabled, headers)
 	return headersErr
+}
+
+// ReadForwardedSettings 用持久化设置覆盖当前值，Header 解析失败时关闭转发 IP 信任。
+func ReadForwardedSettings(settings map[string]string, prior ForwardedInput) ForwardedInput {
+	apiKeyACLTrustForwardedIP := prior.APIKeyACLTrustForwardedIP
+	forwardedClientIPHeaders := prior.ForwardedClientIPHeaders
+	if value, ok := settings[SettingKeyAPIKeyACLTrustForwardedIP]; ok {
+		apiKeyACLTrustForwardedIP = value == "true"
+	}
+	if value, ok := settings[SettingKeyForwardedClientIPHeaders]; ok {
+		parsed, err := ParseForwardedHeaders(value)
+		if err != nil {
+			slog.Error("invalid persisted forwarded client IP headers; forwarded trust disabled", "error", err)
+			apiKeyACLTrustForwardedIP = false
+			forwardedClientIPHeaders = []string{}
+		} else {
+			forwardedClientIPHeaders = parsed
+		}
+	}
+
+	return ForwardedInput{APIKeyACLTrustForwardedIP: apiKeyACLTrustForwardedIP, ForwardedClientIPHeaders: forwardedClientIPHeaders}
 }

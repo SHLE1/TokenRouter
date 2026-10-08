@@ -13,10 +13,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logevent"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logevent"
 )
 
 type Level = zapcore.Level
@@ -313,8 +314,7 @@ func (s *sinkCore) With(fields []zapcore.Field) zapcore.Core {
 }
 
 func (s *sinkCore) Check(entry zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
-	// Delegate to inner core (tee) so each sub-core's level enabler is respected.
-	// Then add ourselves for sink forwarding only.
+	// 内部 core 按各自等级决定是否写入，再登记日志接收器转发。
 	ce = s.core.Check(entry, ce)
 	if ce != nil {
 		ce = ce.AddCore(entry, s)
@@ -323,8 +323,7 @@ func (s *sinkCore) Check(entry zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore
 }
 
 func (s *sinkCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
-	// Only handle sink forwarding — the inner cores write via their own
-	// Write methods (added to CheckedEntry by s.core.Check above).
+	// 此处将事件转发给日志接收器，内部 core 通过 Check 登记各自的 Write 方法。
 	sink := loadSink()
 	if sink == nil {
 		return nil
@@ -429,7 +428,7 @@ func LegacyPrintf(component, format string, args ...any) {
 
 	initialized := global.Load() != nil
 	if !initialized {
-		// 在日志系统未初始化前，回退到标准库 log，避免测试/工具链丢日志。
+		// 日志系统未初始化时，由标准库 log 写出日志。
 		log.Print(msg)
 		return
 	}
@@ -474,4 +473,24 @@ func FromContext(ctx context.Context) *zap.Logger {
 		return l
 	}
 	return L()
+}
+
+// Event 将交替键值形式的字段写入日志，忽略非字符串键和末尾孤立值。
+// error 和 warn 使用对应等级，其余等级使用 debug。
+func Event(level, event string, fields ...any) {
+	values := make([]zap.Field, 0, len(fields)/2)
+	for i := 0; i+1 < len(fields); i += 2 {
+		key, ok := fields[i].(string)
+		if ok {
+			values = append(values, zap.Any(key, fields[i+1]))
+		}
+	}
+	switch level {
+	case "error":
+		L().Error(event, values...)
+	case "warn":
+		L().Warn(event, values...)
+	default:
+		L().Debug(event, values...)
+	}
 }

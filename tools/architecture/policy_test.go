@@ -7,15 +7,15 @@ import (
 	"testing"
 )
 
-// 正反例覆盖架构契约，不依赖当前配置的行数或具体规则名称。
+// TestDependencyBoundaries 检查各目录角色的允许依赖和禁止依赖。
 func TestDependencyBoundaries(t *testing.T) {
 	cases := []struct {
 		file     string
 		imported string
 		allowed  bool
 	}{
-		{"migrations/pricing_preview_fixture_test.go", modulePath + "/internal/billing/pricing", true},
-		{"migrations/pricing_merge_fixture_test.go", modulePath + "/internal/billing/pricing", true},
+		{"migrations/platform_independent_pricing_integration_test.go", modulePath + "/internal/billing/pricing", true},
+		{"migrations/helpers_test.go", modulePath + "/internal/billing/pricing", true},
 		{"migrations/pricing_merge_test.go", modulePath + "/internal/billing/pricing", true},
 		{"migrations/new_test.go", modulePath + "/internal/billing/pricing", false},
 		{"migrations/platform_independent_pricing_integration_test.go", modulePath + "/internal/routing/postgres", false},

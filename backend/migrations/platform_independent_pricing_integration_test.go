@@ -6,18 +6,21 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"testing"
 	"testing/fstest"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/postgres"
-	"github.com/TokenFlux/TokenRouter/migrations"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
+
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
+	"github.com/TokenFlux/TokenRouter/internal/infra/postgres"
+	"github.com/TokenFlux/TokenRouter/migrations"
 )
 
-// TestPlatformIndependentPricingMigration 验证真实金额合并、作用域隔离和复杂冲突回滚。
+// TestPlatformIndependentPricingMigration 检查迁移 SQL 的价格合并、作用域隔离和冲突回滚。
 func TestPlatformIndependentPricingMigration(t *testing.T) {
 	ctx := context.Background()
 	container, err := tcpostgres.Run(ctx, "postgres:18.1-alpine3.23", tcpostgres.WithDatabase("pricing_migration"), tcpostgres.WithUsername("postgres"), tcpostgres.WithPassword("postgres"), tcpostgres.BasicWaitStrategies())
@@ -75,7 +78,7 @@ INSERT INTO groups(name,model_pricing) VALUES ('group price','[{"platform":"anth
 		var archived int
 		require.NoError(t, tx.QueryRowContext(ctx, `SELECT count(*) FROM platform_independent_pricing_archive WHERE scope='config' AND scope_id=76001`).Scan(&archived))
 		require.Equal(t, 1, archived)
-		// 首次升级后管理员的改价及新行身份不能被归档重放覆盖。
+		// 再次执行迁移后，管理员修改的价格和条目 ID 保持不变。
 		var priceID int64
 		require.NoError(t, tx.QueryRowContext(ctx, `UPDATE pricing_config_model_pricing SET input_price=9 WHERE pricing_config_id=76001 AND models='["claude-test"]' RETURNING id`).Scan(&priceID))
 		_, err = tx.ExecContext(ctx, string(migration))
@@ -141,4 +144,85 @@ INSERT INTO groups(name,model_pricing) VALUES ('group price','[{"platform":"anth
 			require.True(t, exists)
 		})
 	}
+}
+
+// pricingMigrationPreview 记录各作用域的价格、合并冲突和未绑定 Key 的编号。
+type pricingMigrationPreview struct {
+	Scopes        []pricingMigrationScope `json:"scopes"`
+	UnboundKeyIDs []int64                 `json:"unbound_key_ids"`
+	Blocked       bool                    `json:"blocked"`
+}
+
+type pricingMigrationScope struct {
+	Kind      string                      `json:"kind"`
+	ID        int64                       `json:"id"`
+	Before    json.RawMessage             `json:"before"`
+	After     []pricing.ModelPricingEntry `json:"after"`
+	Conflicts []pricingMergeConflict      `json:"conflicts,omitempty"`
+}
+
+// previewPricingMigration 通过只读的可重复读事务检查迁移 276 之前的数据库。
+// 该版本数据库中的提供商表名为 accounts。
+func previewPricingMigration(ctx context.Context, db *sql.DB) (pricingMigrationPreview, error) {
+	report := pricingMigrationPreview{Scopes: []pricingMigrationScope{}, UnboundKeyIDs: []int64{}}
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
+	if err != nil {
+		return report, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	rows, err := tx.QueryContext(ctx, `
+SELECT 'config', pricing_config_id, jsonb_agg(to_jsonb(p) || jsonb_build_object('intervals', COALESCE((
+ SELECT jsonb_agg(to_jsonb(i) ORDER BY i.sort_order, i.id) FROM pricing_config_pricing_intervals i WHERE i.pricing_id = p.id
+), '[]')) ORDER BY p.id) FROM pricing_config_model_pricing p GROUP BY pricing_config_id
+UNION ALL
+SELECT 'account_rule', rule_id, jsonb_agg(to_jsonb(p) || jsonb_build_object('intervals', COALESCE((
+ SELECT jsonb_agg(to_jsonb(i) ORDER BY i.sort_order, i.id) FROM pricing_config_account_stats_pricing_intervals i WHERE i.pricing_id = p.id
+), '[]')) ORDER BY p.id) FROM pricing_config_account_stats_model_pricing p GROUP BY rule_id
+UNION ALL
+SELECT 'group', id, model_pricing FROM groups WHERE model_pricing IS NOT NULL
+ORDER BY 1, 2`)
+	if err != nil {
+		return report, fmt.Errorf("read migration price cards: %w", err)
+	}
+	for rows.Next() {
+		var scope pricingMigrationScope
+		var raw []byte
+		if err := rows.Scan(&scope.Kind, &scope.ID, &raw); err != nil {
+			_ = rows.Close()
+			return report, err
+		}
+		var original []pricing.ModelPricingEntry
+		if err := json.Unmarshal(raw, &original); err != nil {
+			_ = rows.Close()
+			return report, fmt.Errorf("decode %s %d: %w", scope.Kind, scope.ID, err)
+		}
+		// 迁移前价卡的平台标签与行 ID 帮助管理员定位待合并条目。
+		scope.Before = append(json.RawMessage(nil), raw...)
+		scope.After, scope.Conflicts = mergePriceCards(original)
+		report.Blocked = report.Blocked || len(scope.Conflicts) > 0
+		report.Scopes = append(report.Scopes, scope)
+	}
+	err = rows.Err()
+	_ = rows.Close()
+	if err != nil {
+		return report, err
+	}
+	keys, err := tx.QueryContext(ctx, `SELECT id FROM api_keys WHERE group_id IS NULL AND NOT is_composite AND deleted_at IS NULL ORDER BY id`)
+	if err != nil {
+		return report, err
+	}
+	for keys.Next() {
+		var id int64
+		if err := keys.Scan(&id); err != nil {
+			_ = keys.Close()
+			return report, err
+		}
+		report.UnboundKeyIDs = append(report.UnboundKeyIDs, id)
+	}
+	err = keys.Err()
+	_ = keys.Close()
+	if err != nil {
+		return report, err
+	}
+	return report, tx.Commit()
 }

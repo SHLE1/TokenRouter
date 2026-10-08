@@ -76,13 +76,8 @@ func RedactJSON(raw []byte, extraKeys ...string) string {
 	return string(encoded)
 }
 
-// RedactText 对非结构化文本做轻量脱敏。
-//
-// 规则：
-// - 如果文本本身是 JSON，则按 RedactJSON 处理。
-// - 否则尝试对常见 key=value / key:"value" 片段做脱敏。
-//
-// 注意：该函数用于日志/错误信息兜底，不保证覆盖所有格式。
+// RedactText 脱敏非结构化文本中的常见敏感字段。
+// JSON 输入交给 RedactJSON，其他输入匹配 key=value、key:"value" 和预设凭据格式。
 func RedactText(input string, extraKeys ...string) string {
 	input = strings.TrimSpace(input)
 	if input == "" {
@@ -229,4 +224,17 @@ func isSensitiveKey(key string, keys map[string]struct{}) bool {
 
 func normalizeKey(key string) string {
 	return strings.ToLower(strings.TrimSpace(key))
+}
+
+// MaskCredential 去掉凭证首尾空白，保留前 6 字节与末 4 字节，中间替换为 ****。
+// 非空且长度不超过 14 字节的凭证整体替换为 ****。
+func MaskCredential(credential string) string {
+	credential = strings.TrimSpace(credential)
+	if credential == "" {
+		return ""
+	}
+	if len(credential) <= 14 {
+		return "****"
+	}
+	return credential[:6] + "****" + credential[len(credential)-4:]
 }

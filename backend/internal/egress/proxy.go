@@ -75,3 +75,31 @@ type ProxyProviderSummary struct {
 	Type     string
 	Notes    *string
 }
+
+// ProxyConnectionIdentity 包含连接代理所需的地址、凭据和状态。
+type ProxyConnectionIdentity struct {
+	Protocol string
+	Host     string
+	Port     int
+	Username string
+	Password string
+	Status   string
+}
+
+// ProxyConnectionIdentityFromProxy 提取代理的连接信息。
+func ProxyConnectionIdentityFromProxy(proxyIn *Proxy) ProxyConnectionIdentity {
+	return ProxyConnectionIdentity{
+		Protocol: proxyIn.Protocol,
+		Host:     proxyIn.Host,
+		Port:     proxyIn.Port,
+		Username: proxyIn.Username,
+		Password: proxyIn.Password,
+		Status:   proxyIn.Status,
+	}
+}
+
+// StatusActive 和 StatusExpired 是持久化的代理状态值。
+const (
+	StatusActive  = "active"
+	StatusExpired = "expired"
+)

@@ -3,16 +3,17 @@ package settings_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
-	settingskit "github.com/TokenFlux/TokenRouter/internal/settings/testkit"
-
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/TokenFlux/TokenRouter/internal/settings/composite"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/config"
-	"github.com/stretchr/testify/require"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
+	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
+	"github.com/TokenFlux/TokenRouter/internal/settings/composite"
+	settingskit "github.com/TokenFlux/TokenRouter/internal/settings/testkit"
 )
 
 func TestSettingService_GetDefaultUserAPIKeyLimit(t *testing.T) {
@@ -86,4 +87,61 @@ func TestSettingService_UpdateDefaultUserAPIKeyLimit(t *testing.T) {
 
 func stringPointer(value string) *string {
 	return &value
+}
+
+type settingRepoStub struct {
+	mu               sync.Mutex
+	values           map[string]string
+	err              error
+	getValueCalls    int
+	getMultipleCalls int
+}
+
+func (s *settingRepoStub) Get(ctx context.Context, key string) (*settingscore.Setting, error) {
+	panic("unexpected Get call")
+}
+
+func (s *settingRepoStub) GetValue(ctx context.Context, key string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.getValueCalls++
+	if s.err != nil {
+		return "", s.err
+	}
+	if v, ok := s.values[key]; ok {
+		return v, nil
+	}
+	return "", settingscore.ErrSettingNotFound
+}
+
+func (s *settingRepoStub) Set(ctx context.Context, key, value string) error {
+	panic("unexpected Set call")
+}
+
+func (s *settingRepoStub) GetMultiple(ctx context.Context, keys []string) (map[string]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.getMultipleCalls++
+	if s.err != nil {
+		return nil, s.err
+	}
+	result := make(map[string]string, len(keys))
+	for _, key := range keys {
+		if v, ok := s.values[key]; ok {
+			result[key] = v
+		}
+	}
+	return result, nil
+}
+
+func (s *settingRepoStub) SetMultiple(ctx context.Context, settings map[string]string) error {
+	panic("unexpected SetMultiple call")
+}
+
+func (s *settingRepoStub) GetAll(ctx context.Context) (map[string]string, error) {
+	panic("unexpected GetAll call")
+}
+
+func (s *settingRepoStub) Delete(ctx context.Context, key string) error {
+	panic("unexpected Delete call")
 }

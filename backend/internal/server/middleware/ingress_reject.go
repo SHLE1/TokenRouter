@@ -5,11 +5,10 @@ import (
 	"strings"
 	"sync/atomic"
 
-	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
+	"github.com/gin-gonic/gin"
 
 	keyhttp "github.com/TokenFlux/TokenRouter/internal/apikey/httpapi"
-
-	"github.com/gin-gonic/gin"
+	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
 )
 
 // IngressRejectReason 标识预期的网关准入失败，此类失败不能视为运维请求错误。

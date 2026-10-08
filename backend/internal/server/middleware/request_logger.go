@@ -4,11 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry"
+	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 )
 
 const requestIDHeader = "X-Request-ID"

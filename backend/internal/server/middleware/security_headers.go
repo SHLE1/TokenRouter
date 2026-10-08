@@ -7,8 +7,9 @@ import (
 	"log"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/server/httpconfig"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/server/httpconfig"
 )
 
 const (

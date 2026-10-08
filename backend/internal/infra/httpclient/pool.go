@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -8,8 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/imroc/req/v3"
+
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/proxy"
 	servertiming "github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/ipmatch"
 )
 
 // Transport 连接池默认配置
@@ -193,4 +197,51 @@ func (t *validatedTransport) RoundTrip(req *http.Request) (*http.Response, error
 		return nil, fmt.Errorf("validated transport base is nil")
 	}
 	return t.base.RoundTrip(req)
+}
+
+// DefaultBatchHTTPClient 返回带拨号、TLS 握手和响应头超时的共享客户端。
+// 批量上传和流式下载使用各阶段超时，整体 Timeout 为零。
+func DefaultBatchHTTPClient() *http.Client {
+	client, err := GetClient(Options{
+		ResponseHeaderTimeout: 60 * time.Second,
+	})
+	if err != nil {
+		return http.DefaultClient
+	}
+	return client
+}
+
+// CloseSharedIdleConnections 关闭共享 HTTP 客户端和 req 客户端的空闲连接。
+func CloseSharedIdleConnections() {
+	sharedClients.Range(func(_, value any) bool {
+		if client, ok := value.(*http.Client); ok {
+			client.CloseIdleConnections()
+		}
+		return true
+	})
+	sharedReqClients.Range(func(_, value any) bool {
+		if client, ok := value.(*req.Client); ok {
+			client.GetClient().CloseIdleConnections()
+		}
+		return true
+	})
+}
+
+// ValidateResolvedIP 解析主机的 IP 地址，解析失败或含非公网地址时返回错误。
+// DNS 查询超时为五秒，调用方在发送请求前执行校验。
+func ValidateResolvedIP(host string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
+	if err != nil {
+		return fmt.Errorf("dns resolution failed: %w", err)
+	}
+
+	for _, ip := range ips {
+		if ipmatch.IsNonPublic(ip) {
+			return fmt.Errorf("resolved ip %s is not allowed", ip.String())
+		}
+	}
+	return nil
 }

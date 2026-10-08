@@ -7,20 +7,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing"
-	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
-	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
-
 	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	"github.com/stretchr/testify/require"
+	_ "modernc.org/sqlite"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/authidentity"
 	"github.com/TokenFlux/TokenRouter/ent/enttest"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
-	"github.com/stretchr/testify/require"
-
-	entsql "entgo.io/ent/dialect/sql"
-
-	_ "modernc.org/sqlite"
+	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
 type authIdentityDefaultSubAssignerStub struct {
@@ -453,29 +451,4 @@ func TestAuthServiceLogin_DoesNotRetryEmailFirstBindDefaultsForBackfilledEmailId
 	require.Equal(t, 2, storedUser.Concurrency)
 	require.Empty(t, assigner.calls)
 	require.Equal(t, 0, countProviderGrantRecords(t, client, user.ID, "email", "first_bind"))
-}
-
-func countProviderGrantRecords(
-	t *testing.T,
-	client *dbent.Client,
-	userID int64,
-	providerType string,
-	grantReason string,
-) int {
-	t.Helper()
-
-	var count int
-	rows, err := client.QueryContext(
-		context.Background(),
-		`SELECT COUNT(*) FROM user_provider_default_grants WHERE user_id = ? AND provider_type = ? AND grant_reason = ?`,
-		userID,
-		providerType,
-		grantReason,
-	)
-	require.NoError(t, err)
-	defer func() { require.NoError(t, rows.Close()) }()
-	require.True(t, rows.Next())
-	require.NoError(t, rows.Scan(&count))
-	require.NoError(t, rows.Err())
-	return count
 }

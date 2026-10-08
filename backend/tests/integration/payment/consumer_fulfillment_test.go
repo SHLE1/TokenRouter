@@ -7,24 +7,21 @@ import (
 	"testing"
 	"time"
 
-	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
-	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
-	paymenttestkit "github.com/TokenFlux/TokenRouter/internal/payment/testkit"
-	sqlitetest "github.com/TokenFlux/TokenRouter/internal/testutil/sqlite"
-
-	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
-
-	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
-	"github.com/TokenFlux/TokenRouter/internal/promotion"
-	"github.com/TokenFlux/TokenRouter/internal/settings"
-
-	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/paymentauditlog"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	billingpostgres "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
+	billingtestkit "github.com/TokenFlux/TokenRouter/internal/billing/testkit"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	paymentpostgres "github.com/TokenFlux/TokenRouter/internal/payment/postgres"
+	paymenttestkit "github.com/TokenFlux/TokenRouter/internal/payment/testkit"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	"github.com/TokenFlux/TokenRouter/internal/promotion"
+	"github.com/TokenFlux/TokenRouter/internal/settings"
+	sqlitetest "github.com/TokenFlux/TokenRouter/internal/testutil/sqlite"
 )
 
 type paymentFulfillmentAffiliateAccrueCall struct {
@@ -184,28 +181,6 @@ func (s *paymentFulfillmentSettingRepoStub) Delete(_ context.Context, key string
 	delete(s.values, key)
 	return nil
 }
-
-func ensurePaymentAuditOrderActionUniqueIndex(t *testing.T, ctx context.Context, client *dbent.Client) {
-	t.Helper()
-	_, err := client.ExecContext(ctx, "CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_audit_logs_order_action_uniq ON payment_audit_logs(order_id, action)")
-	require.NoError(t, err)
-}
-
-// ---------------------------------------------------------------------------
-// resolveRedeemAction — pure idempotency decision logic
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Table-driven comprehensive test
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// redeemAction enum value sanity
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// RedeemCode.IsUsed / CanUse interaction with resolveRedeemAction
-// ---------------------------------------------------------------------------
 
 func TestParseLegacyPaymentOrderID(t *testing.T) {
 	t.Parallel()
@@ -542,7 +517,7 @@ func TestExecuteSubscriptionFulfillmentRecoversCommittedAssignmentWithoutExtendi
 	require.NoError(t, err)
 	require.Equal(t, 1, assignmentAuditCount)
 
-	// 模拟完成后再次恢复过期租约，持久化审计必须保证订阅权益不会重复发放。
+	// 再次恢复已完成的过期租约，检查持久化审计阻止订阅权益重复发放。
 	_, err = client.PaymentOrder.UpdateOneID(order.ID).
 		SetStatus(payment.OrderStatusRecharging).
 		SetUpdatedAt(staleAt).
@@ -560,45 +535,6 @@ func TestExecuteSubscriptionFulfillmentRecoversCommittedAssignmentWithoutExtendi
 		Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 1, assignmentAuditCount)
-}
-
-func createPaymentFulfillmentSubscriptionOrder(
-	t *testing.T,
-	ctx context.Context,
-	client *dbent.Client,
-	status string,
-	updatedAt time.Time,
-) *dbent.PaymentOrder {
-	t.Helper()
-	user, err := client.User.Create().
-		SetEmail("fulfillment-" + strconv.FormatInt(time.Now().UnixNano(), 10) + "@example.com").
-		SetPasswordHash("hash").
-		SetUsername("payment-fulfillment-user").
-		Save(ctx)
-	require.NoError(t, err)
-
-	order, err := client.PaymentOrder.Create().
-		SetUserID(user.ID).
-		SetUserEmail(user.Email).
-		SetUserName(user.Username).
-		SetAmount(80).
-		SetPayAmount(80).
-		SetFeeRate(0).
-		SetRechargeCode("PAY-SUB-" + strconv.FormatInt(time.Now().UnixNano(), 10)).
-		SetOutTradeNo("sub2_fulfillment_" + strconv.FormatInt(time.Now().UnixNano(), 10)).
-		SetPaymentType(payment.TypeAlipay).
-		SetPaymentTradeNo("trade-fulfillment").
-		SetOrderType(payment.OrderTypeSubscription).
-		SetPlanID(100).
-		SetStatus(status).
-		SetPaidAt(time.Now().Add(-time.Hour)).
-		SetExpiresAt(time.Now().Add(time.Hour)).
-		SetClientIP("127.0.0.1").
-		SetSrcHost("api.example.com").
-		SetUpdatedAt(updatedAt).
-		Save(ctx)
-	require.NoError(t, err)
-	return order
 }
 
 func assertPaymentSubscriptionExpiry(t *testing.T, repo *billingtestkit.SubscriptionRepository, order *dbent.PaymentOrder, expected time.Time) {
@@ -825,7 +761,31 @@ var (
 	_ settings.Repository           = (*paymentFulfillmentSettingRepoStub)(nil)
 )
 
-// WithLockedInviter 替身同步执行事务回调；真实行锁行为由 PostgreSQL 集成验证。
+// WithLockedInviter 在替身中同步执行回调，行锁由 PostgreSQL 集成测试检查。
 func (r *paymentFulfillmentAffiliateRepoStub) WithLockedInviter(ctx context.Context, _ int64, fn func(context.Context) error) error {
 	return fn(ctx)
+}
+
+// redeemCodeRepoStub 记录兑换调用，供测试检查已使用兑换码和已完成订单的处理。
+type redeemCodeRepoStub struct {
+	codesByCode map[string]*billing.RedeemCode
+	useCalls    []string
+}
+
+type recordedRedeemer struct {
+	payment.FulfillmentRedeemer
+	repo *redeemCodeRepoStub
+}
+
+func fulfillmentRedeemer(repo *redeemCodeRepoStub) payment.FulfillmentRedeemer {
+	return &recordedRedeemer{repo: repo}
+}
+
+func (r *recordedRedeemer) GetByCode(_ context.Context, code string) (*billing.RedeemCode, error) {
+	return r.repo.codesByCode[code], nil
+}
+
+func (r *recordedRedeemer) Redeem(_ context.Context, _ int64, code string) (*billing.RedeemCode, error) {
+	r.repo.useCalls = append(r.repo.useCalls, code)
+	return r.repo.codesByCode[code], nil
 }
