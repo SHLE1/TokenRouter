@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	"github.com/TokenFlux/TokenRouter/internal/provider/transfer"
-	"github.com/stretchr/testify/require"
 )
 
 type archiveProvidersFixture struct {

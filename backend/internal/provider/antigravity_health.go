@@ -12,6 +12,7 @@ type AntigravityHealthStore interface {
 	SetModelRateLimit(context.Context, int64, string, time.Time, ...string) error
 	UpdateExtra(context.Context, int64, map[string]any) error
 }
+
 type AntigravityHealth struct {
 	Store             AntigravityHealthStore
 	Counter           Internal500CounterCache
@@ -204,4 +205,12 @@ func (s *AntigravityHealth) UpdateProviderModelRateLimitInCache(ctx context.Cont
 	if err := s.Publish(ctx, provider); err != nil {
 		s.Logf("[antigravity-Forward] cache_update_failed provider=%d model=%s err=%v", provider.ID, modelKey, err)
 	}
+}
+
+// Internal500CounterCache 追踪 Antigravity 提供商连续 INTERNAL 500 失败轮数
+type Internal500CounterCache interface {
+	// IncrementInternal500Count 原子递增计数并返回当前值
+	IncrementInternal500Count(ctx context.Context, providerID int64) (int64, error)
+	// ResetInternal500Count 清零计数器（成功响应时调用）
+	ResetInternal500Count(ctx context.Context, providerID int64) error
 }

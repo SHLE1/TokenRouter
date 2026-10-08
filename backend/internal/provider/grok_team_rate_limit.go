@@ -6,7 +6,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-) // 以下为 Grok OAuth 的进程内 team+model 限流覆盖：同一 team_id 的某提供商在模型上被限流后，
+)
+
+// 以下为 Grok OAuth 的进程内 team+model 限流覆盖：同一 team_id 的某提供商在模型上被限流后，
 
 // 其它提供商在冷却期内跳过该模型。多实例各自从本实例 429 学习，短 TTL 让状态漂移自行收敛。
 type grokTeamModelRateLimit struct {

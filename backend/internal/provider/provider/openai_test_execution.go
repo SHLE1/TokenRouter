@@ -11,15 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
-
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
-
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
@@ -429,7 +426,7 @@ func (s *OpenAIProviderTest) executeNativeCompaction(c *TestRun, value *provider
 	return nil
 }
 
-// executeLegacyCompact 仅测试旧版 /responses/compact 连接。
+// executeLegacyCompact 测试 /responses/compact 连接。
 // 本次结果不写入能力状态或管理员开关，认证错误和限流仍按提供商测试流程处理。
 func (s *OpenAIProviderTest) executeLegacyCompact(c *TestRun, value *providercore.Record, testModelID string) error {
 	ctx := c.Context

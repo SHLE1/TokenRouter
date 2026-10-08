@@ -5,14 +5,13 @@ import (
 	"strings"
 	"time"
 
-	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
-
+	"github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
 // OpenAI429ResetTime 从观测到的窗口选择原提供商恢复时间。
 // 返回 nil 表示无法从响应头中确定重置时间
-func OpenAI429ResetTime(snapshot *openaiprotocol.OpenAICodexUsageSnapshot, clock func() time.Time, info func(string, ...any)) *time.Time {
+func OpenAI429ResetTime(snapshot *openai.OpenAICodexUsageSnapshot, clock func() time.Time, info func(string, ...any)) *time.Time {
 	if snapshot == nil {
 		return nil
 	}

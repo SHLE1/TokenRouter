@@ -1,10 +1,11 @@
 package httpapi
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providerdto "github.com/TokenFlux/TokenRouter/internal/provider/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
 )
 
 // RuntimeSettingsHandler 通过提供商设置用例处理管理请求。

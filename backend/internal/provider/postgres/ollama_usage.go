@@ -6,10 +6,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/lib/pq"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/lib/pq"
 )
 
 // ListOllamaCloudUsageGroupProviders 通过一次 ID 查询和一次批量装载解析所有给定身份的同组提供商。
@@ -571,4 +572,21 @@ func lockAndMatchProviderProxyIdentity(ctx context.Context, client *dbent.Client
 		return false, err
 	}
 	return current == egress.ProxyConnectionIdentityFromProxy(provider.Proxy), rows.Err()
+}
+
+const (
+	OllamaCloudBaseURLRegexSQL       = `^[hH][tT][tT][pP][sS]://([wW][wW][wW]\.)?[oO][lL][lL][aA][mM][aA]\.[cC][oO][mM](:443)?(/v1)?$`
+	OllamaCloudBaseURLMatchSQLPrefix = "btrim("
+	OllamaCloudBaseURLMatchSQLSuffix = ") ~ '" + OllamaCloudBaseURLRegexSQL + "'"
+	OllamaCloudUsageEligibleSQL      = `
+	platform IN ('openai', 'anthropic')
+	AND type = 'apikey'
+	AND ` + OllamaCloudBaseURLMatchSQLPrefix + `credentials ->> 'base_url'` + OllamaCloudBaseURLMatchSQLSuffix + `
+	AND jsonb_typeof(credentials -> 'api_key') = 'string'
+`
+)
+
+// OllamaCloudBaseURLMatchesSQL 生成匹配 Ollama Cloud 地址的 SQL 条件。
+func OllamaCloudBaseURLMatchesSQL(expression string) string {
+	return OllamaCloudBaseURLMatchSQLPrefix + expression + OllamaCloudBaseURLMatchSQLSuffix
 }

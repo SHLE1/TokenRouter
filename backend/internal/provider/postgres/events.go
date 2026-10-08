@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
@@ -16,7 +17,7 @@ const (
 	ProviderBulkChanged
 )
 
-// ProviderEvents 统一原 outbox 编码及提交后的缓存发布，不在提供商存储复制调度缓存规则。
+// ProviderEvents 提供 outbox 编码、事件写入和提交后的缓存发布。
 type ProviderEvents interface {
 	Name(ProviderEvent) string
 	Write(context.Context, postgresinfra.Executor, ProviderEvent, *int64, *int64, any) error
@@ -52,4 +53,15 @@ func (r *ProviderStore) dropSnapshot(ctx context.Context, id int64) {
 	if r.options.Events != nil {
 		r.options.Events.Drop(ctx, id)
 	}
+}
+
+// afterChangeDetached 在请求取消后仍以短超时传播最新提供商快照。
+func (r *ProviderStore) afterChangeDetached(ctx context.Context, providerID int64) {
+	base := context.Background()
+	if ctx != nil {
+		base = context.WithoutCancel(ctx)
+	}
+	propagationCtx, cancel := context.WithTimeout(base, 2*time.Second)
+	defer cancel()
+	r.afterChange(propagationCtx, providerID)
 }

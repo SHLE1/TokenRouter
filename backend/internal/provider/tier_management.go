@@ -2,12 +2,39 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
+
+// ProviderTierManagementOptions 将 Drive 查询结果转换为档位数据。
+func ProviderTierManagementOptions(source *GeminiAuthorization) TierManagementOptions {
+	return TierManagementOptions{Observe: func(ctx context.Context, v *Record) (GoogleOneTierObservation, error) {
+		kind, ok := v.Credentials["oauth_type"].(string)
+		if !ok || kind != "google_one" {
+			return GoogleOneTierObservation{}, fmt.Errorf("not a google_one OAuth provider")
+		}
+		token, ok := v.Credentials["access_token"].(string)
+		if !ok || token == "" {
+			return GoogleOneTierObservation{}, fmt.Errorf("missing access_token")
+		}
+		var proxy string
+		if v.ProxyID != nil && v.Proxy != nil {
+			proxy = v.Proxy.URL()
+		}
+		tier, storage, err := source.FetchGoogleOneTier(ctx, token, proxy)
+		out := GoogleOneTierObservation{TierID: tier}
+		if storage != nil {
+			out.Storage = &GoogleOneStorage{Limit: storage.Limit, Usage: storage.Usage}
+			out.ObservedAt = time.Now()
+		}
+		return out, err
+	}}
+}
 
 // GoogleOneTierObservation 保存本次供应商查询的档位结果。
 type GoogleOneTierObservation struct {
@@ -15,6 +42,7 @@ type GoogleOneTierObservation struct {
 	Storage    *GoogleOneStorage
 	ObservedAt time.Time
 }
+
 type (
 	GoogleOneStorage    struct{ Limit, Usage int64 }
 	TierManagementStore interface {
@@ -28,14 +56,17 @@ type (
 type TierManagementOptions struct {
 	Observe func(context.Context, *Record) (GoogleOneTierObservation, error)
 }
+
 type TierRefreshResult struct {
 	TierID      string
 	StorageInfo map[string]any
 }
+
 type TierRefreshFailure struct {
 	ProviderID int64
 	Error      string
 }
+
 type TierBatchResult struct {
 	Total, Success, Failed int
 	Errors                 []TierRefreshFailure

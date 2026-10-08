@@ -4,8 +4,31 @@ import (
 	"strings"
 
 	protocolcore "github.com/TokenFlux/TokenRouter/internal/protocol"
-	routingcapability "github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
+
+// ConfiguredAPIProtocol 从提供商配置读取 API 协议。
+func (a *Record) ConfiguredAPIProtocol() string {
+	if a == nil || !a.IsCNProvider() {
+		return APIProtocolChatCompletions
+	}
+	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified {
+		return APIProtocolAdaptive
+	}
+	switch strings.TrimSpace(a.GetCredential("api_protocol")) {
+	case APIProtocolAdaptive:
+		return APIProtocolAdaptive
+	case APIProtocolAnthropic:
+		return APIProtocolAnthropic
+	case APIProtocolResponses:
+		if a.SupportsNativeCNResponses() {
+			return APIProtocolResponses
+		}
+	case APIProtocolChatCompletions:
+		return APIProtocolChatCompletions
+	}
+	return APIProtocolChatCompletions
+}
 
 // ProtocolTarget 组合本次协议选择与提供商配置，只用于当前执行或维护查询。
 // Protocol 不写入 Record 或共享缓存；零值沿用配置协议。
@@ -93,20 +116,20 @@ func (a ProtocolTarget) GetAnthropicProtocolBaseURL() string {
 	if _, unified := a.Credentials[UpstreamProtocolsKey]; unified || a.IsAdaptiveAPIProtocol() {
 		return a.GetCNProtocolBaseURL(APIProtocolAnthropic)
 	}
-	if a.Type == routingcapability.ProviderTypeAPIKey || a.Type == routingcapability.ProviderTypeUpstream {
+	if a.Type == capability.ProviderTypeAPIKey || a.Type == capability.ProviderTypeUpstream {
 		if baseURL := strings.TrimSpace(a.GetCredential("base_url")); baseURL != "" {
 			return baseURL
 		}
 	}
 	switch a.Platform {
-	case routingcapability.PlatformKimi:
+	case capability.PlatformKimi:
 		if a.GetProviderMode() == ProviderModeCoding {
 			return DefaultKimiCodingAnthropicBaseURL
 		}
 		return DefaultKimiPayGAnthropicBaseURL
-	case routingcapability.PlatformZhipu:
+	case capability.PlatformZhipu:
 		return DefaultZhipuAnthropicBaseURL
-	case routingcapability.PlatformDeepseek:
+	case capability.PlatformDeepseek:
 		return DefaultDeepseekAnthropicBaseURL
 	default:
 		return ""
@@ -140,17 +163,17 @@ func (a ProtocolTarget) GetOpenAIFormatBaseURL() string {
 		}
 	}
 	switch a.Platform {
-	case routingcapability.PlatformKimi:
+	case capability.PlatformKimi:
 		if a.GetProviderMode() == ProviderModeCoding {
 			return DefaultKimiCodingBaseURL
 		}
 		return DefaultKimiPayGBaseURL
-	case routingcapability.PlatformZhipu:
+	case capability.PlatformZhipu:
 		if a.GetProviderMode() == ProviderModeCoding {
 			return DefaultZhipuCodingBaseURL
 		}
 		return DefaultZhipuPayGBaseURL
-	case routingcapability.PlatformDeepseek:
+	case capability.PlatformDeepseek:
 		return DefaultDeepseekBaseURL
 	default:
 		return a.GetOpenAIBaseURL()

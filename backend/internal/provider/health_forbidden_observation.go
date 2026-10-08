@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
-
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 

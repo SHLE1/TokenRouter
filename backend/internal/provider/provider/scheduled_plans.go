@@ -5,8 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/robfig/cron/v3"
+
+	"github.com/TokenFlux/TokenRouter/internal/provider"
 )
 
 // 解析器接受分钟、小时、日、月和星期字段。

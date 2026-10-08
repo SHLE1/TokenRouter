@@ -3,8 +3,9 @@ package httpapi
 import (
 	"strconv"
 
-	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
+
+	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
 // RefreshTier 校验提供商 ID，缺失时返回 404，成功时返回档位数据。

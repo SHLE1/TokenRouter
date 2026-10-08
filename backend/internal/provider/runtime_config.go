@@ -7,9 +7,27 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-
 	"github.com/TokenFlux/TokenRouter/internal/scheduler/policy"
 )
+
+// SanitizeManagedBaseRPM 对 extra map 中的 base_rpm 值进行范围校验和归一化。
+// 负值归零，超过 10000 截断为 10000。extra 为 nil 或不含 base_rpm 时无操作。
+func SanitizeManagedBaseRPM(extra map[string]any) {
+	if extra == nil {
+		return
+	}
+	raw, ok := extra["base_rpm"]
+	if !ok {
+		return
+	}
+	v := ParseExtraInt(raw)
+	if v < 0 {
+		v = 0
+	} else if v > 10000 {
+		v = 10000
+	}
+	extra["base_rpm"] = v
+}
 
 // RuntimeConfig 为规则计算提供当前配置和窗口数据。
 // 凭据不会进入这个只读配置输入。

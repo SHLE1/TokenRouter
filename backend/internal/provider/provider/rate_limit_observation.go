@@ -7,15 +7,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
-
-	openaiupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-	anthropicupstream "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
-
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
+	anthropicupstream "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
+	openaiupstream "github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
 // Observe429 处理429限流错误

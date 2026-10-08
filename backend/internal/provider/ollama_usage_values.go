@@ -3,9 +3,20 @@ package provider
 import (
 	"time"
 
-	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/usageview"
 )
+
+// OllamaUsageFetchInput 保存出站用量查询参数。
+type OllamaUsageFetchInput struct {
+	ProviderID  int64
+	Concurrency int
+	ProxyURL    string `json:"-"`
+	Cookie      string `json:"-"`
+	ObservedAt  time.Time
+}
+
+type OllamaUsageObservation = usageview.OllamaUsageObservation
 
 const (
 	OllamaCloudUsageStatusOK           = "ok"
@@ -56,22 +67,22 @@ const (
 )
 
 var (
-	ErrOllamaCloudUsageUnavailable = infraerrors.ServiceUnavailable(
+	ErrOllamaCloudUsageUnavailable = apperror.ServiceUnavailable(
 		"OLLAMA_CLOUD_USAGE_UNAVAILABLE", "Ollama Cloud usage is unavailable",
 	)
-	ErrOllamaCloudUsageProviderInvalid = infraerrors.BadRequest(
+	ErrOllamaCloudUsageProviderInvalid = apperror.BadRequest(
 		"OLLAMA_CLOUD_USAGE_PROVIDER_INVALID", "provider must be an OpenAI or Anthropic API key provider using https://ollama.com",
 	)
-	ErrOllamaCloudUsageSessionRequired = infraerrors.BadRequest(
+	ErrOllamaCloudUsageSessionRequired = apperror.BadRequest(
 		"OLLAMA_CLOUD_USAGE_SESSION_REQUIRED", "an Ollama web session must be configured first",
 	)
-	ErrOllamaCloudUsageEncryptionKey = infraerrors.BadRequest(
+	ErrOllamaCloudUsageEncryptionKey = apperror.BadRequest(
 		"OLLAMA_CLOUD_USAGE_ENCRYPTION_KEY_NOT_CONFIGURED", "cannot store an Ollama web session without a fixed TOTP_ENCRYPTION_KEY",
 	)
-	ErrOllamaCloudUsageIdentityChanged = infraerrors.Conflict(
+	ErrOllamaCloudUsageIdentityChanged = apperror.Conflict(
 		"OLLAMA_CLOUD_USAGE_IDENTITY_CHANGED", "provider identity or Ollama web session changed during refresh; retry",
 	)
-	ErrOllamaCloudUsageRefreshRateLimited = infraerrors.TooManyRequests(
+	ErrOllamaCloudUsageRefreshRateLimited = apperror.TooManyRequests(
 		"OLLAMA_CLOUD_USAGE_REFRESH_RATE_LIMITED", "Ollama Cloud usage can be refreshed manually once every 30 seconds",
 	)
 )

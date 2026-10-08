@@ -2,7 +2,33 @@ package provider
 
 import (
 	"maps"
+	"strings"
 )
+
+// ResolveCompactForwardModel 应用 Compact 附加映射，空值时使用回退模型。
+func ResolveCompactForwardModel(value *Record, model string) string {
+	model = strings.TrimSpace(model)
+	if model == "" || value == nil {
+		return model
+	}
+	mapped, matched := value.ResolveCompactMappedModel(model)
+	if matched && strings.TrimSpace(mapped) != "" {
+		return strings.TrimSpace(mapped)
+	}
+	return model
+}
+
+// ResolveForwardMappedModel 保留提供商映射的一跳与空映射回退，调用方仍决定平台规范化。
+func ResolveForwardMappedModel(value *Record, requested string, defaults ModelMappingDefaults) string {
+	if value == nil {
+		return ""
+	}
+	mapped, matched := ResolveMappedModel(ResolveModelMapping(value, defaults), requested)
+	if !matched || strings.TrimSpace(mapped) == "" {
+		return requested
+	}
+	return strings.TrimSpace(mapped)
+}
 
 // ModelMappingDefaults 提供专用路由和独立型号配额的读取函数。
 type ModelMappingDefaults struct {

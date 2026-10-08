@@ -10,11 +10,8 @@ import (
 	"strings"
 
 	egressadapter "github.com/TokenFlux/TokenRouter/internal/egress/provider"
-
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 

@@ -9,10 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/upstream"
-
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
+	"github.com/TokenFlux/TokenRouter/internal/upstream"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
 )
 

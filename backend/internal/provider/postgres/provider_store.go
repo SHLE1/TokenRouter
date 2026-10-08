@@ -11,7 +11,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
 
-// ProviderStoreOptions 仅注入跨模块值映射、原事件写入和技术时钟。
+// ProviderStoreOptions 提供数据转换、事件写入和时钟配置。
 type ProviderStoreOptions struct {
 	Events         ProviderEvents
 	OllamaIdentity func(*providercore.Record) bool
@@ -78,5 +78,13 @@ func (r *ProviderStore) afterChange(ctx context.Context, id int64) {
 	}
 }
 
-// SetEvents 在构造图阶段完成回调绑定，不启动或查询任何资源。
+// SetEvents 设置提供商事件回调。
 func (r *ProviderStore) SetEvents(events ProviderEvents) { r.options.Events = events }
+
+// clientFromContext 返回 ent.NewTxContext 中的事务客户端，未设置事务时返回默认客户端。
+func clientFromContext(ctx context.Context, defaultClient *dbent.Client) *dbent.Client {
+	if tx := dbent.TxFromContext(ctx); tx != nil {
+		return tx.Client()
+	}
+	return defaultClient
+}

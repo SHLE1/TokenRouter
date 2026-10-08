@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	acctcore "github.com/TokenFlux/TokenRouter/internal/provider"
-	"github.com/lib/pq"
 )
 
 func (r *ProviderStore) UpdateExtra(ctx context.Context, id int64, updates map[string]any) error {

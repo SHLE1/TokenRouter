@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
@@ -114,8 +115,14 @@ func (s *Admin) ResetProviderQuota(ctx context.Context, id int64) error {
 	// spark 影子提供商不持自有配额(凭据透传母提供商、spark 用量走独立 codex_* 维度由 QueryUsage 维护),
 	// 影子共用母提供商额度，额度重置需要指定母提供商，此处返回 400。
 	if provider.IsCredentialShadow() {
-		return infraerrors.New(infraerrors.CategoryBadRequest, "SPARK_SHADOW_NO_QUOTA_RESET",
+		return apperror.New(apperror.CategoryBadRequest, "SPARK_SHADOW_NO_QUOTA_RESET",
 			"cannot reset quota for a spark shadow provider; manage it on the parent provider")
 	}
 	return s.options.Quotas.ResetQuotaUsedAndClearRateLimitCooldown(ctx, id)
 }
+
+var (
+	ErrProviderNotFound      = billing.ErrProviderNotFound
+	ErrProviderNilInput      = apperror.BadRequest("PROVIDER_NIL_INPUT", "provider input cannot be nil")
+	ErrProviderNotInFallback = apperror.BadRequest("PROVIDER_NOT_IN_FALLBACK", "provider is not in proxy fallback state")
+)

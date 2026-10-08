@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
@@ -10,6 +11,8 @@ import (
 	dbprovidergroup "github.com/TokenFlux/TokenRouter/ent/providergroup"
 	dbproxy "github.com/TokenFlux/TokenRouter/ent/proxy"
 	"github.com/TokenFlux/TokenRouter/internal/egress"
+	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
+	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/accessview"
 )
@@ -462,4 +465,24 @@ func RecordFromEntity(m *dbent.Provider) *provider.Record {
 		ParentProviderID:        m.ParentProviderID,
 		QuotaDimension:          string(m.QuotaDimension),
 	}
+}
+
+// translatePersistenceError 将未找到和唯一约束错误映射为调用方提供的领域错误。
+// 对应的目标错误为 nil 或类型未匹配时返回输入错误，映射结果保留数据库错误原因。
+func translatePersistenceError(err error, notFound, conflict *infraerrors.ApplicationError) error {
+	if err == nil {
+		return nil
+	}
+
+	// 兼容 Ent ORM 和标准 database/sql 的 NotFound 行为。
+	// Ent 使用自定义的 NotFoundError，而标准库使用 sql.ErrNoRows。
+	if notFound != nil && (errors.Is(err, sql.ErrNoRows) || dbent.IsNotFound(err)) {
+		return notFound.WithCause(err)
+	}
+
+	if conflict != nil && postgresinfra.IsUniqueConstraintViolation(err) {
+		return conflict.WithCause(err)
+	}
+
+	return err
 }

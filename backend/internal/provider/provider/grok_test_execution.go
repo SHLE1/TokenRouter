@@ -12,10 +12,8 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/logredact"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
-
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
+	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	xai "github.com/TokenFlux/TokenRouter/internal/upstream/grok"
 )
 

@@ -12,6 +12,19 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
+// AllowedSchedulingThresholdPlatforms 是允许设置提供商自动停调阈值的平台列表。
+// openai/anthropic/grok 有原生用量窗口；kimi/zhipu 的 Coding Plan 同样暴露 5h/weekly
+// 滚动窗口，纳入阈值评估。DeepSeek 使用余额检测。
+var AllowedSchedulingThresholdPlatforms = []string{
+	PlatformOpenAI,
+	PlatformAnthropic,
+	PlatformGrok,
+	PlatformKimi,
+	PlatformZhipu,
+}
+
+const AnthropicFableRateLimitKey = "claude-fable-5"
+
 // 阈值键不包含消费累计，普通更新不会写入提供商资金快照。
 const SettingKeyProviderSchedulingThresholds = "provider_scheduling_thresholds"
 

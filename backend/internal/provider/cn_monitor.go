@@ -8,9 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress"
-	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
 const (
@@ -265,7 +266,7 @@ func (s *CNUsageMonitor) persistAttempt(
 	}
 	snapshot.LastAttemptAt = now
 	if queryErr != nil || result == nil {
-		code := infraerrors.Reason(queryErr)
+		code := apperror.Reason(queryErr)
 		if code == "" {
 			code = "CN_USAGE_MONITOR_QUERY_FAILED"
 		}

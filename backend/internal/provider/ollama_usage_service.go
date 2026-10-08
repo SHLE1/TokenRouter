@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/egress"
-	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
+
+	"github.com/TokenFlux/TokenRouter/internal/egress"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
 type OllamaProviderReader interface {
@@ -197,7 +198,7 @@ func (s *OllamaCloudUsageService) SaveSession(ctx context.Context, providerID in
 	}
 	normalized, err := egress.NormalizeOllamaCloudUsageCookie(session)
 	if err != nil {
-		return nil, infraerrors.BadRequest("INVALID_OLLAMA_CLOUD_USAGE_SESSION", err.Error())
+		return nil, apperror.BadRequest("INVALID_OLLAMA_CLOUD_USAGE_SESSION", err.Error())
 	}
 	provider, err := s.providerRepo.GetByID(ctx, providerID)
 	if err != nil {
@@ -462,11 +463,11 @@ func (s *OllamaCloudUsageService) refreshLoadedProvider(ctx context.Context, pro
 	}
 	cookie, err := s.encryptor.Decrypt(ciphertext)
 	if err != nil {
-		return nil, infraerrors.ServiceUnavailable("OLLAMA_CLOUD_USAGE_SESSION_DECRYPT_FAILED", "stored Ollama web session cannot be decrypted")
+		return nil, apperror.ServiceUnavailable("OLLAMA_CLOUD_USAGE_SESSION_DECRYPT_FAILED", "stored Ollama web session cannot be decrypted")
 	}
 	cookie, err = egress.NormalizeOllamaCloudUsageCookie(cookie)
 	if err != nil {
-		return nil, infraerrors.ServiceUnavailable("OLLAMA_CLOUD_USAGE_SESSION_INVALID", "stored Ollama web session is invalid")
+		return nil, apperror.ServiceUnavailable("OLLAMA_CLOUD_USAGE_SESSION_INVALID", "stored Ollama web session is invalid")
 	}
 	if s.options.Fetch == nil {
 		return nil, ErrOllamaCloudUsageUnavailable

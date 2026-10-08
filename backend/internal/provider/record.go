@@ -74,6 +74,7 @@ func (r *Record) String() string {
 	}
 	return fmt.Sprintf("provider (id=%d)", r.ID)
 }
+
 func (r *Record) GoString() string { return r.String() }
 
 const OpenAIWorkloadCapabilitiesCredentialKey = "openai_workload_capabilities"
@@ -2040,3 +2041,12 @@ const (
 	quotaDimWeekly     = "weekly"
 	quotaDimTotal      = "total"
 )
+
+// GroupMembership 保存提供商与分组的关联。
+type GroupMembership struct {
+	ProviderID int64
+	GroupID    int64
+	CreatedAt  time.Time
+	Provider   *Record
+	Group      *accessview.GroupConfig
+}

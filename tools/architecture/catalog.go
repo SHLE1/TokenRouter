@@ -395,7 +395,7 @@ var ioFileExceptions = map[string]string{
 var filePermissions = []filePermission{
 	// 目录读取与测试数据构造按实际调用文件登记。
 	{Scope: "internal/gateway/provider", Imports: "internal/modelcatalog", Files: "model_catalogue.go model_display.go"},
-	{Scope: "internal/provider/httpapi", Imports: "internal/modelcatalog/testkit", Files: "management_models_contract_test.go"},
+	{Scope: "internal/provider/httpapi", Imports: "internal/modelcatalog/testkit", Files: "management_catalog_test.go"},
 	// 容器启动等待由共用测试入口提供，许可限定到接入该入口的文件。
 	{Scope: "internal/infra/redis", Imports: "internal/testutil/rediscontainer", Files: "helpers_integration_test.go"},
 	{Scope: "internal/ops/postgres", Imports: "internal/testutil/rediscontainer", Files: "main_integration_test.go"},
@@ -408,8 +408,7 @@ var filePermissions = []filePermission{
 	{Scope: "migrations", Imports: "internal/billing/pricing", Files: "platform_independent_pricing_integration_test.go helpers_test.go pricing_merge_test.go"},
 	{Scope: "migrations", Imports: "internal/infra/postgres github.com/lib/pq github.com/testcontainers/testcontainers-go/modules/postgres", Files: "platform_independent_groups_integration_test.go platform_independent_pricing_integration_test.go provider_names_integration_test.go product_brand_integration_test.go antigravity_retirement_integration_test.go user_localization_integration_test.go responses_ws_integration_test.go"},
 	{Scope: "internal/usage/postgres", Imports: "internal/ops/postgres", Files: "platform_snapshot_scenario_integration_test.go"},
-	{Scope: "internal/provider", Imports: "internal/provider/provider", Files: `admin_editor_fixture_test.go admin_legacy_extra_test.go
-admin_shadow_test.go`},
+	{Scope: "internal/provider", Imports: "internal/provider/provider", Files: "admin_edit_external_test.go helpers_external_test.go shadow_external_test.go"},
 	{Scope: "internal/apikey", Imports: "internal/apikey/postgres", Files: "admin_external_test.go"},
 	{Scope: "internal/apikey/postgres", Imports: "internal/billing/postgres internal/usage/postgres/query", Files: "key_store.go"},
 	{Scope: "internal/backup", Imports: "internal/backup/provider internal/infra/postgres", Files: "backup_external_test.go"},

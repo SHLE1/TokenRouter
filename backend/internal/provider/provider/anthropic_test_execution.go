@@ -12,14 +12,11 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
-
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
+	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/bedrock"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
-
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
-	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 )
 
 // Execute 保留 Anthropic、Vertex 与 Bedrock 各自的测试路径。

@@ -35,3 +35,8 @@ func ProjectObservedCapacity(row GroupProviderCapacityRow, settings QuotaAutoPau
 	paused, _ := EvaluateQuotaAutoPause(row.Platform, row.Extra, settings, now)
 	return ProjectCapacity(row.ProviderID, RuntimeConfig{Extra: row.Extra, Concurrency: row.Concurrency, SessionWindowStart: row.SessionWindowStart, SessionWindowEnd: row.SessionWindowEnd}, paused)
 }
+
+type LoadObservation struct {
+	ID             int64
+	MaxConcurrency int
+}

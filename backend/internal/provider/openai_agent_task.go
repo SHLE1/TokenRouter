@@ -7,6 +7,15 @@ import (
 	"sync"
 )
 
+const OpenAIAuthModeAgentIdentity = "agentIdentity"
+
+func (a *Record) IsOpenAIAgentIdentity() bool {
+	if a == nil || !a.IsOpenAIOAuth() {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(a.GetCredential(OpenAIAuthModeCredentialKey)), OpenAIAuthModeAgentIdentity)
+}
+
 type OpenAITaskOptions struct {
 	Read          func(context.Context, int64) (*Record, error)
 	Register      func(context.Context, *Record) (string, error)

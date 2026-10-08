@@ -11,20 +11,16 @@ import (
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
-	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
-
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
+	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream"
+	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/deepseek"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/kimi"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/zhipu"
-
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
-	claude "github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
-
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/zhipu"
 )
 
 func defaultCNProviderTestModel(platform string) string {

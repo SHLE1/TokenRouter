@@ -12,15 +12,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/egress"
 	egressprovider "github.com/TokenFlux/TokenRouter/internal/egress/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient/tlsfingerprint"
-
+	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/gemini"
-	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
-
-	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
-
 	geminicli "github.com/TokenFlux/TokenRouter/internal/upstream/gemini/codeassist"
+	"github.com/TokenFlux/TokenRouter/internal/upstream/vertex"
 )
 
 // Execute 按原提供商类型构造一次 Gemini 测试请求并同步输出事件。

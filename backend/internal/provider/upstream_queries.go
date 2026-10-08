@@ -8,9 +8,10 @@ import (
 	"sync"
 	"time"
 
-	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
 // UpstreamUsageReader 读取当前提供商身份。
@@ -222,7 +223,7 @@ func (s *UpstreamUsageService) queryProvider(ctx context.Context, providerID int
 	defer func() {
 		outcome := "success"
 		if err != nil {
-			outcome = infraerrors.Reason(err)
+			outcome = apperror.Reason(err)
 			if outcome == "" {
 				outcome = "error"
 			}

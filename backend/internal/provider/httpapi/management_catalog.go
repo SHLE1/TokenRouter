@@ -4,9 +4,10 @@ import (
 	"maps"
 	"strconv"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
 )
 
 // 保留三种管理目录 JSON 变体；零值字段和省略行为不做统一化。

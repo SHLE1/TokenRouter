@@ -4,12 +4,12 @@ import (
 	"context"
 	"strconv"
 
-	idempotencyhttp "github.com/TokenFlux/TokenRouter/internal/idempotency/httpapi"
+	"github.com/gin-gonic/gin"
 
+	idempotencyhttp "github.com/TokenFlux/TokenRouter/internal/idempotency/httpapi"
 	providercore "github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
 )
 
 // ProviderManagement 提供 HTTP 管理入口需要的业务操作。
