@@ -14,42 +14,120 @@ import (
 	"testing"
 	"time"
 
-	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
-// --- mock: UserRepository ---
+func TestUserService_UpdateProfile_RejectsEmailWhenNormalizationEnabled(t *testing.T) {
+	repo := &emailNormalizationRepoStub{
+		user: &identity.User{
+			ID:          7,
+			Email:       "old@example.com",
+			Username:    "old-name",
+			Concurrency: 2,
+		},
+	}
+	svc := identity.NewUserService(repo, &settingRepoStub{values: map[string]string{
+		identity.SettingKeyRegistrationEmailNormalization: "true",
+	}}, nil, nil, runProfileBackground)
+	newEmail := "Y.o.u.r.N.a.m.e+promo@example.com"
+	newUsername := "new-name"
+
+	_, err := svc.UpdateProfile(context.Background(), 7, identity.UpdateProfileRequest{
+		Email:    &newEmail,
+		Username: &newUsername,
+	})
+	require.ErrorIs(t, err, identity.ErrProfileEmailChangeForbidden)
+	require.Empty(t, repo.existsByEmailCalls)
+	require.Empty(t, repo.normalizedUpdateCalls)
+	require.Empty(t, repo.normalizedUpdateUsers)
+	require.Empty(t, repo.updateCalls)
+	require.Equal(t, "old@example.com", repo.user.Email)
+	require.Equal(t, "old-name", repo.user.Username)
+}
+
+func TestUserService_UpdateProfile_RejectsEmailWhenNormalizationDisabled(t *testing.T) {
+	repo := &emailNormalizationRepoStub{
+		user: &identity.User{
+			ID:    8,
+			Email: "old@example.com",
+		},
+		existsByEmail: true,
+	}
+	svc := identity.NewUserService(repo, &settingRepoStub{values: map[string]string{}}, nil, nil, runProfileBackground)
+	newEmail := "duplicate@example.com"
+
+	_, err := svc.UpdateProfile(context.Background(), 8, identity.UpdateProfileRequest{Email: &newEmail})
+	require.ErrorIs(t, err, identity.ErrProfileEmailChangeForbidden)
+	require.Empty(t, repo.existsByEmailCalls)
+	require.Empty(t, repo.normalizedUpdateCalls)
+	require.Empty(t, repo.updateCalls)
+}
+
+func TestUpdateProfile_RejectsEmailBeforeEmailIdentityResync(t *testing.T) {
+	repo := &emailSyncRepoStub{
+		user: &identity.User{
+			ID:          19,
+			Email:       "profile-before@example.com",
+			Username:    "tester",
+			Concurrency: 2,
+		},
+		replaceErr: context.DeadlineExceeded,
+	}
+	svc := identity.NewUserService(repo, nil, nil, nil, nil)
+
+	newEmail := "profile-after@example.com"
+	_, err := svc.UpdateProfile(context.Background(), 19, identity.UpdateProfileRequest{
+		Email: &newEmail,
+	})
+	require.ErrorIs(t, err, identity.ErrProfileEmailChangeForbidden)
+	require.Equal(t, 0, repo.updateCalls)
+	require.Empty(t, repo.replaceCalls)
+	require.Empty(t, repo.ensureCalls)
+	require.Equal(t, "profile-before@example.com", repo.user.Email)
+}
+
+// runProfileBackground 异步执行缓存失效，各用例通过同步断言等待完成。
+func runProfileBackground(_ string, task func()) bool {
+	go task()
+	return true
+}
+
+func boolPtr(value bool) *bool { return &value }
+
+func float64Ptr(value float64) *float64 { return &value }
 
 type mockUserRepo struct {
 	updateBalanceErr        error
 	updateBalanceFn         func(ctx context.Context, id int64, amount float64) error
 	deductBalanceFn         func(ctx context.Context, id int64, amount float64) error
 	deductBalanceResultFn   func(ctx context.Context, id int64, amount float64) (float64, error)
-	getByIDUser             *identitycore.User
+	getByIDUser             *identity.User
 	getByIDErr              error
-	identities              []identitycore.UserAuthIdentityRecord
+	identities              []identity.UserAuthIdentityRecord
 	unbindIdentityErr       error
 	unboundProviders        []string
 	updateLastActiveErr     error
 	updateLastActiveUserIDs []int64
 	updateLastActiveAt      []time.Time
-	updateFn                func(ctx context.Context, user *identitycore.User) error
+	updateFn                func(ctx context.Context, user *identity.User) error
 	updateCalls             int
-	updateFields            []identitycore.UserUpdateFields
-	upsertAvatarFn          func(ctx context.Context, userID int64, input identitycore.UpsertUserAvatarInput) (*identitycore.UserAvatar, error)
-	upsertAvatarArgs        []identitycore.UpsertUserAvatarInput
+	updateFields            []identity.UserUpdateFields
+	upsertAvatarFn          func(ctx context.Context, userID int64, input identity.UpsertUserAvatarInput) (*identity.UserAvatar, error)
+	upsertAvatarArgs        []identity.UpsertUserAvatarInput
 	deleteAvatarFn          func(ctx context.Context, userID int64) error
 	deleteAvatarIDs         []int64
-	getAvatarFn             func(ctx context.Context, userID int64) (*identitycore.UserAvatar, error)
+	getAvatarFn             func(ctx context.Context, userID int64) (*identity.UserAvatar, error)
 	txCalls                 int
 }
 
 type mockUserRepoTxKey struct{}
 
 type mockUserRepoTxState struct {
-	getByIDUser      *identitycore.User
-	upsertAvatarArgs []identitycore.UpsertUserAvatarInput
+	getByIDUser      *identity.User
+	upsertAvatarArgs []identity.UpsertUserAvatarInput
 	deleteAvatarIDs  []int64
 }
 
@@ -58,14 +136,14 @@ func mockUserRepoStateFromContext(ctx context.Context) *mockUserRepoTxState {
 	return state
 }
 
-func (m *mockUserRepo) currentUser(ctx context.Context) *identitycore.User {
+func (m *mockUserRepo) currentUser(ctx context.Context) *identity.User {
 	if state := mockUserRepoStateFromContext(ctx); state != nil {
 		return state.getByIDUser
 	}
 	return m.getByIDUser
 }
 
-func (m *mockUserRepo) setCurrentUser(ctx context.Context, user *identitycore.User) {
+func (m *mockUserRepo) setCurrentUser(ctx context.Context, user *identity.User) {
 	if state := mockUserRepoStateFromContext(ctx); state != nil {
 		state.getByIDUser = user
 		return
@@ -73,32 +151,33 @@ func (m *mockUserRepo) setCurrentUser(ctx context.Context, user *identitycore.Us
 	m.getByIDUser = user
 }
 
-func (m *mockUserRepo) Create(context.Context, *identitycore.User) error { return nil }
-func (m *mockUserRepo) CreateWithNormalizedEmailGuard(ctx context.Context, user *identitycore.User, _ string) error {
+func (m *mockUserRepo) Create(context.Context, *identity.User) error { return nil }
+
+func (m *mockUserRepo) CreateWithNormalizedEmailGuard(ctx context.Context, user *identity.User, _ string) error {
 	return m.Create(ctx, user)
 }
 
-func (m *mockUserRepo) GetByID(ctx context.Context, id int64) (*identitycore.User, error) {
+func (m *mockUserRepo) GetByID(ctx context.Context, id int64) (*identity.User, error) {
 	if m.getByIDErr != nil {
 		return nil, m.getByIDErr
 	}
 	user := m.currentUser(ctx)
 	if user == nil {
-		return &identitycore.User{ID: id}, nil
+		return &identity.User{ID: id}, nil
 	}
 	cloned := *user
 	return &cloned, nil
 }
 
-func (m *mockUserRepo) GetByEmail(context.Context, string) (*identitycore.User, error) {
-	return &identitycore.User{}, nil
+func (m *mockUserRepo) GetByEmail(context.Context, string) (*identity.User, error) {
+	return &identity.User{}, nil
 }
 
-func (m *mockUserRepo) GetFirstAdmin(context.Context) (*identitycore.User, error) {
-	return &identitycore.User{}, nil
+func (m *mockUserRepo) GetFirstAdmin(context.Context) (*identity.User, error) {
+	return &identity.User{}, nil
 }
 
-func (m *mockUserRepo) Update(ctx context.Context, user *identitycore.User, fields identitycore.UserUpdateFields) error {
+func (m *mockUserRepo) Update(ctx context.Context, user *identity.User, fields identity.UserUpdateFields) error {
 	m.updateCalls++
 	m.updateFields = append(m.updateFields, fields)
 	if m.updateFn != nil {
@@ -109,18 +188,20 @@ func (m *mockUserRepo) Update(ctx context.Context, user *identitycore.User, fiel
 	return nil
 }
 
-func (m *mockUserRepo) UpdateWithNormalizedEmailGuard(ctx context.Context, user *identitycore.User, _ string, fields identitycore.UserUpdateFields) error {
+func (m *mockUserRepo) UpdateWithNormalizedEmailGuard(ctx context.Context, user *identity.User, _ string, fields identity.UserUpdateFields) error {
 	return m.Update(ctx, user, fields)
 }
+
 func (m *mockUserRepo) Delete(context.Context, int64) error { return nil }
-func (m *mockUserRepo) GetUserAvatar(ctx context.Context, userID int64) (*identitycore.UserAvatar, error) {
+
+func (m *mockUserRepo) GetUserAvatar(ctx context.Context, userID int64) (*identity.UserAvatar, error) {
 	if m.getAvatarFn != nil {
 		return m.getAvatarFn(ctx, userID)
 	}
 	return nil, nil
 }
 
-func (m *mockUserRepo) UpsertUserAvatar(ctx context.Context, userID int64, input identitycore.UpsertUserAvatarInput) (*identitycore.UserAvatar, error) {
+func (m *mockUserRepo) UpsertUserAvatar(ctx context.Context, userID int64, input identity.UpsertUserAvatarInput) (*identity.UserAvatar, error) {
 	if m.upsertAvatarFn != nil {
 		return m.upsertAvatarFn(ctx, userID, input)
 	}
@@ -138,7 +219,7 @@ func (m *mockUserRepo) UpsertUserAvatar(ctx context.Context, userID int64, input
 		cloned.AvatarSHA256 = input.SHA256
 		m.setCurrentUser(ctx, &cloned)
 	}
-	return &identitycore.UserAvatar{
+	return &identity.UserAvatar{
 		StorageProvider: input.StorageProvider,
 		StorageKey:      input.StorageKey,
 		URL:             input.URL,
@@ -169,11 +250,11 @@ func (m *mockUserRepo) DeleteUserAvatar(ctx context.Context, userID int64) error
 	return nil
 }
 
-func (m *mockUserRepo) List(context.Context, pagination.PaginationParams) ([]identitycore.User, *pagination.PaginationResult, error) {
+func (m *mockUserRepo) List(context.Context, pagination.PaginationParams) ([]identity.User, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
 
-func (m *mockUserRepo) ListWithFilters(context.Context, pagination.PaginationParams, identitycore.UserListFilters) ([]identitycore.User, *pagination.PaginationResult, error) {
+func (m *mockUserRepo) ListWithFilters(context.Context, pagination.PaginationParams, identity.UserListFilters) ([]identity.User, *pagination.PaginationResult, error) {
 	return nil, nil, nil
 }
 
@@ -183,7 +264,9 @@ func (m *mockUserRepo) UpdateBalance(ctx context.Context, id int64, amount float
 	}
 	return m.updateBalanceErr
 }
+
 func (m *mockUserRepo) AddBalance(context.Context, int64, float64) error { return nil }
+
 func (m *mockUserRepo) DeductBalance(ctx context.Context, id int64, amount float64) (float64, error) {
 	if m.deductBalanceResultFn != nil {
 		return m.deductBalanceResultFn(ctx, id, amount)
@@ -194,14 +277,16 @@ func (m *mockUserRepo) DeductBalance(ctx context.Context, id int64, amount float
 	return amount, nil
 }
 
-func (m *mockUserRepo) AdjustBalance(ctx context.Context, id int64, delta float64) (identitycore.BalanceChange, error) {
+func (m *mockUserRepo) AdjustBalance(ctx context.Context, id int64, delta float64) (identity.BalanceChange, error) {
 	panic("unexpected AdjustBalance call")
 }
 
-func (m *mockUserRepo) SetBalance(ctx context.Context, id int64, value float64) (identitycore.BalanceChange, error) {
+func (m *mockUserRepo) SetBalance(ctx context.Context, id int64, value float64) (identity.BalanceChange, error) {
 	panic("unexpected SetBalance call")
 }
+
 func (m *mockUserRepo) UpdateConcurrency(context.Context, int64, int) error { return nil }
+
 func (m *mockUserRepo) BatchSetConcurrency(context.Context, []int64, int) (int, error) {
 	return 0, nil
 }
@@ -209,11 +294,15 @@ func (m *mockUserRepo) BatchSetConcurrency(context.Context, []int64, int) (int, 
 func (m *mockUserRepo) BatchAddConcurrency(context.Context, []int64, int) (int, error) {
 	return 0, nil
 }
+
 func (m *mockUserRepo) ExistsByEmail(context.Context, string) (bool, error) { return false, nil }
+
 func (m *mockUserRepo) ExistsByNormalizedEmail(context.Context, string) (bool, error) {
 	return false, nil
 }
+
 func (m *mockUserRepo) LockRegistrationEmail(context.Context, string) error { return nil }
+
 func (m *mockUserRepo) RemoveGroupFromAllowedGroups(context.Context, int64) (int64, error) {
 	return 0, nil
 }
@@ -221,9 +310,11 @@ func (m *mockUserRepo) RemoveGroupFromAllowedGroups(context.Context, int64) (int
 func (m *mockUserRepo) BatchUpdateLimits(context.Context, []int64, *int, *int) (int, error) {
 	return 0, nil
 }
+
 func (m *mockUserRepo) AddGroupToAllowedGroups(context.Context, int64, int64) error { return nil }
-func (m *mockUserRepo) ListUserAuthIdentities(context.Context, int64) ([]identitycore.UserAuthIdentityRecord, error) {
-	out := make([]identitycore.UserAuthIdentityRecord, len(m.identities))
+
+func (m *mockUserRepo) ListUserAuthIdentities(context.Context, int64) ([]identity.UserAuthIdentityRecord, error) {
+	out := make([]identity.UserAuthIdentityRecord, len(m.identities))
 	copy(out, m.identities)
 	return out, nil
 }
@@ -244,9 +335,13 @@ func (m *mockUserRepo) UpdateUserLastActiveAt(_ context.Context, userID int64, a
 	m.updateLastActiveAt = append(m.updateLastActiveAt, activeAt)
 	return nil
 }
+
 func (m *mockUserRepo) UpdateTotpSecret(context.Context, int64, *string) error { return nil }
-func (m *mockUserRepo) EnableTotp(context.Context, int64) error                { return nil }
-func (m *mockUserRepo) DisableTotp(context.Context, int64) error               { return nil }
+
+func (m *mockUserRepo) EnableTotp(context.Context, int64) error { return nil }
+
+func (m *mockUserRepo) DisableTotp(context.Context, int64) error { return nil }
+
 func (m *mockUserRepo) RemoveGroupFromUserAllowedGroups(context.Context, int64, int64) error {
 	return nil
 }
@@ -263,18 +358,18 @@ func (m *mockUserRepo) UnbindUserAuthProvider(_ context.Context, _ int64, provid
 		}
 		filtered = append(filtered, identity)
 	}
-	m.identities = append([]identitycore.UserAuthIdentityRecord(nil), filtered...)
+	m.identities = append([]identity.UserAuthIdentityRecord(nil), filtered...)
 	return nil
 }
 
-func (m *mockUserRepo) GetByIDIncludeDeleted(ctx context.Context, id int64) (*identitycore.User, error) {
+func (m *mockUserRepo) GetByIDIncludeDeleted(ctx context.Context, id int64) (*identity.User, error) {
 	return m.GetByID(ctx, id)
 }
 
 func (m *mockUserRepo) WithUserProfileIdentityTx(ctx context.Context, fn func(txCtx context.Context) error) error {
 	m.txCalls++
 	txState := &mockUserRepoTxState{
-		upsertAvatarArgs: append([]identitycore.UpsertUserAvatarInput(nil), m.upsertAvatarArgs...),
+		upsertAvatarArgs: append([]identity.UpsertUserAvatarInput(nil), m.upsertAvatarArgs...),
 		deleteAvatarIDs:  append([]int64(nil), m.deleteAvatarIDs...),
 	}
 	if m.getByIDUser != nil {
@@ -349,22 +444,20 @@ func (s *mockUserSettingRepo) Delete(_ context.Context, key string) error {
 	return nil
 }
 
-// --- mock: APIKeyAuthCacheInvalidator ---
-
 type mockAuthCacheInvalidator struct {
 	invalidatedUserIDs []int64
 	mu                 sync.Mutex
 }
 
-func (m *mockAuthCacheInvalidator) InvalidateAuthCacheByKey(context.Context, string)    {}
+func (m *mockAuthCacheInvalidator) InvalidateAuthCacheByKey(context.Context, string) {}
+
 func (m *mockAuthCacheInvalidator) InvalidateAuthCacheByGroupID(context.Context, int64) {}
+
 func (m *mockAuthCacheInvalidator) InvalidateAuthCacheByUserID(_ context.Context, userID int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.invalidatedUserIDs = append(m.invalidatedUserIDs, userID)
 }
-
-// --- mock: BillingCache ---
 
 type mockBillingCache struct {
 	invalidateErr       error
@@ -373,9 +466,12 @@ type mockBillingCache struct {
 	mu                  sync.Mutex
 }
 
-func (m *mockBillingCache) GetUserBalance(context.Context, int64) (float64, error)  { return 0, nil }
-func (m *mockBillingCache) SetUserBalance(context.Context, int64, float64) error    { return nil }
+func (m *mockBillingCache) GetUserBalance(context.Context, int64) (float64, error) { return 0, nil }
+
+func (m *mockBillingCache) SetUserBalance(context.Context, int64, float64) error { return nil }
+
 func (m *mockBillingCache) DeductUserBalance(context.Context, int64, float64) error { return nil }
+
 func (m *mockBillingCache) InvalidateUserBalance(_ context.Context, userID int64) error {
 	m.invalidateCallCount.Add(1)
 	m.mu.Lock()
@@ -384,12 +480,10 @@ func (m *mockBillingCache) InvalidateUserBalance(_ context.Context, userID int64
 	return m.invalidateErr
 }
 
-// --- 测试 ---
-
 func TestUpdateBalance_Success(t *testing.T) {
 	repo := &mockUserRepo{}
 	cache := &mockBillingCache{}
-	svc := identitycore.NewUserService(repo, nil, nil, cache, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, cache, runProfileBackground)
 
 	err := svc.UpdateBalance(context.Background(), 42, 100.0)
 	require.NoError(t, err)
@@ -406,11 +500,11 @@ func TestUpdateBalance_Success(t *testing.T) {
 
 func TestGetProfileIdentitySummaries_AllowsUnbindWhenAnotherLoginMethodRemains(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:    7,
 			Email: "alice@example.com",
 		},
-		identities: []identitycore.UserAuthIdentityRecord{
+		identities: []identity.UserAuthIdentityRecord{
 			{
 				ProviderType:    "email",
 				ProviderKey:     "email",
@@ -426,7 +520,7 @@ func TestGetProfileIdentitySummaries_AllowsUnbindWhenAnotherLoginMethodRemains(t
 			},
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
 	summaries, err := svc.GetProfileIdentitySummaries(context.Background(), 7, repo.getByIDUser)
 
@@ -439,11 +533,11 @@ func TestGetProfileIdentitySummaries_AllowsUnbindWhenAnotherLoginMethodRemains(t
 
 func TestUnbindUserAuthProviderRejectsLastRemainingLoginMethod(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:    9,
 			Email: "only-user@linuxdo-connect.invalid",
 		},
-		identities: []identitycore.UserAuthIdentityRecord{
+		identities: []identity.UserAuthIdentityRecord{
 			{
 				ProviderType:    "linuxdo",
 				ProviderKey:     "linuxdo",
@@ -451,22 +545,22 @@ func TestUnbindUserAuthProviderRejectsLastRemainingLoginMethod(t *testing.T) {
 			},
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
 	_, err := svc.UnbindUserAuthProvider(context.Background(), 9, "linuxdo")
 
-	require.ErrorIs(t, err, identitycore.ErrIdentityUnbindLastMethod)
+	require.ErrorIs(t, err, identity.ErrIdentityUnbindLastMethod)
 	require.Empty(t, repo.unboundProviders)
 }
 
 func TestGetProfileIdentitySummaries_DoesNotTreatOAuthOnlyCompatEmailAsAlternativeLoginMethod(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:           10,
 			Email:        "oauth-only@example.com",
 			SignupSource: "oidc",
 		},
-		identities: []identitycore.UserAuthIdentityRecord{
+		identities: []identity.UserAuthIdentityRecord{
 			{
 				ProviderType:    "oidc",
 				ProviderKey:     "https://issuer.example.com",
@@ -474,7 +568,7 @@ func TestGetProfileIdentitySummaries_DoesNotTreatOAuthOnlyCompatEmailAsAlternati
 			},
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
 	summaries, err := svc.GetProfileIdentitySummaries(context.Background(), 10, repo.getByIDUser)
 
@@ -482,18 +576,18 @@ func TestGetProfileIdentitySummaries_DoesNotTreatOAuthOnlyCompatEmailAsAlternati
 	require.False(t, summaries.OIDC.CanUnbind)
 
 	_, err = svc.UnbindUserAuthProvider(context.Background(), 10, "oidc")
-	require.ErrorIs(t, err, identitycore.ErrIdentityUnbindLastMethod)
+	require.ErrorIs(t, err, identity.ErrIdentityUnbindLastMethod)
 	require.Empty(t, repo.unboundProviders)
 }
 
 func TestGetProfileIdentitySummaries_DoesNotTreatCompatBackfilledEmailIdentityAsAlternativeLoginMethod(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:           11,
 			Email:        "oauth-only@example.com",
 			SignupSource: "wechat",
 		},
-		identities: []identitycore.UserAuthIdentityRecord{
+		identities: []identity.UserAuthIdentityRecord{
 			{
 				ProviderType:    "email",
 				ProviderKey:     "email",
@@ -510,7 +604,7 @@ func TestGetProfileIdentitySummaries_DoesNotTreatCompatBackfilledEmailIdentityAs
 			},
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
 	summaries, err := svc.GetProfileIdentitySummaries(context.Background(), 11, repo.getByIDUser)
 
@@ -519,17 +613,17 @@ func TestGetProfileIdentitySummaries_DoesNotTreatCompatBackfilledEmailIdentityAs
 	require.False(t, summaries.WeChat.CanUnbind)
 
 	_, err = svc.UnbindUserAuthProvider(context.Background(), 11, "wechat")
-	require.ErrorIs(t, err, identitycore.ErrIdentityUnbindLastMethod)
+	require.ErrorIs(t, err, identity.ErrIdentityUnbindLastMethod)
 	require.Empty(t, repo.unboundProviders)
 }
 
 func TestUnbindUserAuthProviderRemovesProviderAndReturnsUpdatedProfile(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:    12,
 			Email: "alice@example.com",
 		},
-		identities: []identitycore.UserAuthIdentityRecord{
+		identities: []identity.UserAuthIdentityRecord{
 			{
 				ProviderType:    "email",
 				ProviderKey:     "email",
@@ -543,7 +637,7 @@ func TestUnbindUserAuthProviderRemovesProviderAndReturnsUpdatedProfile(t *testin
 		},
 	}
 	invalidator := &mockAuthCacheInvalidator{}
-	svc := identitycore.NewUserService(repo, nil, invalidator, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, invalidator, nil, runProfileBackground)
 
 	user, err := svc.UnbindUserAuthProvider(context.Background(), 12, "linuxdo")
 
@@ -560,11 +654,11 @@ func TestUnbindUserAuthProviderRemovesProviderAndReturnsUpdatedProfile(t *testin
 
 func TestGetProfileIdentitySummaries_HidesBindActionWhenProviderExplicitlyDisabled(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:    15,
 			Email: "alice@example.com",
 		},
-		identities: []identitycore.UserAuthIdentityRecord{
+		identities: []identity.UserAuthIdentityRecord{
 			{
 				ProviderType:    "email",
 				ProviderKey:     "email",
@@ -574,10 +668,10 @@ func TestGetProfileIdentitySummaries_HidesBindActionWhenProviderExplicitlyDisabl
 	}
 	settingRepo := &mockUserSettingRepo{
 		values: map[string]string{
-			identitycore.SettingKeyLinuxDoConnectEnabled: "false",
+			identity.SettingKeyLinuxDoConnectEnabled: "false",
 		},
 	}
-	svc := identitycore.NewUserService(repo, settingRepo, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, settingRepo, nil, nil, runProfileBackground)
 
 	summaries, err := svc.GetProfileIdentitySummaries(context.Background(), 15, repo.getByIDUser)
 
@@ -589,11 +683,11 @@ func TestGetProfileIdentitySummaries_HidesBindActionWhenProviderExplicitlyDisabl
 
 func TestGetProfileIdentitySummaries_UsesBindStartRoute(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:    16,
 			Email: "alice@example.com",
 		},
-		identities: []identitycore.UserAuthIdentityRecord{
+		identities: []identity.UserAuthIdentityRecord{
 			{
 				ProviderType:    "email",
 				ProviderKey:     "email",
@@ -601,7 +695,7 @@ func TestGetProfileIdentitySummaries_UsesBindStartRoute(t *testing.T) {
 			},
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
 	summaries, err := svc.GetProfileIdentitySummaries(context.Background(), 16, repo.getByIDUser)
 
@@ -625,7 +719,7 @@ func TestGetProfileIdentitySummaries_UsesBindStartRoute(t *testing.T) {
 
 func TestUpdateBalance_NilBillingCache_NoPanic(t *testing.T) {
 	repo := &mockUserRepo{}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground) // billingCache = nil
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground) // billingCache = nil
 
 	err := svc.UpdateBalance(context.Background(), 1, 50.0)
 	require.NoError(t, err, "billingCache 为 nil 时不应 panic")
@@ -634,7 +728,7 @@ func TestUpdateBalance_NilBillingCache_NoPanic(t *testing.T) {
 func TestUpdateBalance_CacheFailure_DoesNotAffectReturn(t *testing.T) {
 	repo := &mockUserRepo{}
 	cache := &mockBillingCache{invalidateErr: errors.New("redis connection refused")}
-	svc := identitycore.NewUserService(repo, nil, nil, cache, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, cache, runProfileBackground)
 
 	err := svc.UpdateBalance(context.Background(), 99, 200.0)
 	require.NoError(t, err, "缓存失效失败不应影响主流程返回值")
@@ -648,12 +742,12 @@ func TestUpdateBalance_CacheFailure_DoesNotAffectReturn(t *testing.T) {
 func TestTouchLastActive_UpdatesWhenStale(t *testing.T) {
 	stale := time.Now().Add(-11 * time.Minute)
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:           42,
 			LastActiveAt: &stale,
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
 	svc.TouchLastActive(context.Background(), 42)
 
@@ -665,12 +759,12 @@ func TestTouchLastActive_UpdatesWhenStale(t *testing.T) {
 func TestTouchLastActive_SkipsWhenRecent(t *testing.T) {
 	recent := time.Now().Add(-time.Minute)
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:           42,
 			LastActiveAt: &recent,
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
 	svc.TouchLastActive(context.Background(), 42)
 
@@ -681,7 +775,7 @@ func TestTouchLastActive_SkipsWhenRecent(t *testing.T) {
 func TestUpdateBalance_RepoError_ReturnsError(t *testing.T) {
 	repo := &mockUserRepo{updateBalanceErr: errors.New("database error")}
 	cache := &mockBillingCache{}
-	svc := identitycore.NewUserService(repo, nil, nil, cache, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, cache, runProfileBackground)
 
 	err := svc.UpdateBalance(context.Background(), 1, 100.0)
 	require.Error(t, err, "repo 失败时应返回错误")
@@ -697,7 +791,7 @@ func TestUpdateBalance_WithAuthCacheInvalidator(t *testing.T) {
 	repo := &mockUserRepo{}
 	auth := &mockAuthCacheInvalidator{}
 	cache := &mockBillingCache{}
-	svc := identitycore.NewUserService(repo, nil, auth, cache, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, auth, cache, runProfileBackground)
 
 	err := svc.UpdateBalance(context.Background(), 77, 300.0)
 	require.NoError(t, err)
@@ -713,32 +807,32 @@ func TestUpdateBalance_WithAuthCacheInvalidator(t *testing.T) {
 	}, 2*time.Second, 10*time.Millisecond)
 }
 
-// TestNewUserServiceSharesActivityTracker 验证新旧入口必须共享活动时间节流状态，不能各自构造一份缓存。
+// TestNewUserServiceSharesActivityTracker 检查用户服务实例共享活动时间节流状态。
 func TestNewUserServiceSharesActivityTracker(t *testing.T) {
-	user := &identitycore.User{ID: 77}
+	user := &identity.User{ID: 77}
 	repo := &mockUserRepo{getByIDUser: user}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
-	svc.TouchLastActiveForUser(context.Background(), identitycore.CopyUser(user))
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc.TouchLastActiveForUser(context.Background(), identity.CopyUser(user))
 	svc.TouchLastActiveForUser(context.Background(), user)
 	require.Equal(t, []int64{77}, repo.updateLastActiveUserIDs)
 }
 
 func TestUpdateProfile_RejectsEmailChange(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:       7,
 			Email:    "current@example.com",
 			Username: "current-user",
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 	newEmail := "new@example.com"
 
-	_, err := svc.UpdateProfile(context.Background(), 7, identitycore.UpdateProfileRequest{
+	_, err := svc.UpdateProfile(context.Background(), 7, identity.UpdateProfileRequest{
 		Email: &newEmail,
 	})
 
-	require.ErrorIs(t, err, identitycore.ErrProfileEmailChangeForbidden)
+	require.ErrorIs(t, err, identity.ErrProfileEmailChangeForbidden)
 	require.Zero(t, repo.updateCalls)
 	require.Equal(t, "current@example.com", repo.getByIDUser.Email)
 }
@@ -748,15 +842,15 @@ func TestUpdateProfile_StoresInlineAvatarWithinLimit(t *testing.T) {
 	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(raw)
 	expectedSum := sha256.Sum256(raw)
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:       7,
 			Email:    "avatar@example.com",
 			Username: "avatar-user",
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
-	updated, err := svc.UpdateProfile(context.Background(), 7, identitycore.UpdateProfileRequest{
+	updated, err := svc.UpdateProfile(context.Background(), 7, identity.UpdateProfileRequest{
 		AvatarURL: &dataURL,
 	})
 	require.NoError(t, err)
@@ -790,24 +884,24 @@ func TestUpdateProfile_CompressesInlineAvatarToTwentyKilobytes(t *testing.T) {
 			}
 		}
 		require.NoError(t, png.Encode(&encoded, &img))
-		if encoded.Len() > 20*1024 && encoded.Len() <= identitycore.ProfileMaxInlineAvatarBytes {
+		if encoded.Len() > 20*1024 && encoded.Len() <= identity.ProfileMaxInlineAvatarBytes {
 			break
 		}
 	}
 	require.Greater(t, encoded.Len(), 20*1024)
-	require.LessOrEqual(t, encoded.Len(), identitycore.ProfileMaxInlineAvatarBytes)
+	require.LessOrEqual(t, encoded.Len(), identity.ProfileMaxInlineAvatarBytes)
 
 	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(encoded.Bytes())
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:       17,
 			Email:    "avatar-compress@example.com",
 			Username: "avatar-compress",
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
-	updated, err := svc.UpdateProfile(context.Background(), 17, identitycore.UpdateProfileRequest{
+	updated, err := svc.UpdateProfile(context.Background(), 17, identity.UpdateProfileRequest{
 		AvatarURL: &dataURL,
 	})
 	require.NoError(t, err)
@@ -824,21 +918,21 @@ func TestUpdateProfile_CompressesInlineAvatarToTwentyKilobytes(t *testing.T) {
 }
 
 func TestUpdateProfile_RejectsInlineAvatarOverLimit(t *testing.T) {
-	raw := make([]byte, identitycore.ProfileMaxInlineAvatarBytes+1)
+	raw := make([]byte, identity.ProfileMaxInlineAvatarBytes+1)
 	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(raw)
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:       8,
 			Email:    "large-avatar@example.com",
 			Username: "too-large",
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
-	_, err := svc.UpdateProfile(context.Background(), 8, identitycore.UpdateProfileRequest{
+	_, err := svc.UpdateProfile(context.Background(), 8, identity.UpdateProfileRequest{
 		AvatarURL: &dataURL,
 	})
-	require.ErrorIs(t, err, identitycore.ErrAvatarTooLarge)
+	require.ErrorIs(t, err, identity.ErrAvatarTooLarge)
 	require.Empty(t, repo.upsertAvatarArgs)
 	require.Empty(t, repo.deleteAvatarIDs)
 	require.Zero(t, repo.updateCalls)
@@ -847,15 +941,15 @@ func TestUpdateProfile_RejectsInlineAvatarOverLimit(t *testing.T) {
 func TestUpdateProfile_StoresRemoteAvatarURL(t *testing.T) {
 	remoteURL := "https://cdn.example.com/avatar.png"
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:       9,
 			Email:    "remote-avatar@example.com",
 			Username: "remote-avatar",
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
-	updated, err := svc.UpdateProfile(context.Background(), 9, identitycore.UpdateProfileRequest{
+	updated, err := svc.UpdateProfile(context.Background(), 9, identity.UpdateProfileRequest{
 		AvatarURL: &remoteURL,
 	})
 	require.NoError(t, err)
@@ -870,7 +964,7 @@ func TestUpdateProfile_StoresRemoteAvatarURL(t *testing.T) {
 func TestUpdateProfile_DeletesAvatarOnEmptyString(t *testing.T) {
 	empty := ""
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:           10,
 			Email:        "delete-avatar@example.com",
 			Username:     "delete-avatar",
@@ -878,9 +972,9 @@ func TestUpdateProfile_DeletesAvatarOnEmptyString(t *testing.T) {
 			AvatarSource: "remote_url",
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
-	updated, err := svc.UpdateProfile(context.Background(), 10, identitycore.UpdateProfileRequest{
+	updated, err := svc.UpdateProfile(context.Background(), 10, identity.UpdateProfileRequest{
 		AvatarURL: &empty,
 	})
 	require.NoError(t, err)
@@ -892,20 +986,20 @@ func TestUpdateProfile_DeletesAvatarOnEmptyString(t *testing.T) {
 
 func TestUpdateProfile_RollsBackAvatarMutationWhenUserUpdateFails(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:           11,
 			Email:        "rollback@example.com",
 			AvatarURL:    "https://cdn.example.com/original.png",
 			AvatarSource: "remote_url",
 		},
-		updateFn: func(context.Context, *identitycore.User) error {
+		updateFn: func(context.Context, *identity.User) error {
 			return errors.New("write user failed")
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
 	remoteURL := "https://cdn.example.com/new.png"
-	_, err := svc.UpdateProfile(context.Background(), 11, identitycore.UpdateProfileRequest{
+	_, err := svc.UpdateProfile(context.Background(), 11, identity.UpdateProfileRequest{
 		AvatarURL: &remoteURL,
 	})
 
@@ -919,22 +1013,123 @@ func TestUpdateProfile_RollsBackAvatarMutationWhenUserUpdateFails(t *testing.T) 
 
 func TestGetProfile_HydratesAvatarFromRepository(t *testing.T) {
 	repo := &mockUserRepo{
-		getByIDUser: &identitycore.User{
+		getByIDUser: &identity.User{
 			ID:       12,
 			Email:    "profile-avatar@example.com",
 			Username: "profile-avatar",
 		},
-		getAvatarFn: func(context.Context, int64) (*identitycore.UserAvatar, error) {
-			return &identitycore.UserAvatar{
+		getAvatarFn: func(context.Context, int64) (*identity.UserAvatar, error) {
+			return &identity.UserAvatar{
 				StorageProvider: "remote_url",
 				URL:             "https://cdn.example.com/profile.png",
 			}, nil
 		},
 	}
-	svc := identitycore.NewUserService(repo, nil, nil, nil, runProfileBackground)
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
 
 	user, err := svc.GetProfile(context.Background(), 12)
 	require.NoError(t, err)
 	require.Equal(t, "https://cdn.example.com/profile.png", user.AvatarURL)
 	require.Equal(t, "remote_url", user.AvatarSource)
+}
+
+func TestUpdateProfile_OnlyDeclaresRequestedColumns(t *testing.T) {
+	username := "renamed"
+	tests := []struct {
+		name string
+		req  identity.UpdateProfileRequest
+		want identity.UserUpdateFields
+	}{
+		{
+			name: "username only",
+			req:  identity.UpdateProfileRequest{Username: &username},
+			want: identity.UserUpdateFields{Username: true},
+		},
+		{
+			name: "notify settings only",
+			req:  identity.UpdateProfileRequest{BalanceNotifyEnabled: boolPtr(true)},
+			want: identity.UserUpdateFields{BalanceNotifySettings: true},
+		},
+		{
+			name: "username and notify threshold",
+			req:  identity.UpdateProfileRequest{Username: &username, BalanceNotifyThreshold: float64Ptr(1.5)},
+			want: identity.UserUpdateFields{Username: true, BalanceNotifySettings: true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockUserRepo{getByIDUser: &identity.User{ID: 7, Balance: 0.30, Status: identity.StatusActive}}
+			svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
+
+			_, err := svc.UpdateProfile(context.Background(), 7, tt.req)
+			require.NoError(t, err)
+			require.Equal(t, []identity.UserUpdateFields{tt.want}, repo.updateFields)
+		})
+	}
+}
+
+// TestUpdateProfile_AvatarOnlySkipsUserRowWrite 检查单独更新头像时跳过用户行更新。
+func TestUpdateProfile_AvatarOnlySkipsUserRowWrite(t *testing.T) {
+	repo := &mockUserRepo{getByIDUser: &identity.User{ID: 7, Balance: 0.30}}
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
+
+	avatar := "https://cdn.example.com/a.png"
+	_, err := svc.UpdateProfile(context.Background(), 7, identity.UpdateProfileRequest{AvatarURL: &avatar})
+	require.NoError(t, err)
+	require.Len(t, repo.upsertAvatarArgs, 1, "avatar must still be stored")
+	require.Equal(t, []identity.UserUpdateFields{{}}, repo.updateFields, "no user column should be declared")
+}
+
+func TestChangePassword_OnlyDeclaresPasswordHash(t *testing.T) {
+	user := &identity.User{ID: 7, Balance: 0.30}
+	require.NoError(t, user.SetPassword("old-password"))
+	repo := &mockUserRepo{getByIDUser: user}
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
+
+	err := svc.ChangePassword(context.Background(), 7, identity.ChangePasswordRequest{
+		CurrentPassword: "old-password",
+		NewPassword:     "new-password",
+	})
+	require.NoError(t, err)
+	require.Equal(t, []identity.UserUpdateFields{{PasswordHash: true}}, repo.updateFields)
+}
+
+func TestUpdateStatus_OnlyDeclaresStatus(t *testing.T) {
+	repo := &mockUserRepo{getByIDUser: &identity.User{ID: 7, Balance: 0.30, Status: identity.StatusActive}}
+	svc := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
+
+	require.NoError(t, svc.UpdateStatus(context.Background(), 7, "disabled"))
+	require.Equal(t, []identity.UserUpdateFields{{Status: true}}, repo.updateFields)
+}
+
+// TestUpdateProfileLanguagePreference 检查偏好规范化、清除以及与其他资料字段的独立更新。
+func TestUpdateProfileLanguagePreference(t *testing.T) {
+	en, zh, invalid := "en", "zh", "unsupported"
+	for _, tc := range []struct {
+		name      string
+		input     identity.UpdateProfileRequest
+		expected  *string
+		wantError bool
+	}{
+		{name: "alias", input: identity.UpdateProfileRequest{PreferredLocale: &zh}, expected: func() *string { value := "zh-Hans"; return &value }()},
+		{name: "clear", input: identity.UpdateProfileRequest{ClearPreferredLocale: true}},
+		{name: "omitted", input: identity.UpdateProfileRequest{}, expected: &en},
+		{name: "invalid", input: identity.UpdateProfileRequest{PreferredLocale: &invalid}, wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &mockUserRepo{getByIDUser: &identity.User{ID: 7, PreferredLocale: &en, Status: identity.StatusActive}}
+			service := identity.NewUserService(repo, nil, nil, nil, runProfileBackground)
+			updated, err := service.UpdateProfile(context.Background(), 7, tc.input)
+			if tc.wantError {
+				require.Error(t, err)
+				require.Empty(t, repo.updateFields)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, updated.PreferredLocale)
+			changed := tc.input.PreferredLocale != nil || tc.input.ClearPreferredLocale
+			require.Equal(t, []identity.UserUpdateFields{{PreferredLocale: changed}}, repo.updateFields)
+		})
+	}
 }

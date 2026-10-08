@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity"
-
-	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity"
+	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
 // UserAttributeHandler handles user attribute management

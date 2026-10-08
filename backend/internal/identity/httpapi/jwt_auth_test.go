@@ -9,18 +9,15 @@ import (
 	"testing"
 	"time"
 
-	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
-
-	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
-	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	identity "github.com/TokenFlux/TokenRouter/internal/identity"
-
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
+	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
+	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
 // stubJWTUserRepo 实现 UserRepository 的最小子集，仅支持 GetByID。

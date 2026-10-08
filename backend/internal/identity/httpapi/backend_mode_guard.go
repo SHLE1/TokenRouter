@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
-	"github.com/gin-gonic/gin"
 )
 
 // BackendModeUserGuard blocks non-admin users from accessing user routes when backend mode is enabled.

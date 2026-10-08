@@ -4,10 +4,10 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/gin-gonic/gin"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
-	"github.com/gin-gonic/gin"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 )
 
 // JWTAuth JWT认证中间件实现

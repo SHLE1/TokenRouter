@@ -22,12 +22,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
-	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
-	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	xdraw "golang.org/x/image/draw"
 	"golang.org/x/sync/singleflight"
+
+	"github.com/TokenFlux/TokenRouter/internal/billing"
+	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
 // IsValidUserAPIKeyLimit 判断用户 API Key 数量上限能否安全写入数据库。
@@ -1158,6 +1159,7 @@ type ProfileSettings interface {
 	GetMultiple(context.Context, []string) (map[string]string, error)
 	GetValue(context.Context, string) (string, error)
 }
+
 type (
 	UserAuthInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
 	UserBalanceCache    interface {
@@ -1170,6 +1172,7 @@ type NotifyVerificationNotice struct {
 	UserID                        int64
 	Email, Code, Locale, SiteName string
 }
+
 type NotifyVerificationSender interface {
 	GenerateVerifyCode() (string, error)
 	SendNotifyVerification(context.Context, NotifyVerificationNotice) error
@@ -1248,3 +1251,20 @@ const SettingKeyWeChatConnectMobileEnabled = "wechat_connect_mobile_enabled"
 const SettingKeyWeChatConnectMode = "wechat_connect_mode"
 
 const SettingKeyWeChatConnectOpenEnabled = "wechat_connect_open_enabled"
+
+var (
+	ErrBalanceNegative             = billing.ErrBalanceNegative
+	ErrInsufficientPerms           = infraerrors.Forbidden("INSUFFICIENT_PERMISSIONS", "insufficient permissions")
+	ErrNotifyCodeUserRateLimit     = infraerrors.TooManyRequests("NOTIFY_CODE_USER_RATE_LIMIT", "too many verification codes requested, please try again later")
+	ErrAvatarInvalid               = infraerrors.BadRequest("AVATAR_INVALID", "avatar must be a valid image data URL or http(s) URL")
+	ErrAvatarTooLarge              = infraerrors.BadRequest("AVATAR_TOO_LARGE", "avatar image must be 100KB or smaller")
+	ErrAvatarNotImage              = infraerrors.BadRequest("AVATAR_NOT_IMAGE", "avatar content must be an image")
+	ErrProfileEmailChangeForbidden = infraerrors.BadRequest("EMAIL_PROFILE_UPDATE_FORBIDDEN", "email must be changed through verified email binding")
+	ErrIdentityProviderInvalid     = infraerrors.BadRequest("IDENTITY_PROVIDER_INVALID", "identity provider is invalid")
+	ErrIdentityRedirectInvalid     = infraerrors.BadRequest("IDENTITY_REDIRECT_INVALID", "identity redirect path is invalid")
+	ErrUserAPIKeyLimitInvalid      = infraerrors.BadRequest("INVALID_API_KEY_LIMIT", fmt.Sprintf("api key limit must be between 0 and %d", MaxUserAPIKeyLimit))
+	ErrIdentityUnbindLastMethod    = infraerrors.Conflict(
+		"IDENTITY_UNBIND_LAST_METHOD",
+		"bind another sign-in method before unbinding this provider",
+	)
+)

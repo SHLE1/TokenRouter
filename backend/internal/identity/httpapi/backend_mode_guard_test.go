@@ -6,18 +6,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
-
-	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
-
-	"github.com/TokenFlux/TokenRouter/internal/gateway"
-
-	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
-
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/gateway"
+	"github.com/TokenFlux/TokenRouter/internal/gateway/admission"
+	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
+	authctx "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	settingscore "github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
 type bmSettingRepo struct {

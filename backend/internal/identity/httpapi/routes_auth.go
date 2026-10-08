@@ -156,7 +156,6 @@ func RegisterAuthenticationRoutes(v1 *gin.RouterGroup, endpoints AuthEndpoints, 
 			endpoints.CreateDingTalkOAuthAccount,
 		)
 	}
-
 }
 
 // RegisterSessionRoutes 保留当前用户、会话撤销及绑定 Cookie 的原鉴权次序。

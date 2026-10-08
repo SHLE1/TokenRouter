@@ -15,10 +15,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/imroc/req/v3"
 	"github.com/tidwall/gjson"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
 type (
@@ -473,7 +474,7 @@ func ContainsString(values []string, target string) bool {
 	return false
 }
 
-// OIDCClient 复用原 HTTP、JWK 与声明校验，不改变验证顺序或算法白名单。
+// OIDCClient 交换授权码、读取用户资料，并按配置的算法列表校验 ID Token。
 type OIDCClient struct{}
 
 func (OIDCClient) ExchangeCode(ctx context.Context, c OIDCOptions, code, redirect, verifier string) (*OidcTokenResponse, error) {
@@ -491,3 +492,6 @@ func (OIDCClient) ValidateIDToken(ctx context.Context, c OIDCOptions, token, non
 	}
 	return &identity.OIDCVerifiedClaims{Issuer: v.Issuer, Subject: v.Subject, Email: v.Email, PreferredUsername: v.PreferredUsername, Name: v.Name, EmailVerified: v.EmailVerified}, e
 }
+
+// OIDCOptions 是 identity.OIDCOAuthOptions 的类型别名。
+type OIDCOptions = identity.OIDCOAuthOptions

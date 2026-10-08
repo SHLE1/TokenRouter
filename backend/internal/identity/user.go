@@ -4,9 +4,10 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
@@ -151,4 +152,23 @@ func IsReservedEmail(email string) bool {
 		strings.HasSuffix(normalized, OIDCConnectSyntheticEmailDomain) ||
 		strings.HasSuffix(normalized, WeChatConnectSyntheticEmailDomain) ||
 		strings.HasSuffix(normalized, DingTalkConnectSyntheticEmailDomain)
+}
+
+const (
+	DefaultUserAPIKeyLimit              = 100
+	MaxUserAPIKeyLimit                  = 2_147_483_647
+	LinuxDoConnectSyntheticEmailDomain  = "@linuxdo-connect.invalid"
+	OIDCConnectSyntheticEmailDomain     = "@oidc-connect.invalid"
+	WeChatConnectSyntheticEmailDomain   = "@wechat-connect.invalid"
+	DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
+)
+
+// CopyUser 浅复制用户结构体。
+// 关联切片、映射和指针共享引用。跨请求缓存通过各自的入口深复制。
+func CopyUser(user *User) *User {
+	if user == nil {
+		return nil
+	}
+	copy := *user
+	return &copy
 }
