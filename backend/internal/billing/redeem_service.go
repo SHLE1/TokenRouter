@@ -11,6 +11,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+var ErrRedeemCodeExists = apperror.Conflict("REDEEM_CODE_EXISTS", "redeem code already exists")
+
+var ErrRedeemCodeNotFound = apperror.NotFound("REDEEM_CODE_NOT_FOUND", "redeem code not found")
+
+var ErrRedeemCodeUsed = apperror.Conflict("REDEEM_CODE_USED", "redeem code already used")
+
 var (
 	ErrRedeemPaymentRequired               = apperror.Forbidden("REDEEM_PAYMENT_REQUIRED", "a successful payment is required to redeem this code")
 	ErrRedeemPaymentRequirementUnsupported = apperror.BadRequest("REDEEM_PAYMENT_REQUIREMENT_UNSUPPORTED", "invitation codes cannot require a payment")
@@ -40,6 +46,7 @@ type RedeemTransactions interface {
 	ApplyBalance(context.Context, int64, float64) error
 	ApplyConcurrency(context.Context, int64, int) error
 }
+
 type (
 	RedeemAuthInvalidator interface{ InvalidateAuthCacheByUserID(context.Context, int64) }
 	RedeemAffiliate       interface {

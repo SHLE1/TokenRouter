@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/payment"
 	"github.com/smartwalle/alipay/v3"
+
+	"github.com/TokenFlux/TokenRouter/internal/payment"
 )
 
 func TestIsTradeNotExist(t *testing.T) {

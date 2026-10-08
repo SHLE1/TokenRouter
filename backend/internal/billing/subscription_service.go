@@ -13,6 +13,12 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 )
 
+var ErrSubscriptionAlreadyExists = apperror.Conflict("SUBSCRIPTION_ALREADY_EXISTS", "subscription already exists")
+
+var ErrSubscriptionNilInput = apperror.BadRequest("SUBSCRIPTION_NIL_INPUT", "subscription input cannot be nil")
+
+var ErrSubscriptionNotFound = apperror.NotFound("SUBSCRIPTION_NOT_FOUND", "subscription not found")
+
 var MaxExpiresAt = time.Date(2099, 12, 31, 23, 59, 59, 0, time.UTC)
 
 const MaxValidityDays = 36500

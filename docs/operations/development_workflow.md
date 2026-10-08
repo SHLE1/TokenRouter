@@ -165,6 +165,8 @@ GoLand 把 `X_test.go` 折叠在 `X.go` 下面，读者也靠这个名字从源�
 | `main_integration_test.go` | 集成测试的 `TestMain` | `//go:build integration` |
 | `helpers_test.go` | 两个以上测试文件共用的 fixture、替身和断言函数 | 每个包一个 |
 | `helpers_integration_test.go` | 集成测试共用的辅助代码 | `//go:build integration` |
+| `helpers_external_test.go` | 外部测试包共用的辅助代码 | 包内与包外测试都需要共享夹具时使用 |
+| `helpers_external_integration_test.go` | 外部集成测试包共用的辅助代码 | `//go:build integration` |
 | `<场景>_scenario_test.go` | 跨多个源文件、找不到单一被测文件的场景测试 | 文件开头的注释写出覆盖的源文件 |
 | `<场景>_scenario_integration_test.go` | 上一行的集成测试版本 | `//go:build integration` |
 

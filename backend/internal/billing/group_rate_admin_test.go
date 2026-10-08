@@ -6,76 +6,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
-	"github.com/stretchr/testify/require"
 )
-
-// userGroupRateRepoStubForGroupRate 记录专属倍率与 RPM 配置操作。
-type userGroupRateRepoStubForGroupRate struct {
-	getByGroupIDData map[int64][]billing.UserGroupRateEntry
-	getByGroupIDErr  error
-
-	deletedGroupIDs  []int64
-	deleteByGroupErr error
-
-	syncedGroupID int64
-	syncedEntries []billing.GroupRateMultiplierInput
-	syncGroupErr  error
-
-	rpmSyncedGroupID int64
-	rpmSyncedEntries []billing.GroupRPMOverrideInput
-	rpmSyncErr       error
-}
-
-func (s *userGroupRateRepoStubForGroupRate) GetByUserID(_ context.Context, _ int64) (map[int64]float64, error) {
-	panic("unexpected GetByUserID call")
-}
-
-func (s *userGroupRateRepoStubForGroupRate) GetByUserAndGroup(_ context.Context, _, _ int64) (*float64, error) {
-	panic("unexpected GetByUserAndGroup call")
-}
-
-func (s *userGroupRateRepoStubForGroupRate) GetRPMOverrideByUserAndGroup(_ context.Context, _, _ int64) (*int, error) {
-	panic("unexpected GetRPMOverrideByUserAndGroup call")
-}
-
-func (s *userGroupRateRepoStubForGroupRate) GetByGroupID(_ context.Context, groupID int64) ([]billing.UserGroupRateEntry, error) {
-	if s.getByGroupIDErr != nil {
-		return nil, s.getByGroupIDErr
-	}
-	return s.getByGroupIDData[groupID], nil
-}
-
-func (s *userGroupRateRepoStubForGroupRate) SyncUserGroupRates(_ context.Context, _ int64, _ map[int64]*float64) error {
-	panic("unexpected SyncUserGroupRates call")
-}
-
-func (s *userGroupRateRepoStubForGroupRate) SyncGroupRateMultipliers(_ context.Context, groupID int64, entries []billing.GroupRateMultiplierInput) error {
-	s.syncedGroupID = groupID
-	s.syncedEntries = entries
-	return s.syncGroupErr
-}
-
-func (s *userGroupRateRepoStubForGroupRate) SyncGroupRPMOverrides(_ context.Context, groupID int64, entries []billing.GroupRPMOverrideInput) error {
-	s.rpmSyncedGroupID = groupID
-	s.rpmSyncedEntries = entries
-	return s.rpmSyncErr
-}
-
-func (s *userGroupRateRepoStubForGroupRate) ClearGroupRPMOverrides(_ context.Context, _ int64) error {
-	panic("unexpected ClearGroupRPMOverrides call")
-}
-
-func (s *userGroupRateRepoStubForGroupRate) DeleteByGroupID(_ context.Context, groupID int64) error {
-	s.deletedGroupIDs = append(s.deletedGroupIDs, groupID)
-	return s.deleteByGroupErr
-}
-
-func (s *userGroupRateRepoStubForGroupRate) DeleteByUserID(_ context.Context, _ int64) error {
-	panic("unexpected DeleteByUserID call")
-}
 
 func TestAdminService_GetGroupRateMultipliers(t *testing.T) {
 	t.Run("returns entries for group", func(t *testing.T) {
@@ -223,4 +158,69 @@ func TestAdminService_BatchSetGroupRPMOverrides(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, httpx.ErrorCode(err))
 		require.Zero(t, repo.rpmSyncedGroupID)
 	})
+}
+
+// userGroupRateRepoStubForGroupRate 记录专属倍率与 RPM 配置操作。
+type userGroupRateRepoStubForGroupRate struct {
+	getByGroupIDData map[int64][]billing.UserGroupRateEntry
+	getByGroupIDErr  error
+
+	deletedGroupIDs  []int64
+	deleteByGroupErr error
+
+	syncedGroupID int64
+	syncedEntries []billing.GroupRateMultiplierInput
+	syncGroupErr  error
+
+	rpmSyncedGroupID int64
+	rpmSyncedEntries []billing.GroupRPMOverrideInput
+	rpmSyncErr       error
+}
+
+func (s *userGroupRateRepoStubForGroupRate) GetByUserID(_ context.Context, _ int64) (map[int64]float64, error) {
+	panic("unexpected GetByUserID call")
+}
+
+func (s *userGroupRateRepoStubForGroupRate) GetByUserAndGroup(_ context.Context, _, _ int64) (*float64, error) {
+	panic("unexpected GetByUserAndGroup call")
+}
+
+func (s *userGroupRateRepoStubForGroupRate) GetRPMOverrideByUserAndGroup(_ context.Context, _, _ int64) (*int, error) {
+	panic("unexpected GetRPMOverrideByUserAndGroup call")
+}
+
+func (s *userGroupRateRepoStubForGroupRate) GetByGroupID(_ context.Context, groupID int64) ([]billing.UserGroupRateEntry, error) {
+	if s.getByGroupIDErr != nil {
+		return nil, s.getByGroupIDErr
+	}
+	return s.getByGroupIDData[groupID], nil
+}
+
+func (s *userGroupRateRepoStubForGroupRate) SyncUserGroupRates(_ context.Context, _ int64, _ map[int64]*float64) error {
+	panic("unexpected SyncUserGroupRates call")
+}
+
+func (s *userGroupRateRepoStubForGroupRate) SyncGroupRateMultipliers(_ context.Context, groupID int64, entries []billing.GroupRateMultiplierInput) error {
+	s.syncedGroupID = groupID
+	s.syncedEntries = entries
+	return s.syncGroupErr
+}
+
+func (s *userGroupRateRepoStubForGroupRate) SyncGroupRPMOverrides(_ context.Context, groupID int64, entries []billing.GroupRPMOverrideInput) error {
+	s.rpmSyncedGroupID = groupID
+	s.rpmSyncedEntries = entries
+	return s.rpmSyncErr
+}
+
+func (s *userGroupRateRepoStubForGroupRate) ClearGroupRPMOverrides(_ context.Context, _ int64) error {
+	panic("unexpected ClearGroupRPMOverrides call")
+}
+
+func (s *userGroupRateRepoStubForGroupRate) DeleteByGroupID(_ context.Context, groupID int64) error {
+	s.deletedGroupIDs = append(s.deletedGroupIDs, groupID)
+	return s.deleteByGroupErr
+}
+
+func (s *userGroupRateRepoStubForGroupRate) DeleteByUserID(_ context.Context, _ int64) error {
+	panic("unexpected DeleteByUserID call")
 }

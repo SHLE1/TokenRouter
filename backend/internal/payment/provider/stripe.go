@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/payment"
 	"github.com/stripe/stripe-go/v85"
 	"github.com/stripe/stripe-go/v85/webhook"
+
+	"github.com/TokenFlux/TokenRouter/internal/payment"
 )
 
 // Stripe constants.

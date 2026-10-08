@@ -156,7 +156,7 @@ func (lb *DefaultLoadBalancer) queryEnabledInstances(
 }
 
 // attachDailyUsage queries daily usage for each instance in a single pass.
-// 占用量包含待支付和渠道处理中的订单，避免实例容量被超额分配。
+// 占用量包含待支付和渠道处理中的订单。
 func (lb *DefaultLoadBalancer) attachDailyUsage(
 	ctx context.Context,
 	instances []*ProviderInstance,
@@ -251,7 +251,7 @@ func (lb *DefaultLoadBalancer) pickByStrategy(candidates []instanceCandidate, st
 }
 
 // pickLeastAmount selects the instance with the lowest daily usage.
-// No extra DB queries — usage was pre-fetched in attachDailyUsage.
+// 当日用量由 attachDailyUsage 预先读取。
 func pickLeastAmount(candidates []instanceCandidate) instanceCandidate {
 	best := candidates[0]
 	for _, c := range candidates[1:] {
@@ -367,3 +367,21 @@ func selectionObserver(values []SelectionObserver) SelectionObserver {
 	}
 	return func(string, string, ...any) {}
 }
+
+// InstanceSource 查询支付实例及其当日用量。
+type InstanceSource interface {
+	EnabledInstances(context.Context, string) ([]*ProviderInstance, error)
+	Instance(context.Context, int64) (*ProviderInstance, error)
+	DailyUsage(context.Context, []string, time.Time) (map[string]float64, error)
+	PaidDailyAmount(context.Context, string, time.Time) (float64, error)
+}
+
+type (
+	// SelectionObserver 接收渠道选择过程中的日志。
+	SelectionObserver func(string, string, ...any)
+	// SelectionRuntime 提供渠道选择使用的时钟和日志函数。
+	SelectionRuntime struct {
+		Now     func() time.Time
+		Observe SelectionObserver
+	}
+)

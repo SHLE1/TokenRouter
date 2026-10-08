@@ -8,19 +8,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/oauthpkce"
+	"github.com/gin-gonic/gin"
 
 	identitycore "github.com/TokenFlux/TokenRouter/internal/identity"
-
 	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
-
 	"github.com/TokenFlux/TokenRouter/internal/payment"
-
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
-
+	"github.com/TokenFlux/TokenRouter/internal/pkg/oauthpkce"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-
-	"github.com/gin-gonic/gin"
 )
 
 // WeChatPaymentHTTPOptions 仅提供支付授权所需的配置和令牌能力，避免构造完整认证图。

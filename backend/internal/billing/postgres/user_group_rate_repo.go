@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"time"
 
-	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
+	"github.com/lib/pq"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
-	"github.com/lib/pq"
+	postgresinfra "github.com/TokenFlux/TokenRouter/internal/infra/postgres"
 )
 
 type GroupRateStore struct {

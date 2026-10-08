@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/payment"
 	"github.com/smartwalle/alipay/v3"
+
+	"github.com/TokenFlux/TokenRouter/internal/payment"
 )
 
 // Alipay product codes.

@@ -122,3 +122,34 @@ type KeyUsageSQL interface {
 func NewKeyUsageStore(client *dbent.Client, db KeyUsageSQL) *KeyUsageStore {
 	return &KeyUsageStore{client: client, sql: db}
 }
+
+// ApplyKeyUsageReset 将消费字段附加到调用方的更新语句。
+func ApplyKeyUsageReset(builder *dbent.APIKeyUpdate, input billing.KeyUsageReset) {
+	if input.ResetQuota {
+		builder.SetQuotaUsed(input.QuotaUsed)
+	}
+
+	if input.ResetWindows {
+		builder.
+			SetUsage5h(input.Windows.Usage5h).
+			SetUsage1d(input.Windows.Usage1d).
+			SetUsage7d(input.Windows.Usage7d)
+
+		// 按输入设置或清空各限流窗口的开始时间。
+		if input.Windows.Window5hStart != nil {
+			builder.SetWindow5hStart(*input.Windows.Window5hStart)
+		} else {
+			builder.ClearWindow5hStart()
+		}
+		if input.Windows.Window1dStart != nil {
+			builder.SetWindow1dStart(*input.Windows.Window1dStart)
+		} else {
+			builder.ClearWindow1dStart()
+		}
+		if input.Windows.Window7dStart != nil {
+			builder.SetWindow7dStart(*input.Windows.Window7dStart)
+		} else {
+			builder.ClearWindow7dStart()
+		}
+	}
+}

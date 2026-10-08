@@ -173,7 +173,7 @@ func scanLayout(root string) ([]layoutViolation, error) {
 // layoutTestName 允许一个文件名按任一有效后缀匹配源文件。
 func layoutTestName(name string, sources map[string]bool) bool {
 	switch name {
-	case "main_test.go", "main_integration_test.go", "helpers_test.go", "helpers_integration_test.go":
+	case "main_test.go", "main_integration_test.go", "helpers_test.go", "helpers_integration_test.go", "helpers_external_test.go", "helpers_external_integration_test.go":
 		return true
 	}
 	if strings.HasSuffix(name, "_scenario_test.go") || strings.HasSuffix(name, "_scenario_integration_test.go") {

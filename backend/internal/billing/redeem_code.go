@@ -6,6 +6,28 @@ import (
 	"time"
 )
 
+// Redeem type constants
+const (
+	RedeemTypeBalance      = "balance"
+	RedeemTypeConcurrency  = "concurrency"
+	RedeemTypeSubscription = "subscription"
+	RedeemTypeInvitation   = "invitation"
+)
+
+// Admin adjustment type constants
+const (
+	AdjustmentTypeAdminBalance     = "admin_balance"     // 管理员调整余额
+	AdjustmentTypeAdminConcurrency = "admin_concurrency" // 管理员调整并发数
+)
+
+const (
+	StatusUnused   = "unused"
+	StatusUsed     = "used"
+	StatusExpired  = "expired"
+	StatusDisabled = "disabled"
+	StatusActive   = "active"
+)
+
 type RedeemCode struct {
 	ID     int64
 	Code   string

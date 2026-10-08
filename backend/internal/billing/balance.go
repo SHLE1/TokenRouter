@@ -19,3 +19,6 @@ type BalanceAdjuster interface {
 }
 
 var ErrBalanceNegative = apperror.BadRequest("BALANCE_NEGATIVE", "balance cannot be negative")
+
+// InitialUserFunds 是注册时赠送的余额，累计充值额保持不变。
+type InitialUserFunds struct{ Balance float64 }

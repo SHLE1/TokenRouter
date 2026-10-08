@@ -9,10 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
-	"github.com/lib/pq"
 )
 
 const (

@@ -2,6 +2,8 @@ package promotion
 
 import (
 	"time"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 )
 
 // PromoCode 注册优惠码
@@ -77,3 +79,28 @@ const (
 	PromoCodeStatusActive   = "active"
 	PromoCodeStatusDisabled = "disabled"
 )
+
+// UserView 包含优惠码使用记录中的用户资料。
+type UserView struct {
+	ID                         int64
+	Email                      string
+	Username                   string
+	Role                       string
+	Balance                    float64
+	FrozenBalance              float64
+	Concurrency                int
+	Status                     string
+	AllowedGroups              []int64
+	DisabledPublicGroups       []int64
+	LastActiveAt               *time.Time
+	CreatedAt                  time.Time
+	UpdatedAt                  time.Time
+	DeletedAt                  *time.Time
+	BalanceNotifyEnabled       bool
+	BalanceNotifyThresholdType string
+	BalanceNotifyThreshold     *float64
+	BalanceNotifyExtraEmails   []contact.Entry
+	TotalRecharged             float64
+	RPMLimit                   int
+	APIKeyLimit                int
+}

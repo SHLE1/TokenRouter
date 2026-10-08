@@ -6,6 +6,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 )
 
+// ParseNotifyEmails 解析字符串数组或邮箱记录数组格式的通知邮箱。
+func ParseNotifyEmails(raw string) []NotifyEmailSummary { return contact.ParseNotifyEmails(raw) }
+
 // UserSummary 包含权益查询所需的用户资料。
 type UserSummary struct {
 	ID                         int64

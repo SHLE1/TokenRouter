@@ -2,6 +2,7 @@ package payment
 
 import (
 	"context"
+	"time"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
@@ -31,4 +32,19 @@ func (s *OrderQueries) GetUserOrders(ctx context.Context, userID int64, p OrderL
 
 func (s *OrderQueries) AdminListOrders(ctx context.Context, userID int64, p OrderListParams) ([]*Order, int, error) {
 	return s.store.AdminListOrders(ctx, userID, p)
+}
+
+// AuditLog 记录订单操作、执行者和时间。
+type AuditLog struct {
+	ID        int64     `json:"id,omitempty"`
+	OrderID   string    `json:"order_id,omitempty"`
+	Action    string    `json:"action,omitempty"`
+	Detail    string    `json:"detail,omitempty"`
+	Operator  string    `json:"operator,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+}
+
+// GetOrderAuditLogs 查询指定订单的审计日志。
+func (s *OrderQueries) GetOrderAuditLogs(ctx context.Context, id int64) ([]*AuditLog, error) {
+	return s.store.OrderAuditLogs(ctx, id)
 }

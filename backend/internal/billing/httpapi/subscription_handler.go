@@ -3,14 +3,13 @@ package httpapi
 import (
 	"strconv"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-
-	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/gin-gonic/gin"
 
 	"github.com/TokenFlux/TokenRouter/internal/billing"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
 	middleware2 "github.com/TokenFlux/TokenRouter/internal/server/middleware"
-	"github.com/gin-gonic/gin"
 )
 
 // SubscriptionSummaryItem represents a subscription item in summary

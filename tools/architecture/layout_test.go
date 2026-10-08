@@ -38,6 +38,10 @@ func TestLayoutRules(t *testing.T) {
 		want       bool
 	}{
 		{"test-name/pass", "test-name", map[string]string{"p/item.go": "package p", "p/item_test.go": "package p"}, false},
+		{"external-helpers/unit", "test-name", map[string]string{"p/helpers_external_test.go": "package p_test"}, false},
+		{"external-helpers/integration", "test-name", map[string]string{"p/helpers_external_integration_test.go": "//go:build integration\n\npackage p_test"}, false},
+		{"external-helpers/package", "test-external", map[string]string{"p/helpers_external_test.go": "package p"}, true},
+		{"external-helpers/tag", "test-tag", map[string]string{"p/helpers_external_integration_test.go": "package p_test"}, true},
 		{"test-name/fail", "test-name", map[string]string{"p/missing_test.go": "package p"}, true},
 		{"test-tag/pass", "test-tag", map[string]string{"p/item_integration_test.go": "//go:build integration\n\npackage p"}, false},
 		{"test-tag/fail", "test-tag", map[string]string{"p/item_integration_test.go": "package p"}, true},

@@ -4,6 +4,15 @@ import (
 	"time"
 )
 
+// APIKeyQuotaUsageState captures the latest quota fields after an atomic quota update.
+// It is intentionally small so repositories can return it from a single SQL statement.
+type APIKeyQuotaUsageState struct {
+	QuotaUsed float64
+	Quota     float64
+	Key       string
+	Status    string
+}
+
 // APIKeyRateLimitData holds rate limit usage and window state for an API key.
 type APIKeyRateLimitData struct {
 	Usage5h       float64
@@ -45,8 +54,14 @@ const (
 	RateLimitWindow7d = 7 * 24 * time.Hour
 )
 
-// IsWindowExpired returns true if the window starting at windowStart has exceeded the given duration.
-// A nil windowStart is treated as expired — no initialized window means any accumulated usage is stale.
+// IsWindowExpired 将空窗口起点或已超过持续时间的窗口视为过期。
 func IsWindowExpired(windowStart *time.Time, duration time.Duration) bool {
 	return windowStart == nil || time.Since(*windowStart) >= duration
+}
+
+// KeyUsageReset 包含 API Key 配额和用量窗口的重置值。
+type KeyUsageReset struct {
+	ResetQuota, ResetWindows bool
+	QuotaUsed                float64
+	Windows                  APIKeyRateLimitData
 }

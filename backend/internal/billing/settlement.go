@@ -9,9 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/shopspring/decimal"
+
+	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
+
+var ErrTaskInsufficientBalance = apperror.New(apperror.Category(402), "BATCH_IMAGE_INSUFFICIENT_BALANCE", "insufficient balance for batch image hold")
+
+var ErrTaskNotFound = apperror.New(apperror.CategoryNotFound, "BATCH_IMAGE_JOB_NOT_FOUND", "batch image job not found")
 
 var ErrUsageBillingRequestIDRequired = errors.New("usage billing request_id is required")
 
@@ -500,3 +505,5 @@ const taskCostEpsilon = 0.00000001
 
 // ErrTaskSettlementCostExceedsHold 沿用历史错误 reason 与消息。
 var ErrTaskSettlementCostExceedsHold = apperror.Conflict("BATCH_IMAGE_SETTLEMENT_COST_EXCEEDS_HOLD", "batch image settlement cost exceeds held balance")
+
+var ErrImageTaskPricingMissing = apperror.New(apperror.CategoryBadRequest, "BATCH_IMAGE_SETTLEMENT_PRICING_MISSING", "batch image settlement pricing is missing")

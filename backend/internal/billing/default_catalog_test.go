@@ -4,21 +4,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
-
-type defaultCatalogStub struct {
-	entries map[string]*pricing.CatalogModelPricing
-}
-
-func (s defaultCatalogStub) GetModelPricing(model string) *pricing.CatalogModelPricing {
-	return s.entries[model]
-}
-
-func (s defaultCatalogStub) ForceUpdate() error {
-	panic("default price queries must not update the catalog")
-}
 
 func TestDefaultPriceUsesCatalogAndPreservesZero(t *testing.T) {
 	catalog := defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{
@@ -67,7 +56,7 @@ func TestDefaultPriceContextIntervalsUseInclusiveBoundary(t *testing.T) {
 	require.Len(t, row.ContextIntervals, 2)
 	require.Equal(t, 199999, *row.ContextIntervals[0].MaxTokens)
 	require.Equal(t, 199999, row.ContextIntervals[1].MinTokens)
-	// 转换不修改目录原有阈值，后续查询不能再次减一。
+	// 目录阈值保持 100，重复查询得到相同的区间。
 	require.Equal(t, 200000, catalog.entries["grok-test"].ContextPrices[0].Threshold)
 	require.Equal(t, row, calculator.DefaultModelPrice("grok-test", "xai", "token"))
 }

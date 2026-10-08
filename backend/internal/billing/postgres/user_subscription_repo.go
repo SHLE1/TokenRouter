@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/lib/pq"
+
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/schema/mixins"
 	"github.com/TokenFlux/TokenRouter/ent/subscriptionplan"
@@ -11,7 +13,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/ent/usersubscription"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
-	"github.com/lib/pq"
 )
 
 type SubscriptionStore struct {

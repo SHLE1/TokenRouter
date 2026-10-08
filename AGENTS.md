@@ -36,7 +36,7 @@
 
 - 一个源文件写一个主题，文件名去掉包名前缀（`ops` 包写 `alerts.go`），并且能看出主题，`helpers.go`、`util.go`、`common.go` 这类名字换成具体主题。没有自己主题的小文件，并进同主题的文件。
 - 测试文件按被测源文件命名：`X_test.go`，集成测试 `X_integration_test.go`，必须放进外部测试包时 `X_external_test.go`。测试函数直接调用的函数在哪个文件，测试就归哪个文件。
-- 多个测试文件共用的辅助代码放 `helpers_test.go`，`TestMain` 放 `main_test.go`。确实跨多个源文件的场景测试命名为 `<场景>_scenario_test.go`。
+- 多个测试文件共用的辅助代码放 `helpers_test.go`，包内外都需要共享夹具时，外部测试包使用 `helpers_external_test.go`，`TestMain` 放 `main_test.go`。确实跨多个源文件的场景测试命名为 `<场景>_scenario_test.go`。
 - 手写源文件达到 15 个的包维护 `doc.go`，写包的职责、阅读入口和文件分组。
 - 修改到不符合规则的旧文件时，把碰到的文件一起改名或合并，引用这些文件名的文档、架构许可和注释同步更新。
 

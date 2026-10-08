@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/settings"
-
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
+	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
 func ConfigEnabledVisibleMethodsForProvider(providerKey, supportedTypes string) []string {

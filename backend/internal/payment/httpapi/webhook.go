@@ -11,9 +11,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/TokenFlux/TokenRouter/internal/payment"
-
 	"github.com/gin-gonic/gin"
+
+	"github.com/TokenFlux/TokenRouter/internal/payment"
 )
 
 // PaymentWebhookHandler handles payment provider webhook callbacks.

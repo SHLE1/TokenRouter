@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/settings"
+	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
-	"github.com/stretchr/testify/require"
+	"github.com/TokenFlux/TokenRouter/internal/settings"
 )
 
 func TestSubscriptionExpiryReminderSendTimeoutDoesNotPoisonNextPageList(t *testing.T) {
@@ -59,6 +59,133 @@ func TestSubscriptionExpiryReminderSendTimeoutDoesNotPoisonNextPageList(t *testi
 	require.NoError(t, repo.listContextErrs[0])
 	require.NoError(t, repo.listContextErrs[1])
 	require.ErrorIs(t, sender.errs[0], context.DeadlineExceeded)
+}
+
+func TestSubscriptionExpiryService_ExpiryReminderEnabledDefaultsToTrue(t *testing.T) {
+	svc := NewSubscriptionExpiryService(nil, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
+	svc.settingRepo = &subscriptionExpirySettingRepoStub{values: map[string]string{}}
+
+	require.True(t, svc.expiryReminderEnabled(context.Background()))
+}
+
+func TestSubscriptionExpiryService_ExpiryReminderDisabledSkipsSubscriptionScan(t *testing.T) {
+	repo := &subscriptionExpiryRepoStub{}
+	settingRepo := &subscriptionExpirySettingRepoStub{
+		values: map[string]string{"subscription_expiry_notify_enabled": "false"},
+	}
+	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
+	svc.settingRepo = settingRepo
+	svc.notificationEmailService = &subscriptionExpiryBlockingSender{}
+
+	svc.sendExpiryReminders(context.Background())
+
+	require.Zero(t, repo.listCalls)
+}
+
+func TestSubscriptionExpiryService_ExpiryReminderSettingReadErrorFailsClosed(t *testing.T) {
+	svc := NewSubscriptionExpiryService(nil, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
+	svc.settingRepo = &subscriptionExpirySettingRepoStub{err: errors.New("db down")}
+
+	require.False(t, svc.expiryReminderEnabled(context.Background()))
+}
+
+func TestSubscriptionExpiryService_ReminderSkipsScanWhenNotLeader(t *testing.T) {
+	repo := &subscriptionExpiryRepoStub{}
+	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Minute, Notifier: &subscriptionExpiryBlockingSender{}, Lease: func(context.Context, string, string, time.Duration) (func(), bool) { return nil, false }})
+	svc.sendExpiryReminders(context.Background())
+	require.Zero(t, repo.listCalls)
+}
+
+func TestSubscriptionExpiryService_ReminderRunsEveryCycleSingleInstance(t *testing.T) {
+	for _, withLease := range []bool{false, true} {
+		repo := &subscriptionExpiryRepoStub{}
+		released := 0
+		options := ExpiryOptions{Interval: time.Minute, Notifier: &subscriptionExpiryBlockingSender{}}
+		if withLease {
+			options.Lease = func(context.Context, string, string, time.Duration) (func(), bool) {
+				return func() { released++ }, true
+			}
+		}
+		svc := NewSubscriptionExpiryService(repo, options)
+		for i := 0; i < 3; i++ {
+			svc.sendExpiryReminders(context.Background())
+		}
+		require.Equal(t, 3, repo.listCalls)
+		if withLease {
+			require.Equal(t, 3, released)
+		}
+	}
+}
+
+func TestSubscriptionExpiryService_MissingSMTPSkipsReminderScanAndLogsOncePerInterval(t *testing.T) {
+	repo := &subscriptionExpiryRepoStub{}
+	settingRepo := &subscriptionExpirySettingRepoStub{values: map[string]string{}}
+
+	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
+	svc.settingRepo = settingRepo
+	svc.notificationEmailService = &subscriptionExpiryBlockingSender{readyErr: ErrReminderTransportUnconfigured}
+
+	var logs bytes.Buffer
+	previousWriter := log.Writer()
+	previousFlags := log.Flags()
+	log.SetOutput(&logs)
+	log.SetFlags(0)
+	t.Cleanup(func() {
+		log.SetOutput(previousWriter)
+		log.SetFlags(previousFlags)
+	})
+
+	svc.sendExpiryReminders(context.Background())
+	svc.sendExpiryReminders(context.Background())
+
+	require.Zero(t, repo.listCalls)
+	require.Equal(t, 1, bytes.Count(logs.Bytes(), []byte("SMTP is not configured")))
+}
+
+func TestSubscriptionExpiryService_SMTPConfigReadErrorSkipsReminderScan(t *testing.T) {
+	repo := &subscriptionExpiryRepoStub{}
+	settingRepo := &subscriptionExpirySettingRepoStub{
+		values:   map[string]string{},
+		multiErr: errors.New("db down"),
+	}
+
+	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
+	svc.settingRepo = settingRepo
+	svc.notificationEmailService = &subscriptionExpiryBlockingSender{readyErr: errors.New("db down")}
+
+	svc.sendExpiryReminders(context.Background())
+
+	require.Zero(t, repo.listCalls)
+}
+
+func TestSubscriptionExpiryLifecycle(t *testing.T) {
+	repo := &expiryLifecycleRepo{entered: make(chan struct{})}
+	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Hour})
+	select {
+	case <-repo.entered:
+		t.Fatal("constructor started work")
+	default:
+	}
+	svc.Start()
+	svc.Start()
+	<-repo.entered
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	require.NoError(t, svc.StopContext(ctx))
+	require.NoError(t, svc.StopContext(ctx))
+	svc.Start()
+}
+
+func TestSubscriptionExpiryBlockedStopReturnsBudget(t *testing.T) {
+	repo := &expiryLifecycleRepo{entered: make(chan struct{}), release: make(chan struct{}), ignoreCancel: true}
+	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Hour})
+	svc.Start()
+	<-repo.entered
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	require.ErrorIs(t, svc.StopContext(ctx), context.DeadlineExceeded)
+	close(repo.release)
+	require.NoError(t, svc.StopContext(context.Background()))
 }
 
 type subscriptionExpiryRepoStub struct {
@@ -122,6 +249,8 @@ func (s *subscriptionExpiryBlockingSender) recordErr(err error) {
 	s.errs = append(s.errs, err)
 }
 
+func (s *subscriptionExpiryBlockingSender) Ready(context.Context) error { return s.readyErr }
+
 type subscriptionExpirySettingRepoStub struct {
 	values   map[string]string
 	err      error
@@ -172,104 +301,6 @@ func (r *subscriptionExpirySettingRepoStub) Delete(context.Context, string) erro
 	return nil
 }
 
-func TestSubscriptionExpiryService_ExpiryReminderEnabledDefaultsToTrue(t *testing.T) {
-	svc := NewSubscriptionExpiryService(nil, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
-	svc.settingRepo = &subscriptionExpirySettingRepoStub{values: map[string]string{}}
-
-	require.True(t, svc.expiryReminderEnabled(context.Background()))
-}
-
-func TestSubscriptionExpiryService_ExpiryReminderDisabledSkipsSubscriptionScan(t *testing.T) {
-	repo := &subscriptionExpiryRepoStub{}
-	settingRepo := &subscriptionExpirySettingRepoStub{
-		values: map[string]string{"subscription_expiry_notify_enabled": "false"},
-	}
-	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
-	svc.settingRepo = settingRepo
-	svc.notificationEmailService = &subscriptionExpiryBlockingSender{}
-
-	svc.sendExpiryReminders(context.Background())
-
-	require.Zero(t, repo.listCalls)
-}
-
-func TestSubscriptionExpiryService_ExpiryReminderSettingReadErrorFailsClosed(t *testing.T) {
-	svc := NewSubscriptionExpiryService(nil, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
-	svc.settingRepo = &subscriptionExpirySettingRepoStub{err: errors.New("db down")}
-
-	require.False(t, svc.expiryReminderEnabled(context.Background()))
-}
-
-func TestSubscriptionExpiryService_ReminderSkipsScanWhenNotLeader(t *testing.T) {
-	repo := &subscriptionExpiryRepoStub{}
-	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Minute, Notifier: &subscriptionExpiryBlockingSender{}, Lease: func(context.Context, string, string, time.Duration) (func(), bool) { return nil, false }})
-	svc.sendExpiryReminders(context.Background())
-	require.Zero(t, repo.listCalls)
-}
-func TestSubscriptionExpiryService_ReminderRunsEveryCycleSingleInstance(t *testing.T) {
-	for _, withLease := range []bool{false, true} {
-		repo := &subscriptionExpiryRepoStub{}
-		released := 0
-		options := ExpiryOptions{Interval: time.Minute, Notifier: &subscriptionExpiryBlockingSender{}}
-		if withLease {
-			options.Lease = func(context.Context, string, string, time.Duration) (func(), bool) {
-				return func() { released++ }, true
-			}
-		}
-		svc := NewSubscriptionExpiryService(repo, options)
-		for i := 0; i < 3; i++ {
-			svc.sendExpiryReminders(context.Background())
-		}
-		require.Equal(t, 3, repo.listCalls)
-		if withLease {
-			require.Equal(t, 3, released)
-		}
-	}
-}
-
-func TestSubscriptionExpiryService_MissingSMTPSkipsReminderScanAndLogsOncePerInterval(t *testing.T) {
-	repo := &subscriptionExpiryRepoStub{}
-	settingRepo := &subscriptionExpirySettingRepoStub{values: map[string]string{}}
-
-	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
-	svc.settingRepo = settingRepo
-	svc.notificationEmailService = &subscriptionExpiryBlockingSender{readyErr: ErrReminderTransportUnconfigured}
-
-	var logs bytes.Buffer
-	previousWriter := log.Writer()
-	previousFlags := log.Flags()
-	log.SetOutput(&logs)
-	log.SetFlags(0)
-	t.Cleanup(func() {
-		log.SetOutput(previousWriter)
-		log.SetFlags(previousFlags)
-	})
-
-	svc.sendExpiryReminders(context.Background())
-	svc.sendExpiryReminders(context.Background())
-
-	require.Zero(t, repo.listCalls)
-	require.Equal(t, 1, bytes.Count(logs.Bytes(), []byte("SMTP is not configured")))
-}
-
-func TestSubscriptionExpiryService_SMTPConfigReadErrorSkipsReminderScan(t *testing.T) {
-	repo := &subscriptionExpiryRepoStub{}
-	settingRepo := &subscriptionExpirySettingRepoStub{
-		values:   map[string]string{},
-		multiErr: errors.New("db down"),
-	}
-
-	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Minute, Observe: log.Printf})
-	svc.settingRepo = settingRepo
-	svc.notificationEmailService = &subscriptionExpiryBlockingSender{readyErr: errors.New("db down")}
-
-	svc.sendExpiryReminders(context.Background())
-
-	require.Zero(t, repo.listCalls)
-}
-
-func (s *subscriptionExpiryBlockingSender) Ready(context.Context) error { return s.readyErr }
-
 // 可控存储证明停止会取消在途调用并等待退出，重复启动不会创建第二轮。
 type expiryLifecycleRepo struct {
 	UserSubscriptionRepository
@@ -286,32 +317,4 @@ func (r *expiryLifecycleRepo) BatchUpdateExpiredStatus(ctx context.Context) (int
 		<-ctx.Done()
 	}
 	return 0, ctx.Err()
-}
-func TestSubscriptionExpiryLifecycle(t *testing.T) {
-	repo := &expiryLifecycleRepo{entered: make(chan struct{})}
-	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Hour})
-	select {
-	case <-repo.entered:
-		t.Fatal("constructor started work")
-	default:
-	}
-	svc.Start()
-	svc.Start()
-	<-repo.entered
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	require.NoError(t, svc.StopContext(ctx))
-	require.NoError(t, svc.StopContext(ctx))
-	svc.Start()
-}
-func TestSubscriptionExpiryBlockedStopReturnsBudget(t *testing.T) {
-	repo := &expiryLifecycleRepo{entered: make(chan struct{}), release: make(chan struct{}), ignoreCancel: true}
-	svc := NewSubscriptionExpiryService(repo, ExpiryOptions{Interval: time.Hour})
-	svc.Start()
-	<-repo.entered
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
-	require.ErrorIs(t, svc.StopContext(ctx), context.DeadlineExceeded)
-	close(repo.release)
-	require.NoError(t, svc.StopContext(context.Background()))
 }

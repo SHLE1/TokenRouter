@@ -4,11 +4,13 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	idempotencyhttp "github.com/TokenFlux/TokenRouter/internal/idempotency/httpapi"
+	"github.com/TokenFlux/TokenRouter/internal/identity/httpapi/authctx"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 	response "github.com/TokenFlux/TokenRouter/internal/server/httpx"
-	"github.com/gin-gonic/gin"
 )
 
 // toResponsePagination 将分页结果转换为统一响应分页结构。
@@ -329,4 +331,13 @@ func (h *AdminSubscriptionHandler) ListByUser(c *gin.Context) {
 		out = append(out, *UserSubscriptionFromServiceAdmin(&subscriptions[i]))
 	}
 	response.Success(c, out)
+}
+
+// adminID 返回当前订阅管理操作的审计主体。
+func adminID(c *gin.Context) int64 {
+	subject, ok := authctx.GetAuthSubjectFromContext(c)
+	if !ok {
+		return 0
+	}
+	return subject.UserID
 }

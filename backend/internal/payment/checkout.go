@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
+	"github.com/shopspring/decimal"
 
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
-	"github.com/shopspring/decimal"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
 )
 
 func (s *Checkout) CreateOrder(ctx context.Context, req CreateOrderRequest) (*CreateOrderResponse, error) {
@@ -546,8 +546,7 @@ func CalculateCreateOrderPayAmountForOrderType(limitAmount float64, methodFee Fe
 }
 
 // CalculateSubscriptionGatewayBaseAmount 计算订阅订单的网关扣款基数。
-// 换算是显式 opt-in：仅当管理员配置了订阅汇率（rate > 0，1 USD = rate CNY）
-// 且网关币种为 CNY 时，按 price × rate 换算；未配置时保持 price 直付的存量行为。
+// 订阅汇率大于 0 且渠道币种为 CNY 时，扣款基数为 price × rate；其他情况使用 price。
 func CalculateSubscriptionGatewayBaseAmount(amount, usdToCnyRate float64, currency string) float64 {
 	rate := NormalizeSubscriptionUSDToCNYRate(usdToCnyRate)
 	if rate <= 0 || currency != DefaultPaymentCurrency {
@@ -700,4 +699,12 @@ func NormalizePaymentRedirectPath(path string) string {
 		return "/purchase" + strings.TrimPrefix(path, "/payment")
 	}
 	return path
+}
+
+// ResolveWxpayJSAPIAppID 读取 JSAPI 下单使用的 AppID，优先使用 mpAppId，其次使用 appId。
+func ResolveWxpayJSAPIAppID(config map[string]string) string {
+	if appID := strings.TrimSpace(config["mpAppId"]); appID != "" {
+		return appID
+	}
+	return strings.TrimSpace(config["appId"])
 }

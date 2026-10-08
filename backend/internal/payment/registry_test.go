@@ -7,29 +7,6 @@ import (
 	"testing"
 )
 
-// mockProvider implements the Provider interface for testing.
-type mockProvider struct {
-	name           string
-	key            string
-	supportedTypes []PaymentType
-}
-
-func (m *mockProvider) Name() string                  { return m.name }
-func (m *mockProvider) ProviderKey() string           { return m.key }
-func (m *mockProvider) SupportedTypes() []PaymentType { return m.supportedTypes }
-func (m *mockProvider) CreatePayment(_ context.Context, _ CreatePaymentRequest) (*CreatePaymentResponse, error) {
-	return nil, nil
-}
-func (m *mockProvider) QueryOrder(_ context.Context, _ string) (*QueryOrderResponse, error) {
-	return nil, nil
-}
-func (m *mockProvider) VerifyNotification(_ context.Context, _ string, _ map[string]string) (*PaymentNotification, error) {
-	return nil, nil
-}
-func (m *mockProvider) Refund(_ context.Context, _ RefundRequest) (*RefundResponse, error) {
-	return nil, nil
-}
-
 func TestRegistryRegisterAndGetProvider(t *testing.T) {
 	t.Parallel()
 	r := NewRegistry()
@@ -231,4 +208,72 @@ func TestRegistryConcurrentAccess(t *testing.T) {
 	if len(types) != goroutines {
 		t.Fatalf("after concurrent registration, expected %d types, got %d", goroutines, len(types))
 	}
+}
+
+func TestRegistryReplacePublishesOnlyCompleteMap(t *testing.T) {
+	registry := NewRegistry()
+	old := &mockProvider{name: "old", supportedTypes: []string{TypeAlipay, TypeWxpay}}
+	registry.Register(old)
+	next := &mockProvider{name: "new-a", supportedTypes: []string{TypeAlipay}}
+	blocked := &blockedProvider{
+		mockProvider: mockProvider{name: "new-b", supportedTypes: []string{TypeWxpay}},
+		entered:      make(chan struct{}),
+		release:      make(chan struct{}),
+	}
+	done := make(chan struct{})
+	go func() { registry.Replace([]Provider{next, blocked}); close(done) }()
+	<-blocked.entered
+	a, ea := registry.GetProvider(TypeAlipay)
+	b, eb := registry.GetProvider(TypeWxpay)
+	close(blocked.release)
+	<-done
+	if ea != nil || eb != nil || a != old || b != old {
+		t.Fatal("候选未就绪时不能发布空表或半张表")
+	}
+	a, ea = registry.GetProvider(TypeAlipay)
+	b, eb = registry.GetProvider(TypeWxpay)
+	if ea != nil || eb != nil || a != next || b != blocked {
+		t.Fatal("发布后必须包含完整候选")
+	}
+}
+
+// mockProvider implements the Provider interface for testing.
+type mockProvider struct {
+	name           string
+	key            string
+	supportedTypes []PaymentType
+}
+
+func (m *mockProvider) Name() string { return m.name }
+
+func (m *mockProvider) ProviderKey() string { return m.key }
+
+func (m *mockProvider) SupportedTypes() []PaymentType { return m.supportedTypes }
+
+func (m *mockProvider) CreatePayment(_ context.Context, _ CreatePaymentRequest) (*CreatePaymentResponse, error) {
+	return nil, nil
+}
+
+func (m *mockProvider) QueryOrder(_ context.Context, _ string) (*QueryOrderResponse, error) {
+	return nil, nil
+}
+
+func (m *mockProvider) VerifyNotification(_ context.Context, _ string, _ map[string]string) (*PaymentNotification, error) {
+	return nil, nil
+}
+
+func (m *mockProvider) Refund(_ context.Context, _ RefundRequest) (*RefundResponse, error) {
+	return nil, nil
+}
+
+// blockedProvider 暂停候选渠道构造，用于检查发布前的注册表读取。
+type blockedProvider struct {
+	mockProvider
+	entered, release chan struct{}
+}
+
+func (p *blockedProvider) SupportedTypes() []PaymentType {
+	close(p.entered)
+	<-p.release
+	return p.supportedTypes
 }

@@ -1636,3 +1636,15 @@ func incrementUsageBillingProviderQuota(ctx context.Context, tx *sql.Tx, provide
 func settlementSubscriptionSnapshot(row usageBillingSubscriptionRow) billing.SettlementSubscription {
 	return billing.SettlementSubscription{ID: row.ID, PlanID: row.PlanID, StartsAt: row.StartsAt, ExpiresAt: row.ExpiresAt, DailyWindowStart: usageBillingNullableTimePtr(row.DailyWindowStart), WeeklyWindowStart: usageBillingNullableTimePtr(row.WeeklyWindowStart), MonthlyWindowStart: usageBillingNullableTimePtr(row.MonthlyWindowStart), DailyLimitUSD: usageBillingNullableFloat64Ptr(row.DailyLimitUSD), WeeklyLimitUSD: usageBillingNullableFloat64Ptr(row.WeeklyLimitUSD), MonthlyLimitUSD: usageBillingNullableFloat64Ptr(row.MonthlyLimitUSD), DailyUsageUSD: row.DailyUsageUSD, WeeklyUsageUSD: row.WeeklyUsageUSD, MonthlyUsageUSD: row.MonthlyUsageUSD, PlanGroupRateMultipliers: parseInt64Float64JSONMap(row.PlanGroupRateMultipliersRaw)}
 }
+
+// TaskProjection 在计费事务中写入任务的资金分配和额度预占状态。
+//
+// @project-doc docs/domains/routing_and_billing.md#usage_settlement
+type TaskProjection interface {
+	SaveReservation(context.Context, float64, []billing.BillingAllocation, float64, float64) error
+	SetAllowanceReserved(context.Context, bool) error
+}
+type (
+	TaskProjectionFactory   func(*sql.Tx, billing.TaskReference) TaskProjection
+	TaskProjectionFactories map[billing.TaskScope]TaskProjectionFactory
+)

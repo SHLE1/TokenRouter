@@ -1,5 +1,7 @@
 package pricing
 
+import "time"
+
 // ModelPricing 保存用于结算的每 token 单价及模型计费规则。
 type ModelPricing struct {
 	// TimePricing 是目录声明的分时规则，仅用于默认目录价。
@@ -126,4 +128,20 @@ type AudioPriceConfig struct {
 	RealtimePerMin *float64
 	TTSPerMChars   *float64
 	STTPerHour     *float64
+}
+
+// CostInput 保存本次计价所用的价格、用量、倍率和时间。
+type CostInput struct {
+	ModelPricingAt      time.Time
+	ModelTimeLocation   *time.Location
+	Model               string
+	Tokens              UsageTokens
+	RequestCount        int
+	UsageUnits          float64
+	SizeTier            string
+	RateMultiplier      float64
+	PricingAt           time.Time
+	ServiceTier         string
+	ReasoningEffort     string
+	TimePricingLocation *time.Location
 }
